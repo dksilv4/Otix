@@ -1,0 +1,104 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: otix_dev
+      POSTGRES_USER: otix
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
+      interval: 2s
+      retries: 10
+      start_period: 3s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn cmd.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker-fast:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OTIX_WORKER_TYPE: fast
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q tmdb,steam -c 6 -n otix-fast@%h --loglevel INFO
+
+  worker-slow:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OTIX_WORKER_TYPE: slow
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,control,default -c 2 -n otix-slow@%h --loglevel INFO
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app beat --loglevel INFO
+
+volumes:
+  pgdata:
