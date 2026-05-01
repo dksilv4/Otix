@@ -6,7 +6,13 @@
       "Bash(docker info *)",
       "Bash(docker compose *)",
       "Bash(lsof -i :5432 -sTCP:LISTEN)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(python -m pytest tests/test_tmdb_transformer.py -v)",
+      "Bash(pip install *)",
+      "Bash(pip list *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
