@@ -30,8 +30,8 @@ class SteamProvider(BaseProvider):
             name="steam",
             redis=redis,
             http_client=client,
-            rate=10.0,  # Steam API is generous
-            burst=20,
+            rate=20.0,  # player-count endpoint has no documented limit
+            burst=40,
         )
 
     # ── Player counts ────────────────────────────────────────────────

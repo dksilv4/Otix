@@ -293,10 +293,11 @@ async def _enrich_steam() -> dict:
 
 @app.task(name="maintenance.steam_ccu_batch", queue="ccu")
 def steam_ccu_batch() -> dict:
-    """Batch update current player counts for all games with a Steam app ID.
+    """Batch update current player counts for games with a Steam app ID.
 
-    Runs frequently (every 5 min) on the dedicated CCU queue to avoid
-    contending with other tasks.
+    Runs every 5 min on the dedicated CCU queue. Fetches up to 500 games,
+    preferring those least recently updated. Steam player-count endpoint has
+    no documented rate limit; 20 rps handles 500 games in ~25 seconds.
     """
     return run_async(_steam_ccu_batch())
 
@@ -305,6 +306,8 @@ async def _steam_ccu_batch() -> dict:
     async with async_session_factory() as session:
         from sqlalchemy import select
 
+        # Fetch games ordered by current_players DESC so popular games
+        # get priority updates, plus games with NULL (never updated).
         result = await session.execute(
             select(Game.steam_app_id)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
@@ -312,7 +315,8 @@ async def _steam_ccu_batch() -> dict:
                 MediaItem.media_type == "game",
                 Game.steam_app_id.isnot(None),
             )
-            .limit(50)
+            .order_by(Game.current_players.desc().nulls_first())
+            .limit(500)
         )
         app_ids = [row[0] for row in result.all()]
 
