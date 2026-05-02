@@ -17,9 +17,10 @@ class MediaAsset(Base):
     id: Mapped[otix_pk]
     media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
     asset_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    url: Mapped[str] = mapped_column(String(2000), nullable=False)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False, unique=True)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
+    lang: Mapped[str | None] = mapped_column(String(10))
     provider: Mapped[str | None] = mapped_column(String(20))
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="assets")

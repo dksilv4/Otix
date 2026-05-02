@@ -16,7 +16,6 @@ from otix.providers.tmdb.transformer import (
     to_show,
     to_person,
     to_genre,
-    to_rating,
 )
 
 
@@ -242,6 +241,41 @@ class TestToPerson:
         person = to_person(raw)
         assert person.photo_url is None
 
+    def test_biography(self):
+        raw = {"id": 287, "name": "Brad Pitt", "biography": "An American actor."}
+        person = to_person(raw)
+        assert person.biography == "An American actor."
+
+    def test_biography_none(self):
+        raw = {"id": 287, "name": "Brad Pitt"}
+        person = to_person(raw)
+        assert person.biography is None
+
+    def test_birthday(self, sample_person_raw: dict):
+        person = to_person(sample_person_raw)
+        assert person.birthday == date(1963, 12, 18)
+
+    def test_birthday_none(self):
+        person = to_person({"id": 287, "name": "Brad Pitt"})
+        assert person.birthday is None
+
+    def test_deathday(self):
+        raw = {"id": 287, "name": "Test", "deathday": "2020-01-15"}
+        person = to_person(raw)
+        assert person.deathday == date(2020, 1, 15)
+
+    def test_deathday_none(self):
+        person = to_person({"id": 287, "name": "Brad Pitt", "deathday": None})
+        assert person.deathday is None
+
+    def test_place_of_birth(self, sample_person_raw: dict):
+        person = to_person(sample_person_raw)
+        assert person.place_of_birth == "Shawnee, Oklahoma, USA"
+
+    def test_place_of_birth_none(self):
+        person = to_person({"id": 287, "name": "Brad Pitt"})
+        assert person.place_of_birth is None
+
 
 # ── to_genre ────────────────────────────────────────────────────────
 
@@ -254,14 +288,3 @@ class TestToGenre:
         assert genre.slug == "science-fiction"
 
 
-# ── to_rating ───────────────────────────────────────────────────────
-
-
-class TestToRating:
-    def test_basic_rating(self):
-        rating = to_rating("oti_test", "tmdb", 8.4, max_score=10.0, vote_count=27000)
-        assert rating.media_item_id == "oti_test"
-        assert rating.provider == "tmdb"
-        assert rating.score == 8.4
-        assert rating.max_score == 10.0
-        assert rating.vote_count == 27000

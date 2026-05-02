@@ -4,7 +4,7 @@ Start a worker that consumes from a specific set of queues.
 
 Usage:
     OTIX_WORKER_TYPE=fast  celery -A otix.infrastructure.celery.app worker -Q tmdb,steam -c 6
-    OTIX_WORKER_TYPE=slow  celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,control,default -c 2
+    OTIX_WORKER_TYPE=slow  celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2
     OTIX_WORKER_TYPE=ccu   celery -A otix.infrastructure.celery.app worker -Q steam_ccu -c 1
 
 Or via the CLI:
@@ -57,7 +57,7 @@ def main() -> None:
         queues = "tmdb,steam"
         concurrency = args.concurrency or settings.celery_worker_fast_concurrency
     elif worker_type == "slow":
-        queues = "igdb,fanart,control,default"
+        queues = "slow,control,default"
         concurrency = args.concurrency or settings.celery_worker_slow_concurrency
     elif worker_type == "ccu":
         queues = "steam_ccu"

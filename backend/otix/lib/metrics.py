@@ -160,13 +160,15 @@ CIRCUIT_BREAKER_STATE = _registry.gauge(
 
 
 def track_entity_duration(provider: str, entity_type: str) -> Callable:
-    """Context manager to track entity processing duration."""
+    """Context manager to track entity processing duration (duration only, not success/failure)."""
+
     @contextmanager
     def _track():
         start = time.monotonic()
-        yield
-        SYNC_ENTITY_DURATION.observe(time.monotonic() - start)
-        SYNC_ENTITIES_TOTAL.inc(provider=provider, entity_type=entity_type, status="success")
+        try:
+            yield
+        finally:
+            SYNC_ENTITY_DURATION.observe(time.monotonic() - start)
 
     return _track()
 

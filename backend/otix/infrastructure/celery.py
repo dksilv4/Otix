@@ -1,19 +1,12 @@
 """Celery application with queue routing and beat schedule.
 
-Queue design (7 queues, prefix-based routing):
+Queue design (3 queues, prefix-based routing):
 
-  Fast worker (high throughput, prefetch=1):
-    tmdb        — sync.tmdb.* tasks
-    steam       — sync.steam.* tasks
+  fast — tmdb, steam (high throughput)
+  slow — igdb, fanart, omdb, control, default (rate-limited providers)
+  ccu  — steam_ccu (dedicated low-concurrency)
 
-  Slow worker (low throughput, for rate-limited providers):
-    igdb        — sync.igdb.* tasks
-    fanart      — sync.fanart.* tasks
-    control     — maintenance.* tasks
-    default     — catch-all
-
-  CCU worker (dedicated low-concurrency):
-    steam_ccu   — steam.ccu.* tasks
+Rate limiting is handled in-app by BaseProvider's Redis token bucket.
 """
 
 from __future__ import annotations
@@ -25,30 +18,13 @@ from kombu import Queue
 from otix.infrastructure.config import settings
 
 
-def _parse_concurrency(raw: str) -> int | None:
-    if not raw:
-        return None
-    try:
-        return int(raw)
-    except ValueError:
-        return None
-
-
 def route_task(name: str, *args, **kwargs) -> str | None:
     """Route tasks to queues based on name prefix."""
-    if name.startswith("sync.tmdb."):
-        return "tmdb"
-    if name.startswith("sync.steam."):
-        return "steam"
     if name.startswith("steam.ccu."):
-        return "steam_ccu"
-    if name.startswith("sync.igdb."):
-        return "igdb"
-    if name.startswith("sync.fanart."):
-        return "fanart"
-    if name.startswith("maintenance."):
-        return "control"
-    return "default"
+        return "ccu"
+    if name.startswith(("sync.tmdb.", "sync.steam.")):
+        return "fast"
+    return "slow"
 
 
 app = Celery("otix")
@@ -63,15 +39,11 @@ app.config_from_object(
         "task_acks_late": True,
         "task_reject_on_worker_lost": True,
         "worker_prefetch_multiplier": settings.celery_worker_prefetch_multiplier,
-        "task_default_queue": "default",
+        "task_default_queue": "slow",
         "task_queues": [
-            Queue("tmdb", queue_arguments={"x-max-priority": 10}),
-            Queue("steam", queue_arguments={"x-max-priority": 10}),
-            Queue("igdb", queue_arguments={"x-max-priority": 10}),
-            Queue("fanart", queue_arguments={"x-max-priority": 10}),
-            Queue("control", queue_arguments={"x-max-priority": 10}),
-            Queue("default", queue_arguments={"x-max-priority": 10}),
-            Queue("steam_ccu", queue_arguments={"x-max-priority": 10}),
+            Queue("fast", queue_arguments={"x-max-priority": 10}),
+            Queue("slow", queue_arguments={"x-max-priority": 10}),
+            Queue("ccu", queue_arguments={"x-max-priority": 10}),
         ],
         "task_routes": (route_task,),
         "task_create_missing_queues": True,
@@ -90,6 +62,21 @@ app.config_from_object(
             "cleanup-expired-tokens": {
                 "task": "maintenance.cleanup_expired_tokens",
                 "schedule": crontab(hour="3", minute="23"),
+            },
+            # Fanart enrichment scan (every 30 min at off-peak minutes)
+            "enrich-fanart": {
+                "task": "maintenance.enrich_fanart",
+                "schedule": crontab(minute="7,37"),
+            },
+            # OMDb enrichment scan (every 30 min at off-peak minutes)
+            "enrich-omdb": {
+                "task": "maintenance.enrich_omdb",
+                "schedule": crontab(minute="13,43"),
+            },
+            # Game feed refresh (every 6 hours at off-peak minute)
+            "refresh-game-feed": {
+                "task": "maintenance.refresh_game_feed",
+                "schedule": crontab(minute="53", hour="*/6"),
             },
         },
     }

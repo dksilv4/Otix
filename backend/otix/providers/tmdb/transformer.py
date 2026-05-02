@@ -6,14 +6,13 @@ unsaved SQLAlchemy model instance (or None if the data is insufficient).
 
 from __future__ import annotations
 
+import re
 from datetime import date
-from otix.domain.asset import ExternalRating
-from otix.domain.genre import Genre
-from otix.domain.media import Episode, ExternalID, Game, MediaItem, Movie, Season, Show
-from otix.lib.types import JSONValue
-from otix.domain.people import MediaCredit, Person
 
-# TODO: Replace JSONValue with typed TMDB response schemas (e.g. MovieResponse, ShowResponse).
+from otix.domain.genre import Genre
+from otix.domain.media import Episode, MediaItem, Movie, Season, Show
+from otix.domain.people import Person
+from otix.lib.types import JSONValue
 
 
 def _parse_date(raw: str | None) -> date | None:
@@ -106,18 +105,10 @@ def to_person(raw: dict[str, JSONValue]) -> Person:
         tmdb_id=raw.get("id"),
         imdb_id=raw.get("imdb_id"),
         photo_url=_image_url(raw.get("profile_path")),
-    )
-
-
-def to_credit(raw: dict[str, JSONValue], role: str) -> MediaCredit | None:
-    person_id = raw.get("id")
-    if not person_id:
-        return None
-
-    return MediaCredit(
-        role=role,
-        character_name=raw.get("character") if role == "cast" else raw.get("job"),
-        sort_order=raw.get("order", 0),
+        biography=raw.get("biography"),
+        birthday=_parse_date(raw.get("birthday")),
+        deathday=_parse_date(raw.get("deathday")),
+        place_of_birth=raw.get("place_of_birth"),
     )
 
 
@@ -131,24 +122,7 @@ def to_genre(raw: dict[str, JSONValue]) -> Genre:
     )
 
 
-# ── Ratings ─────────────────────────────────────────────────────
-
-
-def to_rating(media_item_id: str, provider: str, score: float, max_score: float = 10.0, vote_count: int | None = None) -> ExternalRating:
-    return ExternalRating(
-        media_item_id=media_item_id,
-        provider=provider,
-        score=score,
-        max_score=max_score,
-        vote_count=vote_count,
-    )
-
-
 # ── Helpers ─────────────────────────────────────────────────────
-
-
-TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
-TMDB_IMAGE_BASE_ORIGINAL = "https://image.tmdb.org/t/p/original"
 
 
 def _image_url(path: str | None, size: str = "w500") -> str | None:
@@ -158,7 +132,6 @@ def _image_url(path: str | None, size: str = "w500") -> str | None:
 
 
 def _slugify(title: str) -> str:
-    import re
     slug = title.lower().strip()
     slug = re.sub(r"[^\w\s-]", "", slug)
     slug = re.sub(r"[\s_]+", "-", slug)

@@ -15,21 +15,29 @@ from otix.infrastructure.config import settings
 from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider
 
-# TODO: Replace JSONValue with typed TMDB response schemas (e.g. MovieResponse, ShowResponse).
+# Shared client factory — reuse connection pool across tasks.
+_shared_client: httpx.AsyncClient | None = None
 
 
-class TMDBProvider(BaseProvider):
-    BASE_URL = "https://api.themoviedb.org/3"
-
-    def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
-        client = http_client or httpx.AsyncClient(
-            base_url=self.BASE_URL,
+def get_http_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client = httpx.AsyncClient(
+            base_url=TMDBProvider.BASE_URL,
             timeout=settings.tmdb_request_timeout_seconds,
             headers={
                 "Authorization": f"Bearer {settings.tmdb_rat}",
                 "Accept": "application/json",
             },
         )
+    return _shared_client
+
+
+class TMDBProvider(BaseProvider):
+    BASE_URL = "https://api.themoviedb.org/3"
+
+    def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
+        client = http_client or get_http_client()
         super().__init__(
             name="tmdb",
             redis=redis,
@@ -45,7 +53,7 @@ class TMDBProvider(BaseProvider):
             f"/movie/{tmdb_id}",
             params={
                 "language": language,
-                "append_to_response": "credits,external_ids,images,videos,release_dates",
+                "append_to_response": "credits,external_ids,images,videos,release_dates,keywords",
             },
         )
         return response.json()
@@ -64,6 +72,27 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    async def get_movie_top_rated(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/movie/top_rated",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_movie_upcoming(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/movie/upcoming",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_movie_now_playing(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/movie/now_playing",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
     # ── Shows ───────────────────────────────────────────────────
 
     async def get_show(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
@@ -71,8 +100,15 @@ class TMDBProvider(BaseProvider):
             f"/tv/{tmdb_id}",
             params={
                 "language": language,
-                "append_to_response": "credits,external_ids,images,videos",
+                "append_to_response": "credits,external_ids,images,videos,keywords,seasons",
             },
+        )
+        return response.json()
+
+    async def get_show_changes(self, start_date: str, end_date: str, page: int = 1) -> dict[str, JSONValue]:
+        response = await self._get(
+            "/tv/changes",
+            params={"start_date": start_date, "end_date": end_date, "page": page},
         )
         return response.json()
 
@@ -90,12 +126,54 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    async def get_show_top_rated(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/tv/top_rated",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_show_on_the_air(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/tv/on_the_air",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_show_airing_today(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            "/tv/airing_today",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
     # ── People ──────────────────────────────────────────────────
 
     async def get_person(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
         response = await self._get(
             f"/person/{tmdb_id}",
             params={"language": language, "append_to_response": "external_ids,images"},
+        )
+        return response.json()
+
+    async def get_person_changes(self, start_date: str, end_date: str, page: int = 1) -> dict[str, JSONValue]:
+        response = await self._get(
+            "/person/changes",
+            params={"start_date": start_date, "end_date": end_date, "page": page},
+        )
+        return response.json()
+
+    async def get_person_combined_credits(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/person/{tmdb_id}/combined_credits",
+            params={"language": language},
+        )
+        return response.json()
+
+    async def get_trending(self, media_type: str, time_window: str, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/trending/{media_type}/{time_window}",
+            params={"language": language, "page": page},
         )
         return response.json()
 

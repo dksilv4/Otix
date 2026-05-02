@@ -20,6 +20,7 @@ class Collection(Base):
     overview: Mapped[str | None] = mapped_column(Text)
     poster_url: Mapped[str | None] = mapped_column(String(2000))
     backdrop_url: Mapped[str | None] = mapped_column(String(2000))
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     movies: Mapped[list[Movie]] = relationship("Movie", back_populates="collection")
     items: Mapped[list[CollectionItem]] = relationship("CollectionItem", back_populates="collection")

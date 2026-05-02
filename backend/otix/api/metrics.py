@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from otix.lib.metrics import get_registry
 
-metrics_router = APIRouter(prefix="/metrics", tags=["metrics"])
+metrics_router = APIRouter(prefix="/metric", tags=["metric"])
 
 
 @metrics_router.get("")

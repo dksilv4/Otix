@@ -54,13 +54,20 @@ class Settings(BaseSettings):
     tmdb_request_timeout_seconds: int = 20
     tmdb_global_rps_limit: int = 40
     tmdb_max_retries: int = 4
+    tmdb_sync_max_escalation_days: int = 90
     omdb_api_key: str = ""
+    omdb_request_timeout_seconds: int = 15
+    omdb_global_rps_limit: int = 5
     fanart_api_key: str = ""
     fanart_client_key: str = ""
+    fanart_request_timeout_seconds: int = 15
+    fanart_global_rps_limit: int = 1
     rawg_api_key: str = ""
     steam_api_key: str = ""
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
+    igdb_request_timeout_seconds: int = 20
+    igdb_global_rps_limit: int = 4
 
     # Email
     resend_api_key: str = ""
@@ -77,25 +84,10 @@ class Settings(BaseSettings):
     celery_worker_fast_concurrency: int = 6
     celery_worker_slow_concurrency: int = 2
     celery_worker_ccu_concurrency: int = 1
-    celery_worker_fast_queues: str = ""
-    celery_worker_slow_queues: str = ""
-    celery_worker_ccu_queues: str = ""
 
     @property
     def celery_broker(self) -> str:
         return self.celery_broker_url or self.redis_url.replace("redis://", "redis://", 1).replace("/1", "/0")
-
-    @property
-    def fast_queue_list(self) -> list[str]:
-        return [q.strip() for q in self.celery_worker_fast_queues.split(",") if q.strip()]
-
-    @property
-    def slow_queue_list(self) -> list[str]:
-        return [q.strip() for q in self.celery_worker_slow_queues.split(",") if q.strip()]
-
-    @property
-    def ccu_queue_list(self) -> list[str]:
-        return [q.strip() for q in self.celery_worker_ccu_queues.split(",") if q.strip()]
 
     @property
     def cors_origin_list(self) -> list[str]:
