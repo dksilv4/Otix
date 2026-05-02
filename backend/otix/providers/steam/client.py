@@ -25,13 +25,15 @@ class SteamProvider(BaseProvider):
     """Async Steam API client with rate limiting."""
 
     def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
-        client = http_client or httpx.AsyncClient(timeout=15.0)
+        client = http_client or httpx.AsyncClient(
+            timeout=settings.steam_request_timeout_seconds,
+        )
         super().__init__(
             name="steam",
             redis=redis,
             http_client=client,
-            rate=20.0,  # player-count endpoint has no documented limit
-            burst=40,
+            rate=settings.steam_global_rps_limit,
+            burst=settings.steam_global_rps_limit * 2,
         )
 
     # ── Player counts ────────────────────────────────────────────────

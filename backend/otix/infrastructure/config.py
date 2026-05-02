@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     fanart_global_rps_limit: int = 1
     rawg_api_key: str = ""
     steam_api_key: str = ""
+    steam_request_timeout_seconds: int = 15
+    steam_global_rps_limit: int = 20
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
     igdb_request_timeout_seconds: int = 20
