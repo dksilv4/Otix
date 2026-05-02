@@ -71,6 +71,26 @@ class SteamProvider(BaseProvider):
             return None
         return app_data.get("data")
 
+    # ── Store search ──────────────────────────────────────────────────
+
+    async def search_apps(self, term: str) -> list[dict[str, JSONValue]]:
+        """Search the Steam store for apps by name.
+
+        Returns a list of matching app dicts, each containing at minimum
+        ``id`` (int) and ``name`` (str).
+        """
+        response = await self._get(
+            "https://store.steampowered.com/api/storesearch",
+            params={"term": term, "l": "en"},
+        )
+        if response.status_code != 200:
+            raise SteamError(f"Steam store search failed: {response.status_code}")
+        data = response.json()
+        items = data.get("items")
+        if isinstance(items, list):
+            return items
+        return []
+
     async def _get(self, url: str, **kwargs) -> httpx.Response:
         kwargs.setdefault("params", {})
         # Only add key for Web API calls, not store

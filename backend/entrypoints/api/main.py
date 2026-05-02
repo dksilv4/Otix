@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from otix.infrastructure.config import settings
-from otix.infrastructure.database import engine
+from otix.infrastructure.database import dispose_engine
 from otix.infrastructure.logging import setup_logging
 from otix.infrastructure.redis import close_redis, get_redis
 from otix.api.router import api_router
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI) -> Any:
     yield
 
     await close_redis()
-    await engine.dispose()
+    await dispose_engine()
     logger.info("otix api stopped")
 
 

@@ -21,6 +21,7 @@ from otix.lib.metrics import (
 )
 from otix.lib.pagination import decode_cursor, encode_cursor
 from otix.lib.rate_limiter import RateLimiter
+from otix.lib.slug import slugify
 
 __all__ = [
     "CIRCUIT_BREAKER_STATE",
@@ -36,6 +37,7 @@ __all__ = [
     "decode_cursor",
     "encode_cursor",
     "get_registry",
+    "slugify",
     "track_api_call",
     "track_entity_duration",
     "track_rate_limit_wait",

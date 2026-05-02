@@ -8,7 +8,7 @@ Usage:
     OTIX_WORKER_TYPE=ccu   celery -A otix.infrastructure.celery.app worker -Q steam_ccu -c 1
 
 Or via the CLI:
-    python -m cmd.worker.main --worker-type fast
+    python -m entrypoints.worker.main --worker-type fast
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def main() -> None:
         queues = args.queues
         concurrency = args.concurrency or 4
     elif worker_type == "fast":
-        queues = "tmdb,steam"
+        queues = "fast"
         concurrency = args.concurrency or settings.celery_worker_fast_concurrency
     elif worker_type == "slow":
         queues = "slow,control,default"

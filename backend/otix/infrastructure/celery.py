@@ -24,6 +24,8 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         return "ccu"
     if name.startswith(("sync.tmdb.", "sync.steam.")):
         return "fast"
+    if name.startswith("seed."):
+        return "default"
     return "slow"
 
 
@@ -78,10 +80,34 @@ app.config_from_object(
                 "task": "maintenance.refresh_game_feed",
                 "schedule": crontab(minute="53", hour="*/6"),
             },
+            # Catalog hydration — continuous background re-sync of stale items
+            "catalog-hydration": {
+                "task": "maintenance.catalog_hydration",
+                "schedule": crontab(minute="11,26,41,56"),
+            },
+            # Catalog seeding — three independent seeders run concurrently.
+            # People cascade to movies/shows via combined_credits filmography.
+            "seed-people": {
+                "task": "seed.people_cycle",
+                "schedule": crontab(minute="*/2"),
+            },
+            "seed-steam": {
+                "task": "seed.steam_cycle",
+                "schedule": crontab(minute="*/2"),
+            },
+            "seed-igdb": {
+                "task": "seed.igdb_cycle",
+                "schedule": crontab(minute="*/2"),
+            },
             # Steam enrichment scan (every 15 min at off-peak minute)
             "enrich-steam": {
                 "task": "maintenance.enrich_steam",
                 "schedule": crontab(minute="3,18,33,48"),
+            },
+            # Steam name matching scan (every 30 min at off-peak minutes)
+            "steam-name-match": {
+                "task": "maintenance.steam_name_match",
+                "schedule": crontab(minute="23,53"),
             },
             # Steam CCU batch update (every 5 min)
             "steam-ccu-batch": {
@@ -95,3 +121,4 @@ app.config_from_object(
 # Register tasks — explicit imports so tasks are guaranteed to be discovered.
 import otix.tasks.sync  # noqa: E402, F811
 import otix.tasks.maintenance  # noqa: E402, F811
+import otix.tasks.catalog_seed  # noqa: E402, F811

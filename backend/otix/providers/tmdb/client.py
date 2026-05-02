@@ -17,10 +17,27 @@ from otix.providers.base import BaseProvider
 
 # Shared client factory — reuse connection pool across tasks.
 _shared_client: httpx.AsyncClient | None = None
+_shared_client_loop_id: int | None = None
 
 
 def get_http_client() -> httpx.AsyncClient:
-    global _shared_client
+    global _shared_client, _shared_client_loop_id
+    import asyncio
+
+    try:
+        current_loop_id = id(asyncio.get_running_loop())
+    except RuntimeError:
+        current_loop_id = None
+
+    if _shared_client is not None and _shared_client_loop_id != current_loop_id:
+        # Event loop changed (Celery prefork child) — discard inherited client
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(_shared_client.aclose())
+        except Exception:
+            pass
+        _shared_client = None
+
     if _shared_client is None or _shared_client.is_closed:
         _shared_client = httpx.AsyncClient(
             base_url=TMDBProvider.BASE_URL,
@@ -30,6 +47,7 @@ def get_http_client() -> httpx.AsyncClient:
                 "Accept": "application/json",
             },
         )
+        _shared_client_loop_id = current_loop_id
     return _shared_client
 
 
@@ -199,6 +217,25 @@ class TMDBProvider(BaseProvider):
 
     async def get_configuration(self) -> dict[str, JSONValue]:
         response = await self._get("/configuration")
+        return response.json()
+
+    async def discover(
+        self,
+        media_type: str,
+        params: dict[str, str] | None = None,
+        language: str = "en-US",
+    ) -> dict[str, JSONValue]:
+        """Generic discover endpoint for movies or tv.
+
+        Pass sort_by, date filters, etc. via `params`.
+        """
+        base_params: dict[str, str] = {"language": language}
+        if params:
+            base_params.update(params)
+        response = await self._get(
+            f"/discover/{media_type}",
+            params=base_params,
+        )
         return response.json()
 
     async def get_genres(self, media_type: str = "movie", language: str = "en-US") -> dict[str, JSONValue]:

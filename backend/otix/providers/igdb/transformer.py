@@ -10,6 +10,7 @@ import re
 from datetime import date, datetime, timezone
 
 from otix.domain.media import Game, MediaItem
+from otix.lib.slug import slugify as _slugify
 from otix.lib.types import JSONValue
 
 _STATUS_MAP: dict[int, str] = {
@@ -43,54 +44,55 @@ def _cover_url(image_id: str | None, size: str = "t_cover_big") -> str | None:
     return f"https://images.igdb.com/igdb/image/upload/{size}/{image_id}.jpg"
 
 
-def _slugify(title: str) -> str:
-    slug = title.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    slug = re.sub(r"-+", "-", slug)
-    if len(slug) > 200:
-        slug = slug[:200].rsplit("-", 1)[0]
-    return slug
 
+def extract_platforms(platforms: list[JSONValue]) -> list[dict]:
+    """Convert IGDB platforms list to hydrator-ready dicts.
 
-def _extract_platforms(platforms: list[JSONValue]) -> dict[str, dict] | None:
-    """Convert IGDB platforms list to a name-keyed dict for JSONB storage.
-
-    [{"name": "PC"}, {"name": "PlayStation 5"}] → {"pc": {"name": "PC"}, ...}
+    [{"name": "PC"}, {"name": "PlayStation 5"}] → [{"name": "PC", "slug": "pc"}, ...]
     """
     if not platforms:
-        return None
-    result: dict[str, dict] = {}
+        return []
+    result: list[dict] = []
+    seen: set[str] = set()
     for p in platforms:
         if not isinstance(p, dict):
             continue
         name = p.get("name")
         if not isinstance(name, str) or not name:
             continue
-        key = _slugify(name)
-        result[key] = {"name": name}
-        logo_id = p.get("platform_logo", {})
-        if isinstance(logo_id, dict) and logo_id.get("image_id"):
-            result[key]["logo_image_id"] = logo_id["image_id"]
-    return result or None
+        slug = _slugify(name)
+        if slug in seen:
+            continue
+        seen.add(slug)
+        entry: dict = {"name": name, "slug": slug}
+        logo = p.get("platform_logo", {})
+        if isinstance(logo, dict) and logo.get("image_id"):
+            entry["logo_image_id"] = logo["image_id"]
+        result.append(entry)
+    return result
 
 
-def _extract_modes(game_modes: list[JSONValue]) -> dict[str, dict] | None:
-    """Convert IGDB game_modes list to a name-keyed dict for JSONB storage.
+def extract_modes(game_modes: list[JSONValue]) -> list[dict]:
+    """Convert IGDB game_modes list to hydrator-ready dicts.
 
-    [{"name": "Single player"}, {"name": "Multiplayer"}] → {"single-player": {"name": "Single player"}, ...}
+    [{"name": "Single player"}, {"name": "Multiplayer"}] → [{"name": "Single player", "slug": "single-player"}, ...]
     """
     if not game_modes:
-        return None
-    result: dict[str, dict] = {}
+        return []
+    result: list[dict] = []
+    seen: set[str] = set()
     for m in game_modes:
         if not isinstance(m, dict):
             continue
         name = m.get("name")
         if not isinstance(name, str) or not name:
             continue
-        result[_slugify(name)] = {"name": name}
-    return result or None
+        slug = _slugify(name)
+        if slug in seen:
+            continue
+        seen.add(slug)
+        result.append({"name": name, "slug": slug})
+    return result
 
 
 def _extract_website(websites: list[JSONValue]) -> str | None:
@@ -136,6 +138,38 @@ def _extract_steam_app_id(websites: list[JSONValue]) -> int | None:
     return None
 
 
+def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
+    """Extract involved companies from IGDB response.
+
+    Returns a list of {company_name, company_slug, igdb_id, developer,
+    publisher, porting, supporting}.
+    """
+    involved = raw.get("involved_companies", [])
+    if not isinstance(involved, list):
+        return []
+
+    result: list[dict] = []
+    for ic in involved:
+        if not isinstance(ic, dict):
+            continue
+        company = ic.get("company")
+        if not isinstance(company, dict):
+            continue
+        name = company.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        result.append({
+            "company_name": name,
+            "company_slug": company.get("slug") or _slugify(name),
+            "igdb_id": company.get("id"),
+            "developer": bool(ic.get("developer")),
+            "publisher": bool(ic.get("publisher")),
+            "porting": bool(ic.get("porting")),
+            "supporting": bool(ic.get("supporting")),
+        })
+    return result
+
+
 def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
     """Convert IGDB game JSON to a MediaItem."""
     title = raw.get("name") or ""
@@ -169,15 +203,13 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
     Maps IGDB fields to the Game domain model:
       - status → release_status (human-readable)
       - websites → website (single URL, prefers official)
-      - platforms → JSONB dict
-      - game_modes → JSONB dict
+
+    Platforms, game modes, and companies are hydrated separately via
+    IGDBHydrator.
     """
     websites = raw.get("websites", [])
-    platforms = raw.get("platforms", [])
     modes = raw.get("game_modes", [])
-
     modes_list = modes if isinstance(modes, list) else []
-    modes_dict = _extract_modes(modes_list)
     has_multiplayer = any(
         "multiplayer" in _slugify(m.get("name", ""))
         for m in modes_list
@@ -189,8 +221,6 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
         release_status=_STATUS_MAP.get(raw.get("status")),
         website=_extract_website(website_list),
         steam_app_id=_extract_steam_app_id(website_list),
-        platforms=_extract_platforms(platforms if isinstance(platforms, list) else []),
-        modes=modes_dict,
         has_multiplayer=has_multiplayer,
     )
     game.media_item = to_media_item(raw)

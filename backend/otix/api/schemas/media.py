@@ -107,12 +107,64 @@ class ShowDetail(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CompanyOut(BaseModel):
+    id: str
+    name: str
+    slug: str
+
+    model_config = {"from_attributes": True}
+
+
+class InvolvedCompanyOut(BaseModel):
+    id: str
+    company: CompanyOut
+    developer: bool
+    publisher: bool
+    porting: bool
+    supporting: bool
+
+    model_config = {"from_attributes": True}
+
+
+class PlatformOut(BaseModel):
+    id: str
+    name: str
+    slug: str
+    logo_image_id: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class GameModeOut(BaseModel):
+    id: str
+    name: str
+    slug: str
+
+    model_config = {"from_attributes": True}
+
+
+class MediaPlatformOut(BaseModel):
+    id: str
+    platform: PlatformOut
+
+    model_config = {"from_attributes": True}
+
+
+class MediaGameModeOut(BaseModel):
+    id: str
+    game_mode: GameModeOut
+
+    model_config = {"from_attributes": True}
+
+
 class GameDetail(BaseModel):
     release_status: str | None = None
     website: str | None = None
     steam_app_id: int | None = None
-    platforms: list[str] | None = None
-    modes: list[str] | None = None
+    current_players: int | None = None
+    price_json: dict | None = None
+    recommendations: int | None = None
+    review_summary: str | None = None
     is_free: bool = False
     has_multiplayer: bool = False
 
@@ -137,6 +189,9 @@ class MediaItemDetail(BaseModel):
     genres: list[GenreOut] = []
     external_ratings: list[ExternalRatingOut] = []
     credits: list[MediaCreditOut] = []
+    involved_companies: list[InvolvedCompanyOut] = []
+    platforms: list[MediaPlatformOut] = []
+    game_modes: list[MediaGameModeOut] = []
 
     movie: MovieDetail | None = None
     show: ShowDetail | None = None

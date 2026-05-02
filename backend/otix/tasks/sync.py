@@ -22,7 +22,7 @@ from otix.domain.people import Person
 from otix.domain.sync import ProviderState
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
-from otix.infrastructure.database import async_session_factory
+from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_ENTITIES_TOTAL, track_entity_duration
@@ -129,7 +129,7 @@ def _compute_next_sync_at(entity_type: str, raw: dict, hash_match_count: int = 0
 
 async def _get_last_change_check(provider: str) -> datetime:
     """Get the last time we checked for changes, or default to 24h ago."""
-    async with async_session_factory() as session:
+    async with async_session() as session:
         state = await session.get(ProviderState, provider)
         if state and state.last_sync_at:
             return state.last_sync_at
@@ -138,7 +138,7 @@ async def _get_last_change_check(provider: str) -> datetime:
 
 async def _set_last_change_check(provider: str, dt: datetime) -> None:
     """Update the last change check timestamp."""
-    async with async_session_factory() as session:
+    async with async_session() as session:
         state = await session.get(ProviderState, provider)
         if state:
             state.last_sync_at = dt
@@ -370,7 +370,7 @@ async def _resolve_external_id(session, tmdb_id: str) -> tuple[MediaItem | None,
 
 async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
     with track_entity_duration("tmdb", "movie"):
-        async with async_session_factory() as session:
+        async with async_session() as session:
             tmdb_id_str = str(tmdb_id)
             media_item, ext_id = await _resolve_external_id(session, tmdb_id_str)
 
@@ -441,7 +441,7 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
 
 async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
     with track_entity_duration("tmdb", "show"):
-        async with async_session_factory() as session:
+        async with async_session() as session:
             tmdb_id_str = str(tmdb_id)
             media_item, ext_id = await _resolve_external_id(session, tmdb_id_str)
 
@@ -516,7 +516,7 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
     filmography via combined_credits.
     """
     with track_entity_duration("tmdb", "person"):
-        async with async_session_factory() as session:
+        async with async_session() as session:
             existing = await session.scalar(
                 select(Person).where(Person.tmdb_id == tmdb_id)
             )
@@ -636,7 +636,7 @@ async def _filter_stale_ids(provider: str, external_ids: set[str]) -> set[str]:
         return set()
 
     now = datetime.now(timezone.utc)
-    async with async_session_factory() as session:
+    async with async_session() as session:
         result = await session.scalars(
             select(ExternalID.external_id)
             .join(MediaItem)
@@ -830,7 +830,7 @@ def sync_fanart_show_task(self, media_item_id: str) -> dict | None:
 
 
 async def _sync_fanart_movie(media_item_id: str) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         media_item = await session.get(MediaItem, media_item_id)
         if media_item is None:
             return None
@@ -848,7 +848,7 @@ async def _sync_fanart_movie(media_item_id: str) -> dict | None:
 
 
 async def _sync_fanart_show(media_item_id: str) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         media_item = await session.get(MediaItem, media_item_id)
         if media_item is None:
             return None
@@ -879,7 +879,7 @@ def sync_fanart_game_task(self, media_item_id: str) -> dict | None:
 
 
 async def _sync_fanart_game(media_item_id: str) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         media_item = await session.get(MediaItem, media_item_id)
         if media_item is None:
             return None
@@ -913,7 +913,7 @@ def sync_omdb_ratings_task(self, media_item_id: str) -> dict | None:
 
 
 async def _sync_omdb_ratings(media_item_id: str) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         media_item = await session.get(MediaItem, media_item_id)
         if media_item is None:
             return None
@@ -943,7 +943,10 @@ GAME_FIELDS = (
     "platforms.name,platforms.platform_logo.image_id,"
     "game_modes.name,"
     "websites.url,websites.category,"
-    "videos.video_id,videos.name"
+    "videos.video_id,videos.name,"
+    "involved_companies.company.name,involved_companies.company.slug,"
+    "involved_companies.developer,involved_companies.publisher,"
+    "involved_companies.porting,involved_companies.supporting"
 )
 
 
@@ -964,7 +967,7 @@ def sync_igdb_game_task(self, igdb_id: int, force: bool = False) -> dict | None:
 
 
 async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         igdb_id_str = str(igdb_id)
 
         # Check existing by IGDB external ID
@@ -1233,7 +1236,7 @@ def sync_steam_update_app_task(self, steam_app_id: int) -> dict | None:
 
 
 async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         from sqlalchemy import select
 
         game = await session.scalar(

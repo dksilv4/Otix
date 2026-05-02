@@ -207,7 +207,7 @@ class TestFilterStaleIds:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             result = await _filter_stale_ids("tmdb", {"550", "680"})
             assert result == {"550", "680"}
 
@@ -218,7 +218,7 @@ class TestFilterStaleIds:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             result = await _filter_stale_ids("tmdb", {"550", "680"})
             assert result == {"680"}
 
@@ -267,7 +267,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             result = await _get_last_change_check("tmdb")
             expected = datetime.now(timezone.utc) - timedelta(hours=24)
             assert abs((result - expected).total_seconds()) < 5
@@ -282,7 +282,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             result = await _get_last_change_check("tmdb")
             assert result == state.last_sync_at
 
@@ -294,7 +294,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             now = datetime.now(timezone.utc)
             await _set_last_change_check("tmdb", now)
             added = mock_session.add.call_args[0][0]
@@ -313,7 +313,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session_factory", _factory):
+        with patch("otix.tasks.sync.async_session", _factory):
             now = datetime.now(timezone.utc)
             await _set_last_change_check("tmdb", now)
             assert state.last_sync_at == now

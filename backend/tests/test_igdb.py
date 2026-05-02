@@ -8,18 +8,27 @@ from unittest.mock import AsyncMock
 import pytest
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre
-from otix.domain.media import ExternalID, Game
+from otix.domain.media import (
+    ExternalID,
+    Game,
+    GameMode,
+    MediaGameMode,
+    MediaPlatform,
+    Platform,
+)
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import (
     _cover_url,
-    _extract_modes,
-    _extract_platforms,
     _extract_steam_app_id,
     _extract_website,
     _parse_timestamp,
     _slugify,
+    extract_involved_companies,
+    extract_modes,
+    extract_platforms,
     to_game,
     to_media_item,
 )
@@ -79,6 +88,15 @@ def igdb_game_raw() -> dict:
         ],
         "videos": [
             {"video_id": "cGd3vjRjDnM", "name": "Launch Trailer"},
+        ],
+        "involved_companies": [
+            {
+                "company": {"id": 100, "name": "CD Projekt Red", "slug": "cd-projekt-red"},
+                "developer": True,
+                "publisher": True,
+                "porting": False,
+                "supporting": False,
+            },
         ],
     }
 
@@ -161,34 +179,81 @@ class TestExtractPlatforms:
             {"name": "PC (Microsoft Windows)", "platform_logo": {"image_id": "pl1"}},
             {"name": "PlayStation 4"},
         ]
-        result = _extract_platforms(platforms)
-        assert result is not None
-        assert "pc-microsoft-windows" in result
-        assert result["pc-microsoft-windows"]["logo_image_id"] == "pl1"
-        assert "playstation-4" in result
-        assert "logo_image_id" not in result["playstation-4"]
+        result = extract_platforms(platforms)
+        assert len(result) == 2
+        slugs = {p["slug"]: p for p in result}
+        assert "pc-microsoft-windows" in slugs
+        assert slugs["pc-microsoft-windows"]["logo_image_id"] == "pl1"
+        assert "playstation-4" in slugs
+        assert "logo_image_id" not in slugs["playstation-4"]
 
     def test_empty_list(self):
-        assert _extract_platforms([]) is None
+        assert extract_platforms([]) == []
 
     def test_skips_invalid_entries(self):
         platforms = [{"no_name": "x"}, {"name": "Valid"}]
-        result = _extract_platforms(platforms)
-        assert result is not None
-        assert "valid" in result
+        result = extract_platforms(platforms)
         assert len(result) == 1
+        assert result[0]["slug"] == "valid"
 
 
 class TestExtractModes:
     def test_extracts_modes(self):
         modes = [{"name": "Single player"}, {"name": "Multiplayer"}]
-        result = _extract_modes(modes)
-        assert result is not None
-        assert "single-player" in result
-        assert "multiplayer" in result
+        result = extract_modes(modes)
+        assert len(result) == 2
+        slugs = {m["slug"] for m in result}
+        assert "single-player" in slugs
+        assert "multiplayer" in slugs
 
     def test_empty(self):
-        assert _extract_modes([]) is None
+        assert extract_modes([]) == []
+
+
+class TestExtractInvolvedCompanies:
+    def test_extracts_company_data(self):
+        involved = [
+            {
+                "company": {"id": 100, "name": "CD Projekt Red", "slug": "cd-projekt-red"},
+                "developer": True,
+                "publisher": True,
+                "porting": False,
+                "supporting": False,
+            },
+        ]
+        result = extract_involved_companies({"involved_companies": involved})
+        assert len(result) == 1
+        c = result[0]
+        assert c["company_name"] == "CD Projekt Red"
+        assert c["company_slug"] == "cd-projekt-red"
+        assert c["igdb_id"] == 100
+        assert c["developer"] is True
+        assert c["publisher"] is True
+        assert c["porting"] is False
+        assert c["supporting"] is False
+
+    def test_generates_slug_when_missing(self):
+        involved = [
+            {"company": {"id": 200, "name": "Some Cool Studio"}, "developer": True},
+        ]
+        result = extract_involved_companies({"involved_companies": involved})
+        assert result[0]["company_slug"] == "some-cool-studio"
+
+    def test_empty_list(self):
+        assert extract_involved_companies({}) == []
+        assert extract_involved_companies({"involved_companies": []}) == []
+
+    def test_skips_missing_company_name(self):
+        involved = [
+            {"company": {"id": 1}, "developer": True},
+            {"company": {"name": "Valid", "slug": "valid"}, "publisher": True},
+        ]
+        result = extract_involved_companies({"involved_companies": involved})
+        assert len(result) == 1
+        assert result[0]["company_name"] == "Valid"
+
+    def test_handles_non_list(self):
+        assert extract_involved_companies({"involved_companies": "not_a_list"}) == []
 
 
 class TestExtractWebsite:
@@ -280,10 +345,6 @@ class TestToGame:
         assert game.release_status == "released"
         assert game.website == "https://thewitcher.com"
         assert game.steam_app_id == 292030
-        assert game.platforms is not None
-        assert "pc-microsoft-windows" in game.platforms
-        assert game.modes is not None
-        assert "single-player" in game.modes
         assert game.has_multiplayer is False
         assert game.media_item is not None
         assert game.media_item.title == "The Witcher 3: Wild Hunt"
@@ -314,8 +375,6 @@ class TestToGame:
         assert game.media_item.title == "Untitled Game"
         assert game.release_status is None
         assert game.website is None
-        assert game.platforms is None
-        assert game.modes is None
         assert game.has_multiplayer is False
 
 
@@ -498,12 +557,178 @@ class TestHydrateAll:
 
         await igdb_hydrator.hydrate_all(item, igdb_game_raw)
 
-        # ExternalID, videos, ratings should all have been added
+        # Collect added types from both add() and add_all() calls
         added_types = {
             type(c[0][0]).__name__
             for c in mock_db_session.add.call_args_list
             if c[0]
         }
+        added_types.update(
+            type(obj).__name__
+            for call in mock_db_session.add_all.call_args_list
+            for obj in call[0][0]
+        )
+
         assert "ExternalID" in added_types
         assert "MediaVideo" in added_types
         assert "ExternalRating" in added_types
+        assert "Company" in added_types
+        assert "InvolvedCompany" in added_types
+        assert "Platform" in added_types
+        assert "MediaPlatform" in added_types
+        assert "GameMode" in added_types
+        assert "MediaGameMode" in added_types
+
+
+class TestHydrateCompanies:
+    async def test_creates_company_and_links(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        mock_db_session.scalars.return_value = []
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_companies(item, igdb_game_raw)
+
+        # Should clear existing involved companies
+        assert mock_db_session.execute.call_count >= 1
+
+        # Check Company was added via add_all
+        company_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, Company)
+        ]
+        assert len(company_adds) == 1
+        assert company_adds[0].name == "CD Projekt Red"
+        assert company_adds[0].slug == "cd-projekt-red"
+        assert company_adds[0].igdb_id == 100
+
+        # Check InvolvedCompany was added via add
+        link_adds = [
+            c[0][0] for c in mock_db_session.add.call_args_list
+            if isinstance(c[0][0], InvolvedCompany)
+        ]
+        assert len(link_adds) == 1
+        link = link_adds[0]
+        assert link.developer is True
+        assert link.publisher is True
+        assert link.porting is False
+        assert link.supporting is False
+
+    async def test_reuses_existing_company(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        existing = Company(name="CD Projekt Red", slug="cd-projekt-red")
+        mock_db_session.scalars.return_value = [existing]
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_companies(item, igdb_game_raw)
+
+        # Should not create new company
+        company_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, Company)
+        ]
+        assert len(company_adds) == 0
+
+    async def test_sets_igdb_id_on_existing(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        existing = Company(name="CD Projekt Red", slug="cd-projekt-red")
+        existing.igdb_id = None
+        mock_db_session.scalars.return_value = [existing]
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_companies(item, igdb_game_raw)
+        assert existing.igdb_id == 100
+
+    async def test_no_companies(self, igdb_hydrator, mock_db_session, igdb_minimal_raw):
+        item = to_media_item(igdb_minimal_raw)
+
+        await igdb_hydrator.hydrate_companies(item, igdb_minimal_raw)
+        mock_db_session.add.assert_not_called()
+
+
+class TestHydratePlatforms:
+    async def test_creates_platform_and_links(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        mock_db_session.scalars.return_value = []
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_platforms(item, igdb_game_raw)
+
+        # Check Platform was added
+        platform_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, Platform)
+        ]
+        assert len(platform_adds) == 2
+        slugs = {p.slug for p in platform_adds}
+        assert "pc-microsoft-windows" in slugs
+        assert "playstation-4" in slugs
+
+        # Check logo_image_id was set
+        pc = next(p for p in platform_adds if p.slug == "pc-microsoft-windows")
+        assert pc.logo_image_id == "pl1"
+
+        # Check MediaPlatform links were added
+        link_adds = [
+            c[0][0] for c in mock_db_session.add.call_args_list
+            if isinstance(c[0][0], MediaPlatform)
+        ]
+        assert len(link_adds) == 2
+
+    async def test_reuses_existing_platform(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        existing = Platform(name="PC (Microsoft Windows)", slug="pc-microsoft-windows")
+        mock_db_session.scalars.return_value = [existing]
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_platforms(item, igdb_game_raw)
+
+        platform_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, Platform)
+        ]
+        assert len(platform_adds) == 1  # Only PlayStation 4 is new
+        assert platform_adds[0].slug == "playstation-4"
+
+    async def test_no_platforms(self, igdb_hydrator, mock_db_session, igdb_minimal_raw):
+        item = to_media_item(igdb_minimal_raw)
+
+        await igdb_hydrator.hydrate_platforms(item, igdb_minimal_raw)
+        mock_db_session.add.assert_not_called()
+
+
+class TestHydrateModes:
+    async def test_creates_mode_and_links(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        mock_db_session.scalars.return_value = []
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_modes(item, igdb_game_raw)
+
+        # Check GameMode was added
+        mode_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, GameMode)
+        ]
+        assert len(mode_adds) == 1
+        assert mode_adds[0].name == "Single player"
+        assert mode_adds[0].slug == "single-player"
+
+        # Check MediaGameMode link was added
+        link_adds = [
+            c[0][0] for c in mock_db_session.add.call_args_list
+            if isinstance(c[0][0], MediaGameMode)
+        ]
+        assert len(link_adds) == 1
+
+    async def test_reuses_existing_mode(self, igdb_hydrator, mock_db_session, igdb_game_raw):
+        existing = GameMode(name="Single player", slug="single-player")
+        mock_db_session.scalars.return_value = [existing]
+        item = to_media_item(igdb_game_raw)
+
+        await igdb_hydrator.hydrate_modes(item, igdb_game_raw)
+
+        mode_adds = [
+            c for call in mock_db_session.add_all.call_args_list
+            for c in call[0][0] if isinstance(c, GameMode)
+        ]
+        assert len(mode_adds) == 0
+
+    async def test_no_modes(self, igdb_hydrator, mock_db_session, igdb_minimal_raw):
+        item = to_media_item(igdb_minimal_raw)
+
+        await igdb_hydrator.hydrate_modes(item, igdb_minimal_raw)
+        mock_db_session.add.assert_not_called()

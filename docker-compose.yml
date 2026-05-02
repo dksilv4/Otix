@@ -42,7 +42,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn cmd.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker-fast:
     build:
@@ -61,7 +61,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q tmdb,steam -c 6 -n otix-fast@%h --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel INFO
 
   worker-slow:
     build:

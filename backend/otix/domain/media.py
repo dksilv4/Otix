@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,8 +13,9 @@ from otix.domain.asset import MediaAsset, MediaVideo, MediaRelease, ExternalRati
 from otix.domain.interaction import UserMediaInteraction
 
 if TYPE_CHECKING:
-    from otix.domain.people import MediaCredit
     from otix.domain.collection import CollectionItem
+    from otix.domain.company import InvolvedCompany
+    from otix.domain.people import MediaCredit
 
 
 class MediaItem(Base, TimestampMixin):
@@ -24,7 +25,7 @@ class MediaItem(Base, TimestampMixin):
     media_type: Mapped[str] = mapped_column(String(10), nullable=False)
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
     overview: Mapped[str | None] = mapped_column(Text)
-    slug: Mapped[str] = mapped_column(String(1000), nullable=False, unique=True)
+    slug: Mapped[str] = mapped_column(String(1000), nullable=False)
     poster_url: Mapped[str | None] = mapped_column(String(2000))
     backdrop_url: Mapped[str | None] = mapped_column(String(2000))
     release_date: Mapped[date | None] = mapped_column()
@@ -52,9 +53,12 @@ class MediaItem(Base, TimestampMixin):
     releases: Mapped[list[MediaRelease]] = relationship("MediaRelease", back_populates="media_item")
     external_ratings: Mapped[list[ExternalRating]] = relationship("ExternalRating", back_populates="media_item")
     credits: Mapped[list[MediaCredit]] = relationship("MediaCredit", back_populates="media_item")
+    involved_companies: Mapped[list[InvolvedCompany]] = relationship("InvolvedCompany", back_populates="media_item")
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="media_item")
     collection_items: Mapped[list[CollectionItem]] = relationship("CollectionItem", back_populates="media_item")
     external_ids: Mapped[list[ExternalID]] = relationship("ExternalID", back_populates="media_item")
+    platforms: Mapped[list[MediaPlatform]] = relationship("MediaPlatform", back_populates="media_item")
+    game_modes: Mapped[list[MediaGameMode]] = relationship("MediaGameMode", back_populates="media_item")
 
 
 class Movie(Base):
@@ -122,8 +126,9 @@ class Game(Base):
     website: Mapped[str | None] = mapped_column(String(2000))
     steam_app_id: Mapped[int | None] = mapped_column(Integer, unique=True)
     current_players: Mapped[int | None] = mapped_column(Integer)
-    platforms: Mapped[dict | None] = mapped_column(JSONB)
-    modes: Mapped[dict | None] = mapped_column(JSONB)
+    price_json: Mapped[dict | None] = mapped_column(JSONB)
+    recommendations: Mapped[int | None] = mapped_column(Integer)
+    review_summary: Mapped[str | None] = mapped_column(String(200))
     is_free: Mapped[bool] = mapped_column(default=False)
     has_multiplayer: Mapped[bool] = mapped_column(default=False)
 
@@ -142,3 +147,59 @@ class ExternalID(Base):
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="external_ids")
+
+
+class Platform(Base):
+    __tablename__ = "platforms"
+
+    id: Mapped[otix_pk]
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    igdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    logo_image_id: Mapped[str | None] = mapped_column(String(100))
+
+
+class MediaPlatform(Base):
+    __tablename__ = "media_platforms"
+
+    id: Mapped[otix_pk]
+    media_item_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False
+    )
+    platform_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False
+    )
+
+    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="platforms")
+    platform: Mapped[Platform] = relationship("Platform")
+
+    __table_args__ = (
+        UniqueConstraint("media_item_id", "platform_id", name="uq_media_platform"),
+    )
+
+
+class GameMode(Base):
+    __tablename__ = "game_modes"
+
+    id: Mapped[otix_pk]
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+
+
+class MediaGameMode(Base):
+    __tablename__ = "media_game_modes"
+
+    id: Mapped[otix_pk]
+    media_item_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False
+    )
+    game_mode_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("game_modes.id", ondelete="CASCADE"), nullable=False
+    )
+
+    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game_modes")
+    game_mode: Mapped[GameMode] = relationship("GameMode")
+
+    __table_args__ = (
+        UniqueConstraint("media_item_id", "game_mode_id", name="uq_media_game_mode"),
+    )

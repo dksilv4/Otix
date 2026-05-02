@@ -8,13 +8,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import delete
+from sqlalchemy import and_, delete, or_, select
 
 from otix.domain.asset import ExternalRating, MediaAsset
 from otix.domain.media import ExternalID, Game, MediaItem
 from otix.domain.user import RefreshToken
 from otix.infrastructure.celery import app
-from otix.infrastructure.database import async_session_factory
+from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_JOBS_ACTIVE, get_registry
@@ -95,7 +95,7 @@ async def _provider_health_check() -> dict:
 
 
 async def _cleanup_expired_tokens() -> dict:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         now = datetime.now(timezone.utc)
         result = await session.execute(
             delete(RefreshToken).where(RefreshToken.expires_at < now)
@@ -118,7 +118,7 @@ def enrich_fanart() -> dict:
 
 
 async def _enrich_fanart() -> dict:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
 
         # Subquery: media_item_ids that already have at least one Fanart asset
@@ -216,7 +216,7 @@ def enrich_omdb() -> dict:
 
 
 async def _enrich_omdb() -> dict:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
 
         # Subquery: media_item_ids that already have an OMDb-sourced rating
@@ -263,7 +263,7 @@ def enrich_steam() -> dict:
 
 
 async def _enrich_steam() -> dict:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
         # Games with steam_app_id, synced recently, not enriched in last hour
@@ -291,6 +291,78 @@ async def _enrich_steam() -> dict:
     return {"enqueued": enqueued}
 
 
+@app.task(name="maintenance.steam_name_match", queue="slow")
+def steam_name_match() -> dict:
+    """Find games without a steam_app_id by searching the Steam store by name.
+
+    Runs every 30 min. Limited to 25 games per cycle to stay under rate limits.
+    """
+    return run_async(_steam_name_match())
+
+
+async def _steam_name_match() -> dict:
+    async with async_session() as session:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+
+        result = await session.execute(
+            select(Game.media_item_id, MediaItem.title)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .where(
+                MediaItem.media_type == "game",
+                MediaItem.synced_at >= cutoff,
+                Game.steam_app_id.is_(None),
+            )
+            .limit(25)
+        )
+        rows = result.all()
+
+    if not rows:
+        return {"searched": 0, "matched": 0}
+
+    redis = await get_redis()
+    provider = SteamProvider(redis)
+
+    matched = 0
+    async with async_session() as session:
+        for media_item_id, title in rows:
+            try:
+                items = await provider.search_apps(title)
+            except Exception:
+                continue
+
+            if not items:
+                continue
+
+            # Match by case-insensitive name, prefer exact match
+            title_lower = title.strip().lower()
+            best = None
+            for item in items:
+                name = item.get("name")
+                if isinstance(name, str) and name.strip().lower() == title_lower:
+                    best = item
+                    break
+
+            if best is None:
+                continue
+
+            app_id = best.get("id")
+            if not isinstance(app_id, int):
+                continue
+
+            game = await session.get(Game, media_item_id)
+            if game is not None and game.steam_app_id is None:
+                game.steam_app_id = app_id
+                matched += 1
+
+        if matched:
+            await session.commit()
+
+    if matched:
+        logger.info("steam name match updated", count=matched)
+
+    return {"searched": len(rows), "matched": matched}
+
+
 @app.task(name="maintenance.steam_ccu_batch", queue="ccu")
 def steam_ccu_batch() -> dict:
     """Batch update current player counts for games with a Steam app ID.
@@ -303,7 +375,7 @@ def steam_ccu_batch() -> dict:
 
 
 async def _steam_ccu_batch() -> dict:
-    async with async_session_factory() as session:
+    async with async_session() as session:
         from sqlalchemy import select
 
         result = await session.execute(
@@ -324,7 +396,7 @@ async def _steam_ccu_batch() -> dict:
     redis = await get_redis()
     provider = SteamProvider(redis)
 
-    async with async_session_factory() as session:
+    async with async_session() as session:
         from sqlalchemy import select
 
         games = await session.scalars(
@@ -351,3 +423,76 @@ async def _steam_ccu_batch() -> dict:
         logger.info("steam ccu batch updated", count=updated)
 
     return {"apps_checked": len(app_ids), "updated": updated}
+
+
+@app.task(name="maintenance.catalog_hydration", queue="slow")
+def catalog_hydration() -> dict:
+    """Background scan: find stale catalog items and re-enqueue provider syncs.
+
+    Runs every 5 min. Walks MediaItems past their next_sync_at, oldest
+    first, and enqueues the appropriate provider task. Small batch size
+    keeps queue load low so user-facing operations take priority.
+    """
+    return run_async(_catalog_hydration())
+
+
+_MEDIA_SYNC_MAP = {
+    "movie": {"provider": "tmdb", "task": "sync.tmdb.movie"},
+    "show": {"provider": "tmdb", "task": "sync.tmdb.show"},
+    "game": {"provider": "igdb", "task": "sync.igdb.game"},
+}
+
+
+async def _catalog_hydration() -> dict:
+    now = datetime.now(timezone.utc)
+    provider_map = _MEDIA_SYNC_MAP
+
+    async with async_session() as session:
+        # Single join: stale items with their primary external ID
+        result = await session.execute(
+            select(MediaItem.id, MediaItem.media_type, ExternalID.external_id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.next_sync_at.isnot(None),
+                MediaItem.next_sync_at < now,
+                or_(
+                    and_(
+                        MediaItem.media_type.in_(["movie", "show"]),
+                        ExternalID.provider == "tmdb",
+                    ),
+                    and_(
+                        MediaItem.media_type == "game",
+                        ExternalID.provider == "igdb",
+                    ),
+                ),
+            )
+            .order_by(MediaItem.next_sync_at.asc())
+            .limit(50)
+        )
+        rows = result.all()
+
+    if not rows:
+        return {"stale_found": 0, "enqueued": 0}
+
+    enqueued = 0
+    seen: set[str] = set()
+    for mi_id, mi_type, ext_id in rows:
+        if mi_id in seen:
+            continue
+        seen.add(mi_id)
+
+        entry = provider_map.get(mi_type)
+        if entry is None:
+            continue
+
+        app.send_task(entry["task"], args=[int(ext_id) if ext_id.isdigit() else ext_id])
+        enqueued += 1
+
+    if enqueued:
+        logger.info(
+            "catalog hydration enqueued",
+            stale_found=len(rows),
+            enqueued=enqueued,
+        )
+
+    return {"stale_found": len(rows), "enqueued": enqueued}

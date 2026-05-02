@@ -12,6 +12,7 @@ Docs: https://api-docs.igdb.com/
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 import httpx
@@ -35,15 +36,31 @@ class IGDBError(Exception):
 
 
 _shared_client: httpx.AsyncClient | None = None
+_shared_client_loop_id: int | None = None
 
 
 def get_http_client() -> httpx.AsyncClient:
-    global _shared_client
+    global _shared_client, _shared_client_loop_id
+    try:
+        current_loop_id = id(asyncio.get_running_loop())
+    except RuntimeError:
+        current_loop_id = None
+
+    if _shared_client is not None and _shared_client_loop_id != current_loop_id:
+        # Event loop changed (Celery prefork child) — discard inherited client
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(_shared_client.aclose())
+        except Exception:
+            pass
+        _shared_client = None
+
     if _shared_client is None or _shared_client.is_closed:
         _shared_client = httpx.AsyncClient(
             base_url="https://api.igdb.com/v4",
             timeout=settings.igdb_request_timeout_seconds,
         )
+        _shared_client_loop_id = current_loop_id
     return _shared_client
 
 
@@ -171,6 +188,32 @@ class IGDBProvider(BaseProvider):
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB change query failed: {response.status_code}")
+
+    async def get_games_offset(
+        self,
+        offset: int,
+        limit: int = 50,
+        fields: str | None = None,
+        start_date: int | None = None,
+        end_date: int | None = None,
+    ) -> list[dict[str, JSONValue]]:
+        """Get games with offset pagination, optionally filtered by release date."""
+        conditions = ["version_parent = null"]  # Main games only (no DLC, mods, etc.)
+        if start_date is not None:
+            conditions.append(f"first_release_date >= {start_date}")
+        if end_date is not None:
+            conditions.append(f"first_release_date <= {end_date}")
+        where = " & ".join(conditions)
+        body = (
+            f"fields {fields or '*'}; "
+            f"sort first_release_date desc; "
+            f"where {where}; "
+            f"limit {limit}; offset {offset};"
+        )
+        response = await self._post("/games", content=body)
+        if response.status_code == 200:
+            return response.json()
+        raise IGDBError(f"IGDB offset query failed: {response.status_code}")
 
     # ── Covers / Artwork (resolved via ID in game fields) ──────────────
 

@@ -409,8 +409,13 @@ async def integration_redis(docker_compose):
 
 @pytest.fixture
 async def integration_session(docker_compose):
-    """Real Postgres session with transaction rollback isolation."""
+    """Real Postgres session with per-test table truncation.
+
+    Drops and recreates all tables so every integration test starts clean,
+    regardless of what prior test runs or manual operations left behind.
+    """
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy import text
 
     from otix.domain.base import Base
 
@@ -420,6 +425,7 @@ async def integration_session(docker_compose):
     )
 
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -430,6 +436,27 @@ async def integration_session(docker_compose):
             await session.rollback()
 
     await engine.dispose()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Globals cleanup
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture(autouse=True)
+def _reset_shared_httpx_clients():
+    """Reset module-level shared httpx clients between tests.
+
+    Without this, a shared client created on one async test's event loop
+    survives into the next test, whose new event loop can't use it.
+    """
+    from otix.providers.tmdb import client as tmdb_client
+    from otix.providers.igdb import client as igdb_client
+
+    tmdb_client._shared_client = None
+    tmdb_client._shared_client_loop_id = None
+    igdb_client._shared_client = None
+    igdb_client._shared_client_loop_id = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

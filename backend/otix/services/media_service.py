@@ -4,7 +4,17 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from otix.domain.media import MediaItem, Movie, Show, Game
+from otix.domain.company import InvolvedCompany, Company
+from otix.domain.media import (
+    GameMode,
+    MediaGameMode,
+    MediaItem,
+    MediaPlatform,
+    Movie,
+    Platform,
+    Show,
+    Game,
+)
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.people import MediaCredit, Person
 from otix.domain.asset import ExternalRating
@@ -65,6 +75,9 @@ class MediaService:
                 selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
                 selectinload(MediaItem.external_ratings),
                 selectinload(MediaItem.credits).joinedload(MediaCredit.person),
+                selectinload(MediaItem.involved_companies).joinedload(InvolvedCompany.company),
+                selectinload(MediaItem.platforms).joinedload(MediaPlatform.platform),
+                selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
             )
             .where(MediaItem.id == media_id)
         )

@@ -250,7 +250,7 @@ async def bench_fanout_discovery(
 
 
 async def bench_full_pipeline(movie_id: int, show_id: int) -> list[BenchmarkResult]:
-    from otix.infrastructure.database import async_session_factory
+    from otix.infrastructure.database import async_session
     from otix.infrastructure.redis import get_redis
     from otix.providers.tmdb.client import TMDBProvider
     from otix.providers.tmdb.hydrator import TMDBHydrator
@@ -267,7 +267,7 @@ async def bench_full_pipeline(movie_id: int, show_id: int) -> list[BenchmarkResu
 
     t0 = time.monotonic()
 
-    async with async_session_factory() as session:
+    async with async_session() as session:
         hydrator = TMDBHydrator(provider, session)
 
         t_fetch = time.monotonic()
@@ -339,7 +339,7 @@ async def bench_full_pipeline(movie_id: int, show_id: int) -> list[BenchmarkResu
 
     t0 = time.monotonic()
 
-    async with async_session_factory() as session:
+    async with async_session() as session:
         hydrator = TMDBHydrator(provider, session)
 
         t_fetch = time.monotonic()

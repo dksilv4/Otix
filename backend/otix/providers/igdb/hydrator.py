@@ -10,11 +10,25 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
-from otix.domain.media import ExternalID, MediaItem
+from otix.domain.media import (
+    ExternalID,
+    GameMode,
+    MediaGameMode,
+    MediaItem,
+    MediaPlatform,
+    Platform,
+)
 from otix.lib.types import JSONValue
 from otix.providers.igdb.client import IGDBProvider
-from otix.providers.igdb.transformer import _cover_url, _slugify
+from otix.providers.igdb.transformer import (
+    _cover_url,
+    _slugify,
+    extract_involved_companies,
+    extract_modes,
+    extract_platforms,
+)
 
 
 class IGDBHydrator:
@@ -29,6 +43,9 @@ class IGDBHydrator:
         await self.hydrate_images(media_item, raw)
         await self.hydrate_videos(media_item, raw)
         await self.hydrate_ratings(media_item, raw)
+        await self.hydrate_companies(media_item, raw)
+        await self.hydrate_platforms(media_item, raw)
+        await self.hydrate_modes(media_item, raw)
 
     # ── External ID ─────────────────────────────────────────────────
 
@@ -234,3 +251,143 @@ class IGDBHydrator:
                         vote_count=vote_count,
                     )
                 )
+
+    # ── Companies ──────────────────────────────────────────────────
+
+    async def hydrate_companies(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
+        entries = extract_involved_companies(raw)
+        if not entries:
+            return
+
+        slugs = [e["company_slug"] for e in entries]
+        existing = await self.session.scalars(
+            select(Company).where(Company.slug.in_(slugs))
+        )
+        by_slug: dict[str, Company] = {c.slug: c for c in existing}
+
+        new_companies = []
+        for e in entries:
+            slug = e["company_slug"]
+            if slug not in by_slug:
+                company = Company(name=e["company_name"], slug=slug)
+                igdb_id = e.get("igdb_id")
+                if isinstance(igdb_id, int):
+                    company.igdb_id = igdb_id
+                new_companies.append(company)
+                by_slug[slug] = company
+            else:
+                existing_company = by_slug[slug]
+                igdb_id = e.get("igdb_id")
+                if existing_company.igdb_id is None and isinstance(igdb_id, int):
+                    existing_company.igdb_id = igdb_id
+
+        if new_companies:
+            self.session.add_all(new_companies)
+            await self.session.flush()
+
+        await self.session.execute(
+            delete(InvolvedCompany).where(
+                InvolvedCompany.media_item_id == media_item.id
+            )
+        )
+
+        for e in entries:
+            company = by_slug[e["company_slug"]]
+            self.session.add(
+                InvolvedCompany(
+                    media_item_id=media_item.id,
+                    company_id=company.id,
+                    developer=e["developer"],
+                    publisher=e["publisher"],
+                    porting=e["porting"],
+                    supporting=e["supporting"],
+                )
+            )
+
+    # ── Platforms ──────────────────────────────────────────────────
+
+    async def hydrate_platforms(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
+        entries = extract_platforms(raw.get("platforms", []))
+        if not entries:
+            return
+
+        slugs = [e["slug"] for e in entries]
+        existing = await self.session.scalars(
+            select(Platform).where(Platform.slug.in_(slugs))
+        )
+        by_slug: dict[str, Platform] = {p.slug: p for p in existing}
+
+        new_platforms = []
+        for e in entries:
+            slug = e["slug"]
+            if slug not in by_slug:
+                platform = Platform(name=e["name"], slug=slug)
+                logo_id = e.get("logo_image_id")
+                if logo_id:
+                    platform.logo_image_id = logo_id
+                new_platforms.append(platform)
+                by_slug[slug] = platform
+            else:
+                existing_platform = by_slug[slug]
+                logo_id = e.get("logo_image_id")
+                if existing_platform.logo_image_id is None and logo_id:
+                    existing_platform.logo_image_id = logo_id
+
+        if new_platforms:
+            self.session.add_all(new_platforms)
+            await self.session.flush()
+
+        await self.session.execute(
+            delete(MediaPlatform).where(
+                MediaPlatform.media_item_id == media_item.id
+            )
+        )
+
+        for e in entries:
+            platform = by_slug[e["slug"]]
+            self.session.add(
+                MediaPlatform(
+                    media_item_id=media_item.id,
+                    platform_id=platform.id,
+                )
+            )
+
+    # ── Game Modes ─────────────────────────────────────────────────
+
+    async def hydrate_modes(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
+        entries = extract_modes(raw.get("game_modes", []))
+        if not entries:
+            return
+
+        slugs = [e["slug"] for e in entries]
+        existing = await self.session.scalars(
+            select(GameMode).where(GameMode.slug.in_(slugs))
+        )
+        by_slug: dict[str, GameMode] = {m.slug: m for m in existing}
+
+        new_modes = []
+        for e in entries:
+            slug = e["slug"]
+            if slug not in by_slug:
+                mode = GameMode(name=e["name"], slug=slug)
+                new_modes.append(mode)
+                by_slug[slug] = mode
+
+        if new_modes:
+            self.session.add_all(new_modes)
+            await self.session.flush()
+
+        await self.session.execute(
+            delete(MediaGameMode).where(
+                MediaGameMode.media_item_id == media_item.id
+            )
+        )
+
+        for e in entries:
+            mode = by_slug[e["slug"]]
+            self.session.add(
+                MediaGameMode(
+                    media_item_id=media_item.id,
+                    game_mode_id=mode.id,
+                )
+            )
