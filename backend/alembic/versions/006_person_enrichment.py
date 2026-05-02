@@ -22,14 +22,20 @@ def upgrade() -> None:
     op.add_column("people", sa.Column("deathday", sa.Date(), nullable=True))
     op.add_column("people", sa.Column("place_of_birth", sa.String(500), nullable=True))
 
-    op.create_table(
-        "person_assets",
-        sa.Column("id", sa.String(16), primary_key=True),
-        sa.Column("person_id", sa.String(16), sa.ForeignKey("people.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("url", sa.String(2000), nullable=False, unique=True),
-        sa.Column("width", sa.Integer(), nullable=True),
-        sa.Column("height", sa.Integer(), nullable=True),
-        sa.Column("provider", sa.String(20), nullable=True),
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS person_assets (
+            id VARCHAR(16) NOT NULL,
+            person_id VARCHAR(16) NOT NULL,
+            url VARCHAR(2000) NOT NULL,
+            width INTEGER,
+            height INTEGER,
+            provider VARCHAR(20),
+            PRIMARY KEY (id),
+            FOREIGN KEY(person_id) REFERENCES people (id) ON DELETE CASCADE,
+            UNIQUE (url)
+        )
+        """
     )
 
 

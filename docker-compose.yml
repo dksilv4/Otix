@@ -80,7 +80,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,control,default -c 2 -n otix-slow@%h --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2 -n otix-slow@%h --loglevel INFO
 
   beat:
     build:

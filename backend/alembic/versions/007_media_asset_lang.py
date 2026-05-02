@@ -17,7 +17,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("media_assets", sa.Column("lang", sa.String(10), nullable=True))
+    op.execute("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS lang VARCHAR(10)")
 
 
 def downgrade() -> None:
