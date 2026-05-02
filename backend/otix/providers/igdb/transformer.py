@@ -116,6 +116,26 @@ def _extract_website(websites: list[JSONValue]) -> str | None:
     return None
 
 
+def _extract_steam_app_id(websites: list[JSONValue]) -> int | None:
+    """Extract the Steam app ID from IGDB websites (category 13).
+
+    Parses URLs like https://store.steampowered.com/app/292030/ or
+    https://steamcommunity.com/app/292030.
+    """
+    if not websites:
+        return None
+    for w in websites:
+        if not isinstance(w, dict):
+            continue
+        if w.get("category") == 13:
+            url = w.get("url", "")
+            if isinstance(url, str):
+                match = re.search(r"/app/(\d+)", url)
+                if match:
+                    return int(match.group(1))
+    return None
+
+
 def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
     """Convert IGDB game JSON to a MediaItem."""
     title = raw.get("name") or ""
@@ -164,9 +184,11 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
         if isinstance(m, dict) and m.get("name")
     )
 
+    website_list = websites if isinstance(websites, list) else []
     game = Game(
         release_status=_STATUS_MAP.get(raw.get("status")),
-        website=_extract_website(websites if isinstance(websites, list) else []),
+        website=_extract_website(website_list),
+        steam_app_id=_extract_steam_app_id(website_list),
         platforms=_extract_platforms(platforms if isinstance(platforms, list) else []),
         modes=modes_dict,
         has_multiplayer=has_multiplayer,

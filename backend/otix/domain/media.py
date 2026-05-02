@@ -121,6 +121,7 @@ class Game(Base):
     release_status: Mapped[str | None] = mapped_column(String(50))
     website: Mapped[str | None] = mapped_column(String(2000))
     steam_app_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    current_players: Mapped[int | None] = mapped_column(Integer)
     platforms: Mapped[dict | None] = mapped_column(JSONB)
     modes: Mapped[dict | None] = mapped_column(JSONB)
     is_free: Mapped[bool] = mapped_column(default=False)

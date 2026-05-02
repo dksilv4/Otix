@@ -16,6 +16,7 @@ from otix.providers.igdb.transformer import (
     _cover_url,
     _extract_modes,
     _extract_platforms,
+    _extract_steam_app_id,
     _extract_website,
     _parse_timestamp,
     _slugify,
@@ -209,6 +210,30 @@ class TestExtractWebsite:
         assert _extract_website([]) is None
 
 
+class TestExtractSteamAppID:
+    def test_extracts_from_store_url(self):
+        websites = [{"url": "https://store.steampowered.com/app/292030/", "category": 13}]
+        assert _extract_steam_app_id(websites) == 292030
+
+    def test_extracts_from_community_url(self):
+        websites = [{"url": "https://steamcommunity.com/app/730", "category": 13}]
+        assert _extract_steam_app_id(websites) == 730
+
+    def test_skips_non_steam_categories(self):
+        websites = [
+            {"url": "https://store.steampowered.com/app/123/", "category": 1},
+            {"url": "https://example.com", "category": 13},
+        ]
+        assert _extract_steam_app_id(websites) is None
+
+    def test_empty(self):
+        assert _extract_steam_app_id([]) is None
+
+    def test_no_match_in_url(self):
+        websites = [{"url": "https://steamcommunity.com/games/123", "category": 13}]
+        assert _extract_steam_app_id(websites) is None
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Transformer tests — to_media_item / to_game
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -254,6 +279,7 @@ class TestToGame:
         game = to_game(igdb_game_raw)
         assert game.release_status == "released"
         assert game.website == "https://thewitcher.com"
+        assert game.steam_app_id == 292030
         assert game.platforms is not None
         assert "pc-microsoft-windows" in game.platforms
         assert game.modes is not None

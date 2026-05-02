@@ -34,6 +34,8 @@ from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import to_game
 from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
+from otix.providers.steam.client import SteamProvider
+from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.hydrator import TMDBHydrator
 from otix.providers.tmdb.transformer import to_movie, to_person, to_show
@@ -1212,3 +1214,50 @@ async def _sync_igdb_game_changes(lookback_hours: int) -> dict:
         "changed_ids": len(all_ids),
         "tasks_enqueued": enqueued,
     }
+
+
+# ── Steam enrichment tasks ────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.steam.update_app",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+    queue="fast",
+)
+def sync_steam_update_app_task(self, steam_app_id: int) -> dict | None:
+    """Fetch Steam player counts and store data for an app."""
+    return run_async(_sync_steam_update_app(steam_app_id))
+
+
+async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
+    async with async_session_factory() as session:
+        from sqlalchemy import select
+
+        game = await session.scalar(
+            select(Game).where(Game.steam_app_id == steam_app_id)
+        )
+        if game is None:
+            logger.debug("no game found for steam app", steam_app_id=steam_app_id)
+            return None
+
+        redis = await get_redis()
+        provider = SteamProvider(redis)
+        hydrator = SteamHydrator(provider, session)
+
+        await hydrator.hydrate(game)
+
+        await session.commit()
+        logger.info(
+            "steam app updated",
+            steam_app_id=steam_app_id,
+            otix_id=game.media_item_id,
+            current_players=game.current_players,
+        )
+        return {
+            "otix_id": game.media_item_id,
+            "steam_app_id": steam_app_id,
+            "current_players": game.current_players,
+        }

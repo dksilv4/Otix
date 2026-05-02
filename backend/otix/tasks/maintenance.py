@@ -10,14 +10,15 @@ from datetime import datetime, timedelta, timezone
 import structlog
 from sqlalchemy import delete
 
-from otix.domain.asset import MediaAsset
-from otix.domain.media import ExternalID, MediaItem
+from otix.domain.asset import ExternalRating, MediaAsset
+from otix.domain.media import ExternalID, Game, MediaItem
 from otix.domain.user import RefreshToken
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session_factory
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_JOBS_ACTIVE, get_registry
+from otix.providers.steam.client import SteamProvider
 
 logger = structlog.get_logger()
 
@@ -249,3 +250,102 @@ async def _enrich_omdb() -> dict:
         logger.info("omdb enrichment enqueued", count=enqueued)
 
     return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.enrich_steam", queue="slow")
+def enrich_steam() -> dict:
+    """Scan recently-synced games for Steam app IDs and enqueue updates.
+
+    Runs every 15 min. Finds games with a steam_app_id that were synced
+    recently and enqueues individual Steam update tasks.
+    """
+    return run_async(_enrich_steam())
+
+
+async def _enrich_steam() -> dict:
+    async with async_session_factory() as session:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+        # Games with steam_app_id, synced recently, not enriched in last hour
+        query = (
+            select(Game.media_item_id, Game.steam_app_id)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .where(
+                MediaItem.media_type == "game",
+                MediaItem.synced_at >= cutoff,
+                Game.steam_app_id.isnot(None),
+            )
+            .limit(50)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for _, steam_app_id in rows:
+        app.send_task("sync.steam.update_app", args=[steam_app_id])
+        enqueued += 1
+
+    if enqueued:
+        logger.info("steam enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.steam_ccu_batch", queue="ccu")
+def steam_ccu_batch() -> dict:
+    """Batch update current player counts for all games with a Steam app ID.
+
+    Runs frequently (every 5 min) on the dedicated CCU queue to avoid
+    contending with other tasks.
+    """
+    return run_async(_steam_ccu_batch())
+
+
+async def _steam_ccu_batch() -> dict:
+    async with async_session_factory() as session:
+        from sqlalchemy import select
+
+        result = await session.execute(
+            select(Game.steam_app_id)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .where(
+                MediaItem.media_type == "game",
+                Game.steam_app_id.isnot(None),
+            )
+            .limit(50)
+        )
+        app_ids = [row[0] for row in result.all()]
+
+    if not app_ids:
+        return {"apps_checked": 0, "updated": 0}
+
+    redis = await get_redis()
+    provider = SteamProvider(redis)
+
+    async with async_session_factory() as session:
+        from sqlalchemy import select
+
+        games = await session.scalars(
+            select(Game).where(Game.steam_app_id.in_(app_ids))
+        )
+        games_by_app = {g.steam_app_id: g for g in games}
+
+        updated = 0
+        for app_id in app_ids:
+            try:
+                data = await provider.get_current_players(app_id)
+                count = data.get("response", {}).get("player_count")
+                if isinstance(count, (int, float)):
+                    game = games_by_app.get(app_id)
+                    if game is not None:
+                        game.current_players = int(count)
+                        updated += 1
+            except Exception:
+                pass
+
+        await session.commit()
+
+    if updated:
+        logger.info("steam ccu batch updated", count=updated)
+
+    return {"apps_checked": len(app_ids), "updated": updated}

@@ -78,6 +78,16 @@ app.config_from_object(
                 "task": "maintenance.refresh_game_feed",
                 "schedule": crontab(minute="53", hour="*/6"),
             },
+            # Steam enrichment scan (every 15 min at off-peak minute)
+            "enrich-steam": {
+                "task": "maintenance.enrich_steam",
+                "schedule": crontab(minute="3,18,33,48"),
+            },
+            # Steam CCU batch update (every 5 min)
+            "steam-ccu-batch": {
+                "task": "maintenance.steam_ccu_batch",
+                "schedule": crontab(minute="*/5"),
+            },
         },
     }
 )
