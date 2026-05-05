@@ -1,1 +1,3 @@
 *.pyc
+/backend/.venv
+/backend/otix.egg-info

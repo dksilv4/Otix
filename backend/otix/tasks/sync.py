@@ -4,7 +4,10 @@ Each task wraps an async pipeline in asyncio.run(). Celery workers are
 synchronous, but the provider pipeline is fully async internally.
 
 Sync guard: content_hash comparison prevents re-processing when TMDB data
-hasn't changed. hash_match_count escalates next_sync_at on repeated matches.
+hasn't changed. hash_match_count escalates next_sync_at on repeated changes.
+
+Backlog safety: person-related enqueues are throttled when the fast queue
+exceeds celery_fast_queue_max_backlog to prevent unbounded cascade growth.
 """
 
 from __future__ import annotations
@@ -13,11 +16,14 @@ import asyncio
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
+import redis.asyncio as aioredis
 import structlog
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
-from otix.domain.media import ExternalID, Game, MediaItem
+from otix.domain.media import Episode, ExternalID, Game, MediaItem, Season
+
 from otix.domain.people import Person
 from otix.domain.sync import ProviderState
 from otix.infrastructure.celery import app
@@ -36,11 +42,48 @@ from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
 from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
+from otix.providers.steamgrid.client import SteamGridDBProvider
+from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.hydrator import TMDBHydrator
-from otix.providers.tmdb.transformer import to_movie, to_person, to_show
+from otix.providers.tmdb.transformer import _parse_date, to_movie, to_person, to_show
 
 logger = structlog.get_logger()
+
+
+# ── Queue backlog safety ──────────────────────────────────────────────────
+
+
+async def _check_fast_queue_backlog() -> tuple[int, bool]:
+    """Check the fast queue backlog against the configured threshold.
+
+    Returns (length, throttled) — throttled is True when the queue is over the limit.
+    Connects to the Celery broker Redis (DB 0) to read the queue length directly.
+    """
+    broker_url = settings.celery_broker
+    parsed = urlparse(broker_url)
+    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
+
+    r: aioredis.Redis | None = None
+    try:
+        r = aioredis.from_url(broker_redis_url, decode_responses=True)
+        length = await r.llen("fast") or 0
+    except Exception:
+        logger.warning("failed to check fast queue backlog", exc_info=True)
+        return 0, False
+    finally:
+        if r is not None:
+            await r.aclose()
+
+    threshold = settings.celery_fast_queue_max_backlog
+    throttled = length > threshold
+    if throttled:
+        logger.info(
+            "fast queue backlog throttle active",
+            queue_length=length,
+            threshold=threshold,
+        )
+    return length, throttled
 
 
 # ── Hash helpers ───────────────────────────────────────────────────────
@@ -406,6 +449,7 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
 
             if media_item is not None:
                 item.id = media_item.id
+                movie.media_item_id = media_item.id  # keep PK/FK in sync after id swap
                 await session.merge(item)
             else:
                 session.add(item)
@@ -477,7 +521,12 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
 
             if media_item is not None:
                 item.id = media_item.id
+                show.media_item_id = media_item.id  # keep PK/FK in sync after id swap
                 await session.merge(item)
+                # Delete old seasons (cascade deletes episodes) so re-sync starts clean
+                await session.execute(
+                    delete(Season).where(Season.show_id == media_item.id)
+                )
             else:
                 session.add(item)
                 await session.flush()
@@ -489,6 +538,33 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
                 session.add(ext_id)
 
             session.add(show)
+            await session.flush()
+
+            # Fetch episodes for each season via individual API calls.
+            # TMDB's /tv/{id} endpoint returns seasons without episodes, so we
+            # must call /tv/{id}/season/{season_number} for every season.
+            for season in show.seasons:
+                try:
+                    season_raw = await provider.get_season(tmdb_id, season.season_number)
+                except Exception:
+                    logger.warning(
+                        "failed to fetch season episodes",
+                        tmdb_id=tmdb_id,
+                        season_number=season.season_number,
+                        exc_info=True,
+                    )
+                    continue
+                for ep_data in season_raw.get("episodes", []):
+                    session.add(
+                        Episode(
+                            season_id=season.id,
+                            episode_number=ep_data.get("episode_number", 0),
+                            name=ep_data.get("name"),
+                            overview=ep_data.get("overview"),
+                            runtime=ep_data.get("runtime"),
+                            air_date=_parse_date(ep_data.get("air_date")),
+                        )
+                    )
 
             await hydrator.hydrate_genres(item, raw)
             await hydrator.hydrate_credits(item, raw)
@@ -584,7 +660,16 @@ async def _sync_person_credits(tmdb_id: int, provider: TMDBProvider) -> dict:
 
     Fetches cast + crew credits, extracts unique movie/show IDs, filters
     stale ones via batch DB query, and enqueues individual sync tasks.
+
+    Skips the cascade when the fast queue is over the backlog threshold to
+    prevent amplifying an already-saturated queue.
     """
+    # Backlog safety: skip filmography cascade if fast queue is over threshold
+    _, throttled = await _check_fast_queue_backlog()
+    if throttled:
+        logger.debug("skipping person credits cascade due to fast queue backlog", tmdb_id=tmdb_id)
+        return {"status": "throttled", "movies_enqueued": 0, "shows_enqueued": 0}
+
     raw = await provider.get_person_combined_credits(tmdb_id)
 
     movie_ids: set[str] = set()
@@ -651,7 +736,7 @@ async def _filter_stale_ids(provider: str, external_ids: set[str]) -> set[str]:
 
 
 async def _enqueue_list_items(
-    provider: str, media_type: str, external_ids: set[str]
+    provider: str, media_type: str, external_ids: set[str],
 ) -> tuple[int, int]:
     """Enqueue individual sync tasks for stale items.
 
@@ -660,7 +745,7 @@ async def _enqueue_list_items(
     stale_ids = await _filter_stale_ids(provider, external_ids)
     task_name = f"sync.{provider}.{media_type}"
     enqueued = 0
-    for ext_id in stale_ids:
+    for i, ext_id in enumerate(stale_ids):
         app.send_task(task_name, args=[int(ext_id) if ext_id.isdigit() else ext_id])
         enqueued += 1
 
@@ -731,7 +816,20 @@ async def _sync_tmdb_changes(entity_type: str, lookback_hours: int) -> dict:
     Unlike discover lists, change-based sync enqueues ALL changed IDs without
     freshness filtering — the individual tasks already guard via next_sync_at
     and content_hash.
+
+    For person changes, the fast queue backlog is checked first to prevent
+    unbounded cascade growth when the queue is already saturated.
     """
+    # Backlog safety: skip person changes if fast queue is over threshold
+    if entity_type == "person":
+        _, throttled = await _check_fast_queue_backlog()
+        if throttled:
+            logger.info(
+                "skipping person changes sync due to fast queue backlog",
+                entity_type=entity_type,
+            )
+            return {"entity_type": entity_type, "status": "throttled", "enqueued": 0}
+
     redis = await get_redis()
     provider = TMDBProvider(redis)
 
@@ -942,7 +1040,7 @@ GAME_FIELDS = (
     "genres.name,themes.name,"
     "platforms.name,platforms.platform_logo.image_id,"
     "game_modes.name,"
-    "websites.url,websites.category,"
+    "websites.url,websites.type,"
     "videos.video_id,videos.name,"
     "involved_companies.company.name,involved_companies.company.slug,"
     "involved_companies.developer,involved_companies.publisher,"
@@ -1052,6 +1150,15 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
         logger.info("igdb game synced", igdb_id=igdb_id, otix_id=item.id)
         SYNC_ENTITIES_TOTAL.inc(provider="igdb", entity_type="game", status="success")
+
+        # Cascade: enqueue SteamGridDB artwork enrichment for all platforms
+        if game.steam_app_id:
+            app.send_task("sync.steamgrid.game", args=[game.steam_app_id])
+        if game.store_ids:
+            for platform, pid in game.store_ids.items():
+                if platform != "steam":  # steam handled above
+                    app.send_task("sync.steamgrid.game_by_platform", args=[platform, pid])
+
         return {"otix_id": item.id, "title": item.title, "igdb_id": igdb_id}
 
 
@@ -1263,4 +1370,83 @@ async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
             "otix_id": game.media_item_id,
             "steam_app_id": steam_app_id,
             "current_players": game.current_players,
+        }
+
+
+# ── SteamGridDB enrichment tasks ─────────────────────────────────────
+
+
+@app.task(
+    name="sync.steamgrid.game",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    queue="slow",
+)
+def sync_steamgrid_game_task(self, steam_app_id: int) -> dict | None:
+    """Fetch SteamGridDB artwork for a Steam game."""
+    return run_async(_sync_steamgrid_game_by_platform("steam", steam_app_id))
+
+
+@app.task(
+    name="sync.steamgrid.game_by_platform",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=10,
+    queue="slow",
+)
+def sync_steamgrid_game_by_platform_task(self, platform: str, platform_id: str | int) -> dict | None:
+    """Fetch SteamGridDB artwork for a game on any supported platform."""
+    return run_async(_sync_steamgrid_game_by_platform(platform, platform_id))
+
+
+async def _sync_steamgrid_game(steam_app_id: int) -> dict | None:
+    """Legacy wrapper for Steam-only calls."""
+    return await _sync_steamgrid_game_by_platform("steam", steam_app_id)
+
+
+async def _sync_steamgrid_game_by_platform(
+    platform: str, platform_id: str | int,
+) -> dict | None:
+    async with async_session() as session:
+        # Find the Game by platform ID
+        if platform == "steam":
+            game = await session.scalar(
+                select(Game).where(Game.steam_app_id == platform_id)
+            )
+        else:
+            # Query into store_ids JSONB for non-Steam platforms
+            game = await session.scalar(
+                select(Game).where(
+                    Game.store_ids[platform].as_string() == str(platform_id)
+                )
+            )
+
+        if game is None:
+            logger.debug(
+                "no game found for steamgrid enrichment",
+                platform=platform, platform_id=platform_id,
+            )
+            return None
+
+        redis = await get_redis()
+        provider = SteamGridDBProvider(redis)
+        hydrator = SteamGridDBHydrator(provider, session)
+
+        added = await hydrator.hydrate(game, platform=platform, platform_id=platform_id)
+        await session.commit()
+
+        logger.info(
+            "steamgrid game enriched",
+            platform=platform,
+            platform_id=platform_id,
+            otix_id=game.media_item_id,
+            assets_added=added,
+        )
+        return {
+            "otix_id": game.media_item_id,
+            "platform": platform,
+            "platform_id": platform_id,
+            "assets_added": added,
         }

@@ -48,7 +48,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     service = AuthService(db)
-    result = await service.login(body.email, body.password)
+    result = await service.login(body.identity, body.password)
     if result is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 

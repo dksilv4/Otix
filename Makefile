@@ -1,9 +1,11 @@
 .PHONY: up down build logs shell test lint migrate sync
 
+N ?= 50
+
 up:
 	docker compose up -d
 	@echo "API:        http://localhost:8000/api/health"
-	@echo "Metrics:    http://localhost:8000/api/metrics"
+	@echo "Metrics:    http://localhost:8000/api/metric"
 
 down:
 	docker compose down
@@ -60,6 +62,23 @@ sync-movie:
 
 sync-show:
 	docker compose exec api python -c "from otix.tasks.sync import sync_tmdb_show_task; import sys; print(sync_tmdb_show_task.delay(int(sys.argv[1])).id)" $(id)
+
+# ── Manual hydration (enrich artwork for discover page) ───────────
+
+# Enqueue Fanart enrichment for the top N movies missing artwork.
+# Usage: make hydrate-movies [N=50]
+hydrate-movies:
+	docker compose exec api python -m otix.tasks.manual_hydrate movies $(N)
+
+# Enqueue Fanart enrichment for the top N shows missing artwork.
+# Usage: make hydrate-shows [N=50]
+hydrate-shows:
+	docker compose exec api python -m otix.tasks.manual_hydrate shows $(N)
+
+# Enqueue Fanart enrichment for a single movie by Otix media_item_id.
+# Usage: make hydrate-movie oid=oti_abc123
+hydrate-movie:
+	docker compose exec api python -m otix.tasks.manual_hydrate movie $(oid)
 
 # ── Celery introspection ─────────────────────────────────────────
 

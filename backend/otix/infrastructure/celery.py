@@ -2,14 +2,19 @@
 
 Queue design (3 queues, prefix-based routing):
 
-  fast — tmdb, steam (high throughput)
+  fast — tmdb, steam (high throughput), plus slow-task overflow when idle
   slow — igdb, fanart, omdb, control, default (rate-limited providers)
   ccu  — steam_ccu (dedicated low-concurrency)
+
+When the fast queue is nearly empty (< 100 tasks), slow-bound sync tasks
+are routed to fast instead so idle fast workers help drain the backlog.
 
 Rate limiting is handled in-app by BaseProvider's Redis token bucket.
 """
 
 from __future__ import annotations
+
+import redis
 
 from celery import Celery
 from celery.schedules import crontab
@@ -17,15 +22,36 @@ from kombu import Queue
 
 from otix.infrastructure.config import settings
 
+_redis: redis.Redis | None = None
+
+
+def _get_redis() -> redis.Redis:
+    global _redis
+    if _redis is None:
+        _redis = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+    return _redis
+
+
+def _fast_queue_idle() -> bool:
+    """True when the fast queue has fewer than 100 tasks — workers are idle."""
+    try:
+        return _get_redis().llen("fast") < 100
+    except Exception:
+        return False
+
 
 def route_task(name: str, *args, **kwargs) -> str | None:
-    """Route tasks to queues based on name prefix."""
+    """Route tasks to queues based on name prefix.
+
+    When the fast queue is idle, sync.* tasks that would normally go to slow
+    are routed to fast instead so the backlog drains faster.
+    """
     if name.startswith("steam.ccu."):
         return "ccu"
-    if name.startswith(("sync.tmdb.", "sync.steam.")):
-        return "fast"
     if name.startswith("seed."):
         return "default"
+    if name.startswith("sync.") and _fast_queue_idle():
+        return "fast"
     return "slow"
 
 
@@ -50,10 +76,10 @@ app.config_from_object(
         "task_routes": (route_task,),
         "task_create_missing_queues": True,
         "beat_schedule": {
-            # Discovery feeds (hourly at off-peak minutes)
+            # Discovery feeds (daily at 3am)
             "refresh-discover-feed": {
                 "task": "maintenance.refresh_discover_feed",
-                "schedule": crontab(minute="17"),
+                "schedule": crontab(hour="3", minute="17"),
             },
             # Provider health check (every 5 min)
             "provider-health-check": {
@@ -75,29 +101,29 @@ app.config_from_object(
                 "task": "maintenance.enrich_omdb",
                 "schedule": crontab(minute="13,43"),
             },
-            # Game feed refresh (every 6 hours at off-peak minute)
+            # Game feed refresh (daily at 3am)
             "refresh-game-feed": {
                 "task": "maintenance.refresh_game_feed",
-                "schedule": crontab(minute="53", hour="*/6"),
+                "schedule": crontab(hour="3", minute="53"),
             },
-            # Catalog hydration — continuous background re-sync of stale items
+            # Catalog hydration — continuous background re-sync of stale items (every 30 min)
             "catalog-hydration": {
                 "task": "maintenance.catalog_hydration",
-                "schedule": crontab(minute="11,26,41,56"),
+                "schedule": crontab(minute="17,47"),
             },
             # Catalog seeding — three independent seeders run concurrently.
             # People cascade to movies/shows via combined_credits filmography.
             "seed-people": {
                 "task": "seed.people_cycle",
-                "schedule": crontab(minute="*/2"),
+                "schedule": crontab(minute="*/5"),
             },
             "seed-steam": {
                 "task": "seed.steam_cycle",
-                "schedule": crontab(minute="*/2"),
+                "schedule": crontab(minute="*/5"),
             },
             "seed-igdb": {
                 "task": "seed.igdb_cycle",
-                "schedule": crontab(minute="*/2"),
+                "schedule": crontab(minute="*/5"),
             },
             # Steam enrichment scan (every 15 min at off-peak minute)
             "enrich-steam": {
@@ -108,6 +134,11 @@ app.config_from_object(
             "steam-name-match": {
                 "task": "maintenance.steam_name_match",
                 "schedule": crontab(minute="23,53"),
+            },
+            # SteamGridDB enrichment scan (every 30 min at off-peak minutes)
+            "enrich-steamgrid": {
+                "task": "maintenance.enrich_steamgrid",
+                "schedule": crontab(minute="27,57"),
             },
             # Steam CCU batch update (every 5 min)
             "steam-ccu-batch": {

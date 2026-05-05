@@ -25,7 +25,9 @@ _MOVIE_CATEGORIES: list[tuple[str, str]] = [
 
 _SHOW_CATEGORIES: list[tuple[str, str]] = [
     ("hdclearart", "clearart"),
+    ("hdtvlogo", "logo"),
     ("clearlogo", "logo"),
+    ("tvlogo", "logo"),
     ("tvposter", "poster"),
     ("showbackground", "backdrop"),
     ("tvbanner", "banner"),

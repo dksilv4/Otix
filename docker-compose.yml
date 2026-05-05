@@ -32,6 +32,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
@@ -50,6 +51,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
@@ -69,6 +71,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
@@ -82,12 +85,33 @@ services:
         condition: service_healthy
     command: celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2 -n otix-slow@%h --loglevel INFO
 
+  worker-ccu:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OTIX_WORKER_TYPE: ccu
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q ccu -c 1 -n otix-ccu@%h --loglevel INFO
+
   beat:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev

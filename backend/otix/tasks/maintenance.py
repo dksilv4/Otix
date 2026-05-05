@@ -291,6 +291,74 @@ async def _enrich_steam() -> dict:
     return {"enqueued": enqueued}
 
 
+@app.task(name="maintenance.enrich_steamgrid", queue="slow")
+def enrich_steamgrid() -> dict:
+    """Scan games for missing SteamGridDB artwork across all supported platforms.
+
+    Runs every 30 min. Finds games with any platform ID (steam_app_id or
+    entries in store_ids) that are missing textless_poster_url or logo_url.
+    """
+    return run_async(_enrich_steamgrid())
+
+
+async def _enrich_steamgrid() -> dict:
+    missing = or_(
+        MediaItem.textless_poster_url.is_(None),
+        MediaItem.logo_url.is_(None),
+    )
+
+    async with async_session() as session:
+        # Steam games (dedicated column, fast query)
+        steam_result = await session.execute(
+            select(Game.media_item_id, Game.steam_app_id)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .where(
+                MediaItem.media_type == "game",
+                Game.steam_app_id.isnot(None),
+                missing,
+            )
+            .limit(30)
+        )
+        steam_rows = steam_result.all()
+
+        # Non-Steam games (store_ids JSONB)
+        other_result = await session.execute(
+            select(Game.media_item_id, Game.store_ids)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .where(
+                MediaItem.media_type == "game",
+                Game.store_ids.isnot(None),
+                missing,
+            )
+            .limit(30)
+        )
+        other_rows = other_result.all()
+
+    enqueued = 0
+    for _, steam_app_id in steam_rows:
+        app.send_task("sync.steamgrid.game", args=[steam_app_id])
+        enqueued += 1
+
+    seen: set[str] = set()
+    for media_item_id, store_ids in other_rows:
+        if not store_ids:
+            continue
+        for platform, pid in store_ids.items():
+            if platform == "steam":
+                continue
+            key = f"{platform}:{pid}"
+            if key in seen:
+                continue
+            seen.add(key)
+            app.send_task("sync.steamgrid.game_by_platform", args=[platform, pid])
+            enqueued += 1
+
+    if enqueued:
+        logger.info("steamgrid enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
 @app.task(name="maintenance.steam_name_match", queue="slow")
 def steam_name_match() -> dict:
     """Find games without a steam_app_id by searching the Steam store by name.

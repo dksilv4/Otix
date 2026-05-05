@@ -18,6 +18,7 @@ from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import ExternalID, MediaItem, Movie
 from otix.domain.people import MediaCredit, Person, PersonAsset
 from otix.providers.tmdb.client import TMDBProvider
+from otix.providers.tmdb.transformer import _parse_date
 
 logger = structlog.get_logger()
 
@@ -233,14 +234,32 @@ class TMDBHydrator:
     # ── Images ───────────────────────────────────────────────────
 
     async def hydrate_images(self, media_item: MediaItem, raw: dict) -> None:
-        """Store posters and backdrops as MediaAsset rows (URL is unique)."""
+        """Store posters, textless posters, and backdrops as MediaAsset rows.
+
+        TMDB returns iso_639_1 for each image. When null/None, the poster
+        has no text overlay — we store those as asset_type='textless_poster'
+        and pick the best one for media_item.textless_poster_url.
+        """
         images = raw.get("images", {})
         if not images:
             return
 
         candidates: list[tuple[str, dict]] = []
-        for poster in images.get("posters", [])[:5]:
-            candidates.append(("poster", poster))
+        best_textless: dict | None = None
+        best_textless_width = 0
+
+        for poster in images.get("posters", [])[:10]:
+            iso_lang = poster.get("iso_639_1")
+            if iso_lang is None:
+                # Textless poster — track best one for media_item.textless_poster_url
+                candidates.append(("textless_poster", poster))
+                w = poster.get("width") or 0
+                if w > best_textless_width:
+                    best_textless = poster
+                    best_textless_width = w
+            else:
+                candidates.append(("poster", poster))
+
         for backdrop in images.get("backdrops", [])[:5]:
             candidates.append(("backdrop", backdrop))
 
@@ -269,10 +288,14 @@ class TMDBHydrator:
                     url=url,
                     width=entry.get("width"),
                     height=entry.get("height"),
+                    lang=entry.get("iso_639_1"),
                     provider="tmdb",
                 )
             )
             existing_urls.add(url)
+
+        # Textless posters are sourced from Fanart, not TMDB.
+        # TMDB's iso_639_1=null is unreliable for detecting truly textless posters.
 
     # ── Videos ───────────────────────────────────────────────────
 
@@ -321,8 +344,11 @@ class TMDBHydrator:
             if not date_str:
                 continue
 
-            # TMDB returns ISO-8601 with time; strip to date portion
-            release_date = date_str[:10] if "T" in date_str else date_str
+            # TMDB returns ISO-8601 with time; strip to date portion, then parse
+            raw_date = date_str[:10] if "T" in date_str else date_str
+            release_date = _parse_date(raw_date)
+            if not release_date:
+                continue
 
             self.session.add(
                 MediaRelease(

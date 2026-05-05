@@ -25,11 +25,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Awaitable
+from urllib.parse import urlparse
 
+import redis.asyncio as aioredis
 import structlog
 import httpx
 
 from otix.infrastructure.celery import app
+from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
 
 logger = structlog.get_logger()
@@ -254,11 +257,50 @@ async def _download_export(export_type: str) -> Path | None:
     return None
 
 
+# ── Queue backlog safety ──────────────────────────────────────────────
+
+
+async def _check_fast_queue_backlog() -> tuple[int, bool]:
+    """Check the fast queue backlog against the configured threshold.
+
+    Returns (length, throttled). Duplicated from sync.py to avoid circular imports.
+    """
+    broker_url = settings.celery_broker
+    parsed = urlparse(broker_url)
+    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
+
+    r: aioredis.Redis | None = None
+    try:
+        r = aioredis.from_url(broker_redis_url, decode_responses=True)
+        length = await r.llen("fast") or 0
+    except Exception:
+        logger.warning("failed to check fast queue backlog", exc_info=True)
+        return 0, False
+    finally:
+        if r is not None:
+            await r.aclose()
+
+    threshold = settings.celery_fast_queue_max_backlog
+    throttled = length > threshold
+    if throttled:
+        logger.info(
+            "fast queue backlog throttle active (catalog seed)",
+            queue_length=length,
+            threshold=threshold,
+        )
+    return length, throttled
+
+
 # ── TMDB People seeder ───────────────────────────────────────────────
 
 
 async def _process_people_batch(state: dict) -> dict:
     """Process BATCH_ENTRIES entries from the TMDB person_ids export."""
+    # Backlog safety: skip if fast queue is over threshold
+    _, throttled = await _check_fast_queue_backlog()
+    if throttled:
+        return {"status": "throttled"}
+
     export_type = "person_ids"
     task_name = "sync.tmdb.person"
     state_key = _PEOPLE_STATE

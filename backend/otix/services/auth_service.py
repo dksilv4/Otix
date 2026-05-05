@@ -3,9 +3,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import structlog
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,15 +13,14 @@ from otix.domain.user import RefreshToken, User
 from otix.infrastructure.config import settings
 
 logger = structlog.get_logger()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
 def create_access_token(user_id: str) -> str:
@@ -89,8 +88,10 @@ class AuthService:
         logger.info("user registered", user_id=user.id)
         return user
 
-    async def login(self, email: str, password: str) -> tuple[str, str, User] | None:
-        user = await self.session.scalar(select(User).where(User.email == email))
+    async def login(self, identity: str, password: str) -> tuple[str, str, User] | None:
+        user = await self.session.scalar(select(User).where(User.email == identity))
+        if user is None:
+            user = await self.session.scalar(select(User).where(User.username == identity))
         if user is None or not user.is_active:
             return None
         if not verify_password(password, user.hashed_password):

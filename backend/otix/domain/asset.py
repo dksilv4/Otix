@@ -21,6 +21,8 @@ class MediaAsset(Base):
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
     lang: Mapped[str | None] = mapped_column(String(10))
+    style: Mapped[str | None] = mapped_column(String(20))
+    score: Mapped[int | None] = mapped_column(Integer)
     provider: Mapped[str | None] = mapped_column(String(20))
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="assets")

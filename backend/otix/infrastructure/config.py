@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,7 +38,7 @@ class Settings(BaseSettings):
     refresh_token_lifetime_days: int = 7
     rotate_refresh_tokens: bool = True
     auth_refresh_cookie_name: str = "otix_refresh"
-    auth_refresh_cookie_path: str = "/auth/"
+    auth_refresh_cookie_path: str = "/api/auth/"
     auth_refresh_cookie_domain: str = ""
     auth_refresh_cookie_secure: bool = False
     auth_refresh_cookie_httponly: bool = True
@@ -71,6 +72,11 @@ class Settings(BaseSettings):
     igdb_request_timeout_seconds: int = 20
     igdb_global_rps_limit: int = 4
 
+    # SteamGridDB
+    steamgrid_api_key: str = Field(default="", validation_alias="STEAM_GRID_API_KEY")
+    steamgrid_request_timeout_seconds: int = 15
+    steamgrid_global_rps_limit: int = 2
+
     # Email
     resend_api_key: str = ""
     email_from: str = "admin@diogodasilva.com"
@@ -86,6 +92,7 @@ class Settings(BaseSettings):
     celery_worker_fast_concurrency: int = 6
     celery_worker_slow_concurrency: int = 2
     celery_worker_ccu_concurrency: int = 1
+    celery_fast_queue_max_backlog: int = 1000
 
     @property
     def celery_broker(self) -> str:
@@ -94,6 +101,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
+
+    @property
+    def cors_origin_regex(self) -> str:
+        return r"https?://(localhost|127\.0\.0\.1):\d+"
 
 
 settings = Settings()

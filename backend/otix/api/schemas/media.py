@@ -73,6 +73,8 @@ class MediaItemSummary(BaseModel):
     title: str
     slug: str
     poster_url: str | None = None
+    textless_poster_url: str | None = None
+    logo_url: str | None = None
     release_date: date | None = None
     popularity: float
 
@@ -161,6 +163,7 @@ class GameDetail(BaseModel):
     release_status: str | None = None
     website: str | None = None
     steam_app_id: int | None = None
+    store_ids: dict | None = None
     current_players: int | None = None
     price_json: dict | None = None
     recommendations: int | None = None
@@ -178,7 +181,9 @@ class MediaItemDetail(BaseModel):
     slug: str
     overview: str | None = None
     poster_url: str | None = None
+    textless_poster_url: str | None = None
     backdrop_url: str | None = None
+    logo_url: str | None = None
     release_date: date | None = None
     popularity: float
     original_language: str | None = None

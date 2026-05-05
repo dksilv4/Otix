@@ -28,6 +28,7 @@ class MediaService:
         self,
         media_type: str | None = None,
         genre: str | None = None,
+        has_artwork: bool = False,
         cursor: str | None = None,
         limit: int = 50,
     ) -> tuple[list[MediaItem], bool]:
@@ -38,6 +39,9 @@ class MediaService:
 
         if media_type:
             query = query.where(MediaItem.media_type == media_type)
+
+        if has_artwork:
+            query = query.where(MediaItem.textless_poster_url.isnot(None))
 
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)

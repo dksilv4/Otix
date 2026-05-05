@@ -18,6 +18,7 @@ media_router = APIRouter(prefix="/media", tags=["media"])
 async def list_media(
     media_type: str | None = Query(None, description="movie, show, or game"),
     genre: str | None = Query(None, description="Genre slug"),
+    has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
     cursor: str | None = Query(None, description="Pagination cursor (media item id)"),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -26,6 +27,7 @@ async def list_media(
     items, has_more = await service.list_media(
         media_type=media_type,
         genre=genre,
+        has_artwork=has_artwork,
         cursor=cursor,
         limit=limit,
     )

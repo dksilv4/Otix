@@ -22,6 +22,7 @@ from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import (
     _cover_url,
+    _extract_store_ids,
     _extract_steam_app_id,
     _extract_website,
     _parse_timestamp,
@@ -83,8 +84,8 @@ def igdb_game_raw() -> dict:
             {"name": "Single player"},
         ],
         "websites": [
-            {"url": "https://thewitcher.com", "category": 1},
-            {"url": "https://steamcommunity.com/app/292030", "category": 13},
+            {"url": "https://thewitcher.com", "type": 1},
+            {"url": "https://steamcommunity.com/app/292030", "type": 13},
         ],
         "videos": [
             {"video_id": "cGd3vjRjDnM", "name": "Launch Trailer"},
@@ -277,17 +278,17 @@ class TestExtractWebsite:
 
 class TestExtractSteamAppID:
     def test_extracts_from_store_url(self):
-        websites = [{"url": "https://store.steampowered.com/app/292030/", "category": 13}]
+        websites = [{"url": "https://store.steampowered.com/app/292030/", "type": 13}]
         assert _extract_steam_app_id(websites) == 292030
 
     def test_extracts_from_community_url(self):
-        websites = [{"url": "https://steamcommunity.com/app/730", "category": 13}]
+        websites = [{"url": "https://steamcommunity.com/app/730", "type": 13}]
         assert _extract_steam_app_id(websites) == 730
 
     def test_skips_non_steam_categories(self):
         websites = [
-            {"url": "https://store.steampowered.com/app/123/", "category": 1},
-            {"url": "https://example.com", "category": 13},
+            {"url": "https://store.steampowered.com/app/123/", "type": 1},
+            {"url": "https://example.com", "type": 13},
         ]
         assert _extract_steam_app_id(websites) is None
 
@@ -295,8 +296,46 @@ class TestExtractSteamAppID:
         assert _extract_steam_app_id([]) is None
 
     def test_no_match_in_url(self):
-        websites = [{"url": "https://steamcommunity.com/games/123", "category": 13}]
+        websites = [{"url": "https://steamcommunity.com/games/123", "type": 13}]
         assert _extract_steam_app_id(websites) is None
+
+
+class TestExtractStoreIDs:
+    def test_extracts_egs_product_url(self):
+        websites = [{"url": "https://www.epicgames.com/store/en-US/product/fortnite/home", "type": 16}]
+        assert _extract_store_ids(websites) == {"egs": "fortnite"}
+
+    def test_extracts_egs_short_url(self):
+        websites = [{"url": "https://store.epicgames.com/en-US/p/fortnite", "type": 16}]
+        assert _extract_store_ids(websites) == {"egs": "fortnite"}
+
+    def test_extracts_steam_from_url(self):
+        websites = [{"url": "https://store.steampowered.com/app/292030/", "type": 13}]
+        assert _extract_store_ids(websites) == {"steam": 292030}
+
+    def test_extracts_multiple_platforms(self):
+        websites = [
+            {"url": "https://store.steampowered.com/app/730/", "type": 13},
+            {"url": "https://store.epicgames.com/en-US/p/fortnite", "type": 16},
+        ]
+        result = _extract_store_ids(websites)
+        assert result == {"steam": 730, "egs": "fortnite"}
+
+    def test_skips_non_store_urls(self):
+        websites = [
+            {"url": "https://thewitcher.com", "type": 1},
+            {"url": "https://example.com", "type": 13},
+        ]
+        assert _extract_store_ids(websites) is None
+
+    def test_empty(self):
+        assert _extract_store_ids([]) is None
+
+    def test_handles_malformed(self):
+        websites = [{"url": "https://store.epicgames.com/en-US/p/", "type": 16}]
+        result = _extract_store_ids(websites)
+        # Empty slug after /p/ — the regex won't match an empty segment
+        assert result is None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -345,6 +384,7 @@ class TestToGame:
         assert game.release_status == "released"
         assert game.website == "https://thewitcher.com"
         assert game.steam_app_id == 292030
+        assert game.store_ids == {"steam": 292030}
         assert game.has_multiplayer is False
         assert game.media_item is not None
         assert game.media_item.title == "The Witcher 3: Wild Hunt"

@@ -63,9 +63,13 @@ def fanart_show_raw() -> dict:
         "showbackground": [
             {"id": "12", "url": "https://fanart.tv/fanart/tv/121361/bg.jpg", "lang": "", "likes": "9"},
         ],
+        "hdtvlogo": [
+            {"id": "19", "url": "https://fanart.tv/fanart/tv/121361/logo_hd.png", "lang": "en", "likes": "25"},
+        ],
         "clearlogo": [
             {"id": "13", "url": "https://fanart.tv/fanart/tv/121361/logo.png", "lang": "en", "likes": "18"},
         ],
+        "tvlogo": [],
         "hdclearart": [
             {"id": "14", "url": "https://fanart.tv/fanart/tv/121361/clearart_hd.png", "lang": "en", "likes": "11"},
         ],
@@ -505,13 +509,13 @@ class TestFanartShowPipeline:
         for a in added:
             by_type.setdefault(a.asset_type, []).append(a)
 
-        # 3 tvposter + 2 seasonposter = 5 posters, 1 backdrop, 1 logo, 1 clearart, 1 banner
+        # 3 tvposter + 2 seasonposter = 5 posters, 1 backdrop, 2 logos, 1 clearart, 1 banner
         assert len(by_type["poster"]) == 5
         assert len(by_type["backdrop"]) == 1
-        assert len(by_type["logo"]) == 1
+        assert len(by_type["logo"]) == 2
         assert len(by_type["clearart"]) == 1
         assert len(by_type["banner"]) == 1
-        assert len(added) == 9
+        assert len(added) == 10
 
     async def test_full_show_pipeline_lang_extraction(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,

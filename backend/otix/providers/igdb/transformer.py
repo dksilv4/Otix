@@ -119,7 +119,7 @@ def _extract_website(websites: list[JSONValue]) -> str | None:
 
 
 def _extract_steam_app_id(websites: list[JSONValue]) -> int | None:
-    """Extract the Steam app ID from IGDB websites (category 13).
+    """Extract the Steam app ID from IGDB websites (type 13 = Steam).
 
     Parses URLs like https://store.steampowered.com/app/292030/ or
     https://steamcommunity.com/app/292030.
@@ -129,13 +129,58 @@ def _extract_steam_app_id(websites: list[JSONValue]) -> int | None:
     for w in websites:
         if not isinstance(w, dict):
             continue
-        if w.get("category") == 13:
+        if w.get("type") == 13:
             url = w.get("url", "")
             if isinstance(url, str):
                 match = re.search(r"/app/(\d+)", url)
                 if match:
                     return int(match.group(1))
     return None
+
+
+# SGDB-supported platforms. Maps URL pattern → (platform_slug, id_cast).
+# Patterns are tried in order; first match wins per website entry.
+_STORE_PATTERNS: list[tuple[str, str, type]] = [
+    (r"store\.steampowered\.com/app/(\d+)", "steam", int),
+    (r"steamcommunity\.com/app/(\d+)", "steam", int),
+    # EGS: two URL formats — /p/slug (short) and /product/slug/... (full)
+    (r"epicgames\.com.*/p/([^/?&#]+)", "egs", str),
+    (r"epicgames\.com.*/product/([^/?&#]+)", "egs", str),
+    (r"ea\.com/(?:[a-z]{2}-[a-z]{2}/)?games/[^/]+/([^/?&#]+)", "origin", str),
+    (r"origin\.com.*/store/[^/]+/([^/?&#]+)", "origin", str),
+    (r"ubisoft\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?game/[^/]+/([^/?&#]+)", "uplay", str),
+    (r"store\.ubi\.com.*/([^/?&#]+)", "uplay", str),
+    (r"play\.nintendo\.com.*/([^/?&#]+)", "eshop", str),
+    (r"nintendo\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?store/products/([^/?&#]+)", "eshop", str),
+    (r"nintendo\.com/games/detail/([^/?&#]+)", "eshop", str),
+    (r"battle\.net.*/([^/?&#]+)", "bnet", str),
+]
+
+
+def _extract_store_ids(websites: list[JSONValue]) -> dict[str, str | int] | None:
+    """Extract all platform store IDs from IGDB websites.
+
+    Matches URLs against known store patterns (Steam, EGS, Origin, Uplay,
+    Battle.net, Nintendo eShop). Stores every matched platform → id mapping.
+    """
+    if not websites:
+        return None
+    result: dict[str, str | int] = {}
+    for w in websites:
+        if not isinstance(w, dict):
+            continue
+        url = w.get("url", "")
+        if not isinstance(url, str) or not url:
+            continue
+        for pattern, platform, cast in _STORE_PATTERNS:
+            match = re.search(pattern, url, re.IGNORECASE)
+            if match:
+                try:
+                    result[platform] = cast(match.group(1))
+                except (ValueError, TypeError):
+                    pass
+                break  # first matching pattern per website wins
+    return result if result else None
 
 
 def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
@@ -221,6 +266,7 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
         release_status=_STATUS_MAP.get(raw.get("status")),
         website=_extract_website(website_list),
         steam_app_id=_extract_steam_app_id(website_list),
+        store_ids=_extract_store_ids(website_list),
         has_multiplayer=has_multiplayer,
     )
     game.media_item = to_media_item(raw)

@@ -10,6 +10,7 @@ RULES:
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
+
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import (
@@ -33,6 +34,7 @@ __all__ = [
     "Collection",
     "CollectionItem",
     "Company",
+
     "Episode",
     "ExternalID",
     "ExternalRating",

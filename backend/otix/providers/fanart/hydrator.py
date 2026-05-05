@@ -104,7 +104,11 @@ class FanartHydrator:
         return ext_id.external_id
 
     async def _upsert_assets(self, assets: list[MediaAsset]) -> bool:
-        """Insert only assets whose URLs don't already exist in the DB."""
+        """Insert only assets whose URLs don't already exist in the DB.
+
+        Also sets logo_url / textless_poster_url on the owning MediaItem
+        so the API doesn't need to join through media_assets for list views.
+        """
         urls = {a.url for a in assets}
         if not urls:
             return False
@@ -118,6 +122,34 @@ class FanartHydrator:
         if new_assets:
             self.session.add_all(new_assets)
             await self.session.flush()
-            return True
 
-        return False
+        # Set logo_url / textless_poster_url on the MediaItem.
+        # Fanart is the authoritative source.
+        #
+        # Textless posters are from the "poster" category (moviethumb/tvthumb are
+        # disc/case art, not posters). Fanart marks textless artwork with lang
+        # "", "0", "00", or "zxx".
+        if assets:
+            media_item_id = assets[0].media_item_id
+            media_item = await self.session.get(MediaItem, media_item_id)
+            if media_item is not None:
+                # Logo: pick the widest one (HD variants come first, but be explicit).
+                best_logo = max(
+                    (a for a in assets if a.asset_type == "logo"),
+                    key=lambda a: a.width or 0,
+                    default=None,
+                )
+                if best_logo:
+                    media_item.logo_url = best_logo.url
+
+                # Textless poster: widest poster with no-language marker.
+                _textless_langs = {None, "", "0", "00", "zxx"}
+                best_textless = max(
+                    (a for a in assets if a.asset_type == "poster" and a.lang in _textless_langs),
+                    key=lambda a: a.width or 0,
+                    default=None,
+                )
+                if best_textless:
+                    media_item.textless_poster_url = best_textless.url
+
+        return bool(new_assets)
