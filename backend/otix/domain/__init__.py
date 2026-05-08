@@ -13,6 +13,8 @@ from otix.domain.company import Company, InvolvedCompany
 
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
+from otix.domain.list import UserList, UserListItem
+from otix.domain.review import Review
 from otix.domain.media import (
     Episode,
     ExternalID,
@@ -57,9 +59,12 @@ __all__ = [
     "Platform",
     "ProviderState",
     "RefreshToken",
+    "Review",
     "Season",
     "Show",
     "SyncJob",
     "User",
+    "UserList",
+    "UserListItem",
     "UserMediaInteraction",
 ]

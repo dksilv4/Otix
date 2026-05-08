@@ -138,7 +138,7 @@ class TestToMediaItem:
         }
         item = to_media_item(raw, "movie")
         assert item.poster_url == "https://image.tmdb.org/t/p/w500/poster.jpg"
-        assert item.backdrop_url == "https://image.tmdb.org/t/p/w500/backdrop.jpg"
+        assert item.backdrop_url == "https://image.tmdb.org/t/p/w1280/backdrop.jpg"
 
 
 # ── to_movie ────────────────────────────────────────────────────────

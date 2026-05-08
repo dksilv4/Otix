@@ -1,0 +1,120 @@
+import { Link } from '@tanstack/react-router'
+import { Star } from 'lucide-react'
+import { Image } from '@ui/atoms/image'
+import { cn } from '@/lib/utils'
+
+interface MediaCardProps {
+  id: string
+  mediaType: 'movie' | 'show' | 'game'
+  title: string
+  posterUrl?: string | null
+  textlessPosterUrl?: string | null
+  logoUrl?: string | null
+  releaseDate?: string | null
+  avgRating?: number | null
+  ratingCount?: number
+  showTypeBadge?: boolean
+  zoomed?: boolean
+  className?: string
+}
+
+const mediaTypeColor: Record<string, string> = {
+  movie: 'bg-rose-600',
+  show: 'bg-violet-600',
+  game: 'bg-emerald-600',
+}
+
+const mediaTypeLabel: Record<string, string> = {
+  movie: 'Movie',
+  show: 'TV',
+  game: 'Game',
+}
+
+export function MediaCard({
+  id,
+  mediaType,
+  title,
+  posterUrl,
+  textlessPosterUrl,
+  logoUrl,
+  releaseDate,
+  avgRating,
+  ratingCount,
+  showTypeBadge = true,
+  zoomed = true,
+  className,
+}: MediaCardProps) {
+  const year = releaseDate?.slice(0, 4)
+
+  return (
+    <Link
+      to="/media/$mediaType/$mediaId"
+      params={{ mediaType, mediaId: id }}
+      className={cn(
+        'group block relative aspect-[2/3] rounded-lg overflow-hidden',
+        className,
+      )}
+    >
+      {/* Textless poster — zooms out on hover (110% → 100%) */}
+      <Image
+        src={textlessPosterUrl || posterUrl || undefined}
+        alt={title}
+        className={cn(
+          'h-full w-full object-cover transition-transform duration-700 ease-out',
+          zoomed && 'scale-110 group-hover:scale-100',
+        )}
+        fallback={title[0]}
+      />
+
+      {/* Darkening gradient — fades in on hover */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out pointer-events-none" />
+
+      {/* Type badge — top left */}
+      {showTypeBadge && (
+        <div className="absolute top-2 left-2">
+          <span
+            className={cn(
+              'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold text-white',
+              mediaTypeColor[mediaType] ?? 'bg-muted-foreground',
+            )}
+          >
+            {mediaTypeLabel[mediaType] ?? mediaType}
+          </span>
+        </div>
+      )}
+
+      {/* Otix rating — top right */}
+      {avgRating != null && avgRating > 0 && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white bg-primary/80 backdrop-blur-sm">
+            <Star className="h-3 w-3 fill-current" />
+            {avgRating.toFixed(1)}
+          </span>
+        </div>
+      )}
+
+      {/* Logo — zooms in on hover (90% + invisible → 100% + visible) */}
+      {logoUrl && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <img
+            src={logoUrl}
+            alt={title}
+            className="max-w-[70%] max-h-[50%] object-contain scale-75 group-hover:scale-110 transition-transform duration-700 ease-out drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+          />
+        </div>
+      )}
+
+      {/* Title + year — bottom, fades in on hover */}
+      <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 ease-out pointer-events-none">
+        <p className="text-sm font-semibold text-white text-center leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+          {title}
+        </p>
+        {year && (
+          <p className="text-[11px] font-medium text-white/60 text-center mt-0.5">
+            {year}
+          </p>
+        )}
+      </div>
+    </Link>
+  )
+}

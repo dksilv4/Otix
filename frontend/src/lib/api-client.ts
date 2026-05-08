@@ -1,0 +1,159 @@
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+
+const ACCESS_TOKEN_KEY = 'otix-access-token'
+
+// ── Case conversion utilities ────────────────────────────────────────
+
+function toCamel(s: string): string {
+  return s.replace(/([-_][a-z])/gi, ($1) =>
+    $1.toUpperCase().replace('-', '').replace('_', ''),
+  )
+}
+
+function toSnake(s: string): string {
+  return s.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`)
+}
+
+function isObject(o: unknown): o is Record<string, unknown> {
+  return o === Object(o) && !Array.isArray(o) && typeof o !== 'function'
+}
+
+function convertKeysToCamelCase(o: unknown): unknown {
+  if (isObject(o)) {
+    const n: Record<string, unknown> = {}
+    Object.keys(o).forEach((k) => {
+      n[toCamel(k)] = convertKeysToCamelCase(o[k])
+    })
+    return n
+  } else if (Array.isArray(o)) {
+    return o.map((i) => convertKeysToCamelCase(i))
+  }
+  return o
+}
+
+function convertKeysToSnakeCase(o: unknown): unknown {
+  if (isObject(o)) {
+    const n: Record<string, unknown> = {}
+    Object.keys(o).forEach((k) => {
+      n[toSnake(k)] = convertKeysToSnakeCase(o[k])
+    })
+    return n
+  } else if (Array.isArray(o)) {
+    return o.map((i) => convertKeysToSnakeCase(i))
+  }
+  return o
+}
+
+function getContentType(headers: Record<string, unknown>): string {
+  const ct = headers['content-type']
+  return typeof ct === 'string' ? ct : ''
+}
+
+// ── Refresh token flow (must be declared before the interceptor) ─────
+
+let isRefreshing = false
+let refreshQueue: Array<{
+  resolve: (token: string) => void
+  reject: (err: unknown) => void
+}> = []
+
+async function refreshAccessToken(): Promise<string> {
+  const authClient = axios.create({
+    baseURL: BASE_URL,
+    withCredentials: true,
+    headers: { 'Content-Type': 'application/json' },
+  })
+  const response = await authClient.post('/auth/refresh', {})
+  const token = response.data.access_token ?? response.data.accessToken
+  localStorage.setItem(ACCESS_TOKEN_KEY, token)
+  return token
+}
+
+// ── Axios instance ────────────────────────────────────────────────────
+
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true, // for httpOnly refresh cookie
+  headers: { 'Content-Type': 'application/json' },
+})
+
+// ── Request interceptor — camelCase → snake_case + auth token ─────────
+
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Attach Bearer token
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+
+  // Convert outgoing data and params to snake_case
+  if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+    config.data = convertKeysToSnakeCase(config.data)
+  }
+  if (config.params) {
+    config.params = convertKeysToSnakeCase(config.params)
+  }
+
+  return config
+})
+
+// ── Response interceptor — snake_case → camelCase + 401 refresh ──────
+
+apiClient.interceptors.response.use(
+  (response) => {
+    if (response.data && getContentType(response.headers).includes('application/json')) {
+      response.data = convertKeysToCamelCase(response.data)
+    }
+    return response
+  },
+  async (error: AxiosError) => {
+    // Transform error response data too
+    if (
+      error.response?.data &&
+      error.response.headers &&
+      getContentType(error.response.headers as Record<string, unknown>).includes('application/json')
+    ) {
+      error.response.data = convertKeysToCamelCase(error.response.data)
+    }
+
+    // Token refresh flow
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    if (error.response?.status !== 401 || originalRequest?._retry) {
+      return Promise.reject(error)
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        refreshQueue.push({ resolve, reject })
+      }).then((token) => {
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${token}`
+        }
+        return apiClient(originalRequest)
+      })
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      const token = await refreshAccessToken()
+      refreshQueue.forEach(({ resolve }) => resolve(token))
+      refreshQueue = []
+      if (originalRequest.headers) {
+        originalRequest.headers.Authorization = `Bearer ${token}`
+      }
+      return apiClient(originalRequest)
+    } catch (refreshError) {
+      refreshQueue.forEach(({ reject }) => reject(refreshError))
+      refreshQueue = []
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      window.dispatchEvent(new CustomEvent('auth:sessionExpired'))
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
+  },
+)

@@ -215,6 +215,15 @@ class IGDBProvider(BaseProvider):
             return response.json()
         raise IGDBError(f"IGDB offset query failed: {response.status_code}")
 
+    async def search_games(self, query: str, limit: int = 50, fields: str | None = None) -> list[dict[str, JSONValue]]:
+        """Search games by name."""
+        escaped = query.replace('"', '\\"')
+        body = f'search "{escaped}"; fields {fields or "*"}; limit {limit};'
+        response = await self._post("/games", content=body)
+        if response.status_code == 200:
+            return response.json()
+        raise IGDBError(f"IGDB search query failed: {response.status_code}")
+
     # ── Covers / Artwork (resolved via ID in game fields) ──────────────
 
     async def get_cover(self, cover_id: int) -> dict[str, JSONValue] | None:

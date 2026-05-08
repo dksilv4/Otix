@@ -28,3 +28,14 @@ class UserResponse(BaseModel):
     email: str
     username: str
     is_verified: bool
+    avatar_url: str | None = None
+    bio: str | None = None
+    background_url: str | None = None
+
+
+class UserUpdateRequest(BaseModel):
+    email: EmailStr | None = None
+    username: str | None = Field(default=None, min_length=3, max_length=150, pattern=r"^[a-zA-Z0-9_-]+$")
+    bio: str | None = Field(default=None, max_length=500)
+    avatar_url: str | None = Field(default=None, max_length=2048)
+    background_url: str | None = Field(default=None, max_length=2048)

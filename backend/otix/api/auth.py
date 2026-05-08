@@ -10,6 +10,7 @@ from otix.api.schemas.auth import (
     RegisterRequest,
     TokenResponse,
     UserResponse,
+    UserUpdateRequest,
 )
 from otix.domain.user import User
 from otix.infrastructure.config import settings
@@ -93,11 +94,39 @@ async def logout(
     response.delete_cookie(key=cookie_config["key"], path=cookie_config["path"], domain=cookie_config["domain"])
 
 
+def _user_response(user: User) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        username=user.username,
+        is_verified=user.is_verified,
+        avatar_url=user.avatar_url,
+        bio=user.bio,
+        background_url=user.background_url,
+    )
+
+
 @auth_router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        username=current_user.username,
-        is_verified=current_user.is_verified,
-    )
+    return _user_response(current_user)
+
+
+@auth_router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UserUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    if body.username is not None:
+        current_user.username = body.username
+    if body.email is not None:
+        current_user.email = body.email
+    if body.bio is not None:
+        current_user.bio = body.bio
+    if body.avatar_url is not None:
+        current_user.avatar_url = body.avatar_url
+    if body.background_url is not None:
+        current_user.background_url = body.background_url
+    await db.commit()
+    await db.refresh(current_user)
+    return _user_response(current_user)

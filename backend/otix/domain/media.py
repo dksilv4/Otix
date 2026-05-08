@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, gen_otix_id, otix_fk, otix_pk
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from otix.domain.collection import CollectionItem
     from otix.domain.company import InvolvedCompany
     from otix.domain.people import MediaCredit
+    from otix.domain.review import Review
 
 
 class MediaItem(Base, TimestampMixin):
@@ -36,6 +37,14 @@ class MediaItem(Base, TimestampMixin):
     completeness_score: Mapped[float] = mapped_column(Float, default=0.0)
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
+    avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    rating_count: Mapped[int] = mapped_column(Integer, default=0)
+    like_count: Mapped[int] = mapped_column(Integer, default=0)
+    watchlist_count: Mapped[int] = mapped_column(Integer, default=0)
+    watched_count: Mapped[int] = mapped_column(Integer, default=0)
+    played_count: Mapped[int] = mapped_column(Integer, default=0)
+    started_count: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game')", name="ck_media_type"),
@@ -57,6 +66,7 @@ class MediaItem(Base, TimestampMixin):
     credits: Mapped[list[MediaCredit]] = relationship("MediaCredit", back_populates="media_item")
     involved_companies: Mapped[list[InvolvedCompany]] = relationship("InvolvedCompany", back_populates="media_item")
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="media_item")
+    reviews: Mapped[list[Review]] = relationship("Review", back_populates="media_item")
     collection_items: Mapped[list[CollectionItem]] = relationship("CollectionItem", back_populates="media_item")
     external_ids: Mapped[list[ExternalID]] = relationship("ExternalID", back_populates="media_item")
     platforms: Mapped[list[MediaPlatform]] = relationship("MediaPlatform", back_populates="media_item")
@@ -85,6 +95,7 @@ class Show(Base):
     status: Mapped[str | None] = mapped_column(String(50))
     first_air_date: Mapped[date | None] = mapped_column()
     last_air_date: Mapped[date | None] = mapped_column()
+    is_anime: Mapped[bool] = mapped_column(default=False)
     number_of_seasons: Mapped[int | None] = mapped_column(Integer)
     number_of_episodes: Mapped[int | None] = mapped_column(Integer)
 
@@ -116,6 +127,7 @@ class Episode(Base):
     overview: Mapped[str | None] = mapped_column(Text)
     runtime: Mapped[int | None] = mapped_column(Integer)
     air_date: Mapped[date | None] = mapped_column()
+    still_url: Mapped[str | None] = mapped_column(String(2000))
 
     season: Mapped[Season] = relationship("Season", back_populates="episodes")
 

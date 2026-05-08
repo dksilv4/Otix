@@ -6,18 +6,22 @@ These run on the 'control' queue via Celery beat.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 import structlog
-from sqlalchemy import and_, delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 
 from otix.domain.asset import ExternalRating, MediaAsset
 from otix.domain.media import ExternalID, Game, MediaItem
+from otix.domain.people import Person
 from otix.domain.user import RefreshToken
 from otix.infrastructure.celery import app
+from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_JOBS_ACTIVE, get_registry
+from otix.lib.progress import snapshot_and_reset as _progress_snapshot
 from otix.providers.steam.client import SteamProvider
 
 logger = structlog.get_logger()
@@ -473,22 +477,32 @@ async def _steam_ccu_batch() -> dict:
         games_by_app = {g.steam_app_id: g for g in games}
 
         updated = 0
+        cleared = 0
         for app_id in app_ids:
             try:
                 data = await provider.get_current_players(app_id)
-                count = data.get("response", {}).get("player_count")
-                if isinstance(count, (int, float)):
-                    game = games_by_app.get(app_id)
-                    if game is not None:
-                        game.current_players = int(count)
-                        updated += 1
             except Exception:
-                pass
+                continue
+
+            if data is None:
+                # 404 — app ID doesn't exist on Steam, clear it permanently
+                game = games_by_app.get(app_id)
+                if game is not None:
+                    game.steam_app_id = None
+                    cleared += 1
+                continue
+
+            count = data.get("response", {}).get("player_count")
+            if isinstance(count, (int, float)):
+                game = games_by_app.get(app_id)
+                if game is not None:
+                    game.current_players = int(count)
+                    updated += 1
 
         await session.commit()
 
-    if updated:
-        logger.info("steam ccu batch updated", count=updated)
+    if updated or cleared:
+        logger.info("steam ccu batch updated", count=updated, cleared=cleared)
 
     return {"apps_checked": len(app_ids), "updated": updated}
 
@@ -564,3 +578,77 @@ async def _catalog_hydration() -> dict:
         )
 
     return {"stale_found": len(rows), "enqueued": enqueued}
+
+
+@app.task(name="maintenance.progress_summary", queue="slow")
+def progress_summary() -> dict:
+    """Log a periodic summary of sync activity, queue depths, and DB counts.
+
+    Runs every 60s via Celery beat. Reads and resets the Redis progress
+    counters atomically so each window is independent. Silent when idle.
+    """
+    return run_async(_progress_summary())
+
+
+async def _progress_summary() -> dict:
+    counters = await _progress_snapshot()
+
+    if not counters:
+        return {"status": "idle"}
+
+    # Compute per-second rates (window is always 60s)
+    window_s = 60
+    rated = {}
+    for k, v in counters.items():
+        rated[f"{k}_rate"] = round(v / window_s, 1)
+
+    # Queue depths
+    broker_url = settings.celery_broker
+    parsed = urlparse(broker_url)
+    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
+
+    import redis.asyncio as aioredis
+    r = aioredis.from_url(broker_redis_url, decode_responses=True)
+    try:
+        fast_depth = await r.llen("fast") or 0
+        slow_depth = await r.llen("slow") or 0
+    finally:
+        await r.aclose()
+
+    # DB counts per media type
+    async with async_session() as session:
+        movie_count = await session.scalar(
+            select(func.count()).select_from(MediaItem).where(MediaItem.media_type == "movie")
+        )
+        show_count = await session.scalar(
+            select(func.count()).select_from(MediaItem).where(MediaItem.media_type == "show")
+        )
+        game_count = await session.scalar(
+            select(func.count()).select_from(MediaItem).where(MediaItem.media_type == "game")
+        )
+        person_count = await session.scalar(
+            select(func.count()).select_from(Person)
+        )
+
+    logger.info(
+        "progress summary",
+        window_s=window_s,
+        **counters,
+        **rated,
+        db_movies=movie_count or 0,
+        db_shows=show_count or 0,
+        db_games=game_count or 0,
+        db_people=person_count or 0,
+        fast_queue=fast_depth,
+        slow_queue=slow_depth,
+    )
+
+    return {
+        "counters": counters,
+        "db_movies": movie_count,
+        "db_shows": show_count,
+        "db_games": game_count,
+        "db_people": person_count,
+        "fast_queue": fast_depth,
+        "slow_queue": slow_depth,
+    }

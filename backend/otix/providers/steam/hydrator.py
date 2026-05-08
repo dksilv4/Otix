@@ -21,6 +21,7 @@ from otix.providers.steam.transformer import (
     extract_price,
     extract_publishers,
     extract_recommendations,
+    extract_review_data,
     extract_review_score,
     extract_review_summary,
     extract_screenshot_urls,
@@ -63,37 +64,51 @@ class SteamHydrator:
         try:
             store = await self.provider.get_app_details(app_id)
         except Exception:
+            store = None
+
+        try:
+            reviews = await self.provider.get_app_reviews(app_id)
+        except Exception:
+            reviews = None
+
+        if not store and not reviews:
             return
 
-        if not store:
-            return
+        if store:
+            # Update steam_app_id if missing
+            if not game.steam_app_id:
+                steam_id = store.get("steam_appid")
+                if isinstance(steam_id, int):
+                    game.steam_app_id = steam_id
 
-        # Update steam_app_id if missing
-        if not game.steam_app_id:
-            steam_id = store.get("steam_appid")
-            if isinstance(steam_id, int):
-                game.steam_app_id = steam_id
+            if store.get("is_free") is True:
+                game.is_free = True
 
-        # Core fields
-        if store.get("is_free") is True:
-            game.is_free = True
+            await self._hydrate_companies(
+                game,
+                extract_developers(store),
+                extract_publishers(store),
+            )
+            game.price_json = extract_price(store)
+            game.recommendations = extract_recommendations(store)
 
-        await self._hydrate_companies(
-            game,
-            extract_developers(store),
-            extract_publishers(store),
-        )
-        game.price_json = extract_price(store)
-        game.recommendations = extract_recommendations(store)
-        game.review_summary = extract_review_summary(store)
+            # Store-based review summary (may be missing for some apps)
+            game.review_summary = extract_review_summary(store)
 
-        # Ratings
-        await self._upsert_steam_user_rating(game, store)
-        await self._upsert_steam_metacritic_rating(game, store)
+            await self._upsert_steam_metacritic_rating(game, store)
 
-        # Assets
-        await self._hydrate_screenshots(game, store)
-        await self._hydrate_movies(game, store)
+            await self._hydrate_screenshots(game, store)
+            await self._hydrate_movies(game, store)
+
+        # Reviews API — review summary + user score (more reliable than store)
+        if reviews:
+            review_data = extract_review_data(reviews)
+            if review_data:
+                summary, score, total = review_data
+                if not game.review_summary:
+                    game.review_summary = summary
+                if score > 0:
+                    await self._upsert_steam_user_rating(game, score, total)
 
     # ── Companies ──────────────────────────────────────────────────
 
@@ -158,11 +173,9 @@ class SteamHydrator:
 
     # ── Ratings ────────────────────────────────────────────────────
 
-    async def _upsert_steam_user_rating(self, game: Game, store: dict) -> None:
-        score_data = extract_review_score(store)
-        if score_data is None:
-            return
-        review_score, review_count = score_data
+    async def _upsert_steam_user_rating(
+        self, game: Game, review_score: int, review_count: int
+    ) -> None:
         if review_score <= 0:
             return
 

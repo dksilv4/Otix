@@ -38,15 +38,18 @@ class SteamProvider(BaseProvider):
 
     # ── Player counts ────────────────────────────────────────────────
 
-    async def get_current_players(self, app_id: int) -> dict[str, JSONValue]:
+    async def get_current_players(self, app_id: int) -> dict[str, JSONValue] | None:
         """Get current concurrent player count for an app.
 
         Returns: {"player_count": 123456, "result": 1}
+        Returns None if the app ID doesn't exist on Steam (404).
         """
         response = await self._get(
             "https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/",
             params={"appid": app_id},
         )
+        if response.status_code == 404:
+            return None
         if response.status_code != 200:
             raise SteamError(f"Steam player count failed: {response.status_code}")
         return response.json()
@@ -70,6 +73,23 @@ class SteamProvider(BaseProvider):
         if not app_data.get("success"):
             return None
         return app_data.get("data")
+
+    # ── App reviews ───────────────────────────────────────────────────
+
+    async def get_app_reviews(self, app_id: int) -> dict[str, JSONValue]:
+        """Get review summary for an app from the Steam reviews API.
+
+        Returns the full reviews JSON response, which includes a
+        ``query_summary`` block with review_score, review_score_desc,
+        total_positive, total_negative, and total_reviews.
+        """
+        response = await self._get(
+            "https://store.steampowered.com/appreviews/%d" % app_id,
+            params={"json": 1, "filter": "summary", "language": "all", "num_per_page": 0},
+        )
+        if response.status_code != 200:
+            raise SteamError(f"Steam reviews failed: {response.status_code}")
+        return response.json()
 
     # ── Store search ──────────────────────────────────────────────────
 

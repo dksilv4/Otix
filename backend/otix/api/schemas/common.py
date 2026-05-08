@@ -12,6 +12,7 @@ class PaginatedResponse(BaseModel):
     items: list
     next_cursor: str | None = None
     has_more: bool = False
+    total: int | None = None
 
 
 class ErrorResponse(BaseModel):

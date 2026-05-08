@@ -53,6 +53,22 @@ def extract_review_summary(store_data: dict[str, JSONValue]) -> str | None:
     return None
 
 
+def extract_review_data(reviews_json: dict[str, JSONValue]) -> tuple[str, int, int] | None:
+    """Extract (review_score_desc, review_score, total_reviews) from Steam reviews API.
+
+    review_score is scaled 1-10 from the API; we convert to 0-100.
+    """
+    qs = reviews_json.get("query_summary")
+    if not isinstance(qs, dict):
+        return None
+    desc = qs.get("review_score_desc")
+    score = qs.get("review_score")
+    total = qs.get("total_reviews")
+    if isinstance(desc, str) and isinstance(score, (int, float)) and isinstance(total, (int, float)):
+        return str(desc), int(score) * 10, int(total)
+    return None
+
+
 def extract_review_score(store_data: dict[str, JSONValue]) -> tuple[int, int] | None:
     """Returns (review_score, total_reviews) from Steam user reviews."""
     score = store_data.get("review_score")

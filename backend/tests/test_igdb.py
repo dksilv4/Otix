@@ -772,3 +772,96 @@ class TestHydrateModes:
 
         await igdb_hydrator.hydrate_modes(item, igdb_minimal_raw)
         mock_db_session.add.assert_not_called()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Client tests — IGDBProvider
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestIGDBProviderSearchGames:
+    async def test_search_games_escapes_quotes(self, fakeredis):
+        """Quotes in the query should be escaped."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
+
+        await provider.search_games('test "query"')
+
+        call_body = provider._post.call_args.kwargs["content"]
+        assert 'test \\"query\\"' in call_body
+        assert "search" in call_body
+        await provider.http.aclose()
+
+    async def test_search_games_returns_results(self, fakeredis):
+        """Should return parsed JSON results."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        mock_results = [{"id": 1942, "name": "The Witcher 3"}]
+        provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=mock_results)))
+
+        results = await provider.search_games("witcher")
+
+        assert results == mock_results
+        assert len(results) == 1
+        await provider.http.aclose()
+
+    async def test_search_games_includes_fields(self, fakeredis):
+        """Should include the fields parameter in the query body."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
+
+        await provider.search_games("zelda", fields="id,name,cover.url")
+
+        call_body = provider._post.call_args.kwargs["content"]
+        assert "fields id,name,cover.url" in call_body
+        await provider.http.aclose()
+
+    async def test_search_games_default_limit(self, fakeredis):
+        """Should default to limit 50."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
+
+        await provider.search_games("test")
+
+        call_body = provider._post.call_args.kwargs["content"]
+        assert "limit 50" in call_body
+        await provider.http.aclose()
+
+    async def test_search_games_custom_limit(self, fakeredis):
+        """Should use custom limit when provided."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
+
+        await provider.search_games("test", limit=10)
+
+        call_body = provider._post.call_args.kwargs["content"]
+        assert "limit 10" in call_body
+        await provider.http.aclose()
+
+    async def test_search_games_raises_on_error(self, fakeredis):
+        """Should raise IGDBError on non-200 response."""
+        import httpx
+        from unittest.mock import MagicMock
+
+        from otix.providers.igdb.client import IGDBError
+
+        provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
+        provider._post = AsyncMock(return_value=MagicMock(status_code=400, json=MagicMock(return_value={})))
+
+        with pytest.raises(IGDBError, match="IGDB search query failed"):
+            await provider.search_games("test")
+        await provider.http.aclose()

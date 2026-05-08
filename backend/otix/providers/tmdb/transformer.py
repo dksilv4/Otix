@@ -38,7 +38,7 @@ def to_media_item(raw: dict[str, JSONValue], media_type: str) -> MediaItem:
         overview=raw.get("overview"),
         slug=slug,
         poster_url=_image_url(raw.get("poster_path")),
-        backdrop_url=_image_url(raw.get("backdrop_path")),
+        backdrop_url=_image_url(raw.get("backdrop_path"), "w1280"),
         release_date=_parse_date(raw.get("release_date") or raw.get("first_air_date")),
         popularity=raw.get("popularity", 0.0),
         original_language=raw.get("original_language"),
@@ -64,6 +64,7 @@ def to_show(raw: dict[str, JSONValue]) -> Show:
         last_air_date=_parse_date(raw.get("last_air_date")),
         number_of_seasons=raw.get("number_of_seasons"),
         number_of_episodes=raw.get("number_of_episodes"),
+        is_anime=_is_anime(raw),
     )
     show.media_item = to_media_item(raw, "show")
 
@@ -93,6 +94,7 @@ def _to_episode(raw: dict[str, JSONValue]) -> Episode:
         overview=raw.get("overview"),
         runtime=raw.get("runtime"),
         air_date=_parse_date(raw.get("air_date")),
+        still_url=_image_url(raw.get("still_path")),
     )
 
 
@@ -143,4 +145,7 @@ def _slugify(title: str) -> str:
 
 def _is_anime(raw: dict[str, JSONValue]) -> bool:
     keywords = [k.get("name", "").lower() for k in raw.get("keywords", {}).get("keywords", [])]
-    return "anime" in raw.get("original_language", "") or "anime" in keywords
+    if "anime" in raw.get("original_language", "") or "anime" in keywords:
+        return True
+    genres = [g.get("name", "").lower() for g in raw.get("genres", [])]
+    return raw.get("original_language") == "ja" and "animation" in genres

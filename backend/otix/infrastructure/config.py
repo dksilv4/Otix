@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     steamgrid_request_timeout_seconds: int = 15
     steamgrid_global_rps_limit: int = 2
 
+    # Embeddings (FastEmbed local model)
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_dimension: int = 384
+
     # Email
     resend_api_key: str = ""
     email_from: str = "admin@diogodasilva.com"

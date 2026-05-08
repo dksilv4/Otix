@@ -1,0 +1,145 @@
+/* ═══════════════════════════════════════════════
+   DK UI — Design Language Tokens
+   Principles: clarity through contrast, not outlines.
+   Depth through light, not lines.
+   ═══════════════════════════════════════════════ */
+
+/* ── Rule 1: No borders ──
+   Use shadow, background contrast, or elevation to separate elements.
+   Borders reserved for: form validation states, focus rings, input affordance. */
+
+/* ── Rule 2: Surfaces stack with contrast ──
+   Each elevation level is slightly lighter (light mode) or darker (dark mode).
+   No border needed to distinguish layers. */
+
+/* ── Rule 3: Shadows are ambient, not harsh ──
+   Multiple layered shadows at low opacity. Never a single hard box-shadow. */
+
+/* ═══════════════════════════════════════════════
+   Surface Tokens
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-surface-root: oklch(0.955 0 0);
+  --dk-surface-base: oklch(0.985 0 0);
+  --dk-surface-raised: oklch(1 0 0);
+  --dk-surface-overlay: oklch(1 0 0);
+  --dk-surface-glass: oklch(1 0 0 / 0.06);
+  --dk-surface-glass-hover: oklch(1 0 0 / 0.12);
+  --dk-surface-ghost-hover: oklch(0 0 0 / 0.06);
+  --dk-surface-ghost-active: oklch(0 0 0 / 0.1);
+}
+
+[data-theme='dark'] {
+  --dk-surface-root: oklch(0.14 0 0);
+  --dk-surface-base: oklch(0.18 0 0);
+  --dk-surface-raised: oklch(0.22 0 0);
+  --dk-surface-overlay: oklch(0.25 0 0);
+  --dk-surface-glass: oklch(1 0 0 / 0.04);
+  --dk-surface-glass-hover: oklch(1 0 0 / 0.08);
+  --dk-surface-ghost-hover: oklch(1 0 0 / 0.06);
+  --dk-surface-ghost-active: oklch(1 0 0 / 0.1);
+}
+
+/* ═══════════════════════════════════════════════
+   Elevation (Shadow) Scale
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-shadow-none: 0 0 0 0 transparent;
+  --dk-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.06);
+  --dk-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.05);
+  --dk-shadow-md: 0 4px 6px oklch(0 0 0 / 0.06), 0 2px 4px oklch(0 0 0 / 0.05);
+  --dk-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.1), 0 2px 8px oklch(0 0 0 / 0.06);
+  --dk-shadow-xl: 0 16px 48px oklch(0 0 0 / 0.12), 0 4px 16px oklch(0 0 0 / 0.08);
+  --dk-shadow-glass: inset 0 1px 0 oklch(1 0 0 / 0.1), 0 8px 32px oklch(0 0 0 / 0.14);
+  --dk-shadow-dialog: 0 24px 80px oklch(0 0 0 / 0.22), 0 8px 32px oklch(0 0 0 / 0.14);
+}
+
+[data-theme='dark'] {
+  --dk-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.2);
+  --dk-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.3), 0 1px 2px oklch(0 0 0 / 0.2);
+  --dk-shadow-md: 0 4px 6px oklch(0 0 0 / 0.25), 0 2px 4px oklch(0 0 0 / 0.2);
+  --dk-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.4), 0 2px 8px oklch(0 0 0 / 0.2);
+  --dk-shadow-xl: 0 16px 48px oklch(0 0 0 / 0.5), 0 4px 16px oklch(0 0 0 / 0.3);
+  --dk-shadow-glass: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 8px 32px oklch(0 0 0 / 0.5);
+  --dk-shadow-dialog: 0 24px 80px oklch(0 0 0 / 0.6), 0 8px 32px oklch(0 0 0 / 0.4);
+}
+
+/* ═══════════════════════════════════════════════
+   Radius Scale
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-radius-sm: 0.375rem;
+  --dk-radius-md: 0.5rem;
+  --dk-radius-lg: 0.75rem;
+  --dk-radius-xl: 1rem;
+  --dk-radius-2xl: 1.25rem;
+  --dk-radius-3xl: 1.5rem;
+  --dk-radius-full: 9999px;
+}
+
+/* ═══════════════════════════════════════════════
+   Animation Tokens
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dk-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dk-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dk-duration-fast: 150ms;
+  --dk-duration-normal: 200ms;
+  --dk-duration-slow: 300ms;
+  --dk-duration-page: 500ms;
+}
+
+/* ═══════════════════════════════════════════════
+   Z-Index Scale
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-z-base: 0;
+  --dk-z-raised: 10;
+  --dk-z-dropdown: 100;
+  --dk-z-sticky: 200;
+  --dk-z-overlay: 300;
+  --dk-z-modal: 400;
+  --dk-z-toast: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   Focus Ring
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-ring-color: oklch(0.705 0.213 47.604 / 0.5);
+  --dk-ring-width: 2px;
+  --dk-ring-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   Typography
+   ═══════════════════════════════════════════════ */
+:root {
+  --dk-font-sans: system-ui, -apple-system, sans-serif;
+  --dk-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --dk-text-xs: 0.75rem;
+  --dk-text-sm: 0.875rem;
+  --dk-text-base: 1rem;
+  --dk-text-lg: 1.125rem;
+  --dk-text-xl: 1.25rem;
+  --dk-text-2xl: 1.5rem;
+  --dk-text-3xl: 1.875rem;
+  --dk-text-4xl: 2.25rem;
+  --dk-text-5xl: 3rem;
+
+  --dk-font-normal: 400;
+  --dk-font-medium: 500;
+  --dk-font-semibold: 600;
+  --dk-font-bold: 700;
+  --dk-font-extrabold: 800;
+
+  --dk-leading-tight: 1.25;
+  --dk-leading-normal: 1.5;
+  --dk-leading-relaxed: 1.625;
+
+  --dk-tracking-tight: -0.03em;
+  --dk-tracking-normal: 0;
+  --dk-tracking-wide: 0.05em;
+}

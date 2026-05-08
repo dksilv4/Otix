@@ -1,0 +1,344 @@
+import { useState } from "react"
+import { useParams, useNavigate } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import {
+  PencilIcon,
+  TrashIcon,
+  ShareIcon,
+  LockIcon,
+  PlusIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { MediaCard } from "@ui/molecules/media-card"
+import { MediaGrid } from "@ui/molecules/media-grid"
+import { SearchField } from "@ui/molecules/search-field"
+import { DkTabs, DkTabList, DkTab } from "@/features/dk-ui/molecules/tabs"
+import { useAuth } from "@/features/auth/auth-provider"
+import { mediaQueries, type MediaItemSummary } from "@/features/media/media-queries"
+import {
+  useListDetail,
+  useUpdateList,
+  useDeleteList,
+  useRemoveFromList,
+  useAddToList,
+} from "../list-queries"
+import { ListComposer } from "./list-composer"
+
+const TYPE_TABS = [
+  { value: "all", label: "All" },
+  { value: "movie", label: "Movies" },
+  { value: "show", label: "Shows" },
+  { value: "game", label: "Games" },
+]
+
+export function ListDetail() {
+  const { listId } = useParams({ from: "/list/$listId" })
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const { data: list, isLoading, isError } = useListDetail(listId)
+  const updateList = useUpdateList()
+  const deleteList = useDeleteList()
+  const removeItem = useRemoveFromList()
+  const addToList = useAddToList()
+
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [addingMode, setAddingMode] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchType, setSearchType] = useState<string>("all")
+
+  const itemIds = new Set(list?.items.map((i) => i.id) ?? [])
+
+  const {
+    data: searchData,
+    isFetching: searchLoading,
+  } = useQuery({
+    ...mediaQueries.search(
+      searchQuery,
+      searchType === "all" ? undefined : searchType,
+    ),
+    enabled: addingMode && searchQuery.length > 0,
+  })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="h-8 w-48 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+        <MediaGrid>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+            />
+          ))}
+        </MediaGrid>
+      </div>
+    )
+  }
+
+  if (isError || !list) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-muted-foreground">List not found.</p>
+      </div>
+    )
+  }
+
+  const isOwner = user?.id === list.userId
+  const searchItems = searchData?.items ?? []
+
+  async function handleDelete() {
+    if (!confirm("Delete this list?")) return
+    await deleteList.mutateAsync(listId)
+    navigate({ to: "/library/lists" })
+  }
+
+  async function handleRemoveItem(mediaItemId: string) {
+    await removeItem.mutateAsync({ listId, mediaItemId })
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground">{list.name}</h1>
+            {list.isPublic ? (
+              <ShareIcon className="h-4 w-4 text-emerald-400" />
+            ) : (
+              <LockIcon className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          {list.description && (
+            <p className="mt-2 text-sm text-muted-foreground max-w-xl">
+              {list.description}
+            </p>
+          )}
+        </div>
+
+        {isOwner && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAddingMode(!addingMode)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                "border border-white/[0.06] bg-[var(--dk-surface-base)]",
+                "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+              )}
+            >
+              {addingMode ? (
+                <>
+                  <XIcon className="h-4 w-4" />
+                  Done
+                </>
+              ) : (
+                <>
+                  <PlusIcon className="h-4 w-4" />
+                  Add Items
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setComposerOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                "border border-white/[0.06] bg-[var(--dk-surface-base)]",
+                "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+              )}
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                "border border-white/[0.06] bg-red-500/10 text-red-400",
+                "hover:bg-red-500/20 transition-colors",
+              )}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Search panel */}
+      {addingMode && (
+        <div className="space-y-6">
+          <div
+            className={cn(
+              "max-w-2xl p-4 rounded-[2rem]",
+              "bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]",
+              "backdrop-blur-xl shadow-[var(--dk-shadow-glass)]",
+            )}
+          >
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search movies, shows, or games..."
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex justify-center">
+            <DkTabs
+              defaultValue="all"
+              value={searchType}
+              onValueChange={setSearchType}
+            >
+              <DkTabList>
+                {TYPE_TABS.map((tab) => (
+                  <DkTab key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </DkTab>
+                ))}
+              </DkTabList>
+            </DkTabs>
+          </div>
+
+          {!searchQuery ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <SearchIcon className="h-8 w-8 mb-3 opacity-40" />
+              <p className="text-sm">Search for titles to add</p>
+            </div>
+          ) : searchLoading ? (
+            <MediaGrid>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+                />
+              ))}
+            </MediaGrid>
+          ) : searchItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <p className="text-sm">No results found</p>
+            </div>
+          ) : (
+            <MediaGrid>
+              {searchItems.map((item) => {
+                const alreadyAdded = itemIds.has(item.id)
+                return (
+                  <div key={item.id} className="relative group/item">
+                    <MediaCard
+                      id={item.id}
+                      mediaType={item.mediaType as "movie" | "show" | "game"}
+                      title={item.title}
+                      posterUrl={item.posterUrl}
+                      textlessPosterUrl={item.textlessPosterUrl}
+                      logoUrl={item.logoUrl}
+                      releaseDate={item.releaseDate}
+                    />
+                    {alreadyAdded ? (
+                      <span
+                        className={cn(
+                          "absolute top-2 right-2 rounded-full px-2.5 py-1",
+                          "bg-emerald-500/20 text-emerald-400 text-xs font-medium",
+                          "backdrop-blur-sm",
+                        )}
+                      >
+                        Added
+                      </span>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          addToList.mutate({ listId, mediaItemId: item.id })
+                        }}
+                        className={cn(
+                          "absolute top-2 right-2 rounded-full p-2",
+                          "bg-black/70 text-white/70 hover:text-white hover:bg-primary/80",
+                          "opacity-0 group-hover/item:opacity-100 transition-opacity",
+                          "backdrop-blur-sm",
+                        )}
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </MediaGrid>
+          )}
+        </div>
+      )}
+
+      {/* Items */}
+      {!addingMode && (
+        <>
+          {list.items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-lg font-semibold text-foreground">
+                This list is empty
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Find media you love and add it to this list.
+              </p>
+              {isOwner && (
+                <button
+                  onClick={() => setAddingMode(true)}
+                  className={cn(
+                    "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
+                    "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
+                  )}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add Items
+                </button>
+              )}
+            </div>
+          ) : (
+            <MediaGrid>
+              {list.items.map((item) => (
+                <div key={item.id} className="relative group/item">
+                  <MediaCard
+                    id={item.id}
+                    mediaType={item.mediaType as "movie" | "show" | "game"}
+                    title={item.title}
+                    posterUrl={item.posterUrl}
+                    textlessPosterUrl={item.textlessPosterUrl}
+                    logoUrl={item.logoUrl}
+                    releaseDate={item.releaseDate}
+                  />
+                  {isOwner && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handleRemoveItem(item.id)
+                      }}
+                      className={cn(
+                        "absolute top-2 right-2 rounded-full p-1.5",
+                        "bg-black/70 text-white/70 hover:text-red-400",
+                        "opacity-0 group-hover/item:opacity-100 transition-opacity",
+                      )}
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </MediaGrid>
+          )}
+        </>
+      )}
+
+      {/* Edit dialog */}
+      <ListComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onSave={(data) => {
+          updateList.mutate(
+            { listId, ...data },
+            { onSuccess: () => setComposerOpen(false) },
+          )
+        }}
+        initial={list}
+        isSaving={updateList.isPending}
+      />
+    </div>
+  )
+}

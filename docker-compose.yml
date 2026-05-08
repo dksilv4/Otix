@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: otix_dev
       POSTGRES_USER: otix
@@ -63,7 +63,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel WARNING
 
   worker-slow:
     build:
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2 -n otix-slow@%h --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2 -n otix-slow@%h --loglevel WARNING
 
   worker-ccu:
     build:
@@ -103,7 +103,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q ccu -c 1 -n otix-ccu@%h --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app worker -Q ccu -c 1 -n otix-ccu@%h --loglevel WARNING
 
   beat:
     build:
@@ -122,7 +122,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app beat --loglevel INFO
+    command: celery -A otix.infrastructure.celery.app beat --loglevel WARNING
 
 volumes:
   pgdata:

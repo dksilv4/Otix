@@ -20,9 +20,9 @@ from urllib.parse import urlparse
 
 import redis.asyncio as aioredis
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, text
 
-from otix.domain.media import Episode, ExternalID, Game, MediaItem, Season
+from otix.domain.media import Episode, ExternalID, Game, MediaItem, Season, Show
 
 from otix.domain.people import Person
 from otix.domain.sync import ProviderState
@@ -32,6 +32,7 @@ from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_ENTITIES_TOTAL, track_entity_duration
+from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.hydrator import FanartHydrator
@@ -46,7 +47,7 @@ from otix.providers.steamgrid.client import SteamGridDBProvider
 from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.hydrator import TMDBHydrator
-from otix.providers.tmdb.transformer import _parse_date, to_movie, to_person, to_show
+from otix.providers.tmdb.transformer import _image_url, _parse_date, to_movie, to_person, to_show
 
 logger = structlog.get_logger()
 
@@ -478,8 +479,19 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
             item.next_sync_at = _compute_next_sync_at("movie", raw, 0)
             await session.commit()
 
-            logger.info("tmdb movie synced", tmdb_id=tmdb_id, otix_id=item.id)
+            logger.info("tmdb movie synced",
+                title=item.title, media_type="movie", otix_id=item.id, tmdb_id=tmdb_id,
+                checklist={
+                    "genres": "done", "credits": "done", "images": "done",
+                    "videos": "done", "releases": "done", "ratings": "done",
+                    "external_ids": "done", "collection": "done",
+                    "embedding": "enqueued",
+                },
+            )
             SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type="movie", status="success")
+            await _progress_incr("movie_synced")
+            app.send_task("embedding.generate", args=[item.id])
+            await _progress_incr("embedding_enqueued")
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -501,32 +513,94 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             raw = await provider.get_show(tmdb_id)
             content_hash = _compute_hash(raw)
 
-            # Hash matched — escalate and skip processing
+            # Hash matched — escalate and skip processing.
+            # Exception: if the show has seasons but zero episodes, the previous
+            # sync may have run before per-season episode fetching was added.
+            # In that case force a full re-sync to backfill episodes.
             if ext_id is not None and ext_id.content_hash == content_hash:
-                ext_id.hash_match_count += 1
-                media_item.next_sync_at = _compute_next_sync_at(
-                    "show", raw, ext_id.hash_match_count
-                )
-                await session.commit()
-                logger.debug(
-                    "hash matched, skipping processing",
-                    tmdb_id=tmdb_id,
-                    match_count=ext_id.hash_match_count,
-                )
-                return None
+                skip = True
+                if media_item is not None:
+                    season_count = await session.scalar(
+                        select(func.count()).select_from(Season).where(Season.show_id == media_item.id)
+                    )
+                    if season_count and season_count > 0:
+                        episode_count = await session.scalar(
+                            select(func.count()).select_from(Episode).join(Season).where(Season.show_id == media_item.id)
+                        )
+                        if not episode_count:
+                            logger.info(
+                                "hash matched but episodes missing, forcing re-sync",
+                                tmdb_id=tmdb_id,
+                                season_count=season_count,
+                            )
+                            skip = False
+                if skip:
+                    ext_id.hash_match_count += 1
+                    media_item.next_sync_at = _compute_next_sync_at(
+                        "show", raw, ext_id.hash_match_count
+                    )
+                    await session.commit()
+                    logger.debug(
+                        "hash matched, skipping processing",
+                        tmdb_id=tmdb_id,
+                        match_count=ext_id.hash_match_count,
+                    )
+                    return None
 
             # Process: transform → upsert → hydrate
             show = to_show(raw)
             item = show.media_item
 
             if media_item is not None:
-                item.id = media_item.id
-                show.media_item_id = media_item.id  # keep PK/FK in sync after id swap
-                await session.merge(item)
-                # Delete old seasons (cascade deletes episodes) so re-sync starts clean
+                # Update existing media_item in-place
+                media_item.title = item.title
+                media_item.overview = item.overview
+                media_item.slug = item.slug
+                media_item.poster_url = item.poster_url
+                media_item.backdrop_url = item.backdrop_url
+                media_item.release_date = item.release_date
+                media_item.popularity = item.popularity
+                media_item.original_language = item.original_language
+
+                # Update existing Show in-place
+                existing_show = await session.get(Show, media_item.id)
+                if existing_show is not None:
+                    existing_show.status = show.status
+                    existing_show.first_air_date = show.first_air_date
+                    existing_show.last_air_date = show.last_air_date
+                    existing_show.number_of_seasons = show.number_of_seasons
+                    existing_show.number_of_episodes = show.number_of_episodes
+                    existing_show.is_anime = show.is_anime
+                else:
+                    show.media_item_id = media_item.id
+                    show.media_item = media_item  # keep relationship consistent with FK
+                    session.add(show)
+                    existing_show = show
+
+                # Delete old seasons (cascade deletes episodes) and add fresh ones
                 await session.execute(
                     delete(Season).where(Season.show_id == media_item.id)
                 )
+                await session.flush()
+
+                # Create new Season objects directly from raw data with correct show_id
+                new_seasons: list[Season] = []
+                for season_data in raw.get("seasons", []):
+                    sn = season_data.get("season_number", 0)
+                    if sn <= 0:
+                        continue
+                    s = Season(
+                        season_number=sn,
+                        name=season_data.get("name"),
+                        overview=season_data.get("overview"),
+                        poster_url=_image_url(season_data.get("poster_path")),
+                        show_id=media_item.id,
+                    )
+                    session.add(s)
+                    new_seasons.append(s)
+                await session.flush()
+
+                item = media_item
             else:
                 session.add(item)
                 await session.flush()
@@ -536,14 +610,18 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
                     media_item_id=item.id,
                 )
                 session.add(ext_id)
-
-            session.add(show)
-            await session.flush()
+                session.add(show)
+                await session.flush()
+                for s in show.seasons:
+                    s.show_id = show.media_item_id
+                new_seasons = list(show.seasons)
 
             # Fetch episodes for each season via individual API calls.
             # TMDB's /tv/{id} endpoint returns seasons without episodes, so we
             # must call /tv/{id}/season/{season_number} for every season.
-            for season in show.seasons:
+            total_episodes = 0
+            seasons_to_fetch = new_seasons if media_item is not None else show.seasons
+            for season in seasons_to_fetch:
                 try:
                     season_raw = await provider.get_season(tmdb_id, season.season_number)
                 except Exception:
@@ -563,8 +641,10 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
                             overview=ep_data.get("overview"),
                             runtime=ep_data.get("runtime"),
                             air_date=_parse_date(ep_data.get("air_date")),
+                            still_url=_image_url(ep_data.get("still_path")),
                         )
                     )
+                    total_episodes += 1
 
             await hydrator.hydrate_genres(item, raw)
             await hydrator.hydrate_credits(item, raw)
@@ -580,8 +660,20 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             item.next_sync_at = _compute_next_sync_at("show", raw, 0)
             await session.commit()
 
-            logger.info("tmdb show synced", tmdb_id=tmdb_id, otix_id=item.id)
+            logger.info("tmdb show synced",
+                title=item.title, media_type="show", otix_id=item.id, tmdb_id=tmdb_id,
+                checklist={
+                    "seasons": str(len([s for s in (new_seasons if media_item is not None else show.seasons) if s.season_number > 0])),
+                    "episodes": str(total_episodes),
+                    "genres": "done", "credits": "done", "images": "done",
+                    "videos": "done", "releases": "done", "ratings": "done",
+                    "external_ids": "done", "embedding": "enqueued",
+                },
+            )
             SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type="show", status="success")
+            await _progress_incr("show_synced")
+            app.send_task("embedding.generate", args=[item.id])
+            await _progress_incr("embedding_enqueued")
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -641,8 +733,12 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
             person.next_sync_at = _compute_next_sync_at("person", raw, 0)
             await session.commit()
 
-            logger.info("tmdb person synced", tmdb_id=tmdb_id, otix_id=person.id)
+            logger.info("tmdb person synced",
+                name=person.name, media_type="person", otix_id=person.id, tmdb_id=tmdb_id,
+                checklist={"images": "done", "filmography": "enqueued"},
+            )
             SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type="person", status="success")
+            await _progress_incr("person_synced")
 
             # Cascade: enqueue media syncs for the person's filmography
             credits_result = await _sync_person_credits(tmdb_id, provider)
@@ -941,7 +1037,10 @@ async def _sync_fanart_movie(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
-            logger.info("fanart movie images added", otix_id=media_item_id)
+            logger.info("fanart movie images added",
+                title=media_item.title, media_type="movie", otix_id=media_item_id,
+            )
+        await _progress_incr("fanart_enqueued")
         return {"otix_id": media_item_id, "added": added}
 
 
@@ -959,7 +1058,10 @@ async def _sync_fanart_show(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
-            logger.info("fanart show images added", otix_id=media_item_id)
+            logger.info("fanart show images added",
+                title=media_item.title, media_type="show", otix_id=media_item_id,
+            )
+        await _progress_incr("fanart_enqueued")
         return {"otix_id": media_item_id, "added": added}
 
 
@@ -990,7 +1092,10 @@ async def _sync_fanart_game(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
-            logger.info("fanart game images added", otix_id=media_item_id)
+            logger.info("fanart game images added",
+                title=media_item.title, media_type="game", otix_id=media_item_id,
+            )
+        await _progress_incr("fanart_enqueued")
         return {"otix_id": media_item_id, "added": added}
 
 
@@ -1024,7 +1129,10 @@ async def _sync_omdb_ratings(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
-            logger.info("omdb ratings updated", otix_id=media_item_id)
+            logger.info("omdb ratings updated",
+                title=media_item.title, media_type=media_item.media_type, otix_id=media_item_id,
+            )
+        await _progress_incr("omdb_enqueued")
         return {"otix_id": media_item_id, "added": added}
 
 
@@ -1148,17 +1256,41 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         item.next_sync_at = _compute_game_next_sync_at(raw, 0)
         await session.commit()
 
-        logger.info("igdb game synced", igdb_id=igdb_id, otix_id=item.id)
-        SYNC_ENTITIES_TOTAL.inc(provider="igdb", entity_type="game", status="success")
+        steam_enqueued = False
+        steamgrid_enqueued = False
 
-        # Cascade: enqueue SteamGridDB artwork enrichment for all platforms
+        # Cascade: enqueue Steam store data + SteamGridDB artwork
         if game.steam_app_id:
+            app.send_task("sync.steam.update_app", args=[game.steam_app_id])
             app.send_task("sync.steamgrid.game", args=[game.steam_app_id])
+            steam_enqueued = True
+            steamgrid_enqueued = True
         if game.store_ids:
             for platform, pid in game.store_ids.items():
                 if platform != "steam":  # steam handled above
                     app.send_task("sync.steamgrid.game_by_platform", args=[platform, pid])
+                    steamgrid_enqueued = True
 
+        logger.info("igdb game synced",
+            title=item.title, media_type="game", otix_id=item.id, igdb_id=igdb_id,
+            checklist={
+                "genres": "done", "images": "done", "videos": "done",
+                "ratings": "done", "companies": "done",
+                "platforms": "done", "game_modes": "done",
+                "steam": "enqueued" if steam_enqueued else None,
+                "steamgrid": "enqueued" if steamgrid_enqueued else None,
+                "embedding": "enqueued",
+            },
+        )
+        SYNC_ENTITIES_TOTAL.inc(provider="igdb", entity_type="game", status="success")
+        await _progress_incr("game_synced")
+        if steam_enqueued:
+            await _progress_incr("steam_enqueued")
+        if steamgrid_enqueued:
+            await _progress_incr("steamgrid_enqueued")
+
+        app.send_task("embedding.generate", args=[item.id])
+        await _progress_incr("embedding_enqueued")
         return {"otix_id": item.id, "title": item.title, "igdb_id": igdb_id}
 
 
@@ -1345,9 +1477,10 @@ def sync_steam_update_app_task(self, steam_app_id: int) -> dict | None:
 async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
     async with async_session() as session:
         from sqlalchemy import select
+        from sqlalchemy.orm import joinedload
 
         game = await session.scalar(
-            select(Game).where(Game.steam_app_id == steam_app_id)
+            select(Game).options(joinedload(Game.media_item)).where(Game.steam_app_id == steam_app_id)
         )
         if game is None:
             logger.debug("no game found for steam app", steam_app_id=steam_app_id)
@@ -1362,10 +1495,13 @@ async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
         await session.commit()
         logger.info(
             "steam app updated",
+            title=game.media_item.title if game.media_item else None,
+            media_type="game",
             steam_app_id=steam_app_id,
             otix_id=game.media_item_id,
             current_players=game.current_players,
         )
+        await _progress_incr("steam_enqueued")
         return {
             "otix_id": game.media_item_id,
             "steam_app_id": steam_app_id,
@@ -1410,15 +1546,17 @@ async def _sync_steamgrid_game_by_platform(
     platform: str, platform_id: str | int,
 ) -> dict | None:
     async with async_session() as session:
+        from sqlalchemy.orm import joinedload
+
         # Find the Game by platform ID
         if platform == "steam":
             game = await session.scalar(
-                select(Game).where(Game.steam_app_id == platform_id)
+                select(Game).options(joinedload(Game.media_item)).where(Game.steam_app_id == platform_id)
             )
         else:
             # Query into store_ids JSONB for non-Steam platforms
             game = await session.scalar(
-                select(Game).where(
+                select(Game).options(joinedload(Game.media_item)).where(
                     Game.store_ids[platform].as_string() == str(platform_id)
                 )
             )
@@ -1439,14 +1577,314 @@ async def _sync_steamgrid_game_by_platform(
 
         logger.info(
             "steamgrid game enriched",
+            title=game.media_item.title if game.media_item else None,
+            media_type="game",
             platform=platform,
             platform_id=platform_id,
             otix_id=game.media_item_id,
             assets_added=added,
         )
+        await _progress_incr("steamgrid_enqueued")
         return {
             "otix_id": game.media_item_id,
             "platform": platform,
             "platform_id": platform_id,
             "assets_added": added,
         }
+
+
+# ── Search backfill ───────────────────────────────────────────────────
+
+BACKFILL_RESULT_THRESHOLD = 20
+BACKFILL_REDIS_TTL = 300  # 5 minutes
+
+
+def _backfill_query_hash(query: str, media_type: str | None) -> str:
+    """Stable hash for tracking backfill state across tasks."""
+    raw = f"{query.lower().strip()}:{media_type or ''}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+async def _mark_backfill_provider_done(
+    redis: aioredis.Redis, query_hash: str, provider: str, synced: int
+) -> None:
+    """Record that a provider finished syncing items for a query."""
+    key = f"backfill:{query_hash}:{provider}"
+    await redis.set(key, str(synced), ex=BACKFILL_REDIS_TTL)
+
+
+async def _all_backfill_providers_done(
+    redis: aioredis.Redis, query_hash: str, expected_providers: list[str]
+) -> bool:
+    """Check whether every expected provider has finished backfill."""
+    for provider in expected_providers:
+        val = await redis.get(f"backfill:{query_hash}:{provider}")
+        if val is None:
+            return False
+    return True
+
+
+@app.task(
+    name="search.backfill",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=60,
+    queue="fast",
+)
+def search_backfill_task(self, query: str, media_type: str | None = None) -> dict:
+    """Search external providers for missing media and enqueue sync tasks.
+
+    Runs TMDB (movies + shows) and IGDB (games) independently so a failure
+    in one provider never blocks the others. Individual sync tasks are
+    enqueued to the fast queue for maximum parallel throughput.
+    """
+    return run_async(_search_backfill(query, media_type))
+
+
+async def _search_backfill(query: str, media_type: str | None = None) -> dict:
+    """Run each provider independently with full error isolation."""
+    redis = await get_redis()
+    query_hash = _backfill_query_hash(query, media_type)
+    results: dict[str, dict] = {}
+
+    providers = []
+
+    if media_type in (None, "movie"):
+        providers.append(("tmdb_movie", _backfill_tmdb_movies(query, redis, query_hash)))
+    if media_type in (None, "show"):
+        providers.append(("tmdb_show", _backfill_tmdb_shows(query, redis, query_hash)))
+    if media_type in (None, "game"):
+        providers.append(("igdb_game", _backfill_igdb_games(query, redis, query_hash)))
+
+    gathered = await asyncio.gather(
+        *[coro for _, coro in providers],
+        return_exceptions=True,
+    )
+
+    for (name, _), result in zip(providers, gathered):
+        if isinstance(result, Exception):
+            logger.warning("search backfill provider failed", provider=name, error=str(result))
+            results[name] = {"enqueued": 0, "skipped": 0, "error": str(result)}
+        else:
+            results[name] = result
+
+    total_enqueued = sum(v.get("enqueued", 0) for v in results.values())
+    if total_enqueued:
+        logger.info(
+            "search backfill complete",
+            query=query,
+            media_type=media_type,
+            total_enqueued=total_enqueued,
+            breakdown=results,
+        )
+    else:
+        logger.info(
+            "search backfill complete — nothing new",
+            query=query,
+            media_type=media_type,
+            breakdown=results,
+        )
+
+    return {"query": query, "media_type": media_type, "results": results}
+
+
+async def _backfill_tmdb_movies(
+    query: str, redis: aioredis.Redis, query_hash: str
+) -> dict:
+    """Search TMDB for movies, sync missing ones, return summary."""
+    provider = TMDBProvider(redis)
+    ids: set[str] = set()
+
+    try:
+        coros = [provider.search_multi(query, page=p) for p in range(1, 4)]
+        page_data = await asyncio.gather(*coros)
+        for data in page_data:
+            for item in data.get("results", []):
+                if item.get("media_type") == "movie" and item.get("id"):
+                    ids.add(str(item["id"]))
+    except Exception:
+        logger.warning("search backfill tmdb search failed", query=query, exc_info=True)
+        raise
+
+    if not ids:
+        await _mark_backfill_provider_done(redis, query_hash, "tmdb_movie", 0)
+        return {"enqueued": 0, "skipped": 0}
+
+    try:
+        missing = await _filter_missing_ids("tmdb", ids)
+    except Exception:
+        logger.warning("search backfill db filter failed", provider="tmdb_movie", exc_info=True)
+        raise
+
+    enqueued = 0
+    for ext_id in missing:
+        app.send_task("sync.tmdb.movie", args=[int(ext_id)])
+        enqueued += 1
+    await _mark_backfill_provider_done(redis, query_hash, "tmdb_movie", enqueued)
+    return {"enqueued": enqueued, "skipped": len(ids) - enqueued}
+
+
+async def _backfill_tmdb_shows(
+    query: str, redis: aioredis.Redis, query_hash: str
+) -> dict:
+    """Search TMDB for shows, sync missing ones, return summary."""
+    provider = TMDBProvider(redis)
+    ids: set[str] = set()
+
+    try:
+        coros = [provider.search_multi(query, page=p) for p in range(1, 4)]
+        page_data = await asyncio.gather(*coros)
+        for data in page_data:
+            for item in data.get("results", []):
+                if item.get("media_type") == "tv" and item.get("id"):
+                    ids.add(str(item["id"]))
+    except Exception:
+        logger.warning("search backfill tmdb search failed", query=query, exc_info=True)
+        raise
+
+    if not ids:
+        await _mark_backfill_provider_done(redis, query_hash, "tmdb_show", 0)
+        return {"enqueued": 0, "skipped": 0}
+
+    try:
+        missing = await _filter_missing_ids("tmdb", ids)
+    except Exception:
+        logger.warning("search backfill db filter failed", provider="tmdb_show", exc_info=True)
+        raise
+
+    enqueued = 0
+    for ext_id in missing:
+        app.send_task("sync.tmdb.show", args=[int(ext_id)])
+        enqueued += 1
+    await _mark_backfill_provider_done(redis, query_hash, "tmdb_show", enqueued)
+    return {"enqueued": enqueued, "skipped": len(ids) - enqueued}
+
+
+async def _backfill_igdb_games(
+    query: str, redis: aioredis.Redis, query_hash: str
+) -> dict:
+    """Search IGDB for games, sync missing ones, return summary."""
+    provider = IGDBProvider(redis)
+
+    try:
+        raw_games = await provider.search_games(query, limit=60, fields="id")
+    except Exception:
+        logger.warning("search backfill igdb search failed", query=query, exc_info=True)
+        raise
+
+    ids = {str(g["id"]) for g in raw_games if g.get("id")}
+    if not ids:
+        await _mark_backfill_provider_done(redis, query_hash, "igdb_game", 0)
+        return {"enqueued": 0, "skipped": 0}
+
+    try:
+        missing = await _filter_missing_ids("igdb", ids)
+    except Exception:
+        logger.warning("search backfill db filter failed", provider="igdb_game", exc_info=True)
+        raise
+
+    enqueued = 0
+    for ext_id in missing:
+        app.send_task("sync.igdb.game", args=[int(ext_id)])
+        enqueued += 1
+    await _mark_backfill_provider_done(redis, query_hash, "igdb_game", enqueued)
+    return {"enqueued": enqueued, "skipped": len(ids) - enqueued}
+
+
+# ── Embedding generation ──────────────────────────────────────────────
+
+
+@app.task(
+    name="embedding.generate",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    queue="slow",
+)
+def generate_embedding_task(self, media_item_id: str) -> dict | None:
+    """Generate and store an embedding vector for a media item.
+
+    Called after a media item is fully synced (genres, credits, etc. all
+    loaded). Uses a local FastEmbed model — no API key required.
+    """
+    return run_async(_generate_embedding(media_item_id))
+
+
+async def _generate_embedding(media_item_id: str) -> dict | None:
+    from otix.services.embedding_service import EmbeddingService
+
+    async with async_session() as session:
+        from sqlalchemy.orm import selectinload, joinedload
+        from otix.domain.genre import MediaGenre, Genre
+        from otix.domain.people import MediaCredit, Person
+
+        result = await session.scalars(
+            select(MediaItem)
+            .where(MediaItem.id == media_item_id)
+            .options(
+                selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
+                selectinload(MediaItem.credits).joinedload(MediaCredit.person),
+            )
+        )
+        item = result.one_or_none()
+        if not item:
+            logger.warning("embedding: media item not found", id=media_item_id)
+            return None
+
+        service = EmbeddingService()
+        embedding_text = service.build_embedding_text(item)
+
+        try:
+            embedding = await service.embed(embedding_text)
+        except Exception:
+            logger.warning(
+                "embedding generation failed",
+                media_item_id=media_item_id,
+                exc_info=True,
+            )
+            raise
+
+        # Store the embedding vector.
+        col_check = await session.execute(
+            text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
+        )
+        if col_check.scalar_one():
+            from pgvector.sqlalchemy import Vector
+            from sqlalchemy import table, column, update, String
+
+            # Use SQLAlchemy Core with typed column so pgvector binds correctly
+            media_tbl = table(
+                "media_items",
+                column("id", String),
+                column("embedding", Vector(384)),
+            )
+            await session.execute(
+                update(media_tbl)
+                .where(media_tbl.c.id == media_item_id)
+                .values(embedding=embedding)
+            )
+            await session.commit()
+        else:
+            logger.debug("embedding column not available, skipping write", media_item_id=media_item_id)
+
+    logger.info("embedding generated",
+        title=item.title, media_type=item.media_type, media_item_id=media_item_id,
+    )
+    await _progress_incr("embedding_enqueued")
+    return {"media_item_id": media_item_id, "dimension": len(embedding)}
+
+
+async def _filter_missing_ids(provider: str, external_ids: set[str]) -> set[str]:
+    """Return IDs that are NOT in our database (completely new)."""
+    if not external_ids:
+        return set()
+
+    async with async_session() as session:
+        result = await session.scalars(
+            select(ExternalID.external_id).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id.in_(external_ids),
+            )
+        )
+        existing = {r for r in result}
+    return external_ids - existing

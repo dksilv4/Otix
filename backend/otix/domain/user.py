@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
     from otix.domain.interaction import UserMediaInteraction
+    from otix.domain.list import UserList
+    from otix.domain.review import Review
 
 
 class User(Base, TimestampMixin):
@@ -23,8 +25,13 @@ class User(Base, TimestampMixin):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     global_logout_marker: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    background_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
+    reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
+    lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")
     refresh_tokens: Mapped[list[RefreshToken]] = relationship("RefreshToken", back_populates="user")
 
 

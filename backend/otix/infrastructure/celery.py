@@ -145,9 +145,27 @@ app.config_from_object(
                 "task": "maintenance.steam_ccu_batch",
                 "schedule": crontab(minute="*/5"),
             },
+            # Progress summary log (every 60s at off-peak second)
+            "progress-summary": {
+                "task": "maintenance.progress_summary",
+                "schedule": crontab(minute="*"),
+            },
         },
     }
 )
+
+# Suppress SQLAlchemy engine INFO logs. We set the level both here (module
+# import time, catches most cases) and again via worker_process_init (after
+# Celery reconfigures logging post-fork).
+import logging as _logging
+_logging.getLogger("sqlalchemy.engine").setLevel(_logging.WARNING)
+
+import celery.signals
+
+@celery.signals.worker_process_init.connect
+def _suppress_sqlalchemy_logs(**kwargs):
+    _logging.getLogger("sqlalchemy.engine").setLevel(_logging.WARNING)
+
 
 # Register tasks — explicit imports so tasks are guaranteed to be discovered.
 import otix.tasks.sync  # noqa: E402, F811

@@ -24,7 +24,7 @@ class UserMediaInteraction(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "interaction_type IN ('rated', 'watched', 'liked', 'watchlisted', 'played', 'reviewed')",
+            "interaction_type IN ('rated', 'watched', 'liked', 'watchlisted', 'played', 'reviewed', 'started')",
             name="ck_interaction_type",
         ),
     )
