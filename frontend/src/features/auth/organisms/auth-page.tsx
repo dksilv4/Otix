@@ -3,7 +3,6 @@ import { useNavigate, useSearch, useLocation } from '@tanstack/react-router'
 import { LogIn, UserPlus, Loader2, Check } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../auth-provider'
-import { AuthOrbs } from '../atoms/auth-orbs'
 import { AuthHeader } from '../molecules/auth-header'
 import { PasswordField } from '../molecules/password-field'
 import { PasswordStrengthBar } from '../atoms/password-strength-bar'
@@ -200,7 +199,6 @@ export function AuthPage() {
       />
       {/* Subtle gradient overlay for readability */}
       <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
-      <AuthOrbs />
 
       <div
         className={cn(

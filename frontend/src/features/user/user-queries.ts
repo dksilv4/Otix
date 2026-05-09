@@ -26,6 +26,32 @@ export interface ReviewWithUser {
   }
 }
 
+export interface ReviewStats {
+  totalReviews: number
+  ratedCount: number
+  averageRating: number | null
+  distribution: { score: number; count: number }[]
+}
+
+export function computeReviewStats(reviews: { score: number | null }[]): ReviewStats {
+  const scored = reviews.filter((r) => r.score != null)
+  const distribution = Array.from({ length: 10 }, (_, i) => ({
+    score: i + 1,
+    count: 0,
+  }))
+  for (const r of scored) {
+    distribution[(r.score! - 1)].count++
+  }
+  return {
+    totalReviews: reviews.length,
+    ratedCount: scored.length,
+    averageRating: scored.length > 0
+      ? scored.reduce((sum, r) => sum + r.score!, 0) / scored.length
+      : null,
+    distribution,
+  }
+}
+
 export const userQueries = {
   profile: (username: string) =>
     queryOptions({

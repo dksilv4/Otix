@@ -32,7 +32,7 @@ function getPreferredSeason(seasons: SeasonOut[]): number {
   return seasons[seasons.length - 1].seasonNumber
 }
 
-const flipTransition = { duration: 0.38, ease: [0.16, 1, 0.3, 1] }
+const flipTransition = { duration: 0.38, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
 
 export function ShowSection({ show, className }: ShowSectionProps) {
   const seasons = useMemo(() => {

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from otix.domain.interaction import UserMediaInteraction
     from otix.domain.list import UserList
     from otix.domain.review import Review
+    from otix.domain.workout import Workout
 
 
 class User(Base, TimestampMixin):
@@ -32,6 +33,7 @@ class User(Base, TimestampMixin):
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
     lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")
+    workouts: Mapped[list[Workout]] = relationship("Workout", back_populates="user")
     refresh_tokens: Mapped[list[RefreshToken]] = relationship("RefreshToken", back_populates="user")
 
 

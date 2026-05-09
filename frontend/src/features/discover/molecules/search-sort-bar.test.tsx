@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
 
@@ -11,7 +11,7 @@ vi.mock('framer-motion', () => ({
   },
 }))
 
-import { FilterDropdown, SearchSortBar, TYPE_OPTIONS, SORT_OPTIONS } from './search-sort-bar'
+import { FilterDropdown, SearchSortBar, TYPE_OPTIONS } from './search-sort-bar'
 
 describe('FilterDropdown', () => {
   const defaultProps = {

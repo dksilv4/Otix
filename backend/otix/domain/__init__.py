@@ -31,6 +31,7 @@ from otix.domain.media import (
 from otix.domain.people import MediaCredit, Person
 from otix.domain.sync import ProviderState, SyncJob
 from otix.domain.user import RefreshToken, User
+from otix.domain.workout import Exercise, Workout, WorkoutExercise
 
 __all__ = [
     "Collection",
@@ -38,6 +39,7 @@ __all__ = [
     "Company",
 
     "Episode",
+    "Exercise",
     "ExternalID",
     "ExternalRating",
     "Game",
@@ -67,4 +69,6 @@ __all__ = [
     "UserList",
     "UserListItem",
     "UserMediaInteraction",
+    "Workout",
+    "WorkoutExercise",
 ]

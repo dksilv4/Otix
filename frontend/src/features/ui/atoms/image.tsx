@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "./skeleton"
 
 interface ImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  fallback?: string
+  fallback?: ReactNode
 }
 
 function Image({ className, src, alt, fallback, onError, ...props }: ImageProps) {

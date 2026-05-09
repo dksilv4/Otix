@@ -39,7 +39,7 @@ export function MediaCard({
   logoUrl,
   releaseDate,
   avgRating,
-  ratingCount,
+  ratingCount: _ratingCount,
   showTypeBadge = true,
   zoomed = true,
   className,

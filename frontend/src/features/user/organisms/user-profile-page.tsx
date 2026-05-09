@@ -1,16 +1,13 @@
+import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText } from 'lucide-react'
+import { CalendarDays, MessageSquareText, Star, Flame } from 'lucide-react'
+import { Badge } from '@ui/atoms/badge'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
-import { ReviewCard } from '@/features/review/molecules/review-card'
-import { userQueries } from '../user-queries'
 import { Skeleton } from '@ui/atoms/skeleton'
-
-function formatJoinDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-}
+import { cn } from '@/lib/utils'
+import { userQueries, computeReviewStats } from '../user-queries'
 
 const GRADIENTS = [
   ['#0f0c29', '#302b63', '#24243e'],
@@ -30,12 +27,119 @@ function pickGradient(username: string): string {
   return `linear-gradient(160deg, ${a} 0%, ${b} 50%, ${c} 100%)`
 }
 
+function formatJoinDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+// ── Gamification ──
+
+interface UserGamification {
+  level: number
+  xp: number
+  xpToNextLevel: number
+  xpProgress: number // 0-1
+  streak: number
+}
+
+function computeGamification(reviewCount: number, joinDate: string): UserGamification {
+  const level = Math.floor(reviewCount / 3) + 1
+  const xpForLevel = (l: number) => l * 300
+  const xp = reviewCount * 100
+  const xpFloor = xpForLevel(level - 1)
+  const xpCeil = xpForLevel(level)
+  const xpInLevel = xp - xpFloor
+  const xpToNextLevel = xpCeil - xpFloor
+
+  // Streak: placeholder — real streak needs backend data
+  const daysSinceJoin = Math.floor(
+    (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24),
+  )
+  const streak = Math.min(7, Math.floor(daysSinceJoin / 3))
+
+  return {
+    level,
+    xp,
+    xpToNextLevel,
+    xpProgress: xpToNextLevel > 0 ? Math.min(1, xpInLevel / xpToNextLevel) : 1,
+    streak,
+  }
+}
+
+// ── XP Progress Ring ──
+
+function XPProgressRing({
+  progress,
+  size,
+  strokeWidth = 3,
+  children,
+}: {
+  progress: number
+  size: number
+  strokeWidth?: number
+  children: React.ReactNode
+}) {
+  const radius = size / 2 - strokeWidth
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - progress)
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg
+        className="absolute inset-0 -rotate-90"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
+        {/* Background track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress arc */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#xpGradient)"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-700 ease-out"
+        />
+        <defs>
+          <linearGradient id="xpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--primary)" />
+            <stop offset="100%" stopColor="var(--accent)" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ── Page ──
+
 export function UserProfilePage() {
   const params = useParams({ strict: false }) as { username?: string }
   const username = params.username || ''
 
   const profileQuery = useQuery(userQueries.profile(username))
   const reviewsQuery = useQuery(userQueries.reviews(username))
+
+  const stats = useMemo(() => {
+    if (!reviewsQuery.data) return null
+    return computeReviewStats(reviewsQuery.data)
+  }, [reviewsQuery.data])
 
   if (profileQuery.isLoading) return <ProfileSkeleton />
   if (profileQuery.isError || !profileQuery.data) {
@@ -55,11 +159,7 @@ export function UserProfilePage() {
   }
 
   const profile = profileQuery.data
-  const reviews = reviewsQuery.data ?? []
-
-  const backgroundStyle = profile.backgroundUrl
-    ? { background: `url(${profile.backgroundUrl}) center/cover no-repeat` }
-    : { background: pickGradient(profile.username) }
+  const gamification = computeGamification(profile.reviewCount, profile.createdAt)
 
   return (
     <div className="pb-16">
@@ -67,13 +167,28 @@ export function UserProfilePage() {
         <title>{`${profile.username} - Otix`}</title>
       </Helmet>
 
-      {/* ── Hero ── */}
-      <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-        <div className="relative h-56 sm:h-64 lg:h-72" style={backgroundStyle}>
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-          {/* Subtle dot pattern on gradients */}
-          {!profile.backgroundUrl && (
+      {/* Hero */}
+      <div className="relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)]">
+        {/* Backdrop */}
+        {profile.backgroundUrl ? (
+          <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+            <img
+              src={profile.backgroundUrl}
+              alt=""
+              className="h-full w-full object-cover object-[center_20%]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 via-35% to-background/10" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
+          </div>
+        ) : (
+          <div
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{ background: pickGradient(profile.username) }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 via-35% to-background/10" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
             <div
               className="absolute inset-0 opacity-[0.04]"
               style={{
@@ -81,86 +196,102 @@ export function UserProfilePage() {
                 backgroundSize: '20px 20px',
               }}
             />
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Avatar + identity */}
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-16 sm:-mt-20">
-            <div className="mx-auto sm:mx-0 shrink-0 ring-[3px] ring-background rounded-full">
-              <DkAvatar
-                src={profile.avatarUrl}
-                name={profile.username}
-                size="xl"
-                className="!h-24 !w-24 sm:!h-28 sm:!w-28"
-              />
+        {/* Content */}
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-20 sm:px-6 sm:pb-10 lg:px-8">
+          <div className="flex flex-row items-end gap-5 sm:gap-8">
+            {/* Avatar with XP ring */}
+            <div className="shrink-0">
+              <XPProgressRing progress={gamification.xpProgress} size={120} strokeWidth={4}>
+                <DkAvatar
+                  src={profile.avatarUrl}
+                  name={profile.username}
+                  size="xl"
+                  className="!h-20 !w-20 rounded-full ring-2 ring-background"
+                />
+              </XPProgressRing>
             </div>
 
-            <div className="text-center sm:text-left sm:pb-3 min-w-0 flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-[-0.02em]">
+            {/* Info */}
+            <div className="flex min-w-0 flex-1 flex-col gap-2.5 pb-1">
+              <h1
+                className="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl"
+                style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}
+              >
                 {profile.username}
               </h1>
-              <div className="flex items-center justify-center sm:justify-start gap-1.5 mt-1 text-sm text-muted-foreground">
-                <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                <span>Joined {formatJoinDate(profile.createdAt)}</span>
+
+              {/* Meta badges */}
+              <div className="flex flex-wrap gap-1.5">
+                {gamification.streak > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="gap-1 border-0 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-400 backdrop-blur"
+                  >
+                    <Flame className="h-3 w-3" />
+                    {gamification.streak}d streak
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
+                  <CalendarDays className="h-3 w-3" />
+                  Joined {formatJoinDate(profile.createdAt)}
+                </Badge>
+                <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
+                  <MessageSquareText className="h-3 w-3" />
+                  {profile.reviewCount} review{profile.reviewCount !== 1 ? 's' : ''}
+                </Badge>
+                {stats?.averageRating != null && (
+                  <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
+                    <Star className="h-3 w-3 text-amber-400" />
+                    {stats.averageRating.toFixed(1)}
+                  </Badge>
+                )}
+              </div>
+
+              {profile.bio && (
+                <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80">
+                  {profile.bio}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* XP Bar with level + numbers inside */}
+          <div className="mt-6 relative h-10 rounded-xl bg-white/[0.05] overflow-hidden ring-1 ring-white/[0.06]">
+            {/* Fill */}
+            <div
+              className="absolute inset-y-0 left-0 rounded-xl bg-gradient-to-r from-primary/30 to-accent/20 transition-all duration-700 ease-out"
+              style={{ width: `${gamification.xpProgress * 100}%` }}
+            />
+
+            {/* Content overlay */}
+            <div className="relative h-full flex items-center justify-between px-4">
+              {/* Level */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+                  Level
+                </span>
+                <span className="text-sm font-extrabold text-primary tabular-nums leading-none">
+                  {gamification.level}
+                </span>
+              </div>
+
+              {/* XP numbers */}
+              <div className="flex items-center gap-1 text-[11px] tabular-nums">
+                <span className="font-semibold text-foreground/90">
+                  {gamification.xp}
+                </span>
+                <span className="text-muted-foreground/40">/</span>
+                <span className="text-muted-foreground/50">
+                  {gamification.xpToNextLevel + (gamification.level - 1) * 300}
+                </span>
+                <span className="ml-1 text-[10px] text-muted-foreground/40 uppercase tracking-wider">XP</span>
               </div>
             </div>
           </div>
-
-          {profile.bio && (
-            <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-prose text-center sm:text-left">
-              {profile.bio}
-            </p>
-          )}
         </div>
-      </div>
-
-      {/* ── Content ── */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-8">
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-glass)] p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <MessageSquareText className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Reviews</span>
-            </div>
-            <span className="text-3xl font-bold tabular-nums">{profile.reviewCount}</span>
-          </div>
-          <div className="rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-glass)] p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-2">
-              <CalendarDays className="h-4 w-4" />
-              <span className="text-xs font-medium uppercase tracking-wider">Joined</span>
-            </div>
-            <span className="text-xl font-bold tabular-nums">
-              {new Date(profile.createdAt).getFullYear()}
-            </span>
-          </div>
-        </div>
-
-        {/* Reviews */}
-        <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-            Reviews
-          </h2>
-
-          {reviewsQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-32 w-full rounded-2xl" />
-              <Skeleton className="h-32 w-full rounded-2xl" />
-            </div>
-          ) : reviews.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-glass)] p-10 text-center">
-              <MessageSquareText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">No reviews yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {reviews.map((review) => (
-                <ReviewCard key={`${review.userId}-${review.mediaItemId}`} review={review} />
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     </div>
   )
@@ -169,28 +300,8 @@ export function UserProfilePage() {
 function ProfileSkeleton() {
   return (
     <div className="pb-16">
-      <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-        <Skeleton className="h-56 sm:h-64 lg:h-72 w-full rounded-none" />
-      </div>
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-16 sm:-mt-20">
-          <div className="mx-auto sm:mx-0 ring-[3px] ring-background rounded-full">
-            <Skeleton className="h-24 w-24 sm:h-28 sm:w-28 rounded-full" />
-          </div>
-          <div className="text-center sm:text-left sm:pb-3">
-            <Skeleton className="h-8 w-40 mx-auto sm:mx-0" />
-            <Skeleton className="mt-1 h-4 w-28 mx-auto sm:mx-0" />
-          </div>
-        </div>
-        <Skeleton className="mt-4 h-5 w-64 mx-auto sm:mx-0" />
-        <div className="mt-10 grid grid-cols-2 gap-3">
-          <Skeleton className="h-24 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </div>
-        <div className="mt-8 space-y-3">
-          <Skeleton className="h-32 w-full rounded-2xl" />
-          <Skeleton className="h-32 w-full rounded-2xl" />
-        </div>
+      <div className="min-h-[45vh] rounded-3xl overflow-hidden">
+        <Skeleton className="h-full w-full rounded-none" />
       </div>
     </div>
   )

@@ -11,12 +11,13 @@ import {
   XIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { apiClient } from "@/lib/api-client"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { SearchField } from "@ui/molecules/search-field"
 import { DkTabs, DkTabList, DkTab } from "@/features/dk-ui/molecules/tabs"
 import { useAuth } from "@/features/auth/auth-provider"
-import { mediaQueries, type MediaItemSummary } from "@/features/media/media-queries"
+import { type MediaListResponse } from "@/features/media/media-queries"
 import {
   useListDetail,
   useUpdateList,
@@ -54,11 +55,15 @@ export function ListDetail() {
     data: searchData,
     isFetching: searchLoading,
   } = useQuery({
-    ...mediaQueries.search(
-      searchQuery,
-      searchType === "all" ? undefined : searchType,
-    ),
+    queryKey: ['list', listId, 'search', searchQuery, searchType],
+    queryFn: async () => {
+      const params: Record<string, string> = { q: searchQuery, page_size: '24' }
+      if (searchType !== 'all') params.media_type = searchType
+      const { data } = await apiClient.get<MediaListResponse>('/media/search', { params })
+      return data
+    },
     enabled: addingMode && searchQuery.length > 0,
+    staleTime: 1000 * 60 * 5,
   })
 
   if (isLoading) {
@@ -91,7 +96,7 @@ export function ListDetail() {
   async function handleDelete() {
     if (!confirm("Delete this list?")) return
     await deleteList.mutateAsync(listId)
-    navigate({ to: "/library/lists" })
+    navigate({ to: "/library/$tab", params: { tab: "watchlist" } })
   }
 
   async function handleRemoveItem(mediaItemId: string) {

@@ -30,7 +30,6 @@ function InteractiveStar({
   const activeScore = hoveredScore || currentScore
 
   // starIndex 0 covers scores 1-2, starIndex 1 covers 3-4, etc.
-  const starMax = (starIndex + 1) * 2
   const starMin = starIndex * 2
   const fill = Math.min(1, Math.max(0, (activeScore - starMin) / 2))
 

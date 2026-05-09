@@ -118,9 +118,13 @@ apiClient.interceptors.response.use(
       error.response.data = convertKeysToCamelCase(error.response.data)
     }
 
-    // Token refresh flow
+    // Token refresh flow — skip for endpoints that return 401 for reasons
+    // other than an expired access token (login, register, refresh itself).
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
-    if (error.response?.status !== 401 || originalRequest?._retry) {
+    const skipRefresh = ['/auth/login', '/auth/register', '/auth/refresh'].some(
+      (path) => originalRequest?.url?.includes(path),
+    )
+    if (error.response?.status !== 401 || originalRequest?._retry || skipRefresh) {
       return Promise.reject(error)
     }
 

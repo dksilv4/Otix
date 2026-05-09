@@ -30,16 +30,16 @@ interface SearchSortBarProps {
   className?: string
 }
 
-export function FilterDropdown({
+export function FilterDropdown<Value extends string>({
   label,
   options,
   value,
   onChange,
 }: {
   label: string
-  options: readonly { value: string; label: string }[]
-  value: string
-  onChange: (value: string) => void
+  options: readonly { value: Value; label: string }[]
+  value: Value
+  onChange: (value: Value) => void
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)

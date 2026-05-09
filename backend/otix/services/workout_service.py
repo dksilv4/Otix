@@ -1,0 +1,117 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
+from otix.domain.workout import Exercise, Workout, WorkoutExercise
+
+
+class WorkoutService:
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def create_workout(
+        self,
+        user_id: str,
+        raw_input: str,
+        exercises: list[dict],
+        notes: str | None = None,
+        started_at: datetime | None = None,
+    ) -> Workout:
+        workout = Workout(
+            user_id=user_id,
+            raw_input=raw_input,
+            notes=notes,
+            started_at=started_at or datetime.now(timezone.utc),
+        )
+        self.session.add(workout)
+        await self.session.flush()
+
+        for i, ex_data in enumerate(exercises):
+            we = WorkoutExercise(
+                workout_id=workout.id,
+                exercise_id=ex_data["exercise_id"],
+                sort_order=i,
+                sets=ex_data["sets"],
+            )
+            self.session.add(we)
+
+        await self.session.flush()
+
+        # Reload with relationships
+        return await self.get_workout(workout.id)
+
+    async def get_workouts(
+        self, user_id: str, cursor: str | None = None, limit: int = 20
+    ) -> tuple[list[Workout], bool]:
+        query = (
+            select(Workout)
+            .options(
+                joinedload(Workout.workout_exercises).joinedload(WorkoutExercise.exercise)
+            )
+            .where(Workout.user_id == user_id)
+        )
+
+        if cursor:
+            query = query.where(Workout.started_at < cursor)
+
+        query = query.order_by(Workout.started_at.desc()).limit(limit + 1)
+
+        result = await self.session.scalars(query)
+        items = list(result.unique())
+
+        has_more = len(items) > limit
+        if has_more:
+            items = items[:limit]
+
+        return items, has_more
+
+    async def get_workout(self, workout_id: str) -> Workout | None:
+        return await self.session.scalar(
+            select(Workout)
+            .options(
+                joinedload(Workout.workout_exercises).joinedload(WorkoutExercise.exercise)
+            )
+            .where(Workout.id == workout_id)
+        )
+
+    async def update_workout(
+        self, workout_id: str, notes: str | None = None, completed_at: datetime | None = None
+    ) -> Workout | None:
+        workout = await self.session.scalar(select(Workout).where(Workout.id == workout_id))
+        if not workout:
+            return None
+
+        if notes is not None:
+            workout.notes = notes
+        if completed_at is not None:
+            workout.completed_at = completed_at
+
+        await self.session.flush()
+        return await self.get_workout(workout_id)
+
+    async def delete_workout(self, workout_id: str) -> bool:
+        result = await self.session.execute(
+            delete(Workout).where(Workout.id == workout_id)
+        )
+        return result.rowcount > 0
+
+    async def get_exercises(self) -> list[Exercise]:
+        result = await self.session.scalars(
+            select(Exercise).order_by(Exercise.category, Exercise.name)
+        )
+        return list(result)
+
+    async def get_categories(self) -> list[dict]:
+        result = await self.session.execute(
+            select(
+                Exercise.category, func.count(Exercise.id).label("count")
+            )
+            .where(Exercise.category.isnot(None))
+            .group_by(Exercise.category)
+            .order_by(Exercise.category)
+        )
+        return [{"category": row.category, "count": row.count} for row in result]

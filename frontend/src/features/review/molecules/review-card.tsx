@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { Link } from '@tanstack/react-router'
 import { EyeOff, Eye, Trash2, Pencil } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { StarRating } from "@ui/atoms/star-rating"
 import { DkButton } from "@/features/dk-ui/atoms/button"
 import { useSwipe } from "../hooks/use-swipe"

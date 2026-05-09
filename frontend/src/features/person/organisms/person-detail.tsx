@@ -1,8 +1,7 @@
-import { useParams, Link } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { Image } from '@ui/atoms/image'
-import { Badge } from '@ui/atoms/badge'
 import { MediaCard } from '@ui/molecules/media-card'
 import { personQueries } from '../person-queries'
 import { Skeleton } from '@ui/atoms/skeleton'
@@ -68,7 +67,7 @@ export function PersonDetail() {
       <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
         <div className="h-36 w-36 shrink-0 overflow-hidden rounded-full ring-2 ring-border sm:h-44 sm:w-44">
           <Image
-            src={person.photoUrl}
+            src={person.photoUrl ?? undefined}
             alt={person.name}
             className="h-full w-full"
             fallback={person.name[0]}

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } fro
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { MediaGrid } from '@ui/molecules/media-grid'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
 import { mediaQueries, type MediaListResponse } from '@media/media-queries'

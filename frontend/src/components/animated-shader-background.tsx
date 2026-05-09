@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { useShaderQuality } from '@/lib/shader-quality'
 
 type ShaderMode = 'idle' | 'active'
+type QualityTier = 'low' | 'medium' | 'high' | 'ultra'
 
 interface AnimatedShaderBackgroundProps {
   mode?: ShaderMode
@@ -12,30 +14,143 @@ const PROFILES = {
   active: { fps: 22, scale: 0.44, streaks: 12, intensity: 0.86, speed: 0.72, shake: 0.0026 },
 }
 
+const QUALITY_PROFILES: Record<
+  QualityTier,
+  {
+    antialias: boolean
+    fpsBoost: number
+    pixelRatioCap: number
+    powerPreference: WebGLPowerPreference
+    scaleBoost: number
+    streakBoost: number
+  }
+> = {
+  low: {
+    antialias: false,
+    fpsBoost: 0.82,
+    pixelRatioCap: 0.9,
+    powerPreference: 'default',
+    scaleBoost: 0.82,
+    streakBoost: 0.75,
+  },
+  medium: {
+    antialias: false,
+    fpsBoost: 1,
+    pixelRatioCap: 1,
+    powerPreference: 'default',
+    scaleBoost: 1,
+    streakBoost: 1,
+  },
+  high: {
+    antialias: true,
+    fpsBoost: 1.08,
+    pixelRatioCap: 1.25,
+    powerPreference: 'high-performance',
+    scaleBoost: 1.18,
+    streakBoost: 1.2,
+  },
+  ultra: {
+    antialias: true,
+    fpsBoost: 1.15,
+    pixelRatioCap: 1.5,
+    powerPreference: 'high-performance',
+    scaleBoost: 1.3,
+    streakBoost: 1.35,
+  },
+}
+
+function logFallback(reason: string) {
+  console.info(`[AnimatedShaderBackground] Falling back to gradients: ${reason}`)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function resolveQualityTier(input: {
+  deviceMemory: number
+  hardwareConcurrency: number
+  maxTextureSize: number
+  pixelRatio: number
+  viewportArea: number
+  webgl2: boolean
+}): QualityTier {
+  let score = 0
+
+  if (input.hardwareConcurrency >= 12) score += 2
+  else if (input.hardwareConcurrency >= 8) score += 1
+  else if (input.hardwareConcurrency <= 4) score -= 2
+
+  if (input.deviceMemory >= 16) score += 2
+  else if (input.deviceMemory >= 8) score += 1
+  else if (input.deviceMemory <= 4) score -= 1
+
+  if (input.webgl2) score += 1
+  if (input.maxTextureSize >= 16384) score += 1
+  else if (input.maxTextureSize <= 4096) score -= 1
+
+  if (input.pixelRatio >= 2.5) score -= 1
+  else if (input.pixelRatio <= 1.5) score += 1
+
+  if (input.viewportArea >= 3840 * 2160) score -= 2
+  else if (input.viewportArea >= 2560 * 1440) score -= 1
+
+  if (score <= -1) return 'low'
+  if (score <= 2) return 'medium'
+  if (score <= 4) return 'high'
+  return 'ultra'
+}
+
 export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShaderBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [useFallback, setUseFallback] = useState(false)
+  const { shaderQuality } = useShaderQuality()
 
   useEffect(() => {
     const container = containerRef.current
     if (!container || useFallback) return
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const isLowPowerDevice = (navigator.hardwareConcurrency ?? 8) <= 4 || (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8 <= 4
-    const probeCanvas = document.createElement('canvas')
-    const probeContext = probeCanvas.getContext('webgl', { powerPreference: 'low-power', failIfMajorPerformanceCaveat: true })
-    const hasPerformantWebGL = !!probeContext
+    if (prefersReducedMotion) {
+      logFallback('prefers-reduced-motion is enabled')
+      setUseFallback(true)
+      return
+    }
 
-    if (prefersReducedMotion || isLowPowerDevice || !hasPerformantWebGL) {
+    const hardwareConcurrency = navigator.hardwareConcurrency ?? 8
+    const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8
+    const pixelRatio = window.devicePixelRatio || 1
+    const viewportArea = window.innerWidth * window.innerHeight
+
+    const probeCanvas = document.createElement('canvas')
+    const webgl2Context = probeCanvas.getContext('webgl2', { alpha: true })
+    const probeContext = (
+      webgl2Context ??
+      probeCanvas.getContext('webgl', { alpha: true }) ??
+      probeCanvas.getContext('experimental-webgl', { alpha: true })
+    ) as WebGL2RenderingContext | WebGLRenderingContext | null
+    if (!probeContext) {
+      logFallback('WebGL is unavailable in this browser/runtime')
       setUseFallback(true)
       return
     }
 
     const base = PROFILES[mode]
-    const targetFps = isLowPowerDevice ? Math.min(base.fps, 18) : base.fps
+    const autoQualityTier = resolveQualityTier({
+      deviceMemory,
+      hardwareConcurrency,
+      maxTextureSize: probeContext.getParameter(probeContext.MAX_TEXTURE_SIZE) as number,
+      pixelRatio,
+      viewportArea,
+      webgl2: !!webgl2Context,
+    })
+    const qualityTier = shaderQuality === 'auto' ? autoQualityTier : shaderQuality
+    const quality = QUALITY_PROFILES[qualityTier]
+
+    const targetFps = Math.round(base.fps * quality.fpsBoost)
     const frameInterval = 1000 / targetFps
-    const resolutionScale = isLowPowerDevice ? Math.min(base.scale, 0.4) : base.scale
-    const streakCount = isLowPowerDevice ? Math.min(base.streaks, 10) : base.streaks
+    const resolutionScale = clamp(base.scale * quality.scaleBoost, 0.38, 0.92)
+    const streakCount = Math.max(8, Math.round(base.streaks * quality.streakBoost))
     const intensity = base.intensity
     const speed = base.speed
     const shake = base.shake
@@ -45,12 +160,17 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
 
     let renderer: THREE.WebGLRenderer
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'low-power' })
-    } catch {
+      renderer = new THREE.WebGLRenderer({
+        antialias: quality.antialias,
+        alpha: true,
+        powerPreference: quality.powerPreference,
+      })
+    } catch (error) {
+      logFallback(error instanceof Error ? error.message : 'Three.js renderer creation failed')
       setUseFallback(true)
       return
     }
-    renderer.setPixelRatio(1)
+    renderer.setPixelRatio(clamp(pixelRatio, 1, quality.pixelRatioCap))
 
     const getSize = () => {
       const width = container.clientWidth || window.innerWidth
@@ -59,13 +179,19 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
     }
 
     const { width: w, height: h } = getSize()
-    const renderW = Math.max(1, Math.floor(w * resolutionScale))
-    const renderH = Math.max(1, Math.floor(h * resolutionScale))
+    const maxTextureSize = probeContext.getParameter(probeContext.MAX_TEXTURE_SIZE) as number
+    const maxDimension = Math.max(1, Math.floor(maxTextureSize / renderer.getPixelRatio()))
+    const renderW = Math.min(maxDimension, Math.max(1, Math.floor(w * resolutionScale)))
+    const renderH = Math.min(maxDimension, Math.max(1, Math.floor(h * resolutionScale)))
 
     renderer.setSize(renderW, renderH, false)
     renderer.domElement.style.width = `${w}px`
     renderer.domElement.style.height = `${h}px`
     container.appendChild(renderer.domElement)
+
+    console.info(
+      `[AnimatedShaderBackground] ${qualityTier} quality (${shaderQuality === 'auto' ? 'auto' : 'manual'}, ${hardwareConcurrency} cores, ${deviceMemory}GB RAM, DPR ${pixelRatio.toFixed(2)})`,
+    )
 
     const streakCountStr = streakCount.toFixed(1)
     const shakeStr = shake.toFixed(4)
@@ -145,8 +271,8 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
 
     const resizeRenderer = () => {
       const { width, height } = getSize()
-      const rw = Math.max(1, Math.floor(width * resolutionScale))
-      const rh = Math.max(1, Math.floor(height * resolutionScale))
+      const rw = Math.min(maxDimension, Math.max(1, Math.floor(width * resolutionScale)))
+      const rh = Math.min(maxDimension, Math.max(1, Math.floor(height * resolutionScale)))
       renderer.setSize(rw, rh, false)
       renderer.domElement.style.width = `${width}px`
       renderer.domElement.style.height = `${height}px`
@@ -155,6 +281,9 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
 
     let frameId = 0
     let lastFrameTime = performance.now()
+    const resetFrameTime = () => {
+      lastFrameTime = performance.now()
+    }
     const animate = (now: number) => {
       frameId = window.requestAnimationFrame(animate)
       if (document.hidden) return
@@ -167,12 +296,13 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
     }
 
     window.addEventListener('resize', resizeRenderer)
-    document.addEventListener('visibilitychange', () => { lastFrameTime = performance.now() })
+    document.addEventListener('visibilitychange', resetFrameTime)
     frameId = window.requestAnimationFrame(animate)
 
     return () => {
       window.cancelAnimationFrame(frameId)
       window.removeEventListener('resize', resizeRenderer)
+      document.removeEventListener('visibilitychange', resetFrameTime)
       if (renderer.domElement.parentElement === container) {
         container.removeChild(renderer.domElement)
       }
@@ -180,10 +310,10 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
       material.dispose()
       renderer.dispose()
     }
-  }, [mode, useFallback])
+  }, [mode, shaderQuality, useFallback])
 
   return (
-    <div ref={containerRef} className="fixed inset-0 w-full h-full overflow-hidden" aria-hidden="true">
+    <div ref={containerRef} className="fixed inset-0 h-full w-full overflow-hidden" aria-hidden="true">
       {useFallback && (
         <div
           aria-hidden="true"

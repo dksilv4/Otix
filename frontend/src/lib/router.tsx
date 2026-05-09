@@ -10,6 +10,7 @@ import { LibraryPage } from "@/features/library/library-page"
 import { ListDetail } from "@/features/list/organisms/list-detail"
 import { SettingsPage } from "@/features/settings/organisms/settings-page"
 import { UserProfilePage } from "@/features/user/organisms/user-profile-page"
+import { WorkoutPage } from "@/features/workout/organisms/workout-page"
 
 // ── Root — chooses layout based on route ──
 
@@ -104,6 +105,12 @@ const userProfileRoute = createRoute({
   component: UserProfilePage,
 })
 
+const workoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workout",
+  component: WorkoutPage,
+})
+
 const dkUiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dk-ui",
@@ -123,6 +130,7 @@ const routeTree = rootRoute.addChildren([
   loadingRoute,
   authLoginRoute,
   authRegisterRoute,
+  workoutRoute,
   dkUiRoute,
 ])
 

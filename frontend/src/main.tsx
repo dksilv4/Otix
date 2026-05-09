@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { HelmetProvider } from 'react-helmet-async'
 import { queryClient } from '@/lib/query-client'
 import { router } from '@/lib/router'
+import { ShaderQualityProvider } from '@/lib/shader-quality'
 import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/features/auth'
 import { PageMetaProvider } from '@/lib/page-context'
@@ -14,13 +15,15 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <PageMetaProvider>
-              <RouterProvider router={router} />
-            </PageMetaProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <ShaderQualityProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <PageMetaProvider>
+                <RouterProvider router={router} />
+              </PageMetaProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ShaderQualityProvider>
       </QueryClientProvider>
     </HelmetProvider>
   </StrictMode>,

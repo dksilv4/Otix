@@ -18,8 +18,6 @@ interface CastCrewListProps {
   className?: string
 }
 
-const KEY_ROLES = ['director', 'writer', 'producer']
-
 function groupByRole(credits: CreditItem[]) {
   const cast = credits.filter((c) => c.role === 'cast')
   const directors = credits.filter((c) => c.role === 'director')

@@ -11,6 +11,7 @@ from otix.api.metrics import metrics_router
 from otix.api.people import people_router
 from otix.api.review import review_router
 from otix.api.user import user_router
+from otix.api.workout import exercise_router, workout_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
@@ -22,6 +23,8 @@ api_router.include_router(people_router)
 api_router.include_router(metrics_router)
 api_router.include_router(review_router)
 api_router.include_router(user_router)
+api_router.include_router(workout_router)
+api_router.include_router(exercise_router)
 
 
 @api_router.get("/health")
