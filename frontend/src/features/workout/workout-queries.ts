@@ -67,7 +67,7 @@ export interface PaginatedWorkouts {
 export interface WorkoutCreatePayload {
   rawInput: string
   exercises: {
-    exerciseId: string
+    exerciseName: string
     sets: { reps: number; weightKg: number | null }[]
   }[]
   notes?: string | null

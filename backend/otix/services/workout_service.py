@@ -21,6 +21,9 @@ class WorkoutService:
         notes: str | None = None,
         started_at: datetime | None = None,
     ) -> Workout:
+        import secrets
+        from otix.domain.workout import Exercise
+
         workout = Workout(
             user_id=user_id,
             raw_input=raw_input,
@@ -31,9 +34,36 @@ class WorkoutService:
         await self.session.flush()
 
         for i, ex_data in enumerate(exercises):
+            exercise_id = ex_data.get("exercise_id")
+
+            # Resolve by name if no ID provided
+            if not exercise_id:
+                name = (ex_data.get("exercise_name") or "").strip()
+                if name:
+                    existing = await self.session.scalar(
+                        select(Exercise).where(
+                            func.lower(Exercise.name) == name.lower()
+                        )
+                    )
+                    if existing:
+                        exercise_id = existing.id
+                    else:
+                        ex = Exercise(
+                            id=f"oti_{secrets.token_hex(6)}",
+                            name=name,
+                            category=None,
+                            aliases=[],
+                        )
+                        self.session.add(ex)
+                        await self.session.flush()
+                        exercise_id = ex.id
+
+            if not exercise_id:
+                continue
+
             we = WorkoutExercise(
                 workout_id=workout.id,
-                exercise_id=ex_data["exercise_id"],
+                exercise_id=exercise_id,
                 sort_order=i,
                 sets=ex_data["sets"],
             )

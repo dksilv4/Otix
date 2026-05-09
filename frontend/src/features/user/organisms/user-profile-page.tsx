@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText, Star, Flame } from 'lucide-react'
+import { CalendarDays, MessageSquareText, Star } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { Skeleton } from '@ui/atoms/skeleton'
@@ -39,10 +39,9 @@ interface UserGamification {
   xp: number
   xpToNextLevel: number
   xpProgress: number // 0-1
-  streak: number
 }
 
-function computeGamification(reviewCount: number, joinDate: string): UserGamification {
+function computeGamification(reviewCount: number): UserGamification {
   const level = Math.floor(reviewCount / 3) + 1
   const xpForLevel = (l: number) => l * 300
   const xp = reviewCount * 100
@@ -51,18 +50,11 @@ function computeGamification(reviewCount: number, joinDate: string): UserGamific
   const xpInLevel = xp - xpFloor
   const xpToNextLevel = xpCeil - xpFloor
 
-  // Streak: placeholder — real streak needs backend data
-  const daysSinceJoin = Math.floor(
-    (Date.now() - new Date(joinDate).getTime()) / (1000 * 60 * 60 * 24),
-  )
-  const streak = Math.min(7, Math.floor(daysSinceJoin / 3))
-
   return {
     level,
     xp,
     xpToNextLevel,
     xpProgress: xpToNextLevel > 0 ? Math.min(1, xpInLevel / xpToNextLevel) : 1,
-    streak,
   }
 }
 
@@ -159,7 +151,7 @@ export function UserProfilePage() {
   }
 
   const profile = profileQuery.data
-  const gamification = computeGamification(profile.reviewCount, profile.createdAt)
+  const gamification = computeGamification(profile.reviewCount)
 
   return (
     <div className="pb-16">
@@ -225,15 +217,6 @@ export function UserProfilePage() {
 
               {/* Meta badges */}
               <div className="flex flex-wrap gap-1.5">
-                {gamification.streak > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="gap-1 border-0 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-400 backdrop-blur"
-                  >
-                    <Flame className="h-3 w-3" />
-                    {gamification.streak}d streak
-                  </Badge>
-                )}
                 <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
                   <CalendarDays className="h-3 w-3" />
                   Joined {formatJoinDate(profile.createdAt)}

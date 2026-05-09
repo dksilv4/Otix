@@ -32,6 +32,7 @@ async def create_workout(
     exercises_data = [
         {
             "exercise_id": ex.exercise_id,
+            "exercise_name": ex.exercise_name,
             "sets": [s.model_dump() for s in ex.sets],
         }
         for ex in body.exercises

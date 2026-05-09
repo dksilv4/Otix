@@ -161,5 +161,23 @@ export function parseWorkoutInput(raw: string): ParseResult {
     }
   }
 
-  return { exercises, raw_tokens }
+  // Merge same-name exercises from different segments (e.g. "3x12 bench, 3x10 bench")
+  const merged = mergeExercises(exercises)
+
+  return { exercises: merged, raw_tokens }
+}
+
+function mergeExercises(exercises: ParsedExercise[]): ParsedExercise[] {
+  const seen = new Map<string, ParsedExercise>()
+
+  for (const ex of exercises) {
+    const existing = seen.get(ex.name)
+    if (existing) {
+      existing.sets.push(...ex.sets)
+    } else {
+      seen.set(ex.name, { ...ex, sets: [...ex.sets] })
+    }
+  }
+
+  return [...seen.values()]
 }

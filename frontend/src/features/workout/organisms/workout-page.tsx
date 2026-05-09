@@ -12,33 +12,15 @@ import {
   useWorkouts,
   useCreateWorkout,
   useDeleteWorkout,
-  useExercises,
 } from '../workout-queries'
-import type { ExerciseOut } from '../workout-queries'
 
 function WorkoutPageInner() {
   const { toast } = useToast()
   const [inputValue, setInputValue] = useState('')
 
   const workoutsQuery = useWorkouts()
-  const exercisesQuery = useExercises()
   const createMutation = useCreateWorkout()
   const deleteMutation = useDeleteWorkout()
-
-  // Build exercise lookup: lowercase name/alias -> ExerciseOut
-  const exerciseMap = useMemo(() => {
-    const map = new Map<string, ExerciseOut>()
-    if (!exercisesQuery.data) return map
-    for (const ex of exercisesQuery.data) {
-      map.set(ex.name.toLowerCase(), ex)
-      for (const alias of ex.aliases) {
-        if (!map.has(alias.toLowerCase())) {
-          map.set(alias.toLowerCase(), ex)
-        }
-      }
-    }
-    return map
-  }, [exercisesQuery.data])
 
   // Live parse on every keystroke
   const parsedData = useMemo(() => {
@@ -55,17 +37,10 @@ function WorkoutPageInner() {
   const handleConfirm = () => {
     if (!parsedData || !inputValue.trim()) return
 
-    const payloadExercises = parsedData.map((pd) => {
-      // Resolve exercise ID: use the selected alternative, or best match, or parsed name
-      const matchedName = pd.match.exercise?.name.toLowerCase() ?? pd.parsed.name.toLowerCase()
-      const backendEx = exerciseMap.get(matchedName)
-      const exerciseId = backendEx?.id ?? ''
-
-      return {
-        exerciseId,
-        sets: pd.parsed.sets,
-      }
-    })
+    const payloadExercises = parsedData.map((pd) => ({
+      exerciseName: pd.match.exercise?.name ?? pd.parsed.name,
+      sets: pd.parsed.sets,
+    }))
 
     createMutation.mutate(
       {

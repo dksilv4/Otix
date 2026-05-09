@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import { LogOut, ChevronDown, User } from 'lucide-react'
+import { LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
@@ -68,16 +68,9 @@ export function UserMenu() {
         type="button"
         data-user-menu-trigger
         onClick={() => setOpen(!open)}
-        className={cn(pillBase, 'px-2 py-1.5 gap-2 cursor-pointer')}
+        className={cn(pillBase, 'p-1.5 cursor-pointer')}
       >
         <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
-        <span className="text-sm font-medium">{user?.username}</span>
-        <ChevronDown
-          className={cn(
-            'h-4 w-4 text-muted-foreground transition-transform duration-200',
-            open && 'rotate-180',
-          )}
-        />
       </button>
 
       <AnimatePresence>
@@ -98,13 +91,18 @@ export function UserMenu() {
             )}
           >
             {/* User info */}
-            <div className="flex items-center gap-3 px-2 py-2">
+            <Link
+              to="/u/$username"
+              params={{ username: user?.username || '' }}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-150"
+            >
               <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">{user?.username}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-            </div>
+            </Link>
 
             <div className="my-1 border-t border-white/[0.06]" />
 

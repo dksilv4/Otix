@@ -11,7 +11,8 @@ class SetData(BaseModel):
 
 
 class WorkoutExerciseCreate(BaseModel):
-    exercise_id: str
+    exercise_id: str | None = None
+    exercise_name: str | None = None
     sets: list[SetData] = Field(..., min_length=1)
 
 

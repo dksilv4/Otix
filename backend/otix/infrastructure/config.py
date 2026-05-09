@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     auth_refresh_cookie_httponly: bool = True
     auth_refresh_cookie_samesite: str = "lax"
 
+    # Uploads
+    upload_dir: str = "./uploads"
+    upload_max_size_mb: int = 5
+
     # CORS
     frontend_base_url: str = "http://localhost:5173"
     cors_allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
