@@ -27,13 +27,20 @@ from otix.domain.media import (
     Platform,
     Season,
     Show,
+    UserPlexItem,
+    UserPlexLibrary,
+    UserPlexServer,
+    UserSteamGame,
 )
 from otix.domain.people import MediaCredit, Person
 from otix.domain.sync import ProviderState, SyncJob
-from otix.domain.user import RefreshToken, User
+from otix.domain.friend import FriendRequest
+from otix.domain.notification import Notification
+from otix.domain.user import AuthActionToken, RefreshToken, User, UserSession
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
 
 __all__ = [
+    "AuthActionToken",
     "Collection",
     "CollectionItem",
     "Company",
@@ -42,6 +49,7 @@ __all__ = [
     "Exercise",
     "ExternalID",
     "ExternalRating",
+    "FriendRequest",
     "Game",
     "GameMode",
     "Genre",
@@ -57,6 +65,7 @@ __all__ = [
     "MediaRelease",
     "MediaVideo",
     "Movie",
+    "Notification",
     "Person",
     "Platform",
     "ProviderState",
@@ -68,7 +77,12 @@ __all__ = [
     "User",
     "UserList",
     "UserListItem",
+    "UserSession",
     "UserMediaInteraction",
+    "UserPlexItem",
+    "UserPlexLibrary",
+    "UserPlexServer",
+    "UserSteamGame",
     "Workout",
     "WorkoutExercise",
 ]

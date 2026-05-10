@@ -338,7 +338,7 @@ class TestGetCurrentPlayers:
         assert data["response"]["player_count"] == 12345
         assert data["response"]["result"] == 1
 
-    async def test_raises_on_error(self, fakeredis):
+    async def test_returns_none_for_missing_app(self, fakeredis):
         import httpx
 
         class FailTransport(httpx.AsyncBaseTransport):
@@ -348,8 +348,7 @@ class TestGetCurrentPlayers:
         r = await fakeredis
         http = httpx.AsyncClient(transport=FailTransport())
         client = SteamProvider(r, http)
-        with pytest.raises(SteamError, match="404"):
-            await client.get_current_players(730)
+        assert await client.get_current_players(730) is None
 
 
 class TestGetAppDetails:
@@ -591,7 +590,7 @@ class TestUpsertSteamUserRating:
     async def test_creates_new_rating(self, steam_hydrator, sample_game, steam_store_raw):
         steam_hydrator.session.scalar.return_value = None
 
-        await steam_hydrator._upsert_steam_user_rating(sample_game, steam_store_raw)
+        await steam_hydrator._upsert_steam_user_rating(sample_game, 88, 7500000)
 
         steam_hydrator.session.add.assert_called_once()
         added = steam_hydrator.session.add.call_args[0][0]
@@ -611,7 +610,7 @@ class TestUpsertSteamUserRating:
         )
         steam_hydrator.session.scalar.return_value = existing
 
-        await steam_hydrator._upsert_steam_user_rating(sample_game, steam_store_raw)
+        await steam_hydrator._upsert_steam_user_rating(sample_game, 88, 7500000)
 
         assert existing.score == 88.0
         assert existing.vote_count == 7500000
@@ -627,7 +626,7 @@ class TestUpsertSteamUserRating:
         )
         steam_hydrator.session.scalar.return_value = existing
 
-        await steam_hydrator._upsert_steam_user_rating(sample_game, steam_store_raw)
+        await steam_hydrator._upsert_steam_user_rating(sample_game, 88, 7500000)
 
         # No change — score and count match
         assert existing.score == 88.0
@@ -635,14 +634,12 @@ class TestUpsertSteamUserRating:
 
     async def test_skips_zero_score(self, steam_hydrator, sample_game):
         steam_hydrator.session.scalar.return_value = None
-        data = {"review_score": 0, "total_reviews": 0}
-
-        await steam_hydrator._upsert_steam_user_rating(sample_game, data)
+        await steam_hydrator._upsert_steam_user_rating(sample_game, 0, 0)
 
         steam_hydrator.session.add.assert_not_called()
 
-    async def test_skips_missing_score_data(self, steam_hydrator, sample_game, steam_store_minimal):
-        await steam_hydrator._upsert_steam_user_rating(sample_game, steam_store_minimal)
+    async def test_skips_negative_score(self, steam_hydrator, sample_game):
+        await steam_hydrator._upsert_steam_user_rating(sample_game, -1, 100)
 
         steam_hydrator.session.scalar.assert_not_called()
 

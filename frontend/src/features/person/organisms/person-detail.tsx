@@ -103,7 +103,7 @@ export function PersonDetail() {
               {items.map((c) => (
                 <div key={c.id} className="w-36 shrink-0">
                   <MediaCard
-                    id={c.mediaItem.slug || c.mediaItem.id}
+                    id={c.mediaItem.id}
                     mediaType={c.mediaItem.mediaType as 'movie' | 'show' | 'game'}
                     title={c.mediaItem.title}
                     posterUrl={c.mediaItem.posterUrl}

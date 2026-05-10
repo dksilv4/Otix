@@ -250,6 +250,9 @@ export function MediaDetail() {
             game={detail.game}
             platforms={detail.platforms}
             gameModes={detail.gameModes}
+            steamPlaytimeForever={detail.steamPlaytimeForever}
+            steamPlaytime2weeks={detail.steamPlaytime2weeks}
+            steamRtimeLastPlayed={detail.steamRtimeLastPlayed}
           />
         )}
 

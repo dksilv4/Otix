@@ -2,6 +2,15 @@ import { Star } from "lucide-react"
 import { StarRating } from "@ui/atoms/star-rating"
 import { cn } from "@/lib/utils"
 import logoSvg from "@/assets/otix-logo.svg?raw"
+import igdbLogo from "@/assets/provider-logos/igdb.svg"
+import imdbLogo from "@/assets/provider-logos/imdb.svg"
+import plexLogo from "@/assets/provider-logos/plex.svg"
+import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
+
+function isSteamProvider(key: string): boolean {
+  return key === "steam_user" || key === "steam_metacritic"
+}
+import tmdbLogo from "@/assets/provider-logos/tmdb.svg"
 
 interface ExternalRating {
   id: string
@@ -54,6 +63,7 @@ interface ProviderTheme {
   text: string
   star: string
   score: string
+  logoInvert?: boolean
 }
 
 function providerTheme(provider: string): ProviderTheme {
@@ -63,12 +73,24 @@ function providerTheme(provider: string): ProviderTheme {
     steam_metacritic: { bg: 'bg-[#1c1c1c]', text: 'text-white', star: 'text-[#66cc33]', score: 'text-[#66cc33]' },
     rotten_tomatoes:  { bg: 'bg-[#fa320a]', text: 'text-white', star: 'text-white', score: 'text-white' },
     letterboxd:       { bg: 'bg-[#00e054]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    steam_user:       { bg: 'bg-[#1a9fff]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    tmdb:             { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    igdb_critic:      { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    igdb_user:        { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white' },
+    plex:             { bg: 'bg-[#e5a00d]', text: 'text-black', star: 'text-black', score: 'text-black' },
+    steam_user:       { bg: 'bg-[#1a9fff]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
+    tmdb:             { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
+    igdb_critic:      { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
+    igdb_user:        { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
   }
   return themes[provider] ?? { bg: 'bg-muted', text: 'text-muted-foreground', star: 'text-amber-400', score: 'text-foreground' }
+}
+
+function providerLogo(key: string): string | null {
+  const logos: Record<string, string> = {
+    imdb: imdbLogo,
+    plex: plexLogo,
+    tmdb: tmdbLogo,
+    igdb_critic: igdbLogo,
+    igdb_user: igdbLogo,
+  }
+  return logos[key] ?? null
 }
 
 function providerLabel(key: string): string {
@@ -77,6 +99,7 @@ function providerLabel(key: string): string {
     metacritic: "Metacritic",
     rotten_tomatoes: "RT",
     letterboxd: "Letterboxd",
+    plex: "Plex",
     rawg: "RAWG",
     steam_user: "Steam",
     steam_metacritic: "Steam MC",
@@ -159,6 +182,7 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {externalRatings.map((r) => {
               const theme = providerTheme(r.provider)
+              const logo = providerLogo(r.provider)
               return (
                 <div
                   key={r.id}
@@ -169,9 +193,24 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                   )}
                   title={`${r.score}/${r.maxScore}${r.voteCount ? ` (${r.voteCount.toLocaleString()} votes)` : ''}`}
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
-                    {providerLabel(r.provider)}
-                  </span>
+                  <div className="flex h-6 items-center justify-center">
+                    {isSteamProvider(r.provider) ? (
+                      <SteamIcon className="h-5 w-5 opacity-90" />
+                    ) : logo ? (
+                      <img
+                        src={logo}
+                        alt={providerLabel(r.provider)}
+                        className={cn(
+                          'max-h-5 max-w-[4.75rem] object-contain opacity-90',
+                          theme.logoInvert && 'invert brightness-0',
+                        )}
+                      />
+                    ) : (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
+                        {providerLabel(r.provider)}
+                      </span>
+                    )}
+                  </div>
                   <span className={cn('text-xl font-extrabold tabular-nums leading-none', theme.score)}>
                     {Math.round(r.score)}
                   </span>

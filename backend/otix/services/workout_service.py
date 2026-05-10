@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
+from otix.infrastructure.celery import app
+from otix.lib.xp import WORKOUT_COMPLETE
 
 
 class WorkoutService:
@@ -70,6 +72,8 @@ class WorkoutService:
             self.session.add(we)
 
         await self.session.flush()
+
+        app.send_task("xp.award", args=[user_id, WORKOUT_COMPLETE])
 
         # Reload with relationships
         return await self.get_workout(workout.id)

@@ -145,6 +145,10 @@ app.config_from_object(
                 "task": "maintenance.steam_ccu_batch",
                 "schedule": crontab(minute="*/5"),
             },
+            "sync-plex-accounts": {
+                "task": "maintenance.sync_plex_accounts",
+                "schedule": crontab(minute="11,41"),
+            },
             # Progress summary log (every 60s at off-peak second)
             "progress-summary": {
                 "task": "maintenance.progress_summary",
@@ -171,3 +175,4 @@ def _suppress_sqlalchemy_logs(**kwargs):
 import otix.tasks.sync  # noqa: E402, F811
 import otix.tasks.maintenance  # noqa: E402, F811
 import otix.tasks.catalog_seed  # noqa: E402, F811
+import otix.tasks.xp  # noqa: E402, F811

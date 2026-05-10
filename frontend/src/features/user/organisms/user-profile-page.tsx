@@ -1,12 +1,16 @@
 import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText, Star } from 'lucide-react'
+import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, UserX, Clock } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
+import { DkButton } from '@/features/dk-ui/atoms/button'
+import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { Skeleton } from '@ui/atoms/skeleton'
-import { cn } from '@/lib/utils'
+import plexLogo from '@/assets/provider-logos/plex.svg'
+import { useAuth } from '@/features/auth/auth-provider'
+import { apiClient } from '@/lib/api-client'
 import { userQueries, computeReviewStats } from '../user-queries'
 
 const GRADIENTS = [
@@ -41,20 +45,17 @@ interface UserGamification {
   xpProgress: number // 0-1
 }
 
-function computeGamification(reviewCount: number): UserGamification {
-  const level = Math.floor(reviewCount / 3) + 1
-  const xpForLevel = (l: number) => l * 300
-  const xp = reviewCount * 100
-  const xpFloor = xpForLevel(level - 1)
-  const xpCeil = xpForLevel(level)
-  const xpInLevel = xp - xpFloor
-  const xpToNextLevel = xpCeil - xpFloor
+function computeGamification(totalXp: number): UserGamification {
+  const XP_PER_LEVEL = 300
+  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1
+  const xpFloor = (level - 1) * XP_PER_LEVEL
+  const xpCeil = level * XP_PER_LEVEL
 
   return {
     level,
-    xp,
-    xpToNextLevel,
-    xpProgress: xpToNextLevel > 0 ? Math.min(1, xpInLevel / xpToNextLevel) : 1,
+    xp: totalXp,
+    xpToNextLevel: xpCeil - xpFloor,
+    xpProgress: Math.min(1, (totalXp - xpFloor) / (xpCeil - xpFloor)),
   }
 }
 
@@ -124,6 +125,8 @@ function XPProgressRing({
 export function UserProfilePage() {
   const params = useParams({ strict: false }) as { username?: string }
   const username = params.username || ''
+  const { user: currentUser } = useAuth()
+  const queryClient = useQueryClient()
 
   const profileQuery = useQuery(userQueries.profile(username))
   const reviewsQuery = useQuery(userQueries.reviews(username))
@@ -151,7 +154,7 @@ export function UserProfilePage() {
   }
 
   const profile = profileQuery.data
-  const gamification = computeGamification(profile.reviewCount)
+  const gamification = computeGamification(profile.totalXp)
 
   return (
     <div className="pb-16">
@@ -237,6 +240,100 @@ export function UserProfilePage() {
                 <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80">
                   {profile.bio}
                 </p>
+              )}
+
+              {(profile.steam || profile.plex) && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {profile.steam && (
+                    <a
+                      href={profile.steam.profileurl ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-white/20 hover:text-white transition-all"
+                    >
+                      <SteamIcon className="h-3.5 w-3.5" />
+                      {profile.steam.personaname ?? 'Steam'}
+                    </a>
+                  )}
+                  {profile.plex && profile.plex.username && (
+                    <a
+                      href={`https://app.plex.tv/desktop/#!/u/${profile.plex.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-[#e5a00d]/25 hover:text-white transition-all"
+                    >
+                      <img src={plexLogo} alt="" className="h-3.5 w-3.5" />
+                      {profile.plex.username}
+                    </a>
+                  )}
+                  {profile.plex && !profile.plex.username && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
+                      <img src={plexLogo} alt="" className="h-3.5 w-3.5" />
+                      Plex
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Friend actions */}
+              {currentUser && currentUser.username !== username && profile.friendshipStatus && (
+                <div className="mt-3">
+                  {profile.friendshipStatus.status === 'none' && (
+                    <DkButton
+                      variant="glass"
+                      size="xs"
+                      onClick={async () => {
+                        await apiClient.post(`/friends/requests/${profile.id}`)
+                        queryClient.invalidateQueries({ queryKey: ['user', username] })
+                      }}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Add Friend
+                    </DkButton>
+                  )}
+                  {profile.friendshipStatus.status === 'pending_sent' && (
+                    <DkButton variant="secondary" size="xs" disabled>
+                      <Clock className="h-3.5 w-3.5" />
+                      Request Sent
+                    </DkButton>
+                  )}
+                  {profile.friendshipStatus.status === 'pending_received' && (
+                    <div className="flex gap-2">
+                      <DkButton
+                        variant="glass"
+                        size="xs"
+                        onClick={async () => {
+                          const requestId = profile.friendshipStatus?.requestId
+                          if (requestId) {
+                            await apiClient.post(`/friends/requests/${requestId}/accept`)
+                            queryClient.invalidateQueries({ queryKey: ['user', username] })
+                          }
+                        }}
+                      >
+                        Accept
+                      </DkButton>
+                      <DkButton
+                        variant="secondary"
+                        size="xs"
+                        onClick={async () => {
+                          const requestId = profile.friendshipStatus?.requestId
+                          if (requestId) {
+                            await apiClient.post(`/friends/requests/${requestId}/reject`)
+                            queryClient.invalidateQueries({ queryKey: ['user', username] })
+                          }
+                        }}
+                      >
+                        Decline
+                      </DkButton>
+                    </div>
+                  )}
+                  {profile.friendshipStatus.status === 'friends' && (
+                    <DkButton variant="secondary" size="xs" disabled>
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Friends
+                    </DkButton>
+                  )}
+                </div>
               )}
             </div>
           </div>

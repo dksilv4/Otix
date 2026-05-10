@@ -5,6 +5,8 @@ import { Logo } from '@ui/atoms/logo'
 import { NavigationProvider, MenuDropdown, useNavigation } from '@navigation'
 import { usePageMeta } from '@/lib/page-context'
 import { UserMenu } from '@/features/auth/molecules/user-menu'
+import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
+import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -59,9 +61,11 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MenuDropdown />
+      <NotificationBell />
       <UserMenu />
 
       <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
+      <XPToastContainer />
     </div>
   )
 }

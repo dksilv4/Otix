@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query"
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { libraryKeys } from "./library-keys"
 
@@ -23,12 +23,17 @@ export interface LibraryResponse {
       watched: boolean
       played: boolean
     } | null
+    steamPlaytimeForever?: number | null
+    steamPlaytime2weeks?: number | null
+    steamRtimeLastPlayed?: number | null
+    plexViewCount?: number | null
+    plexLastViewedAt?: string | null
   }>
   nextCursor: string | null
   hasMore: boolean
 }
 
-const LIBRARY_TABS = ["watchlist", "like", "watched", "played", "lists"] as const
+const LIBRARY_TABS = ["watchlist", "like", "watched", "played", "steam", "plex", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
@@ -36,6 +41,9 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   like: "Liked",
   watched: "Watched",
   played: "Played",
+  steam: "Steam",
+  plex: "Plex",
+  wishlist: "Wishlist",
   lists: "Lists",
 }
 
@@ -51,5 +59,145 @@ export function useLibraryTab(tab: LibraryTab) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useSteamLibraryScan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<{ totalInSteam: number; matchedInOtix: number }>(
+        "/auth/integrations/steam/scan",
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("steam") })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("steam"), "status"] })
+    },
+  })
+}
+
+export function usePlexLibraryScan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<{ total: number; matched: number; seeded: number }>(
+        "/auth/integrations/plex/sync",
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("plex") })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "status"] })
+    },
+  })
+}
+
+export function usePlexStatus() {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("plex"), "status"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ itemCount: number; lastScannedAt: string | null }>(
+        "/library/plex/status",
+      )
+      return data
+    },
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export interface UnmatchedGame {
+  id: string
+  steamAppId: number
+  steamName: string
+  steamPlaytimeForever: number
+  steamPlaytime2weeks: number
+  steamImgIconUrl: string | null
+  steamRtimeLastPlayed: number | null
+}
+
+export interface UnmatchedListResponse {
+  items: UnmatchedGame[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+export function useUnmatchedSteamGames() {
+  return useInfiniteQuery({
+    queryKey: [...libraryKeys.tab("steam"), "unmatched"],
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      const params: Record<string, string> = { limit: "48" }
+      if (pageParam) params.cursor = pageParam
+      const { data } = await apiClient.get<UnmatchedListResponse>("/library/steam/unmatched", { params })
+      return data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useSteamStatus() {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("steam"), "status"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ gameCount: number; lastScannedAt: string | null }>(
+        "/library/steam/status",
+      )
+      return data
+    },
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export interface WishlistItem {
+  id: string
+  mediaType: string
+  title: string
+  slug: string
+  posterUrl: string | null
+  logoUrl: string | null
+  textlessPosterUrl: string | null
+  releaseDate: string | null
+  steamPriority: number
+}
+
+export interface WishlistListResponse {
+  items: WishlistItem[]
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+export function useSteamWishlist() {
+  return useInfiniteQuery({
+    queryKey: libraryKeys.tab("wishlist"),
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      const params: Record<string, string> = { limit: "48" }
+      if (pageParam) params.cursor = pageParam
+      const { data } = await apiClient.get<WishlistListResponse>("/library/steam/wishlist", { params })
+      return data
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useSteamWishlistScan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<{ total: number; matched: number; private?: boolean }>(
+        "/auth/integrations/steam/wishlist/scan",
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("wishlist") })
+    },
   })
 }

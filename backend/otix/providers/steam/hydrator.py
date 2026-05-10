@@ -50,6 +50,9 @@ class SteamHydrator:
         except Exception:
             return
 
+        if data is None:
+            return
+
         result = data.get("response", {})
         if result.get("result") != 1:
             return

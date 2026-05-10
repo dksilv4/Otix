@@ -10,11 +10,14 @@ Docs: https://steamapi.xpaw.me/  (unofficial reference)
 from __future__ import annotations
 
 import httpx
+import structlog
 from redis.asyncio import Redis
 
 from otix.infrastructure.config import settings
 from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider
+
+logger = structlog.get_logger()
 
 
 class SteamError(Exception):
@@ -90,6 +93,39 @@ class SteamProvider(BaseProvider):
         if response.status_code != 200:
             raise SteamError(f"Steam reviews failed: {response.status_code}")
         return response.json()
+
+    # ── Owned games ──────────────────────────────────────────────────
+
+    async def get_owned_games(self, steam_id: str) -> list[dict[str, JSONValue]]:
+        """Fetch all owned games for a Steam user.
+
+        Calls IPlayerService/GetOwnedGames/v1/ with app info and free games
+        included. Returns the ``games`` list from the response, or an empty
+        list if the profile is private / has no games.
+        """
+        try:
+            response = await self._get(
+                "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/",
+                params={
+                    "steamid": steam_id,
+                    "include_appinfo": 1,
+                    "include_played_free_games": 1,
+                },
+            )
+        except Exception:
+            logger.exception("steam owned games request failed")
+            return []
+
+        if response.status_code == 403:
+            logger.warning("steam profile is private", steam_id=steam_id)
+            return []
+        if response.status_code != 200:
+            raise SteamError(f"Steam owned games failed: {response.status_code}")
+        data = response.json()
+        games = data.get("response", {}).get("games")
+        if isinstance(games, list):
+            return games
+        return []
 
     # ── Store search ──────────────────────────────────────────────────
 

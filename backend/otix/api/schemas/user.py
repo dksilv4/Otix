@@ -4,6 +4,21 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from otix.api.schemas.friend import FriendshipStatusOut
+
+
+class SteamIntegrationPublic(BaseModel):
+    personaname: str | None = None
+    avatarfull: str | None = None
+    profileurl: str | None = None
+    loccountrycode: str | None = None
+    personastate: int | None = None
+
+
+class PlexIntegrationPublic(BaseModel):
+    username: str | None = None
+    thumb: str | None = None
+
 
 class UserProfileOut(BaseModel):
     id: str
@@ -13,3 +28,7 @@ class UserProfileOut(BaseModel):
     background_url: str | None = None
     created_at: datetime
     review_count: int = 0
+    total_xp: int = 0
+    steam: SteamIntegrationPublic | None = None
+    plex: PlexIntegrationPublic | None = None
+    friendship_status: FriendshipStatusOut | None = None

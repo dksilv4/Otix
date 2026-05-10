@@ -5,20 +5,35 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.api.deps import get_db
+from otix.api.deps import get_db, get_optional_user
+from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
-from otix.api.schemas.user import UserProfileOut
+from otix.api.schemas.user import PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
 from otix.domain.review import Review
 from otix.domain.user import User
+from otix.services.friend_service import FriendService
 from otix.services.review_service import ReviewService
+from otix.services.steam_auth_service import get_steam_user_info
 
 user_router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _visibility_allows(visibility: dict, provider: str, is_friend: bool) -> bool:
+    level = visibility.get(provider)
+    if not level or level == "hidden":
+        return False
+    if level == "everyone":
+        return True
+    if level == "friends" and is_friend:
+        return True
+    return False
 
 
 @user_router.get("/{username}", response_model=UserProfileOut)
 async def get_user_profile(
     username: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> UserProfileOut:
     user = await db.scalar(select(User).where(User.username == username))
     if user is None:
@@ -32,6 +47,37 @@ async def get_user_profile(
         )
     )
 
+    is_own_profile = current_user is not None and current_user.id == user.id
+    is_friend = False
+    friendship_status = None
+
+    if current_user and not is_own_profile:
+        friend_service = FriendService(db)
+        status_data = await friend_service.get_friendship_status(current_user.id, user.id)
+        friendship_status = FriendshipStatusOut(**status_data)
+        is_friend = status_data["status"] == "friends"
+
+    visibility = user.integration_visibility or {}
+
+    steam = None
+    if user.steam_id and (is_own_profile or _visibility_allows(visibility, "steam", is_friend)):
+        profile = await get_steam_user_info(user.steam_id)
+        if profile:
+            steam = SteamIntegrationPublic(
+                personaname=profile.get("personaname"),
+                avatarfull=profile.get("avatarfull"),
+                profileurl=profile.get("profileurl"),
+                loccountrycode=profile.get("loccountrycode"),
+                personastate=profile.get("personastate"),
+            )
+
+    plex = None
+    if user.plex_id and (is_own_profile or _visibility_allows(visibility, "plex", is_friend)):
+        plex = PlexIntegrationPublic(
+            username=user.plex_username,
+            thumb=user.plex_thumb,
+        )
+
     return UserProfileOut(
         id=user.id,
         username=user.username,
@@ -40,6 +86,10 @@ async def get_user_profile(
         background_url=user.background_url,
         created_at=user.created_at,
         review_count=review_count or 0,
+        total_xp=user.total_xp,
+        steam=steam,
+        plex=plex,
+        friendship_status=friendship_status,
     )
 
 

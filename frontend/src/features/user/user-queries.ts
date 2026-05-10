@@ -1,6 +1,24 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 
+export interface SteamPublicProfile {
+  personaname: string | null
+  avatarfull: string | null
+  profileurl: string | null
+  loccountrycode: string | null
+  personastate: number | null
+}
+
+export interface PlexPublicProfile {
+  username: string | null
+  thumb: string | null
+}
+
+export interface FriendshipStatus {
+  status: 'friends' | 'pending_sent' | 'pending_received' | 'none'
+  requestId: string | null
+}
+
 export interface UserProfile {
   id: string
   username: string
@@ -9,6 +27,10 @@ export interface UserProfile {
   backgroundUrl: string | null
   createdAt: string
   reviewCount: number
+  totalXp: number
+  steam?: SteamPublicProfile | null
+  plex?: PlexPublicProfile | null
+  friendshipStatus?: FriendshipStatus | null
 }
 
 export interface ReviewWithUser {

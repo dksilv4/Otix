@@ -11,6 +11,12 @@ import { ListDetail } from "@/features/list/organisms/list-detail"
 import { SettingsPage } from "@/features/settings/organisms/settings-page"
 import { UserProfilePage } from "@/features/user/organisms/user-profile-page"
 import { WorkoutPage } from "@/features/workout/organisms/workout-page"
+import { VerifyEmailPage } from "@auth/organisms/verify-email-page"
+import { ForgotPasswordPage } from "@auth/organisms/forgot-password-page"
+import { ResetPasswordPage } from "@auth/organisms/reset-password-page"
+import { SteamCallbackPage } from "@auth/organisms/steam-callback-page"
+import { SteamConnectCallbackPage } from "@auth/organisms/steam-connect-callback-page"
+import { PlexConnectCallbackPage } from "@auth/organisms/plex-connect-callback-page"
 
 // ── Root — chooses layout based on route ──
 
@@ -111,6 +117,42 @@ const workoutRoute = createRoute({
   component: WorkoutPage,
 })
 
+const verifyEmailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/verify-email",
+  component: VerifyEmailPage,
+})
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/forgot-password",
+  component: ForgotPasswordPage,
+})
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/reset-password",
+  component: ResetPasswordPage,
+})
+
+const steamCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/steam/callback",
+  component: SteamCallbackPage,
+})
+
+const steamConnectCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/steam/connect/callback",
+  component: SteamConnectCallbackPage,
+})
+
+const plexConnectCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/plex/connect/callback",
+  component: PlexConnectCallbackPage,
+})
+
 const dkUiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dk-ui",
@@ -131,6 +173,12 @@ const routeTree = rootRoute.addChildren([
   authLoginRoute,
   authRegisterRoute,
   workoutRoute,
+  verifyEmailRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  steamCallbackRoute,
+  steamConnectCallbackRoute,
+  plexConnectCallbackRoute,
   dkUiRoute,
 ])
 

@@ -355,7 +355,7 @@ class TMDBHydrator:
                     media_item_id=media_item.id,
                     country_code=country_code.lower(),
                     release_date=release_date,
-                    certification=entry.get("certification") or None,
+                    certification=entry.get("certification")[:20] if entry.get("certification") else None,
                 )
             )
 

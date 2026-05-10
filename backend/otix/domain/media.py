@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -217,4 +217,115 @@ class MediaGameMode(Base):
 
     __table_args__ = (
         UniqueConstraint("media_item_id", "game_mode_id", name="uq_media_game_mode"),
+    )
+
+
+class UserSteamGame(Base):
+    __tablename__ = "user_steam_games"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
+    steam_app_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    playtime_forever: Mapped[int] = mapped_column(Integer, default=0)
+    playtime_2weeks: Mapped[int] = mapped_column(Integer, default=0)
+    img_icon_url: Mapped[str | None] = mapped_column(String(256))
+    img_logo_url: Mapped[str | None] = mapped_column(String(256))
+    rtime_last_played: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_game"),
+    )
+
+
+class UserSteamWishlist(Base):
+    __tablename__ = "user_steam_wishlist"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
+    steam_app_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    added_date: Mapped[int | None] = mapped_column(Integer)
+    is_free: Mapped[bool] = mapped_column(Boolean, default=False)
+    img_icon_url: Mapped[str | None] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_wishlist"),
+    )
+
+
+class UserPlexServer(Base, TimestampMixin):
+    __tablename__ = "user_plex_servers"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    machine_identifier: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    product: Mapped[str | None] = mapped_column(String(100))
+    platform: Mapped[str | None] = mapped_column(String(100))
+    base_url: Mapped[str | None] = mapped_column(String(2048))
+    access_token: Mapped[str | None] = mapped_column(Text)
+    owned: Mapped[bool] = mapped_column(default=False)
+    selected: Mapped[bool] = mapped_column(default=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "machine_identifier", name="uq_user_plex_server"),
+    )
+
+
+class UserPlexLibrary(Base, TimestampMixin):
+    __tablename__ = "user_plex_libraries"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    server_id: Mapped[otix_fk] = mapped_column(ForeignKey("user_plex_servers.id", ondelete="CASCADE"), nullable=False)
+    section_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    library_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    selected: Mapped[bool] = mapped_column(default=True)
+
+    __table_args__ = (
+        UniqueConstraint("server_id", "section_key", name="uq_user_plex_library"),
+    )
+
+
+class UserPlexItem(Base, TimestampMixin):
+    __tablename__ = "user_plex_items"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    server_id: Mapped[otix_fk] = mapped_column(ForeignKey("user_plex_servers.id", ondelete="CASCADE"), nullable=False)
+    library_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("user_plex_libraries.id", ondelete="SET NULL"), nullable=True)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True)
+    rating_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    guid: Mapped[str | None] = mapped_column(String(512))
+    media_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(1000), nullable=False)
+    year: Mapped[int | None] = mapped_column(Integer)
+    thumb_url: Mapped[str | None] = mapped_column(String(2048))
+    viewed: Mapped[bool] = mapped_column(default=False)
+    view_count: Mapped[int] = mapped_column(Integer, default=0)
+    view_offset: Mapped[int | None] = mapped_column(Integer)
+    duration: Mapped[int | None] = mapped_column(Integer)
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    guids: Mapped[list | None] = mapped_column(JSONB)
+    raw: Mapped[dict | None] = mapped_column(JSONB)
+
+    __table_args__ = (
+        UniqueConstraint("server_id", "rating_key", name="uq_user_plex_item"),
     )

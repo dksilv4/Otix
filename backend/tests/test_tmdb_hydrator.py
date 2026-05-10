@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -217,8 +218,8 @@ class TestHydrateImages:
         raw = {
             "images": {
                 "posters": [
-                    {"file_path": "/p1.jpg", "width": 2000, "height": 3000},
-                    {"file_path": "/p2.jpg", "width": 1500, "height": 2250},
+                    {"file_path": "/p1.jpg", "width": 2000, "height": 3000, "iso_639_1": "en"},
+                    {"file_path": "/p2.jpg", "width": 1500, "height": 2250, "iso_639_1": "en"},
                 ],
                 "backdrops": [
                     {"file_path": "/bd1.jpg", "width": 3840, "height": 2160},
@@ -240,12 +241,12 @@ class TestHydrateImages:
         assert all(a.provider == "tmdb" for a in assets)
         assert posters[0].url == "https://image.tmdb.org/t/p/original/p1.jpg"
 
-    async def test_limits_posters_to_5(
+    async def test_limits_posters_to_10(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
     ):
         raw = {
             "images": {
-                "posters": [{"file_path": f"/p{i}.jpg"} for i in range(10)],
+                "posters": [{"file_path": f"/p{i}.jpg", "iso_639_1": "en"} for i in range(12)],
                 "backdrops": [],
             }
         }
@@ -255,7 +256,7 @@ class TestHydrateImages:
 
         added = [c.args[0] for c in mock_db_session.add.call_args_list]
         posters = [o for o in added if isinstance(o, MediaAsset)]
-        assert len(posters) == 5
+        assert len(posters) == 10
 
     async def test_skips_existing_urls(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
@@ -380,8 +381,7 @@ class TestHydrateReleases:
         assert len(releases) == 2
         assert {r.country_code for r in releases} == {"us", "gb"}
         assert {r.certification for r in releases} == {"R", "18"}
-        # Dates are stripped to YYYY-MM-DD
-        assert releases[0].release_date == "1999-10-15"
+        assert releases[0].release_date == date(1999, 10, 15)
 
     async def test_prefers_theatrical_type(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
@@ -406,7 +406,7 @@ class TestHydrateReleases:
         releases = [o for o in added if isinstance(o, MediaRelease)]
         assert len(releases) == 1
         assert releases[0].certification == "R"
-        assert releases[0].release_date == "1999-10-15"
+        assert releases[0].release_date == date(1999, 10, 15)
 
     async def test_skips_empty_releases(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock

@@ -197,6 +197,17 @@
   animation: infinityDashGlow 2s linear infinite;
 }
 
+@keyframes xpFloat {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(0.8); }
+  20% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+  80% { opacity: 0.6; transform: translate(-50%, -28px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -40px) scale(0.9); }
+}
+
+.animate-xp-float {
+  animation: xpFloat 1.2s ease-out forwards;
+}
+
 @layer base {
   * {
     border-color: var(--border);

@@ -451,7 +451,9 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
             if media_item is not None:
                 item.id = media_item.id
                 movie.media_item_id = media_item.id  # keep PK/FK in sync after id swap
-                await session.merge(item)
+                managed_item = await session.merge(item)
+                item = managed_item
+                movie = managed_item.movie
             else:
                 session.add(item)
                 await session.flush()
@@ -461,8 +463,9 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
                     media_item_id=item.id,
                 )
                 session.add(ext_id)
+                session.add(movie)
 
-            session.add(movie)
+            await session.flush()
 
             await hydrator.hydrate_genres(item, raw)
             await hydrator.hydrate_credits(item, raw)
@@ -645,6 +648,8 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
                         )
                     )
                     total_episodes += 1
+
+            await session.flush()
 
             await hydrator.hydrate_genres(item, raw)
             await hydrator.hydrate_credits(item, raw)

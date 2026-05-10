@@ -44,6 +44,9 @@ export interface MediaItemDetail {
   watchedCount: number
   playedCount: number
   userInteractions?: UserInteractionState | null
+  steamPlaytimeForever?: number | null
+  steamPlaytime2weeks?: number | null
+  steamRtimeLastPlayed?: number | null
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>

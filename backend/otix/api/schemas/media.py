@@ -99,6 +99,11 @@ class MediaItemSummary(BaseModel):
     played_count: int = 0
     started_count: int = 0
     user_interactions: UserInteractionState | None = None
+    steam_playtime_forever: int | None = None
+    steam_playtime_2weeks: int | None = None
+    steam_rtime_last_played: int | None = None
+    plex_view_count: int | None = None
+    plex_last_viewed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -107,6 +112,58 @@ class MediaItemListResponse(PaginatedResponse):
     items: list[MediaItemSummary]
     total: int | None = None
     backfill_pending: bool = False
+
+
+class SteamUnmatchedGameSummary(BaseModel):
+    id: str
+    steam_app_id: int
+    steam_name: str
+    steam_playtime_forever: int = 0
+    steam_playtime_2weeks: int = 0
+    steam_img_icon_url: str | None = None
+    steam_rtime_last_played: int | None = None
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_from_usg(cls, data: object) -> object:
+        """Map UserSteamGame fields to steam_ prefixed schema fields."""
+        if isinstance(data, dict):
+            return data
+        return {
+            "id": getattr(data, "id", None),
+            "steam_app_id": getattr(data, "steam_app_id", None),
+            "steam_name": getattr(data, "name", None),
+            "steam_playtime_forever": getattr(data, "playtime_forever", 0),
+            "steam_playtime_2weeks": getattr(data, "playtime_2weeks", 0),
+            "steam_img_icon_url": getattr(data, "img_icon_url", None),
+            "steam_rtime_last_played": getattr(data, "rtime_last_played", None),
+        }
+
+
+class SteamUnmatchedListResponse(PaginatedResponse):
+    items: list[SteamUnmatchedGameSummary]
+    total: int | None = None
+
+
+class SteamWishlistItemSummary(BaseModel):
+    id: str
+    media_type: str
+    title: str
+    slug: str
+    poster_url: str | None = None
+    logo_url: str | None = None
+    textless_poster_url: str | None = None
+    release_date: date | None = None
+    steam_priority: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class SteamWishlistListResponse(PaginatedResponse):
+    items: list[SteamWishlistItemSummary]
+    total: int | None = None
 
 
 # ── Media detail (full) ──────────────────────────────────────────
@@ -256,6 +313,11 @@ class MediaItemDetail(BaseModel):
     played_count: int = 0
     started_count: int = 0
     user_interactions: UserInteractionState | None = None
+
+    # Steam playtime (populated for authenticated users who own the game)
+    steam_playtime_forever: int | None = None
+    steam_playtime_2weeks: int | None = None
+    steam_rtime_last_played: int | None = None
 
     genres: list[GenreOut] = []
     external_ratings: list[ExternalRatingOut] = []

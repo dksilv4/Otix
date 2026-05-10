@@ -1,7 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import { DkCard } from '@/features/dk-ui/molecules/card'
 import { DkButton } from '@/features/dk-ui/atoms/button'
-import { Badge } from '@ui/atoms/badge'
 import type { WorkoutListOut } from '../workout-queries'
 
 interface WorkoutCardProps {

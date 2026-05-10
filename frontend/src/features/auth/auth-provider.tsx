@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiClient } from '@/lib/api-client'
-import type { User, AuthState } from './types'
+import type { User, AuthState, TwoFactorChallenge, LoginResponse } from './types'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -15,8 +15,8 @@ export function useAuth(): AuthState {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
 
-  // Check if we have a valid session on mount
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) {
@@ -30,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false))
   }, [])
 
-  // Listen for session expiration from the API client's refresh failure
   useEffect(() => {
     const handler = () => {
       setUser(null)
@@ -42,14 +41,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (identity: string, password: string) => {
     const res = await apiClient.post('/auth/login', { identity, password })
-    localStorage.setItem(ACCESS_TOKEN_KEY, res.data.access_token)
+    const data = res.data as LoginResponse
+
+    if (data.twoFactorRequired && data.challengeToken) {
+      setTwoFactorChallenge({ challengeToken: data.challengeToken })
+      return
+    }
+
+    localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
     const me = await apiClient.get('/auth/me')
     setUser(me.data)
   }, [])
 
+  const verifyTwoFactor = useCallback(async (code: string) => {
+    if (!twoFactorChallenge) throw new Error('No 2FA challenge in progress')
+
+    const res = await apiClient.post('/auth/2fa/login/verify', {
+      challenge_token: twoFactorChallenge.challengeToken,
+      code,
+    })
+    localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
+    setTwoFactorChallenge(null)
+    const me = await apiClient.get('/auth/me')
+    setUser(me.data)
+  }, [twoFactorChallenge])
+
+  const cancelTwoFactor = useCallback(() => {
+    setTwoFactorChallenge(null)
+  }, [])
+
   const register = useCallback(async (email: string, username: string, password: string) => {
     const res = await apiClient.post('/auth/register', { email, username, password })
-    localStorage.setItem(ACCESS_TOKEN_KEY, res.data.access_token)
+    localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
     const me = await apiClient.get('/auth/me')
     setUser(me.data)
   }, [])
@@ -62,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     setUser(null)
+    setTwoFactorChallenge(null)
   }, [])
 
   return (
@@ -70,7 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        twoFactorChallenge,
         login,
+        verifyTwoFactor,
+        cancelTwoFactor,
         register,
         logout,
       }}

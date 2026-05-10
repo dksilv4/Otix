@@ -6,6 +6,8 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
+
 from otix.api.deps import get_db, get_optional_user
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import (
@@ -13,6 +15,7 @@ from otix.api.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
 )
+from otix.domain.media import UserSteamGame
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
@@ -237,5 +240,18 @@ async def get_media_item(
             user_id=current_user.id, media_item_id=media_id,
         )
         result.user_interactions = UserInteractionState(**state)
+
+        # Load Steam playtime if the game has a steam_app_id
+        if item.game and item.game.steam_app_id:
+            steam_game = await db.scalar(
+                select(UserSteamGame).where(
+                    UserSteamGame.user_id == current_user.id,
+                    UserSteamGame.steam_app_id == item.game.steam_app_id,
+                )
+            )
+            if steam_game:
+                result.steam_playtime_forever = steam_game.playtime_forever
+                result.steam_playtime_2weeks = steam_game.playtime_2weeks
+                result.steam_rtime_last_played = steam_game.rtime_last_played
 
     return result

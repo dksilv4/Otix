@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+const BASE_URL = API_BASE_URL
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -98,7 +99,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
   // For FormData, remove Content-Type so the browser sets the correct multipart boundary
   if (config.data instanceof FormData && config.headers) {
-    delete config.headers['Content-Type']
+    config.headers.set('Content-Type', undefined)
   }
 
   return config
@@ -120,7 +121,18 @@ apiClient.interceptors.response.use(
       error.response.headers &&
       getContentType(error.response.headers as Record<string, unknown>).includes('application/json')
     ) {
-      error.response.data = convertKeysToCamelCase(error.response.data)
+      const data = convertKeysToCamelCase(error.response.data) as { detail?: unknown }
+      error.response.data = data
+      // Normalize FastAPI 422 validation errors: detail is an array of
+      // {type, loc, msg, input} — flatten to a single string so React can render it.
+      if (Array.isArray(data.detail)) {
+        data.detail = data.detail
+          .map((e: { loc?: string[]; msg?: string }) => {
+            const field = e.loc ? e.loc[e.loc.length - 1] : ''
+            return field ? `${field}: ${e.msg}` : e.msg
+          })
+          .join('; ')
+      }
     }
 
     // Token refresh flow — skip for endpoints that return 401 for reasons

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatSearchInput } from './chat-search-input'
 
@@ -26,12 +26,12 @@ describe('ChatSearchInput', () => {
 
   it('calls onChange when input changes', async () => {
     const onChange = vi.fn()
-    render(<ChatSearchInput value="" onChange={onChange} />)
+    render(<ChatSearchInput value="" onChange={onChange} debounceMs={0} />)
 
     const input = screen.getByPlaceholderText('What are you in the mood for?')
     await userEvent.type(input, 'a')
 
-    expect(onChange).toHaveBeenCalledWith('a')
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith('a'))
   })
 
   it('shows send button when value is non-empty', () => {

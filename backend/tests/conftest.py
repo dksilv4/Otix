@@ -9,12 +9,10 @@ Tiers:
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tier 1: Pure data fixtures (no infrastructure)
@@ -336,7 +334,6 @@ def mock_httpx_client(
 def mock_httpx_client_429():
     """Returns 429 for rate limit testing."""
     import httpx
-    from unittest.mock import MagicMock
 
     class RateLimitTransport(httpx.AsyncBaseTransport):
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -383,9 +380,14 @@ def mock_db_session() -> AsyncMock:
 def docker_compose():
     """Ensure docker compose services for integration tests."""
     import subprocess
-    import sys
 
     try:
+        subprocess.run(
+            ["docker", "compose", "stop", "api", "beat", "worker-ccu", "worker-fast", "worker-slow"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
         subprocess.run(
             ["docker", "compose", "up", "-d", "db", "redis"],
             check=True,
@@ -407,6 +409,9 @@ async def integration_redis(docker_compose):
     await r.aclose()
 
 
+_integration_schema_ready = False
+
+
 @pytest.fixture
 async def integration_session(docker_compose):
     """Real Postgres session with per-test table truncation.
@@ -414,26 +419,59 @@ async def integration_session(docker_compose):
     Drops and recreates all tables so every integration test starts clean,
     regardless of what prior test runs or manual operations left behind.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
     from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
 
     from otix.domain.base import Base
+    from otix.infrastructure.database import dispose_engine
 
+    global _integration_schema_ready
+
+    await dispose_engine()
     engine = create_async_engine(
         "postgresql+asyncpg://otix:password@localhost:5433/otix_dev",
         echo=False,
+        poolclass=NullPool,
     )
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    if not _integration_schema_ready:
+        terminator = create_async_engine(
+            "postgresql+asyncpg://otix:password@localhost:5433/otix_dev",
+            echo=False,
+            poolclass=NullPool,
+            isolation_level="AUTOCOMMIT",
+        )
+        async with terminator.connect() as conn:
+            await conn.execute(
+                text(
+                    """
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = current_database()
+                      AND pid <> pg_backend_pid()
+                    """
+                )
+            )
+        await terminator.dispose()
+
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT pg_advisory_xact_lock(9001)"))
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        _integration_schema_ready = True
 
     factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with factory() as session:
-        async with session.begin():
+        transaction = await session.begin()
+        try:
             yield session
+        finally:
             await session.rollback()
+            if transaction.is_active:
+                await transaction.rollback()
+            await session.close()
 
     await engine.dispose()
 
@@ -450,8 +488,8 @@ def _reset_shared_httpx_clients():
     Without this, a shared client created on one async test's event loop
     survives into the next test, whose new event loop can't use it.
     """
-    from otix.providers.tmdb import client as tmdb_client
     from otix.providers.igdb import client as igdb_client
+    from otix.providers.tmdb import client as tmdb_client
 
     tmdb_client._shared_client = None
     tmdb_client._shared_client_loop_id = None

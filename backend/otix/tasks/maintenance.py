@@ -14,7 +14,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from otix.domain.asset import ExternalRating, MediaAsset
 from otix.domain.media import ExternalID, Game, MediaItem
 from otix.domain.people import Person
-from otix.domain.user import RefreshToken
+from otix.domain.user import RefreshToken, User
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
@@ -78,6 +78,65 @@ def refresh_game_feed() -> dict:
 def provider_health_check() -> dict:
     """Check provider circuit breaker states and log warnings."""
     return run_async(_provider_health_check())
+
+
+@app.task(name="maintenance.sync_plex_accounts", queue="slow")
+def sync_plex_accounts() -> dict:
+    return run_async(_sync_plex_accounts())
+
+
+async def _sync_plex_accounts() -> dict:
+    from otix.services.plex_sync_service import sync_plex
+
+    synced = 0
+    failed = 0
+    async with async_session() as session:
+        users = list((await session.scalars(select(User).where(User.plex_auth_token.isnot(None)))).all())
+        for user in users:
+            try:
+                await sync_plex(session, user)
+                synced += 1
+            except Exception:
+                logger.exception("scheduled plex sync failed", user_id=user.id)
+                failed += 1
+    return {"synced": synced, "failed": failed}
+
+
+@app.task(name="maintenance.plex_sync_user", queue="fast", acks_late=True, reject_on_worker_lost=True)
+def plex_sync_user(task_id: str, user_id: str) -> dict:
+    """Sync Plex libraries for a single user, publishing progress via Redis pub/sub.
+
+    Called on-demand from the API. Runs on the fast queue so it starts immediately.
+    """
+    return run_async(_plex_sync_user(task_id, user_id))
+
+
+async def _plex_sync_user(task_id: str, user_id: str) -> dict:
+    from typing import Any
+
+    from otix.services.plex_sync_service import sync_plex
+    from otix.lib.plex_progress import publish_progress, store_result
+
+    async def progress(event_type: str, **data: Any) -> None:
+        try:
+            await publish_progress(task_id, event_type, **data)
+        except Exception:
+            logger.exception("failed to publish plex sync progress", task_id=task_id, event_type=event_type)
+
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.id == user_id))
+        if not user:
+            await progress("error", message="User not found")
+            raise ValueError(f"User {user_id} not found")
+
+        try:
+            result = await sync_plex(session, user, progress=progress)
+            await store_result(task_id, result)
+            logger.info("plex sync completed for user", user_id=user_id, task_id=task_id, **result)
+            return {"status": "success", **result}
+        except Exception:
+            await progress("error", message="Sync failed unexpectedly")
+            raise
 
 
 @app.task(name="maintenance.cleanup_expired_tokens", queue="slow")

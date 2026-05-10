@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     steam_api_key: str = ""
     steam_request_timeout_seconds: int = 15
     steam_global_rps_limit: int = 20
+    plex_client_identifier: str = "otix-web"
+    plex_product: str = "Otix"
+    plex_version: str = "0.1.0"
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
     igdb_request_timeout_seconds: int = 20

@@ -45,7 +45,7 @@ end
 redis.call('SET', key .. ':tokens', tokens)
 redis.call('SET', key .. ':last', now)
 
-return {allowed, tokens, wait}
+return {allowed, tostring(tokens), tostring(wait)}
 """
 
 
@@ -93,7 +93,7 @@ class RateLimiter:
             keys=[key],
             args=[now, r, b, tokens],
         )
-        return bool(allowed), float(wait)
+        return bool(int(allowed)), float(wait)
 
     async def wait_and_acquire(
         self,

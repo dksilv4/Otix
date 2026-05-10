@@ -20,7 +20,7 @@ const SETS_OF_RX = /(\d+)\s*sets?\s*of\s*(\d+)/gi
 const SETS_REPS_RX = /(\d+)\s*sets?\s*(?:of\s*)?(\d+)\s*reps?/gi
 const REPS_RX = /(\d+)\s*rep(?:s|etitions?)?(?:\(s\))?/gi
 const WEIGHT_RX = /(\d+(?:\.\d+)?)\s*(kg|lbs?|#)\b/gi
-const WEIGHT_AT_RX = /(?:@|at)\s*(\d+(?:\.\d+)?)\s*(kg|lbs?|#)?/gi
+const WEIGHT_AT_RX = /(?:@|\bat\b)\s*(\d+(?:\.\d+)?)\s*(kg|lbs?|#)?/gi
 
 const FILLER_RX = /\b(?:do|did|for|of|with|and|then|the|a|an|some|just|about|around)\b/gi
 

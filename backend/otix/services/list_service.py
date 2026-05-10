@@ -6,6 +6,8 @@ from sqlalchemy.orm import joinedload
 
 from otix.domain.list import UserList, UserListItem
 from otix.domain.media import MediaItem
+from otix.infrastructure.celery import app
+from otix.lib.xp import LIST_CREATE
 
 
 class ListService:
@@ -24,6 +26,7 @@ class ListService:
         self.session.add(lst)
         await self.session.flush()
         await self.session.refresh(lst)
+        app.send_task("xp.award", args=[user_id, LIST_CREATE])
         return lst
 
     async def update_list(

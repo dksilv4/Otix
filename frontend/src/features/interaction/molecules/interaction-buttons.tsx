@@ -1,6 +1,7 @@
 import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
+import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
 import {
   useToggleInteraction,
   useUserInteractions,
@@ -17,6 +18,14 @@ interface ButtonDef {
   activeGlow: string
   Icon: typeof Heart
   showFor: 'all' | 'movie_show' | 'game'
+}
+
+const XP_VALUES: Record<InteractionType, number> = {
+  liked: 10,
+  watchlisted: 10,
+  watched: 30,
+  played: 30,
+  started: 10,
 }
 
 const BUTTONS: ButtonDef[] = [
@@ -86,7 +95,13 @@ function InteractionButton({
   return (
     <button
       type="button"
-      onClick={() => toggle.mutate({ type, active: !active })}
+      onClick={() => {
+        const nextActive = !active
+        toggle.mutate({ type, active: nextActive })
+        if (nextActive) {
+          showXPToast(XP_VALUES[type])
+        }
+      }}
       className={cn(
         'group relative flex flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-base)] px-4 py-3 transition-all duration-150',
         'hover:border-white/[0.12] hover:bg-[var(--dk-surface-glass)]',

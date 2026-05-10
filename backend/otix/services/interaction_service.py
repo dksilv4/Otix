@@ -8,6 +8,8 @@ from sqlalchemy.orm import joinedload
 
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import MediaItem
+from otix.infrastructure.celery import app
+from otix.lib.xp import INTERACTION_LIKE_WATCHLIST_STARTED, INTERACTION_WATCHED_PLAYED
 
 _TYPE_TO_COLUMN: dict[str, str] = {
     "liked": "like_count",
@@ -76,6 +78,8 @@ class InteractionService:
             )
         )
 
+        is_new = existing is None
+
         if existing:
             if extra_data:
                 existing.extra_data = extra_data
@@ -90,6 +94,15 @@ class InteractionService:
 
         await self.session.flush()
         await self._recalc_count(media_item_id, interaction_type)
+
+        if is_new:
+            amount = (
+                INTERACTION_WATCHED_PLAYED
+                if interaction_type in ("watched", "played")
+                else INTERACTION_LIKE_WATCHLIST_STARTED
+            )
+            app.send_task("xp.award", args=[user_id, amount])
+
         return existing
 
     async def remove_interaction(

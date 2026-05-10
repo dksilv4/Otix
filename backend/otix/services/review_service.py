@@ -6,6 +6,8 @@ from sqlalchemy.orm import joinedload
 
 from otix.domain.media import MediaItem
 from otix.domain.review import Review
+from otix.infrastructure.celery import app
+from otix.lib.xp import REVIEW_SCORE_ONLY, REVIEW_WITH_CONTENT
 
 
 class ReviewService:
@@ -49,6 +51,8 @@ class ReviewService:
             )
         )
 
+        is_new = existing is None
+
         if existing:
             existing.score = score
             existing.title = title
@@ -69,6 +73,11 @@ class ReviewService:
 
         await self.session.flush()
         await self._recalc_rating_aggregates(media_item_id)
+
+        if is_new:
+            amount = REVIEW_WITH_CONTENT if content else REVIEW_SCORE_ONLY
+            app.send_task("xp.award", args=[user_id, amount])
+
         return existing
 
     async def get_my_review(self, user_id: str, media_item_id: str) -> Review | None:

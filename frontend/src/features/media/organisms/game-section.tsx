@@ -113,6 +113,9 @@ interface GameSectionProps {
   game: GameDetail
   platforms?: Array<{ id: string; platform: { id: string; name: string; slug: string; logoImageId?: string } }>
   gameModes?: Array<{ id: string; gameMode: { id: string; name: string; slug: string } }>
+  steamPlaytimeForever?: number | null
+  steamPlaytime2weeks?: number | null
+  steamRtimeLastPlayed?: number | null
   className?: string
 }
 
@@ -121,15 +124,30 @@ function formatNumber(n?: number): string {
   return new Intl.NumberFormat('en-US').format(n)
 }
 
-export function GameSection({ game, platforms, gameModes, className }: GameSectionProps) {
+function formatPlaytime(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`
+  const hours = minutes / 60
+  if (hours < 1) return `${Math.round(hours * 10) / 10}h`
+  return `${Math.round(hours)}h`
+}
+
+function formatDaysAgo(unixTimestamp: number): string {
+  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
+  if (days <= 0) return "Today"
+  if (days === 1) return "1 day ago"
+  return `${days} days ago`
+}
+
+export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, steamPlaytime2weeks, steamRtimeLastPlayed, className }: GameSectionProps) {
   const hasModes = gameModes && gameModes.length > 0
   const hasPlatforms = platforms && platforms.length > 0
   const hasSteamStats =
     game.currentPlayers != null ||
     game.recommendations != null ||
     game.reviewSummary
+  const hasPlaytime = steamPlaytimeForever != null
 
-  if (!hasModes && !hasPlatforms && !hasSteamStats && !game.website) return null
+  if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !game.website) return null
 
   return (
     <section className={cn('space-y-6', className)}>
@@ -168,6 +186,33 @@ export function GameSection({ game, platforms, gameModes, className }: GameSecti
               </Badge>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Your Steam Playtime */}
+      {hasPlaytime && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Your Steam Playtime
+          </h3>
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted-foreground">Total</dt>
+              <dd className="text-sm font-medium">{formatPlaytime(steamPlaytimeForever!)}</dd>
+            </div>
+            {steamPlaytime2weeks != null && steamPlaytime2weeks > 0 && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Recent (2 weeks)</dt>
+                <dd className="text-sm font-medium text-green-500">{formatPlaytime(steamPlaytime2weeks)}</dd>
+              </div>
+            )}
+            {steamRtimeLastPlayed != null && (
+              <div>
+                <dt className="text-xs text-muted-foreground">Last Played</dt>
+                <dd className="text-sm font-medium">{formatDaysAgo(steamRtimeLastPlayed)}</dd>
+              </div>
+            )}
+          </dl>
         </div>
       )}
 
