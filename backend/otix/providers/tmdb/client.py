@@ -242,3 +242,157 @@ class TMDBProvider(BaseProvider):
         endpoint = f"/genre/{media_type}/list"
         response = await self._get(endpoint, params={"language": language})
         return response.json()
+
+    # ── User ratings (session-based auth) ─────────────────────────
+
+    async def get_rated_movies(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/rated/movies",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+                "sort_by": "created_at.desc",
+            },
+        )
+        return response.json()
+
+    async def get_rated_tv(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/rated/tv",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+                "sort_by": "created_at.desc",
+            },
+        )
+        return response.json()
+
+    async def get_rated_tv_episodes(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/rated/tv/episodes",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+                "sort_by": "created_at.desc",
+            },
+        )
+        return response.json()
+
+    async def get_movie_watchlist(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/watchlist/movies",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+            },
+        )
+        return response.json()
+
+    async def get_tv_watchlist(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/watchlist/tv",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+            },
+        )
+        return response.json()
+
+    async def get_favorite_movies(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/favorite/movies",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+            },
+        )
+        return response.json()
+
+    async def get_favorite_tv(
+        self, account_id: int, session_id: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/account/{account_id}/favorite/tv",
+            params={
+                "api_key": settings.tmdb_api_key,
+                "session_id": session_id,
+                "language": language,
+                "page": page,
+            },
+        )
+        return response.json()
+
+    async def rate_movie(
+        self, movie_id: int, rating: float, session_id: str
+    ) -> dict[str, JSONValue]:
+        response = await self._client.post(
+            f"{self.BASE_URL}/movie/{movie_id}/rating",
+            params={"api_key": settings.tmdb_api_key, "session_id": session_id},
+            json={"value": rating},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def rate_tv(
+        self, tv_id: int, rating: float, session_id: str
+    ) -> dict[str, JSONValue]:
+        response = await self._client.post(
+            f"{self.BASE_URL}/tv/{tv_id}/rating",
+            params={"api_key": settings.tmdb_api_key, "session_id": session_id},
+            json={"value": rating},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def delete_movie_rating(self, movie_id: int, session_id: str) -> dict[str, JSONValue]:
+        response = await self._client.delete(
+            f"{self.BASE_URL}/movie/{movie_id}/rating",
+            params={"api_key": settings.tmdb_api_key, "session_id": session_id},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def delete_tv_rating(self, tv_id: int, session_id: str) -> dict[str, JSONValue]:
+        response = await self._client.delete(
+            f"{self.BASE_URL}/tv/{tv_id}/rating",
+            params={"api_key": settings.tmdb_api_key, "session_id": session_id},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # ── Watchlist / favorites write ───────────────────────────────
+
+    async def add_to_watchlist(
+        self, account_id: int, session_id: str, media_type: str, media_id: int
+    ) -> dict[str, JSONValue]:
+        response = await self._client.post(
+            f"{self.BASE_URL}/account/{account_id}/watchlist",
+            params={"api_key": settings.tmdb_api_key, "session_id": session_id},
+            json={"media_type": media_type, "media_id": media_id, "watchlist": True},
+        )
+        response.raise_for_status()
+        return response.json()

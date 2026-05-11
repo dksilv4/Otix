@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Bell } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/features/auth/auth-provider'
-import { notificationQueries, type Notification } from '../notification-queries'
+import { notificationQueries, useMarkRead, useMarkAllRead, type Notification } from '../notification-queries'
 import { apiClient } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
@@ -31,6 +32,8 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
+  const markRead = useMarkRead()
+  const markAllRead = useMarkAllRead()
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
@@ -38,11 +41,12 @@ export function NotificationBell() {
     refetchInterval: 15000,
   })
 
-  const { data: notifications } = useQuery({
+  const { data: listData } = useQuery({
     ...notificationQueries.list(),
     enabled: open && isAuthenticated,
   })
 
+  const notifications = listData?.items ?? []
   const unreadCount = unreadData?.count ?? 0
 
   const handleClickOutside = useCallback(
@@ -121,11 +125,8 @@ export function NotificationBell() {
                 <button
                   type="button"
                   className="text-xs text-primary hover:underline"
-                  onClick={async () => {
-                    await apiClient.post('/notifications/read-all')
-                    queryClient.invalidateQueries({ queryKey: ['notifications'] })
-                    queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
-                  }}
+                  onClick={() => markAllRead.mutate()}
+                  disabled={markAllRead.isPending}
                 >
                   Mark all read
                 </button>
@@ -137,63 +138,68 @@ export function NotificationBell() {
                 No notifications
               </p>
             ) : (
-              notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className={cn(
-                    'flex items-start gap-3 p-2 rounded-xl',
-                    !n.isRead && 'bg-primary/[0.04]',
-                  )}
-                >
-                  <DkAvatar
-                    name={n.type === 'friend_request' ? '?' : ''}
-                    size="sm"
-                    className="shrink-0 mt-0.5"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium">{n.title}</p>
-                    {n.body && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {n.body}
-                      </p>
+              <>
+                {notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      'flex items-start gap-3 p-2 rounded-xl',
+                      !n.isRead && 'bg-primary/[0.04]',
                     )}
-                    <p className="text-[10px] text-muted-foreground/50 mt-1">
-                      {formatTimeAgo(n.createdAt)}
-                    </p>
-                    {n.type === 'friend_request' && (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          type="button"
-                          className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-                          onClick={() => handleAction(n, 'accept')}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
-                          onClick={() => handleAction(n, 'reject')}
-                        >
-                          Decline
-                        </button>
-                      </div>
+                  >
+                    <DkAvatar
+                      name={n.type === 'friend_request' ? '?' : ''}
+                      size="sm"
+                      className="shrink-0 mt-0.5"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium">{n.title}</p>
+                      {n.body && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {n.body}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground/50 mt-1">
+                        {formatTimeAgo(n.createdAt)}
+                      </p>
+                      {n.type === 'friend_request' && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            type="button"
+                            className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                            onClick={() => handleAction(n, 'accept')}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+                            onClick={() => handleAction(n, 'reject')}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {!n.isRead && (
+                      <button
+                        type="button"
+                        className="shrink-0 mt-0.5"
+                        onClick={() => markRead.mutate(n.id)}
+                      >
+                        <span className="block h-2 w-2 rounded-full bg-primary" />
+                      </button>
                     )}
                   </div>
-                  {!n.isRead && (
-                    <button
-                      type="button"
-                      className="shrink-0 mt-0.5"
-                      onClick={async () => {
-                        await apiClient.post(`/notifications/${n.id}/read`)
-                        queryClient.invalidateQueries({ queryKey: ['notifications'] })
-                        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
-                      }}
-                    >
-                      <span className="block h-2 w-2 rounded-full bg-primary" />
-                    </button>
-                  )}
-                </div>
-              ))
+                ))}
+                <Link
+                  to="/notifications"
+                  className="block w-full rounded-xl bg-[var(--dk-surface-glass)] py-2.5 text-center text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all mt-2"
+                  onClick={() => setOpen(false)}
+                >
+                  View all
+                </Link>
+              </>
             )}
           </motion.div>
         )}

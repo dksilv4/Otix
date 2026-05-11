@@ -130,6 +130,7 @@ class Episode(Base):
     still_url: Mapped[str | None] = mapped_column(String(2000))
 
     season: Mapped[Season] = relationship("Season", back_populates="episodes")
+    external_ratings: Mapped[list["ExternalRating"]] = relationship("ExternalRating", back_populates="episode")
 
 
 class Game(Base):

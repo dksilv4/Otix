@@ -174,8 +174,9 @@ async def _cleanup_expired_tokens() -> dict:
 def enrich_fanart() -> dict:
     """Scan recently-synced items for missing Fanart assets and enqueue enrichment.
 
-    Runs periodically (every 30 min). Only picks up items synced in the last
-    48 hours that have the required external IDs but no Fanart assets yet.
+    Runs periodically (every 15 min) as a safety net for items missed by inline
+    enqueuing from TMDB sync. Only picks up items synced in the last 48 hours
+    that have the required external IDs but no Fanart assets yet.
     """
     return run_async(_enrich_fanart())
 
@@ -201,7 +202,7 @@ async def _enrich_fanart() -> dict:
                 ExternalID.provider == "tmdb",
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
-            .limit(50)
+            .limit(200)
         )
         movie_result = await session.execute(movie_query)
         movie_rows = movie_result.all()
@@ -216,7 +217,7 @@ async def _enrich_fanart() -> dict:
                 ExternalID.provider == "tvdb",
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
-            .limit(50)
+            .limit(200)
         )
         show_result = await session.execute(show_query)
         show_rows = show_result.all()
@@ -231,7 +232,7 @@ async def _enrich_fanart() -> dict:
                 ExternalID.provider == "fanart",
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
-            .limit(50)
+            .limit(200)
         )
         game_result = await session.execute(game_query)
         game_rows = game_result.all()
@@ -241,15 +242,15 @@ async def _enrich_fanart() -> dict:
     games_enqueued = 0
 
     for media_item_id, _ in movie_rows:
-        app.send_task("sync.fanart.movie", args=[media_item_id])
+        app.send_task("sync.fanart.movie", args=[media_item_id], queue="fast")
         movies_enqueued += 1
 
     for media_item_id, _ in show_rows:
-        app.send_task("sync.fanart.show", args=[media_item_id])
+        app.send_task("sync.fanart.show", args=[media_item_id], queue="fast")
         shows_enqueued += 1
 
     for media_item_id, _ in game_rows:
-        app.send_task("sync.fanart.game", args=[media_item_id])
+        app.send_task("sync.fanart.game", args=[media_item_id], queue="fast")
         games_enqueued += 1
 
     total = movies_enqueued + shows_enqueued + games_enqueued
@@ -482,6 +483,21 @@ async def _steam_name_match() -> dict:
 
             game = await session.get(Game, media_item_id)
             if game is not None and game.steam_app_id is None:
+                # Check the app_id isn't already claimed by a different game
+                conflict = await session.scalar(
+                    select(Game).where(
+                        Game.steam_app_id == app_id,
+                        Game.media_item_id != media_item_id,
+                    )
+                )
+                if conflict is not None:
+                    logger.debug(
+                        "steam app_id already claimed, skipping name match",
+                        title=title,
+                        app_id=app_id,
+                        existing_game_id=conflict.media_item_id,
+                    )
+                    continue
                 game.steam_app_id = app_id
                 matched += 1
 

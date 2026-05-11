@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw } from 'lucide-react'
+import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download } from 'lucide-react'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -14,7 +14,8 @@ import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
-import plexLogo from '@/assets/provider-logos/plex.svg'
+import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
+import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 
 const BIO_MAX_LENGTH = 250
 
@@ -134,6 +135,7 @@ function ProfileSection({
     backgroundUrl?: string | null
     steamId?: string | null
     plexId?: string | null
+    tmdbUsername?: string | null
     integrationVisibility?: Record<string, string> | null
   } | null
   isAuthenticated: boolean
@@ -146,6 +148,9 @@ function ProfileSection({
   )
   const [plexVisibility, setPlexVisibility] = useState(
     user?.integrationVisibility?.plex ?? 'hidden'
+  )
+  const [tmdbVisibility, setTmdbVisibility] = useState(
+    user?.integrationVisibility?.tmdb ?? 'hidden'
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -160,6 +165,7 @@ function ProfileSection({
       setBio(user.bio ?? '')
       setSteamVisibility(user.integrationVisibility?.steam ?? 'hidden')
       setPlexVisibility(user.integrationVisibility?.plex ?? 'hidden')
+      setTmdbVisibility(user.integrationVisibility?.tmdb ?? 'hidden')
       setInitialized(true)
     }
   }, [user, initialized])
@@ -203,14 +209,15 @@ function ProfileSection({
     }
   }
 
-  const integrationVisibility = { steam: steamVisibility, plex: plexVisibility }
+  const integrationVisibility = { steam: steamVisibility, plex: plexVisibility, tmdb: tmdbVisibility }
 
   const hasChanges =
     bio !== (user?.bio ?? '') ||
     avatarUrl !== (user?.avatarUrl ?? '') ||
     backgroundUrl !== (user?.backgroundUrl ?? '') ||
     steamVisibility !== (user?.integrationVisibility?.steam ?? 'hidden') ||
-    plexVisibility !== (user?.integrationVisibility?.plex ?? 'hidden')
+    plexVisibility !== (user?.integrationVisibility?.plex ?? 'hidden') ||
+    tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden')
 
   const applyCoverEditor = async (url: string) => {
     setBackgroundUrl(url)
@@ -365,7 +372,7 @@ function ProfileSection({
       </div>
 
       {/* Integration visibility — separate section outside the profile card */}
-      {(user.steamId || user.plexId) && (
+      {(user.steamId || user.plexId || user.tmdbUsername) && (
         <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
           <SectionHeader
             title="Integrations visibility"
@@ -389,6 +396,16 @@ function ProfileSection({
                   options={VISIBILITY_OPTIONS}
                   value={plexVisibility}
                   onChange={setPlexVisibility}
+                />
+              </div>
+            )}
+            {user.tmdbUsername && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium">TMDb</span>
+                <DkDropdown
+                  options={VISIBILITY_OPTIONS}
+                  value={tmdbVisibility}
+                  onChange={setTmdbVisibility}
                 />
               </div>
             )}
@@ -1406,6 +1423,8 @@ function IntegrationsSection() {
   const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number } | null>(null)
   const [wishlistScanning, setWishlistScanning] = useState(false)
   const [wishlistScanResult, setWishlistScanResult] = useState<{ total: number; matched: number; private?: boolean } | null>(null)
+  const [resolving, setResolving] = useState(false)
+  const [resolveResult, setResolveResult] = useState<{ resolved: number; synced: number; failed: number; total: number } | null>(null)
   const [plexConnecting, setPlexConnecting] = useState(false)
   const [plexDisconnecting, setPlexDisconnecting] = useState(false)
   const [plexSyncing, setPlexSyncing] = useState(false)
@@ -1423,9 +1442,23 @@ function IntegrationsSection() {
   const [steamProfile, setSteamProfile] = useState<SteamProfile | null>(null)
   const [plexConnected, setPlexConnected] = useState(Boolean(user?.plexId))
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
+  const [tmdbConnected, setTmdbConnected] = useState(Boolean(user?.tmdbUsername))
+  const [tmdbUsername, setTmdbUsername] = useState<string | null>(user?.tmdbUsername ?? null)
+  const [tmdbAvatarUrl, setTmdbAvatarUrl] = useState<string | null>(user?.tmdbAvatarUrl ?? null)
+  const [tmdbStats, setTmdbStats] = useState<Record<string, number> | null>(null)
+  const [tmdbSyncDirection, setTmdbSyncDirection] = useState(user?.tmdbRatingSyncDirection ?? 'disabled')
+  const [tmdbSyncing, setTmdbSyncing] = useState(false)
+  const [tmdbWatchlistImporting, setTmdbWatchlistImporting] = useState(false)
+  const [tmdbSyncResult, setTmdbSyncResult] = useState<{ imported: number; exported: number; skipped: number } | null>(null)
+  const [tmdbWatchlistResult, setTmdbWatchlistResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [tmdbConnecting, setTmdbConnecting] = useState(false)
+  const [tmdbDisconnecting, setTmdbDisconnecting] = useState(false)
+  const [tmdbMessage, setTmdbMessage] = useState('')
+  const [tmdbError, setTmdbError] = useState('')
   const isSteamConnected = steamConnected || Boolean(user?.steamId)
   const displayedSteamId = steamId ?? user?.steamId ?? null
   const isPlexConnected = plexConnected || Boolean(user?.plexId)
+  const isTmdbConnected = tmdbConnected || Boolean(user?.tmdbUsername)
 
   const fetchIntegrations = async () => {
     try {
@@ -1445,6 +1478,21 @@ function IntegrationsSection() {
       if (plexProvider) {
         setPlexConnected(plexProvider.connected)
         setPlex(plexProvider)
+      }
+      const tmdbProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+        tmdbUsername: string | null
+        tmdbAvatarUrl: string | null
+        tmdbStats: Record<string, number> | null
+        tmdbRatingSyncDirection: string | null
+      }>).find((p) => p.name === 'tmdb')
+      if (tmdbProvider) {
+        setTmdbConnected(tmdbProvider.connected)
+        setTmdbUsername(tmdbProvider.tmdbUsername ?? null)
+        setTmdbAvatarUrl(tmdbProvider.tmdbAvatarUrl ?? null)
+        setTmdbStats(tmdbProvider.tmdbStats ?? null)
+        setTmdbSyncDirection(tmdbProvider.tmdbRatingSyncDirection ?? 'disabled')
       }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
@@ -1498,6 +1546,74 @@ function IntegrationsSection() {
       setPlexError(extractIntegrationMessage(err))
     } finally {
       setPlexDisconnecting(false)
+    }
+  }
+
+  const handleTmdbConnect = async () => {
+    setTmdbConnecting(true)
+    setTmdbError('')
+    try {
+      const { data } = await apiClient.post('/auth/integrations/tmdb')
+      window.location.href = data.authUrl
+    } catch (err) {
+      setTmdbConnecting(false)
+      setTmdbError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleTmdbDisconnect = async () => {
+    setTmdbDisconnecting(true)
+    setTmdbError('')
+    setTmdbMessage('')
+    try {
+      await apiClient.delete('/auth/integrations/tmdb')
+      setTmdbConnected(false)
+      setTmdbUsername(null)
+      setTmdbAvatarUrl(null)
+      setTmdbStats(null)
+      setTmdbSyncDirection('disabled')
+      setTmdbMessage('TMDb account unlinked.')
+    } catch (err) {
+      setTmdbError(extractIntegrationMessage(err))
+    } finally {
+      setTmdbDisconnecting(false)
+    }
+  }
+
+  const tmdbSyncDirections = [
+    { value: 'disabled', label: 'Off' },
+    { value: 'import', label: 'TMDb → Otix' },
+    { value: 'export', label: 'Otix → TMDb' },
+    { value: 'bidirectional', label: 'Both ways' },
+  ]
+
+  const handleTmdbRatingSync = async () => {
+    setTmdbSyncing(true)
+    setTmdbError('')
+    setTmdbSyncResult(null)
+    try {
+      const { data } = await apiClient.post('/auth/integrations/tmdb/rating-sync', { direction: tmdbSyncDirection })
+      setTmdbSyncResult({ imported: data.imported, exported: data.exported, skipped: data.skipped })
+      if (data.errors?.length) setTmdbError(data.errors.join(', '))
+    } catch (err) {
+      setTmdbError(extractIntegrationMessage(err))
+    } finally {
+      setTmdbSyncing(false)
+    }
+  }
+
+  const handleTmdbWatchlistImport = async () => {
+    setTmdbWatchlistImporting(true)
+    setTmdbError('')
+    setTmdbWatchlistResult(null)
+    try {
+      const { data } = await apiClient.post('/auth/integrations/tmdb/watchlist-import')
+      setTmdbWatchlistResult({ imported: data.imported, skipped: data.skipped })
+      if (data.errors?.length) setTmdbError(data.errors.join(', '))
+    } catch (err) {
+      setTmdbError(extractIntegrationMessage(err))
+    } finally {
+      setTmdbWatchlistImporting(false)
     }
   }
 
@@ -1653,6 +1769,28 @@ function IntegrationsSection() {
       setSteamError(extractIntegrationMessage(err))
     } finally {
       setWishlistScanning(false)
+    }
+  }
+
+  const handleResolveUnmatched = async () => {
+    setResolving(true)
+    setSteamError('')
+    setResolveResult(null)
+    try {
+      const { data } = await apiClient.post<{ resolved: number; synced: number; failed: number; total: number }>(
+        '/auth/integrations/steam/resolve-unmatched',
+      )
+      setResolveResult(data)
+      let msg = ''
+      if (data.resolved > 0) msg += `${data.resolved} linked, `
+      if (data.synced > 0) msg += `${data.synced} synced, `
+      if (data.failed > 0) msg += `${data.failed} failed, `
+      msg = msg.replace(/,\s*$/, '')
+      setSteamMessage(`Unmatched games resolved: ${msg || 'none found'}.`)
+    } catch (err) {
+      setSteamError(extractIntegrationMessage(err))
+    } finally {
+      setResolving(false)
     }
   }
 
@@ -1827,6 +1965,27 @@ function IntegrationsSection() {
                   {wishlistScanning ? "Scanning..." : wishlistScanResult ? "Re-scan" : "Scan Wishlist"}
                 </DkButton>
               </div>
+
+              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
+                <div className="min-w-0">
+                  <p className={integrationActionHeader}>Game Matching</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {resolveResult
+                      ? `${resolveResult.resolved} linked${resolveResult.synced > 0 ? `, ${resolveResult.synced} synced` : ''}${resolveResult.failed > 0 ? `, ${resolveResult.failed} failed` : ''} out of ${resolveResult.total}`
+                      : 'Look up unmatched Steam games in IGDB'}
+                  </p>
+                </div>
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleResolveUnmatched}
+                  loading={resolving}
+                  className={integrationSyncButton}
+                >
+                  <Link2 className="h-3.5 w-3.5 mr-1.5" />
+                  {resolving ? 'Resolving...' : resolveResult ? 'Resolve Again' : 'Resolve Unmatched'}
+                </DkButton>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
@@ -1876,7 +2035,7 @@ function IntegrationsSection() {
                     <img src={plex.plexThumb} alt={plex.plexUsername ?? 'Plex avatar'} className="h-10 w-10 rounded-xl" />
                   ) : (
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e5a00d]/15">
-                      <img src={plexLogo} alt="" className="h-5 w-5" />
+                      <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
                     </div>
                   )}
                   <div className="min-w-0">
@@ -1979,7 +2138,7 @@ function IntegrationsSection() {
             <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e5a00d]/15">
-                  <img src={plexLogo} alt="" className="h-5 w-5" />
+                  <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Not connected</p>
@@ -1999,6 +2158,144 @@ function IntegrationsSection() {
           )}
           {plexMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{plexMessage}</p>}
           {plexError && <p className="mt-3 text-xs text-destructive">{plexError}</p>}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+          <SectionHeader
+            title="TMDb"
+            description={isTmdbConnected && tmdbUsername
+              ? `Linked to "${tmdbUsername}"`
+              : 'Link your TMDb account to sync ratings and watchlist.'
+            }
+          />
+
+          {isTmdbConnected ? (
+            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {tmdbAvatarUrl ? (
+                    <img
+                      src={tmdbAvatarUrl}
+                      alt={tmdbUsername ?? 'TMDb avatar'}
+                      className="h-10 w-10 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#01b4e4]/15">
+                      <TmdbIcon className="h-5 w-5 text-[#01b4e4]" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{tmdbUsername ?? 'TMDb User'}</p>
+                    <p className="text-xs text-muted-foreground">TMDb account linked</p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <span className={integrationActionHeader}>Account</span>
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleTmdbDisconnect}
+                    loading={tmdbDisconnecting}
+                    className={integrationDangerButton}
+                  >
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    Unlink
+                  </DkButton>
+                </div>
+              </div>
+
+              {tmdbStats && (
+                <div className={cn(integrationActionRow, 'flex items-center gap-4 flex-wrap')}>
+                  <p className={integrationActionHeader}>Stats</p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 w-full">
+                    <span><strong className="text-foreground">{tmdbStats.rated_movies}</strong> rated movies</span>
+                    <span><strong className="text-foreground">{tmdbStats.rated_tv}</strong> rated shows</span>
+                    <span><strong className="text-foreground">{tmdbStats.watchlist_movies}</strong> watchlist movies</span>
+                    <span><strong className="text-foreground">{tmdbStats.watchlist_tv}</strong> watchlist shows</span>
+                  </div>
+                </div>
+              )}
+
+              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
+                <div className="min-w-0">
+                  <p className={integrationActionHeader}>Rating Sync</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <DkDropdown
+                      options={tmdbSyncDirections}
+                      value={tmdbSyncDirection}
+                      onChange={setTmdbSyncDirection}
+                      placeholder="Direction"
+                    />
+                    {tmdbSyncResult && (
+                      <span className="text-xs text-muted-foreground">
+                        {tmdbSyncResult.imported > 0 && `${tmdbSyncResult.imported} imported`}
+                        {tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 && ', '}
+                        {tmdbSyncResult.exported > 0 && `${tmdbSyncResult.exported} exported`}
+                        {tmdbSyncResult.skipped > 0 && ` (${tmdbSyncResult.skipped} skipped)`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleTmdbRatingSync}
+                  loading={tmdbSyncing}
+                  disabled={tmdbSyncDirection === 'disabled'}
+                  className={integrationSyncButton}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  {tmdbSyncing ? 'Syncing...' : 'Sync Ratings'}
+                </DkButton>
+              </div>
+
+              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4 bg-[var(--dk-surface-overlay)]/30')}>
+                <div className="min-w-0">
+                  <p className={integrationActionHeader}>Watchlist Import</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tmdbWatchlistResult
+                      ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped`
+                      : 'Import your TMDb watchlist into your Otix library'}
+                  </p>
+                </div>
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleTmdbWatchlistImport}
+                  loading={tmdbWatchlistImporting}
+                  className={integrationSyncButton}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  {tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'}
+                </DkButton>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#01b4e4]/15">
+                  <TmdbIcon className="h-5 w-5 text-[#01b4e4]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Not connected</p>
+                  <p className="text-xs text-muted-foreground">Authorize Otix with your TMDb account.</p>
+                </div>
+              </div>
+              <DkButton
+                size="sm"
+                variant="primary"
+                onClick={handleTmdbConnect}
+                loading={tmdbConnecting}
+                className={integrationConnectButton}
+              >
+                Connect TMDb
+              </DkButton>
+            </div>
+          )}
+          {tmdbMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{tmdbMessage}</p>}
+          {tmdbError && <p className="mt-3 text-xs text-destructive">{tmdbError}</p>}
         </div>
       )}
     </div>

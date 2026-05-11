@@ -275,3 +275,29 @@ class IGDBProvider(BaseProvider):
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB involved_companies query failed: {response.status_code}")
+
+    # ── External game mapping ──────────────────────────────────────────
+
+    async def lookup_steam_app_ids(self, app_ids: list[int]) -> dict[int, int]:
+        """Map Steam app IDs to IGDB game IDs via the external_games endpoint.
+
+        category 1 = Steam. Returns ``{steam_app_id: igdb_game_id}``.
+        """
+        if not app_ids:
+            return {}
+
+        uid_list = ",".join(f'"{aid}"' for aid in app_ids)
+        body = f"fields uid,game; where external_game_source = 1 & uid = ({uid_list}); limit {len(app_ids)};"
+        response = await self._post("/external_games", content=body)
+        if response.status_code == 200:
+            result: dict[int, int] = {}
+            for row in response.json():
+                uid = row.get("uid")
+                game = row.get("game")
+                if isinstance(uid, str) and isinstance(game, int):
+                    try:
+                        result[int(uid)] = game
+                    except ValueError:
+                        continue
+            return result
+        raise IGDBError(f"IGDB external_games query failed: {response.status_code}")

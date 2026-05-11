@@ -13,6 +13,7 @@ import { FilterDropdown, TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../m
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 import { MediaSection } from './media-section'
 import { DiscoverMediaCard } from '../molecules/discover-media-card'
+import { TmdbConnectCallbackPage } from '@auth/organisms/tmdb-connect-callback-page'
 
 const TYPE_TABS = [
   { value: 'all', label: 'All' },
@@ -29,9 +30,9 @@ const PLACEHOLDERS = [
 ]
 
 const SECTIONS = [
-  { title: 'Movies', mediaType: 'movie' as const, viewAllHref: '/search?type=movie' },
-  { title: 'TV Shows', mediaType: 'show' as const, viewAllHref: '/search?type=show' },
-  { title: 'Games', mediaType: 'game' as const, viewAllHref: '/search?type=game' },
+  { title: 'Movies', mediaType: 'movie' as const },
+  { title: 'TV Shows', mediaType: 'show' as const },
+  { title: 'Games', mediaType: 'game' as const },
 ]
 
 function getGreeting(): string {
@@ -186,6 +187,15 @@ function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: string; 
 }
 
 export function HomePage() {
+  const search = new URLSearchParams(window.location.search)
+  if (search.get('tmdb_connect') === '1' || search.has('tmdb_link')) {
+    return <TmdbConnectCallbackPage />
+  }
+
+  return <HomeExperience />
+}
+
+function HomeExperience() {
   const [query, setQuery] = useState('')
   const [activeType, setActiveType] = useState<string>('all')
   const [sortBy, setSortBy] = useState<SortValue>('')
@@ -317,7 +327,7 @@ export function HomePage() {
               </div>
 
               {SECTIONS.filter(s => activeType === 'all' || s.mediaType === activeType).map((section) => (
-                <MediaSection key={section.mediaType} {...section} />
+                <MediaSection key={section.mediaType} title={section.title} mediaType={section.mediaType} />
               ))}
             </motion.div>
           )}

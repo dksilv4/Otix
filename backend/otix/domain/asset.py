@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, otix_fk, otix_pk
 
 if TYPE_CHECKING:
-    from otix.domain.media import MediaItem
+    from otix.domain.media import Episode, MediaItem
 
 
 class MediaAsset(Base):
@@ -55,12 +55,20 @@ class MediaRelease(Base):
 
 class ExternalRating(Base):
     __tablename__ = "external_ratings"
+    __table_args__ = (
+        CheckConstraint(
+            "media_item_id IS NOT NULL OR episode_id IS NOT NULL",
+            name="ck_external_rating_target",
+        ),
+    )
 
     id: Mapped[otix_pk]
-    media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
+    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=True)
+    episode_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("episodes.id", ondelete="CASCADE"), nullable=True)
     provider: Mapped[str] = mapped_column(String(20), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     max_score: Mapped[float] = mapped_column(Float, default=10.0)
     vote_count: Mapped[int | None] = mapped_column(Integer)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="external_ratings")
+    episode: Mapped[Episode] = relationship("Episode", back_populates="external_ratings")

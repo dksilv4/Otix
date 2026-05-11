@@ -7,6 +7,7 @@ import pytest
 
 from otix.lib import progress
 from otix.lib.circuit_breaker import CircuitBreaker, State
+from otix.lib.genres import normalize_genre_names, split_genre_name
 from otix.lib.pagination import decode_cursor, encode_cursor
 from otix.lib.rate_limiter import RateLimiter
 from otix.lib.slug import slugify
@@ -25,6 +26,27 @@ def test_slugify_truncates_at_word_boundary_under_200_chars() -> None:
     assert not slug.endswith("-")
 
 
+def test_split_genre_name_separates_composite_external_labels() -> None:
+    assert split_genre_name("Sci-Fi & Fantasy") == ["Sci-Fi", "Fantasy"]
+    assert split_genre_name("Action/Adventure, Arcade + Platformer") == [
+        "Action",
+        "Adventure",
+        "Arcade",
+        "Platformer",
+    ]
+
+
+def test_split_genre_name_keeps_non_composite_ampersands() -> None:
+    assert split_genre_name("R&B") == ["R&B"]
+
+
+def test_normalize_genre_names_deduplicates_by_slug() -> None:
+    assert normalize_genre_names(["Action & Adventure", "Action"]) == {
+        "action": "Action",
+        "adventure": "Adventure",
+    }
+
+
 def test_cursor_round_trips_json_payload_without_padding() -> None:
     encoded = encode_cursor({"id": "abc", "score": 9.5, "offset": 12})
 
@@ -37,7 +59,9 @@ def test_decode_cursor_returns_none_for_empty_or_malformed_values(cursor: str) -
     assert decode_cursor(cursor) is None
 
 
-def test_circuit_breaker_opens_after_threshold_and_allows_limited_half_open_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_circuit_breaker_opens_after_threshold_and_allows_limited_half_open_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     now = 100.0
     monkeypatch.setattr("otix.lib.circuit_breaker.time.monotonic", lambda: now)
     breaker = CircuitBreaker("tmdb", failure_threshold=2, recovery_timeout=10, half_open_max_requests=1)

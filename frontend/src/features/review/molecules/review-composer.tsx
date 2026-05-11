@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { AlertTriangle } from "lucide-react"
 import { DkButton } from "@/features/dk-ui/atoms/button"
 import { DkInput } from "@/features/dk-ui/atoms/input"
@@ -25,29 +25,26 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
   const upsert = useUpsertReview(mediaId)
   const deleteReview = useDeleteReview(mediaId)
 
-  useEffect(() => {
-    if (existingReview) {
-      setScore(existingReview.score ?? 0)
-      setTitle(existingReview.title ?? "")
-      setContent(existingReview.content ?? "")
-      setIsSpoiler(existingReview.isSpoiler ?? false)
-      setIsPrivate(existingReview.isPrivate ?? false)
-    }
-  }, [existingReview])
-
-  const canSave = content.trim().length >= 10
+  const trimmedContent = content.trim()
+  const hasRating = score > 0
+  const hasReviewText = trimmedContent.length >= 10
+  const hasShortReviewText = trimmedContent.length > 0 && !hasReviewText
+  const canSave = (hasRating || hasReviewText) && !hasShortReviewText
   const charCount = content.length
   const isSaving = upsert.isPending
   const isDeleting = deleteReview.isPending
 
   const handleSave = async () => {
-    if (!canSave) return
+    if (!canSave) {
+      setError(hasShortReviewText ? "Review text must be at least 10 characters." : "Add a rating or write a review.")
+      return
+    }
     setError(null)
     try {
       await upsert.mutateAsync({
         score: score > 0 ? score : null,
         title: title.trim() || null,
-        content: content.trim() || null,
+        content: trimmedContent || null,
         isSpoiler,
         isPrivate,
       })

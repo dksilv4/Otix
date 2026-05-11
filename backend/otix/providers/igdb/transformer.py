@@ -268,6 +268,7 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
         steam_app_id=_extract_steam_app_id(website_list),
         store_ids=_extract_store_ids(website_list),
         has_multiplayer=has_multiplayer,
+        is_free=False,  # explicit default; Steam enrichment updates later
     )
     game.media_item = to_media_item(raw)
     return game

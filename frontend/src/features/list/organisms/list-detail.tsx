@@ -9,6 +9,7 @@ import {
   PlusIcon,
   SearchIcon,
   XIcon,
+  UsersIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
@@ -26,6 +27,12 @@ import {
   useAddToList,
 } from "../list-queries"
 import { ListComposer } from "./list-composer"
+import {
+  ListLikeButton,
+  ShareModal,
+  CollaboratorsModal,
+  RankHistoryTimeline,
+} from "../molecules/list-actions"
 
 const TYPE_TABS = [
   { value: "all", label: "All" },
@@ -46,6 +53,8 @@ export function ListDetail() {
 
   const [composerOpen, setComposerOpen] = useState(false)
   const [addingMode, setAddingMode] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchType, setSearchType] = useState<string>("all")
 
@@ -115,6 +124,7 @@ export function ListDetail() {
             ) : (
               <LockIcon className="h-4 w-4 text-muted-foreground" />
             )}
+            <ListLikeButton list={list} />
           </div>
           {list.description && (
             <p className="mt-2 text-sm text-muted-foreground max-w-xl">
@@ -123,52 +133,77 @@ export function ListDetail() {
           )}
         </div>
 
-        {isOwner && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setAddingMode(!addingMode)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
-                "border border-white/[0.06] bg-[var(--dk-surface-base)]",
-                "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
-              )}
-            >
-              {addingMode ? (
-                <>
-                  <XIcon className="h-4 w-4" />
-                  Done
-                </>
-              ) : (
-                <>
-                  <PlusIcon className="h-4 w-4" />
-                  Add Items
-                </>
-              )}
-            </button>
-            <button
-              onClick={() => setComposerOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
-                "border border-white/[0.06] bg-[var(--dk-surface-base)]",
-                "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
-              )}
-            >
-              <PencilIcon className="h-4 w-4" />
-              Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
-                "border border-white/[0.06] bg-red-500/10 text-red-400",
-                "hover:bg-red-500/20 transition-colors",
-              )}
-            >
-              <TrashIcon className="h-4 w-4" />
-              Delete
-            </button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShareOpen(true)}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+              "bg-[var(--dk-surface-base)]",
+              "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+            )}
+          >
+            <ShareIcon className="h-4 w-4" />
+            Share
+          </button>
+
+          {isOwner && (
+            <>
+              <button
+                onClick={() => setAddingMode(!addingMode)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                  "bg-[var(--dk-surface-base)]",
+                  "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+                )}
+              >
+                {addingMode ? (
+                  <>
+                    <XIcon className="h-4 w-4" />
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <PlusIcon className="h-4 w-4" />
+                    Add Items
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setComposerOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                  "bg-[var(--dk-surface-base)]",
+                  "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+                )}
+              >
+                <PencilIcon className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => setCollaboratorsOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                  "bg-[var(--dk-surface-base)]",
+                  "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
+                )}
+              >
+                <UsersIcon className="h-4 w-4" />
+                Collab
+              </button>
+              <button
+                onClick={handleDelete}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
+                  "border border-white/[0.06] bg-red-500/10 text-red-400",
+                  "hover:bg-red-500/20 transition-colors",
+                )}
+              >
+                <TrashIcon className="h-4 w-4" />
+                Delete
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Search panel */}
@@ -331,6 +366,9 @@ export function ListDetail() {
         </>
       )}
 
+      {/* Rank history */}
+      {!addingMode && <RankHistoryTimeline listId={listId} />}
+
       {/* Edit dialog */}
       <ListComposer
         open={composerOpen}
@@ -343,6 +381,20 @@ export function ListDetail() {
         }}
         initial={list}
         isSaving={updateList.isPending}
+      />
+
+      {/* Share modal */}
+      <ShareModal
+        list={list}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+      />
+
+      {/* Collaborators modal */}
+      <CollaboratorsModal
+        list={list}
+        open={collaboratorsOpen}
+        onClose={() => setCollaboratorsOpen(false)}
       />
     </div>
   )

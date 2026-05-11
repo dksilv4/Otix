@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect } from "react"
-import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, X, Star } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
 import { cn } from "@/lib/utils"
-import type { ShowDetail, SeasonOut, EpisodeOut } from "../media-queries"
+import type { ShowDetail, SeasonOut, EpisodeOut, ExternalRatingOut } from "../media-queries"
 
 interface ShowSectionProps {
   show: ShowDetail
@@ -32,7 +32,54 @@ function getPreferredSeason(seasons: SeasonOut[]): number {
   return seasons[seasons.length - 1].seasonNumber
 }
 
-const flipTransition = { duration: 0.38, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
+function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
+  return episode.externalRatings?.find((r) => r.provider === "tmdb" && r.score > 0)
+}
+
+function scoreToColor(score: number, maxScore: number = 10): string {
+  // Heatmap scale: cool (low) → warm (high)
+  const t = Math.max(0, Math.min(1, score / maxScore))
+  if (t < 0.25) return "bg-blue-800/60"
+  if (t < 0.45) return "bg-blue-600/60"
+  if (t < 0.55) return "bg-emerald-600/60"
+  if (t < 0.65) return "bg-emerald-500/60"
+  if (t < 0.72) return "bg-lime-500/60"
+  if (t < 0.78) return "bg-yellow-500/60"
+  if (t < 0.84) return "bg-orange-500/60"
+  if (t < 0.90) return "bg-orange-600/70"
+  return "bg-red-500/70"
+}
+
+// ── Inline Episode Ratings Heatmap ──
+
+function EpisodeHeatmap({ episodes }: { episodes: EpisodeOut[] }) {
+  const sorted = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber)
+  const hasRatings = sorted.some((e) => getTmdbRating(e) !== undefined)
+  if (!hasRatings) return null
+
+  return (
+    <div className="flex items-center gap-0.5 flex-wrap">
+      {sorted.map((ep) => {
+        const rating = getTmdbRating(ep)
+        const color = rating ? scoreToColor(rating.score) : "bg-white/[0.03]"
+        const tooltip = rating
+          ? `E${ep.episodeNumber}: ${rating.score.toFixed(1)}/10${rating.voteCount ? ` (${rating.voteCount} votes)` : ""}`
+          : `E${ep.episodeNumber}: no rating`
+        return (
+          <div
+            key={ep.id}
+            title={tooltip}
+            className={cn(
+              "w-3 h-3 rounded-[3px] transition-colors",
+              color,
+              rating && "hover:ring-1 hover:ring-white/30 cursor-help",
+            )}
+          />
+        )
+      })}
+    </div>
+  )
+}
 
 export function ShowSection({ show, className }: ShowSectionProps) {
   const seasons = useMemo(() => {
@@ -133,7 +180,7 @@ export function ShowSection({ show, className }: ShowSectionProps) {
         <div
           ref={tabsRef}
           onScroll={checkTabsScroll}
-          className="flex gap-2 overflow-x-auto scrollbar-none px-10"
+          className="flex gap-2 overflow-x-auto scrollbar-none px-6"
         >
           {seasons.map((season) => {
             const isActive = selectedSeasonNum === season.seasonNumber
@@ -198,6 +245,11 @@ export function ShowSection({ show, className }: ShowSectionProps) {
                 )}
               </div>
 
+              {/* Episode ratings heatmap */}
+              {hasEpisodes && (
+                <EpisodeHeatmap episodes={currentSeason.episodes} />
+              )}
+
               {currentSeason.overview && (
                 <p className="text-sm text-muted-foreground/80 leading-relaxed line-clamp-3">
                   {currentSeason.overview}
@@ -228,7 +280,7 @@ export function ShowSection({ show, className }: ShowSectionProps) {
               <div
                 ref={episodesRef}
                 onScroll={checkEpScroll}
-                className="flex gap-3 overflow-x-auto scrollbar-none px-10 pb-1"
+                className="flex gap-3 overflow-x-auto scrollbar-none px-6 pb-1"
               >
                 {currentSeason.episodes
                   .sort((a, b) => a.episodeNumber - b.episodeNumber)
@@ -265,10 +317,26 @@ export function ShowSection({ show, className }: ShowSectionProps) {
                           <span className="absolute bottom-1.5 left-1.5 rounded-md bg-background/80 backdrop-blur px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
                             E{episode.episodeNumber}
                           </span>
+                          {getTmdbRating(episode) && (
+                            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-md bg-background/80 backdrop-blur px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-400">
+                              <Star className="h-2.5 w-2.5 fill-amber-400 stroke-amber-400" />
+                              {getTmdbRating(episode)!.score.toFixed(1)}
+                            </span>
+                          )}
                           {runtime && (
                             <span className="absolute bottom-1.5 right-1.5 rounded-md bg-background/80 backdrop-blur px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                               {runtime}
                             </span>
+                          )}
+                        </div>
+                        <div className="px-3 py-2">
+                          <p className="text-xs font-medium truncate">
+                            {episode.name || `Episode ${episode.episodeNumber}`}
+                          </p>
+                          {episode.airDate && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {formatDate(episode.airDate)}
+                            </p>
                           )}
                         </div>
                       </button>

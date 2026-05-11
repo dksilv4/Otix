@@ -22,6 +22,7 @@ import redis.asyncio as aioredis
 import structlog
 from sqlalchemy import delete, func, select, text
 
+from otix.domain.asset import ExternalRating
 from otix.domain.media import Episode, ExternalID, Game, MediaItem, Season, Show
 
 from otix.domain.people import Person
@@ -495,6 +496,9 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
             await _progress_incr("movie_synced")
             app.send_task("embedding.generate", args=[item.id])
             await _progress_incr("embedding_enqueued")
+            # Enqueue Fanart enrichment inline so images arrive within seconds, not
+            # 30 minutes. Uses the fast queue since Fanart calls are lightweight.
+            app.send_task("sync.fanart.movie", args=[item.id], queue="fast")
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -624,6 +628,7 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             # must call /tv/{id}/season/{season_number} for every season.
             total_episodes = 0
             seasons_to_fetch = new_seasons if media_item is not None else show.seasons
+            episode_votes: list[tuple[Episode, float, int | None]] = []
             for season in seasons_to_fetch:
                 try:
                     season_raw = await provider.get_season(tmdb_id, season.season_number)
@@ -636,20 +641,43 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
                     )
                     continue
                 for ep_data in season_raw.get("episodes", []):
-                    session.add(
-                        Episode(
-                            season_id=season.id,
-                            episode_number=ep_data.get("episode_number", 0),
-                            name=ep_data.get("name"),
-                            overview=ep_data.get("overview"),
-                            runtime=ep_data.get("runtime"),
-                            air_date=_parse_date(ep_data.get("air_date")),
-                            still_url=_image_url(ep_data.get("still_path")),
-                        )
+                    ep = Episode(
+                        season_id=season.id,
+                        episode_number=ep_data.get("episode_number", 0),
+                        name=ep_data.get("name"),
+                        overview=ep_data.get("overview"),
+                        runtime=ep_data.get("runtime"),
+                        air_date=_parse_date(ep_data.get("air_date")),
+                        still_url=_image_url(ep_data.get("still_path")),
                     )
+                    session.add(ep)
                     total_episodes += 1
+                    vote_average = ep_data.get("vote_average")
+                    if vote_average is not None and vote_average > 0:
+                        episode_votes.append((ep, float(vote_average), ep_data.get("vote_count")))
 
             await session.flush()
+
+            for ep, vote_avg, vote_cnt in episode_votes:
+                existing = await session.scalar(
+                    select(ExternalRating).where(
+                        ExternalRating.episode_id == ep.id,
+                        ExternalRating.provider == "tmdb",
+                    )
+                )
+                if existing:
+                    existing.score = vote_avg
+                    existing.vote_count = vote_cnt
+                else:
+                    session.add(
+                        ExternalRating(
+                            episode_id=ep.id,
+                            provider="tmdb",
+                            score=vote_avg,
+                            max_score=10.0,
+                            vote_count=vote_cnt,
+                        )
+                    )
 
             await hydrator.hydrate_genres(item, raw)
             await hydrator.hydrate_credits(item, raw)
@@ -679,6 +707,9 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             await _progress_incr("show_synced")
             app.send_task("embedding.generate", args=[item.id])
             await _progress_incr("embedding_enqueued")
+            # Enqueue Fanart enrichment inline so images arrive within seconds, not
+            # 30 minutes. Uses the fast queue since Fanart calls are lightweight.
+            app.send_task("sync.fanart.show", args=[item.id], queue="fast")
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -1177,6 +1208,31 @@ def sync_igdb_game_task(self, igdb_id: int, force: bool = False) -> dict | None:
     return run_async(_sync_igdb_game(igdb_id, force))
 
 
+def _update_media_item_from(existing: MediaItem, incoming: MediaItem) -> None:
+    """Copy fields from incoming onto existing MediaItem, in-place."""
+    existing.title = incoming.title
+    existing.overview = incoming.overview
+    existing.slug = incoming.slug
+    existing.poster_url = incoming.poster_url or existing.poster_url
+    existing.backdrop_url = incoming.backdrop_url or existing.backdrop_url
+    existing.release_date = incoming.release_date or existing.release_date
+    existing.popularity = incoming.popularity
+    existing.original_language = incoming.original_language
+
+
+def _update_game_from(existing: Game, incoming: Game) -> None:
+    """Copy fields from incoming onto existing Game, in-place."""
+    existing.release_status = incoming.release_status
+    existing.website = incoming.website or existing.website
+    # steam_app_id intentionally skipped — the existing game owns it
+    if incoming.store_ids:
+        existing.store_ids = {**(existing.store_ids or {}), **incoming.store_ids}
+    if incoming.is_free is not None:
+        existing.is_free = incoming.is_free
+    if incoming.has_multiplayer:
+        existing.has_multiplayer = True
+
+
 async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
     async with async_session() as session:
         igdb_id_str = str(igdb_id)
@@ -1223,33 +1279,90 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         game = to_game(raw)
         item = game.media_item
 
-        # Upsert MediaItem
-        if ext_id is not None:
-            existing = await session.get(MediaItem, ext_id.media_item_id)
-            if existing is not None:
-                item.id = existing.id
-                await session.merge(item)
+        # If the incoming steam_app_id is already claimed by a different Game,
+        # merge this IGDB entry into that existing game instead of creating a
+        # duplicate. IGDB creates separate entries for regional editions and
+        # re-releases that share the same Steam App ID.
+        # Skip if this IGDB ID already maps to the same game (re-sync case).
+        merged_into_existing = False
+        if game.steam_app_id and (
+            ext_id is None or not await session.scalar(
+                select(Game).where(
+                    Game.media_item_id == ext_id.media_item_id,
+                    Game.steam_app_id == game.steam_app_id,
+                )
+            )
+        ):
+            conflict = await session.scalar(
+                select(Game).where(
+                    Game.steam_app_id == game.steam_app_id,
+                    Game.media_item_id != item.id,
+                )
+            )
+            if conflict is not None:
+                logger.info(
+                    "merging igdb entry into existing steam game",
+                    igdb_id=igdb_id,
+                    steam_app_id=game.steam_app_id,
+                    existing_game_id=conflict.media_item_id,
+                    incoming_title=item.title,
+                )
+
+                # Load the existing MediaItem + Game and update in-place.
+                # Cannot use session.merge() here because the incoming Game
+                # object's PK doesn't match the database row, and SA's cascade
+                # tries to null out games.media_item_id.
+                existing_item = await session.get(MediaItem, conflict.media_item_id)
+                existing_game = conflict
+
+                _update_media_item_from(existing_item, item)
+                _update_game_from(existing_game, game)
+                item = existing_item
+                game = existing_game
+
+                # Add the incoming IGDB ExternalID so we can find this game by
+                # either IGDB ID going forward.
+                if ext_id is None:
+                    ext_id = ExternalID(
+                        provider="igdb",
+                        external_id=igdb_id_str,
+                        media_item_id=conflict.media_item_id,
+                    )
+                    session.add(ext_id)
+                elif ext_id.media_item_id != conflict.media_item_id:
+                    ext_id.media_item_id = conflict.media_item_id
+
+                merged_into_existing = True
+
+        if not merged_into_existing:
+            # Upsert MediaItem
+            if ext_id is not None:
+                existing = await session.get(MediaItem, ext_id.media_item_id)
+                if existing is not None:
+                    item.id = existing.id
+                    await session.merge(item)
+                else:
+                    session.add(item)
+                    await session.flush()
+                    ext_id.media_item_id = item.id
             else:
                 session.add(item)
                 await session.flush()
-                ext_id.media_item_id = item.id
-        else:
-            session.add(item)
-            await session.flush()
-            ext_id = ExternalID(
-                provider="igdb",
-                external_id=igdb_id_str,
-                media_item_id=item.id,
-            )
-            session.add(ext_id)
+                ext_id = ExternalID(
+                    provider="igdb",
+                    external_id=igdb_id_str,
+                    media_item_id=item.id,
+                )
+                session.add(ext_id)
 
-        # Upsert Game (shares PK with MediaItem)
-        game.media_item_id = item.id
-        existing_game = await session.get(Game, item.id)
-        if existing_game is not None:
-            game = await session.merge(game)
-        else:
-            session.add(game)
+            # Upsert Game (shares PK with MediaItem)
+            game.media_item_id = item.id
+            existing_game = await session.get(Game, item.id)
+
+            if existing_game is not None:
+                game = await session.merge(game)
+            else:
+                session.add(game)
 
         # Hydrate relations
         hydrator = IGDBHydrator(provider, session)

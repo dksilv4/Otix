@@ -78,6 +78,10 @@ async def get_user_profile(
             thumb=user.plex_thumb,
         )
 
+    tmdb_username = None
+    if user.tmdb_session_id and (is_own_profile or _visibility_allows(visibility, "tmdb", is_friend)):
+        tmdb_username = user.tmdb_username
+
     return UserProfileOut(
         id=user.id,
         username=user.username,
@@ -89,6 +93,7 @@ async def get_user_profile(
         total_xp=user.total_xp,
         steam=steam,
         plex=plex,
+        tmdb_username=tmdb_username,
         friendship_status=friendship_status,
     )
 

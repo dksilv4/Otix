@@ -62,6 +62,7 @@ class EpisodeOut(BaseModel):
     runtime: int | None = None
     air_date: date | None = None
     still_url: str | None = None
+    external_ratings: list[ExternalRatingOut] = []
 
     model_config = {"from_attributes": True}
 

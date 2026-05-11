@@ -6,6 +6,9 @@ export interface User {
   twoFactorEnabled: boolean
   steamId?: string | null
   plexId?: string | null
+  tmdbAccountId?: number | null
+  tmdbUsername?: string | null
+  tmdbAvatarUrl?: string | null
   avatarUrl?: string | null
   bio?: string | null
   backgroundUrl?: string | null

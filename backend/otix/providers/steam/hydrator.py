@@ -7,9 +7,11 @@ persists everything to Game, MediaAsset, MediaVideo, and ExternalRating.
 from __future__ import annotations
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.media import Game
 from otix.lib.slug import slugify
@@ -149,13 +151,24 @@ class SteamHydrator:
         new_companies = []
         for slug_key, info in role_map.items():
             if slug_key not in by_slug:
-                company = Company(name=info["name"], slug=slug_key)
+                company = Company(id=gen_otix_id(), name=info["name"], slug=slug_key)
                 new_companies.append(company)
                 by_slug[slug_key] = company
 
         if new_companies:
-            self.session.add_all(new_companies)
-            await self.session.flush()
+            await self.session.execute(
+                pg_insert(Company)
+                .values([
+                    {"id": c.id, "name": c.name, "slug": c.slug, "igdb_id": c.igdb_id}
+                    for c in new_companies
+                ])
+                .on_conflict_do_nothing(index_elements=["slug"])
+            )
+            # Re-fetch so by_slug has IDs for both new and pre-existing rows
+            existing = await self.session.scalars(
+                select(Company).where(Company.slug.in_(list(role_map.keys())))
+            )
+            by_slug = {c.slug: c for c in existing}
 
         await self.session.execute(
             delete(InvolvedCompany).where(

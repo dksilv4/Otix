@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, UserX, Clock } from 'lucide-react'
+import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, Clock } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
+import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
+import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 import { Skeleton } from '@ui/atoms/skeleton'
-import plexLogo from '@/assets/provider-logos/plex.svg'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { userQueries, computeReviewStats } from '../user-queries'
@@ -242,7 +243,7 @@ export function UserProfilePage() {
                 </p>
               )}
 
-              {(profile.steam || profile.plex) && (
+              {(profile.steam || profile.plex || profile.tmdbUsername) && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {profile.steam && (
                     <a
@@ -262,15 +263,26 @@ export function UserProfilePage() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-[#e5a00d]/25 hover:text-white transition-all"
                     >
-                      <img src={plexLogo} alt="" className="h-3.5 w-3.5" />
+                      <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
                       {profile.plex.username}
                     </a>
                   )}
                   {profile.plex && !profile.plex.username && (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
-                      <img src={plexLogo} alt="" className="h-3.5 w-3.5" />
+                      <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
                       Plex
                     </span>
+                  )}
+                  {profile.tmdbUsername && (
+                    <a
+                      href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#01b4e4]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-[#01b4e4]/25 hover:text-white transition-all"
+                    >
+                      <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
+                      {profile.tmdbUsername}
+                    </a>
                   )}
                 </div>
               )}

@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from otix.api.schemas.common import PaginatedResponse
+
 
 class NotificationOut(BaseModel):
     id: str
@@ -19,3 +21,9 @@ class NotificationOut(BaseModel):
 
 class UnreadCountOut(BaseModel):
     count: int
+
+
+class NotificationListResponse(BaseModel):
+    items: list[NotificationOut]
+    has_more: bool
+    next_cursor: str | None = None

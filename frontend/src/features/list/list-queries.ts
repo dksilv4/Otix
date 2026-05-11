@@ -15,8 +15,23 @@ export interface UserListOut {
   name: string
   description: string | null
   isPublic: boolean
+  likeCount: number
+  isLiked: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface CollaboratorOut {
+  id: string
+  userId: string
+  permission: string
+  status: string
+  createdAt: string
+  user?: {
+    id: string
+    username: string
+    avatarUrl: string | null
+  } | null
 }
 
 export interface UserListDetailOut extends UserListOut {
@@ -41,6 +56,7 @@ export interface UserListDetailOut extends UserListOut {
       played: boolean
     } | null
   }>
+  collaborators: CollaboratorOut[]
 }
 
 export interface UserListCreate {
@@ -53,6 +69,26 @@ export interface UserListUpdate {
   name?: string | null
   description?: string | null
   isPublic?: boolean | null
+}
+
+export interface ListLikeStatus {
+  likeCount: number
+  isLiked: boolean
+}
+
+export interface RankHistoryOut {
+  id: string
+  mediaItemId: string
+  userId: string | null
+  oldSortOrder: number
+  newSortOrder: number
+  changedAt: string
+  mediaItem?: {
+    id: string
+    mediaType: string
+    title: string
+    posterUrl: string | null
+  } | null
 }
 
 // ── Queries ────────────────────────────────────────────
@@ -217,4 +253,85 @@ export function useReorderList(listId: string) {
       qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
     },
   })
+}
+
+// ── Likes ─────────────────────────────────────────────────────
+
+export function useLikeList(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<ListLikeStatus>("/list/" + listId + "/like")
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+      qc.invalidateQueries({ queryKey: listKeys.public() })
+    },
+  })
+}
+
+export function useUnlikeList(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete<ListLikeStatus>("/list/" + listId + "/like")
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+      qc.invalidateQueries({ queryKey: listKeys.public() })
+    },
+  })
+}
+
+// ── Collaborators ─────────────────────────────────────────────
+
+export function useInviteCollaborator(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userId, permission }: { userId: string; permission: string }) => {
+      const { data } = await apiClient.post<CollaboratorOut>(
+        "/list/" + listId + "/collaborators",
+        { userId, permission },
+      )
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+    },
+  })
+}
+
+export function useRemoveCollaborator(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      await apiClient.delete("/list/" + listId + "/collaborators/" + userId)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+    },
+  })
+}
+
+// ── Rank history ──────────────────────────────────────────────
+
+export function useRankHistory(listId: string) {
+  return useQuery({
+    queryKey: [...listKeys.detail(listId), "history"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<RankHistoryOut[]>(
+        "/list/" + listId + "/history",
+      )
+      return data
+    },
+    enabled: !!listId,
+  })
+}
+
+// ── Export ────────────────────────────────────────────────────
+
+export function getExportUrl(listId: string, format: "json" | "csv" = "json"): string {
+  return "/api/list/" + listId + "/export?format=" + format
 }

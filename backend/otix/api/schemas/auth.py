@@ -40,6 +40,10 @@ class UserResponse(BaseModel):
     two_factor_enabled: bool = False
     steam_id: str | None = None
     plex_id: str | None = None
+    tmdb_account_id: int | None = None
+    tmdb_username: str | None = None
+    tmdb_avatar_url: str | None = None
+    tmdb_rating_sync_direction: str | None = None
     avatar_url: str | None = None
     bio: str | None = None
     background_url: str | None = None
@@ -157,6 +161,16 @@ class PlexCallbackRequest(BaseModel):
     pin_id: str | None = None
 
 
+class TmdbInitiateResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class TmdbCallbackRequest(BaseModel):
+    state: str
+    request_token: str
+
+
 class PlexServerResponse(BaseModel):
     id: str
     machine_identifier: str
@@ -221,6 +235,35 @@ class IntegrationProviderResponse(BaseModel):
     plex_username: str | None = None
     plex_email: str | None = None
     plex_thumb: str | None = None
+    tmdb_username: str | None = None
+    tmdb_avatar_url: str | None = None
+    tmdb_stats: dict | None = None
+    tmdb_rating_sync_direction: str | None = None
+
+
+class TmdbRatingSyncRequest(BaseModel):
+    direction: str = Field(default="disabled", pattern=r"^(disabled|import|export|bidirectional)$")
+
+
+class TmdbRatingSyncResponse(BaseModel):
+    direction: str
+    imported: int = 0
+    exported: int = 0
+    skipped: int = 0
+    errors: list[str] | None = None
+
+
+class TmdbWatchlistImportResponse(BaseModel):
+    imported: int = 0
+    skipped: int = 0
+    errors: list[str] | None = None
+
+
+class SteamResolveResponse(BaseModel):
+    resolved: int = 0
+    synced: int = 0
+    failed: int = 0
+    total: int = 0
 
 
 class IntegrationsResponse(BaseModel):

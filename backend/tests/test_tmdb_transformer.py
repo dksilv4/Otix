@@ -16,6 +16,7 @@ from otix.providers.tmdb.transformer import (
     to_show,
     to_person,
     to_genre,
+    to_genres,
 )
 
 
@@ -287,4 +288,10 @@ class TestToGenre:
         assert genre.name == "Science Fiction"
         assert genre.slug == "science-fiction"
 
-
+    def test_composite_genres(self):
+        raw = {"id": 10765, "name": "Sci-Fi & Fantasy"}
+        genres = to_genres(raw)
+        assert [(g.name, g.slug) for g in genres] == [
+            ("Sci-Fi", "sci-fi"),
+            ("Fantasy", "fantasy"),
+        ]

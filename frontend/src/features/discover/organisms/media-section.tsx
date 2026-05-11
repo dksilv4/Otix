@@ -10,10 +10,9 @@ import { cn } from '@/lib/utils'
 interface MediaSectionProps {
   title: string
   mediaType: 'movie' | 'show' | 'game'
-  viewAllHref: string
 }
 
-export function MediaSection({ title, mediaType, viewAllHref }: MediaSectionProps) {
+export function MediaSection({ title, mediaType }: MediaSectionProps) {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '0px 0px 200px 0px' })
 
@@ -48,7 +47,8 @@ export function MediaSection({ title, mediaType, viewAllHref }: MediaSectionProp
           )}
         </h2>
         <Link
-          to={viewAllHref}
+          to="/browse/$type"
+          params={{ type: mediaType }}
           className={cn(
             'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
             'text-muted-foreground hover:text-foreground',

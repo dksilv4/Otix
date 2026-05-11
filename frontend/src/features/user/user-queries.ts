@@ -30,6 +30,7 @@ export interface UserProfile {
   totalXp: number
   steam?: SteamPublicProfile | null
   plex?: PlexPublicProfile | null
+  tmdbUsername?: string | null
   friendshipStatus?: FriendshipStatus | null
 }
 

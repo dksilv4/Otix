@@ -11,10 +11,12 @@ from sqlalchemy import select
 from otix.api.deps import get_db, get_optional_user
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import (
+    GenreOut,
     MediaItemDetail,
     MediaItemListResponse,
     MediaItemSummary,
 )
+from otix.domain.genre import Genre
 from otix.domain.media import UserSteamGame
 from otix.domain.user import User
 from otix.infrastructure.celery import app
@@ -42,7 +44,9 @@ async def list_media(
     media_type: str | None = Query(None, description="movie, show, or game"),
     genre: str | None = Query(None, description="Genre slug"),
     has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
-    cursor: str | None = Query(None, description="Pagination cursor (media item id)"),
+    sort_by: str | None = Query(None, description="popularity, rating, release_date, or title"),
+    cursor: str | None = Query(None, description="Pagination cursor (media item id) — cursor mode only"),
+    page: int = Query(1, ge=1, description="Page number — sort mode only"),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
@@ -52,7 +56,9 @@ async def list_media(
         media_type=media_type,
         genre=genre,
         has_artwork=has_artwork,
+        sort_by=sort_by,
         cursor=cursor,
+        page=page,
         limit=limit,
         include_total=True,
     )
@@ -77,6 +83,27 @@ async def list_media(
         has_more=has_more,
         total=total,
     )
+
+
+@media_router.get("/genres", response_model=list[GenreOut])
+async def list_genres(
+    media_type: str | None = Query(None, description="Filter genres to a specific media type"),
+    db: AsyncSession = Depends(get_db),
+) -> list[GenreOut]:
+    query = select(Genre).order_by(Genre.name)
+    if media_type:
+        from otix.domain.genre import MediaGenre
+        from otix.domain.media import MediaItem
+        query = (
+            select(Genre)
+            .distinct()
+            .join(MediaGenre, MediaGenre.genre_id == Genre.id)
+            .join(MediaItem, MediaItem.id == MediaGenre.media_item_id)
+            .where(MediaItem.media_type == media_type)
+            .order_by(Genre.name)
+        )
+    result = await db.scalars(query)
+    return [GenreOut.model_validate(g) for g in result]
 
 
 @media_router.get("/search", response_model=MediaItemListResponse)

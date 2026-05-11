@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+
 import structlog
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import ExternalID, MediaItem, Movie
 from otix.domain.people import MediaCredit, Person, PersonAsset
+from otix.lib.genres import normalize_genre_names
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.transformer import _parse_date
 
@@ -163,15 +165,15 @@ class TMDBHydrator:
             delete(MediaGenre).where(MediaGenre.media_item_id == media_item.id)
         )
 
-        names = {g.get("name", "") for g in genre_list if g.get("name")}
-        if not names:
+        names_by_slug = normalize_genre_names(
+            str(g["name"]) for g in genre_list if g.get("name")
+        )
+        if not names_by_slug:
             return
 
-        slugs = {name: _slugify_genre(name) for name in names}
-        genres_by_slug = await self._batch_get_or_create_genres(names, slugs)
+        genres_by_slug = await self._batch_get_or_create_genres(names_by_slug)
 
-        for name in names:
-            slug = slugs[name]
+        for slug in names_by_slug:
             genre = genres_by_slug.get(slug)
             if genre is None:
                 continue
@@ -180,18 +182,17 @@ class TMDBHydrator:
             )
 
     async def _batch_get_or_create_genres(
-        self, names: set[str], slugs: dict[str, str]
+        self, names_by_slug: dict[str, str]
     ) -> dict[str, Genre]:
         """Resolve all genres in one batch."""
-        slug_list = list(slugs.values())
+        slug_list = list(names_by_slug)
         existing = await self.session.scalars(
             select(Genre).where(Genre.slug.in_(slug_list))
         )
         genres_by_slug: dict[str, Genre] = {g.slug: g for g in existing}
 
         new_genres: list[Genre] = []
-        for name in names:
-            slug = slugs[name]
+        for slug, name in names_by_slug.items():
             if slug in genres_by_slug:
                 continue
             genre = Genre(name=name, slug=slug)
@@ -486,7 +487,3 @@ def _tmdb_image(path: str | None, size: str = "w500") -> str | None:
     if not path:
         return None
     return f"https://image.tmdb.org/t/p/{size}{path}"
-
-
-def _slugify_genre(name: str) -> str:
-    return name.lower().replace(" & ", "-").replace(" ", "-")

@@ -133,12 +133,14 @@ class FanartHydrator:
             media_item_id = assets[0].media_item_id
             media_item = await self.session.get(MediaItem, media_item_id)
             if media_item is not None:
-                # Logo: pick the widest one (HD variants come first, but be explicit).
-                best_logo = max(
-                    (a for a in assets if a.asset_type == "logo"),
-                    key=lambda a: a.width or 0,
-                    default=None,
-                )
+                # Logo: prefer English, then widest fallback.
+                logo_assets = [a for a in assets if a.asset_type == "logo"]
+                en_logos = [a for a in logo_assets if a.lang == "en"]
+                best_logo = None
+                if en_logos:
+                    best_logo = max(en_logos, key=lambda a: a.width or 0)
+                elif logo_assets:
+                    best_logo = max(logo_assets, key=lambda a: a.width or 0)
                 if best_logo:
                     media_item.logo_url = best_logo.url
 

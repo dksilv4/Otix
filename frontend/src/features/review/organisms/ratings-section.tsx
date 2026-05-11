@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 import logoSvg from "@/assets/otix-logo.svg?raw"
 import igdbLogo from "@/assets/provider-logos/igdb.svg"
 import imdbLogo from "@/assets/provider-logos/imdb.svg"
-import plexLogo from "@/assets/provider-logos/plex.svg"
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
+import { PlexIcon } from "@/features/dk-ui/atoms/plex-icon"
 
 function isSteamProvider(key: string): boolean {
   return key === "steam_user" || key === "steam_metacritic"
@@ -85,7 +85,6 @@ function providerTheme(provider: string): ProviderTheme {
 function providerLogo(key: string): string | null {
   const logos: Record<string, string> = {
     imdb: imdbLogo,
-    plex: plexLogo,
     tmdb: tmdbLogo,
     igdb_critic: igdbLogo,
     igdb_user: igdbLogo,
@@ -196,6 +195,8 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                   <div className="flex h-6 items-center justify-center">
                     {isSteamProvider(r.provider) ? (
                       <SteamIcon className="h-5 w-5 opacity-90" />
+                    ) : r.provider === "plex" ? (
+                      <PlexIcon className="h-5 w-5 opacity-90" />
                     ) : logo ? (
                       <img
                         src={logo}

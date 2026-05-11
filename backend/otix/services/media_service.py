@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from otix.domain.company import InvolvedCompany, Company
 from otix.domain.media import (
+    Episode,
     GameMode,
     MediaGameMode,
     MediaItem,
@@ -31,14 +32,29 @@ class MediaService:
         media_type: str | None = None,
         genre: str | None = None,
         has_artwork: bool = False,
+        sort_by: str | None = None,
         cursor: str | None = None,
+        page: int = 1,
         limit: int = 50,
         include_total: bool = False,
     ) -> tuple[list[MediaItem], bool, int | None]:
-        query = (
-            select(MediaItem)
-            .order_by(MediaItem.popularity.desc(), MediaItem.id)
-        )
+        sort_map = {
+            "popularity": MediaItem.popularity.desc(),
+            "rating": MediaItem.avg_rating.desc().nullslast(),
+            "release_date": MediaItem.release_date.desc().nullslast(),
+            "title": MediaItem.title.asc(),
+        }
+        order = sort_map.get(sort_by or "") if sort_by else None
+
+        if order is not None:
+            # Offset pagination when a sort is explicitly requested
+            query = select(MediaItem).order_by(order, MediaItem.id)
+        else:
+            # Cursor pagination with default popularity sort
+            query = (
+                select(MediaItem)
+                .order_by(MediaItem.popularity.desc(), MediaItem.id)
+            )
 
         if media_type:
             query = query.where(MediaItem.media_type == media_type)
@@ -58,26 +74,36 @@ class MediaService:
                 count_query = count_query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
             total = await self.session.scalar(count_query)
 
-        if cursor:
-            # Cursor is (popularity, id) for stable pagination.
-            sub = (
-                select(MediaItem)
-                .where(MediaItem.id == cursor)
-            )
-            cursor_item = await self.session.scalar(sub)
-            if cursor_item is not None:
-                query = query.where(
-                    (MediaItem.popularity < cursor_item.popularity)
-                    | ((MediaItem.popularity == cursor_item.popularity) & (MediaItem.id > cursor_item.id))
+        if order is not None:
+            # Offset pagination for sorted queries
+            offset = (page - 1) * limit
+            query = query.offset(offset).limit(limit + 1)
+            result = await self.session.scalars(query)
+            items = list(result)
+            has_more = len(items) > limit
+            if has_more:
+                items = items[:limit]
+        else:
+            # Cursor pagination with (popularity, id) ordering
+            if cursor:
+                sub = (
+                    select(MediaItem)
+                    .where(MediaItem.id == cursor)
                 )
+                cursor_item = await self.session.scalar(sub)
+                if cursor_item is not None:
+                    query = query.where(
+                        (MediaItem.popularity < cursor_item.popularity)
+                        | ((MediaItem.popularity == cursor_item.popularity) & (MediaItem.id > cursor_item.id))
+                    )
 
-        query = query.limit(limit + 1)
-        result = await self.session.scalars(query)
-        items = list(result)
+            query = query.limit(limit + 1)
+            result = await self.session.scalars(query)
+            items = list(result)
 
-        has_more = len(items) > limit
-        if has_more:
-            items = items[:limit]
+            has_more = len(items) > limit
+            if has_more:
+                items = items[:limit]
 
         return items, has_more, total
 
@@ -86,7 +112,7 @@ class MediaService:
             select(MediaItem)
             .options(
                 joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
-                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes),
+                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
                 joinedload(MediaItem.game),
                 selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
                 selectinload(MediaItem.external_ratings),

@@ -45,6 +45,12 @@ class User(Base, TimestampMixin):
     plex_email: Mapped[str | None] = mapped_column(String(320), nullable=True, default=None)
     plex_thumb: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     plex_auth_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    tmdb_session_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
+    tmdb_account_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True, default=None)
+    tmdb_username: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
+    tmdb_avatar_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    tmdb_rating_sync_direction: Mapped[str] = mapped_column(String(16), default="disabled", server_default="disabled", nullable=False)
+    tmdb_rating_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     integration_visibility: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     total_xp: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
 

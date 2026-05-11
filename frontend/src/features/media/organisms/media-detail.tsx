@@ -15,6 +15,7 @@ import { Badge } from '@ui/atoms/badge'
 import { ReviewSection } from '@/features/review/organisms/review-section'
 import { ReviewsListSection } from '@/features/review/organisms/reviews-list-section'
 import { RatingsSection } from '@/features/review/organisms/ratings-section'
+import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
 import type { MediaItemDetail } from '../media-queries'
 
@@ -156,17 +157,18 @@ export function MediaDetail() {
   const { data, isLoading, isError } = useMediaDetail(mediaId)
   const { setNavLogo } = usePageMeta()
   const heroRef = useRef<HTMLDivElement>(null)
+  const logoUrl = data?.logoUrl
 
   const handleIntersection = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const heroVisible = entries[0]?.isIntersecting ?? true
-      if (!heroVisible && data?.logoUrl) {
-        setNavLogo(data.logoUrl)
+      if (!heroVisible && logoUrl) {
+        setNavLogo(logoUrl)
       } else {
         setNavLogo(null)
       }
     },
-    [data?.logoUrl, setNavLogo],
+    [logoUrl, setNavLogo],
   )
 
   useEffect(() => {
@@ -233,7 +235,9 @@ export function MediaDetail() {
           mediaId={detail.id}
           mediaType={detail.mediaType as 'movie' | 'show' | 'game'}
           userInteractions={detail.userInteractions}
-        />
+        >
+          <ReviewActionButton mediaId={detail.id} />
+        </InteractionSection>
 
         {/* Ratings — Otix community + external */}
         <RatingsSection

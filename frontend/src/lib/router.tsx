@@ -11,12 +11,15 @@ import { ListDetail } from "@/features/list/organisms/list-detail"
 import { SettingsPage } from "@/features/settings/organisms/settings-page"
 import { UserProfilePage } from "@/features/user/organisms/user-profile-page"
 import { WorkoutPage } from "@/features/workout/organisms/workout-page"
+import { NotificationsPage } from "@/features/notifications/organisms/notifications-page"
+import { BrowsePage } from "@/features/browse/organisms/browse-page"
 import { VerifyEmailPage } from "@auth/organisms/verify-email-page"
 import { ForgotPasswordPage } from "@auth/organisms/forgot-password-page"
 import { ResetPasswordPage } from "@auth/organisms/reset-password-page"
 import { SteamCallbackPage } from "@auth/organisms/steam-callback-page"
 import { SteamConnectCallbackPage } from "@auth/organisms/steam-connect-callback-page"
 import { PlexConnectCallbackPage } from "@auth/organisms/plex-connect-callback-page"
+import { TmdbConnectCallbackPage } from "@auth/organisms/tmdb-connect-callback-page"
 
 // ── Root — chooses layout based on route ──
 
@@ -153,6 +156,24 @@ const plexConnectCallbackRoute = createRoute({
   component: PlexConnectCallbackPage,
 })
 
+const tmdbConnectCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/tmdb/connect/callback",
+  component: TmdbConnectCallbackPage,
+})
+
+const browseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/browse/$type",
+  component: BrowsePage,
+})
+
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/notifications",
+  component: NotificationsPage,
+})
+
 const dkUiRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dk-ui",
@@ -179,6 +200,9 @@ const routeTree = rootRoute.addChildren([
   steamCallbackRoute,
   steamConnectCallbackRoute,
   plexConnectCallbackRoute,
+  tmdbConnectCallbackRoute,
+  browseRoute,
+  notificationsRoute,
   dkUiRoute,
 ])
 

@@ -99,6 +99,14 @@ export interface MovieDetail {
   isAnime: boolean
 }
 
+export interface ExternalRatingOut {
+  id: string
+  provider: string
+  score: number
+  maxScore: number
+  voteCount?: number | null
+}
+
 export interface EpisodeOut {
   id: string
   episodeNumber: number
@@ -107,6 +115,7 @@ export interface EpisodeOut {
   runtime?: number | null
   airDate?: string | null
   stillUrl?: string | null
+  externalRatings: ExternalRatingOut[]
 }
 
 export interface SeasonOut {
@@ -162,12 +171,23 @@ export const mediaQueries = {
       gcTime: 1000 * 60 * 30,
     }),
 
-  list: (type?: string) =>
+  list: (opts?: {
+    type?: string
+    genre?: string
+    sortBy?: string
+    page?: number
+    limit?: number
+  }) =>
     queryOptions({
-      queryKey: mediaKeys.list(type),
+      queryKey: mediaKeys.list(opts?.type, opts),
       queryFn: async () => {
-        const params: Record<string, string> = { limit: '50' }
-        if (type) params.media_type = type
+        const params: Record<string, string | number> = { limit: opts?.limit ?? 50 }
+        if (opts?.type) params.media_type = opts.type
+        if (opts?.genre) params.genre = opts.genre
+        if (opts?.sortBy) {
+          params.sort_by = opts.sortBy
+          if (opts?.page) params.page = opts.page
+        }
         const { data } = await apiClient.get<MediaListResponse>('/media', { params })
         return data
       },

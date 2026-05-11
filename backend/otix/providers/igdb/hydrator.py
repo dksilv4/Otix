@@ -7,9 +7,11 @@ genres, and ratings from the IGDB API response.
 from __future__ import annotations
 
 from sqlalchemy import delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import (
@@ -20,11 +22,11 @@ from otix.domain.media import (
     MediaPlatform,
     Platform,
 )
+from otix.lib.genres import normalize_genre_names
 from otix.lib.types import JSONValue
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.transformer import (
     _cover_url,
-    _slugify,
     extract_involved_companies,
     extract_modes,
     extract_platforms,
@@ -81,23 +83,22 @@ class IGDBHydrator:
             delete(MediaGenre).where(MediaGenre.media_item_id == media_item.id)
         )
 
-        names: set[str] = set()
+        raw_names: list[str] = []
         for g in genre_list:
             if isinstance(g, dict) and g.get("name"):
-                names.add(str(g["name"]))
+                raw_names.append(str(g["name"]))
 
-        if not names:
+        names_by_slug = normalize_genre_names(raw_names)
+        if not names_by_slug:
             return
 
-        slugs = {name: _slugify(name) for name in names}
         existing = await self.session.scalars(
-            select(Genre).where(Genre.slug.in_(list(slugs.values())))
+            select(Genre).where(Genre.slug.in_(list(names_by_slug)))
         )
         by_slug: dict[str, Genre] = {g.slug: g for g in existing}
 
         new_genres: list[Genre] = []
-        for name in names:
-            slug = slugs[name]
+        for slug, name in names_by_slug.items():
             if slug not in by_slug:
                 genre = Genre(name=name, slug=slug)
                 new_genres.append(genre)
@@ -107,8 +108,7 @@ class IGDBHydrator:
             self.session.add_all(new_genres)
             await self.session.flush()
 
-        for name in names:
-            slug = slugs[name]
+        for slug in names_by_slug:
             genre = by_slug.get(slug)
             if genre is not None:
                 self.session.add(
@@ -269,7 +269,7 @@ class IGDBHydrator:
         for e in entries:
             slug = e["company_slug"]
             if slug not in by_slug:
-                company = Company(name=e["company_name"], slug=slug)
+                company = Company(id=gen_otix_id(), name=e["company_name"], slug=slug)
                 igdb_id = e.get("igdb_id")
                 if isinstance(igdb_id, int):
                     company.igdb_id = igdb_id
@@ -282,8 +282,19 @@ class IGDBHydrator:
                     existing_company.igdb_id = igdb_id
 
         if new_companies:
-            self.session.add_all(new_companies)
-            await self.session.flush()
+            await self.session.execute(
+                pg_insert(Company)
+                .values([
+                    {"id": c.id, "name": c.name, "slug": c.slug, "igdb_id": c.igdb_id}
+                    for c in new_companies
+                ])
+                .on_conflict_do_nothing(index_elements=["slug"])
+            )
+            # Re-fetch all companies so by_slug has IDs for both new and pre-existing rows
+            existing = await self.session.scalars(
+                select(Company).where(Company.slug.in_(slugs))
+            )
+            by_slug = {c.slug: c for c in existing}
 
         await self.session.execute(
             delete(InvolvedCompany).where(

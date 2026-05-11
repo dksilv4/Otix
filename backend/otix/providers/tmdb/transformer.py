@@ -12,6 +12,7 @@ from datetime import date
 from otix.domain.genre import Genre
 from otix.domain.media import Episode, MediaItem, Movie, Season, Show
 from otix.domain.people import Person
+from otix.lib.genres import normalize_genre_names, split_genre_name
 from otix.lib.types import JSONValue
 
 
@@ -118,10 +119,18 @@ def to_person(raw: dict[str, JSONValue]) -> Person:
 
 
 def to_genre(raw: dict[str, JSONValue]) -> Genre:
+    name = split_genre_name(str(raw["name"]))[0]
     return Genre(
-        name=raw["name"],
-        slug=_slugify(raw["name"]),
+        name=name,
+        slug=_slugify(name),
     )
+
+
+def to_genres(raw: dict[str, JSONValue]) -> list[Genre]:
+    return [
+        Genre(name=name, slug=slug)
+        for slug, name in normalize_genre_names([str(raw["name"])]).items()
+    ]
 
 
 # ── Helpers ─────────────────────────────────────────────────────
@@ -147,5 +156,8 @@ def _is_anime(raw: dict[str, JSONValue]) -> bool:
     keywords = [k.get("name", "").lower() for k in raw.get("keywords", {}).get("keywords", [])]
     if "anime" in raw.get("original_language", "") or "anime" in keywords:
         return True
-    genres = [g.get("name", "").lower() for g in raw.get("genres", [])]
+    genre_map = normalize_genre_names(
+        str(g["name"]) for g in raw.get("genres", []) if g.get("name")
+    )
+    genres = set(genre_map)
     return raw.get("original_language") == "ja" and "animation" in genres

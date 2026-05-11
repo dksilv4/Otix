@@ -31,4 +31,5 @@ class UserProfileOut(BaseModel):
     total_xp: int = 0
     steam: SteamIntegrationPublic | None = None
     plex: PlexIntegrationPublic | None = None
+    tmdb_username: str | None = None
     friendship_status: FriendshipStatusOut | None = None

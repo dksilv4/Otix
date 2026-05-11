@@ -476,6 +476,20 @@ class TestHydrateGenres:
         slugs = {g.slug for g in genre_adds}
         assert "role-playing-rpg" not in slugs
 
+    async def test_splits_composite_genres(self, igdb_hydrator, mock_db_session):
+        mock_db_session.scalars.return_value = []
+        item = to_media_item({"name": "Example Game"})
+        raw = {"genres": [{"name": "Action/Adventure"}], "themes": [{"name": "Sci-Fi & Fantasy"}]}
+
+        await igdb_hydrator.hydrate_genres(item, raw)
+
+        genre_adds = [
+            g for call in mock_db_session.add_all.call_args_list
+            for g in call[0][0] if isinstance(g, Genre)
+        ]
+        assert {g.name for g in genre_adds} == {"Action", "Adventure", "Sci-Fi", "Fantasy"}
+        assert {g.slug for g in genre_adds} == {"action", "adventure", "sci-fi", "fantasy"}
+
     async def test_empty_genres(self, igdb_hydrator, mock_db_session, igdb_minimal_raw):
         item = to_media_item(igdb_minimal_raw)
 

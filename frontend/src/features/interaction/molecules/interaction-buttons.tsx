@@ -1,4 +1,5 @@
 import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
+import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
@@ -91,25 +92,39 @@ function InteractionButton({
   mediaId,
 }: ButtonDef & { active: boolean; mediaId: string }) {
   const toggle = useToggleInteraction(mediaId)
+  const [localActive, setLocalActive] = useState<boolean | null>(null)
+  const prevActiveRef = useRef(active)
+
+  // Reset local state when server confirms
+  useEffect(() => {
+    if (active !== prevActiveRef.current) {
+      prevActiveRef.current = active
+      setLocalActive(null)
+    }
+  }, [active])
+
+  const isActive = localActive ?? active
 
   return (
     <button
       type="button"
       onClick={() => {
-        const nextActive = !active
+        const nextActive = !isActive
+        setLocalActive(nextActive)
         toggle.mutate({ type, active: nextActive })
         if (nextActive) {
           showXPToast(XP_VALUES[type])
         }
       }}
+      disabled={toggle.isPending}
       className={cn(
-        'group relative flex flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-base)] px-4 py-3 transition-all duration-150',
-        'hover:border-white/[0.12] hover:bg-[var(--dk-surface-glass)]',
-        active && 'border-white/[0.10]',
+        'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-[var(--dk-surface-base)] px-3 py-3 transition-all duration-150',
+        'hover:bg-[var(--dk-surface-glass)]',
+        toggle.isPending && 'pointer-events-none',
       )}
     >
       {/* Ambient glow when active */}
-      {active && (
+      {isActive && (
         <div
           className={cn(
             'pointer-events-none absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_50%_50%,var(--tw-gradient-from),transparent_70%)]',
@@ -120,8 +135,10 @@ function InteractionButton({
 
       <Icon
         className={cn(
-          'relative h-5 w-5 transition-colors',
-          active ? cn(activeColor, 'fill-current') : 'text-muted-foreground',
+          'relative h-5 w-5 transition-all duration-200',
+          isActive
+            ? cn(activeColor, 'fill-current scale-110')
+            : 'text-muted-foreground scale-100',
         )}
       />
 
@@ -139,6 +156,7 @@ interface InteractionSectionProps {
   mediaType: 'movie' | 'show' | 'game'
   className?: string
   userInteractions?: UserInteractionState | null
+  children?: ReactNode
 }
 
 function InteractionSection({
@@ -146,6 +164,7 @@ function InteractionSection({
   mediaType,
   className,
   userInteractions,
+  children,
 }: InteractionSectionProps) {
   const { isAuthenticated } = useAuth()
 
@@ -188,6 +207,7 @@ function InteractionSection({
             mediaId={mediaId}
           />
         ))}
+        {children}
       </div>
     </section>
   )

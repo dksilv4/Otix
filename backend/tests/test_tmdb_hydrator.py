@@ -79,6 +79,22 @@ class TestHydrateGenres:
         links = [o for o in added if isinstance(o, MediaGenre)]
         assert len(links) == 1
 
+    async def test_splits_composite_genres(
+        self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
+    ):
+        raw = {"genres": [{"id": 10765, "name": "Sci-Fi & Fantasy"}]}
+        mock_db_session.scalars.return_value = []
+
+        await hydrator.hydrate_genres(media_item, raw)
+
+        added = _added_objects(mock_db_session)
+        genres = [o for o in added if isinstance(o, Genre)]
+        links = [o for o in added if isinstance(o, MediaGenre)]
+
+        assert {g.name for g in genres} == {"Sci-Fi", "Fantasy"}
+        assert {g.slug for g in genres} == {"sci-fi", "fantasy"}
+        assert len(links) == 2
+
     async def test_clears_existing_links(self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock):
         mock_db_session.scalars.return_value = []
 

@@ -13,7 +13,7 @@ from otix.domain.company import Company, InvolvedCompany
 
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.list import UserList, UserListItem
+from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
 from otix.domain.review import Review
 from otix.domain.media import (
     Episode,
@@ -55,6 +55,9 @@ __all__ = [
     "Genre",
     "InvolvedCompany",
     "Keyword",
+    "ListItemRankHistory",
+    "MediaListCollaborator",
+    "MediaListLike",
     "MediaAsset",
     "MediaCredit",
     "MediaGameMode",

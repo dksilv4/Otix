@@ -4,23 +4,28 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db
-from otix.api.schemas.notification import NotificationOut, UnreadCountOut
+from otix.api.schemas.notification import NotificationOut, NotificationListResponse, UnreadCountOut
 from otix.domain.user import User
 from otix.services.notification_service import NotificationService
 
 notification_router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@notification_router.get("", response_model=list[NotificationOut])
+@notification_router.get("", response_model=NotificationListResponse)
 async def list_notifications(
     cursor: str | None = Query(None),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[NotificationOut]:
+) -> NotificationListResponse:
     service = NotificationService(db)
-    items, _ = await service.get_for_user(current_user.id, limit=limit, cursor=cursor)
-    return [NotificationOut.model_validate(item) for item in items]
+    items, has_more = await service.get_for_user(current_user.id, limit=limit, cursor=cursor)
+    next_cursor = items[-1].created_at.isoformat() if items and has_more else None
+    return NotificationListResponse(
+        items=[NotificationOut.model_validate(item) for item in items],
+        has_more=has_more,
+        next_cursor=next_cursor,
+    )
 
 
 @notification_router.get("/unread-count", response_model=UnreadCountOut)

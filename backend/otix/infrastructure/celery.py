@@ -91,10 +91,11 @@ app.config_from_object(
                 "task": "maintenance.cleanup_expired_tokens",
                 "schedule": crontab(hour="3", minute="23"),
             },
-            # Fanart enrichment scan (every 30 min at off-peak minutes)
+            # Fanart enrichment scan (every 15 min as safety net; inline enqueue from
+            # TMDB sync is the primary Fanart trigger now)
             "enrich-fanart": {
                 "task": "maintenance.enrich_fanart",
-                "schedule": crontab(minute="7,37"),
+                "schedule": crontab(minute="7,22,37,52"),
             },
             # OMDb enrichment scan (every 30 min at off-peak minutes)
             "enrich-omdb": {
