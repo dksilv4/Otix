@@ -1,3 +1,9 @@
 *.pyc
 /backend/.venv
 /backend/otix.egg-info
+
+.DS_Store
+.idea/
+
+/backend/data/
+/package-lock.json
