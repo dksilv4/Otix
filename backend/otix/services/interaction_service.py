@@ -17,6 +17,7 @@ _TYPE_TO_COLUMN: dict[str, str] = {
     "watched": "watched_count",
     "played": "played_count",
     "started": "started_count",
+    "listened": "listened_count",
 }
 
 _VALID_TYPES = frozenset(_TYPE_TO_COLUMN)
@@ -98,7 +99,7 @@ class InteractionService:
         if is_new:
             amount = (
                 INTERACTION_WATCHED_PLAYED
-                if interaction_type in ("watched", "played")
+                if interaction_type in ("watched", "played", "listened")
                 else INTERACTION_LIKE_WATCHLIST_STARTED
             )
             app.send_task("xp.award", args=[user_id, amount])
@@ -124,13 +125,14 @@ class InteractionService:
     async def get_counts(self, media_item_id: str) -> dict[str, int]:
         media = await self.session.get(MediaItem, media_item_id)
         if media is None:
-            return {"like_count": 0, "watchlist_count": 0, "watched_count": 0, "played_count": 0, "started_count": 0}
+            return {"like_count": 0, "watchlist_count": 0, "watched_count": 0, "played_count": 0, "started_count": 0, "listened_count": 0}
         return {
             "like_count": media.like_count,
             "watchlist_count": media.watchlist_count,
             "watched_count": media.watched_count,
             "played_count": media.played_count,
             "started_count": media.started_count,
+            "listened_count": media.listened_count,
         }
 
     async def list_user_interactions(

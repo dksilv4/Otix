@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from otix.domain.company import InvolvedCompany, Company
 from otix.domain.media import (
+    Album,
     Episode,
     GameMode,
     MediaGameMode,
@@ -16,6 +17,7 @@ from otix.domain.media import (
     Season,
     Show,
     Game,
+    Track,
 )
 from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
@@ -60,7 +62,15 @@ class MediaService:
             query = query.where(MediaItem.media_type == media_type)
 
         if has_artwork:
-            query = query.where(MediaItem.textless_poster_url.isnot(None))
+            # Movies/shows/games need textless poster; music uses poster_url
+            # (album covers have artwork text, no "textless" variant exists).
+            query = query.where(
+                MediaItem.textless_poster_url.isnot(None)
+                | (
+                    (MediaItem.media_type == "music")
+                    & MediaItem.poster_url.isnot(None)
+                )
+            )
 
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
@@ -114,6 +124,7 @@ class MediaService:
                 joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
                 joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
                 joinedload(MediaItem.game),
+                joinedload(MediaItem.album).selectinload(Album.tracks),
                 selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
                 selectinload(MediaItem.external_ratings),
                 selectinload(MediaItem.credits).joinedload(MediaCredit.person),

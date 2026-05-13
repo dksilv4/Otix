@@ -11,6 +11,7 @@ class UserInteractionState(BaseModel):
     watched: bool = False
     played: bool = False
     started: bool = False
+    listened: bool = False
 
 
 class InteractionCounts(BaseModel):
@@ -19,6 +20,7 @@ class InteractionCounts(BaseModel):
     watched_count: int = 0
     played_count: int = 0
     started_count: int = 0
+    listened_count: int = 0
 
 
 class InteractionOut(BaseModel):

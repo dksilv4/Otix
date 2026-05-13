@@ -85,6 +85,6 @@ async def _backfill_xp() -> dict:
     return {"total_xp_awarded": total, "users_with_xp": user_count}
 
 
-@app.task(name="xp.backfill", bind=True, max_retries=1, queue="slow")
+@app.task(name="xp.backfill", bind=True, max_retries=1)
 def backfill_xp_task(self) -> dict:
     return run_async(_backfill_xp())

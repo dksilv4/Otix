@@ -45,9 +45,10 @@ class MediaItem(Base, TimestampMixin):
     watched_count: Mapped[int] = mapped_column(Integer, default=0)
     played_count: Mapped[int] = mapped_column(Integer, default=0)
     started_count: Mapped[int] = mapped_column(Integer, default=0)
+    listened_count: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (
-        CheckConstraint("media_type IN ('movie', 'show', 'game')", name="ck_media_type"),
+        CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),
         CheckConstraint("completeness_score >= 0 AND completeness_score <= 1", name="ck_completeness_score"),
     )
 
@@ -55,6 +56,7 @@ class MediaItem(Base, TimestampMixin):
     movie: Mapped[Movie | None] = relationship("Movie", back_populates="media_item", uselist=False)
     show: Mapped[Show | None] = relationship("Show", back_populates="media_item", uselist=False)
     game: Mapped[Game | None] = relationship("Game", back_populates="media_item", uselist=False)
+    album: Mapped[Album | None] = relationship("Album", back_populates="media_item", uselist=False)
 
     # Relations
     genres: Mapped[list[MediaGenre]] = relationship("MediaGenre", back_populates="media_item")
@@ -149,6 +151,46 @@ class Game(Base):
     has_multiplayer: Mapped[bool] = mapped_column(default=False)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game")
+
+
+class Album(Base):
+    __tablename__ = "albums"
+
+    media_item_id: Mapped[otix_pk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
+    release_type: Mapped[str] = mapped_column(String(20), default="album")
+    format: Mapped[str | None] = mapped_column(String(50))
+    catalog_number: Mapped[str | None] = mapped_column(String(100))
+    barcode: Mapped[str | None] = mapped_column(String(50))
+    track_count: Mapped[int] = mapped_column(Integer, default=0)
+    disc_count: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
+    musicbrainz_id: Mapped[str | None] = mapped_column(String(36), unique=True)
+    musicbrainz_release_group_id: Mapped[str | None] = mapped_column(String(36))
+    spotify_url: Mapped[str | None] = mapped_column(String(500))
+    spotify_popularity: Mapped[int | None] = mapped_column(Integer)
+    preview_url: Mapped[str | None] = mapped_column(String(500))
+    audio_features: Mapped[dict | None] = mapped_column(JSONB)
+
+    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="album")
+    tracks: Mapped[list[Track]] = relationship("Track", back_populates="album")
+
+
+class Track(Base, TimestampMixin):
+    __tablename__ = "tracks"
+
+    id: Mapped[otix_pk]
+    album_id: Mapped[otix_fk] = mapped_column(ForeignKey("albums.media_item_id", ondelete="CASCADE"), nullable=False)
+    track_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    disc_number: Mapped[int] = mapped_column(Integer, default=1)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    preview_url: Mapped[str | None] = mapped_column(String(500))
+    spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
+    musicbrainz_recording_id: Mapped[str | None] = mapped_column(String(36), unique=True)
+    audio_features: Mapped[dict | None] = mapped_column(JSONB)
+
+    album: Mapped[Album] = relationship("Album", back_populates="tracks")
 
 
 class ExternalID(Base):

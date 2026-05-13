@@ -257,10 +257,11 @@ class TestLogOverallSummary:
 
         msg = mock_log.call_args[0][0]
         assert "seed.overall" in msg
-        assert "0/3 done" in msg
+        assert "0/4 done" in msg
         assert "people:" in msg
         assert "steam:" in msg
         assert "igdb:" in msg
+        assert "musicbrainz:" in msg
         assert "running" in msg
 
     async def test_one_done(self, fakeredis):
@@ -271,7 +272,7 @@ class TestLogOverallSummary:
                 await _log_overall_summary()
 
         msg = mock_log.call_args[0][0]
-        assert "1/3 done" in msg
+        assert "1/4 done" in msg
         assert "people: 2000 [done]" in msg
         assert "steam: 500/1000 (50.0%) [running]" in msg
 
@@ -284,7 +285,7 @@ class TestLogOverallSummary:
                 await _log_overall_summary()
 
         msg = mock_log.call_args[0][0]
-        assert "3/3 done" in msg
+        assert "3/4 done" in msg
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -369,6 +370,12 @@ class TestDownloadExport:
 
 
 class TestProcessPeopleBatch:
+    @pytest.fixture(autouse=True)
+    def mock_backlog(self):
+        with patch("otix.tasks.catalog_seed._check_fast_queue_backlog", new_callable=AsyncMock) as m:
+            m.return_value = (0, False)
+            yield m
+
     @pytest.fixture(autouse=True)
     def mock_save(self):
         with patch("otix.tasks.catalog_seed._save_state", new_callable=AsyncMock):

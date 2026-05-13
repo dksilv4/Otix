@@ -101,10 +101,15 @@ class SteamGridDBProvider(BaseProvider):
         except SteamGridDBError:
             return []
 
-    async def get_heroes(self, game_id: int) -> list[dict[str, JSONValue]]:
-        """Get heroes (banners) for a game."""
+    async def get_heroes(
+        self, game_id: int, styles: str | None = None
+    ) -> list[dict[str, JSONValue]]:
+        """Get heroes (banners) for a game. Style options: alternate, blurred, material."""
+        params: dict = {}
+        if styles:
+            params["styles"] = styles
         try:
-            response = await self._get(f"/heroes/game/{game_id}")
+            response = await self._get(f"/heroes/game/{game_id}", params=params)
             return self._resolve_success(response)
         except SteamGridDBError:
             return []

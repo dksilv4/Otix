@@ -65,7 +65,7 @@ services:
         condition: service_healthy
     command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel WARNING
 
-  worker-slow:
+  worker-provider:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -77,13 +77,53 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: slow
+      OTIX_WORKER_TYPE: provider
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q slow,control,default -c 2 -n otix-slow@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,omdb,steamgrid,musicbrainz,lastfm -c 3 -n otix-provider@%h --loglevel WARNING
+
+  worker-user:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OTIX_WORKER_TYPE: user
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q user -c 2 -n otix-user@%h --loglevel WARNING
+
+  worker-control:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      OTIX_WORKER_TYPE: control
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q control -c 2 -n otix-control@%h --loglevel WARNING
 
   worker-ccu:
     build:

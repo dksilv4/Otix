@@ -64,3 +64,15 @@ class FanartProvider(BaseProvider):
         """Fetch Fanart game images by Fanart.tv game ID."""
         response = await self._get(f"/games/{game_id}")
         return response.json()
+
+    # ── Music ───────────────────────────────────────────────────────
+
+    async def get_music_images(self, artist_mbid: str) -> dict[str, JSONValue]:
+        """Fetch Fanart music images by MusicBrainz artist MBID.
+
+        Response includes artist-level artwork (logos, backgrounds, thumbs,
+        banners) plus album covers nested under ``albums`` keyed by release
+        group MBID.
+        """
+        response = await self._get(f"/music/{artist_mbid}")
+        return response.json()

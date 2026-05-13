@@ -30,6 +30,7 @@ _LIBRARY_TYPES = {
     "like": "liked",
     "watched": "watched",
     "played": "played",
+    "listened": "listened",
 }
 
 
@@ -230,6 +231,103 @@ async def get_plex_status(
     }
 
 
+@library_router.get("/spotify", response_model=MediaItemListResponse)
+async def get_spotify_library_tab(
+    cursor: str | None = Query(None, description="Pagination cursor"),
+    limit: int = Query(48, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MediaItemListResponse:
+    if not current_user.spotify_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Spotify library is only available when Spotify is connected",
+        )
+
+    from sqlalchemy.orm import joinedload
+    from otix.domain.media import Album, MediaItem
+    from otix.infrastructure.redis import get_redis
+
+    redis = await get_redis()
+    key = f"spotify:library:{current_user.id}:albums"
+    all_album_ids = await redis.smembers(key)
+
+    if not all_album_ids:
+        return MediaItemListResponse(items=[], next_cursor=None, has_more=False)
+
+    album_id_list = [aid.decode() if isinstance(aid, bytes) else aid for aid in all_album_ids]
+
+    query = (
+        select(MediaItem)
+        .join(Album, Album.media_item_id == MediaItem.id)
+        .options(
+            joinedload(MediaItem.movie),
+            joinedload(MediaItem.show),
+            joinedload(MediaItem.game),
+            joinedload(MediaItem.album),
+        )
+        .where(Album.spotify_id.in_(album_id_list))
+        .order_by(MediaItem.popularity.desc(), MediaItem.id)
+    )
+
+    if cursor:
+        try:
+            cursor_pop, cursor_id = cursor.split("__", 1)
+            cursor_pop = float(cursor_pop)
+            query = query.where(
+                (MediaItem.popularity < cursor_pop)
+                | ((MediaItem.popularity == cursor_pop) & (MediaItem.id > cursor_id))
+            )
+        except (ValueError, TypeError):
+            pass
+
+    query = query.limit(limit + 1)
+    result = await db.execute(query)
+    rows = list(result.unique().scalars().all())
+
+    has_more = len(rows) > limit
+    if has_more:
+        rows = rows[:limit]
+
+    next_cursor = None
+    if has_more and rows:
+        last = rows[-1]
+        next_cursor = f"{last.popularity}__{last.id}"
+
+    summaries = [MediaItemSummary.model_validate(item) for item in rows]
+    return MediaItemListResponse(
+        items=summaries,
+        next_cursor=next_cursor,
+        has_more=has_more,
+    )
+
+
+@library_router.get("/spotify/status")
+async def get_spotify_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    if not current_user.spotify_id:
+        return {"track_count": 0, "last_scanned_at": None}
+
+    from otix.infrastructure.redis import get_redis
+
+    redis = await get_redis()
+    key = f"spotify:library:{current_user.id}:albums"
+    count = await redis.scard(key)
+
+    ttl = await redis.ttl(key)
+    last_scanned_at = None
+    if ttl > 0:
+        from datetime import datetime, timezone
+        last_scanned_at = datetime.now(timezone.utc).isoformat()
+
+    return {
+        "track_count": count or 0,
+        "last_scanned_at": last_scanned_at,
+    }
+
+
 @library_router.get("/{tab}", response_model=MediaItemListResponse)
 async def get_library_tab(
     tab: str,
@@ -256,7 +354,7 @@ async def get_library_tab(
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     # All items in this tab have this interaction_type active
-    auto_state = {t: t == interaction_type for t in ("liked", "watchlisted", "watched", "played")}
+    auto_state = {t: t == interaction_type for t in ("liked", "watchlisted", "watched", "played", "started", "listened")}
     for summary in summaries:
         summary.user_interactions = UserInteractionState(**auto_state)
 

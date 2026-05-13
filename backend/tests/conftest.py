@@ -394,6 +394,8 @@ def docker_compose():
             capture_output=True,
             text=True,
         )
+    except FileNotFoundError:
+        pytest.skip("Docker CLI is not available in this test environment")
     except subprocess.CalledProcessError as exc:
         pytest.skip(f"Docker compose failed: {exc.stderr}")
 

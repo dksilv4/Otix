@@ -1,17 +1,22 @@
-"""Full catalog seeding — concurrent import of people, Steam games, and IGDB games.
+"""Full catalog seeding — concurrent import across four catalogs.
 
-Three independent seeders run in parallel, each on its own beat schedule:
+Each seeder runs on its own beat schedule with independent Redis state/lock:
 
   TMDB People: Downloads daily person_ids export, streams in batches.
-  Person sync cascades to movies/shows via combined_credits filmography,
-  so explicit movie/show exports are unnecessary.
+  Person sync cascades to movies/shows via combined_credits filmography.
 
   Steam Games: Downloads GetAppList once, streams app IDs in batches.
-  Higher rate limits (100k/day) and smaller catalog than IGDB.
 
   IGDB Games: Offset pagination, small batches to stay under 4 rps limit.
 
-Each seeder has its own Redis state/lock keys and reaches "done" independently.
+  MusicBrainz: API-based incremental seeder (complement to dump import).
+  For the initial bulk seed, use the dump-based importer instead:
+      python -m otix.scripts.import_musicbrainz_dump /path/to/mbdump.tar.bz2
+  The dump (~7 GB) is available from:
+      https://data.metabrainz.org/pub/musicbrainz/data/fullexport/
+  This API seeder provides incremental coverage for recently added releases.
+
+Each seeder reaches "done" independently when its catalog is exhausted.
 """
 
 from __future__ import annotations
@@ -22,14 +27,14 @@ import json
 import os
 import tempfile
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Awaitable
 from urllib.parse import urlparse
 
+import httpx
 import redis.asyncio as aioredis
 import structlog
-import httpx
 
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
@@ -40,6 +45,8 @@ logger = structlog.get_logger()
 BATCH_ENTRIES = 500
 IGDB_LIMIT = 50
 IGDB_PAGES_PER_CYCLE = 3
+MUSICBRAINZ_LIMIT = 100
+MUSICBRAINZ_PAGES_PER_CYCLE = 3
 LOCK_TTL = 300
 TMDB_EXPORT_BASE = "https://files.tmdb.org/p/exports"
 STEAM_APP_LIST_URL = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
@@ -54,6 +61,9 @@ _STEAM_SEEN = "otix:catalog_seed:steam:seen"
 _IGDB_STATE = "otix:catalog_seed:igdb:state"
 _IGDB_LOCK = "otix:catalog_seed:igdb:lock"
 _IGDB_SEEN = "otix:catalog_seed:igdb:seen"
+_MUSICBRAINZ_STATE = "otix:catalog_seed:musicbrainz:state"
+_MUSICBRAINZ_LOCK = "otix:catalog_seed:musicbrainz:lock"
+_MUSICBRAINZ_SEEN = "otix:catalog_seed:musicbrainz:seen"
 
 SEEN_TTL = 30 * 86400  # 30 days — covers the full seeding window + restart margin
 
@@ -80,7 +90,7 @@ async def _save_state(key: str, state: dict) -> None:
 # ── Dedup helpers ─────────────────────────────────────────────────────
 
 
-async def _enqueue_if_new(seen_key: str, task_name: str, entry_id: int) -> bool:
+async def _enqueue_if_new(seen_key: str, task_name: str, entry_id: str | int) -> bool:
     """Enqueue a task only if the ID hasn't been seen before.
 
     Uses Redis SADD for atomic check-and-add. Returns True if enqueued.
@@ -142,10 +152,11 @@ def _log_progress(seeder: str, state: dict, cycle_result: dict | None = None) ->
 
 
 async def _log_overall_summary() -> None:
-    """Log a one-line summary of all three seeders' progress."""
+    """Log a one-line summary of all four seeders' progress."""
     people = await _load_state(_PEOPLE_STATE)
     steam = await _load_state(_STEAM_STATE)
     igdb = await _load_state(_IGDB_STATE)
+    musicbrainz = await _load_state(_MUSICBRAINZ_STATE)
 
     def _status(s: dict) -> str:
         return "done" if s.get("pipeline") == "done" else "running"
@@ -158,12 +169,18 @@ async def _log_overall_summary() -> None:
             return f"{entries}/{total} ({pct:.1f}%)"
         return str(entries)
 
-    done_count = sum(1 for s in [people, steam, igdb] if s.get("pipeline") == "done")
+    def _mb_progress(s: dict) -> str:
+        year_start = s.get("year_start", 1950)
+        offset = s.get("offset", 0)
+        return f"{year_start}s@{offset}"
+
+    done_count = sum(1 for s in [people, steam, igdb, musicbrainz] if s.get("pipeline") == "done")
     msg = (
-        f"seed.overall | {done_count}/3 done | "
+        f"seed.overall | {done_count}/4 done | "
         f"people: {_progress(people)} [{_status(people)}] | "
         f"steam: {_progress(steam)} [{_status(steam)}] | "
-        f"igdb: {_progress(igdb)} [{_status(igdb)}]"
+        f"igdb: {_progress(igdb)} [{_status(igdb)}] | "
+        f"musicbrainz: {_mb_progress(musicbrainz)} [{_status(musicbrainz)}]"
     )
     logger.info(msg)
 
@@ -216,6 +233,12 @@ def seed_steam_cycle() -> dict:
 def seed_igdb_cycle() -> dict:
     from otix.lib.concurrency import run_async
     return run_async(_seed_loop("igdb", _IGDB_STATE, _IGDB_LOCK, _process_igdb_batch))
+
+
+@app.task(name="seed.musicbrainz_cycle", queue="default")
+def seed_musicbrainz_cycle() -> dict:
+    from otix.lib.concurrency import run_async
+    return run_async(_seed_loop("musicbrainz", _MUSICBRAINZ_STATE, _MUSICBRAINZ_LOCK, _process_musicbrainz_batch))
 
 
 # ── TMDB export download ─────────────────────────────────────────────
@@ -553,3 +576,83 @@ async def _process_igdb_batch(state: dict) -> dict:
         logger.info("seed igdb batch", offset=state.get("offset"), enqueued=total_enqueued, skipped=total_skipped)
 
     return {"offset": state.get("offset"), "enqueued": total_enqueued, "skipped": total_skipped}
+
+
+# ── MusicBrainz seeder ────────────────────────────────────────────────
+
+
+async def _process_musicbrainz_batch(state: dict) -> dict:
+    """Process MUSICBRAINZ_PAGES_PER_CYCLE search pages.
+
+    Enumerates the MusicBrainz catalog by decade to stay under the 10k
+    result limit per search query. Each decade gets its own offset.
+    """
+    from otix.infrastructure.redis import get_redis as _get_redis
+    from otix.providers.musicbrainz.client import MusicBrainzProvider
+
+    state_key = _MUSICBRAINZ_STATE
+    year_end = state.get("year_end", 2026)
+    offset = state.get("offset", 0)
+    total_enqueued = 0
+    total_skipped = 0
+
+    for _ in range(MUSICBRAINZ_PAGES_PER_CYCLE):
+        year_start = max(year_end - 9, 0)
+        query = f"date:[{year_start} TO {year_end}]"
+
+        redis = await _get_redis()
+        provider = MusicBrainzProvider(redis)
+
+        try:
+            results = await provider.search_release(
+                query=query,
+                limit=MUSICBRAINZ_LIMIT,
+                offset=offset,
+            )
+        except Exception:
+            logger.warning(
+                "seed musicbrainz search failed",
+                year_end=year_end,
+                offset=offset,
+                exc_info=True,
+            )
+            break
+
+        if not results:
+            # No more results for this decade, move to the prior one
+            year_end -= 10
+            offset = 0
+            state["year_end"] = year_end
+            state["offset"] = 0
+            await _save_state(state_key, state)
+            continue
+
+        for item in results:
+            mbid = item.get("id")
+            if mbid:
+                if await _enqueue_if_new(_MUSICBRAINZ_SEEN, "sync.musicbrainz.album", mbid):
+                    total_enqueued += 1
+                else:
+                    total_skipped += 1
+
+        offset += len(results)
+        state["year_end"] = year_end
+        state["offset"] = offset
+        await asyncio.sleep(1.0)
+
+    # Stop after reaching the earliest year
+    if year_end < 1900:
+        state["pipeline"] = "done"
+        await _clear_seen(_MUSICBRAINZ_SEEN)
+        logger.info("seed musicbrainz complete")
+    else:
+        logger.info(
+            "seed musicbrainz batch",
+            decade=f"{year_end - 9}-{year_end}",
+            offset=state.get("offset"),
+            enqueued=total_enqueued,
+            skipped=total_skipped,
+        )
+
+    await _save_state(state_key, state)
+    return {"year_start": year_start, "offset": state.get("offset"), "enqueued": total_enqueued, "skipped": total_skipped}

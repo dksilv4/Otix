@@ -41,7 +41,7 @@ async def _embed_query(query: str) -> list[float] | None:
 
 @media_router.get("", response_model=MediaItemListResponse)
 async def list_media(
-    media_type: str | None = Query(None, description="movie, show, or game"),
+    media_type: str | None = Query(None, description="movie, show, game, or music"),
     genre: str | None = Query(None, description="Genre slug"),
     has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
     sort_by: str | None = Query(None, description="popularity, rating, release_date, or title"),
@@ -109,7 +109,7 @@ async def list_genres(
 @media_router.get("/search", response_model=MediaItemListResponse)
 async def search_media(
     q: str = Query(..., min_length=1, description="Search query"),
-    media_type: str | None = Query(None, description="movie, show, or game"),
+    media_type: str | None = Query(None, description="movie, show, game, or music"),
     sort_by: str | None = Query(None, description="relevance, popularity, rating, release_date, title"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
@@ -190,13 +190,13 @@ def _poll_query_hash(q: str, media_type: str | None) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-BACKFILL_POLL_PROVIDERS = ["tmdb_movie", "tmdb_show", "igdb_game"]
+BACKFILL_POLL_PROVIDERS = ["tmdb_movie", "tmdb_show", "igdb_game", "musicbrainz"]
 
 
 @media_router.get("/search/poll", response_model=MediaItemListResponse)
 async def poll_search_updates(
     q: str = Query(..., min_length=1, description="Search query"),
-    media_type: str | None = Query(None, description="movie, show, or game"),
+    media_type: str | None = Query(None, description="movie, show, game, or music"),
     known_ids: str = Query("", description="Comma-separated list of known item IDs"),
     page_size: int = Query(24, ge=1, le=50),
     db: AsyncSession = Depends(get_db),

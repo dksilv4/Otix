@@ -23,10 +23,10 @@ import structlog
 from sqlalchemy import delete, func, select, text
 
 from otix.domain.asset import ExternalRating
-from otix.domain.media import Episode, ExternalID, Game, MediaItem, Season, Show
-
+from otix.domain.media import Album, Episode, ExternalID, Game, MediaItem, Season, Show, Track
 from otix.domain.people import Person
 from otix.domain.sync import ProviderState
+from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
@@ -35,13 +35,21 @@ from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_ENTITIES_TOTAL, track_entity_duration
 from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
+from otix.providers.base import RateLimitError
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.hydrator import FanartHydrator
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import to_game
+from otix.providers.lastfm.client import LastFMProvider
+from otix.providers.lastfm.hydrator import LastFMHydrator
+from otix.providers.musicbrainz.client import MusicBrainzProvider
+from otix.providers.musicbrainz.hydrator import MusicBrainzHydrator
+from otix.providers.musicbrainz.transformer import to_album
 from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
+from otix.providers.spotify.client import SpotifyProvider
+from otix.providers.spotify.hydrator import SpotifyHydrator
 from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.steamgrid.client import SteamGridDBProvider
@@ -201,7 +209,7 @@ async def _set_last_change_check(provider: str, dt: datetime) -> None:
     max_retries=3,
     default_retry_delay=10,
     autoretry_for=(Exception,),
-    queue="fast",
+
 )
 def sync_tmdb_movie_task(self, tmdb_id: int, priority: int = 5, force: bool = False) -> dict | None:
     """Sync a single TMDB movie: fetch → hash-check → transform → upsert → hydrate."""
@@ -214,7 +222,7 @@ def sync_tmdb_movie_task(self, tmdb_id: int, priority: int = 5, force: bool = Fa
     max_retries=3,
     default_retry_delay=10,
     autoretry_for=(Exception,),
-    queue="fast",
+
 )
 def sync_tmdb_show_task(self, tmdb_id: int, priority: int = 5, force: bool = False) -> dict | None:
     """Sync a single TMDB show with seasons and episodes."""
@@ -227,7 +235,7 @@ def sync_tmdb_show_task(self, tmdb_id: int, priority: int = 5, force: bool = Fal
     max_retries=3,
     default_retry_delay=10,
     autoretry_for=(Exception,),
-    queue="fast",
+
 )
 def sync_tmdb_person_task(self, tmdb_id: int, priority: int = 5, force: bool = False) -> dict | None:
     """Sync a single TMDB person: fetch → hash-check → transform → upsert."""
@@ -242,7 +250,7 @@ def sync_tmdb_person_task(self, tmdb_id: int, priority: int = 5, force: bool = F
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_popular_movies_task(self, pages: int = 5) -> dict:
     """Sync popular movies (first N pages). Enqueues individual movie tasks."""
@@ -254,7 +262,7 @@ def sync_tmdb_popular_movies_task(self, pages: int = 5) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_popular_shows_task(self, pages: int = 5) -> dict:
     """Sync popular shows (first N pages). Enqueues individual show tasks."""
@@ -266,7 +274,7 @@ def sync_tmdb_popular_shows_task(self, pages: int = 5) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_trending_movies_task(self, pages: int = 3) -> dict:
     """Sync trending movies (week). Enqueues individual movie tasks."""
@@ -278,7 +286,7 @@ def sync_tmdb_trending_movies_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_trending_shows_task(self, pages: int = 3) -> dict:
     """Sync trending shows (week). Enqueues individual show tasks."""
@@ -290,7 +298,7 @@ def sync_tmdb_trending_shows_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_top_rated_movies_task(self, pages: int = 3) -> dict:
     """Sync top-rated movies. Enqueues individual movie tasks."""
@@ -302,7 +310,7 @@ def sync_tmdb_top_rated_movies_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_top_rated_shows_task(self, pages: int = 3) -> dict:
     """Sync top-rated shows. Enqueues individual show tasks."""
@@ -314,7 +322,7 @@ def sync_tmdb_top_rated_shows_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_upcoming_movies_task(self, pages: int = 3) -> dict:
     """Sync upcoming movies. Enqueues individual movie tasks."""
@@ -326,7 +334,7 @@ def sync_tmdb_upcoming_movies_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_now_playing_movies_task(self, pages: int = 3) -> dict:
     """Sync now-playing movies. Enqueues individual movie tasks."""
@@ -338,7 +346,7 @@ def sync_tmdb_now_playing_movies_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_on_the_air_shows_task(self, pages: int = 3) -> dict:
     """Sync on-the-air shows. Enqueues individual show tasks."""
@@ -350,7 +358,7 @@ def sync_tmdb_on_the_air_shows_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="fast",
+
 )
 def sync_tmdb_airing_today_shows_task(self, pages: int = 3) -> dict:
     """Sync shows airing today. Enqueues individual show tasks."""
@@ -365,7 +373,7 @@ def sync_tmdb_airing_today_shows_task(self, pages: int = 3) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=60,
-    queue="fast",
+
 )
 def sync_tmdb_movie_changes_task(self, lookback_hours: int = 24) -> dict:
     """Fetch changed movie IDs from TMDB and enqueue individual syncs."""
@@ -377,7 +385,7 @@ def sync_tmdb_movie_changes_task(self, lookback_hours: int = 24) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=60,
-    queue="fast",
+
 )
 def sync_tmdb_show_changes_task(self, lookback_hours: int = 24) -> dict:
     """Fetch changed show IDs from TMDB and enqueue individual syncs."""
@@ -389,7 +397,7 @@ def sync_tmdb_show_changes_task(self, lookback_hours: int = 24) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=60,
-    queue="fast",
+
 )
 def sync_tmdb_person_changes_task(self, lookback_hours: int = 24) -> dict:
     """Fetch changed person IDs from TMDB and enqueue individual syncs."""
@@ -498,7 +506,7 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
             await _progress_incr("embedding_enqueued")
             # Enqueue Fanart enrichment inline so images arrive within seconds, not
             # 30 minutes. Uses the fast queue since Fanart calls are lightweight.
-            app.send_task("sync.fanart.movie", args=[item.id], queue="fast")
+            app.send_task("sync.fanart.movie", args=[item.id])
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -709,7 +717,7 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             await _progress_incr("embedding_enqueued")
             # Enqueue Fanart enrichment inline so images arrive within seconds, not
             # 30 minutes. Uses the fast queue since Fanart calls are lightweight.
-            app.send_task("sync.fanart.show", args=[item.id], queue="fast")
+            app.send_task("sync.fanart.show", args=[item.id])
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 
@@ -756,6 +764,19 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
 
             if existing is not None:
                 person.id = existing.id
+                # If the incoming imdb_id is already claimed by a different
+                # Person, clear it to avoid a unique constraint violation.
+                # TMDb sometimes returns the same imdb_id for different person
+                # entries (e.g. duplicate profiles for the same individual).
+                if person.imdb_id:
+                    dup = await session.scalar(
+                        select(Person).where(
+                            Person.imdb_id == person.imdb_id,
+                            Person.id != existing.id,
+                        )
+                    )
+                    if dup is not None:
+                        person.imdb_id = None
                 person = await session.merge(person)
             else:
                 session.add(person)
@@ -1039,7 +1060,7 @@ async def _sync_tmdb_changes(entity_type: str, lookback_hours: int) -> dict:
     max_retries=2,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_fanart_movie_task(self, media_item_id: str) -> dict | None:
     """Fetch Fanart images for a movie and store as MediaAsset rows."""
@@ -1052,7 +1073,7 @@ def sync_fanart_movie_task(self, media_item_id: str) -> dict | None:
     max_retries=2,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_fanart_show_task(self, media_item_id: str) -> dict | None:
     """Fetch Fanart images for a show and store as MediaAsset rows."""
@@ -1107,7 +1128,7 @@ async def _sync_fanart_show(media_item_id: str) -> dict | None:
     max_retries=2,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_fanart_game_task(self, media_item_id: str) -> dict | None:
     """Fetch Fanart images for a game and store as MediaAsset rows."""
@@ -1135,6 +1156,39 @@ async def _sync_fanart_game(media_item_id: str) -> dict | None:
         return {"otix_id": media_item_id, "added": added}
 
 
+@app.task(
+    name="sync.fanart.music",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+)
+def sync_fanart_music_task(self, media_item_id: str) -> dict | None:
+    """Fetch Fanart images for a music album and store as MediaAsset rows."""
+    return run_async(_sync_fanart_music(media_item_id))
+
+
+async def _sync_fanart_music(media_item_id: str) -> dict | None:
+    async with async_session() as session:
+        media_item = await session.get(MediaItem, media_item_id)
+        if media_item is None:
+            return None
+
+        redis = await get_redis()
+        provider = FanartProvider(redis)
+        hydrator = FanartHydrator(provider, session)
+
+        added = await hydrator.hydrate_music_images(media_item)
+        await session.commit()
+
+        if added:
+            logger.info("fanart music images added",
+                title=media_item.title, media_type="music", otix_id=media_item_id,
+            )
+        await _progress_incr("fanart_enqueued")
+        return {"otix_id": media_item_id, "added": added}
+
+
 # ── OMDb enrichment tasks ──────────────────────────────────────────────
 
 
@@ -1144,7 +1198,7 @@ async def _sync_fanart_game(media_item_id: str) -> dict | None:
     max_retries=2,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_omdb_ratings_task(self, media_item_id: str) -> dict | None:
     """Fetch OMDb ratings for a movie/show and store as ExternalRating rows."""
@@ -1201,7 +1255,7 @@ GAME_FIELDS = (
     max_retries=3,
     default_retry_delay=10,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_igdb_game_task(self, igdb_id: int, force: bool = False) -> dict | None:
     """Sync a single IGDB game: fetch → transform → upsert → hydrate."""
@@ -1293,12 +1347,17 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 )
             )
         ):
-            conflict = await session.scalar(
-                select(Game).where(
-                    Game.steam_app_id == game.steam_app_id,
-                    Game.media_item_id != item.id,
+            if item.id is not None:
+                conflict = await session.scalar(
+                    select(Game).where(
+                        Game.steam_app_id == game.steam_app_id,
+                        Game.media_item_id != item.id,
+                    )
                 )
-            )
+            else:
+                conflict = await session.scalar(
+                    select(Game).where(Game.steam_app_id == game.steam_app_id)
+                )
             if conflict is not None:
                 logger.info(
                     "merging igdb entry into existing steam game",
@@ -1340,6 +1399,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 existing = await session.get(MediaItem, ext_id.media_item_id)
                 if existing is not None:
                     item.id = existing.id
+                    game.media_item_id = existing.id
                     await session.merge(item)
                 else:
                     session.add(item)
@@ -1457,7 +1517,7 @@ def _compute_game_next_sync_at(raw: dict[str, JSONValue], hash_match_count: int 
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="slow",
+
 )
 def sync_igdb_popular_games_task(self, limit: int = 50) -> dict:
     """Sync popular games. Enqueues individual game tasks."""
@@ -1469,7 +1529,7 @@ def sync_igdb_popular_games_task(self, limit: int = 50) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="slow",
+
 )
 def sync_igdb_recent_games_task(self, limit: int = 100) -> dict:
     """Sync recently released games. Enqueues individual game tasks."""
@@ -1481,7 +1541,7 @@ def sync_igdb_recent_games_task(self, limit: int = 100) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="slow",
+
 )
 def sync_igdb_upcoming_games_task(self, limit: int = 100) -> dict:
     """Sync upcoming games. Enqueues individual game tasks."""
@@ -1523,7 +1583,7 @@ async def _sync_igdb_discover_list(list_type: str, limit: int) -> dict:
     bind=True,
     max_retries=2,
     default_retry_delay=60,
-    queue="slow",
+
 )
 def sync_igdb_game_changes_task(self, lookback_hours: int = 24) -> dict:
     """Fetch changed game IDs from IGDB and enqueue individual syncs."""
@@ -1585,7 +1645,7 @@ async def _sync_igdb_game_changes(lookback_hours: int) -> dict:
     max_retries=2,
     default_retry_delay=30,
     autoretry_for=(Exception,),
-    queue="fast",
+
 )
 def sync_steam_update_app_task(self, steam_app_id: int) -> dict | None:
     """Fetch Steam player counts and store data for an app."""
@@ -1636,7 +1696,7 @@ async def _sync_steam_update_app(steam_app_id: int) -> dict | None:
     max_retries=2,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    queue="slow",
+
 )
 def sync_steamgrid_game_task(self, steam_app_id: int) -> dict | None:
     """Fetch SteamGridDB artwork for a Steam game."""
@@ -1648,7 +1708,7 @@ def sync_steamgrid_game_task(self, steam_app_id: int) -> dict | None:
     bind=True,
     max_retries=2,
     default_retry_delay=10,
-    queue="slow",
+
 )
 def sync_steamgrid_game_by_platform_task(self, platform: str, platform_id: str | int) -> dict | None:
     """Fetch SteamGridDB artwork for a game on any supported platform."""
@@ -1748,6 +1808,7 @@ async def _all_backfill_providers_done(
     max_retries=1,
     default_retry_delay=60,
     queue="fast",
+
 )
 def search_backfill_task(self, query: str, media_type: str | None = None) -> dict:
     """Search external providers for missing media and enqueue sync tasks.
@@ -1773,6 +1834,8 @@ async def _search_backfill(query: str, media_type: str | None = None) -> dict:
         providers.append(("tmdb_show", _backfill_tmdb_shows(query, redis, query_hash)))
     if media_type in (None, "game"):
         providers.append(("igdb_game", _backfill_igdb_games(query, redis, query_hash)))
+    if media_type in (None, "music"):
+        providers.append(("musicbrainz", _backfill_musicbrainz_albums(query, redis, query_hash)))
 
     gathered = await asyncio.gather(
         *[coro for _, coro in providers],
@@ -1917,7 +1980,7 @@ async def _backfill_igdb_games(
     bind=True,
     max_retries=2,
     default_retry_delay=30,
-    queue="slow",
+
 )
 def generate_embedding_task(self, media_item_id: str) -> dict | None:
     """Generate and store an embedding vector for a media item.
@@ -2006,3 +2069,410 @@ async def _filter_missing_ids(provider: str, external_ids: set[str]) -> set[str]
         )
         existing = {r for r in result}
     return external_ids - existing
+
+
+# ── MusicBrainz sync ────────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.musicbrainz.album",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+
+)
+def sync_musicbrainz_album_task(self, mbid: str) -> dict | None:
+    """Sync an album from MusicBrainz by MBID."""
+    return run_async(_sync_musicbrainz_album(mbid))
+
+
+async def _sync_musicbrainz_album(mbid: str) -> dict | None:
+    async with async_session() as session:
+        from sqlalchemy.orm import joinedload
+
+        # Check if already synced via external ID
+        ext_id = await session.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == "musicbrainz",
+                ExternalID.external_id == mbid,
+            )
+        )
+
+        redis = await get_redis()
+        provider = MusicBrainzProvider(redis)
+
+        raw = await provider.get_release(mbid)
+        if not raw or not raw.get("id"):
+            logger.warning("musicbrainz release not found", mbid=mbid)
+            return None
+
+        # Content hash guard
+        content_hash = _compute_hash({"title": raw.get("title"), "id": raw.get("id")})
+        if ext_id is not None and ext_id.content_hash == content_hash:
+            ext_id.hash_match_count += 1
+            await session.commit()
+            logger.debug("hash matched, skipping musicbrainz album", mbid=mbid)
+            return None
+
+        album = to_album(raw)
+        item = album.media_item
+
+        if ext_id is not None:
+            item.id = ext_id.media_item_id
+            item = await session.merge(item)
+        else:
+            session.add(item)
+            await session.flush()
+            ext_id = ExternalID(
+                provider="musicbrainz",
+                external_id=mbid,
+                media_item_id=item.id,
+                content_hash=content_hash,
+            )
+            session.add(ext_id)
+
+        album.media_item_id = item.id
+
+        # Upsert album (shared PK with media_item)
+        existing_album = await session.get(Album, item.id)
+        if existing_album is not None:
+            existing_album.release_type = album.release_type
+            existing_album.track_count = album.track_count
+            existing_album.disc_count = album.disc_count
+            existing_album.duration_ms = album.duration_ms
+            existing_album.musicbrainz_id = album.musicbrainz_id
+            if album.catalog_number:
+                existing_album.catalog_number = album.catalog_number
+            if album.barcode:
+                existing_album.barcode = album.barcode
+        else:
+            session.add(album)
+
+        # Hydrate relations
+        hydrator = MusicBrainzHydrator(provider, session)
+        await hydrator.hydrate_all(album, raw)
+
+        # Update sync metadata
+        item.content_hash = content_hash
+        item.synced_at = datetime.now(timezone.utc)
+        item.next_sync_at = _compute_next_sync_at("album", raw, 0)
+
+        await session.commit()
+
+        logger.info("musicbrainz album synced",
+            title=item.title, media_type="music", otix_id=item.id, mbid=mbid,
+        )
+        await _progress_incr("musicbrainz_enqueued")
+
+        # Enqueue enrichment
+        if album.spotify_id:
+            app.send_task("sync.spotify.enrich_album", args=[item.id, album.spotify_id])
+        else:
+            app.send_task("sync.spotify.match_album", args=[item.id])
+
+        app.send_task("sync.lastfm.enrich_album", args=[item.id])
+        app.send_task("sync.fanart.music", args=[item.id])
+        app.send_task("embedding.generate", args=[item.id])
+
+        return {"otix_id": item.id, "mbid": mbid, "title": item.title}
+
+
+# ── Spotify enrichment ──────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.match_album",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+
+)
+def sync_spotify_match_album_task(self, otix_id: str) -> dict | None:
+    """Search Spotify for an album and cross-link by artist+title."""
+    return run_async(_sync_spotify_match_album(otix_id))
+
+
+async def _sync_spotify_match_album(otix_id: str) -> dict | None:
+    async with async_session() as session:
+        album = await session.get(Album, otix_id)
+        if album is None or album.spotify_id:
+            return None
+
+        redis = await get_redis()
+        provider = SpotifyProvider(redis)
+
+        try:
+            results = await provider.search(album.media_item.title, "album", limit=3)
+        except Exception:
+            return None
+
+        if not results:
+            return None
+
+        spotify_id = results[0].get("id")
+        if spotify_id:
+            album.spotify_id = spotify_id
+            await session.commit()
+
+            app.send_task("sync.spotify.enrich_album", args=[otix_id, spotify_id])
+
+        return {"otix_id": otix_id, "spotify_id": spotify_id}
+
+
+@app.task(
+    name="sync.spotify.enrich_album",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+
+)
+def sync_spotify_enrich_album_task(self, otix_id: str, spotify_id: str) -> dict | None:
+    """Enrich an Album from Spotify: audio features, popularity, track linking."""
+    return run_async(_sync_spotify_enrich_album(otix_id, spotify_id))
+
+
+async def _sync_spotify_enrich_album(otix_id: str, spotify_id: str) -> dict | None:
+    async with async_session() as session:
+        from sqlalchemy.orm import joinedload
+
+        album = await session.scalar(
+            select(Album).options(joinedload(Album.media_item)).where(Album.media_item_id == otix_id)
+        )
+        if album is None:
+            return None
+
+        album.spotify_id = spotify_id
+
+        redis = await get_redis()
+        provider = SpotifyProvider(redis)
+        hydrator = SpotifyHydrator(provider, session)
+
+        await hydrator.hydrate(album)
+        await hydrator.hydrate_tracks(album)
+
+        await session.commit()
+
+        logger.info("spotify album enriched",
+            title=album.media_item.title,
+            spotify_id=spotify_id,
+            popularity=album.spotify_popularity,
+        )
+        await _progress_incr("spotify_enqueued")
+        return {"otix_id": otix_id, "spotify_id": spotify_id}
+
+
+# ── Last.fm enrichment ──────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.lastfm.enrich_album",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+
+)
+def sync_lastfm_enrich_album_task(self, otix_id: str) -> dict | None:
+    """Enrich an album from Last.fm: wiki, tags, playcounts."""
+    return run_async(_sync_lastfm_enrich_album(otix_id))
+
+
+async def _sync_lastfm_enrich_album(otix_id: str) -> dict | None:
+    async with async_session() as session:
+        from sqlalchemy.orm import joinedload
+
+        album = await session.scalar(
+            select(Album).options(joinedload(Album.media_item)).where(Album.media_item_id == otix_id)
+        )
+        if album is None:
+            return None
+
+        # Get artist name from credits
+        from otix.domain.people import MediaCredit, Person
+
+        credit = await session.scalar(
+            select(Person.name)
+            .join(MediaCredit, MediaCredit.person_id == Person.id)
+            .where(MediaCredit.media_item_id == otix_id, MediaCredit.role == "primary")
+        )
+        artist_name = credit or ""
+
+        redis = await get_redis()
+        provider = LastFMProvider(redis)
+        hydrator = LastFMHydrator(provider, session)
+
+        await hydrator.hydrate_album(album, artist_name, album.media_item.title)
+
+        await session.commit()
+
+        logger.info("lastfm album enriched",
+            title=album.media_item.title,
+            artist=artist_name,
+        )
+        await _progress_incr("lastfm_enqueued")
+        return {"otix_id": otix_id}
+
+
+# ── MusicBrainz search backfill ─────────────────────────────────────────
+
+
+async def _backfill_musicbrainz_albums(
+    query: str, redis: aioredis.Redis, query_hash: str
+) -> dict:
+    """Search MusicBrainz for albums, sync missing ones, return summary."""
+    provider = MusicBrainzProvider(redis)
+
+    try:
+        results = await provider.search_release(query, limit=20)
+    except Exception:
+        logger.warning("search backfill musicbrainz search failed", query=query, exc_info=True)
+        raise
+
+    ids = {str(r["id"]) for r in results if r.get("id")}
+    if not ids:
+        await _mark_backfill_provider_done(redis, query_hash, "musicbrainz", 0)
+        return {"enqueued": 0, "skipped": 0}
+
+    missing = await _filter_missing_ids("musicbrainz", ids)
+    enqueued = 0
+    for mbid in missing:
+        app.send_task("sync.musicbrainz.album", args=[mbid])
+        enqueued += 1
+    await _mark_backfill_provider_done(redis, query_hash, "musicbrainz", enqueued)
+    return {"enqueued": enqueued, "skipped": len(ids) - enqueued}
+
+
+# ── Spotify user library sync ──────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.seed_album",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+
+)
+def sync_spotify_seed_album_task(self, spotify_id: str) -> dict | None:
+    """Fetch an album from Spotify by ID and create it in the Otix catalog."""
+    return run_async(_sync_spotify_seed_album(spotify_id))
+
+
+async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
+    async with async_session() as session:
+        # Check if already exists
+        existing = await session.scalar(
+            select(Album).where(Album.spotify_id == spotify_id)
+        )
+        if existing is not None:
+            return {"otix_id": existing.media_item_id, "spotify_id": spotify_id, "status": "already_exists"}
+
+        redis = await get_redis()
+        provider = SpotifyProvider(redis)
+
+        try:
+            raw = await provider.get_album(spotify_id)
+        except RateLimitError:
+            raise  # Let Celery retry with backoff
+        except Exception:
+            logger.warning("spotify seed album fetch failed", spotify_id=spotify_id)
+            return None
+
+        if not raw or not raw.get("id"):
+            return None
+
+        title = raw.get("name", "Unknown Album")
+        artists_data = raw.get("artists", [])
+        primary_artist_name = artists_data[0].get("name", "Unknown Artist") if artists_data else "Unknown Artist"
+
+        # Create MediaItem
+        images = raw.get("images", [])
+        poster_url = images[0].get("url") if images else None
+
+        release_date = raw.get("release_date")
+        release_year = int(release_date[:4]) if release_date and len(release_date) >= 4 else None
+
+        item = MediaItem(
+            title=f"{primary_artist_name} — {title}",
+            media_type="music",
+            primary_artist_name=primary_artist_name,
+            poster_url=poster_url,
+            release_date=release_date,
+            release_year=release_year,
+            synced_at=datetime.now(timezone.utc),
+        )
+        session.add(item)
+        await session.flush()
+
+        # Create Album
+        album = Album(
+            media_item_id=item.id,
+            release_type=raw.get("album_type", "album"),
+            track_count=raw.get("total_tracks", 0),
+            spotify_id=spotify_id,
+            spotify_url=raw.get("external_urls", {}).get("spotify"),
+            spotify_popularity=raw.get("popularity"),
+            preview_url=None,
+        )
+        session.add(album)
+
+        # Create Tracks
+        for track_data in raw.get("tracks", {}).get("items", []):
+            track = Track(
+                album_id=item.id,
+                track_number=track_data.get("track_number", 0),
+                disc_number=track_data.get("disc_number", 1),
+                title=track_data.get("name", "Untitled"),
+                duration_ms=track_data.get("duration_ms"),
+                preview_url=track_data.get("preview_url"),
+                spotify_id=track_data.get("id"),
+            )
+            session.add(track)
+
+        await session.commit()
+
+        logger.info("spotify album seeded",
+            otix_id=item.id, spotify_id=spotify_id, title=title,
+        )
+
+        # Enqueue enrichment
+        app.send_task("sync.spotify.enrich_album", args=[item.id, spotify_id])
+        app.send_task("sync.fanart.music", args=[item.id])
+        app.send_task("sync.lastfm.enrich_album", args=[item.id])
+        app.send_task("embedding.generate", args=[item.id])
+
+        await _progress_incr("spotify_seeded")
+        return {"otix_id": item.id, "spotify_id": spotify_id, "title": title}
+
+
+@app.task(
+    name="sync.spotify.user_library",
+    bind=True,
+    max_retries=1,
+
+)
+def sync_spotify_user_library_task(self, user_id: str, task_id: str | None = None) -> dict | None:
+    """Sync a user's Spotify liked tracks and saved albums into Otix."""
+    return run_async(_sync_spotify_user_library(user_id, task_id))
+
+
+async def _sync_spotify_user_library(user_id: str, task_id: str | None = None) -> dict | None:
+    from otix.services.spotify_auth_service import get_user_access_token
+    from otix.services.spotify_library_service import sync_spotify_user_library
+
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        if user is None or user.spotify_id is None:
+            return None
+
+        token = await get_user_access_token(user)
+        if token is None:
+            logger.warning("spotify library sync failed, no valid token", user_id=user_id)
+            return None
+
+        result = await sync_spotify_user_library(session, user, token, task_id=task_id)
+        await session.commit()
+        return result

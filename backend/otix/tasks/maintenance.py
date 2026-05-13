@@ -12,8 +12,9 @@ import structlog
 from sqlalchemy import and_, delete, func, or_, select
 
 from otix.domain.asset import ExternalRating, MediaAsset
-from otix.domain.media import ExternalID, Game, MediaItem
-from otix.domain.people import Person
+from otix.domain.media import Album, ExternalID, Game, MediaItem
+from otix.domain.list import UserList, UserListItem
+from otix.domain.people import MediaCredit, Person
 from otix.domain.user import RefreshToken, User
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
@@ -27,7 +28,7 @@ from otix.providers.steam.client import SteamProvider
 logger = structlog.get_logger()
 
 
-@app.task(name="maintenance.refresh_discover_feed", queue="slow")
+@app.task(name="maintenance.refresh_discover_feed")
 def refresh_discover_feed() -> dict:
     """Enqueue discover list and change-based syncs to keep the catalog fresh.
 
@@ -55,7 +56,7 @@ def refresh_discover_feed() -> dict:
     return {"status": "ok", "message": "discover and change syncs enqueued"}
 
 
-@app.task(name="maintenance.refresh_game_feed", queue="slow")
+@app.task(name="maintenance.refresh_game_feed")
 def refresh_game_feed() -> dict:
     """Enqueue game discover and change-based syncs.
 
@@ -74,13 +75,13 @@ def refresh_game_feed() -> dict:
     return {"status": "ok", "message": "game discover and change syncs enqueued"}
 
 
-@app.task(name="maintenance.provider_health_check", queue="slow")
+@app.task(name="maintenance.provider_health_check")
 def provider_health_check() -> dict:
     """Check provider circuit breaker states and log warnings."""
     return run_async(_provider_health_check())
 
 
-@app.task(name="maintenance.sync_plex_accounts", queue="slow")
+@app.task(name="maintenance.sync_plex_accounts")
 def sync_plex_accounts() -> dict:
     return run_async(_sync_plex_accounts())
 
@@ -102,7 +103,7 @@ async def _sync_plex_accounts() -> dict:
     return {"synced": synced, "failed": failed}
 
 
-@app.task(name="maintenance.plex_sync_user", queue="fast", acks_late=True, reject_on_worker_lost=True)
+@app.task(name="maintenance.plex_sync_user", acks_late=True, reject_on_worker_lost=True)
 def plex_sync_user(task_id: str, user_id: str) -> dict:
     """Sync Plex libraries for a single user, publishing progress via Redis pub/sub.
 
@@ -139,7 +140,7 @@ async def _plex_sync_user(task_id: str, user_id: str) -> dict:
             raise
 
 
-@app.task(name="maintenance.cleanup_expired_tokens", queue="slow")
+@app.task(name="maintenance.cleanup_expired_tokens")
 def cleanup_expired_tokens() -> dict:
     """Remove expired refresh tokens from the database."""
     return run_async(_cleanup_expired_tokens())
@@ -170,7 +171,7 @@ async def _cleanup_expired_tokens() -> dict:
         return {"deleted": count}
 
 
-@app.task(name="maintenance.enrich_fanart", queue="slow")
+@app.task(name="maintenance.enrich_fanart")
 def enrich_fanart() -> dict:
     """Scan recently-synced items for missing Fanart assets and enqueue enrichment.
 
@@ -237,39 +238,164 @@ async def _enrich_fanart() -> dict:
         game_result = await session.execute(game_query)
         game_rows = game_result.all()
 
+        # Music: have primary artist with MBID, synced recently, no Fanart assets yet
+        music_query = (
+            select(MediaItem.id)
+            .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
+            .join(Person, Person.id == MediaCredit.person_id)
+            .where(
+                MediaItem.media_type == "music",
+                MediaItem.synced_at >= cutoff,
+                MediaCredit.role == "primary",
+                Person.musicbrainz_artist_id.isnot(None),
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+            .limit(200)
+        )
+        music_result = await session.execute(music_query)
+        music_rows = music_result.all()
+
+        # ── Watchlist priority: items in user watchlists missing artwork ──
+        watchlist_sub = (
+            select(UserListItem.media_item_id)
+            .join(UserList, UserList.id == UserListItem.user_list_id)
+            .where(UserList.user_id.isnot(None))
+            .distinct()
+        ).subquery()
+
+        # Watchlisted movies without textless poster
+        wl_movie_query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type == "movie",
+                MediaItem.textless_poster_url.is_(None),
+                ExternalID.provider == "tmdb",
+                MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+        )
+        wl_movie_result = await session.execute(wl_movie_query)
+        wl_movie_ids = [row[0] for row in wl_movie_result.all()]
+
+        # Watchlisted shows without textless poster
+        wl_show_query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type == "show",
+                MediaItem.textless_poster_url.is_(None),
+                ExternalID.provider == "tvdb",
+                MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+        )
+        wl_show_result = await session.execute(wl_show_query)
+        wl_show_ids = [row[0] for row in wl_show_result.all()]
+
+        # Watchlisted games without textless poster
+        wl_game_query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type == "game",
+                MediaItem.textless_poster_url.is_(None),
+                ExternalID.provider == "fanart",
+                MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+        )
+        wl_game_result = await session.execute(wl_game_query)
+        wl_game_ids = [row[0] for row in wl_game_result.all()]
+
+        # Watchlisted music without poster
+        wl_music_query = (
+            select(MediaItem.id)
+            .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
+            .join(Person, Person.id == MediaCredit.person_id)
+            .where(
+                MediaItem.media_type == "music",
+                MediaItem.poster_url.is_(None),
+                MediaCredit.role == "primary",
+                Person.musicbrainz_artist_id.isnot(None),
+                MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+        )
+        wl_music_result = await session.execute(wl_music_query)
+        wl_music_ids = [row[0] for row in wl_music_result.all()]
+
     movies_enqueued = 0
     shows_enqueued = 0
     games_enqueued = 0
+    music_enqueued = 0
 
-    for media_item_id, _ in movie_rows:
-        app.send_task("sync.fanart.movie", args=[media_item_id], queue="fast")
+    # Enqueue watchlist items first, then the rest
+    for mid in wl_movie_ids:
+        app.send_task("sync.fanart.movie", args=[mid])
         movies_enqueued += 1
 
-    for media_item_id, _ in show_rows:
-        app.send_task("sync.fanart.show", args=[media_item_id], queue="fast")
+    for mid in wl_show_ids:
+        app.send_task("sync.fanart.show", args=[mid])
         shows_enqueued += 1
 
-    for media_item_id, _ in game_rows:
-        app.send_task("sync.fanart.game", args=[media_item_id], queue="fast")
+    for mid in wl_game_ids:
+        app.send_task("sync.fanart.game", args=[mid])
         games_enqueued += 1
 
-    total = movies_enqueued + shows_enqueued + games_enqueued
+    for mid in wl_music_ids:
+        app.send_task("sync.fanart.music", args=[mid])
+        music_enqueued += 1
+
+    # Already-enriched watchlist items, skip in the main loop
+    wl_seen_by_type = {
+        "movie": set(wl_movie_ids),
+        "show": set(wl_show_ids),
+        "game": set(wl_game_ids),
+        "music": set(wl_music_ids),
+    }
+
+    for media_item_id, _ in movie_rows:
+        if media_item_id not in wl_seen_by_type["movie"]:
+            app.send_task("sync.fanart.movie", args=[media_item_id])
+            movies_enqueued += 1
+
+    for media_item_id, _ in show_rows:
+        if media_item_id not in wl_seen_by_type["show"]:
+            app.send_task("sync.fanart.show", args=[media_item_id])
+            shows_enqueued += 1
+
+    for media_item_id, _ in game_rows:
+        if media_item_id not in wl_seen_by_type["game"]:
+            app.send_task("sync.fanart.game", args=[media_item_id])
+            games_enqueued += 1
+
+    for (media_item_id,) in music_rows:
+        if media_item_id not in wl_seen_by_type["music"]:
+            app.send_task("sync.fanart.music", args=[media_item_id])
+            music_enqueued += 1
+
+    wl_total = len(wl_movie_ids) + len(wl_show_ids) + len(wl_game_ids) + len(wl_music_ids)
+    total = movies_enqueued + shows_enqueued + games_enqueued + music_enqueued
     if total:
         logger.info(
             "fanart enrichment enqueued",
             movies=movies_enqueued,
             shows=shows_enqueued,
             games=games_enqueued,
+            music=music_enqueued,
+            watchlist_priority=wl_total,
         )
 
     return {
         "movies_enqueued": movies_enqueued,
         "shows_enqueued": shows_enqueued,
         "games_enqueued": games_enqueued,
+        "music_enqueued": music_enqueued,
     }
 
 
-@app.task(name="maintenance.enrich_omdb", queue="slow")
+@app.task(name="maintenance.enrich_omdb")
 def enrich_omdb() -> dict:
     """Scan recently-synced items for missing OMDb ratings and enqueue enrichment.
 
@@ -316,7 +442,7 @@ async def _enrich_omdb() -> dict:
     return {"enqueued": enqueued}
 
 
-@app.task(name="maintenance.enrich_steam", queue="slow")
+@app.task(name="maintenance.enrich_steam")
 def enrich_steam() -> dict:
     """Scan recently-synced games for Steam app IDs and enqueue updates.
 
@@ -355,12 +481,13 @@ async def _enrich_steam() -> dict:
     return {"enqueued": enqueued}
 
 
-@app.task(name="maintenance.enrich_steamgrid", queue="slow")
+@app.task(name="maintenance.enrich_steamgrid")
 def enrich_steamgrid() -> dict:
     """Scan games for missing SteamGridDB artwork across all supported platforms.
 
     Runs every 30 min. Finds games with any platform ID (steam_app_id or
-    entries in store_ids) that are missing textless_poster_url or logo_url.
+    entries in store_ids) that are missing textless_poster_url, backdrop_url,
+    or logo_url.
     """
     return run_async(_enrich_steamgrid())
 
@@ -368,6 +495,7 @@ def enrich_steamgrid() -> dict:
 async def _enrich_steamgrid() -> dict:
     missing = or_(
         MediaItem.textless_poster_url.is_(None),
+        MediaItem.backdrop_url.is_(None),
         MediaItem.logo_url.is_(None),
     )
 
@@ -404,7 +532,7 @@ async def _enrich_steamgrid() -> dict:
         enqueued += 1
 
     seen: set[str] = set()
-    for media_item_id, store_ids in other_rows:
+    for _media_item_id, store_ids in other_rows:
         if not store_ids:
             continue
         for platform, pid in store_ids.items():
@@ -423,7 +551,151 @@ async def _enrich_steamgrid() -> dict:
     return {"enqueued": enqueued}
 
 
-@app.task(name="maintenance.steam_name_match", queue="slow")
+@app.task(name="maintenance.enrich_spotify")
+def enrich_spotify() -> dict:
+    """Scan recently-synced albums for Spotify IDs and enqueue enrichment.
+
+    Runs every 30 min. Finds albums with a spotify_id that were synced
+    recently and enqueues individual Spotify enrichment tasks.
+    """
+    return run_async(_enrich_spotify())
+
+
+async def _enrich_spotify() -> dict:
+    async with async_session() as session:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+
+        query = (
+            select(Album.media_item_id, Album.spotify_id)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(
+                MediaItem.media_type == "music",
+                MediaItem.synced_at >= cutoff,
+                Album.spotify_id.isnot(None),
+            )
+            .limit(50)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for otix_id, spotify_id in rows:
+        app.send_task("sync.spotify.enrich_album", args=[otix_id, spotify_id])
+        enqueued += 1
+
+    if enqueued:
+        logger.info("spotify enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.match_spotify")
+def match_spotify() -> dict:
+    """Scan recently-synced albums without a Spotify ID and enqueue matching.
+
+    Complements enrich_spotify (which handles albums that already have an ID).
+    Runs every hour. Finds albums without spotify_id that were synced recently
+    and enqueues Spotify search+matching.
+    """
+    return run_async(_match_spotify())
+
+
+async def _match_spotify() -> dict:
+    async with async_session() as session:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+
+        # Also include watchlisted items regardless of recency (prioritize them)
+        watchlist_sub = (
+            select(UserListItem.media_item_id)
+            .join(UserList, UserList.id == UserListItem.user_list_id)
+            .where(UserList.user_id.isnot(None))
+            .distinct()
+        ).subquery()
+
+        # Recent albums without spotify_id
+        recent_query = (
+            select(Album.media_item_id)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(
+                MediaItem.media_type == "music",
+                MediaItem.synced_at >= cutoff,
+                Album.spotify_id.is_(None),
+            )
+            .limit(100)
+        )
+        recent_result = await session.execute(recent_query)
+        recent_ids = [row[0] for row in recent_result.all()]
+
+        # Watchlisted albums without spotify_id (priority regardless of recency)
+        watchlist_query = (
+            select(Album.media_item_id)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(
+                MediaItem.media_type == "music",
+                Album.spotify_id.is_(None),
+                Album.media_item_id.in_(select(watchlist_sub.c.media_item_id)),
+            )
+            .limit(100)
+        )
+        watchlist_result = await session.execute(watchlist_query)
+        watchlist_ids = [row[0] for row in watchlist_result.all()]
+
+    # Dedupe: watchlist items first, then recent
+    seen = set(watchlist_ids)
+    ordered_ids = watchlist_ids + [mid for mid in recent_ids if mid not in seen]
+
+    enqueued = 0
+    for otix_id in ordered_ids:
+        app.send_task("sync.spotify.match_album", args=[otix_id])
+        enqueued += 1
+
+    if enqueued:
+        logger.info("spotify matching enqueued",
+            count=enqueued,
+            watchlist=len(watchlist_ids),
+        )
+
+    return {"enqueued": enqueued, "watchlist": len(watchlist_ids)}
+
+
+@app.task(name="maintenance.enrich_lastfm")
+def enrich_lastfm() -> dict:
+    """Scan recently-synced albums and enqueue Last.fm enrichment.
+
+    Runs every 30 min. Finds albums synced in the last 48h and enqueues
+    individual Last.fm tasks for wiki summaries, tags, and playcounts.
+    """
+    return run_async(_enrich_lastfm())
+
+
+async def _enrich_lastfm() -> dict:
+    async with async_session() as session:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+
+        query = (
+            select(Album.media_item_id)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(
+                MediaItem.media_type == "music",
+                MediaItem.synced_at >= cutoff,
+            )
+            .limit(50)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for row in rows:
+        app.send_task("sync.lastfm.enrich_album", args=[row[0]])
+        enqueued += 1
+
+    if enqueued:
+        logger.info("lastfm enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.steam_name_match")
 def steam_name_match() -> dict:
     """Find games without a steam_app_id by searching the Steam store by name.
 
@@ -582,7 +854,7 @@ async def _steam_ccu_batch() -> dict:
     return {"apps_checked": len(app_ids), "updated": updated}
 
 
-@app.task(name="maintenance.catalog_hydration", queue="slow")
+@app.task(name="maintenance.catalog_hydration")
 def catalog_hydration() -> dict:
     """Background scan: find stale catalog items and re-enqueue provider syncs.
 
@@ -597,6 +869,7 @@ _MEDIA_SYNC_MAP = {
     "movie": {"provider": "tmdb", "task": "sync.tmdb.movie"},
     "show": {"provider": "tmdb", "task": "sync.tmdb.show"},
     "game": {"provider": "igdb", "task": "sync.igdb.game"},
+    "music": {"provider": "musicbrainz", "task": "sync.musicbrainz.album"},
 }
 
 
@@ -620,6 +893,10 @@ async def _catalog_hydration() -> dict:
                     and_(
                         MediaItem.media_type == "game",
                         ExternalID.provider == "igdb",
+                    ),
+                    and_(
+                        MediaItem.media_type == "music",
+                        ExternalID.provider == "musicbrainz",
                     ),
                 ),
             )
@@ -655,7 +932,7 @@ async def _catalog_hydration() -> dict:
     return {"stale_found": len(rows), "enqueued": enqueued}
 
 
-@app.task(name="maintenance.progress_summary", queue="slow")
+@app.task(name="maintenance.progress_summary")
 def progress_summary() -> dict:
     """Log a periodic summary of sync activity, queue depths, and DB counts.
 
@@ -686,7 +963,8 @@ async def _progress_summary() -> dict:
     r = aioredis.from_url(broker_redis_url, decode_responses=True)
     try:
         fast_depth = await r.llen("fast") or 0
-        slow_depth = await r.llen("slow") or 0
+        user_depth = await r.llen("user") or 0
+        control_depth = await r.llen("control") or 0
     finally:
         await r.aclose()
 
@@ -701,6 +979,9 @@ async def _progress_summary() -> dict:
         game_count = await session.scalar(
             select(func.count()).select_from(MediaItem).where(MediaItem.media_type == "game")
         )
+        music_count = await session.scalar(
+            select(func.count()).select_from(MediaItem).where(MediaItem.media_type == "music")
+        )
         person_count = await session.scalar(
             select(func.count()).select_from(Person)
         )
@@ -713,9 +994,11 @@ async def _progress_summary() -> dict:
         db_movies=movie_count or 0,
         db_shows=show_count or 0,
         db_games=game_count or 0,
+        db_music=music_count or 0,
         db_people=person_count or 0,
         fast_queue=fast_depth,
-        slow_queue=slow_depth,
+        user_queue=user_depth,
+        control_queue=control_depth,
     )
 
     return {
@@ -723,7 +1006,9 @@ async def _progress_summary() -> dict:
         "db_movies": movie_count,
         "db_shows": show_count,
         "db_games": game_count,
+        "db_music": music_count,
         "db_people": person_count,
         "fast_queue": fast_depth,
-        "slow_queue": slow_depth,
+        "user_queue": user_depth,
+        "control_queue": control_depth,
     }

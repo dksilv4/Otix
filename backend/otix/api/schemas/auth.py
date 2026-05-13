@@ -44,6 +44,10 @@ class UserResponse(BaseModel):
     tmdb_username: str | None = None
     tmdb_avatar_url: str | None = None
     tmdb_rating_sync_direction: str | None = None
+    spotify_id: str | None = None
+    spotify_username: str | None = None
+    spotify_email: str | None = None
+    spotify_avatar_url: str | None = None
     avatar_url: str | None = None
     bio: str | None = None
     background_url: str | None = None
@@ -171,6 +175,16 @@ class TmdbCallbackRequest(BaseModel):
     request_token: str
 
 
+class SpotifyInitiateResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class SpotifyCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
 class PlexServerResponse(BaseModel):
     id: str
     machine_identifier: str
@@ -239,6 +253,9 @@ class IntegrationProviderResponse(BaseModel):
     tmdb_avatar_url: str | None = None
     tmdb_stats: dict | None = None
     tmdb_rating_sync_direction: str | None = None
+    spotify_username: str | None = None
+    spotify_avatar_url: str | None = None
+    spotify_stats: dict | None = None
 
 
 class TmdbRatingSyncRequest(BaseModel):

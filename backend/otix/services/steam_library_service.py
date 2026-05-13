@@ -234,7 +234,7 @@ async def get_steam_library(
 
     next_cursor = None
     if has_more and items:
-        last_item, _, _ = items[-1]
+        last_item = items[-1][0]
         last_steam_game = await db.scalar(
             select(UserSteamGame).where(
                 UserSteamGame.user_id == user_id,

@@ -14,6 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
+from otix.domain.base import gen_otix_id
 from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import ExternalID, MediaItem, Movie
@@ -136,19 +137,20 @@ class TMDBHydrator:
                 persons_by_tmdb[tmdb_id] = matched
                 del unmatched_by_tmdb[tmdb_id]
 
-            # Remaining unmatched entries become new Person stubs
+            # Remaining unmatched entries become new Person stubs.
             if unmatched_by_tmdb:
-                new_persons: list[Person] = []
+                new_people: list[Person] = []
                 for entry in unmatched_by_tmdb.values():
                     person = Person(
+                        id=gen_otix_id(),
                         name=entry["name"],
                         tmdb_id=entry["id"],
                         photo_url=_tmdb_image(entry.get("profile_path")),
                     )
-                    new_persons.append(person)
+                    new_people.append(person)
                     persons_by_tmdb[entry["id"]] = person
 
-                self.session.add_all(new_persons)
+                self.session.add_all(new_people)
                 await self.session.flush()
 
         return persons_by_tmdb

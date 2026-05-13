@@ -11,9 +11,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import MediaAsset
-from otix.domain.media import ExternalID, MediaItem
+from otix.domain.media import Album, ExternalID, MediaItem
+from otix.domain.people import MediaCredit, Person
 from otix.providers.fanart.client import FanartProvider
-from otix.providers.fanart.transformer import game_images_to_assets, movie_images_to_assets, show_images_to_assets
+from otix.providers.fanart.transformer import (
+    game_images_to_assets,
+    movie_images_to_assets,
+    music_images_to_assets,
+    show_images_to_assets,
+    _extract_album_covers_by_rg,
+    _extract_artist_assets,
+)
 
 
 class FanartHydrator:
@@ -92,6 +100,80 @@ class FanartHydrator:
 
         return await self._upsert_assets(assets)
 
+    async def hydrate_music_images(self, media_item: MediaItem) -> bool:
+        """Fetch Fanart images for a music album and store as MediaAsset rows.
+
+        Resolves the primary artist's MusicBrainz artist ID via media_credits
+        → people, then fetches artist-level artwork (logos, backgrounds) and
+        album covers from Fanart.tv.
+
+        Album covers are matched to the specific album by release group MBID
+        so different albums from the same artist get their correct cover.
+        Artist logos are set on the Person record, not the media item.
+        """
+        result = await self.session.execute(
+            select(Person.musicbrainz_artist_id, Person.id, Album.musicbrainz_release_group_id)
+            .join(MediaCredit, MediaCredit.person_id == Person.id)
+            .join(Album, Album.media_item_id == media_item.id)
+            .where(
+                MediaCredit.media_item_id == media_item.id,
+                MediaCredit.role == "primary",
+            )
+            .order_by(MediaCredit.sort_order)
+            .limit(1)
+        )
+        row = result.first()
+        if row is None:
+            return False
+        artist_mbid, person_id, release_group_mbid = row
+
+        try:
+            raw = await self.provider.get_music_images(artist_mbid)
+        except Exception:
+            return False
+
+        # Extract artist-level assets (logos, backgrounds, thumbs, banners).
+        # Album covers are matched by release group below — not included here.
+        artist_assets = _extract_artist_assets(raw, media_item.id)
+        album_covers = _extract_album_covers_by_rg(raw)
+
+        any_added = False
+
+        # Upsert artist-level assets into media_assets.
+        if artist_assets:
+            any_added |= await self._upsert_assets(artist_assets)
+
+        # Match specific album cover by release group MBID and set poster_url.
+        if release_group_mbid and release_group_mbid in album_covers:
+            cover_url = album_covers[release_group_mbid]
+            if cover_url and not media_item.poster_url:
+                media_item.poster_url = cover_url
+                any_added = True
+            # Also persist as a MediaAsset so it shows in the asset gallery.
+            exists = await self.session.scalar(
+                select(MediaAsset.url).where(MediaAsset.url == cover_url)
+            )
+            if not exists:
+                self.session.add(MediaAsset(
+                    media_item_id=media_item.id,
+                    asset_type="poster",
+                    url=cover_url,
+                    provider="fanart",
+                ))
+                any_added = True
+
+        # Set artist logo on Person, not on the media item.
+        logo_assets = [a for a in artist_assets if a.asset_type == "logo"]
+        if logo_assets and person_id:
+            en_logos = [a for a in logo_assets if a.lang == "en"]
+            best = max(en_logos if en_logos else logo_assets, key=lambda a: a.width or 0)
+            person = await self.session.get(Person, person_id)
+            if person and not person.logo_url:
+                person.logo_url = best.url
+                any_added = True
+
+        return any_added
+
     async def _resolve_external_id(self, media_item_id: str, provider: str) -> str | None:
         ext_id = await self.session.scalar(
             select(ExternalID).where(
@@ -141,17 +223,21 @@ class FanartHydrator:
                     best_logo = max(en_logos, key=lambda a: a.width or 0)
                 elif logo_assets:
                     best_logo = max(logo_assets, key=lambda a: a.width or 0)
-                if best_logo:
+                # Music logo + poster promotion is handled in hydrate_music_images
+                # (artist logos go on Person, album covers matched by release group).
+                if best_logo and media_item.media_type != "music":
                     media_item.logo_url = best_logo.url
 
-                # Textless poster: widest poster with no-language marker.
-                _textless_langs = {None, "", "0", "00", "zxx"}
-                best_textless = max(
-                    (a for a in assets if a.asset_type == "poster" and a.lang in _textless_langs),
-                    key=lambda a: a.width or 0,
-                    default=None,
-                )
-                if best_textless:
-                    media_item.textless_poster_url = best_textless.url
+                # Poster promotion (non-music only): textless posters → textless_poster_url.
+                if media_item.media_type != "music":
+                    _textless_langs = {None, "", "0", "00", "zxx"}
+                    best_textless = max(
+                        (a for a in assets
+                         if a.asset_type == "poster" and a.lang in _textless_langs),
+                        key=lambda a: a.width or 0,
+                        default=None,
+                    )
+                    if best_textless:
+                        media_item.textless_poster_url = best_textless.url
 
         return bool(new_assets)

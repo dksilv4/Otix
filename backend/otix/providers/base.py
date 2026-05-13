@@ -50,6 +50,10 @@ class CircuitOpenError(ProviderError):
 class BaseProvider(ABC):
     """Async HTTP client wrapper with rate limiting and circuit breaking."""
 
+    # HTTP status codes that indicate rate limiting for this provider.
+    # Most APIs use 429; some (e.g. MusicBrainz) return 503 for rate limits.
+    _rate_limit_statuses: tuple[int, ...] = (429,)
+
     def __init__(
         self,
         name: str,
@@ -81,11 +85,12 @@ class BaseProvider(ABC):
             self._update_cb_gauge()
             raise CircuitOpenError(self.name)
 
-        # Wait for rate limit token
-        allowed, wait = await self.rate_limiter.acquire(self.name)
-        if not allowed:
-            logger.debug("rate limit wait", provider=self.name, wait_seconds=wait)
-            await asyncio.sleep(wait)
+        # Block until a rate-limit token is available.  This serialises
+        # concurrent callers so the provider never sees a burst above the
+        # configured rate.
+        acquired = await self.rate_limiter.wait_and_acquire(self.name)
+        if not acquired:
+            raise RateLimitError(f"{self.name} rate limit timeout")
 
         with track_api_call(self.name):
             try:
@@ -95,11 +100,10 @@ class BaseProvider(ABC):
                 self._update_cb_gauge()
                 raise ProviderError(f"{self.name} request failed: {exc}") from exc
 
-        if response.status_code == 429:
+        if response.status_code in self._rate_limit_statuses:
             self._handle_rate_limit(response)
-            self.circuit_breaker.record_failure()
-            self._update_cb_gauge()
-            raise RateLimitError(f"{self.name} rate limited (429)")
+            await self._drain_rate_bucket()
+            raise RateLimitError(f"{self.name} rate limited ({response.status_code})")
 
         if response.status_code >= 500:
             self.circuit_breaker.record_failure()
@@ -115,6 +119,14 @@ class BaseProvider(ABC):
         if retry_after and retry_after.isdigit():
             wait = int(retry_after)
             logger.warning("rate limited by provider", provider=self.name, retry_after=wait)
+
+    async def _drain_rate_bucket(self) -> None:
+        """Drain the token bucket so subsequent requests are throttled."""
+        import time as _time
+        key = f"{self.rate_limiter.key_prefix}:{self.name}"
+        now = _time.monotonic()
+        await self.rate_limiter.redis.set(f"{key}:tokens", 0)
+        await self.rate_limiter.redis.set(f"{key}:last", now)
 
     def _update_cb_gauge(self) -> None:
         state_map = {CBState.CLOSED: 0, CBState.OPEN: 1, CBState.HALF_OPEN: 2}

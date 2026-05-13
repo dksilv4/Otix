@@ -51,6 +51,13 @@ class User(Base, TimestampMixin):
     tmdb_avatar_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
     tmdb_rating_sync_direction: Mapped[str] = mapped_column(String(16), default="disabled", server_default="disabled", nullable=False)
     tmdb_rating_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    spotify_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
+    spotify_username: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
+    spotify_email: Mapped[str | None] = mapped_column(String(320), nullable=True, default=None)
+    spotify_avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
+    spotify_access_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    spotify_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    spotify_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     integration_visibility: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     total_xp: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
 

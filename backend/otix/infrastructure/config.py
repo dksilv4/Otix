@@ -84,6 +84,21 @@ class Settings(BaseSettings):
     steamgrid_request_timeout_seconds: int = 15
     steamgrid_global_rps_limit: int = 2
 
+    # MusicBrainz
+    musicbrainz_request_timeout_seconds: int = 15
+    musicbrainz_global_rps_limit: int = 1
+
+    # Spotify
+    spotify_client_id: str = ""
+    spotify_client_secret: str = ""
+    spotify_request_timeout_seconds: int = 15
+    spotify_global_rps_limit: int = 3
+
+    # Last.fm
+    lastfm_api_key: str = ""
+    lastfm_request_timeout_seconds: int = 15
+    lastfm_global_rps_limit: int = 5
+
     # Embeddings (FastEmbed local model)
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
@@ -101,7 +116,9 @@ class Settings(BaseSettings):
     celery_worker_concurrency: str = ""
     celery_worker_prefetch_multiplier: int = 1
     celery_worker_fast_concurrency: int = 6
-    celery_worker_slow_concurrency: int = 2
+    celery_worker_user_concurrency: int = 2
+    celery_worker_control_concurrency: int = 2
+    celery_worker_provider_concurrency: int = 3
     celery_worker_ccu_concurrency: int = 1
     celery_fast_queue_max_backlog: int = 1000
 

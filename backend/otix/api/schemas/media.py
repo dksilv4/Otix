@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from pydantic import BaseModel, model_validator
+from typing import Self
+
+from pydantic import BaseModel, Field, model_validator
 
 from otix.api.schemas.common import PaginatedResponse
 from otix.api.schemas.interaction import UserInteractionState
@@ -99,6 +101,7 @@ class MediaItemSummary(BaseModel):
     watched_count: int = 0
     played_count: int = 0
     started_count: int = 0
+    listened_count: int = 0
     user_interactions: UserInteractionState | None = None
     steam_playtime_forever: int | None = None
     steam_playtime_2weeks: int | None = None
@@ -289,6 +292,45 @@ class GameDetail(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TrackOut(BaseModel):
+    id: str
+    track_number: int
+    disc_number: int = 1
+    title: str
+    duration_ms: int | None = None
+    preview_url: str | None = None
+    spotify_id: str | None = None
+    musicbrainz_recording_id: str | None = None
+    audio_features: dict | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class AlbumDetail(BaseModel):
+    release_type: str = "album"
+    format: str | None = None
+    catalog_number: str | None = None
+    barcode: str | None = None
+    track_count: int = 0
+    disc_count: int = 0
+    duration_ms: int | None = None
+    spotify_id: str | None = None
+    musicbrainz_id: str | None = None
+    musicbrainz_release_group_id: str | None = None
+    spotify_url: str | None = None
+    spotify_popularity: int | None = None
+    preview_url: str | None = None
+    audio_features: dict | None = None
+    tracks: list[TrackOut] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def sort_tracks(self) -> Self:
+        self.tracks = sorted(self.tracks, key=lambda t: (t.disc_number, t.track_number))
+        return self
+
+
 class MediaItemDetail(BaseModel):
     id: str
     media_type: str
@@ -313,6 +355,7 @@ class MediaItemDetail(BaseModel):
     watched_count: int = 0
     played_count: int = 0
     started_count: int = 0
+    listened_count: int = 0
     user_interactions: UserInteractionState | None = None
 
     # Steam playtime (populated for authenticated users who own the game)
@@ -330,6 +373,7 @@ class MediaItemDetail(BaseModel):
     movie: MovieDetail | None = None
     show: ShowDetail | None = None
     game: GameDetail | None = None
+    album: AlbumDetail | None = None
     collection: CollectionOut | None = None
 
     model_config = {"from_attributes": True}

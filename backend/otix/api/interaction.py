@@ -16,7 +16,7 @@ from otix.services.interaction_service import InteractionService
 
 interaction_router = APIRouter(prefix="/media", tags=["interaction"])
 
-VALID_TYPES = {"liked", "watchlisted", "watched", "played", "started"}
+VALID_TYPES = {"liked", "watchlisted", "watched", "played", "started", "listened"}
 
 
 @interaction_router.get("/{media_id}/interactions", response_model=UserInteractionState)

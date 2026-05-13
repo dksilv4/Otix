@@ -17,7 +17,19 @@ logs:
 	docker compose logs -f api
 
 logs-worker:
+	docker compose logs -f worker-fast worker-provider worker-user worker-control
+
+logs-worker-fast:
 	docker compose logs -f worker-fast
+
+logs-worker-provider:
+	docker compose logs -f worker-provider
+
+logs-worker-user:
+	docker compose logs -f worker-user
+
+logs-worker-control:
+	docker compose logs -f worker-control
 
 logs-all:
 	docker compose logs -f

@@ -1,20 +1,22 @@
 """Celery application with queue routing and beat schedule.
 
-Queue design (3 queues, prefix-based routing):
+Queue design (9 queues, per-provider isolation):
 
-  fast — tmdb, steam (high throughput), plus slow-task overflow when idle
-  slow — igdb, fanart, omdb, control, default (rate-limited providers)
-  ccu  — steam_ccu (dedicated low-concurrency)
-
-When the fast queue is nearly empty (< 100 tasks), slow-bound sync tasks
-are routed to fast instead so idle fast workers help drain the backlog.
+  fast       — tmdb, steam, spotify catalog (6 workers)
+  igdb       — IGDB provider, 4 rps (shared provider worker)
+  fanart     — Fanart provider, 1 rps (shared provider worker)
+  omdb       — OMDb provider, 5 rps (shared provider worker)
+  steamgrid  — SteamGridDB provider, 2 rps (shared provider worker)
+  musicbrainz — MusicBrainz provider, 1 rps (shared provider worker)
+  lastfm     — Last.fm provider, 5 rps (shared provider worker)
+  user       — user-initiated syncs, XP (2 workers)
+  control    — maintenance, seed cycles, embedding, catch-all (2 workers)
+  ccu        — Steam CCU (1 worker)
 
 Rate limiting is handled in-app by BaseProvider's Redis token bucket.
 """
 
 from __future__ import annotations
-
-import redis
 
 from celery import Celery
 from celery.schedules import crontab
@@ -22,37 +24,44 @@ from kombu import Queue
 
 from otix.infrastructure.config import settings
 
-_redis: redis.Redis | None = None
-
-
-def _get_redis() -> redis.Redis:
-    global _redis
-    if _redis is None:
-        _redis = redis.Redis.from_url(settings.redis_url, decode_responses=True)
-    return _redis
-
-
-def _fast_queue_idle() -> bool:
-    """True when the fast queue has fewer than 100 tasks — workers are idle."""
-    try:
-        return _get_redis().llen("fast") < 100
-    except Exception:
-        return False
-
 
 def route_task(name: str, *args, **kwargs) -> str | None:
-    """Route tasks to queues based on name prefix.
-
-    When the fast queue is idle, sync.* tasks that would normally go to slow
-    are routed to fast instead so the backlog drains faster.
-    """
+    """Route tasks to provider-isolated queues based on name prefix."""
     if name.startswith("steam.ccu."):
         return "ccu"
     if name.startswith("seed."):
-        return "default"
-    if name.startswith("sync.") and _fast_queue_idle():
+        return "control"
+    if name.startswith("maintenance."):
+        if "steam_ccu" in name:
+            return "ccu"
+        if "plex_sync_user" in name or "sync_plex_accounts" in name:
+            return "user"
+        return "control"
+    if name.startswith("sync.tmdb.") or name.startswith("sync.steam."):
         return "fast"
-    return "slow"
+    if name.startswith("sync.spotify."):
+        if "user_library" in name or "seed_album" in name:
+            return "user"
+        return "fast"  # match_album, enrich_album
+    if name.startswith("sync.igdb."):
+        return "igdb"
+    if name.startswith("sync.fanart."):
+        return "fanart"
+    if name.startswith("sync.omdb."):
+        return "omdb"
+    if name.startswith("sync.steamgrid."):
+        return "steamgrid"
+    if name.startswith("sync.musicbrainz."):
+        return "musicbrainz"
+    if name.startswith("sync.lastfm."):
+        return "lastfm"
+    if name.startswith("search."):
+        return "fast"
+    if name.startswith("embedding."):
+        return "control"
+    if name.startswith("xp."):
+        return "user"
+    return "control"
 
 
 app = Celery("otix")
@@ -67,10 +76,17 @@ app.config_from_object(
         "task_acks_late": True,
         "task_reject_on_worker_lost": True,
         "worker_prefetch_multiplier": settings.celery_worker_prefetch_multiplier,
-        "task_default_queue": "slow",
+        "task_default_queue": "control",
         "task_queues": [
             Queue("fast", queue_arguments={"x-max-priority": 10}),
-            Queue("slow", queue_arguments={"x-max-priority": 10}),
+            Queue("igdb", queue_arguments={"x-max-priority": 10}),
+            Queue("fanart", queue_arguments={"x-max-priority": 10}),
+            Queue("omdb", queue_arguments={"x-max-priority": 10}),
+            Queue("steamgrid", queue_arguments={"x-max-priority": 10}),
+            Queue("musicbrainz", queue_arguments={"x-max-priority": 10}),
+            Queue("lastfm", queue_arguments={"x-max-priority": 10}),
+            Queue("user", queue_arguments={"x-max-priority": 10}),
+            Queue("control", queue_arguments={"x-max-priority": 10}),
             Queue("ccu", queue_arguments={"x-max-priority": 10}),
         ],
         "task_routes": (route_task,),
@@ -126,6 +142,10 @@ app.config_from_object(
                 "task": "seed.igdb_cycle",
                 "schedule": crontab(minute="*/5"),
             },
+            "seed-musicbrainz": {
+                "task": "seed.musicbrainz_cycle",
+                "schedule": crontab(minute="*/5"),
+            },
             # Steam enrichment scan (every 15 min at off-peak minute)
             "enrich-steam": {
                 "task": "maintenance.enrich_steam",
@@ -149,6 +169,16 @@ app.config_from_object(
             "sync-plex-accounts": {
                 "task": "maintenance.sync_plex_accounts",
                 "schedule": crontab(minute="11,41"),
+            },
+            # Spotify enrichment scan (every 30 min)
+            "enrich-spotify": {
+                "task": "maintenance.enrich_spotify",
+                "schedule": crontab(minute="19,49"),
+            },
+            # Last.fm enrichment scan (every 30 min)
+            "enrich-lastfm": {
+                "task": "maintenance.enrich_lastfm",
+                "schedule": crontab(minute="29,59"),
             },
             # Progress summary log (every 60s at off-peak second)
             "progress-summary": {
