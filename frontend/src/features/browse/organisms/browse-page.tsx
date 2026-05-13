@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { Film, Tv, Gamepad2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { mediaQueries, type MediaItemSummary, type MediaListResponse } from '@/features/media/media-queries'
+import { Film, Tv, Gamepad2, Music, ChevronLeft, ChevronRight } from 'lucide-react'
+import { mediaQueries, type MediaItemSummary } from '@/features/media/media-queries'
 import { FilterDropdown, SORT_OPTIONS } from '@/features/discover/molecules/search-sort-bar'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
@@ -15,6 +15,7 @@ const BROWSE_TYPES = [
   { value: 'movie', label: 'Movies', Icon: Film },
   { value: 'show', label: 'Shows', Icon: Tv },
   { value: 'game', label: 'Games', Icon: Gamepad2 },
+  { value: 'music', label: 'Music', Icon: Music },
 ] as const
 
 const BROWSE_SORT_OPTIONS = SORT_OPTIONS.filter((o) => o.value !== '') as readonly { value: string; label: string }[]
@@ -76,10 +77,6 @@ export function BrowsePage() {
   const total = data?.total ?? 0
   const hasMore = data?.hasMore ?? false
   const totalPages = Math.ceil(total / 48)
-
-  const handleTypeChange = (type: string) => {
-    // Navigation happens via Link — this is for the dropdown filter reset
-  }
 
   const handleSortChange = (value: string) => {
     setSortBy(value)
@@ -162,7 +159,7 @@ export function BrowsePage() {
                 <MediaCard
                   key={item.id}
                   id={item.id}
-                  mediaType={item.mediaType}
+                  mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}
                   title={item.title}
                   posterUrl={item.posterUrl}
                   textlessPosterUrl={item.textlessPosterUrl}

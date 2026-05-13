@@ -5,6 +5,8 @@ import { Image } from "@ui/atoms/image"
 import { cn } from "@/lib/utils"
 import type { ShowDetail, SeasonOut, EpisodeOut, ExternalRatingOut } from "../media-queries"
 
+const flipTransition = { duration: 0.32, ease: [0.16, 1, 0.3, 1] } as const
+
 interface ShowSectionProps {
   show: ShowDetail
   className?: string

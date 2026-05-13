@@ -8,6 +8,7 @@ export const TYPE_OPTIONS = [
   { value: 'movie', label: 'Movies' },
   { value: 'show', label: 'Shows' },
   { value: 'game', label: 'Games' },
+  { value: 'music', label: 'Music' },
 ] as const
 
 export const SORT_OPTIONS = [

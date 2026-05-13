@@ -45,6 +45,7 @@
   --color-media-movie: var(--media-movie);
   --color-media-show: var(--media-show);
   --color-media-game: var(--media-game);
+  --color-media-music: var(--media-music);
 }
 
 :root {
@@ -75,6 +76,7 @@
   --media-movie: oklch(0.577 0.245 27.325);
   --media-show: oklch(0.546 0.245 262.881);
   --media-game: oklch(0.548 0.21 303.937);
+  --media-music: oklch(0.72 0.17 75);
 
   --sidebar: var(--dk-surface-raised);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -114,6 +116,7 @@
   --media-movie: oklch(0.637 0.237 25.331);
   --media-show: oklch(0.623 0.214 259.815);
   --media-game: oklch(0.624 0.21 306.551);
+  --media-music: oklch(0.78 0.16 75);
 
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);

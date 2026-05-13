@@ -13,6 +13,7 @@ const badgeVariants = cva(
         movie: "border-transparent text-white shadow",
         show: "border-transparent text-white shadow",
         game: "border-transparent text-white shadow",
+        music: "border-transparent text-white shadow",
       },
     },
     defaultVariants: {
@@ -33,7 +34,9 @@ function Badge({ className, variant, ...props }: BadgeProps) {
         ? { backgroundColor: "var(--media-show)" }
         : variant === "game"
           ? { backgroundColor: "var(--media-game)" }
-          : undefined
+          : variant === "music"
+            ? { backgroundColor: "var(--media-music)" }
+            : undefined
 
   return (
     <div

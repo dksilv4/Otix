@@ -1,6 +1,5 @@
 import { Badge } from '@ui/atoms/badge'
 import { Image } from '@ui/atoms/image'
-import { StarRating } from '@ui/atoms/star-rating'
 import { cn } from '@/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
 
@@ -19,7 +18,7 @@ interface Genre {
 }
 
 interface MediaHeroProps {
-  mediaType: 'movie' | 'show' | 'game'
+  mediaType: 'movie' | 'show' | 'game' | 'music'
   title: string
   backdropUrl?: string | null
   posterUrl?: string | null
@@ -33,6 +32,8 @@ interface MediaHeroProps {
   tagline?: string | null
   overview?: string | null
   runtime?: number | null
+  /** Album / music total length in milliseconds */
+  albumDurationMs?: number | null
   status?: string | null
   isAnime?: boolean
   className?: string
@@ -50,8 +51,22 @@ function formatRuntime(minutes?: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
+function formatAlbumDuration(ms?: number | null): string {
+  if (ms == null || ms <= 0) return ''
+  const totalSec = Math.round(ms / 1000)
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  if (m >= 60) {
+    const h = Math.floor(m / 60)
+    const rem = m % 60
+    return `${h}h ${rem}m`
+  }
+  return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `${s}s`
+}
+
 function backdropSrc(url: string): string {
-  return url.replace(/\/w500\//, '/w1280/')
+  if (url.includes('/w500/')) return url.replace(/\/w500\//, '/w1280/')
+  return url
 }
 
 function providerLabel(key: string): string {
@@ -66,6 +81,9 @@ function providerLabel(key: string): string {
     tmdb: 'TMDb',
     igdb_critic: 'IGDB Critic',
     igdb_user: 'IGDB User',
+    spotify: 'Spotify',
+    lastfm: 'Last.fm',
+    musicbrainz: 'MusicBrainz',
   }
   return map[key] ?? key
 }
@@ -88,6 +106,9 @@ function providerStyle(key: string): ProviderStyle {
     tmdb:         { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white' },
     igdb_critic:  { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white' },
     igdb_user:    { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white' },
+    spotify:      { bg: 'bg-[#1DB954]', text: 'text-black', star: 'text-black', score: 'text-black' },
+    lastfm:       { bg: 'bg-[#d51007]', text: 'text-white', star: 'text-white', score: 'text-white' },
+    musicbrainz:  { bg: 'bg-[#ba478f]', text: 'text-white', star: 'text-white', score: 'text-white' },
   }
   return s[key] ?? { bg: 'bg-muted', text: 'text-muted-foreground', star: 'text-amber-400', score: 'text-foreground' }
 }
@@ -95,6 +116,7 @@ function providerStyle(key: string): ProviderStyle {
 function mediaTypeLabel(type: string): string {
   if (type === 'movie') return 'Movie'
   if (type === 'show') return 'TV'
+  if (type === 'music') return 'Music'
   return 'Game'
 }
 
@@ -108,27 +130,29 @@ export function MediaHero({
   releaseDate,
   genres,
   externalRatings,
-  avgRating,
-  ratingCount,
   tagline,
   overview,
   runtime,
+  albumDurationMs,
   status,
   isAnime,
   className,
 }: MediaHeroProps) {
   const year = formatYear(releaseDate)
   const formattedRuntime = formatRuntime(runtime)
+  const formattedAlbumLength = formatAlbumDuration(albumDurationMs)
   const logo: string | undefined = logoUrl || textlessPosterUrl || undefined
   const hasLogo = Boolean(logo)
+  const heroBackdrop =
+    backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
 
   return (
     <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden lg:min-h-[75vh] rounded-3xl shadow-[var(--dk-shadow-glass)]', className)}>
       {/* Backdrop with cinematic gradient */}
-      {backdropUrl && (
+      {heroBackdrop && (
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <img
-            src={backdropSrc(backdropUrl)}
+            src={backdropSrc(heroBackdrop)}
             alt=""
             className="h-full w-full object-cover object-[center_20%]"
           />
@@ -149,7 +173,7 @@ export function MediaHero({
               <Image
                 src={posterUrl || undefined}
                 alt={`${title} poster`}
-                className="aspect-[2/3] w-full"
+                className={cn('w-full', mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]')}
                 fallback={title[0]}
               />
             </div>
@@ -210,6 +234,12 @@ export function MediaHero({
                   {formattedRuntime}
                 </Badge>
               )}
+              {formattedAlbumLength && (
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formattedAlbumLength}
+                </Badge>
+              )}
               {status && (
                 <Badge variant="secondary" className="border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold capitalize backdrop-blur">
                   {status.replace(/_/g, ' ')}
@@ -219,41 +249,23 @@ export function MediaHero({
 
             {/* External ratings */}
             {externalRatings && externalRatings.length > 0 && (
-              <div className="flex flex-wrap items-start justify-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {externalRatings.map((r) => {
                   const style = providerStyle(r.provider)
                   return (
-                    <div
+                    <span
                       key={r.id}
                       className={cn(
-                        'flex flex-col items-center gap-0.5 rounded-xl px-4 py-3 text-center shadow-[var(--dk-shadow-sm)]',
+                        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold',
                         style.bg,
                         style.text,
                       )}
-                      title={`${r.score}/${r.maxScore}${r.voteCount ? ` (${r.voteCount.toLocaleString()} votes)` : ''}`}
                     >
-                      <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
-                        {providerLabel(r.provider)}
-                      </span>
-                      <span className={cn('text-xl font-extrabold tabular-nums leading-none', style.score)}>
-                        {Math.round(r.score)}
-                      </span>
-                      <StarRating score={Math.round(r.score)} maxScore={r.maxScore} size="sm" color={style.star} />
-                    </div>
+                      {providerLabel(r.provider)}
+                      <span className="tabular-nums">{Math.round(r.score)}</span>
+                    </span>
                   )
                 })}
-              </div>
-            )}
-
-            {/* User average rating */}
-            {avgRating != null && ratingCount != null && ratingCount > 0 && (
-              <div className="flex items-center justify-center gap-2">
-                <div className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 backdrop-blur">
-                  <span className="text-xs font-medium text-muted-foreground">Users</span>
-                  <StarRating score={avgRating} maxScore={10} size="sm" />
-                  <span className="text-xs font-bold text-primary tabular-nums">{avgRating.toFixed(1)}</span>
-                  <span className="text-xs text-muted-foreground">({ratingCount})</span>
-                </div>
               </div>
             )}
 

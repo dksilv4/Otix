@@ -1,5 +1,6 @@
 import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
+import type { UserInteractionState } from '@/features/interaction/interaction-queries'
 import { mediaKeys, type SearchParams } from './media-keys'
 
 export interface MediaItemSummary {
@@ -18,10 +19,10 @@ export interface MediaItemSummary {
   watchlistCount: number
   watchedCount: number
   playedCount: number
+  startedCount?: number
+  listenedCount?: number
   userInteractions?: UserInteractionState | null
 }
-
-import type { UserInteractionState } from '@/features/interaction/interaction-queries'
 
 export interface MediaItemDetail {
   id: string
@@ -43,6 +44,8 @@ export interface MediaItemDetail {
   watchlistCount: number
   watchedCount: number
   playedCount: number
+  startedCount?: number
+  listenedCount?: number
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null
@@ -85,6 +88,7 @@ export interface MediaItemDetail {
   movie?: MovieDetail
   show?: ShowDetail
   game?: GameDetail
+  album?: AlbumDetail
 }
 
 export interface MovieDetail {
@@ -149,6 +153,36 @@ export interface GameDetail {
   reviewSummary?: string
   isFree: boolean
   hasMultiplayer: boolean
+}
+
+export interface TrackOut {
+  id: string
+  trackNumber: number
+  discNumber: number
+  title: string
+  durationMs?: number | null
+  previewUrl?: string | null
+  spotifyId?: string | null
+  musicbrainzRecordingId?: string | null
+  audioFeatures?: Record<string, unknown> | null
+}
+
+export interface AlbumDetail {
+  releaseType: string
+  format?: string | null
+  catalogNumber?: string | null
+  barcode?: string | null
+  trackCount: number
+  discCount: number
+  durationMs?: number | null
+  spotifyId?: string | null
+  musicbrainzId?: string | null
+  musicbrainzReleaseGroupId?: string | null
+  spotifyUrl?: string | null
+  spotifyPopularity?: number | null
+  previewUrl?: string | null
+  audioFeatures?: Record<string, unknown> | null
+  tracks: TrackOut[]
 }
 
 export interface MediaListResponse {

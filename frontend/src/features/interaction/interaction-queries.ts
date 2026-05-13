@@ -10,6 +10,7 @@ export interface UserInteractionState {
   watched: boolean
   played: boolean
   started: boolean
+  listened: boolean
 }
 
 export interface InteractionCounts {
@@ -18,6 +19,7 @@ export interface InteractionCounts {
   watchedCount: number
   playedCount: number
   startedCount: number
+  listenedCount: number
 }
 
 export interface InteractionOut {
@@ -34,7 +36,7 @@ export interface InteractionToggleResponse {
   counts: InteractionCounts
 }
 
-const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started'] as const
+const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started', 'listened'] as const
 export type InteractionType = (typeof VALID_TYPES)[number]
 
 export function useUserInteractions(
@@ -60,6 +62,7 @@ const COUNT_KEY: Record<InteractionType, keyof InteractionCounts> = {
   watched: 'watchedCount',
   played: 'playedCount',
   started: 'startedCount',
+  listened: 'listenedCount',
 }
 
 export function useToggleInteraction(mediaId: string) {
@@ -109,7 +112,15 @@ export function useToggleInteraction(mediaId: string) {
           ...prevDetail,
           userInteractions: prevDetail.userInteractions
             ? { ...prevDetail.userInteractions, [type]: active }
-            : { liked: false, watchlisted: false, watched: false, played: false, started: false, [type]: active },
+            : {
+                liked: false,
+                watchlisted: false,
+                watched: false,
+                played: false,
+                started: false,
+                listened: false,
+                [type]: active,
+              },
           [countKey]: (prevDetail[countKey] || 0) + (active ? 1 : -1),
         })
       }

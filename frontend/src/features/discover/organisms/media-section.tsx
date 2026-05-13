@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 interface MediaSectionProps {
   title: string
-  mediaType: 'movie' | 'show' | 'game'
+  mediaType: 'movie' | 'show' | 'game' | 'music'
 }
 
 export function MediaSection({ title, mediaType }: MediaSectionProps) {

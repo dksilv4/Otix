@@ -15,6 +15,7 @@ import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
+import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
 import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 
 const BIO_MAX_LENGTH = 250
@@ -1322,6 +1323,45 @@ type PlexProgressState = {
   itemsTotal?: number
 }
 
+type SpotifySyncEvent =
+  | { type: 'sync_started' }
+  | { type: 'fetching_tracks' }
+  | { type: 'tracks_fetched'; count: number }
+  | { type: 'matching_tracks'; count: number }
+  | { type: 'tracks_matched'; matched: number; total: number }
+  | { type: 'seeding_albums'; count: number }
+  | { type: 'albums_seeded'; count: number }
+  | { type: 'sync_complete'; liked_total: number; liked_matched: number; liked_seeded: number }
+  | { type: 'error'; message: string }
+
+type SpotifyProgressState = {
+  phase: string
+  detail?: string
+}
+
+async function* parseSpotifySseEvents(response: Response): AsyncGenerator<SpotifySyncEvent> {
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const frames = buffer.split('\n\n')
+    buffer = frames.pop() || ''
+
+    for (const frame of frames) {
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('data: ')) {
+          yield JSON.parse(line.slice(6)) as SpotifySyncEvent
+        }
+      }
+    }
+  }
+}
+
 async function* parseSseEvents(response: Response): AsyncGenerator<PlexSyncEvent> {
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()
@@ -1455,6 +1495,18 @@ function IntegrationsSection() {
   const [tmdbDisconnecting, setTmdbDisconnecting] = useState(false)
   const [tmdbMessage, setTmdbMessage] = useState('')
   const [tmdbError, setTmdbError] = useState('')
+  const [spotifyConnected, setSpotifyConnected] = useState(Boolean(user?.spotifyId))
+  const [spotifyUsername, setSpotifyUsername] = useState<string | null>(user?.spotifyUsername ?? null)
+  const [spotifyAvatarUrl, setSpotifyAvatarUrl] = useState<string | null>(user?.spotifyAvatarUrl ?? null)
+  const [spotifyStats, setSpotifyStats] = useState<Record<string, unknown> | null>(null)
+  const [spotifyConnecting, setSpotifyConnecting] = useState(false)
+  const [spotifyDisconnecting, setSpotifyDisconnecting] = useState(false)
+  const [spotifyMessage, setSpotifyMessage] = useState('')
+  const [spotifyError, setSpotifyError] = useState('')
+  const [spotifySyncing, setSpotifySyncing] = useState(false)
+  const [spotifySyncResult, setSpotifySyncResult] = useState<{ likedTotal: number; likedMatched: number; likedSeeded: number } | null>(null)
+  const [spotifyProgress, setSpotifyProgress] = useState<SpotifyProgressState | null>(null)
+  const isSpotifyConnected = spotifyConnected || Boolean(user?.spotifyId)
   const isSteamConnected = steamConnected || Boolean(user?.steamId)
   const displayedSteamId = steamId ?? user?.steamId ?? null
   const isPlexConnected = plexConnected || Boolean(user?.plexId)
@@ -1493,6 +1545,19 @@ function IntegrationsSection() {
         setTmdbAvatarUrl(tmdbProvider.tmdbAvatarUrl ?? null)
         setTmdbStats(tmdbProvider.tmdbStats ?? null)
         setTmdbSyncDirection(tmdbProvider.tmdbRatingSyncDirection ?? 'disabled')
+      }
+      const spotifyProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+        spotifyUsername: string | null
+        spotifyAvatarUrl: string | null
+        spotifyStats: Record<string, unknown> | null
+      }>).find((p) => p.name === 'spotify')
+      if (spotifyProvider) {
+        setSpotifyConnected(spotifyProvider.connected)
+        setSpotifyUsername(spotifyProvider.spotifyUsername ?? null)
+        setSpotifyAvatarUrl(spotifyProvider.spotifyAvatarUrl ?? null)
+        setSpotifyStats(spotifyProvider.spotifyStats ?? null)
       }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
@@ -1577,6 +1642,107 @@ function IntegrationsSection() {
       setTmdbError(extractIntegrationMessage(err))
     } finally {
       setTmdbDisconnecting(false)
+    }
+  }
+
+  const handleSpotifyConnect = async () => {
+    setSpotifyConnecting(true)
+    setSpotifyError('')
+    try {
+      const { data } = await apiClient.post('/auth/integrations/spotify')
+      window.location.href = data.authUrl
+    } catch (err) {
+      setSpotifyConnecting(false)
+      setSpotifyError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleSpotifyDisconnect = async () => {
+    setSpotifyDisconnecting(true)
+    setSpotifyError('')
+    setSpotifyMessage('')
+    try {
+      await apiClient.delete('/auth/integrations/spotify')
+      setSpotifyConnected(false)
+      setSpotifyUsername(null)
+      setSpotifyAvatarUrl(null)
+      setSpotifyMessage('Spotify account unlinked.')
+    } catch (err) {
+      setSpotifyError(extractIntegrationMessage(err))
+    } finally {
+      setSpotifyDisconnecting(false)
+    }
+  }
+
+  const handleSpotifySync = async () => {
+    abortRef.current?.abort()
+    const abortController = new AbortController()
+    abortRef.current = abortController
+
+    setSpotifySyncing(true)
+    setSpotifyError('')
+    setSpotifySyncResult(null)
+    setSpotifyMessage('')
+    setSpotifyProgress({ phase: 'Starting sync...' })
+
+    try {
+      const { data } = await apiClient.post<{ taskId: string }>('/auth/integrations/spotify/sync')
+      const token = localStorage.getItem('otix-access-token')
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/integrations/spotify/sync/${data.taskId}/stream`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: abortController.signal,
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`SSE connection failed: ${response.status}`)
+      }
+
+      for await (const event of parseSpotifySseEvents(response)) {
+        switch (event.type) {
+          case 'sync_started':
+            setSpotifyProgress({ phase: 'Connected to Spotify...' })
+            break
+          case 'fetching_tracks':
+            setSpotifyProgress({ phase: 'Fetching liked tracks from Spotify...' })
+            break
+          case 'tracks_fetched':
+            setSpotifyProgress({ phase: `Fetched ${event.count} liked tracks` })
+            break
+          case 'matching_tracks':
+            setSpotifyProgress({ phase: `Matching ${event.count} tracks against catalog...` })
+            break
+          case 'tracks_matched':
+            setSpotifyProgress({ phase: `Matched ${event.matched} of ${event.total} tracks`, detail: `${event.matched} interactions created` })
+            break
+          case 'seeding_albums':
+            setSpotifyProgress({ phase: `Seeding ${event.count} missing albums...` })
+            break
+          case 'albums_seeded':
+            setSpotifyProgress({ phase: `Seeded ${event.count} new albums` })
+            break
+          case 'sync_complete':
+            setSpotifySyncResult({ likedTotal: event.liked_total, likedMatched: event.liked_matched, likedSeeded: event.liked_seeded })
+            setSpotifyMessage(
+              `Synced ${event.liked_total} liked tracks: ${event.liked_matched} matched in catalog, ${event.liked_seeded} new albums seeded.`,
+            )
+            setSpotifyProgress(null)
+            break
+          case 'error':
+            setSpotifyError(event.message)
+            setSpotifyProgress(null)
+            break
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      setSpotifyError(extractIntegrationMessage(err))
+      setSpotifyProgress(null)
+    } finally {
+      setSpotifySyncing(false)
     }
   }
 
@@ -2164,6 +2330,125 @@ function IntegrationsSection() {
       {!loading && (
         <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
           <SectionHeader
+            title="Spotify"
+            description={isSpotifyConnected && spotifyUsername
+              ? `Linked to "${spotifyUsername}"`
+              : 'Link your Spotify account to sync playlists and liked songs.'
+            }
+          />
+
+          {isSpotifyConnected ? (
+            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {spotifyAvatarUrl ? (
+                    <img
+                      src={spotifyAvatarUrl}
+                      alt={spotifyUsername ?? 'Spotify avatar'}
+                      className="h-10 w-10 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1db954]/15">
+                      <SpotifyIcon className="h-5 w-5 text-[#1db954]" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{spotifyUsername ?? 'Spotify User'}</p>
+                    <p className="text-xs text-muted-foreground">Spotify account linked</p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <span className={integrationActionHeader}>Account</span>
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSpotifyDisconnect}
+                    loading={spotifyDisconnecting}
+                    className={integrationDangerButton}
+                  >
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    Unlink
+                  </DkButton>
+                </div>
+              </div>
+
+              {spotifyStats && (
+                <div className={cn(integrationActionRow, 'flex items-center gap-4 flex-wrap')}>
+                  <p className={integrationActionHeader}>Stats</p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 w-full">
+                    {Boolean(spotifyStats.product) && (
+                      <span><strong className="text-foreground capitalize">{String(spotifyStats.product)}</strong> plan</span>
+                    )}
+                    {Boolean(spotifyStats.followers) && (
+                      <span><strong className="text-foreground">{String(spotifyStats.followers)}</strong> followers</span>
+                    )}
+                    {Boolean(spotifyStats.country) && (
+                      <span className="rounded bg-[var(--dk-surface-overlay)] px-1.5 py-0.5 font-mono text-[10px]">{String(spotifyStats.country)}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
+                <div className="min-w-0">
+                  <p className={integrationActionHeader}>Library Sync</p>
+                  <p className="mt-1 text-sm font-medium">Spotify Library</p>
+                  <p className="text-xs text-muted-foreground">
+                    Import your liked tracks and saved albums into Otix
+                  </p>
+                  {spotifyProgress && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-primary">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>{spotifyProgress.phase}</span>
+                      {spotifyProgress.detail && (
+                        <span className="text-muted-foreground">({spotifyProgress.detail})</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <DkButton
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSpotifySync}
+                  loading={spotifySyncing}
+                  disabled={spotifySyncing}
+                  className={integrationSyncButton}
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  {spotifySyncing ? 'Syncing...' : spotifySyncResult ? 'Re-sync' : 'Sync Library'}
+                </DkButton>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1db954]/15">
+                  <SpotifyIcon className="h-5 w-5 text-[#1db954]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Not connected</p>
+                  <p className="text-xs text-muted-foreground">Authorize Otix with your Spotify account.</p>
+                </div>
+              </div>
+              <DkButton
+                size="sm"
+                variant="primary"
+                onClick={handleSpotifyConnect}
+                loading={spotifyConnecting}
+                className={integrationConnectButton}
+              >
+                Connect Spotify
+              </DkButton>
+            </div>
+          )}
+          {spotifyMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{spotifyMessage}</p>}
+          {spotifyError && <p className="mt-3 text-xs text-destructive">{spotifyError}</p>}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+          <SectionHeader
             title="TMDb"
             description={isTmdbConnected && tmdbUsername
               ? `Linked to "${tmdbUsername}"`
@@ -2210,10 +2495,10 @@ function IntegrationsSection() {
                 <div className={cn(integrationActionRow, 'flex items-center gap-4 flex-wrap')}>
                   <p className={integrationActionHeader}>Stats</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 w-full">
-                    <span><strong className="text-foreground">{tmdbStats.rated_movies}</strong> rated movies</span>
-                    <span><strong className="text-foreground">{tmdbStats.rated_tv}</strong> rated shows</span>
-                    <span><strong className="text-foreground">{tmdbStats.watchlist_movies}</strong> watchlist movies</span>
-                    <span><strong className="text-foreground">{tmdbStats.watchlist_tv}</strong> watchlist shows</span>
+                    <span><strong className="text-foreground">{tmdbStats.ratedMovies}</strong> rated movies</span>
+                    <span><strong className="text-foreground">{tmdbStats.ratedTv}</strong> rated shows</span>
+                    <span><strong className="text-foreground">{tmdbStats.watchlistMovies}</strong> watchlist movies</span>
+                    <span><strong className="text-foreground">{tmdbStats.watchlistTv}</strong> watchlist shows</span>
                   </div>
                 </div>
               )}

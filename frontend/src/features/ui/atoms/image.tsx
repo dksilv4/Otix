@@ -10,7 +10,7 @@ function Image({ className, src, alt, fallback, onError, ...props }: ImageProps)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  if (hasError) {
+  if (hasError || !src) {
     return (
       <div
         className={cn(

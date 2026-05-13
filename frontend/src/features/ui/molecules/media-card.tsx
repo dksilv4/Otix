@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 interface MediaCardProps {
   id: string
-  mediaType: 'movie' | 'show' | 'game'
+  mediaType: 'movie' | 'show' | 'game' | 'music'
   title: string
   posterUrl?: string | null
   textlessPosterUrl?: string | null
@@ -22,12 +22,14 @@ const mediaTypeColor: Record<string, string> = {
   movie: 'bg-rose-600',
   show: 'bg-violet-600',
   game: 'bg-emerald-600',
+  music: 'bg-amber-600',
 }
 
 const mediaTypeLabel: Record<string, string> = {
   movie: 'Movie',
   show: 'TV',
   game: 'Game',
+  music: 'Music',
 }
 
 export function MediaCard({
@@ -51,7 +53,8 @@ export function MediaCard({
       to="/media/$mediaType/$mediaId"
       params={{ mediaType, mediaId: id }}
       className={cn(
-        'group block relative aspect-[2/3] rounded-lg overflow-hidden',
+        'group block relative rounded-lg overflow-hidden',
+        mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
         className,
       )}
     >

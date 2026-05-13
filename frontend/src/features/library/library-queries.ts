@@ -33,7 +33,7 @@ export interface LibraryResponse {
   hasMore: boolean
 }
 
-const LIBRARY_TABS = ["watchlist", "like", "watched", "played", "steam", "plex", "wishlist", "lists"] as const
+export const LIBRARY_TABS = ["watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
@@ -41,6 +41,8 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   like: "Liked",
   watched: "Watched",
   played: "Played",
+  listened: "Listened",
+  spotify: "Spotify",
   steam: "Steam",
   plex: "Plex",
   wishlist: "Wishlist",
@@ -182,6 +184,36 @@ export function useSteamWishlist() {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+export function useSpotifyLibraryScan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<{ taskId: string }>(
+        "/auth/integrations/spotify/sync",
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("spotify") })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("spotify"), "status"] })
+    },
+  })
+}
+
+export function useSpotifyStatus() {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("spotify"), "status"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ trackCount: number; lastScannedAt: string | null }>(
+        "/library/spotify/status",
+      )
+      return data
+    },
     staleTime: 1000 * 60 * 2,
   })
 }

@@ -20,6 +20,7 @@ const TYPE_TABS = [
   { value: 'movie', label: 'Movies' },
   { value: 'show', label: 'Shows' },
   { value: 'game', label: 'Games' },
+  { value: 'music', label: 'Music' },
 ] as const
 
 const PLACEHOLDERS = [
@@ -33,6 +34,7 @@ const SECTIONS = [
   { title: 'Movies', mediaType: 'movie' as const },
   { title: 'TV Shows', mediaType: 'show' as const },
   { title: 'Games', mediaType: 'game' as const },
+  { title: 'Music', mediaType: 'music' as const },
 ]
 
 function getGreeting(): string {

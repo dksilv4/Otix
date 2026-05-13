@@ -9,6 +9,10 @@ export interface User {
   tmdbAccountId?: number | null
   tmdbUsername?: string | null
   tmdbAvatarUrl?: string | null
+  tmdbRatingSyncDirection?: string | null
+  spotifyId?: string | null
+  spotifyUsername?: string | null
+  spotifyAvatarUrl?: string | null
   avatarUrl?: string | null
   bio?: string | null
   backgroundUrl?: string | null

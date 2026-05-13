@@ -3,7 +3,7 @@ import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, Clock } from 'lucide-react'
-import { Badge } from '@ui/atoms/badge'
+
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
@@ -164,7 +164,7 @@ export function UserProfilePage() {
       </Helmet>
 
       {/* Hero */}
-      <div className="relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)]">
+      <div className="relative flex min-h-[60vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)]">
         {/* Backdrop */}
         {profile.backgroundUrl ? (
           <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -219,21 +219,25 @@ export function UserProfilePage() {
                 {profile.username}
               </h1>
 
-              {/* Meta badges */}
-              <div className="flex flex-wrap gap-1.5">
-                <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
-                  <CalendarDays className="h-3 w-3" />
+              {/* Meta */}
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium">
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-white/40" />
                   Joined {formatJoinDate(profile.createdAt)}
-                </Badge>
-                <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
-                  <MessageSquareText className="h-3 w-3" />
+                </span>
+                <span aria-hidden className="text-white/15">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <MessageSquareText className="h-3.5 w-3.5 text-white/40" />
                   {profile.reviewCount} review{profile.reviewCount !== 1 ? 's' : ''}
-                </Badge>
+                </span>
                 {stats?.averageRating != null && (
-                  <Badge variant="secondary" className="gap-1 border-0 bg-white/10 px-2.5 py-1 text-xs font-semibold backdrop-blur">
-                    <Star className="h-3 w-3 text-amber-400" />
-                    {stats.averageRating.toFixed(1)}
-                  </Badge>
+                  <>
+                    <span aria-hidden className="text-white/15">·</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Star className="h-3.5 w-3.5 text-amber-400" />
+                      {stats.averageRating.toFixed(1)}
+                    </span>
+                  </>
                 )}
               </div>
 
@@ -241,50 +245,6 @@ export function UserProfilePage() {
                 <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80">
                   {profile.bio}
                 </p>
-              )}
-
-              {(profile.steam || profile.plex || profile.tmdbUsername) && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {profile.steam && (
-                    <a
-                      href={profile.steam.profileurl ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-white/20 hover:text-white transition-all"
-                    >
-                      <SteamIcon className="h-3.5 w-3.5" />
-                      {profile.steam.personaname ?? 'Steam'}
-                    </a>
-                  )}
-                  {profile.plex && profile.plex.username && (
-                    <a
-                      href={`https://app.plex.tv/desktop/#!/u/${profile.plex.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-[#e5a00d]/25 hover:text-white transition-all"
-                    >
-                      <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
-                      {profile.plex.username}
-                    </a>
-                  )}
-                  {profile.plex && !profile.plex.username && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e5a00d]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm">
-                      <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
-                      Plex
-                    </span>
-                  )}
-                  {profile.tmdbUsername && (
-                    <a
-                      href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#01b4e4]/15 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-sm hover:bg-[#01b4e4]/25 hover:text-white transition-all"
-                    >
-                      <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
-                      {profile.tmdbUsername}
-                    </a>
-                  )}
-                </div>
               )}
 
               {/* Friend actions */}
@@ -350,19 +310,20 @@ export function UserProfilePage() {
             </div>
           </div>
 
-          {/* XP Bar with level + numbers inside */}
-          <div className="mt-6 relative h-10 rounded-xl bg-white/[0.05] overflow-hidden ring-1 ring-white/[0.06]">
+          {/* XP Bar */}
+          <div className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06]">
             {/* Fill */}
             <div
-              className="absolute inset-y-0 left-0 rounded-xl bg-gradient-to-r from-primary/30 to-accent/20 transition-all duration-700 ease-out"
+              className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary/40 via-primary/30 to-accent/25 transition-all duration-700 ease-out"
               style={{ width: `${gamification.xpProgress * 100}%` }}
             />
+            {/* Subtle top highlight across the whole bar */}
+            <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent w-full pointer-events-none" />
 
             {/* Content overlay */}
-            <div className="relative h-full flex items-center justify-between px-4">
-              {/* Level */}
+            <div className="relative h-full flex items-center justify-between px-5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/80">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">
                   Level
                 </span>
                 <span className="text-sm font-extrabold text-primary tabular-nums leading-none">
@@ -370,21 +331,63 @@ export function UserProfilePage() {
                 </span>
               </div>
 
-              {/* XP numbers */}
-              <div className="flex items-center gap-1 text-[11px] tabular-nums">
-                <span className="font-semibold text-foreground/90">
-                  {gamification.xp}
+              <div className="flex items-center gap-1 tabular-nums">
+                <span className="text-xs font-semibold text-foreground/90">
+                  {gamification.xp.toLocaleString()}
                 </span>
-                <span className="text-muted-foreground/40">/</span>
-                <span className="text-muted-foreground/50">
-                  {gamification.xpToNextLevel + (gamification.level - 1) * 300}
+                <span className="text-muted-foreground/30">/</span>
+                <span className="text-xs text-muted-foreground/40">
+                  {(gamification.xpToNextLevel + (gamification.level - 1) * 300).toLocaleString()}
                 </span>
-                <span className="ml-1 text-[10px] text-muted-foreground/40 uppercase tracking-wider">XP</span>
+                <span className="ml-1.5 text-[10px] font-medium text-muted-foreground/35 uppercase tracking-wider">
+                  XP
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Platform links — floating below hero */}
+      {(profile.steam || profile.plex || profile.tmdbUsername) && (
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3">
+          <div className="flex flex-wrap gap-1.5">
+            {profile.steam && (
+              <a
+                href={profile.steam.profileurl ?? '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[var(--dk-surface-elevated)] hover:text-foreground transition-all"
+              >
+                <SteamIcon className="h-3.5 w-3.5" />
+                Steam
+              </a>
+            )}
+            {profile.plex && (
+              <a
+                href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[#e5a00d]/15 hover:text-[#e5a00d] transition-all"
+              >
+                <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
+                Plex
+              </a>
+            )}
+            {profile.tmdbUsername && (
+              <a
+                href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[#01b4e4]/15 hover:text-[#01b4e4] transition-all"
+              >
+                <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
+                TMDb
+              </a>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -392,7 +395,7 @@ export function UserProfilePage() {
 function ProfileSkeleton() {
   return (
     <div className="pb-16">
-      <div className="min-h-[45vh] rounded-3xl overflow-hidden">
+      <div className="min-h-[60vh] sm:min-h-[50vh] rounded-3xl overflow-hidden">
         <Skeleton className="h-full w-full rounded-none" />
       </div>
     </div>

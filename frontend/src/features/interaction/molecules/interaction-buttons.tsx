@@ -18,7 +18,7 @@ interface ButtonDef {
   activeColor: string
   activeGlow: string
   Icon: typeof Heart
-  showFor: 'all' | 'movie_show' | 'game'
+  showFor: 'all' | 'movie_show' | 'game' | 'music'
 }
 
 const XP_VALUES: Record<InteractionType, number> = {
@@ -27,6 +27,7 @@ const XP_VALUES: Record<InteractionType, number> = {
   watched: 30,
   played: 30,
   started: 10,
+  listened: 30,
 }
 
 const BUTTONS: ButtonDef[] = [
@@ -77,6 +78,22 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-emerald-500/15',
     Icon: Gamepad2,
     showFor: 'game',
+  },
+  {
+    type: 'watchlisted',
+    label: 'Wishlist',
+    activeColor: 'text-sky-400',
+    activeGlow: 'from-sky-500/15',
+    Icon: Bookmark,
+    showFor: 'music',
+  },
+  {
+    type: 'listened',
+    label: 'Listened',
+    activeColor: 'text-amber-400',
+    activeGlow: 'from-amber-500/15',
+    Icon: CheckCircle2,
+    showFor: 'music',
   },
 ]
 
@@ -153,7 +170,7 @@ function InteractionButton({
 
 interface InteractionSectionProps {
   mediaId: string
-  mediaType: 'movie' | 'show' | 'game'
+  mediaType: 'movie' | 'show' | 'game' | 'music'
   className?: string
   userInteractions?: UserInteractionState | null
   children?: ReactNode
@@ -175,7 +192,7 @@ function InteractionSection({
   const interactions = userInteractions ?? fetchedInteractions ?? null
 
   if (!isAuthenticated) {
-    const listLabel = mediaType === 'game' ? 'wishlist' : 'watchlist'
+    const listLabel = mediaType === 'game' || mediaType === 'music' ? 'wishlist' : 'watchlist'
     return (
       <section className={cn(className)}>
         <div className="rounded-3xl border border-white/[0.06] bg-[var(--dk-surface-base)] p-6 text-center">
@@ -193,7 +210,8 @@ function InteractionSection({
   const visibleButtons = BUTTONS.filter((b) => {
     if (b.showFor === 'all') return true
     if (b.showFor === 'movie_show') return mediaType === 'movie' || mediaType === 'show'
-    return mediaType === 'game'
+    if (b.showFor === 'game') return mediaType === 'game'
+    return mediaType === 'music'
   })
 
   return (

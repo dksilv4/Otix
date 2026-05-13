@@ -7,6 +7,7 @@ import { MediaHero } from './media-hero'
 import { MovieSection } from './movie-section'
 import { ShowSection } from './show-section'
 import { GameSection } from './game-section'
+import { MusicSection } from './music-section'
 import { CastCrewList } from './cast-crew-list'
 import { CollectionSection } from './collection-section'
 import { DeferredSection } from '@ui/molecules/deferred-section'
@@ -83,7 +84,14 @@ function DetailSkeleton() {
 // ── Error ──
 
 function ErrorState({ mediaType }: { mediaType: string }) {
-  const typeLabel = mediaType === 'movie' ? 'Movie' : mediaType === 'show' ? 'Show' : 'Game'
+  const typeLabel =
+    mediaType === 'movie'
+      ? 'Movie'
+      : mediaType === 'show'
+        ? 'Show'
+        : mediaType === 'music'
+          ? 'Album'
+          : 'Game'
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center px-4">
@@ -130,9 +138,23 @@ function isGame(detail: MediaItemDetail): detail is MediaItemDetail & { game: No
   return detail.mediaType === 'game' && detail.game != null
 }
 
-function mediaTypeFromParam(param: string): 'movie' | 'show' | 'game' {
-  if (param === 'movie' || param === 'show' || param === 'game') return param
+function isMusic(detail: MediaItemDetail): detail is MediaItemDetail & { album: NonNullable<MediaItemDetail['album']> } {
+  return detail.mediaType === 'music' && detail.album != null
+}
+
+function mediaTypeFromParam(param: string): 'movie' | 'show' | 'game' | 'music' {
+  if (param === 'movie' || param === 'show' || param === 'game' || param === 'music') return param
   return 'movie'
+}
+
+function formatMusicCreditsLine(credits: MediaItemDetail['credits']): string | null {
+  const primary = credits.filter((c) => c.role === 'primary').map((c) => c.person.name)
+  const featured = credits.filter((c) => c.role === 'featured').map((c) => c.person.name)
+  if (primary.length === 0 && featured.length === 0) return null
+  const head = primary.join(', ')
+  const tail = featured.length ? `feat. ${featured.join(', ')}` : ''
+  if (head && tail) return `${head} · ${tail}`
+  return head || tail || null
 }
 
 // ── Helpers ──
@@ -190,6 +212,8 @@ export function MediaDetail() {
   const detail = data
   const year = formatYear(detail.releaseDate)
   const titleWithYear = year ? `${detail.title} (${year})` : detail.title
+  const displayType = detail.mediaType as 'movie' | 'show' | 'game' | 'music'
+  const musicCreditsLine = detail.mediaType === 'music' ? formatMusicCreditsLine(detail.credits) : null
 
   return (
     <div className="space-y-12 pb-16">
@@ -199,32 +223,42 @@ export function MediaDetail() {
         <meta name="description" content={seoDescription(detail.overview, detail.title)} />
         <meta property="og:title" content={`${titleWithYear} - Otix`} />
         <meta property="og:description" content={seoDescription(detail.overview, detail.title)} />
-        <meta property="og:type" content={detail.mediaType === 'show' ? 'video.tv_show' : 'video.movie'} />
+        <meta property="og:type" content={
+          detail.mediaType === 'show'
+            ? 'video.tv_show'
+            : detail.mediaType === 'music'
+              ? 'music.album'
+              : 'video.movie'
+        } />
         {detail.posterUrl && <meta property="og:image" content={detail.posterUrl} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${titleWithYear} - Otix`} />
         <meta name="twitter:description" content={seoDescription(detail.overview, detail.title)} />
         {detail.posterUrl && <meta name="twitter:image" content={detail.posterUrl} />}
-        <link rel="canonical" href={window.location.origin + `/media/${mediaType}/${detail.slug || mediaId}`} />
+        <link rel="canonical" href={window.location.origin + `/media/${displayType}/${detail.slug || mediaId}`} />
         {detail.logoUrl && <link rel="preload" as="image" href={detail.logoUrl} fetchPriority="high" />}
       </Helmet>
 
       {/* ── Hero ── */}
       <div ref={heroRef}>
         <MediaHero
-          mediaType={mediaType}
+          mediaType={displayType}
           title={detail.title}
-        backdropUrl={detail.backdropUrl}
-        posterUrl={detail.posterUrl}
-        logoUrl={detail.logoUrl}
-        textlessPosterUrl={detail.textlessPosterUrl}
-        releaseDate={detail.releaseDate}
-        genres={detail.genres}
-        overview={detail.overview}
-        runtime={detail.movie?.runtime}
-        tagline={detail.movie?.tagline || detail.game?.reviewSummary}
-        status={detail.show?.status || detail.game?.releaseStatus}
-        isAnime={detail.show?.isAnime}
+          backdropUrl={detail.backdropUrl}
+          posterUrl={detail.posterUrl}
+          logoUrl={detail.logoUrl}
+          textlessPosterUrl={detail.textlessPosterUrl}
+          releaseDate={detail.releaseDate}
+          genres={detail.genres}
+          externalRatings={detail.externalRatings}
+          avgRating={detail.avgRating}
+          ratingCount={detail.ratingCount}
+          overview={detail.overview}
+          runtime={detail.movie?.runtime}
+          albumDurationMs={detail.album?.durationMs}
+          tagline={detail.movie?.tagline || detail.game?.reviewSummary || musicCreditsLine}
+          status={detail.show?.status || detail.game?.releaseStatus}
+          isAnime={detail.show?.isAnime}
         />
       </div>
 
@@ -233,7 +267,7 @@ export function MediaDetail() {
         {/* Interactions — Like, Watchlist, Watched, Played */}
         <InteractionSection
           mediaId={detail.id}
-          mediaType={detail.mediaType as 'movie' | 'show' | 'game'}
+          mediaType={displayType}
           userInteractions={detail.userInteractions}
         >
           <ReviewActionButton mediaId={detail.id} />
@@ -258,6 +292,13 @@ export function MediaDetail() {
             steamPlaytime2weeks={detail.steamPlaytime2weeks}
             steamRtimeLastPlayed={detail.steamRtimeLastPlayed}
           />
+        )}
+
+        {isMusic(detail) && <MusicSection album={detail.album} />}
+        {detail.mediaType === 'music' && !detail.album && (
+          <p className="text-center text-sm text-muted-foreground">
+            Album details are still syncing for this release.
+          </p>
         )}
 
         {/* Collection (movies only) */}

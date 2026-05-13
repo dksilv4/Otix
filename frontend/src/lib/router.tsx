@@ -1,4 +1,5 @@
-import { createRouter, createRootRoute, createRoute, Outlet, useLocation } from "@tanstack/react-router"
+import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
 import { AuthPage } from "@auth/organisms/auth-page"
@@ -19,6 +20,7 @@ import { ResetPasswordPage } from "@auth/organisms/reset-password-page"
 import { SteamCallbackPage } from "@auth/organisms/steam-callback-page"
 import { SteamConnectCallbackPage } from "@auth/organisms/steam-connect-callback-page"
 import { PlexConnectCallbackPage } from "@auth/organisms/plex-connect-callback-page"
+import { SpotifyConnectCallbackPage } from "@auth/organisms/spotify-connect-callback-page"
 import { TmdbConnectCallbackPage } from "@auth/organisms/tmdb-connect-callback-page"
 
 // ── Root — chooses layout based on route ──
@@ -63,6 +65,18 @@ const personDetailRoute = createRoute({
 })
 
 // ── Library ──
+
+const libraryIndexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library",
+  component: function LibraryIndex() {
+    const navigate = useNavigate()
+    useEffect(() => {
+      navigate({ to: "/library/$tab", params: { tab: "watchlist" }, replace: true })
+    }, [navigate])
+    return null
+  },
+})
 
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -156,6 +170,12 @@ const plexConnectCallbackRoute = createRoute({
   component: PlexConnectCallbackPage,
 })
 
+const spotifyConnectCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/spotify/connect/callback",
+  component: SpotifyConnectCallbackPage,
+})
+
 const tmdbConnectCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/tmdb/connect/callback",
@@ -186,6 +206,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   mediaDetailRoute,
   personDetailRoute,
+  libraryIndexRoute,
   libraryRoute,
   listDetailRoute,
   settingsRoute,
@@ -198,6 +219,7 @@ const routeTree = rootRoute.addChildren([
   forgotPasswordRoute,
   resetPasswordRoute,
   steamCallbackRoute,
+  spotifyConnectCallbackRoute,
   steamConnectCallbackRoute,
   plexConnectCallbackRoute,
   tmdbConnectCallbackRoute,

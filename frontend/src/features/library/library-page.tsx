@@ -1,29 +1,33 @@
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
-import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, ListIcon, PlusIcon, RefreshCw, EyeOffIcon } from "lucide-react"
+import { useParams, useNavigate } from "@tanstack/react-router"
+import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, ListIcon, MusicIcon, PlusIcon, RefreshCw, EyeOffIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
-import { useLibraryTab, useSteamLibraryScan, useUnmatchedSteamGames, useSteamStatus, useSteamWishlist, useSteamWishlistScan, usePlexLibraryScan, usePlexStatus, TAB_LABELS, type LibraryTab, type UnmatchedGame } from "./library-queries"
+import { useLibraryTab, useSteamLibraryScan, useUnmatchedSteamGames, useSteamStatus, useSteamWishlist, useSteamWishlistScan, usePlexLibraryScan, usePlexStatus, useSpotifyLibraryScan, useSpotifyStatus, TAB_LABELS, LIBRARY_TABS, type LibraryTab, type UnmatchedGame } from "./library-queries"
 import { useUserLists, useCreateList, type UserListCreate } from "@/features/list/list-queries"
 import { ListCard } from "@/features/list/molecules/list-card"
 import { ListComposer } from "@/features/list/organisms/list-composer"
 import { useAuth } from "@/features/auth/auth-provider"
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
 import { PlexIcon } from "@/features/dk-ui/atoms/plex-icon"
+import { SpotifyIcon } from "@/features/dk-ui/atoms/spotify-icon"
 
 const TAB_ICONS: Record<LibraryTab, React.ReactNode> = {
   watchlist: <BookmarkIcon className="h-4 w-4" />,
   like: <HeartIcon className="h-4 w-4" />,
   watched: <CheckCircle2Icon className="h-4 w-4" />,
   played: <Gamepad2Icon className="h-4 w-4" />,
+  listened: <MusicIcon className="h-4 w-4" />,
+  spotify: <SpotifyIcon className="h-4 w-4" />,
   steam: <SteamIcon className="h-4 w-4" />,
   plex: <PlexIcon className="h-4 w-4" />,
   wishlist: <BookmarkIcon className="h-4 w-4" />,
   lists: <ListIcon className="h-4 w-4" />,
 }
 
-const TABS: LibraryTab[] = ["watchlist", "like", "watched", "played", "steam", "plex", "wishlist", "lists"]
+const TABS: LibraryTab[] = ["watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"]
 
 function SkeletonGrid() {
   return (
@@ -130,6 +134,44 @@ function PlexEmptyState() {
   )
 }
 
+function SpotifyEmptyState() {
+  const scan = useSpotifyLibraryScan()
+
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)]">
+        <SpotifyIcon className="h-8 w-8 opacity-40" />
+      </div>
+      <p className="text-lg font-semibold text-foreground">Spotify library empty</p>
+      <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+        Sync your Spotify library to see your liked tracks and saved albums here.
+      </p>
+      <button
+        onClick={() => scan.mutate()}
+        disabled={scan.isPending}
+        className={cn(
+          "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
+          "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
+          scan.isPending && "opacity-60 pointer-events-none",
+        )}
+      >
+        <RefreshCw className={cn("h-4 w-4", scan.isPending && "animate-spin")} />
+        {scan.isPending ? "Syncing..." : "Sync Library"}
+      </button>
+      {scan.data && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Sync started. Track progress in Settings → Integrations.
+        </p>
+      )}
+      {scan.error && (
+        <p className="mt-2 text-xs text-destructive">
+          Sync failed. Please try again.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function formatPlaytime(minutes: number): string {
   if (minutes < 60) return `${minutes}m`
   const hours = minutes / 60
@@ -138,7 +180,11 @@ function formatPlaytime(minutes: number): string {
 }
 
 export function LibraryPage() {
-  const [activeTab, setActiveTab] = useState<LibraryTab>("watchlist")
+  const params = useParams({ from: "/library/$tab" })
+  const navigate = useNavigate()
+  const rawTab = params.tab as string
+  const activeTab: LibraryTab = LIBRARY_TABS.includes(rawTab as LibraryTab) ? (rawTab as LibraryTab) : "watchlist"
+
   const [composerOpen, setComposerOpen] = useState(false)
   const createList = useCreateList()
   const { user } = useAuth()
@@ -155,19 +201,25 @@ export function LibraryPage() {
       if (!user?.plexId) {
         filtered = filtered.filter((t) => t !== "plex")
       }
+      if (!user?.spotifyId) {
+        filtered = filtered.filter((t) => t !== "spotify")
+      }
       return filtered
     },
-    [user?.steamId, user?.plexId],
+    [user?.steamId, user?.plexId, user?.spotifyId],
   )
 
   useEffect(() => {
     if ((activeTab === "steam" || activeTab === "wishlist") && !user?.steamId) {
-      setActiveTab("watchlist")
+      navigate({ to: "/library/$tab", params: { tab: "watchlist" }, replace: true })
     }
     if (activeTab === "plex" && !user?.plexId) {
-      setActiveTab("watchlist")
+      navigate({ to: "/library/$tab", params: { tab: "watchlist" }, replace: true })
     }
-  }, [activeTab, user?.steamId, user?.plexId])
+    if (activeTab === "spotify" && !user?.spotifyId) {
+      navigate({ to: "/library/$tab", params: { tab: "watchlist" }, replace: true })
+    }
+  }, [activeTab, user?.steamId, user?.plexId, user?.spotifyId, navigate])
 
   function handleCreate(data: UserListCreate) {
     createList.mutate(data, { onSuccess: () => setComposerOpen(false) })
@@ -186,7 +238,7 @@ export function LibraryPage() {
         {visibleTabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => navigate({ to: "/library/$tab", params: { tab }, replace: true })}
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 whitespace-nowrap",
               activeTab === tab
@@ -249,6 +301,11 @@ function MediaTabContent({ tab }: { tab: Exclude<LibraryTab, "lists" | "wishlist
   const plexStatus = isPlexTab ? plexStatusQuery.data : null
   const plexScan = usePlexLibraryScan()
 
+  const isSpotifyTab = tab === "spotify"
+  const spotifyStatusQuery = useSpotifyStatus()
+  const spotifyStatus = isSpotifyTab ? spotifyStatusQuery.data : null
+  const spotifyScan = useSpotifyLibraryScan()
+
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
@@ -270,6 +327,13 @@ function MediaTabContent({ tab }: { tab: Exclude<LibraryTab, "lists" | "wishlist
     }
   }, [isPlexTab, plexStatus, plexScan.isPending, plexScan.data, plexScan.mutate])
 
+  // Auto-scan if spotify tab is shown and no tracks have been synced
+  useEffect(() => {
+    if (isSpotifyTab && spotifyStatus && spotifyStatus.trackCount === 0 && !spotifyScan.isPending && !spotifyScan.data) {
+      spotifyScan.mutate()
+    }
+  }, [isSpotifyTab, spotifyStatus, spotifyScan.isPending, spotifyScan.data, spotifyScan.mutate])
+
   useEffect(() => {
     if (isInView && hasNextPage && !isFetchingNextPage && !isLoading) {
       fetchNextPage()
@@ -287,7 +351,7 @@ function MediaTabContent({ tab }: { tab: Exclude<LibraryTab, "lists" | "wishlist
           <p className="text-muted-foreground">Failed to load. Please try again.</p>
         </div>
       ) : items.length === 0 ? (
-        isSteamTab ? <SteamEmptyState /> : isPlexTab ? <PlexEmptyState /> : <EmptyState tab={tab} />
+        isSteamTab ? <SteamEmptyState /> : isPlexTab ? <PlexEmptyState /> : isSpotifyTab ? <SpotifyEmptyState /> : <EmptyState tab={tab} />
       ) : (
         <>
           {isSteamTab && status && status.gameCount > 0 && (

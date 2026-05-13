@@ -1,5 +1,4 @@
 import { Star } from "lucide-react"
-import { StarRating } from "@ui/atoms/star-rating"
 import { cn } from "@/lib/utils"
 import logoSvg from "@/assets/otix-logo.svg?raw"
 import igdbLogo from "@/assets/provider-logos/igdb.svg"
@@ -78,6 +77,9 @@ function providerTheme(provider: string): ProviderTheme {
     tmdb:             { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
     igdb_critic:      { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
     igdb_user:        { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
+    spotify:          { bg: 'bg-[#1DB954]', text: 'text-black', star: 'text-black', score: 'text-black' },
+    lastfm:           { bg: 'bg-[#d51007]', text: 'text-white', star: 'text-white', score: 'text-white' },
+    musicbrainz:      { bg: 'bg-[#ba478f]', text: 'text-white', star: 'text-white', score: 'text-white' },
   }
   return themes[provider] ?? { bg: 'bg-muted', text: 'text-muted-foreground', star: 'text-amber-400', score: 'text-foreground' }
 }
@@ -105,6 +107,9 @@ function providerLabel(key: string): string {
     tmdb: "TMDb",
     igdb_critic: "IGDB Critic",
     igdb_user: "IGDB User",
+    spotify: "Spotify",
+    lastfm: "Last.fm",
+    musicbrainz: "MusicBrainz",
   }
   return map[key] ?? key
 }
@@ -176,9 +181,9 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
           </div>
         </div>
 
-        {/* ── External Ratings — secondary row ── */}
+        {/* ── External Ratings — compact row ── */}
         {hasExternalRatings && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <div className="flex flex-wrap gap-1.5">
             {externalRatings.map((r) => {
               const theme = providerTheme(r.provider)
               const logo = providerLogo(r.provider)
@@ -186,36 +191,33 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                 <div
                   key={r.id}
                   className={cn(
-                    'flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-center shadow-[var(--dk-shadow-sm)]',
+                    'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold',
                     theme.bg,
                     theme.text,
                   )}
                   title={`${r.score}/${r.maxScore}${r.voteCount ? ` (${r.voteCount.toLocaleString()} votes)` : ''}`}
                 >
-                  <div className="flex h-6 items-center justify-center">
-                    {isSteamProvider(r.provider) ? (
-                      <SteamIcon className="h-5 w-5 opacity-90" />
-                    ) : r.provider === "plex" ? (
-                      <PlexIcon className="h-5 w-5 opacity-90" />
-                    ) : logo ? (
-                      <img
-                        src={logo}
-                        alt={providerLabel(r.provider)}
-                        className={cn(
-                          'max-h-5 max-w-[4.75rem] object-contain opacity-90',
-                          theme.logoInvert && 'invert brightness-0',
-                        )}
-                      />
-                    ) : (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
-                        {providerLabel(r.provider)}
-                      </span>
-                    )}
-                  </div>
-                  <span className={cn('text-xl font-extrabold tabular-nums leading-none', theme.score)}>
+                  {isSteamProvider(r.provider) ? (
+                    <SteamIcon className="h-3.5 w-3.5 opacity-90 shrink-0" />
+                  ) : r.provider === "plex" ? (
+                    <PlexIcon className="h-3.5 w-3.5 opacity-90 shrink-0" />
+                  ) : logo ? (
+                    <img
+                      src={logo}
+                      alt=""
+                      className={cn(
+                        'h-3.5 w-auto max-w-[3.5rem] object-contain opacity-90 shrink-0',
+                        theme.logoInvert && 'invert brightness-0',
+                      )}
+                    />
+                  ) : (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
+                      {providerLabel(r.provider)}
+                    </span>
+                  )}
+                  <span className={cn('tabular-nums', theme.score)}>
                     {Math.round(r.score)}
                   </span>
-                  <StarRating score={Math.round(r.score)} maxScore={r.maxScore} size="sm" color={theme.star} />
                 </div>
               )
             })}
