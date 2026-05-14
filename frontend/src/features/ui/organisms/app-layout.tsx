@@ -7,6 +7,7 @@ import { usePageMeta } from '@/lib/page-context'
 import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
+import { SpotifyPlayerBar } from '@/features/spotify/spotify-player-bar'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -65,6 +66,7 @@ function AppShell({ children }: { children: ReactNode }) {
       <UserMenu />
 
       <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
+      <SpotifyPlayerBar />
       <XPToastContainer />
     </div>
   )

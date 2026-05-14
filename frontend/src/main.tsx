@@ -6,9 +6,12 @@ import { HelmetProvider } from 'react-helmet-async'
 import { queryClient } from '@/lib/query-client'
 import { router } from '@/lib/router'
 import { ShaderQualityProvider } from '@/lib/shader-quality'
+import { MotionPreferenceProvider } from '@/lib/motion-preference'
 import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/features/auth'
 import { PageMetaProvider } from '@/lib/page-context'
+import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provider'
+import { DkToastProvider } from '@/features/dk-ui/molecules/toast'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
@@ -16,13 +19,19 @@ createRoot(document.getElementById('root')!).render(
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <ShaderQualityProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <PageMetaProvider>
-                <RouterProvider router={router} />
-              </PageMetaProvider>
-            </AuthProvider>
-          </ThemeProvider>
+          <MotionPreferenceProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <DkToastProvider>
+                  <SpotifyPlayerProvider>
+                    <PageMetaProvider>
+                      <RouterProvider router={router} />
+                    </PageMetaProvider>
+                  </SpotifyPlayerProvider>
+                </DkToastProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </MotionPreferenceProvider>
         </ShaderQualityProvider>
       </QueryClientProvider>
     </HelmetProvider>
