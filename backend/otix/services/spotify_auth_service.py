@@ -29,10 +29,14 @@ STATE_TTL = 600  # 10 minutes
 
 SCOPES = [
     "user-library-read",
+    "user-library-modify",
     "playlist-read-private",
     "playlist-read-collaborative",
     "user-read-email",
     "user-read-private",
+    "streaming",
+    "user-read-playback-state",
+    "user-modify-playback-state",
 ]
 
 

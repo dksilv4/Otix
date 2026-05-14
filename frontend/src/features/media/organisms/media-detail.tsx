@@ -1,8 +1,12 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
+import { useQueryClient } from '@tanstack/react-query'
 import { useMediaDetail } from '../hooks/use-media-detail'
 import { usePageMeta } from '@/lib/page-context'
+import { apiClient, API_BASE_URL } from '@/lib/api-client'
+import { cn } from '@/lib/utils'
+import { mediaKeys } from '../media-keys'
 import { MediaHero } from './media-hero'
 import { MovieSection } from './movie-section'
 import { ShowSection } from './show-section'
@@ -19,6 +23,9 @@ import { RatingsSection } from '@/features/review/organisms/ratings-section'
 import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
 import type { MediaItemDetail } from '../media-queries'
+import { useAuth } from '@/features/auth/auth-provider'
+import { useToast } from '@/features/dk-ui/molecules/toast'
+import { RefreshCw, ShieldCheck } from 'lucide-react'
 
 // ── Skeleton ──
 
@@ -169,6 +176,139 @@ function seoDescription(overview?: string | null, title?: string): string {
   return `Details for ${title || 'this title'} on Otix`
 }
 
+type MediaRehydrateEvent =
+  | { type: 'rehydrate_started'; title?: string; media_type?: string }
+  | { type: 'provider_started'; provider: string; label: string }
+  | { type: 'provider_complete'; provider: string; label: string }
+  | { type: 'rehydrate_complete'; title?: string }
+  | { type: 'error'; message?: string; error?: string }
+
+async function* parseMediaRehydrateEvents(response: Response): AsyncGenerator<MediaRehydrateEvent> {
+  const reader = response.body?.getReader()
+  if (!reader) return
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const frames = buffer.split('\n\n')
+    buffer = frames.pop() || ''
+
+    for (const frame of frames) {
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('data: ')) {
+          yield JSON.parse(line.slice(6)) as MediaRehydrateEvent
+        }
+      }
+    }
+  }
+}
+
+function AdminRehydrateAction({ mediaId }: { mediaId: string }) {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const abortRef = useRef<AbortController | null>(null)
+  const [running, setRunning] = useState(false)
+  const [phase, setPhase] = useState<string | null>(null)
+  const [lastProvider, setLastProvider] = useState<string | null>(null)
+
+  useEffect(() => {
+    return () => abortRef.current?.abort()
+  }, [])
+
+  if (!user?.isAdmin) return null
+
+  const refreshMedia = () => {
+    queryClient.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+  }
+
+  const startRehydrate = async () => {
+    abortRef.current?.abort()
+    const abortController = new AbortController()
+    abortRef.current = abortController
+    setRunning(true)
+    setPhase('Queueing high-priority hydration...')
+    setLastProvider(null)
+
+    try {
+      const { data } = await apiClient.post<{ taskId: string }>(`/media/${mediaId}/rehydrate`)
+      const token = localStorage.getItem('otix-access-token')
+      const response = await fetch(`${API_BASE_URL}/media/${mediaId}/rehydrate/${data.taskId}/stream`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: abortController.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`SSE connection failed: ${response.status}`)
+      }
+
+      for await (const event of parseMediaRehydrateEvents(response)) {
+        switch (event.type) {
+          case 'rehydrate_started':
+            setPhase('Hydration started')
+            break
+          case 'provider_started':
+            setPhase(`Running ${event.label}`)
+            setLastProvider(event.label)
+            break
+          case 'provider_complete':
+            setPhase(`Updated ${event.label}`)
+            setLastProvider(event.label)
+            refreshMedia()
+            break
+          case 'rehydrate_complete':
+            setPhase('Hydration complete')
+            refreshMedia()
+            toast({ title: 'Media rehydrated', variant: 'success' })
+            break
+          case 'error':
+            throw new Error(event.message || event.error || 'Hydration failed')
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      const message = err instanceof Error ? err.message : 'Hydration failed'
+      setPhase(message)
+      toast({ title: 'Could not rehydrate media', description: message, variant: 'error' })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--dk-surface-glass)] px-4 py-3 shadow-[var(--dk-shadow-sm)]">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <ShieldCheck className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Admin hydration</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {phase ?? 'Force a full provider refresh for this item.'}
+            {lastProvider && running ? ` · ${lastProvider}` : ''}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={startRehydrate}
+        disabled={running}
+        className={cn(
+          'inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-base)] px-3 py-2 text-xs font-medium text-foreground shadow-[var(--dk-shadow-sm)] transition-colors',
+          'hover:bg-[var(--dk-surface-glass-hover)] disabled:pointer-events-none disabled:opacity-60',
+        )}
+      >
+        <RefreshCw className={cn('h-3.5 w-3.5', running && 'animate-spin')} />
+        {running ? 'Hydrating' : 'Force rehydrate'}
+      </button>
+    </div>
+  )
+}
+
 // ── Page ──
 
 export function MediaDetail() {
@@ -264,6 +404,8 @@ export function MediaDetail() {
 
       {/* ── Content sections ── */}
       <div className="mx-auto max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
+        <AdminRehydrateAction mediaId={detail.id} />
+
         {/* Interactions — Like, Watchlist, Watched, Played */}
         <InteractionSection
           mediaId={detail.id}

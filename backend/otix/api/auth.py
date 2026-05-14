@@ -406,6 +406,7 @@ def _user_response(user: User) -> UserResponse:
         id=user.id,
         email=user.email,
         username=user.username,
+        is_admin=user.is_admin,
         is_verified=user.is_verified,
         two_factor_enabled=user.two_factor_enabled,
         steam_id=user.steam_id,
@@ -423,6 +424,8 @@ def _user_response(user: User) -> UserResponse:
         background_url=user.background_url,
         integration_visibility=user.integration_visibility if user.integration_visibility else None,
         total_xp=user.total_xp,
+        profile_sections=user.profile_sections if user.profile_sections else None,
+        daily_mood_checkins_enabled=user.daily_mood_checkins_enabled,
     )
 
 
@@ -449,6 +452,10 @@ async def update_me(
         current_user.background_url = body.background_url
     if body.integration_visibility is not None:
         current_user.integration_visibility = body.integration_visibility
+    if body.profile_sections is not None:
+        current_user.profile_sections = body.profile_sections
+    if body.daily_mood_checkins_enabled is not None:
+        current_user.daily_mood_checkins_enabled = body.daily_mood_checkins_enabled
     await db.commit()
     await db.refresh(current_user)
     return _user_response(current_user)

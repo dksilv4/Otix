@@ -29,6 +29,10 @@ class UserProfileOut(BaseModel):
     created_at: datetime
     review_count: int = 0
     total_xp: int = 0
+    avg_user_rating: float | None = None
+    user_rating_count: int = 0
+    composite_score: float | None = None
+    profile_sections: list[str] | None = None
     steam: SteamIntegrationPublic | None = None
     plex: PlexIntegrationPublic | None = None
     tmdb_username: str | None = None

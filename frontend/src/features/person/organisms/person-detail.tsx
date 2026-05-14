@@ -20,6 +20,7 @@ export function PersonDetail() {
   const personId = params.personId || ''
 
   const { data: person, isLoading, isError } = useQuery(personQueries.detail(personId))
+  const { data: relatedArtists } = useQuery(personQueries.related(personId))
 
   if (isLoading) {
     return (
@@ -54,7 +55,14 @@ export function PersonDetail() {
     return acc
   }, {})
 
-  const creditOrder = ['movie', 'show', 'game', 'other']
+  const creditOrder = ['music', 'movie', 'show', 'game', 'other']
+  const creditLabels: Record<string, string> = {
+    music: 'Music',
+    movie: 'Movies',
+    show: 'Shows',
+    game: 'Games',
+    other: 'Other',
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-4 pt-24 pb-16 sm:px-6 lg:px-8">
@@ -98,13 +106,13 @@ export function PersonDetail() {
 
         return (
           <section key={type}>
-            <h2 className="mb-3 text-lg font-semibold capitalize">{type === 'game' ? 'Games' : `${type}s`}</h2>
+            <h2 className="mb-3 text-lg font-semibold">{creditLabels[type] ?? type}</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
               {items.map((c) => (
                 <div key={c.id} className="w-36 shrink-0">
                   <MediaCard
                     id={c.mediaItem.id}
-                    mediaType={c.mediaItem.mediaType as 'movie' | 'show' | 'game'}
+                    mediaType={c.mediaItem.mediaType as 'movie' | 'show' | 'game' | 'music'}
                     title={c.mediaItem.title}
                     posterUrl={c.mediaItem.posterUrl}
                     releaseDate={c.mediaItem.releaseDate}
@@ -120,6 +128,32 @@ export function PersonDetail() {
           </section>
         )
       })}
+
+      {relatedArtists && relatedArtists.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Fans Also Like</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {relatedArtists.map((artist) => (
+              <div key={artist.spotify_artist_id || artist.name} className="w-36 shrink-0 text-center">
+                <div className="aspect-square w-full overflow-hidden rounded-full ring-1 ring-border">
+                  {artist.image_url ? (
+                    <img
+                      src={artist.image_url}
+                      alt={artist.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[var(--dk-surface-glass)] text-2xl font-bold text-muted-foreground">
+                      {artist.name[0]}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2 text-xs font-medium truncate">{artist.name}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

@@ -1,4 +1,8 @@
 *.pyc
+.env
+.env.*
+**/.env
+**/.env.*
 /backend/.venv
 /backend/otix.egg-info
 

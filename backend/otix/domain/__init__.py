@@ -16,6 +16,7 @@ from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
 from otix.domain.review import Review
 from otix.domain.media import (
+    Album,
     Episode,
     ExternalID,
     Game,
@@ -27,11 +28,14 @@ from otix.domain.media import (
     Platform,
     Season,
     Show,
+    Track,
+    TrackRating,
     UserPlexItem,
     UserPlexLibrary,
     UserPlexServer,
     UserSteamGame,
 )
+from otix.domain.mood import UserMoodCheckIn
 from otix.domain.people import MediaCredit, Person
 from otix.domain.sync import ProviderState, SyncJob
 from otix.domain.friend import FriendRequest
@@ -40,6 +44,7 @@ from otix.domain.user import AuthActionToken, RefreshToken, User, UserSession
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
 
 __all__ = [
+    "Album",
     "AuthActionToken",
     "Collection",
     "CollectionItem",
@@ -77,7 +82,10 @@ __all__ = [
     "Season",
     "Show",
     "SyncJob",
+    "Track",
+    "TrackRating",
     "User",
+    "UserMoodCheckIn",
     "UserList",
     "UserListItem",
     "UserSession",

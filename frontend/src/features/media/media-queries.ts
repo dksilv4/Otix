@@ -1,4 +1,4 @@
-import { queryOptions, infiniteQueryOptions } from '@tanstack/react-query'
+import { queryOptions, infiniteQueryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import type { UserInteractionState } from '@/features/interaction/interaction-queries'
 import { mediaKeys, type SearchParams } from './media-keys'
@@ -165,6 +165,18 @@ export interface TrackOut {
   spotifyId?: string | null
   musicbrainzRecordingId?: string | null
   audioFeatures?: Record<string, unknown> | null
+  avgRating?: number | null
+  ratingCount: number
+}
+
+export interface TrackRatingOut {
+  userId: string
+  trackId: string
+  score: number
+  avgRating: number | null
+  ratingCount: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AlbumDetail {
@@ -264,4 +276,18 @@ export const mediaQueries = {
       staleTime: 2000,
       enabled: params.query.length > 0,
     }),
+}
+
+export function useRateTrack() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ trackId, score }: { trackId: string; score: number }) => {
+      const { data } = await apiClient.put<TrackRatingOut>(`/tracks/${trackId}/rating`, { score })
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.all() })
+    },
+  })
 }

@@ -6,9 +6,13 @@ import { MediaGrid } from '@ui/molecules/media-grid'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
 import { mediaQueries, type MediaListResponse } from '@media/media-queries'
 import { mediaKeys } from '@media/media-keys'
+import { PersonCard } from '@person/molecules/person-card'
+import { personQueries } from '@person/person-queries'
 import { ChatSearchInput } from '../molecules/chat-search-input'
+import { DailyMoodCheckIn, type RecordedMoodContext } from '../molecules/daily-mood-check-in'
 import { DiscoverHero } from './discover-hero'
 import { FilterDropdown, TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
+import { apiClient } from '@/lib/api-client'
 
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 import { MediaSection } from './media-section'
@@ -58,7 +62,7 @@ function SearchSkeleton({ count = 12 }: { count?: number }) {
 }
 
 function SearchEmpty({ query, type }: { query: string; type: string }) {
-  const typeLabel = type === 'all' ? '' : TYPE_TABS.find((t) => t.value === type)?.label?.toLowerCase()
+  const typeLabel = type === 'all' ? '' : TYPE_OPTIONS.find((t) => t.value === type)?.label?.toLowerCase()
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <p className="text-lg font-semibold text-foreground">No results found</p>
@@ -79,16 +83,28 @@ function SearchError() {
 }
 
 function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: string; type: string; sortBy: SortValue; pageSize?: number }) {
-  const searchType = type === 'all' ? undefined : type
+  const isPeopleOnly = type === 'people'
+  const includePeople = type === 'all' || isPeopleOnly
+  const searchType = type === 'all' || isPeopleOnly ? undefined : type
   const sentinelRef = useRef<HTMLDivElement>(null)
   const isSentinelInView = useInView(sentinelRef, { margin: '0px 0px 200px 0px' })
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     ...mediaQueries.search({ query, type: searchType, sortBy: sortBy || undefined }),
-    enabled: query.length > 0,
+    enabled: query.length > 0 && !isPeopleOnly,
+  })
+
+  const {
+    data: peopleData,
+    isLoading: isPeopleLoading,
+    isError: isPeopleError,
+  } = useQuery({
+    ...personQueries.search(query, 10),
+    enabled: query.length > 0 && includePeople,
   })
 
   const items = data?.pages.flatMap((page) => page.items) ?? []
+  const people = peopleData?.items ?? []
   const total = data?.pages[0]?.total ?? undefined
   const backfillPending = data?.pages[0]?.backfillPending ?? false
 
@@ -102,6 +118,7 @@ function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: string; 
       type: searchType,
       knownIds,
     }),
+    enabled: query.length > 0 && !isPeopleOnly && backfillPending,
     refetchInterval: backfillPending ? 3000 : false,
   })
 
@@ -151,34 +168,67 @@ function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: string; 
   // Smart skeleton count: how many items remain to be loaded
   const loadedCount = items.length
   const remainingCount = total != null ? Math.min(total - loadedCount, pageSize) : pageSize
+  const hasResults = items.length > 0 || people.length > 0
+  const isInitialLoading = (!isPeopleOnly && isLoading) || (includePeople && isPeopleLoading)
+  const hasError = (!isPeopleOnly && isError) || (includePeople && isPeopleError)
 
   return (
     <div className="space-y-6">
-      {isLoading ? (
+      {isInitialLoading ? (
         <SearchSkeleton />
-      ) : isError ? (
+      ) : hasError ? (
         <SearchError />
-      ) : items.length === 0 ? (
+      ) : !hasResults ? (
         <SearchEmpty query={query} type={type} />
       ) : (
         <>
+          {includePeople && people.length > 0 && (
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-foreground">Artists</h2>
+                <span className="text-xs text-muted-foreground">
+                  {people.length.toLocaleString()} result{people.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                {people.map((person, i) => (
+                  <motion.div
+                    key={person.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
+                  >
+                    <PersonCard
+                      id={person.id}
+                      name={person.name}
+                      imageUrl={person.photoUrl}
+                      role="Artist"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {total !== undefined && (
             <p className="text-xs text-muted-foreground">
               {total.toLocaleString()} result{total !== 1 ? 's' : ''}
             </p>
           )}
-          <MediaGrid>
-            {items.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.03, 0.6), duration: 0.2 }}
-              >
-                <DiscoverMediaCard item={item} />
-              </motion.div>
-            ))}
-          </MediaGrid>
+          {items.length > 0 && (
+            <MediaGrid>
+              {items.map((item, i) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i * 0.03, 0.6), duration: 0.2 }}
+                >
+                  <DiscoverMediaCard item={item} />
+                </motion.div>
+              ))}
+            </MediaGrid>
+          )}
           {isFetchingNextPage && <SearchSkeleton count={remainingCount} />}
         </>
       )}
@@ -203,6 +253,11 @@ function HomeExperience() {
   const [sortBy, setSortBy] = useState<SortValue>('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [greeting] = useState(() => getGreeting())
+  const [isMoodPromptVisible, setIsMoodPromptVisible] = useState(false)
+  const [moodNoteContext, setMoodNoteContext] = useState<RecordedMoodContext | null>(null)
+  const [moodNote, setMoodNote] = useState('')
+  const [moodNoteResetKey, setMoodNoteResetKey] = useState(0)
+  const [moodNoteSaving, setMoodNoteSaving] = useState(false)
   const searchInputRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -215,7 +270,8 @@ function HomeExperience() {
     return () => clearInterval(interval)
   }, [query])
 
-  const isSearching = query.length > 0
+  const isMoodNoteMode = moodNoteContext != null
+  const isSearching = !isMoodNoteMode && query.length > 0
 
   // Auto-scroll search input to top when search activates
   useEffect(() => {
@@ -224,6 +280,35 @@ function HomeExperience() {
     }
   }, [isSearching])
 
+  useEffect(() => {
+    if (isMoodNoteMode) {
+      setMoodNote('')
+      inputRef.current?.focus()
+    }
+  }, [isMoodNoteMode])
+
+  const handleMoodRecorded = useCallback((context: RecordedMoodContext) => {
+    setMoodNoteContext(context)
+  }, [])
+
+  const handleMoodNoteSubmit = useCallback(async () => {
+    if (!moodNoteContext || moodNoteSaving) return
+    const note = moodNote.trim()
+    setMoodNoteSaving(true)
+    try {
+      await apiClient.post('/mood-checkins', {
+        feeling: moodNoteContext.feeling,
+        mood: moodNoteContext.mood,
+        note: note || null,
+      })
+      setMoodNote('')
+      setMoodNoteContext(null)
+      setMoodNoteResetKey((key) => key + 1)
+    } finally {
+      setMoodNoteSaving(false)
+    }
+  }, [moodNote, moodNoteContext, moodNoteSaving])
+
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Don't capture when typing in another input
@@ -231,7 +316,13 @@ function HomeExperience() {
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       // Allow Escape to blur even when in the search input
       if (e.key === 'Escape' && target === inputRef.current) {
-        setQuery('')
+        if (moodNoteContext) {
+          setMoodNote('')
+          setMoodNoteContext(null)
+          setMoodNoteResetKey((key) => key + 1)
+        } else {
+          setQuery('')
+        }
         ;(target as HTMLInputElement).blur()
       }
       return
@@ -241,7 +332,7 @@ function HomeExperience() {
       e.preventDefault()
       inputRef.current?.focus()
     }
-  }, [])
+  }, [moodNoteContext])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -259,13 +350,33 @@ function HomeExperience() {
         <div className="min-h-[75vh] flex flex-col justify-center items-center w-full gap-6">
           <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center">
             <p className="text-muted-foreground text-sm md:text-base font-medium mb-3">
-              {greeting}
+              {isMoodPromptVisible ? `${greeting}, how are you feeling today?` : greeting}
             </p>
+            <div className="mb-3 w-full">
+              <DailyMoodCheckIn
+                noteComposerResetKey={moodNoteResetKey}
+                onMoodRecorded={handleMoodRecorded}
+                onPromptVisibleChange={setIsMoodPromptVisible}
+              />
+            </div>
             <ChatSearchInput
               ref={inputRef}
-              value={query}
-              onChange={setQuery}
-              placeholder={query ? 'Search...' : PLACEHOLDERS[placeholderIndex]}
+              value={isMoodNoteMode ? moodNote : query}
+              onChange={isMoodNoteMode ? setMoodNote : setQuery}
+              onSubmit={isMoodNoteMode ? handleMoodNoteSubmit : undefined}
+              placeholder={
+                isMoodNoteMode
+                  ? `Optional note for ${moodNoteContext.label.toLowerCase()}`
+                  : query
+                    ? 'Search...'
+                    : PLACEHOLDERS[placeholderIndex]
+              }
+              disabled={moodNoteSaving}
+              debounceMs={isMoodNoteMode ? 0 : 300}
+              leadingIcon={isMoodNoteMode ? moodNoteContext.Icon : undefined}
+              modeLabel={isMoodNoteMode ? 'Note' : 'Discover'}
+              showSubmitWhenEmpty={isMoodNoteMode}
+              submitLabel={isMoodNoteMode ? 'Save note' : 'Search'}
             />
             {/* Filter/sort pills — outside the glass card, 1rem below */}
             {isSearching && (

@@ -2,6 +2,7 @@ export interface User {
   id: string
   email: string
   username: string
+  isAdmin?: boolean
   isVerified: boolean
   twoFactorEnabled: boolean
   steamId?: string | null
@@ -17,6 +18,7 @@ export interface User {
   bio?: string | null
   backgroundUrl?: string | null
   integrationVisibility?: Record<string, string> | null
+  dailyMoodCheckinsEnabled?: boolean
 }
 
 export interface TokenResponse {

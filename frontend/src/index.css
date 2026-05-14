@@ -180,24 +180,37 @@
   display: none;
 }
 
-/* ── Infinity spinner ── */
-@keyframes infinitySpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* ── Infinity loader ── */
+.otix-infinity-loader {
+  min-width: 10rem;
+  min-height: 2.5rem;
 }
 
-@keyframes infinityDashGlow {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -800; }
+.otix-infinity-loader__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.animate-infinity-spin {
-  animation: infinitySpin 8s linear infinite;
+.otix-infinity-loader__shape {
+  fill: currentColor;
+  opacity: 0.35;
 }
 
-.animate-infinity-dash-glow svg path {
-  stroke-dasharray: 400;
-  animation: infinityDashGlow 2s linear infinite;
+.otix-infinity-loader__snake {
+  fill: none;
+  stroke: var(--primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 150;
+  stroke-dasharray: 100 152;
+  stroke-dashoffset: 0;
+  animation: otixInfinitySnake 1.2s linear infinite;
+}
+
+@keyframes otixInfinitySnake {
+  to { stroke-dashoffset: -240; }
 }
 
 @keyframes xpFloat {

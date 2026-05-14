@@ -200,8 +200,20 @@ class SpotifyHydrator:
         person = await self._session.scalar(
             select(Person).where(Person.name == name)
         )
-        if person and not person.spotify_artist_id:
-            person.spotify_artist_id = spotify_artist_id
+        if person is not None:
+            if not person.spotify_artist_id:
+                person.spotify_artist_id = spotify_artist_id
+        else:
+            person = Person(
+                name=name,
+                spotify_artist_id=spotify_artist_id,
+                spotify_popularity=sp_artist.get("popularity"),
+                spotify_follower_count=(sp_artist.get("followers") or {}).get("total"),
+                spotify_genres=sp_artist.get("genres"),
+                spotify_image_url=extract_image(sp_artist),
+            )
+            self._session.add(person)
+            await self._session.flush()
 
     async def _upsert_rating(self, album: Album, provider: str, score: float, max_score: int) -> None:
         existing = await self._session.scalar(

@@ -36,6 +36,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     username: str
+    is_admin: bool = False
     is_verified: bool
     two_factor_enabled: bool = False
     steam_id: str | None = None
@@ -53,6 +54,8 @@ class UserResponse(BaseModel):
     background_url: str | None = None
     integration_visibility: dict[str, str] | None = None
     total_xp: int = 0
+    profile_sections: list[str] | None = None
+    daily_mood_checkins_enabled: bool = True
 
 
 class UserUpdateRequest(BaseModel):
@@ -62,6 +65,8 @@ class UserUpdateRequest(BaseModel):
     avatar_url: str | None = Field(default=None, max_length=2048)
     background_url: str | None = Field(default=None, max_length=2048)
     integration_visibility: dict[str, str] | None = None
+    profile_sections: list[str] | None = None
+    daily_mood_checkins_enabled: bool | None = None
 
 
 # ── Email verification ──────────────────────────────────────────

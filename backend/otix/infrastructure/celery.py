@@ -37,6 +37,8 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         if "plex_sync_user" in name or "sync_plex_accounts" in name:
             return "user"
         return "control"
+    if name == "sync.media.rehydrate":
+        return "user"
     if name.startswith("sync.tmdb.") or name.startswith("sync.steam."):
         return "fast"
     if name.startswith("sync.spotify."):

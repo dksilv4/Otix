@@ -28,10 +28,48 @@ export interface UserProfile {
   createdAt: string
   reviewCount: number
   totalXp: number
+  avgUserRating: number | null
+  userRatingCount: number
+  compositeScore: number | null
+  profileSections: string[] | null
   steam?: SteamPublicProfile | null
   plex?: PlexPublicProfile | null
   tmdbUsername?: string | null
   friendshipStatus?: FriendshipStatus | null
+}
+
+export interface UserStats {
+  reviewCount: number
+  interactionCount: number
+  workoutCount: number
+  listCount: number
+  totalXp: number
+}
+
+export interface TopRatedItem {
+  review: ReviewWithUser
+  mediaItem: {
+    id: string
+    title: string
+    mediaType: string
+    posterUrl: string | null
+    releaseYear: number | null
+  }
+}
+
+export interface ActivityEvent {
+  type: 'review' | 'interaction'
+  timestamp: string
+  summary: string
+  score?: number | null
+  content?: string | null
+  interactionType?: string
+  mediaItem?: {
+    id: string
+    title: string
+    mediaType: string
+    posterUrl: string | null
+  }
 }
 
 export interface ReviewWithUser {
@@ -94,5 +132,35 @@ export const userQueries = {
         return data
       },
       staleTime: 1000 * 60 * 5,
+    }),
+
+  stats: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'stats'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<UserStats>(`/users/${username}/stats`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  topRated: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'top-rated'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<TopRatedItem[]>(`/users/${username}/top-rated`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  activity: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'activity'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<ActivityEvent[]>(`/users/${username}/activity`)
+        return data
+      },
+      staleTime: 1000 * 30,
     }),
 }

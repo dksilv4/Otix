@@ -14,7 +14,7 @@ from otix.api.schemas.media import (
     SteamWishlistItemSummary,
     SteamWishlistListResponse,
 )
-from otix.domain.media import UserSteamGame
+from otix.domain.media import Track, UserSteamGame
 from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 from otix.services.steam_library_service import (
@@ -32,6 +32,24 @@ _LIBRARY_TYPES = {
     "played": "played",
     "listened": "listened",
 }
+
+
+async def _get_spotify_track_lookup(db: AsyncSession, spotify_ids: list[str]) -> dict[str, dict]:
+    if not spotify_ids:
+        return {}
+    result = await db.execute(
+        select(Track.spotify_id, Track.id, Track.avg_rating, Track.rating_count)
+        .where(Track.spotify_id.in_(spotify_ids))
+    )
+    return {
+        spotify_id: {
+            "otixTrackId": track_id,
+            "avgRating": avg_rating,
+            "ratingCount": rating_count,
+        }
+        for spotify_id, track_id, avg_rating, rating_count in result.all()
+        if spotify_id
+    }
 
 
 @library_router.get("/steam", response_model=MediaItemListResponse)
@@ -326,6 +344,231 @@ async def get_spotify_status(
         "track_count": count or 0,
         "last_scanned_at": last_scanned_at,
     }
+
+
+@library_router.get("/spotify/playlists")
+async def get_spotify_playlists(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return the user's persisted Spotify playlists (synced during library scan)."""
+    if not current_user.spotify_id:
+        raise HTTPException(status_code=400, detail="Spotify account not linked")
+
+    from otix.domain.media import UserSpotifyPlaylist
+
+    result = await db.execute(
+        select(UserSpotifyPlaylist)
+        .where(UserSpotifyPlaylist.user_id == current_user.id)
+        .order_by(UserSpotifyPlaylist.name)
+    )
+    rows = result.scalars().all()
+
+    playlists = [
+        {
+            "id": pl.spotify_id,
+            "name": pl.name,
+            "description": pl.description,
+            "trackCount": pl.track_count,
+            "imageUrl": pl.image_url,
+            "spotifyUrl": pl.spotify_url,
+        }
+        for pl in rows
+    ]
+
+    return {"playlists": playlists}
+
+
+@library_router.get("/spotify/playlists/{playlist_id}")
+async def get_spotify_playlist_tracks(
+    playlist_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return tracks for a specific Spotify playlist (from local DB with Spotify fallback)."""
+    if not current_user.spotify_id:
+        raise HTTPException(status_code=400, detail="Spotify account not linked")
+
+    from otix.domain.media import UserSpotifyPlaylist, UserSpotifyPlaylistTrack
+
+    # Look up the playlist in the local DB
+    pl_result = await db.execute(
+        select(UserSpotifyPlaylist).where(
+            UserSpotifyPlaylist.user_id == current_user.id,
+            UserSpotifyPlaylist.spotify_id == playlist_id,
+        )
+    )
+    pl_row = pl_result.scalar_one_or_none()
+
+    if pl_row is not None:
+        # Serve from local DB
+        tracks_result = await db.execute(
+            select(UserSpotifyPlaylistTrack)
+            .where(UserSpotifyPlaylistTrack.playlist_id == pl_row.id)
+            .order_by(UserSpotifyPlaylistTrack.position)
+        )
+        track_rows = tracks_result.scalars().all()
+
+        if track_rows:
+            tracks = [
+                {
+                    "id": t.spotify_track_id,
+                    "name": t.name,
+                    "artist": t.artist_name,
+                    "albumName": t.album_name,
+                    "albumArt": t.album_image_url,
+                    "durationMs": t.duration_ms,
+                    "uri": t.uri,
+                    "previewUrl": t.preview_url,
+                    "spotifyLiked": False,
+                }
+                for t in track_rows
+            ]
+            track_lookup = await _get_spotify_track_lookup(db, [t["id"] for t in tracks if t.get("id")])
+            for track in tracks:
+                track.update(track_lookup.get(track["id"], {"otixTrackId": None, "avgRating": None, "ratingCount": 0}))
+
+            return {
+                "id": pl_row.spotify_id,
+                "name": pl_row.name,
+                "imageUrl": pl_row.image_url,
+                "tracks": tracks,
+            }
+
+    # Fallback: live fetch from Spotify
+    from otix.infrastructure.redis import get_redis
+    from otix.providers.spotify.client import SpotifyProvider
+    from otix.services.spotify_auth_service import get_user_access_token
+
+    token = await get_user_access_token(current_user)
+    if not token:
+        raise HTTPException(status_code=502, detail="Unable to get Spotify token")
+
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    try:
+        playlist_raw = await provider.get_playlist(token, playlist_id)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to fetch playlist")
+
+    tracks = []
+    for item in playlist_raw.get("tracks", {}).get("items", []):
+        t = item.get("track")
+        if not t:
+            continue
+        album = t.get("album", {})
+        album_images = album.get("images", [])
+        artists = t.get("artists", [])
+        tracks.append({
+            "id": t.get("id"),
+            "name": t.get("name"),
+            "artist": artists[0].get("name") if artists else "Unknown",
+            "albumName": album.get("name"),
+            "albumArt": album_images[0].get("url") if album_images else None,
+            "durationMs": t.get("duration_ms"),
+            "uri": t.get("uri"),
+            "previewUrl": t.get("preview_url"),
+            "spotifyLiked": False,
+        })
+
+    track_lookup = await _get_spotify_track_lookup(db, [t["id"] for t in tracks if t.get("id")])
+    for track in tracks:
+        track.update(track_lookup.get(track["id"], {"otixTrackId": None, "avgRating": None, "ratingCount": 0}))
+
+    return {
+        "id": playlist_raw.get("id") if pl_row is None else pl_row.spotify_id,
+        "name": playlist_raw.get("name") if pl_row is None else pl_row.name,
+        "imageUrl": pl_row.image_url if pl_row is not None else (
+            playlist_raw.get("images", [{}])[0].get("url") if playlist_raw.get("images") else None
+        ),
+        "tracks": tracks,
+    }
+
+
+@library_router.get("/spotify/tracks")
+async def get_spotify_liked_tracks(
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return the user's Spotify liked/saved tracks with pagination."""
+    if not current_user.spotify_id:
+        raise HTTPException(status_code=400, detail="Spotify account not linked")
+
+    from otix.infrastructure.redis import get_redis
+    from otix.providers.spotify.client import SpotifyProvider
+    from otix.services.spotify_auth_service import get_user_access_token
+
+    token = await get_user_access_token(current_user)
+    if not token:
+        raise HTTPException(status_code=502, detail="Unable to get Spotify token")
+
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    try:
+        raw = await provider.get_user_saved_tracks(token, limit=limit, offset=offset)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to fetch liked tracks")
+
+    tracks = []
+    for item in raw.get("items", []):
+        t = item.get("track")
+        if not t:
+            continue
+        album = t.get("album", {})
+        album_images = album.get("images", [])
+        artists = t.get("artists", [])
+        tracks.append({
+            "id": t.get("id"),
+            "name": t.get("name"),
+            "artist": artists[0].get("name") if artists else "Unknown",
+            "albumName": album.get("name"),
+            "albumArt": album_images[0].get("url") if album_images else None,
+            "durationMs": t.get("duration_ms"),
+            "uri": t.get("uri"),
+            "previewUrl": t.get("preview_url"),
+            "spotifyLiked": True,
+        })
+
+    track_lookup = await _get_spotify_track_lookup(db, [t["id"] for t in tracks if t.get("id")])
+    for track in tracks:
+        track.update(track_lookup.get(track["id"], {"otixTrackId": None, "avgRating": None, "ratingCount": 0}))
+
+    return {
+        "tracks": tracks,
+        "total": raw.get("total", 0),
+    }
+
+
+@library_router.put("/spotify/tracks/{track_id}/liked")
+async def save_spotify_track_to_liked(
+    track_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Save a Spotify track to the user's liked songs."""
+    if not current_user.spotify_id:
+        raise HTTPException(status_code=400, detail="Spotify account not linked")
+
+    from otix.infrastructure.redis import get_redis
+    from otix.providers.spotify.client import SpotifyProvider
+    from otix.services.spotify_auth_service import get_user_access_token
+
+    token = await get_user_access_token(current_user)
+    if not token:
+        raise HTTPException(status_code=502, detail="Unable to get Spotify token")
+
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    try:
+        await provider.save_user_tracks(token, [track_id])
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to save track to Spotify")
+
+    return {"id": track_id, "spotifyLiked": True}
 
 
 @library_router.get("/{tab}", response_model=MediaItemListResponse)

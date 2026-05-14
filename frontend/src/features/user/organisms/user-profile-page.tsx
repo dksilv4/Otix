@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, Clock } from 'lucide-react'
+import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, Clock, Shield } from 'lucide-react'
 
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -13,6 +13,8 @@ import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { userQueries, computeReviewStats } from '../user-queries'
+import { ProfileSectionRenderer } from './profile-section-renderer'
+import { UserRatingSection } from '../molecules/user-rating-section'
 
 const GRADIENTS = [
   ['#0f0c29', '#302b63', '#24243e'],
@@ -73,9 +75,16 @@ function XPProgressRing({
   strokeWidth?: number
   children: React.ReactNode
 }) {
+  const [animProgress, setAnimProgress] = useState(0)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimProgress(progress))
+    return () => cancelAnimationFrame(id)
+  }, [progress])
+
   const radius = size / 2 - strokeWidth
   const circumference = 2 * Math.PI * radius
-  const offset = circumference * (1 - progress)
+  const offset = circumference * (1 - animProgress)
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -137,6 +146,16 @@ export function UserProfilePage() {
     return computeReviewStats(reviewsQuery.data)
   }, [reviewsQuery.data])
 
+  const xpProgress = profileQuery.data ? computeGamification(profileQuery.data.totalXp).xpProgress : 0
+
+  const [barProgress, setBarProgress] = useState(0)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      requestAnimationFrame(() => setBarProgress(xpProgress))
+    }, 500)
+    return () => clearTimeout(timeout)
+  }, [xpProgress])
+
   if (profileQuery.isLoading) return <ProfileSkeleton />
   if (profileQuery.isError || !profileQuery.data) {
     return (
@@ -164,7 +183,7 @@ export function UserProfilePage() {
       </Helmet>
 
       {/* Hero */}
-      <div className="relative flex min-h-[60vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)]">
+      <div className="relative flex min-h-[60vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)] animate-hero-fade-in">
         {/* Backdrop */}
         {profile.backgroundUrl ? (
           <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -199,7 +218,7 @@ export function UserProfilePage() {
         <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-20 sm:px-6 sm:pb-10 lg:px-8">
           <div className="flex flex-row items-end gap-5 sm:gap-8">
             {/* Avatar with XP ring */}
-            <div className="shrink-0">
+            <div className="shrink-0 animate-hero-scale-in" style={{ animationDelay: '50ms' }}>
               <XPProgressRing progress={gamification.xpProgress} size={120} strokeWidth={4}>
                 <DkAvatar
                   src={profile.avatarUrl}
@@ -213,14 +232,14 @@ export function UserProfilePage() {
             {/* Info */}
             <div className="flex min-w-0 flex-1 flex-col gap-2.5 pb-1">
               <h1
-                className="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl"
-                style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}
+                className="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl animate-hero-slide-up"
+                style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)', animationDelay: '100ms' }}
               >
                 {profile.username}
               </h1>
 
               {/* Meta */}
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium">
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium animate-hero-slide-up" style={{ animationDelay: '150ms' }}>
                 <span className="inline-flex items-center gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5 text-white/40" />
                   Joined {formatJoinDate(profile.createdAt)}
@@ -239,17 +258,26 @@ export function UserProfilePage() {
                     </span>
                   </>
                 )}
+                {profile.compositeScore != null && (
+                  <>
+                    <span aria-hidden className="text-white/15">·</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5 text-white/40" />
+                      {profile.compositeScore.toFixed(1)} rep
+                    </span>
+                  </>
+                )}
               </div>
 
               {profile.bio && (
-                <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80">
+                <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80 animate-hero-slide-up" style={{ animationDelay: '200ms' }}>
                   {profile.bio}
                 </p>
               )}
 
               {/* Friend actions */}
               {currentUser && currentUser.username !== username && profile.friendshipStatus && (
-                <div className="mt-3">
+                <div className="mt-3 animate-hero-slide-up" style={{ animationDelay: '250ms' }}>
                   {profile.friendshipStatus.status === 'none' && (
                     <DkButton
                       variant="glass"
@@ -311,11 +339,11 @@ export function UserProfilePage() {
           </div>
 
           {/* XP Bar */}
-          <div className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06]">
+          <div className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06] animate-hero-reveal-bar" style={{ animationDelay: '300ms' }}>
             {/* Fill */}
             <div
               className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary/40 via-primary/30 to-accent/25 transition-all duration-700 ease-out"
-              style={{ width: `${gamification.xpProgress * 100}%` }}
+              style={{ width: `${barProgress * 100}%` }}
             />
             {/* Subtle top highlight across the whole bar */}
             <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent w-full pointer-events-none" />
@@ -350,7 +378,7 @@ export function UserProfilePage() {
 
       {/* Platform links — floating below hero */}
       {(profile.steam || profile.plex || profile.tmdbUsername) && (
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3 animate-hero-slide-up" style={{ animationDelay: '350ms' }}>
           <div className="flex flex-wrap gap-1.5">
             {profile.steam && (
               <a
@@ -388,6 +416,15 @@ export function UserProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Profile content */}
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
+        <UserRatingSection username={username} />
+        <ProfileSectionRenderer
+          username={username}
+          sections={profile.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity']}
+        />
+      </div>
     </div>
   )
 }

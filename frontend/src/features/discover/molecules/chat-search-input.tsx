@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, forwardRef } from 'react'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const MODES = [
@@ -13,6 +14,10 @@ interface ChatSearchInputProps {
   placeholder?: string
   disabled?: boolean
   debounceMs?: number
+  leadingIcon?: LucideIcon
+  modeLabel?: string
+  showSubmitWhenEmpty?: boolean
+  submitLabel?: string
   className?: string
 }
 
@@ -23,9 +28,12 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   placeholder = "What are you in the mood for?",
   disabled = false,
   debounceMs = 300,
+  leadingIcon: LeadingIcon = Sparkles,
+  modeLabel = 'Discover',
+  showSubmitWhenEmpty = false,
+  submitLabel = 'Search',
   className,
 }, ref) {
-  const [activeMode, setActiveMode] = useState<string>('discover')
   const [inputValue, setInputValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -37,6 +45,10 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   const handleChange = (val: string) => {
     setInputValue(val)
     clearTimeout(timerRef.current)
+    if (debounceMs <= 0) {
+      onChange(val)
+      return
+    }
     timerRef.current = setTimeout(() => onChange(val), debounceMs)
   }
 
@@ -64,7 +76,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
       >
         {/* Input row */}
         <div className="flex items-center gap-3 px-5 pt-5 pb-2">
-          <Sparkles className="h-5 w-5 shrink-0 text-primary/50" />
+          <LeadingIcon className="h-5 w-5 shrink-0 text-primary/50" />
           <input
             ref={ref}
             value={inputValue}
@@ -82,7 +94,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
               'text-foreground',
             )}
           />
-          {inputValue && (
+          {(inputValue || showSubmitWhenEmpty) && (
             <button
               onClick={onSubmit || handleClear}
               className={cn(
@@ -92,7 +104,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
                 'active:scale-95',
                 'transition-all duration-200',
               )}
-              aria-label="Search"
+              aria-label={submitLabel}
             >
               <ArrowRight className="h-5 w-5" />
             </button>
@@ -101,19 +113,16 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
 
         {/* Tools row */}
         <div className="flex items-center gap-2 px-5 pb-4">
-          {MODES.map((mode) => (
+          {MODES.map(() => (
             <button
-              key={mode.id}
-              onClick={() => setActiveMode(mode.id)}
+              key={modeLabel}
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-medium',
                 'transition-all duration-200',
-                activeMode === mode.id
-                  ? 'bg-primary/15 text-primary'
-                  : 'bg-white/[0.04] text-muted-foreground hover:text-foreground hover:bg-white/[0.08]',
+                'bg-primary/15 text-primary',
               )}
             >
-              {mode.label}
+              {modeLabel}
             </button>
           ))}
         </div>

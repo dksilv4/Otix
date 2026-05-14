@@ -4,6 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, otix_fk, otix_pk
@@ -21,6 +22,10 @@ class Person(Base):
     imdb_id: Mapped[str | None] = mapped_column(String(20), unique=True)
     musicbrainz_artist_id: Mapped[str | None] = mapped_column(String(36), unique=True)
     spotify_artist_id: Mapped[str | None] = mapped_column(String(50), unique=True)
+    spotify_follower_count: Mapped[int | None] = mapped_column(Integer)
+    spotify_popularity: Mapped[int | None] = mapped_column(Integer)
+    spotify_genres: Mapped[list | None] = mapped_column(JSONB)
+    spotify_image_url: Mapped[str | None] = mapped_column(String(2000))
     photo_url: Mapped[str | None] = mapped_column(String(2000))
     logo_url: Mapped[str | None] = mapped_column(String(2000))
     biography: Mapped[str | None] = mapped_column(Text)

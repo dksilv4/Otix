@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from otix.domain.company import InvolvedCompany
     from otix.domain.people import MediaCredit
     from otix.domain.review import Review
+    from otix.domain.user import User
 
 
 class MediaItem(Base, TimestampMixin):
@@ -189,8 +190,26 @@ class Track(Base, TimestampMixin):
     spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
     musicbrainz_recording_id: Mapped[str | None] = mapped_column(String(36), unique=True)
     audio_features: Mapped[dict | None] = mapped_column(JSONB)
+    avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     album: Mapped[Album] = relationship("Album", back_populates="tracks")
+    ratings: Mapped[list[TrackRating]] = relationship("TrackRating", back_populates="track")
+
+
+class TrackRating(Base, TimestampMixin):
+    __tablename__ = "track_ratings"
+
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    track_id: Mapped[otix_fk] = mapped_column(ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    track: Mapped[Track] = relationship("Track", back_populates="ratings")
+    user: Mapped["User"] = relationship("User")
+
+    __table_args__ = (
+        CheckConstraint("score >= 1 AND score <= 10", name="ck_track_rating_score_range"),
+    )
 
 
 class ExternalID(Base):
@@ -371,4 +390,54 @@ class UserPlexItem(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("server_id", "rating_key", name="uq_user_plex_item"),
+    )
+
+
+class UserSpotifyPlaylist(Base, TimestampMixin):
+    __tablename__ = "user_spotify_playlists"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    spotify_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    image_url: Mapped[str | None] = mapped_column(String(2000))
+    track_count: Mapped[int] = mapped_column(Integer, default=0)
+    spotify_url: Mapped[str | None] = mapped_column(String(2000))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "spotify_id", name="uq_user_spotify_playlist"),
+    )
+
+    tracks: Mapped[list[UserSpotifyPlaylistTrack]] = relationship(
+        "UserSpotifyPlaylistTrack", back_populates="playlist", cascade="all, delete-orphan"
+    )
+
+
+class UserSpotifyPlaylistTrack(Base, TimestampMixin):
+    __tablename__ = "user_spotify_playlist_tracks"
+
+    id: Mapped[otix_pk]
+    playlist_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("user_spotify_playlists.id", ondelete="CASCADE"), nullable=False
+    )
+    spotify_track_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    artist_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    album_name: Mapped[str | None] = mapped_column(String(500))
+    album_image_url: Mapped[str | None] = mapped_column(String(2000))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    uri: Mapped[str | None] = mapped_column(String(200))
+    preview_url: Mapped[str | None] = mapped_column(String(2000))
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    added_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    playlist: Mapped[UserSpotifyPlaylist] = relationship(
+        "UserSpotifyPlaylist", back_populates="tracks"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "playlist_id", "spotify_track_id", name="uq_playlist_track"
+        ),
     )

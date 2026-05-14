@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download } from 'lucide-react'
+import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical } from 'lucide-react'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
+import { MOTION_OPTIONS, useMotionPreference, type MotionPreference } from '@/lib/motion-preference'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
 import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
@@ -122,6 +123,13 @@ const VISIBILITY_OPTIONS = [
   { value: 'hidden', label: 'Hidden' },
 ]
 
+const PROFILE_SECTION_OPTIONS = [
+  { id: 'reviews', label: 'Reviews', description: 'Show your written reviews' },
+  { id: 'stats', label: 'Activity Stats', description: 'XP, review count, and activity breakdown' },
+  { id: 'top_rated', label: 'Top Rated', description: 'Your highest-rated media items' },
+  { id: 'recent_activity', label: 'Recent Activity', description: 'Timeline of recent actions' },
+] as const
+
 // ── Profile ──
 
 function ProfileSection({
@@ -138,6 +146,7 @@ function ProfileSection({
     plexId?: string | null
     tmdbUsername?: string | null
     integrationVisibility?: Record<string, string> | null
+    profileSections?: string[] | null
   } | null
   isAuthenticated: boolean
 }) {
@@ -153,6 +162,9 @@ function ProfileSection({
   const [tmdbVisibility, setTmdbVisibility] = useState(
     user?.integrationVisibility?.tmdb ?? 'hidden'
   )
+  const [profileSections, setProfileSections] = useState<string[]>(
+    user?.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'],
+  )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [editingAvatar, setEditingAvatar] = useState(false)
@@ -167,6 +179,7 @@ function ProfileSection({
       setSteamVisibility(user.integrationVisibility?.steam ?? 'hidden')
       setPlexVisibility(user.integrationVisibility?.plex ?? 'hidden')
       setTmdbVisibility(user.integrationVisibility?.tmdb ?? 'hidden')
+      setProfileSections(user.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
       setInitialized(true)
     }
   }, [user, initialized])
@@ -198,6 +211,7 @@ function ProfileSection({
         avatar_url: avatarUrl || null,
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
+        profile_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -218,7 +232,8 @@ function ProfileSection({
     backgroundUrl !== (user?.backgroundUrl ?? '') ||
     steamVisibility !== (user?.integrationVisibility?.steam ?? 'hidden') ||
     plexVisibility !== (user?.integrationVisibility?.plex ?? 'hidden') ||
-    tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden')
+    tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden') ||
+    JSON.stringify(profileSections) !== JSON.stringify(user?.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
 
   const applyCoverEditor = async (url: string) => {
     setBackgroundUrl(url)
@@ -230,6 +245,7 @@ function ProfileSection({
         avatar_url: avatarUrl || null,
         background_url: url || null,
         integration_visibility: integrationVisibility,
+        profile_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -252,6 +268,7 @@ function ProfileSection({
         avatar_url: url || null,
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
+        profile_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -414,6 +431,18 @@ function ProfileSection({
         </div>
       )}
 
+      {/* Profile sections */}
+      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
+        <SectionHeader
+          title="Profile sections"
+          description="Drag to reorder. Toggle to show or hide sections on your profile."
+        />
+        <ReorderableSectionList
+          profileSections={profileSections}
+          onChange={setProfileSections}
+        />
+      </div>
+
       {/* Save */}
       <div className="flex items-center gap-3">
         <DkButton variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges}>
@@ -430,6 +459,119 @@ function SectionHeader({ title, description }: { title: string; description: str
     <div className="mb-5">
       <h3 className="text-base font-semibold">{title}</h3>
       <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+    </div>
+  )
+}
+
+type SectionOption = (typeof PROFILE_SECTION_OPTIONS)[number]
+
+function ReorderableSectionList({
+  profileSections,
+  onChange,
+}: {
+  profileSections: string[]
+  onChange: React.Dispatch<React.SetStateAction<string[]>>
+}) {
+  const dragIndex = useRef<number | null>(null)
+
+  const displayOrder: (SectionOption & { enabled: boolean })[] = [
+    ...profileSections
+      .map((id) => PROFILE_SECTION_OPTIONS.find((o) => o.id === id))
+      .filter((o): o is SectionOption => o != null)
+      .map((o) => ({ ...o, enabled: true })),
+    ...PROFILE_SECTION_OPTIONS.filter((o) => !profileSections.includes(o.id)).map((o) => ({
+      ...o,
+      enabled: false,
+    })),
+  ]
+
+  return (
+    <div className="space-y-1.5 mt-4">
+      {displayOrder.map((option, index) => {
+        const isFirstDisabled = !option.enabled && displayOrder[index - 1]?.enabled
+
+        return (
+          <div key={option.id}>
+            {isFirstDisabled && (
+              <div className="flex items-center gap-3 px-4 py-2">
+                <div className="flex-1 h-px bg-border/30" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50">
+                  Hidden
+                </span>
+                <div className="flex-1 h-px bg-border/30" />
+              </div>
+            )}
+            <div
+              draggable={option.enabled}
+              onDragStart={(e) => {
+                if (!option.enabled) {
+                  e.preventDefault()
+                  return
+                }
+                e.dataTransfer.effectAllowed = 'move'
+                dragIndex.current = index
+                ;(e.currentTarget as HTMLElement).style.opacity = '0.4'
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const from = dragIndex.current
+                dragIndex.current = null
+                if (from == null || from === index) return
+
+                const fromItem = displayOrder[from]
+                const toItem = option
+                if (!fromItem.enabled || !toItem.enabled) return
+
+                onChange((prev) => {
+                  const next = [...prev]
+                  const fromPos = next.indexOf(fromItem.id)
+                  const toPos = next.indexOf(toItem.id)
+                  if (fromPos === -1 || toPos === -1) return prev
+                  const [moved] = next.splice(fromPos, 1)
+                  next.splice(toPos, 0, moved)
+                  return next
+                })
+              }}
+              onDragEnd={(e) => {
+                ;(e.currentTarget as HTMLElement).style.opacity = '1'
+                dragIndex.current = null
+              }}
+              className={cn(
+                'grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors group',
+                option.enabled
+                  ? 'hover:bg-[var(--dk-surface-glass)]'
+                  : 'opacity-40',
+              )}
+            >
+              <div
+                className={cn(
+                  option.enabled ? 'cursor-grab active:cursor-grabbing' : '',
+                )}
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{option.label}</p>
+                <p className="text-xs text-muted-foreground truncate">{option.description}</p>
+              </div>
+
+              <DkSwitch
+                checked={option.enabled}
+                onCheckedChange={(checked) => {
+                  onChange((prev) =>
+                    checked ? [...prev, option.id] : prev.filter((id) => id !== option.id),
+                  )
+                }}
+              />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -692,6 +834,7 @@ function applyAccentColor(color: string) {
 
 function AppearanceSection({ theme, onToggle }: { theme: string; onToggle: () => void }) {
   const { shaderQuality, setShaderQuality } = useShaderQuality()
+  const { motionPreference, setMotionPreference } = useMotionPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
   useEffect(() => {
@@ -790,6 +933,44 @@ function AppearanceSection({ theme, onToggle }: { theme: string; onToggle: () =>
               </label>
             )
           })}
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+        <SectionHeader
+          title="Motion"
+          description="Control animations and transitions across the app."
+        />
+
+        <div className="rounded-xl bg-[var(--dk-surface-raised)] p-2 shadow-[var(--dk-shadow-xs)]">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+            {MOTION_OPTIONS.map((option) => {
+              const isActive = motionPreference === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setMotionPreference(option.value)}
+                  className={cn(
+                    'rounded-xl px-3 py-3 text-left transition-all',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      : 'bg-[var(--dk-surface-overlay)] text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
+                  )}
+                >
+                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p
+                    className={cn(
+                      'mt-1 text-xs',
+                      isActive ? 'text-primary-foreground/80' : 'text-muted-foreground',
+                    )}
+                  >
+                    {option.description}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
 
@@ -2591,14 +2772,28 @@ function AccountSection({
   user,
   isAuthenticated,
 }: {
-  user: { email: string; username: string; isVerified: boolean; twoFactorEnabled: boolean } | null
+  user: {
+    email: string
+    username: string
+    isVerified: boolean
+    twoFactorEnabled: boolean
+    dailyMoodCheckinsEnabled?: boolean
+  } | null
   isAuthenticated: boolean
 }) {
   const [email, setEmail] = useState(user?.email ?? '')
   const [username, setUsername] = useState(user?.username ?? '')
+  const [dailyMoodCheckinsEnabled, setDailyMoodCheckinsEnabled] = useState(user?.dailyMoodCheckinsEnabled ?? true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [verificationState, setVerificationState] = useState<'idle' | 'sending' | 'sent'>('idle')
+
+  useEffect(() => {
+    if (!user) return
+    setEmail(user.email)
+    setUsername(user.username)
+    setDailyMoodCheckinsEnabled(user.dailyMoodCheckinsEnabled ?? true)
+  }, [user])
 
   if (!isAuthenticated) {
     return (
@@ -2622,9 +2817,14 @@ function AccountSection({
     setSaving(true)
     setSaved(false)
     try {
-      const { data } = await apiClient.patch('/auth/me', { email, username })
+      const { data } = await apiClient.patch('/auth/me', {
+        email,
+        username,
+        dailyMoodCheckinsEnabled,
+      })
       setEmail(data.email)
       setUsername(data.username)
+      setDailyMoodCheckinsEnabled(data.dailyMoodCheckinsEnabled ?? true)
       setSaved(true)
     } catch {
       // leave fields as-is
@@ -2634,7 +2834,9 @@ function AccountSection({
   }
 
   const hasChanges =
-    email !== (user?.email ?? '') || username !== (user?.username ?? '')
+    email !== (user?.email ?? '') ||
+    username !== (user?.username ?? '') ||
+    dailyMoodCheckinsEnabled !== (user?.dailyMoodCheckinsEnabled ?? true)
 
   return (
     <div className="space-y-6">
@@ -2661,6 +2863,21 @@ function AccountSection({
             spellCheck={false}
             hint="Shown publicly on your profile and reviews."
           />
+        </div>
+
+        <div className="mt-6 border-t border-border/30 pt-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Daily mood check-in</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Show the mood scale on the home page once per UTC day.
+              </p>
+            </div>
+            <DkSwitch
+              checked={dailyMoodCheckinsEnabled}
+              onCheckedChange={setDailyMoodCheckinsEnabled}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-3 mt-6 pt-5 border-t border-border/30">

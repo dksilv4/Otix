@@ -218,6 +218,109 @@ export function useSpotifyStatus() {
   })
 }
 
+export interface SpotifyPlaylist {
+  id: string
+  name: string
+  description: string | null
+  trackCount: number
+  imageUrl: string | null
+  spotifyUrl: string | null
+}
+
+export interface SpotifyTrack {
+  id: string
+  name: string
+  artist: string
+  albumName: string
+  albumArt: string | null
+  durationMs: number | null
+  uri: string
+  previewUrl: string | null
+  spotifyLiked?: boolean
+  otixTrackId?: string | null
+  avgRating?: number | null
+  ratingCount?: number
+}
+
+export interface SpotifyPlaylistDetail {
+  id: string
+  name: string
+  imageUrl: string | null
+  tracks: SpotifyTrack[]
+}
+
+export interface SpotifyLikedTracks {
+  tracks: SpotifyTrack[]
+  total: number
+}
+
+export function useSpotifyPlaylists() {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("spotify"), "playlists"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ playlists: SpotifyPlaylist[] }>(
+        "/library/spotify/playlists",
+      )
+      return data.playlists
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useSpotifyPlaylistTracks(playlistId: string | null) {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("spotify"), "playlist", playlistId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<SpotifyPlaylistDetail>(
+        `/library/spotify/playlists/${playlistId}`,
+      )
+      return data
+    },
+    enabled: !!playlistId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useSpotifyLikedTracks() {
+  return useInfiniteQuery({
+    queryKey: [...libraryKeys.tab("spotify"), "liked-tracks"],
+    queryFn: async ({ pageParam }: { pageParam: number }) => {
+      const params: Record<string, string> = {
+        limit: "50",
+        offset: String(pageParam),
+      }
+      const { data } = await apiClient.get<SpotifyLikedTracks>(
+        "/library/spotify/tracks",
+        { params },
+      )
+      return data
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      if (!lastPage.tracks || lastPage.tracks.length < 50) return undefined
+      return lastPageParam + 50
+    },
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useSaveSpotifyTrack() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (trackId: string) => {
+      const { data } = await apiClient.put<{ id: string; spotifyLiked: boolean }>(
+        `/library/spotify/tracks/${trackId}/liked`,
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("spotify"), "liked-tracks"] })
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("spotify") })
+    },
+  })
+}
+
 export function useSteamWishlistScan() {
   const queryClient = useQueryClient()
 

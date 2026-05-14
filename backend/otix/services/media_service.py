@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-from sqlalchemy import literal_column, select, func, text, type_coerce
+from sqlalchemy import case, false, literal_column, select, func, text, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from otix.domain.company import InvolvedCompany, Company
+from otix.domain.company import InvolvedCompany
 from otix.domain.media import (
     Album,
     Episode,
-    GameMode,
     MediaGameMode,
     MediaItem,
     MediaPlatform,
     Movie,
-    Platform,
     Season,
     Show,
-    Game,
-    Track,
 )
 from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.people import MediaCredit, Person
-from otix.domain.asset import ExternalRating
 
 
 class MediaService:
@@ -183,11 +178,28 @@ class MediaService:
     ) -> tuple[list[MediaItem], int]:
         tsquery = func.plainto_tsquery("english", query_str)
 
-        # Hybrid: full-text on precomputed search_vector + trigram fuzzy match
+        # Hybrid: full-text on precomputed search_vector + trigram fuzzy match.
+        # Person/artist credits are matched separately so music searches like
+        # "Ariana Grande" can return albums even when the title does not include
+        # the artist name.
         fts_match = MediaItem.search_vector.op("@@")(tsquery)
         fuzzy_match = func.similarity(MediaItem.title, query_str) > 0.2
+        credit_media_ids = list(
+            await self.session.scalars(
+                select(MediaCredit.media_item_id)
+                .join(Person, Person.id == MediaCredit.person_id)
+                .where(Person.name.ilike(f"%{query_str}%"))
+                .distinct()
+                .limit(500)
+            )
+        )
+        credit_person_match = (
+            MediaItem.id.in_(credit_media_ids)
+            if credit_media_ids
+            else false()
+        )
 
-        base_q = select(MediaItem).where(fts_match | fuzzy_match)
+        base_q = select(MediaItem).where(fts_match | fuzzy_match | credit_person_match)
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
 
@@ -196,9 +208,11 @@ class MediaService:
         total_result = await self.session.execute(count_q)
         total = total_result.scalar_one()
 
-        # Ranking: blend ts_rank, trigram similarity, vector similarity, and popularity
+        # Ranking: blend ts_rank, trigram similarity, vector similarity, credit
+        # matches, and popularity.
         relevance = func.coalesce(func.ts_rank(MediaItem.search_vector, tsquery), 0)
         sim = func.similarity(MediaItem.title, query_str)
+        credit_boost = case((credit_person_match, 2), else_=0)
         popularity_boost = func.ln(func.greatest(MediaItem.popularity, 1))
 
         # Vector similarity via cosine distance (pgvector). Falls back to 0 when
@@ -229,7 +243,7 @@ class MediaService:
             order = sort_map[sort_by]
         else:
             order = (
-                relevance * 10 + sim * 5 + vector_sim * 3 + popularity_boost * 0.5
+                relevance * 10 + sim * 5 + credit_boost + vector_sim * 3 + popularity_boost * 0.5
             ).desc()
 
         q = base_q.order_by(order)

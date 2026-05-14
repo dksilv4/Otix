@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import redis.asyncio as aioredis
@@ -24,7 +24,7 @@ from sqlalchemy import delete, func, select, text
 
 from otix.domain.asset import ExternalRating
 from otix.domain.media import Album, Episode, ExternalID, Game, MediaItem, Season, Show, Track
-from otix.domain.people import Person
+from otix.domain.people import MediaCredit, Person
 from otix.domain.sync import ProviderState
 from otix.domain.user import User
 from otix.infrastructure.celery import app
@@ -34,6 +34,7 @@ from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_ENTITIES_TOTAL, track_entity_duration
 from otix.lib.progress import incr as _progress_incr
+from otix.lib.slug import slugify
 from otix.lib.types import JSONValue
 from otix.providers.base import RateLimitError
 from otix.providers.fanart.client import FanartProvider
@@ -50,6 +51,7 @@ from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
 from otix.providers.spotify.client import SpotifyProvider
 from otix.providers.spotify.hydrator import SpotifyHydrator
+from otix.providers.spotify.transformer import extract_artist_spotify_ids
 from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.steamgrid.client import SteamGridDBProvider
@@ -240,6 +242,138 @@ def sync_tmdb_show_task(self, tmdb_id: int, priority: int = 5, force: bool = Fal
 def sync_tmdb_person_task(self, tmdb_id: int, priority: int = 5, force: bool = False) -> dict | None:
     """Sync a single TMDB person: fetch → hash-check → transform → upsert."""
     return run_async(_sync_tmdb_person(tmdb_id, force))
+
+
+@app.task(
+    name="sync.media.rehydrate",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=10,
+)
+def sync_media_rehydrate_task(self, task_id: str, media_item_id: str) -> dict:
+    """Force a full provider hydration pass for a single media item."""
+    return run_async(_force_rehydrate_media(task_id, media_item_id))
+
+
+async def _rehydrate_emit(task_id: str, event_type: str, **data: JSONValue) -> None:
+    from otix.lib.media_rehydrate_progress import publish_progress, store_progress
+
+    await store_progress(task_id, event_type, **data)
+    await publish_progress(task_id, event_type, **data)
+
+
+async def _load_rehydrate_target(media_item_id: str) -> dict[str, JSONValue] | None:
+    async with async_session() as session:
+        item = await session.get(MediaItem, media_item_id)
+        if item is None:
+            return None
+
+        rows = await session.scalars(
+            select(ExternalID).where(ExternalID.media_item_id == media_item_id)
+        )
+        external_ids = {row.provider: row.external_id for row in rows}
+
+        album = await session.get(Album, media_item_id) if item.media_type == "music" else None
+        game = await session.get(Game, media_item_id) if item.media_type == "game" else None
+
+        return {
+            "id": item.id,
+            "title": item.title,
+            "media_type": item.media_type,
+            "external_ids": external_ids,
+            "spotify_id": album.spotify_id if album else None,
+            "musicbrainz_id": album.musicbrainz_id if album else None,
+            "steam_app_id": game.steam_app_id if game else None,
+            "store_ids": game.store_ids if game and game.store_ids else {},
+        }
+
+
+async def _run_rehydrate_step(task_id: str, provider: str, label: str, fn) -> dict | None:
+    await _rehydrate_emit(task_id, "provider_started", provider=provider, label=label)
+    result = await fn()
+    await _rehydrate_emit(task_id, "provider_complete", provider=provider, label=label, result=result or {})
+    return result
+
+
+async def _force_rehydrate_media(task_id: str, media_item_id: str) -> dict:
+    from otix.lib.media_rehydrate_progress import store_result
+
+    try:
+        target = await _load_rehydrate_target(media_item_id)
+        if target is None:
+            await _rehydrate_emit(task_id, "error", message="Media item not found")
+            result = {"error": "Media item not found", "media_item_id": media_item_id}
+            await store_result(task_id, result)
+            return result
+
+        media_type = str(target["media_type"])
+        title = str(target["title"])
+        external_ids = target["external_ids"] if isinstance(target["external_ids"], dict) else {}
+
+        await _rehydrate_emit(task_id, "rehydrate_started", media_item_id=media_item_id, media_type=media_type, title=title)
+
+        if media_type == "movie":
+            tmdb_id = external_ids.get("tmdb")
+            if not tmdb_id:
+                raise ValueError("This movie does not have a TMDB id")
+            await _run_rehydrate_step(task_id, "tmdb", "TMDB movie", lambda: _sync_tmdb_movie(int(tmdb_id), force=True))
+            await _run_rehydrate_step(task_id, "fanart", "Fanart images", lambda: _sync_fanart_movie(media_item_id))
+            await _run_rehydrate_step(task_id, "omdb", "OMDb ratings", lambda: _sync_omdb_ratings(media_item_id))
+
+        elif media_type == "show":
+            tmdb_id = external_ids.get("tmdb")
+            if not tmdb_id:
+                raise ValueError("This show does not have a TMDB id")
+            await _run_rehydrate_step(task_id, "tmdb", "TMDB show", lambda: _sync_tmdb_show(int(tmdb_id), force=True))
+            await _run_rehydrate_step(task_id, "fanart", "Fanart images", lambda: _sync_fanart_show(media_item_id))
+            await _run_rehydrate_step(task_id, "omdb", "OMDb ratings", lambda: _sync_omdb_ratings(media_item_id))
+
+        elif media_type == "game":
+            igdb_id = external_ids.get("igdb")
+            if not igdb_id:
+                raise ValueError("This game does not have an IGDB id")
+            await _run_rehydrate_step(task_id, "igdb", "IGDB game", lambda: _sync_igdb_game(int(igdb_id), force=True))
+            await _run_rehydrate_step(task_id, "fanart", "Fanart images", lambda: _sync_fanart_game(media_item_id))
+
+            latest = await _load_rehydrate_target(media_item_id) or target
+            steam_app_id = latest.get("steam_app_id")
+            if steam_app_id:
+                await _run_rehydrate_step(task_id, "steam", "Steam data", lambda: _sync_steam_update_app(int(steam_app_id)))
+                await _run_rehydrate_step(task_id, "steamgrid", "SteamGridDB artwork", lambda: _sync_steamgrid_game(int(steam_app_id)))
+
+        elif media_type == "music":
+            mbid = target.get("musicbrainz_id") or external_ids.get("musicbrainz")
+            if not mbid:
+                raise ValueError("This album does not have a MusicBrainz id")
+            await _run_rehydrate_step(task_id, "musicbrainz", "MusicBrainz album", lambda: _sync_musicbrainz_album(str(mbid), force=True))
+
+            latest = await _load_rehydrate_target(media_item_id) or target
+            spotify_id = latest.get("spotify_id")
+            if spotify_id:
+                await _run_rehydrate_step(task_id, "spotify", "Spotify album", lambda: _sync_spotify_enrich_album(media_item_id, str(spotify_id)))
+            else:
+                await _run_rehydrate_step(task_id, "spotify", "Spotify match", lambda: _sync_spotify_match_album(media_item_id))
+                latest = await _load_rehydrate_target(media_item_id) or target
+                spotify_id = latest.get("spotify_id")
+                if spotify_id:
+                    await _run_rehydrate_step(task_id, "spotify", "Spotify album", lambda: _sync_spotify_enrich_album(media_item_id, str(spotify_id)))
+
+            await _run_rehydrate_step(task_id, "lastfm", "Last.fm album", lambda: _sync_lastfm_enrich_album(media_item_id))
+            await _run_rehydrate_step(task_id, "fanart", "Fanart images", lambda: _sync_fanart_music(media_item_id))
+
+        else:
+            raise ValueError(f"Unsupported media type: {media_type}")
+
+        result = {"media_item_id": media_item_id, "media_type": media_type, "title": title}
+        await store_result(task_id, result)
+        await _rehydrate_emit(task_id, "rehydrate_complete", **result)
+        return result
+    except Exception as exc:
+        logger.exception("media rehydrate failed", task_id=task_id, media_item_id=media_item_id)
+        result = {"error": str(exc), "media_item_id": media_item_id}
+        await store_result(task_id, result)
+        await _rehydrate_emit(task_id, "error", message=str(exc), media_item_id=media_item_id)
+        return result
 
 
 # ── Discover list tasks ────────────────────────────────────────────────
@@ -440,7 +574,7 @@ async def _sync_tmdb_movie(tmdb_id: int, force: bool = False) -> dict | None:
             content_hash = _compute_hash(raw)
 
             # Hash matched — escalate and skip processing
-            if ext_id is not None and ext_id.content_hash == content_hash:
+            if ext_id is not None and not force and ext_id.content_hash == content_hash:
                 ext_id.hash_match_count += 1
                 media_item.next_sync_at = _compute_next_sync_at(
                     "movie", raw, ext_id.hash_match_count
@@ -532,7 +666,7 @@ async def _sync_tmdb_show(tmdb_id: int, force: bool = False) -> dict | None:
             # Exception: if the show has seasons but zero episodes, the previous
             # sync may have run before per-season episode fetching was added.
             # In that case force a full re-sync to backfill episodes.
-            if ext_id is not None and ext_id.content_hash == content_hash:
+            if ext_id is not None and not force and ext_id.content_hash == content_hash:
                 skip = True
                 if media_item is not None:
                     season_count = await session.scalar(
@@ -2082,12 +2216,12 @@ async def _filter_missing_ids(provider: str, external_ids: set[str]) -> set[str]
     autoretry_for=(Exception,),
 
 )
-def sync_musicbrainz_album_task(self, mbid: str) -> dict | None:
+def sync_musicbrainz_album_task(self, mbid: str, force: bool = False) -> dict | None:
     """Sync an album from MusicBrainz by MBID."""
-    return run_async(_sync_musicbrainz_album(mbid))
+    return run_async(_sync_musicbrainz_album(mbid, force))
 
 
-async def _sync_musicbrainz_album(mbid: str) -> dict | None:
+async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None:
     async with async_session() as session:
         from sqlalchemy.orm import joinedload
 
@@ -2109,7 +2243,7 @@ async def _sync_musicbrainz_album(mbid: str) -> dict | None:
 
         # Content hash guard
         content_hash = _compute_hash({"title": raw.get("title"), "id": raw.get("id")})
-        if ext_id is not None and ext_id.content_hash == content_hash:
+        if ext_id is not None and not force and ext_id.content_hash == content_hash:
             ext_id.hash_match_count += 1
             await session.commit()
             logger.debug("hash matched, skipping musicbrainz album", mbid=mbid)
@@ -2120,6 +2254,7 @@ async def _sync_musicbrainz_album(mbid: str) -> dict | None:
 
         if ext_id is not None:
             item.id = ext_id.media_item_id
+            item.album = None  # detach before merge; Album handled separately below
             item = await session.merge(item)
         else:
             session.add(item)
@@ -2361,6 +2496,258 @@ def sync_spotify_seed_album_task(self, spotify_id: str) -> dict | None:
     return run_async(_sync_spotify_seed_album(spotify_id))
 
 
+async def _get_or_create_spotify_artist(
+    session,
+    name: str,
+    spotify_artist_id: str | None,
+) -> Person:
+    person = None
+    if spotify_artist_id:
+        person = await session.scalar(
+            select(Person).where(Person.spotify_artist_id == spotify_artist_id)
+        )
+        if person is not None:
+            return person
+
+    name_match_filters = [Person.name == name]
+    if spotify_artist_id:
+        name_match_filters.append(Person.spotify_artist_id.is_(None))
+    person = await session.scalar(select(Person).where(*name_match_filters))
+    if person is not None:
+        if spotify_artist_id and not person.spotify_artist_id:
+            person.spotify_artist_id = spotify_artist_id
+        return person
+
+    person = Person(name=name, spotify_artist_id=spotify_artist_id)
+    session.add(person)
+    await session.flush()
+    return person
+
+
+async def _create_spotify_artist_credits(
+    session,
+    media_item_id: str,
+    artists_data: list[JSONValue],
+) -> int:
+    credited_person_ids: set[str] = set()
+    created = 0
+
+    for artist_data in artists_data:
+        if not isinstance(artist_data, dict):
+            continue
+
+        name = str(artist_data.get("name") or "").strip()
+        spotify_artist_id = str(artist_data.get("id") or "").strip() or None
+        if not name:
+            continue
+
+        person = await _get_or_create_spotify_artist(session, name, spotify_artist_id)
+        if person.id in credited_person_ids:
+            continue
+
+        sort_order = len(credited_person_ids)
+        role = "primary" if sort_order == 0 else "artist"
+        exists = await session.scalar(
+            select(MediaCredit).where(
+                MediaCredit.media_item_id == media_item_id,
+                MediaCredit.person_id == person.id,
+            )
+        )
+        if exists is None:
+            session.add(
+                MediaCredit(
+                    media_item_id=media_item_id,
+                    person_id=person.id,
+                    role=role,
+                    character_name=name,
+                    sort_order=sort_order,
+                )
+            )
+            created += 1
+        credited_person_ids.add(person.id)
+
+    return created
+
+
+def _spotify_album_artists(raw: dict) -> list[JSONValue]:
+    artists_data = raw.get("artists", [])
+    return artists_data if isinstance(artists_data, list) else []
+
+
+def _parse_spotify_release_date(raw: dict) -> date | None:
+    release_date_raw = raw.get("release_date")
+    if not release_date_raw:
+        return None
+
+    try:
+        parts = str(release_date_raw).split("-")
+        if len(parts) == 3:
+            return date.fromisoformat(str(release_date_raw))
+        if len(parts) == 2:
+            return date(int(parts[0]), int(parts[1]), 1)
+        if len(parts) == 1:
+            return date(int(parts[0]), 1, 1)
+    except (ValueError, IndexError):
+        return None
+
+    return None
+
+
+async def _apply_spotify_album_metadata(session, item: MediaItem, raw: dict) -> dict[str, int]:
+    title_updates = 0
+    release_date_updates = 0
+
+    title = str(raw.get("name") or "").strip()
+    if title and item.title != title:
+        item.title = title
+        item.slug = slugify(title)
+        title_updates = 1
+
+    release_date = _parse_spotify_release_date(raw)
+    if release_date is not None and item.release_date != release_date:
+        item.release_date = release_date
+        release_date_updates = 1
+
+    credits_created = await _create_spotify_artist_credits(
+        session,
+        item.id,
+        _spotify_album_artists(raw),
+    )
+
+    return {
+        "title_updates": title_updates,
+        "release_date_updates": release_date_updates,
+        "credits_created": credits_created,
+    }
+
+
+def _split_legacy_spotify_album_title(title: str) -> tuple[str, str] | None:
+    if " — " not in title:
+        return None
+
+    artist_name, album_title = title.split(" — ", 1)
+    artist_name = artist_name.strip()
+    album_title = album_title.strip()
+    if not artist_name or not album_title:
+        return None
+    return artist_name, album_title
+
+
+async def _apply_legacy_spotify_album_title_split(session, item: MediaItem) -> dict[str, int]:
+    split_title = _split_legacy_spotify_album_title(item.title)
+    if split_title is None:
+        return {"title_updates": 0, "credits_created": 0}
+
+    artist_name, album_title = split_title
+    item.title = album_title
+    item.slug = slugify(album_title)
+    credits_created = await _create_spotify_artist_credits(
+        session,
+        item.id,
+        [{"name": artist_name}],
+    )
+    return {"title_updates": 1, "credits_created": credits_created}
+
+
+@app.task(
+    name="sync.spotify.backfill_album_titles",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+)
+def backfill_spotify_album_titles_task(self, limit: int = 500) -> dict:
+    """Backfill Spotify-seeded albums to separate album title from artist credits."""
+    return run_async(_backfill_spotify_album_titles(limit))
+
+
+async def _backfill_spotify_album_titles(limit: int = 500) -> dict:
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    scanned = 0
+    updated_titles = 0
+    updated_release_dates = 0
+    created_credits = 0
+    failed = 0
+    rate_limited = False
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Album, MediaItem)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(
+                MediaItem.media_type == "music",
+                Album.spotify_id.isnot(None),
+            )
+            .order_by(MediaItem.created_at.desc())
+            .limit(limit)
+        )
+        rows = result.all()
+
+        for album, item in rows:
+            scanned += 1
+            spotify_id = album.spotify_id
+            if not spotify_id:
+                continue
+
+            try:
+                legacy_updates = await _apply_legacy_spotify_album_title_split(session, item)
+                updated_titles += legacy_updates["title_updates"]
+                created_credits += legacy_updates["credits_created"]
+                if legacy_updates["title_updates"]:
+                    await session.commit()
+                    continue
+
+                if rate_limited:
+                    continue
+
+                raw = await provider.get_album(spotify_id)
+                if not raw or not raw.get("id"):
+                    failed += 1
+                    continue
+
+                updates = await _apply_spotify_album_metadata(session, item, raw)
+                updated_titles += updates["title_updates"]
+                updated_release_dates += updates["release_date_updates"]
+                created_credits += updates["credits_created"]
+                await session.commit()
+            except RateLimitError:
+                rate_limited = True
+                await session.rollback()
+                logger.warning(
+                    "spotify album title backfill rate limited; continuing with local title-split fallback",
+                    retry_later=True,
+                )
+            except Exception:
+                failed += 1
+                await session.rollback()
+                logger.warning(
+                    "spotify album title backfill failed",
+                    otix_id=item.id,
+                    spotify_id=spotify_id,
+                    exc_info=True,
+                )
+
+    logger.info(
+        "spotify album title backfill complete",
+        scanned=scanned,
+        updated_titles=updated_titles,
+        updated_release_dates=updated_release_dates,
+        created_credits=created_credits,
+        failed=failed,
+        rate_limited=rate_limited,
+    )
+    return {
+        "scanned": scanned,
+        "updated_titles": updated_titles,
+        "updated_release_dates": updated_release_dates,
+        "created_credits": created_credits,
+        "failed": failed,
+        "rate_limited": rate_limited,
+    }
+
+
 async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
     async with async_session() as session:
         # Check if already exists
@@ -2385,23 +2772,23 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
             return None
 
         title = raw.get("name", "Unknown Album")
-        artists_data = raw.get("artists", [])
-        primary_artist_name = artists_data[0].get("name", "Unknown Artist") if artists_data else "Unknown Artist"
+        artists_data = _spotify_album_artists(raw)
+        primary_artist_name = "Unknown Artist"
+        if artists_data and isinstance(artists_data[0], dict):
+            primary_artist_name = str(artists_data[0].get("name") or primary_artist_name)
 
         # Create MediaItem
         images = raw.get("images", [])
         poster_url = images[0].get("url") if images else None
 
-        release_date = raw.get("release_date")
-        release_year = int(release_date[:4]) if release_date and len(release_date) >= 4 else None
+        release_date = _parse_spotify_release_date(raw)
 
         item = MediaItem(
-            title=f"{primary_artist_name} — {title}",
+            title=title,
+            slug=slugify(title),
             media_type="music",
-            primary_artist_name=primary_artist_name,
             poster_url=poster_url,
             release_date=release_date,
-            release_year=release_year,
             synced_at=datetime.now(timezone.utc),
         )
         session.add(item)
@@ -2418,6 +2805,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
             preview_url=None,
         )
         session.add(album)
+        await _create_spotify_artist_credits(session, item.id, artists_data)
 
         # Create Tracks
         for track_data in raw.get("tracks", {}).get("items", []):
@@ -2435,7 +2823,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
         await session.commit()
 
         logger.info("spotify album seeded",
-            otix_id=item.id, spotify_id=spotify_id, title=title,
+            otix_id=item.id, spotify_id=spotify_id, title=title, artist=primary_artist_name,
         )
 
         # Enqueue enrichment
@@ -2444,8 +2832,481 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
         app.send_task("sync.lastfm.enrich_album", args=[item.id])
         app.send_task("embedding.generate", args=[item.id])
 
+        # Trigger artist enrichment + discography for each credited artist
+        for a in artists_data:
+            aid = a.get("id") if isinstance(a, dict) else None
+            if aid:
+                app.send_task("sync.spotify.enrich_artist", args=[aid])
+
         await _progress_incr("spotify_seeded")
         return {"otix_id": item.id, "spotify_id": spotify_id, "title": title}
+
+
+# ── Spotify related artists ────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.related_artists",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+)
+def sync_related_artists_task(self, spotify_artist_id: str) -> dict:
+    """Fetch related artists from Spotify, find-or-create Person records, enqueue enrichment."""
+    return run_async(_sync_related_artists(spotify_artist_id))
+
+
+async def _sync_related_artists(spotify_artist_id: str) -> dict:
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    try:
+        related = await provider.get_related_artists(spotify_artist_id)
+    except Exception:
+        logger.warning("related_artists: fetch failed", spotify_artist_id=spotify_artist_id)
+        return {"artist_id": spotify_artist_id, "count": 0, "error": "fetch failed"}
+
+    if not related:
+        return {"artist_id": spotify_artist_id, "count": 0}
+
+    # Find-or-create Person records and enqueue enrichment
+    created = 0
+    enriched = 0
+    for ra in related[:20]:  # limit to top 20
+        ra_id = ra.get("id")
+        if not ra_id:
+            continue
+
+        async with async_session() as session:
+            person = await session.scalar(
+                select(Person).where(Person.spotify_artist_id == ra_id)
+            )
+            if not person:
+                # Try name match
+                ra_name = ra.get("name")
+                if ra_name:
+                    person = await session.scalar(
+                        select(Person).where(Person.name == ra_name)
+                    )
+                    if person and not person.spotify_artist_id:
+                        person.spotify_artist_id = ra_id
+                        await session.commit()
+
+            if not person:
+                # Create a minimal Person record
+                ra_name = ra.get("name", "Unknown")
+                images = ra.get("images", [])
+                async with async_session() as s2:
+                    person = Person(
+                        name=ra_name,
+                        spotify_artist_id=ra_id,
+                        spotify_popularity=ra.get("popularity"),
+                        spotify_follower_count=ra.get("followers", {}).get("total"),
+                        spotify_genres=ra.get("genres"),
+                        spotify_image_url=images[0].get("url") if images else None,
+                    )
+                    s2.add(person)
+                    await s2.commit()
+                    created += 1
+
+        # Enqueue enrichment for this related artist
+        app.send_task("sync.spotify.enrich_artist", args=[ra_id])
+
+    logger.info(
+        "related_artists: done",
+        spotify_artist_id=spotify_artist_id,
+        total=len(related),
+        created=created,
+    )
+    return {"artist_id": spotify_artist_id, "count": len(related), "created": created}
+
+
+# ── Spotify artist enrichment ──────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.enrich_artist",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+)
+def enrich_spotify_artist_task(self, spotify_artist_id: str, trigger_discography: bool = True) -> dict:
+    """Enrich a Person record with Spotify artist metadata."""
+    return run_async(_enrich_spotify_artist(spotify_artist_id, trigger_discography))
+
+
+async def _enrich_spotify_artist(spotify_artist_id: str, trigger_discography: bool = True) -> dict:
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    try:
+        artist = await provider.get_artist(spotify_artist_id)
+    except Exception:
+        logger.warning("enrich_artist: fetch failed", spotify_artist_id=spotify_artist_id)
+        return {"artist_id": spotify_artist_id, "error": "fetch failed"}
+
+    if not artist or not artist.get("id"):
+        return {"artist_id": spotify_artist_id, "error": "not found"}
+
+    async with async_session() as session:
+        person = await session.scalar(
+            select(Person).where(Person.spotify_artist_id == spotify_artist_id)
+        )
+
+        if not person:
+            # Try name match (might have been created via MusicBrainz)
+            name = artist.get("name")
+            if name:
+                person = await session.scalar(
+                    select(Person).where(Person.name == name)
+                )
+                if person and not person.spotify_artist_id:
+                    person.spotify_artist_id = spotify_artist_id
+
+        if not person:
+            # Create a new Person record from Spotify artist data
+            images = artist.get("images", [])
+            image_url = images[0].get("url") if images else None
+            person = Person(
+                name=artist.get("name"),
+                spotify_artist_id=spotify_artist_id,
+                spotify_popularity=artist.get("popularity"),
+                spotify_follower_count=(artist.get("followers") or {}).get("total"),
+                spotify_genres=artist.get("genres"),
+                spotify_image_url=image_url,
+                photo_url=image_url,
+            )
+            session.add(person)
+            await session.commit()
+        else:
+            person.spotify_popularity = artist.get("popularity")
+            person.spotify_follower_count = (artist.get("followers") or {}).get("total")
+            person.spotify_genres = artist.get("genres")
+
+            images = artist.get("images", [])
+            if images:
+                person.spotify_image_url = images[0].get("url")
+
+            if not person.photo_url and person.spotify_image_url:
+                person.photo_url = person.spotify_image_url
+
+            await session.commit()
+
+    # Optionally trigger discography backfill
+    if trigger_discography:
+        app.send_task("sync.spotify.artist_discography", args=[spotify_artist_id])
+
+    logger.info(
+        "enrich_artist: done",
+        spotify_artist_id=spotify_artist_id,
+        name=artist.get("name"),
+        popularity=artist.get("popularity"),
+    )
+    return {
+        "artist_id": spotify_artist_id,
+        "name": artist.get("name"),
+        "popularity": artist.get("popularity"),
+        "genres": artist.get("genres"),
+        "matched": True,
+    }
+
+
+# ── Spotify artist backfill ─────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.backfill_album_artists",
+    bind=True,
+    max_retries=1,
+    default_retry_delay=120,
+)
+def backfill_album_artists_task(self, limit: int | None = None) -> dict:
+    """Find all albums with Spotify IDs and ensure every artist has a Person record."""
+    return run_async(_backfill_album_artists(limit))
+
+
+async def _backfill_album_artists(limit: int | None = None) -> dict:
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    async with async_session() as session:
+        stmt = (
+            select(Album.spotify_id, Album.media_item_id)
+            .where(Album.spotify_id.isnot(None))
+            .order_by(Album.created_at.desc())
+        )
+        if limit:
+            stmt = stmt.limit(limit)
+        result = await session.execute(stmt)
+        album_rows = [(row[0], row[1]) for row in result.all()]
+
+    if not album_rows:
+        return {"albums_processed": 0, "artists_missing": 0, "enqueued": 0}
+
+    seen_artist_ids: set[str] = set()
+    albums_processed = 0
+    api_errors = 0
+
+    for spotify_id, _media_item_id in album_rows:
+        try:
+            sp_album = await provider.get_album(spotify_id)
+        except Exception:
+            api_errors += 1
+            continue
+
+        if not sp_album:
+            continue
+
+        artist_ids = extract_artist_spotify_ids(sp_album)
+        for aid in artist_ids:
+            seen_artist_ids.add(aid)
+        albums_processed += 1
+
+    if not seen_artist_ids:
+        return {
+            "albums_processed": albums_processed,
+            "api_errors": api_errors,
+            "artists_missing": 0,
+            "enqueued": 0,
+        }
+
+    # Check which artist IDs already have Person records
+    async with async_session() as session:
+        result = await session.execute(
+            select(Person.spotify_artist_id).where(
+                Person.spotify_artist_id.in_(list(seen_artist_ids))
+            )
+        )
+        existing_ids = {row[0] for row in result.all()}
+
+    missing_ids = seen_artist_ids - existing_ids
+
+    enqueued = 0
+    for aid in missing_ids:
+        app.send_task("sync.spotify.enrich_artist", args=[aid])
+        enqueued += 1
+
+    logger.info(
+        "backfill_album_artists: done",
+        albums_processed=albums_processed,
+        total_artist_ids=len(seen_artist_ids),
+        existing=len(existing_ids),
+        missing=len(missing_ids),
+        enqueued=enqueued,
+        api_errors=api_errors,
+    )
+    return {
+        "albums_processed": albums_processed,
+        "total_artist_ids": len(seen_artist_ids),
+        "existing_persons": len(existing_ids),
+        "artists_missing": len(missing_ids),
+        "enqueued": enqueued,
+        "api_errors": api_errors,
+    }
+
+
+# ── Spotify artist discography ──────────────────────────────────────
+
+
+async def _fetch_all_artist_albums(provider: SpotifyProvider, artist_id: str) -> list[dict]:
+    """Fetch all albums for a Spotify artist (paginated)."""
+    albums: list[dict] = []
+    offset = 0
+    while True:
+        page = await provider.get_artist_albums(artist_id, offset=offset)
+        items = page.get("items", [])
+        if not items:
+            break
+        albums.extend(items)
+        offset += len(items)
+        if not page.get("next"):
+            break
+    return albums
+
+
+@app.task(
+    name="sync.spotify.artist_discography",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+)
+def sync_artist_discography_task(self, spotify_artist_id: str) -> dict:
+    """Fetch all albums for a Spotify artist, seed missing ones into Otix."""
+    return run_async(_sync_artist_discography(spotify_artist_id))
+
+
+async def _sync_artist_discography(spotify_artist_id: str) -> dict:
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    # Fetch all albums (album, single, compilation)
+    try:
+        albums = await _fetch_all_artist_albums(provider, spotify_artist_id)
+    except Exception:
+        logger.warning("artist_discography: fetch failed", spotify_artist_id=spotify_artist_id)
+        return {"artist_id": spotify_artist_id, "total": 0, "new": 0, "error": "fetch failed"}
+
+    if not albums:
+        return {"artist_id": spotify_artist_id, "total": 0, "new": 0}
+
+    # Collect album Spotify IDs
+    album_ids = [a.get("id") for a in albums if a.get("id")]
+
+    # Find which already exist in Otix
+    async with async_session() as session:
+        result = await session.execute(
+            select(Album.spotify_id).where(Album.spotify_id.in_(album_ids))
+        )
+        existing_ids = {row[0] for row in result if row[0]}
+
+    new_ids = [aid for aid in album_ids if aid not in existing_ids]
+
+    # Seed missing albums
+    for aid in new_ids:
+        app.send_task("sync.spotify.seed_album", args=[aid])
+
+    logger.info(
+        "artist_discography: done",
+        spotify_artist_id=spotify_artist_id,
+        total=len(album_ids),
+        existing=len(existing_ids),
+        new=len(new_ids),
+    )
+    return {
+        "artist_id": spotify_artist_id,
+        "total": len(album_ids),
+        "existing": len(existing_ids),
+        "new": len(new_ids),
+    }
+
+
+# ── Spotify audio features backfill ──────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.backfill_audio_features",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+)
+def backfill_audio_features_task(self, batch_size: int = 500) -> dict:
+    """Backfill per-track audio features for tracks missing them."""
+    return run_async(_backfill_audio_features(batch_size))
+
+
+async def _backfill_audio_features(batch_size: int = 500) -> dict:
+    from otix.providers.spotify.client import SpotifyProvider
+    from otix.providers.spotify.transformer import extract_audio_features
+
+    redis = await get_redis()
+    provider = SpotifyProvider(redis)
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Track.spotify_id)
+            .where(
+                Track.spotify_id.isnot(None),
+                Track.audio_features.is_(None),
+            )
+            .limit(batch_size)
+        )
+        missing_ids = [row[0] for row in result if row[0]]
+
+    if not missing_ids:
+        logger.info("audio_features_backfill: nothing to do")
+        return {"scanned": 0, "updated": 0}
+
+    updated = 0
+    failed = 0
+
+    for i in range(0, len(missing_ids), 100):
+        chunk = missing_ids[i:i + 100]
+        try:
+            features_list = await provider.get_audio_features_batch(chunk)
+        except Exception:
+            failed += len(chunk)
+            continue
+
+        features_map: dict[str, dict] = {}
+        for f in features_list:
+            if f and f.get("id"):
+                features_map[f["id"]] = extract_audio_features(f)
+
+        if not features_map:
+            failed += len(chunk)
+            continue
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(Track).where(Track.spotify_id.in_(list(features_map)))
+            )
+            tracks = result.scalars().all()
+            for track in tracks:
+                feat = features_map.get(track.spotify_id)
+                if feat:
+                    track.audio_features = feat
+                    updated += 1
+            await session.commit()
+
+    logger.info("audio_features_backfill: done", scanned=len(missing_ids), updated=updated, failed=failed)
+    return {"scanned": len(missing_ids), "updated": updated, "failed": failed}
+
+
+@app.task(
+    name="sync.spotify.backfill_album_audio_features",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+)
+def backfill_album_audio_features_task(self, limit: int = 500) -> dict:
+    """Recalculate album-level averaged audio features from tracks."""
+    return run_async(_backfill_album_audio_features(limit))
+
+
+async def _backfill_album_audio_features(limit: int = 500) -> dict:
+    KEYS = ["tempo", "energy", "danceability", "valence", "acousticness", "instrumentalness", "liveness", "speechiness"]
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Album)
+            .where(Album.spotify_id.isnot(None))
+            .order_by(Album.created_at.desc())
+            .limit(limit)
+        )
+        albums = result.scalars().all()
+
+    updated = 0
+    for album in albums:
+        async with async_session() as session:
+            tr_result = await session.execute(
+                select(Track.audio_features)
+                .where(
+                    Track.album_id == album.media_item_id,
+                    Track.audio_features.isnot(None),
+                )
+            )
+            all_feats = [row[0] for row in tr_result if row[0]]
+            if not all_feats:
+                continue
+
+            avg: dict[str, float] = {}
+            for k in KEYS:
+                vals = [f[k] for f in all_feats if k in f and f[k] is not None]
+                if vals:
+                    avg[k] = round(sum(vals) / len(vals), 4)
+
+            if avg:
+                album.audio_features = avg
+                await session.commit()
+                updated += 1
+
+    logger.info("album_audio_features_backfill: done", scanned=len(albums), updated=updated)
+    return {"scanned": len(albums), "updated": updated}
 
 
 @app.task(

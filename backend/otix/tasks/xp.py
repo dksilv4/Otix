@@ -28,12 +28,14 @@ async def _backfill_xp() -> dict:
 
     from otix.domain.interaction import UserMediaInteraction
     from otix.domain.list import UserList
+    from otix.domain.mood import UserMoodCheckIn
     from otix.domain.review import Review
     from otix.domain.workout import Workout
     from otix.lib.xp import (
         INTERACTION_LIKE_WATCHLIST_STARTED,
         INTERACTION_WATCHED_PLAYED,
         LIST_CREATE,
+        MOOD_CHECKIN,
         REVIEW_SCORE_ONLY,
         REVIEW_WITH_CONTENT,
         WORKOUT_COMPLETE,
@@ -45,7 +47,7 @@ async def _backfill_xp() -> dict:
 
         # Reviews
         reviews = (await session.execute(select(Review.user_id, Review.content, Review.score))).all()
-        for user_id, content, score in reviews:
+        for user_id, content, _score in reviews:
             amount = REVIEW_WITH_CONTENT if content else REVIEW_SCORE_ONLY
             await session.execute(
                 update(User).where(User.id == user_id).values(total_xp=User.total_xp + amount)
@@ -73,6 +75,17 @@ async def _backfill_xp() -> dict:
         for (user_id,) in lists:
             await session.execute(
                 update(User).where(User.id == user_id).values(total_xp=User.total_xp + LIST_CREATE)
+            )
+
+        # Daily mood check-ins
+        mood_checkins = (
+            await session.execute(
+                select(UserMoodCheckIn.user_id).where(UserMoodCheckIn.status == "submitted")
+            )
+        ).all()
+        for (user_id,) in mood_checkins:
+            await session.execute(
+                update(User).where(User.id == user_id).values(total_xp=User.total_xp + MOOD_CHECKIN)
             )
 
         await session.commit()

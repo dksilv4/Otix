@@ -13,3 +13,9 @@ WORKOUT_COMPLETE = 100
 
 # ── Lists ──
 LIST_CREATE = 50
+
+# ── User Ratings ──
+RATE_USER = 10
+
+# ── Daily Mood Check-ins ──
+MOOD_CHECKIN = 10

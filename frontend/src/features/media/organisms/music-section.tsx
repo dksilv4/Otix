@@ -1,11 +1,19 @@
+import { useState } from 'react'
 import type { AlbumDetail, TrackOut } from '../media-queries'
+import { useRateTrack } from '../media-queries'
 import { cn } from '@/lib/utils'
-import { Disc3, ExternalLink, Music2 } from 'lucide-react'
+import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
+import { useSpotifyPlayer } from '@/features/spotify/spotify-player-provider'
+import { TrackInlineActions } from '../molecules/track-inline-actions'
+import { useSaveSpotifyTrack } from '@/features/library/library-queries'
+import { useToast } from '@/features/dk-ui/molecules/toast'
 
 interface MusicSectionProps {
   album: AlbumDetail
   className?: string
 }
+
+const EMPTY_TRACKS: TrackOut[] = []
 
 function formatMs(ms: number | null | undefined): string {
   if (ms == null || ms <= 0) return '—'
@@ -95,7 +103,31 @@ function MetaItem({ label, value }: { label: string; value: string | null | unde
   )
 }
 
-function TrackRow({ track, showDisc }: { track: TrackOut; showDisc: boolean }) {
+function TrackRow({
+  track,
+  showDisc,
+  isPlaying,
+  spotifyLiked,
+  savingSpotify,
+  rating,
+  ratingPending,
+  onPlay,
+  onToggle,
+  onSaveSpotify,
+  onRate,
+}: {
+  track: TrackOut
+  showDisc: boolean
+  isPlaying: boolean
+  spotifyLiked: boolean
+  savingSpotify: boolean
+  rating: { myRating?: number | null; avgRating?: number | null; ratingCount: number }
+  ratingPending: boolean
+  onPlay: (uris: string[]) => void
+  onToggle: () => void
+  onSaveSpotify: (spotifyId: string) => void
+  onRate: (trackId: string, score: number) => void
+}) {
   const feats = track.audioFeatures
   const mini =
     feats && typeof feats === 'object'
@@ -108,20 +140,72 @@ function TrackRow({ track, showDisc }: { track: TrackOut; showDisc: boolean }) {
           .join(' · ')
       : ''
 
+  const canPlay = !!track.spotifyId
+  const handleRowClick = () => {
+    if (!canPlay) return
+    if (isPlaying) {
+      onToggle()
+    } else {
+      onPlay([`spotify:track:${track.spotifyId}`])
+    }
+  }
+  const cellClass = cn(
+    'bg-[var(--dk-surface-glass)] py-2.5 transition-colors',
+    isPlaying ? 'bg-[#1DB954]/10' : 'group-hover:bg-[var(--dk-surface-glass-hover)]',
+  )
+
   return (
-    <tr className="border-b border-white/[0.06] last:border-0 hover:bg-white/[0.02]">
-      <td className="w-10 py-2.5 pr-2 text-right font-mono text-xs text-muted-foreground">
+    <tr
+      onClick={handleRowClick}
+      className={cn(
+        'group transition-colors',
+        canPlay && 'cursor-pointer',
+      )}
+    >
+      <td className={cn(cellClass, 'w-10 rounded-l-xl pr-2 text-right font-mono text-xs text-muted-foreground')}>
         {showDisc ? `${track.discNumber}.${track.trackNumber}` : track.trackNumber}
       </td>
-      <td className="py-2.5 pr-3">
+      <td className={cn(cellClass, 'pr-3')}>
         <div className="font-medium leading-snug">{track.title}</div>
         {mini && <div className="mt-0.5 text-[10px] text-muted-foreground">{mini}</div>}
       </td>
-      <td className="hidden w-20 py-2.5 text-right font-mono text-xs text-muted-foreground sm:table-cell">
+      <td className={cn(cellClass, 'hidden w-20 text-right font-mono text-xs text-muted-foreground sm:table-cell')}>
         {formatMs(track.durationMs)}
       </td>
-      <td className="w-10 py-2.5 text-center">
-        {track.previewUrl ? (
+      <td className={cn(cellClass, 'hidden w-[290px] pr-3 md:table-cell')}>
+        <TrackInlineActions
+          trackId={track.id}
+          spotifyId={track.spotifyId}
+          spotifyLiked={spotifyLiked}
+          savingSpotify={savingSpotify}
+          myRating={rating.myRating}
+          ratingPending={ratingPending}
+          onSaveSpotify={onSaveSpotify}
+          onRate={onRate}
+          className="pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"
+        />
+      </td>
+      <td className={cn(cellClass, 'w-10 rounded-r-xl text-center')}>
+        {track.spotifyId ? (
+          <div
+            className={cn(
+              'inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors pointer-events-none',
+              isPlaying
+                ? 'bg-[#1DB954] text-black'
+                : 'bg-[#1DB954]/15 text-[#1DB954]',
+            )}
+          >
+            {isPlaying ? (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
+              </svg>
+            )}
+          </div>
+        ) : track.previewUrl ? (
           <audio controls className="h-7 w-[120px] max-w-[28vw] sm:w-32" preload="none">
             <source src={track.previewUrl} type="audio/mpeg" />
           </audio>
@@ -134,8 +218,56 @@ function TrackRow({ track, showDisc }: { track: TrackOut; showDisc: boolean }) {
 }
 
 export function MusicSection({ album, className }: MusicSectionProps) {
-  const tracks = album.tracks ?? []
+  const tracks = album.tracks ?? EMPTY_TRACKS
   const multiDisc = tracks.some((t) => t.discNumber > 1)
+  const { playWithQueue, currentTrack, isReady, togglePlay } = useSpotifyPlayer()
+  const saveSpotifyTrack = useSaveSpotifyTrack()
+  const rateTrack = useRateTrack()
+  const { toast } = useToast()
+  const [likedSpotifyIds, setLikedSpotifyIds] = useState<Set<string>>(new Set())
+  const [savingSpotifyId, setSavingSpotifyId] = useState<string | null>(null)
+  const [ratingTrackId, setRatingTrackId] = useState<string | null>(null)
+  const [ratingsByTrack, setRatingsByTrack] = useState<
+    Record<string, { myRating?: number | null; avgRating?: number | null; ratingCount: number }>
+  >({})
+
+  const handleSaveSpotify = (spotifyId: string) => {
+    setSavingSpotifyId(spotifyId)
+    saveSpotifyTrack.mutate(spotifyId, {
+      onSuccess: () => {
+        setLikedSpotifyIds((current) => new Set(current).add(spotifyId))
+        toast({ title: 'Added to Spotify liked songs', variant: 'success' })
+      },
+      onError: () => {
+        toast({
+          title: 'Could not save to Spotify',
+          description: 'Check your Spotify connection and try again.',
+          variant: 'error',
+        })
+      },
+      onSettled: () => setSavingSpotifyId(null),
+    })
+  }
+
+  const handleRateTrack = (trackId: string, score: number) => {
+    setRatingTrackId(trackId)
+    rateTrack.mutate({ trackId, score }, {
+      onSuccess: (result) => {
+        setRatingsByTrack((current) => ({
+          ...current,
+          [trackId]: {
+            myRating: result.score,
+            avgRating: result.avgRating,
+            ratingCount: result.ratingCount,
+          },
+        }))
+      },
+      onError: () => {
+        toast({ title: 'Could not save track rating', variant: 'error' })
+      },
+      onSettled: () => setRatingTrackId(null),
+    })
+  }
 
   return (
     <section className={cn('space-y-8', className)}>
@@ -163,7 +295,14 @@ export function MusicSection({ album, className }: MusicSectionProps) {
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Total length</dt>
-            <dd className="text-sm font-medium">{formatMs(album.durationMs)}</dd>
+            <dd className="text-sm font-medium">
+              {formatMs(
+                album.durationMs ??
+                  (tracks.length > 0
+                    ? tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0)
+                    : null),
+              )}
+            </dd>
           </div>
           {album.spotifyPopularity != null && (
             <div>
@@ -174,6 +313,19 @@ export function MusicSection({ album, className }: MusicSectionProps) {
         </dl>
 
         <div className="mt-4 flex flex-wrap gap-2">
+          {album.spotifyId && isReady && (
+            <button
+              type="button"
+              onClick={() => {
+                const uris = tracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
+                if (uris.length > 0) playWithQueue(uris)
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954] px-3 py-1.5 text-xs font-medium text-black hover:bg-[#1DB954]/90 transition-colors"
+            >
+              <Play className="h-3.5 w-3.5 fill-current" />
+              Play Album
+            </button>
+          )}
           {album.spotifyUrl && (
             <a
               href={album.spotifyUrl}
@@ -230,20 +382,44 @@ export function MusicSection({ album, className }: MusicSectionProps) {
         {tracks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No track listing synced yet.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)]">
-            <table className="w-full min-w-[320px] text-left text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px] border-separate border-spacing-y-1 text-left text-sm">
               <thead>
-                <tr className="border-b border-white/[0.08] text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="w-10 py-3 pr-2 text-right font-medium">#</th>
-                  <th className="py-3 pr-3 font-medium">Title</th>
-                  <th className="hidden w-20 py-3 text-right font-medium sm:table-cell">Time</th>
-                  <th className="w-10 py-3 text-center font-medium">Preview</th>
+                <tr className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="w-10 pb-1.5 pr-2 text-right font-medium">#</th>
+                  <th className="pb-1.5 pr-3 font-medium">Title</th>
+                  <th className="hidden w-20 pb-1.5 text-right font-medium sm:table-cell">Time</th>
+                  <th className="hidden w-[290px] pb-1.5 pr-3 text-right font-medium md:table-cell">Rate</th>
+                  <th className="w-10 pb-1.5 text-center font-medium">Play</th>
                 </tr>
               </thead>
               <tbody>
-                {tracks.map((t) => (
-                  <TrackRow key={t.id} track={t} showDisc={multiDisc} />
-                ))}
+                {tracks.map((t, i) => {
+                  const subsequentUris = tracks
+                    .slice(i)
+                    .filter((tr) => tr.spotifyId)
+                    .map((tr) => `spotify:track:${tr.spotifyId}` as string)
+                  return (
+                    <TrackRow
+                      key={t.id}
+                      track={t}
+                      showDisc={multiDisc}
+                      isPlaying={currentTrack?.id === t.spotifyId}
+                      spotifyLiked={Boolean(t.spotifyId && likedSpotifyIds.has(t.spotifyId))}
+                      savingSpotify={savingSpotifyId === t.spotifyId}
+                      rating={ratingsByTrack[t.id] ?? {
+                        myRating: null,
+                        avgRating: t.avgRating ?? null,
+                        ratingCount: t.ratingCount ?? 0,
+                      }}
+                      ratingPending={ratingTrackId === t.id}
+                      onPlay={(uris) => playWithQueue(uris.length > 1 ? uris : subsequentUris)}
+                      onToggle={togglePlay}
+                      onSaveSpotify={handleSaveSpotify}
+                      onRate={handleRateTrack}
+                    />
+                  )
+                })}
               </tbody>
             </table>
           </div>

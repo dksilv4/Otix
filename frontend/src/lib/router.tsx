@@ -1,27 +1,31 @@
+import { lazy } from "react"
 import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import { useEffect } from "react"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
-import { AuthPage } from "@auth/organisms/auth-page"
-import { MediaDetail } from "@media/organisms/media-detail"
-import { DkUiShowcase } from "@/features/dk-ui/showcase"
-import { HomePage } from "@discover/organisms/home-page"
-import { PersonDetail } from "@person/organisms/person-detail"
-import { LibraryPage } from "@/features/library/library-page"
-import { ListDetail } from "@/features/list/organisms/list-detail"
-import { SettingsPage } from "@/features/settings/organisms/settings-page"
-import { UserProfilePage } from "@/features/user/organisms/user-profile-page"
-import { WorkoutPage } from "@/features/workout/organisms/workout-page"
-import { NotificationsPage } from "@/features/notifications/organisms/notifications-page"
-import { BrowsePage } from "@/features/browse/organisms/browse-page"
-import { VerifyEmailPage } from "@auth/organisms/verify-email-page"
-import { ForgotPasswordPage } from "@auth/organisms/forgot-password-page"
-import { ResetPasswordPage } from "@auth/organisms/reset-password-page"
-import { SteamCallbackPage } from "@auth/organisms/steam-callback-page"
-import { SteamConnectCallbackPage } from "@auth/organisms/steam-connect-callback-page"
-import { PlexConnectCallbackPage } from "@auth/organisms/plex-connect-callback-page"
-import { SpotifyConnectCallbackPage } from "@auth/organisms/spotify-connect-callback-page"
-import { TmdbConnectCallbackPage } from "@auth/organisms/tmdb-connect-callback-page"
+
+// ── Lazy-loaded page components ──
+
+const AuthPage = lazy(() => import("@auth/organisms/auth-page").then(m => ({ default: m.AuthPage })))
+const MediaDetail = lazy(() => import("@media/organisms/media-detail").then(m => ({ default: m.MediaDetail })))
+const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({ default: m.DkUiShowcase })))
+const HomePage = lazy(() => import("@discover/organisms/home-page").then(m => ({ default: m.HomePage })))
+const PersonDetail = lazy(() => import("@person/organisms/person-detail").then(m => ({ default: m.PersonDetail })))
+const LibraryPage = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryPage })))
+const ListDetail = lazy(() => import("@/features/list/organisms/list-detail").then(m => ({ default: m.ListDetail })))
+const SettingsPage = lazy(() => import("@/features/settings/organisms/settings-page").then(m => ({ default: m.SettingsPage })))
+const UserProfilePage = lazy(() => import("@/features/user/organisms/user-profile-page").then(m => ({ default: m.UserProfilePage })))
+const WorkoutPage = lazy(() => import("@/features/workout/organisms/workout-page").then(m => ({ default: m.WorkoutPage })))
+const NotificationsPage = lazy(() => import("@/features/notifications/organisms/notifications-page").then(m => ({ default: m.NotificationsPage })))
+const BrowsePage = lazy(() => import("@/features/browse/organisms/browse-page").then(m => ({ default: m.BrowsePage })))
+const VerifyEmailPage = lazy(() => import("@auth/organisms/verify-email-page").then(m => ({ default: m.VerifyEmailPage })))
+const ForgotPasswordPage = lazy(() => import("@auth/organisms/forgot-password-page").then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import("@auth/organisms/reset-password-page").then(m => ({ default: m.ResetPasswordPage })))
+const SteamCallbackPage = lazy(() => import("@auth/organisms/steam-callback-page").then(m => ({ default: m.SteamCallbackPage })))
+const SteamConnectCallbackPage = lazy(() => import("@auth/organisms/steam-connect-callback-page").then(m => ({ default: m.SteamConnectCallbackPage })))
+const PlexConnectCallbackPage = lazy(() => import("@auth/organisms/plex-connect-callback-page").then(m => ({ default: m.PlexConnectCallbackPage })))
+const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-connect-callback-page").then(m => ({ default: m.SpotifyConnectCallbackPage })))
+const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -114,7 +118,7 @@ const loadingRoute = createRoute({
   component: LoadingPage,
 })
 
-// ── DK UI ──
+// ── Settings & User ──
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -134,6 +138,8 @@ const workoutRoute = createRoute({
   component: WorkoutPage,
 })
 
+// ── Auth action routes ──
+
 const verifyEmailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/verify-email",
@@ -151,6 +157,8 @@ const resetPasswordRoute = createRoute({
   path: "/auth/reset-password",
   component: ResetPasswordPage,
 })
+
+// ── OAuth callback routes ──
 
 const steamCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -181,6 +189,8 @@ const tmdbConnectCallbackRoute = createRoute({
   path: "/auth/tmdb/connect/callback",
   component: TmdbConnectCallbackPage,
 })
+
+// ── Browse & Notifications ──
 
 const browseRoute = createRoute({
   getParentRoute: () => rootRoute,

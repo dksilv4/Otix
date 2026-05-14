@@ -302,6 +302,8 @@ class TrackOut(BaseModel):
     spotify_id: str | None = None
     musicbrainz_recording_id: str | None = None
     audio_features: dict | None = None
+    avg_rating: float | None = None
+    rating_count: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -390,3 +392,5 @@ class MediaItemDetail(BaseModel):
                 )
             data.collection = coll
         return data
+
+

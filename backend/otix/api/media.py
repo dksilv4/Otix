@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
+import time
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
 
-from otix.api.deps import get_db, get_optional_user
+from otix.api.deps import get_current_admin_user, get_db, get_optional_user
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import (
     GenreOut,
@@ -17,7 +21,7 @@ from otix.api.schemas.media import (
     MediaItemSummary,
 )
 from otix.domain.genre import Genre
-from otix.domain.media import UserSteamGame
+from otix.domain.media import MediaItem, UserSteamGame
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
@@ -191,6 +195,94 @@ def _poll_query_hash(q: str, media_type: str | None) -> str:
 
 
 BACKFILL_POLL_PROVIDERS = ["tmdb_movie", "tmdb_show", "igdb_game", "musicbrainz"]
+
+
+@media_router.post("/{media_id}/rehydrate")
+async def force_rehydrate_media(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+) -> dict[str, str]:
+    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
+
+    task_id = str(uuid.uuid4())
+    app.send_task(
+        "sync.media.rehydrate",
+        args=[task_id, media_id],
+        queue="user",
+        priority=9,
+    )
+    return {"task_id": task_id}
+
+
+@media_router.get("/{media_id}/rehydrate/{task_id}/stream")
+async def force_rehydrate_media_stream(
+    media_id: str,
+    task_id: str,
+    current_user: User = Depends(get_current_admin_user),
+):
+    from otix.lib.media_rehydrate_progress import (
+        channel_name,
+        get_latest_progress,
+        get_stored_result,
+    )
+
+    stored = await get_stored_result(task_id)
+    if stored is not None:
+        stored["type"] = "error" if stored.get("error") else "rehydrate_complete"
+        payload = json.dumps(stored)
+
+        async def replay():
+            yield f"data: {payload}\n\n"
+
+        return StreamingResponse(
+            replay(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    latest = await get_latest_progress(task_id)
+    channel = channel_name(task_id)
+
+    async def event_generator():
+        if latest is not None:
+            yield f"data: {json.dumps(latest)}\n\n"
+
+        redis = await get_redis()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            deadline = time.monotonic() + 300.0
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message is None:
+                    if time.monotonic() > deadline:
+                        break
+                    yield ":keepalive\n\n"
+                    continue
+
+                data = message["data"]
+                yield f"data: {data}\n\n"
+                deadline = time.monotonic() + 300.0
+
+                event = json.loads(data)
+                if event.get("type") in ("rehydrate_complete", "error"):
+                    break
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @media_router.get("/search/poll", response_model=MediaItemListResponse)

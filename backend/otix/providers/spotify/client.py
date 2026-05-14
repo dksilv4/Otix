@@ -103,6 +103,22 @@ class SpotifyProvider(BaseProvider):
     async def get_artist(self, spotify_id: str) -> dict:
         return await self._get(f"artists/{spotify_id}")
 
+    async def get_artist_albums(
+        self,
+        spotify_id: str,
+        include_groups: str = "album,single,compilation",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        return await self._get(
+            f"artists/{spotify_id}/albums",
+            {"include_groups": include_groups, "limit": limit, "offset": offset},
+        )
+
+    async def get_related_artists(self, spotify_id: str) -> list[dict]:
+        resp = await self._get(f"artists/{spotify_id}/related-artists")
+        return resp.get("artists", []) or []
+
     async def get_track(self, spotify_id: str) -> dict:
         return await self._get(f"tracks/{spotify_id}")
 
@@ -145,6 +161,17 @@ class SpotifyProvider(BaseProvider):
     async def get_user_saved_tracks(self, access_token: str, limit: int = 50, offset: int = 0) -> dict:
         """List liked/saved tracks. Returns: {href, items: [{added_at, track}], ...}"""
         return await self._user_request(access_token, "me/tracks", {"limit": limit, "offset": offset})
+
+    async def save_user_tracks(self, access_token: str, track_ids: list[str]) -> None:
+        """Add tracks to the user's Spotify liked songs."""
+        resp = await self._request(
+            "PUT",
+            "/me/tracks",
+            json={"ids": track_ids},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if resp.status_code >= 400:
+            raise ProviderError(f"Spotify save tracks failed: {resp.status_code}")
 
     async def get_user_playlists(self, access_token: str, limit: int = 50, offset: int = 0) -> dict:
         return await self._user_request(access_token, "me/playlists", {"limit": limit, "offset": offset})
