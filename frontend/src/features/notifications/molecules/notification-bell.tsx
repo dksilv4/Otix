@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 
 const pillBase = cn(
-  'fixed top-4 right-[5.5rem] z-[9997]',
   'flex items-center rounded-[2rem]',
   'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
   'backdrop-blur-lg',
@@ -111,7 +110,7 @@ export function NotificationBell() {
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed top-[4.5rem] right-[5.5rem] z-[9997]',
+              'fixed top-[4.5rem] right-4 z-[9999]',
               'w-80 max-h-[28rem] overflow-y-auto p-3 rounded-[1.5rem]',
               'bg-[var(--dk-surface-overlay)]',
               'backdrop-blur-xl',
@@ -148,7 +147,7 @@ export function NotificationBell() {
                     )}
                   >
                     <DkAvatar
-                      name={n.type === 'friend_request' ? '?' : ''}
+                      name={n.type === 'friend_request' ? '?' : n.type === 'friend_rejected' ? '✕' : n.type === 'friend_removed' ? '−' : ''}
                       size="sm"
                       className="shrink-0 mt-0.5"
                     />

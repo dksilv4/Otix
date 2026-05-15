@@ -1228,8 +1228,15 @@ async def _sync_fanart_movie(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
+            has_logo = media_item.logo_url is not None
+            has_textless = media_item.textless_poster_url is not None
             logger.info("fanart movie images added",
                 title=media_item.title, media_type="movie", otix_id=media_item_id,
+                logo=has_logo, textless_poster=has_textless,
+            )
+        else:
+            logger.debug("fanart movie — no new assets",
+                title=media_item.title, otix_id=media_item_id,
             )
         await _progress_incr("fanart_enqueued")
         return {"otix_id": media_item_id, "added": added}
@@ -1249,8 +1256,15 @@ async def _sync_fanart_show(media_item_id: str) -> dict | None:
         await session.commit()
 
         if added:
+            has_logo = media_item.logo_url is not None
+            has_textless = media_item.textless_poster_url is not None
             logger.info("fanart show images added",
                 title=media_item.title, media_type="show", otix_id=media_item_id,
+                logo=has_logo, textless_poster=has_textless,
+            )
+        else:
+            logger.debug("fanart show — no new assets",
+                title=media_item.title, otix_id=media_item_id,
             )
         await _progress_incr("fanart_enqueued")
         return {"otix_id": media_item_id, "added": added}

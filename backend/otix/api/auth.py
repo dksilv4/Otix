@@ -27,6 +27,8 @@ from otix.api.schemas.auth import (
     PlexInitiateResponse,
     PlexLibraryResponse,
     PlexServerResponse,
+    PlexSessionResponse,
+    PlexSessionsResponse,
     PlexSyncResponse,
     PlexSyncTaskResponse,
     RefreshResponse,
@@ -74,7 +76,7 @@ from otix.services.plex_auth_service import (
     link_plex_to_user,
     unlink_plex_from_user,
 )
-from otix.services.plex_sync_service import discover_plex_libraries, discover_plex_servers
+from otix.services.plex_sync_service import discover_plex_libraries, discover_plex_servers, get_plex_sessions
 from otix.services.session_service import SessionService
 from otix.services.steam_auth_service import (
     build_steam_link_url,
@@ -1168,6 +1170,17 @@ async def plex_webhook(request: Request) -> dict:
         "status": "accepted",
         "event": payload.get("event") if isinstance(payload, dict) else None,
     }
+
+
+@auth_router.get("/integrations/plex/sessions", response_model=PlexSessionsResponse)
+async def plex_sessions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PlexSessionsResponse:
+    if not current_user.plex_auth_token:
+        raise HTTPException(status_code=400, detail="No Plex account linked")
+    sessions = await get_plex_sessions(db, current_user)
+    return PlexSessionsResponse(sessions=[PlexSessionResponse(**s) for s in sessions])
 
 
 @auth_router.post("/integrations/steam/scan")

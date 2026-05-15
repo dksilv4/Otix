@@ -231,6 +231,43 @@ class PlexSyncTaskResponse(BaseModel):
     task_id: str
 
 
+class PlexSessionResponse(BaseModel):
+    session_id: str
+    media_type: str
+    title: str
+    grandparent_title: str | None = None
+    parent_title: str | None = None
+    index: int | None = None
+    thumb: str | None = None
+    duration: int | None = None
+    view_offset: int | None = None
+    state: str
+    user_name: str
+    user_thumb: str | None = None
+    player_title: str | None = None
+    player_device: str | None = None
+    player_platform: str | None = None
+    server_name: str
+    server_id: str
+    library_section: str | None = None
+    year: int | None = None
+    content_rating: str | None = None
+    summary: str | None = None
+    video_resolution: str | None = None
+    video_codec: str | None = None
+    audio_codec: str | None = None
+    audio_channels: int | None = None
+    bitrate: int | None = None
+    video_decision: str | None = None
+    audio_decision: str | None = None
+    transcode_reason: str | None = None
+    throttled: bool = False
+
+
+class PlexSessionsResponse(BaseModel):
+    sessions: list[PlexSessionResponse]
+
+
 # ── Integrations ─────────────────────────────────────────────────
 
 

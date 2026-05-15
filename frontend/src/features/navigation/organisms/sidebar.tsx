@@ -3,6 +3,7 @@ import { Link, useLocation } from "@tanstack/react-router"
 import {
   HomeIcon,
   BookmarkIcon,
+  BellIcon,
   Cog6ToothIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/solid"
@@ -51,7 +52,10 @@ export function MenuDropdown() {
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
     { to: "/library/watchlist", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
-    ...(user ? [{ to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } }] : []),
+    ...(user ? [
+      { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },
+      { to: "/notifications" as string, icon: <BellIcon className="h-[18px] w-[18px]" />, label: "Notifications", params: undefined as any },
+    ] : []),
     { to: "/settings", icon: <Cog6ToothIcon className="h-[18px] w-[18px]" />, label: "Settings", params: undefined },
   ]
 

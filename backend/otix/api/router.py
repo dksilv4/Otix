@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from otix.api.auth import auth_router
+from otix.api.discover import discover_router
 from otix.api.friend import friend_router
 from otix.api.interaction import interaction_router
 from otix.api.library import library_router
@@ -20,6 +21,7 @@ from otix.api.workout import exercise_router, workout_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
+api_router.include_router(discover_router)
 api_router.include_router(friend_router)
 api_router.include_router(media_router)
 api_router.include_router(interaction_router)

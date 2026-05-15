@@ -241,22 +241,24 @@ export function LibraryPage() {
         </p>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => navigate({ to: "/library/$tab", params: { tab }, search: {} as never, replace: true })}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 whitespace-nowrap",
-              activeTab === tab
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]"
-            )}
-          >
-            {TAB_ICONS[tab]}
-            {TAB_LABELS[tab]}
-          </button>
-        ))}
+      <div className="sticky top-20 z-30 -mx-4 border-b border-white/[0.06] bg-background/85 px-4 py-3 backdrop-blur-xl">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => navigate({ to: "/library/$tab", params: { tab }, search: {} as never, replace: true })}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 whitespace-nowrap",
+                activeTab === tab
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]"
+              )}
+            >
+              {TAB_ICONS[tab]}
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isListsTab ? (
@@ -1066,6 +1068,18 @@ function SpotifyTabContent() {
             <div ref={likedLoadMoreRef} className="flex justify-center py-4">
               {likedTracksQuery.isFetchingNextPage && (
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              )}
+              {likedTracksQuery.hasNextPage && !likedTracksQuery.isFetchingNextPage && (
+                <button
+                  type="button"
+                  onClick={() => likedTracksQuery.fetchNextPage()}
+                  className="rounded-full px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
+                >
+                  Load more
+                </button>
+              )}
+              {!likedTracksQuery.hasNextPage && likedTracks.length > 0 && (
+                <p className="text-xs text-muted-foreground">End of list</p>
               )}
             </div>
           </>

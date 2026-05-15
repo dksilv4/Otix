@@ -82,7 +82,9 @@ class FriendService:
 
     async def reject_request(self, request_id: str, user_id: str) -> FriendRequest:
         request = await self.session.scalar(
-            select(FriendRequest).where(FriendRequest.id == request_id)
+            select(FriendRequest)
+            .options(joinedload(FriendRequest.sender))
+            .where(FriendRequest.id == request_id)
         )
         if not request:
             raise ValueError("Friend request not found")
@@ -92,6 +94,17 @@ class FriendService:
             raise ValueError("Request is no longer pending")
 
         request.status = "rejected"
+
+        sender_name = request.sender.username if request.sender else "Someone"
+        notification = Notification(
+            user_id=request.sender_id,
+            type="friend_rejected",
+            title="Friend Request Declined",
+            body=f"{sender_name} declined your friend request",
+            metadata_json={"receiver_id": user_id, "request_id": request.id},
+        )
+        self.session.add(notification)
+
         await self.session.flush()
         return request
 
@@ -187,5 +200,17 @@ class FriendService:
                 FriendRequest.status == "accepted",
             )
         )
+        if result.rowcount > 0:
+            remover = await self.session.scalar(select(User).where(User.id == user_id))
+            name = remover.username if remover else "Someone"
+            notification = Notification(
+                user_id=friend_id,
+                type="friend_removed",
+                title="Friend Removed",
+                body=f"{name} removed you as a friend",
+                metadata_json={"remover_id": user_id},
+            )
+            self.session.add(notification)
+
         await self.session.flush()
         return result.rowcount > 0

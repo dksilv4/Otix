@@ -11,13 +11,16 @@ export interface DiscoverListResponse {
 }
 
 export const discoverQueries = {
-  section: (mediaType: string) =>
+  list: (mediaType: string, listType: string) =>
     infiniteQueryOptions({
-      queryKey: discoverKeys.section(mediaType),
+      queryKey: discoverKeys.list(mediaType, listType),
       queryFn: async ({ pageParam }) => {
-        const params: Record<string, string> = { limit: '20', mediaType, has_artwork: 'true' }
+        const params: Record<string, string> = { limit: '20' }
         if (pageParam) params.cursor = pageParam
-        const { data } = await apiClient.get<DiscoverListResponse>('/media', { params })
+        const { data } = await apiClient.get<DiscoverListResponse>(
+          `/discover/${mediaType}/${listType}`,
+          { params },
+        )
         return data
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -29,9 +32,9 @@ export const discoverQueries = {
     infiniteQueryOptions({
       queryKey: discoverKeys.hero(),
       queryFn: async ({ pageParam }) => {
-        const params: Record<string, string> = { limit: '6', has_artwork: 'true' }
+        const params: Record<string, string> = { limit: '6' }
         if (pageParam) params.cursor = pageParam
-        const { data } = await apiClient.get<DiscoverListResponse>('/media', { params })
+        const { data } = await apiClient.get<DiscoverListResponse>('/discover/hero', { params })
         return data
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,

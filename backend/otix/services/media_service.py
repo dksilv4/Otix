@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import case, false, literal_column, select, func, text, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -30,18 +32,25 @@ class MediaService:
         genre: str | None = None,
         has_artwork: bool = False,
         sort_by: str | None = None,
+        sort_dir: str = "desc",
         cursor: str | None = None,
         page: int = 1,
         limit: int = 50,
         include_total: bool = False,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> tuple[list[MediaItem], bool, int | None]:
-        sort_map = {
-            "popularity": MediaItem.popularity.desc(),
-            "rating": MediaItem.avg_rating.desc().nullslast(),
-            "release_date": MediaItem.release_date.desc().nullslast(),
-            "title": MediaItem.title.asc(),
+        _sort_fields = {
+            "popularity": MediaItem.popularity,
+            "rating": MediaItem.avg_rating,
+            "release_date": MediaItem.release_date,
+            "title": MediaItem.title,
         }
-        order = sort_map.get(sort_by or "") if sort_by else None
+        sort_field = _sort_fields.get(sort_by or "")
+        if sort_field is not None:
+            order = sort_field.desc().nullslast() if sort_dir == "desc" else sort_field.asc().nullsfirst()
+        else:
+            order = None
 
         if order is not None:
             # Offset pagination when a sort is explicitly requested
@@ -70,6 +79,11 @@ class MediaService:
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
 
+        if date_from is not None:
+            query = query.where(MediaItem.release_date >= date_from)
+        if date_to is not None:
+            query = query.where(MediaItem.release_date <= date_to)
+
         total = None
         if include_total:
             count_query = select(func.count()).select_from(MediaItem)
@@ -77,6 +91,10 @@ class MediaService:
                 count_query = count_query.where(MediaItem.media_type == media_type)
             if genre:
                 count_query = count_query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
+            if date_from is not None:
+                count_query = count_query.where(MediaItem.release_date >= date_from)
+            if date_to is not None:
+                count_query = count_query.where(MediaItem.release_date <= date_to)
             total = await self.session.scalar(count_query)
 
         if order is not None:

@@ -7,7 +7,9 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import dispose_engine
@@ -51,6 +53,25 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router, prefix="/api")
+
+    # Root-level health and readiness probes (no /api prefix for load balancers).
+    @app.get("/health")
+    async def health():
+        return {"status": "ok"}
+
+    @app.get("/healthz")
+    async def healthz():
+        from otix.infrastructure.database import _get_engine
+        try:
+            engine = _get_engine()
+            async with engine.connect() as conn:
+                await conn.execute(select(1))
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unhealthy", "detail": "database unreachable"},
+            )
+        return {"status": "ok"}
 
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)

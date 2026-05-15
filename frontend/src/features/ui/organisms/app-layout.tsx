@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { Button } from '@ui/atoms/button'
@@ -8,8 +9,27 @@ import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { SpotifyPlayerBar } from '@/features/spotify/spotify-player-bar'
+import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
+
+const PIN_KEY = 'otix_spotify_player_pinned'
+
+function loadPinState(): boolean {
+  try {
+    return localStorage.getItem(PIN_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function savePinState(pinned: boolean) {
+  try {
+    localStorage.setItem(PIN_KEY, String(pinned))
+  } catch {
+    // localStorage not available
+  }
+}
 
 const floatingPill = cn(
   'fixed z-[9999]',
@@ -36,6 +56,17 @@ function MenuToggle() {
 
 function AppShell({ children }: { children: ReactNode }) {
   const { navLogo } = usePageMeta()
+  const [isPinned, setIsPinned] = useState(() => loadPinState())
+
+  const handlePin = useCallback(() => {
+    setIsPinned(true)
+    savePinState(true)
+  }, [])
+
+  const handleUnpin = useCallback(() => {
+    setIsPinned(false)
+    savePinState(false)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,11 +93,14 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MenuDropdown />
-      <NotificationBell />
-      <UserMenu />
+      <div className="fixed top-4 right-4 z-[9998] flex items-center gap-2">
+        <NowPlayingButton isPinned={isPinned} onPin={handlePin} />
+        <NotificationBell />
+        <UserMenu />
+      </div>
 
       <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
-      <SpotifyPlayerBar />
+      {isPinned && <SpotifyPlayerBar onUnpin={handleUnpin} />}
       <XPToastContainer />
     </div>
   )

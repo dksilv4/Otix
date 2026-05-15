@@ -513,8 +513,9 @@ async def get_spotify_liked_tracks(
     except Exception:
         raise HTTPException(status_code=502, detail="Failed to fetch liked tracks")
 
+    raw_items = raw.get("items") or []
     tracks = []
-    for item in raw.get("items", []):
+    for item in raw_items:
         t = item.get("track")
         if not t:
             continue
@@ -537,9 +538,15 @@ async def get_spotify_liked_tracks(
     for track in tracks:
         track.update(track_lookup.get(track["id"], {"otixTrackId": None, "avgRating": None, "ratingCount": 0}))
 
+    total = raw.get("total", 0) or 0
+    next_offset = offset + len(raw_items)
+    has_more = next_offset > offset and (bool(raw.get("next")) or next_offset < total)
+
     return {
         "tracks": tracks,
-        "total": raw.get("total", 0),
+        "total": total,
+        "next_offset": next_offset if has_more else None,
+        "has_more": has_more,
     }
 
 

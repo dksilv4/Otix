@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Bell, CheckCheck, UserPlus, UserCheck, Heart, MessageSquareText } from 'lucide-react'
+import { Bell, CheckCheck, UserPlus, UserCheck, UserX, UserMinus, Heart, MessageSquareText } from 'lucide-react'
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth'
 import { notificationQueries, useMarkRead, useMarkAllRead, type Notification } from '../notification-queries'
@@ -11,6 +11,8 @@ import { Skeleton } from '@ui/atoms/skeleton'
 const TYPE_ICONS: Record<string, typeof Heart> = {
   friend_request: UserPlus,
   friend_accepted: UserCheck,
+  friend_rejected: UserX,
+  friend_removed: UserMinus,
   like: Heart,
   comment: MessageSquareText,
 }

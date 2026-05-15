@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   ListMusic,
   Pause,
+  Pin,
   Play,
   GripHorizontal,
   SkipBack,
@@ -173,8 +174,6 @@ const DEFAULT_PALETTE: ExtractedPalette = {
   accentText: '#111111',
 }
 
-type PlayerSnapPosition = 'left' | 'center' | 'right'
-
 interface DragState {
   x: number
   y: number
@@ -188,36 +187,363 @@ interface PersonListResponse {
   items: Array<{ id: string; name: string }>
 }
 
-const PLAYER_POSITION_STORAGE_KEY = 'otix_spotify_player_position'
+// ── Shared player content (used by dropdown and floating bar) ──
 
-function loadPlayerPosition(): PlayerSnapPosition {
-  try {
-    const value = localStorage.getItem(PLAYER_POSITION_STORAGE_KEY)
-    return value === 'left' || value === 'right' || value === 'center' ? value : 'center'
-  } catch {
-    return 'center'
+export interface SpotifyPlayerContentProps {
+  showPinButton?: boolean
+  showDragHandle?: boolean
+  pinLabel?: string
+  onPin?: () => void
+  onDismiss?: () => void
+  dragPointerHandlers?: {
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
+    onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
+    onPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => void
+    onPointerCancel: (e: React.PointerEvent<HTMLButtonElement>) => void
   }
+  isDragging?: boolean
 }
 
-function savePlayerPosition(position: PlayerSnapPosition) {
-  try {
-    localStorage.setItem(PLAYER_POSITION_STORAGE_KEY, position)
-  } catch {
-    // localStorage not available
+export function SpotifyPlayerContent({
+  showPinButton = false,
+  showDragHandle = false,
+  pinLabel = 'Pin player',
+  onPin,
+  onDismiss,
+  dragPointerHandlers,
+  isDragging = false,
+}: SpotifyPlayerContentProps) {
+  const navigate = useNavigate()
+  const {
+    isPlaying,
+    currentTrack,
+    position,
+    duration,
+    volume,
+    nextTracks,
+    togglePlay,
+    skipNext,
+    skipPrevious,
+    seek,
+    setVolume,
+  } = useSpotifyPlayer()
+
+  const progress = duration > 0 ? position / duration : 0
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false)
+  const [showQueue, setShowQueue] = useState(false)
+  const [dismissedTrackUri, setDismissedTrackUri] = useState<string | null>(null)
+  const queueRef = useRef<HTMLDivElement>(null)
+  const palette = usePalette(currentTrack?.albumArt ?? null)
+
+  useEffect(() => {
+    if (!showQueue) return
+    const handleClick = (e: MouseEvent) => {
+      if (queueRef.current && !queueRef.current.contains(e.target as Node)) {
+        setShowQueue(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showQueue])
+
+  if (!currentTrack || dismissedTrackUri === currentTrack.uri) return null
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    seek(Math.floor(fraction * duration))
   }
+
+  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
+  const accentColor = rgbCss(palette.accent)
+  const backgroundColor = rgbaCss(palette.background, 0.78)
+  const surfaceColor = rgbaCss(palette.surface, 0.62)
+  const showProgressThumb = progress > 0.01 && progress < 0.99
+  const artists = currentTrack?.artists.length
+    ? currentTrack.artists
+    : currentTrack?.artist
+      .split(',')
+      .map((name) => ({ name: name.trim(), uri: '' }))
+      .filter((artist) => artist.name.length > 0) ?? []
+
+  const handleArtistClick = async (artistName: string) => {
+    const { data } = await apiClient.get<PersonListResponse>('/person/search', {
+      params: { q: artistName, limit: 5 },
+    })
+    const person = data.items.find((item) => item.name.toLowerCase() === artistName.toLowerCase())
+      ?? data.items[0]
+    if (person) {
+      navigate({ to: '/person/$personId', params: { personId: person.id } })
+    }
+  }
+
+  return (
+    <div
+      className="relative rounded-2xl p-3 space-y-2 overflow-hidden"
+      style={{
+        background: `linear-gradient(135deg, ${backgroundColor} 0%, ${surfaceColor} 56%, ${rgbaCss(palette.accent, 0.22)} 100%)`,
+        backdropFilter: 'blur(24px) saturate(145%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(145%)',
+      }}
+    >
+      {/* Subtle noise texture overlay for depth */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px)',
+          backgroundSize: '4px 4px',
+        }}
+      />
+
+      {/* Progress bar */}
+      <div
+        data-player-control
+        className="relative h-1 w-full cursor-pointer group/progress"
+        onClick={handleProgressClick}
+        onMouseDown={() => setIsDraggingProgress(true)}
+        onMouseUp={() => setIsDraggingProgress(false)}
+      >
+        <div className="absolute inset-0 overflow-hidden rounded-full bg-white/[0.12]">
+          <div
+            className="h-full rounded-full transition-colors"
+            style={{
+              width: `${progress * 100}%`,
+              backgroundColor: accentColor,
+            }}
+          />
+        </div>
+        {showProgressThumb && (
+          <div
+            className={cn(
+              'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
+              'h-3 w-3 rounded-full',
+              'opacity-0 group-hover/progress:opacity-100 transition-opacity',
+              isDraggingProgress && 'opacity-100',
+            )}
+            style={{
+              left: `${progress * 100}%`,
+              backgroundColor: accentColor,
+            }}
+          />
+        )}
+      </div>
+
+      {/* Main row */}
+      <div className="relative flex items-center gap-3">
+        {currentTrack.albumArt ? (
+          <img
+            src={currentTrack.albumArt}
+            alt={currentTrack.albumName}
+            className="h-11 w-11 rounded-lg object-cover shrink-0 ring-1 ring-white/10"
+          />
+        ) : (
+          <div className="h-11 w-11 rounded-lg bg-white/[0.06] shrink-0" />
+        )}
+
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate leading-tight text-white/95">
+            {currentTrack.name}
+          </p>
+          <div className="mt-0.5 flex max-w-full items-center overflow-hidden text-[11px] leading-tight text-white/55">
+            {artists.map((artist, index) => (
+              <span key={`${artist.uri || artist.name}-${index}`} className="inline-flex min-w-0 items-center">
+                {index > 0 && <span className="shrink-0 pr-1">,</span>}
+                <button
+                  type="button"
+                  onClick={() => handleArtistClick(artist.name)}
+                  className="truncate text-left transition-colors hover:text-white/85"
+                  title={`Open ${artist.name}`}
+                >
+                  {artist.name}
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-1 text-[10px] tabular-nums text-white/35 shrink-0">
+          <span>{formatTime(position)}</span>
+          <span className="text-white/15">/</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={skipPrevious}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-full text-white/50 hover:text-white/90 hover:bg-white/[0.08] transition-colors"
+            title="Previous"
+          >
+            <SkipBack className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="h-9 w-9 inline-flex items-center justify-center rounded-full transition-all active:scale-95"
+            style={{
+              backgroundColor: accentColor,
+              color: palette.accentText,
+            }}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? (
+              <Pause className="h-4 w-4" />
+            ) : (
+              <Play className="h-4 w-4 ml-0.5" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={skipNext}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-full text-white/50 hover:text-white/90 hover:bg-white/[0.08] transition-colors"
+            title="Next"
+          >
+            <SkipForward className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom row */}
+      <div className="relative flex items-center gap-1.5">
+        <div className="flex items-center gap-1 group/vol">
+          <button
+            type="button"
+            onClick={() => setVolume(volume === 0 ? 0.5 : 0)}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 transition-colors"
+          >
+            <VolumeIcon className="h-3.5 w-3.5" />
+          </button>
+          <div data-player-control className="relative h-1 w-16 sm:w-20 cursor-pointer" title="Volume">
+            <div
+              className="absolute inset-0 rounded-full bg-white/[0.12]"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect()
+                const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+                setVolume(fraction)
+              }}
+            >
+              <div
+                className="h-full rounded-full transition-colors"
+                style={{
+                  width: `${volume * 100}%`,
+                  backgroundColor: accentColor,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1" />
+
+        {showDragHandle && dragPointerHandlers && (
+          <button
+            type="button"
+            {...dragPointerHandlers}
+            className={cn(
+              'hidden h-7 w-7 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/70 md:inline-flex',
+              isDragging && 'cursor-grabbing text-white/70 bg-white/[0.08]',
+              !isDragging && 'cursor-grab',
+            )}
+            title="Move player"
+            aria-label="Move player"
+          >
+            <GripHorizontal className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {showPinButton && onPin && (
+          <button
+            type="button"
+            onClick={onPin}
+            className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 hover:bg-white/[0.08] transition-colors"
+            title={pinLabel}
+            aria-label={pinLabel}
+          >
+            <Pin className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setDismissedTrackUri(currentTrack.uri)
+            onDismiss?.()
+          }}
+          className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 hover:bg-white/[0.08] transition-colors"
+          title="Dismiss player"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowQueue(!showQueue)}
+            className={cn(
+              'h-7 w-7 inline-flex items-center justify-center rounded-full transition-colors',
+              'text-white/35 hover:text-white/70 hover:bg-white/[0.08]',
+              showQueue && 'text-white bg-white/15',
+            )}
+            title="Queue"
+          >
+            <ListMusic className="h-3.5 w-3.5" />
+          </button>
+
+          {showQueue && (
+            <div
+              data-player-control
+              ref={queueRef}
+              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/[0.08] backdrop-blur-md overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${rgbaCss(palette.background, 0.98)}, ${rgbaCss(palette.surface, 0.96)})`,
+                borderColor: rgbaCss(palette.accent, 0.22),
+              }}
+            >
+              <div className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Up Next
+              </div>
+              {nextTracks.length === 0 ? (
+                <p className="px-3 py-3 text-xs text-muted-foreground/60">
+                  Queue is empty
+                </p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto">
+                  {nextTracks.map((t, i) => (
+                    <div
+                      key={`${t.id}-${i}`}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.04] transition-colors"
+                    >
+                      {t.albumArt ? (
+                        <img
+                          src={t.albumArt}
+                          alt=""
+                          className="h-8 w-8 rounded object-cover shrink-0"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded bg-white/[0.06] shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{t.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {t.artist}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
-function canDragPlayer(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(min-width: 768px) and (pointer: fine)').matches
-}
-
-function nearestSnapPosition(centerX: number): PlayerSnapPosition {
-  const third = window.innerWidth / 3
-  if (centerX < third) return 'left'
-  if (centerX > third * 2) return 'right'
-  return 'center'
-}
+// ── Palette extraction hook ──
 
 function usePalette(imageUrl: string | null) {
   const [palette, setPalette] = useState<ExtractedPalette>(DEFAULT_PALETTE)
@@ -262,75 +588,138 @@ function usePalette(imageUrl: string | null) {
   return imageUrl ? palette : DEFAULT_PALETTE
 }
 
-export function SpotifyPlayerBar() {
-  const navigate = useNavigate()
-  const {
-    isReady,
-    isPlaying,
-    currentTrack,
-    position,
-    duration,
-    volume,
-    nextTracks,
-    togglePlay,
-    skipNext,
-    skipPrevious,
-    seek,
-    setVolume,
-  } = useSpotifyPlayer()
+// ── Floating player position / drag ──
 
-  const progress = duration > 0 ? position / duration : 0
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false)
-  const [showQueue, setShowQueue] = useState(false)
-  const [dismissedTrackUri, setDismissedTrackUri] = useState<string | null>(null)
-  const [playerPosition, setPlayerPosition] = useState<PlayerSnapPosition>(() => loadPlayerPosition())
+export type PlayerPosition =
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'middle-left' | 'middle-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right'
+
+const PLAYER_POSITION_STORAGE_KEY = 'otix_spotify_player_position_v2'
+
+function loadPlayerPosition(): PlayerPosition {
+  try {
+    const raw = localStorage.getItem(PLAYER_POSITION_STORAGE_KEY)
+    if (!raw) return 'bottom-center'
+    const valid = [
+      'top-left', 'top-center', 'top-right',
+      'middle-left', 'middle-right',
+      'bottom-left', 'bottom-center', 'bottom-right',
+    ]
+    return valid.includes(raw) ? raw as PlayerPosition : 'bottom-center'
+  } catch {
+    return 'bottom-center'
+  }
+}
+
+export function savePlayerPosition(position: PlayerPosition) {
+  try {
+    localStorage.setItem(PLAYER_POSITION_STORAGE_KEY, position)
+  } catch {
+    // localStorage not available
+  }
+}
+
+function canDragPlayer(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(min-width: 768px) and (pointer: fine)').matches
+}
+
+const SNAP_POINTS: Record<PlayerPosition, { x: number; y: number }> = {
+  'top-left': { x: 0, y: 0 },
+  'top-center': { x: 0.5, y: 0 },
+  'top-right': { x: 1, y: 0 },
+  'middle-left': { x: 0, y: 0.5 },
+  'middle-right': { x: 1, y: 0.5 },
+  'bottom-left': { x: 0, y: 1 },
+  'bottom-center': { x: 0.5, y: 1 },
+  'bottom-right': { x: 1, y: 1 },
+}
+
+function nearestSnapPosition(centerX: number, centerY: number, width: number, height: number): PlayerPosition {
+  const margin = 16
+  const maxX = window.innerWidth - width
+  const maxY = window.innerHeight - height
+  const normX = maxX > 0 ? (centerX - margin) / (maxX - margin) : 0.5
+  const normY = maxY > 0 ? (centerY - margin) / (maxY - margin) : 0.5
+
+  let best: PlayerPosition = 'bottom-center'
+  let bestDist = Infinity
+  for (const [pos, point] of Object.entries(SNAP_POINTS)) {
+    const dx = normX - point.x
+    const dy = normY - point.y
+    const dist = dx * dx + dy * dy
+    if (dist < bestDist) {
+      bestDist = dist
+      best = pos as PlayerPosition
+    }
+  }
+  return best
+}
+
+function positionToStyle(pos: PlayerPosition, width: number, _height: number): React.CSSProperties {
+  const margin = 16
+  const point = SNAP_POINTS[pos]
+
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    width: `${width}px`,
+    margin: 0,
+  }
+
+  if (point.x === 0) {
+    style.left = `${margin}px`
+  } else if (point.x === 1) {
+    style.right = `${margin}px`
+  } else {
+    style.left = '50%'
+    style.transform = 'translateX(-50%)'
+  }
+
+  if (point.y === 0) {
+    style.top = `${margin}px`
+  } else if (point.y === 1) {
+    style.bottom = `${margin}px`
+  } else {
+    style.top = '50%'
+    style.transform = (style.transform ? `${style.transform} ` : '') + 'translateY(-50%)'
+  }
+
+  return style
+}
+
+// ── Floating player bar (pinned mode) ──
+
+export function SpotifyPlayerBar({ onUnpin }: { onUnpin?: () => void }) {
+  const { isReady, currentTrack } = useSpotifyPlayer()
+  const [playerPosition, setPlayerPosition] = useState<PlayerPosition>(() => loadPlayerPosition())
   const [dragState, setDragState] = useState<DragState | null>(null)
-  const queueRef = useRef<HTMLDivElement>(null)
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
   const playerRef = useRef<HTMLDivElement>(null)
-  const palette = usePalette(currentTrack?.albumArt ?? null)
+
+  const isDraggingPlayer = dragState != null
+  const dismissed = dismissedKey === currentTrack?.uri
+
+  const [, forceUpdate] = useState(0)
 
   useEffect(() => {
-    if (!showQueue) return
-    const handleClick = (e: MouseEvent) => {
-      if (queueRef.current && !queueRef.current.contains(e.target as Node)) {
-        setShowQueue(false)
+    const handleResize = () => {
+      if (!isDraggingPlayer) {
+        forceUpdate((n) => n + 1)
       }
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showQueue])
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isDraggingPlayer])
 
-  if (!isReady || !currentTrack || dismissedTrackUri === currentTrack.uri) return null
-
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-    seek(Math.floor(fraction * duration))
-  }
-
-  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
-  const accentColor = rgbCss(palette.accent)
-  const backgroundColor = rgbaCss(palette.background, 0.78)
-  const surfaceColor = rgbaCss(palette.surface, 0.62)
-  const showProgressThumb = progress > 0.01 && progress < 0.99
-  const isDraggingPlayer = dragState != null
-  const artists = currentTrack?.artists.length
-    ? currentTrack.artists
-    : currentTrack?.artist
-      .split(',')
-      .map((name) => ({ name: name.trim(), uri: '' }))
-      .filter((artist) => artist.name.length > 0) ?? []
-
-  const handleArtistClick = async (artistName: string) => {
-    const { data } = await apiClient.get<PersonListResponse>('/person/search', {
-      params: { q: artistName, limit: 5 },
-    })
-    const person = data.items.find((item) => item.name.toLowerCase() === artistName.toLowerCase())
-      ?? data.items[0]
-    if (person) {
-      navigate({ to: '/person/$personId', params: { personId: person.id } })
+  // Reset dismissed state when track changes
+  useEffect(() => {
+    if (currentTrack?.uri && dismissedKey && dismissedKey !== currentTrack.uri) {
+      setDismissedKey(null)
     }
-  }
+  }, [currentTrack?.uri, dismissedKey])
+
+  if (!isReady || !currentTrack || dismissed) return null
 
   const startPlayerDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!canDragPlayer() || e.button !== 0) return
@@ -363,7 +752,9 @@ export function SpotifyPlayerBar() {
 
   const finishPlayerDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!dragState) return
-    const snapPosition = nearestSnapPosition(dragState.x + dragState.width / 2)
+    const centerX = dragState.x + dragState.width / 2
+    const centerY = dragState.y + dragState.height / 2
+    const snapPosition = nearestSnapPosition(centerX, centerY, dragState.width, dragState.height)
     setPlayerPosition(snapPosition)
     savePlayerPosition(snapPosition)
     setDragState(null)
@@ -372,278 +763,41 @@ export function SpotifyPlayerBar() {
     }
   }
 
+  const dragPointerHandlers = {
+    onPointerDown: startPlayerDrag,
+    onPointerMove: updatePlayerDrag,
+    onPointerUp: finishPlayerDrag,
+    onPointerCancel: finishPlayerDrag,
+  }
+
+  const containerStyle: React.CSSProperties = dragState
+    ? {
+        position: 'fixed',
+        left: `${dragState.x}px`,
+        top: `${dragState.y}px`,
+        width: `${dragState.width}px`,
+        zIndex: 50,
+      }
+    : {
+        ...positionToStyle(playerPosition, 512, 0),
+        zIndex: 50,
+      }
+
   return (
-    <>
-      <div
-        ref={playerRef}
-        className={cn(
-          'fixed z-50 w-[calc(100%-16px)] max-w-lg select-none',
-          !isDraggingPlayer && 'bottom-4 left-1/2 -translate-x-1/2 animate-slide-up',
-          playerPosition === 'left' && !isDraggingPlayer && 'md:left-4 md:right-auto md:translate-x-0',
-          playerPosition === 'center' && !isDraggingPlayer && 'md:left-1/2 md:right-auto md:-translate-x-1/2',
-          playerPosition === 'right' && !isDraggingPlayer && 'md:left-auto md:right-4 md:translate-x-0',
-        )}
-        style={
-          dragState
-            ? {
-                bottom: 'auto',
-                left: `${dragState.x}px`,
-                top: `${dragState.y}px`,
-                transform: 'none',
-                width: `${dragState.width}px`,
-              }
-            : undefined
-        }
-      >
-        <div
-          className="relative rounded-2xl p-3 space-y-2 overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${backgroundColor} 0%, ${surfaceColor} 56%, ${rgbaCss(palette.accent, 0.22)} 100%)`,
-            backdropFilter: 'blur(24px) saturate(145%)',
-            WebkitBackdropFilter: 'blur(24px) saturate(145%)',
-          }}
-        >
-          {/* Subtle noise texture overlay for depth */}
-          <div
-            className="absolute inset-0 opacity-[0.03] pointer-events-none"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle, rgba(255,255,255,0.2) 1px, transparent 1px)',
-              backgroundSize: '4px 4px',
-            }}
-          />
-
-          {/* Progress bar */}
-          <div
-            data-player-control
-            className="relative h-1 w-full cursor-pointer group/progress"
-            onClick={handleProgressClick}
-            onMouseDown={() => setIsDraggingProgress(true)}
-            onMouseUp={() => setIsDraggingProgress(false)}
-          >
-            <div className="absolute inset-0 overflow-hidden rounded-full bg-white/[0.12]">
-              <div
-                className="h-full rounded-full transition-colors"
-                style={{
-                  width: `${progress * 100}%`,
-                  backgroundColor: accentColor,
-                }}
-              />
-            </div>
-            {showProgressThumb && (
-              <div
-                className={cn(
-                  'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
-                  'h-3 w-3 rounded-full',
-                  'opacity-0 group-hover/progress:opacity-100 transition-opacity',
-                  isDraggingProgress && 'opacity-100',
-                )}
-                style={{
-                  left: `${progress * 100}%`,
-                  backgroundColor: accentColor,
-                }}
-              />
-            )}
-          </div>
-
-          {/* Main row */}
-          <div className="relative flex items-center gap-3">
-            {currentTrack.albumArt ? (
-              <img
-                src={currentTrack.albumArt}
-                alt={currentTrack.albumName}
-                className="h-11 w-11 rounded-lg object-cover shrink-0 ring-1 ring-white/10"
-              />
-            ) : (
-              <div className="h-11 w-11 rounded-lg bg-white/[0.06] shrink-0" />
-            )}
-
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate leading-tight text-white/95">
-                {currentTrack.name}
-              </p>
-              <div className="mt-0.5 flex max-w-full items-center overflow-hidden text-[11px] leading-tight text-white/55">
-                {artists.map((artist, index) => (
-                  <span key={`${artist.uri || artist.name}-${index}`} className="inline-flex min-w-0 items-center">
-                    {index > 0 && <span className="shrink-0 pr-1">,</span>}
-                    <button
-                      type="button"
-                      onClick={() => handleArtistClick(artist.name)}
-                      className="truncate text-left transition-colors hover:text-white/85"
-                      title={`Open ${artist.name}`}
-                    >
-                      {artist.name}
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-1 text-[10px] tabular-nums text-white/35 shrink-0">
-              <span>{formatTime(position)}</span>
-              <span className="text-white/15">/</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                type="button"
-                onClick={skipPrevious}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-full text-white/50 hover:text-white/90 hover:bg-white/[0.08] transition-colors"
-                title="Previous"
-              >
-                <SkipBack className="h-4 w-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="h-9 w-9 inline-flex items-center justify-center rounded-full transition-all active:scale-95"
-                style={{
-                  backgroundColor: accentColor,
-                  color: palette.accentText,
-                }}
-                title={isPlaying ? 'Pause' : 'Play'}
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4 ml-0.5" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={skipNext}
-                className="h-8 w-8 inline-flex items-center justify-center rounded-full text-white/50 hover:text-white/90 hover:bg-white/[0.08] transition-colors"
-                title="Next"
-              >
-                <SkipForward className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom row */}
-          <div className="relative flex items-center gap-1.5">
-            <div className="flex items-center gap-1 group/vol">
-              <button
-                type="button"
-                onClick={() => setVolume(volume === 0 ? 0.5 : 0)}
-                className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 transition-colors"
-              >
-                <VolumeIcon className="h-3.5 w-3.5" />
-              </button>
-              <div data-player-control className="relative h-1 w-16 sm:w-20 cursor-pointer" title="Volume">
-                <div
-                  className="absolute inset-0 rounded-full bg-white/[0.12]"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-                    setVolume(fraction)
-                  }}
-                >
-                  <div
-                    className="h-full rounded-full transition-colors"
-                    style={{
-                      width: `${volume * 100}%`,
-                      backgroundColor: accentColor,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1" />
-
-            <button
-              type="button"
-              onPointerDown={startPlayerDrag}
-              onPointerMove={updatePlayerDrag}
-              onPointerUp={finishPlayerDrag}
-              onPointerCancel={finishPlayerDrag}
-              className={cn(
-                'hidden h-7 w-7 items-center justify-center rounded-full text-white/35 transition-colors hover:bg-white/[0.08] hover:text-white/70 md:inline-flex',
-                isDraggingPlayer && 'cursor-grabbing text-white/70 bg-white/[0.08]',
-                !isDraggingPlayer && 'cursor-grab',
-              )}
-              title="Move player"
-              aria-label="Move player"
-            >
-              <GripHorizontal className="h-3.5 w-3.5" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDismissedTrackUri(currentTrack.uri)}
-              className="h-7 w-7 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 hover:bg-white/[0.08] transition-colors"
-              title="Dismiss player"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowQueue(!showQueue)}
-                className={cn(
-                  'h-7 w-7 inline-flex items-center justify-center rounded-full transition-colors',
-                  'text-white/35 hover:text-white/70 hover:bg-white/[0.08]',
-                  showQueue && 'text-white bg-white/15',
-                )}
-                title="Queue"
-              >
-                <ListMusic className="h-3.5 w-3.5" />
-              </button>
-
-              {showQueue && (
-                <div
-                  data-player-control
-                  ref={queueRef}
-                  className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/[0.08] backdrop-blur-md overflow-hidden"
-                  style={{
-                    background: `linear-gradient(135deg, ${rgbaCss(palette.background, 0.98)}, ${rgbaCss(palette.surface, 0.96)})`,
-                    borderColor: rgbaCss(palette.accent, 0.22),
-                  }}
-                >
-                  <div className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Up Next
-                  </div>
-                  {nextTracks.length === 0 ? (
-                    <p className="px-3 py-3 text-xs text-muted-foreground/60">
-                      Queue is empty
-                    </p>
-                  ) : (
-                    <div className="max-h-48 overflow-y-auto">
-                      {nextTracks.map((t, i) => (
-                        <div
-                          key={`${t.id}-${i}`}
-                          className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.04] transition-colors"
-                        >
-                          {t.albumArt ? (
-                            <img
-                              src={t.albumArt}
-                              alt=""
-                              className="h-8 w-8 rounded object-cover shrink-0"
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded bg-white/[0.06] shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium truncate">{t.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">
-                              {t.artist}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+    <div
+      ref={playerRef}
+      className="w-[calc(100%-16px)] max-w-lg select-none"
+      style={containerStyle}
+    >
+      <SpotifyPlayerContent
+        showDragHandle
+        showPinButton={!!onUnpin}
+        pinLabel="Unpin player"
+        onPin={onUnpin}
+        onDismiss={() => setDismissedKey(currentTrack?.uri ?? null)}
+        dragPointerHandlers={dragPointerHandlers}
+        isDragging={isDraggingPlayer}
+      />
+    </div>
   )
 }

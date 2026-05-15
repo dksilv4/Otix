@@ -42,7 +42,6 @@ export function UserMenu() {
   if (isLoading) return null
 
   const pillBase = cn(
-    'fixed top-4 right-4 z-[9998]',
     'flex items-center rounded-[2rem]',
     'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
     'backdrop-blur-lg',
@@ -82,7 +81,7 @@ export function UserMenu() {
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed top-[4.5rem] right-4 z-[9998]',
+              'fixed top-[4.5rem] right-4 z-[9999]',
               'w-56 p-3 rounded-[1.5rem]',
               'bg-[var(--dk-surface-overlay)]',
               'backdrop-blur-xl',

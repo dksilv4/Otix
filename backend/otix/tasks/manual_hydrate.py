@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from otix.domain.media import ExternalID, MediaItem
 from otix.infrastructure.celery import app
@@ -29,7 +29,10 @@ async def hydrate_movies(limit: int) -> int:
             select(MediaItem.id, MediaItem.title, MediaItem.popularity)
             .where(
                 MediaItem.media_type == "movie",
-                MediaItem.textless_poster_url.is_(None),
+                or_(
+                    MediaItem.textless_poster_url.is_(None),
+                    MediaItem.logo_url.is_(None),
+                ),
                 MediaItem.id.in_(select(sub.c.media_item_id)),
             )
             .order_by(MediaItem.popularity.desc().nulls_last())
@@ -60,7 +63,10 @@ async def hydrate_shows(limit: int) -> int:
             select(MediaItem.id, MediaItem.title, MediaItem.popularity)
             .where(
                 MediaItem.media_type == "show",
-                MediaItem.textless_poster_url.is_(None),
+                or_(
+                    MediaItem.textless_poster_url.is_(None),
+                    MediaItem.logo_url.is_(None),
+                ),
                 MediaItem.id.in_(select(sub.c.media_item_id)),
             )
             .order_by(MediaItem.popularity.desc().nulls_last())

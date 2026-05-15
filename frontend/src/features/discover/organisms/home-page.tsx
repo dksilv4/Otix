@@ -35,10 +35,10 @@ const PLACEHOLDERS = [
 ]
 
 const SECTIONS = [
-  { title: 'Movies', mediaType: 'movie' as const },
-  { title: 'TV Shows', mediaType: 'show' as const },
-  { title: 'Games', mediaType: 'game' as const },
-  { title: 'Music', mediaType: 'music' as const },
+  { title: 'Trending Movies', mediaType: 'movie' as const, listType: 'trending' },
+  { title: 'Trending Shows', mediaType: 'show' as const, listType: 'trending' },
+  { title: 'Popular Games', mediaType: 'game' as const, listType: 'popular' },
+  { title: 'New Music', mediaType: 'music' as const, listType: 'upcoming' },
 ]
 
 function getGreeting(): string {
@@ -440,7 +440,7 @@ function HomeExperience() {
               </div>
 
               {SECTIONS.filter(s => activeType === 'all' || s.mediaType === activeType).map((section) => (
-                <MediaSection key={section.mediaType} title={section.title} mediaType={section.mediaType} />
+                <MediaSection key={`${section.mediaType}-${section.listType}`} title={section.title} mediaType={section.mediaType} listType={section.listType} />
               ))}
             </motion.div>
           )}

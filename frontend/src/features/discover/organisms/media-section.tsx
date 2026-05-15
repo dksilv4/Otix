@@ -10,14 +10,15 @@ import { cn } from '@/lib/utils'
 interface MediaSectionProps {
   title: string
   mediaType: 'movie' | 'show' | 'game' | 'music'
+  listType: string
 }
 
-export function MediaSection({ title, mediaType }: MediaSectionProps) {
+export function MediaSection({ title, mediaType, listType }: MediaSectionProps) {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '0px 0px 200px 0px' })
 
   const { data, isLoading, isError } = useInfiniteQuery({
-    ...discoverQueries.section(mediaType),
+    ...discoverQueries.list(mediaType, listType),
     enabled: isInView,
   })
 

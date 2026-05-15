@@ -415,3 +415,95 @@ async def sync_plex(
     logger.info("plex sync completed", user_id=user.id, **summary)
     await _safe_progress(progress, "sync_complete", **summary)
     return summary
+
+
+async def get_plex_sessions(
+    db: AsyncSession,
+    user: User,
+) -> list[dict]:
+    """Return active playback sessions across all of a user's Plex servers."""
+    if not user.plex_auth_token:
+        return []
+
+    servers_result = await db.scalars(
+        select(UserPlexServer).where(
+            UserPlexServer.user_id == user.id,
+            UserPlexServer.selected == True,
+        )
+    )
+    servers = list(servers_result)
+
+    all_sessions: list[dict] = []
+    for server in servers:
+        if not server.base_url or not server.access_token:
+            continue
+        try:
+            data = await _get_json(
+                f"{server.base_url}/status/sessions",
+                server.access_token,
+            )
+        except Exception:
+            logger.warning("failed to fetch plex sessions", server_name=server.name)
+            continue
+
+        container = data.get("MediaContainer", data)
+        items = _as_list(container.get("Metadata", []))
+        for item in items:
+            media_type = item.get("type", "")
+            if media_type not in ("movie", "episode", "track"):
+                continue
+
+            user_info = item.get("User") or {}
+            player_info = item.get("Player") or {}
+            session_info = item.get("Session") or {}
+
+            def _full_thumb(raw: str | None) -> str | None:
+                if not raw:
+                    return None
+                url = raw
+                if url.startswith("/"):
+                    url = f"{server.base_url}{url}"
+                if server.access_token:
+                    url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={server.access_token}"
+                return url
+
+            # Extract stream/transcode info from first Media part
+            media_parts = _as_list(item.get("Media", []))
+            media_info = media_parts[0] if media_parts else {}
+            transcode = item.get("TranscodeSession") or {}
+            transcode_reason = transcode.get("transcodeReason") or None
+
+            all_sessions.append({
+                "session_id": session_info.get("id", str(item.get("ratingKey", ""))),
+                "media_type": media_type,
+                "title": item.get("title", ""),
+                "grandparent_title": item.get("grandparentTitle"),
+                "parent_title": item.get("parentTitle"),
+                "index": item.get("index"),
+                "thumb": _full_thumb(item.get("thumb")),
+                "duration": item.get("duration"),
+                "view_offset": item.get("viewOffset"),
+                "state": player_info.get("state", "paused"),
+                "user_name": user_info.get("title", "Unknown"),
+                "user_thumb": _full_thumb(user_info.get("thumb")),
+                "player_title": player_info.get("title"),
+                "player_device": player_info.get("device") or None,
+                "player_platform": player_info.get("platform") or None,
+                "server_name": server.name,
+                "server_id": server.machine_identifier,
+                "library_section": item.get("librarySectionTitle"),
+                "year": item.get("year"),
+                "content_rating": item.get("contentRating"),
+                "summary": item.get("summary"),
+                "video_resolution": media_info.get("videoResolution"),
+                "video_codec": media_info.get("videoCodec"),
+                "audio_codec": media_info.get("audioCodec"),
+                "audio_channels": media_info.get("audioChannels"),
+                "bitrate": media_info.get("bitrate"),
+                "video_decision": transcode.get("videoDecision") or "direct play",
+                "audio_decision": transcode.get("audioDecision") or "direct play",
+                "transcode_reason": transcode_reason,
+                "throttled": transcode.get("throttled") == "1" if transcode else False,
+            })
+
+    return all_sessions

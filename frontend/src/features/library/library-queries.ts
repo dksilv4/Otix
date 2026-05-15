@@ -252,6 +252,12 @@ export interface SpotifyPlaylistDetail {
 export interface SpotifyLikedTracks {
   tracks: SpotifyTrack[]
   total: number
+  nextOffset: number | null
+  hasMore: boolean
+}
+
+export function getSpotifyLikedTracksNextPageParam(lastPage: SpotifyLikedTracks) {
+  return lastPage.nextOffset ?? undefined
 }
 
 export function useSpotifyPlaylists() {
@@ -296,10 +302,7 @@ export function useSpotifyLikedTracks() {
       return data
     },
     initialPageParam: 0,
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
-      if (!lastPage.tracks || lastPage.tracks.length < 50) return undefined
-      return lastPageParam + 50
-    },
+    getNextPageParam: getSpotifyLikedTracksNextPageParam,
     staleTime: 1000 * 60 * 5,
   })
 }
