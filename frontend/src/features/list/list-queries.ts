@@ -315,6 +315,32 @@ export function useRemoveCollaborator(listId: string) {
   })
 }
 
+export function useAcceptInvitation(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.post("/list/" + listId + "/collaborators/accept")
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+      qc.invalidateQueries({ queryKey: listKeys.mine() })
+    },
+  })
+}
+
+export function useDeclineInvitation(listId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.post("/list/" + listId + "/collaborators/decline")
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
+      qc.invalidateQueries({ queryKey: listKeys.mine() })
+    },
+  })
+}
+
 // ── Rank history ──────────────────────────────────────────────
 
 export function useRankHistory(listId: string) {

@@ -1,6 +1,5 @@
 import { lazy } from "react"
-import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { createRouter, createRootRoute, createRoute, Outlet, useLocation } from "@tanstack/react-router"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
 
@@ -12,6 +11,7 @@ const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({
 const HomePage = lazy(() => import("@discover/organisms/home-page").then(m => ({ default: m.HomePage })))
 const PersonDetail = lazy(() => import("@person/organisms/person-detail").then(m => ({ default: m.PersonDetail })))
 const LibraryPage = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryPage })))
+const LibraryLanding = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryLanding })))
 const ListDetail = lazy(() => import("@/features/list/organisms/list-detail").then(m => ({ default: m.ListDetail })))
 const SettingsPage = lazy(() => import("@/features/settings/organisms/settings-page").then(m => ({ default: m.SettingsPage })))
 const UserProfilePage = lazy(() => import("@/features/user/organisms/user-profile-page").then(m => ({ default: m.UserProfilePage })))
@@ -73,13 +73,7 @@ const personDetailRoute = createRoute({
 const libraryIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
-  component: function LibraryIndex() {
-    const navigate = useNavigate()
-    useEffect(() => {
-      navigate({ to: "/library/$tab", params: { tab: "watchlist" }, replace: true })
-    }, [navigate])
-    return null
-  },
+  component: LibraryLanding,
 })
 
 const libraryRoute = createRoute({

@@ -98,7 +98,7 @@ export function usePlexLibraryScan() {
   })
 }
 
-export function usePlexStatus() {
+export function usePlexStatus({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...libraryKeys.tab("plex"), "status"],
     queryFn: async () => {
@@ -108,6 +108,7 @@ export function usePlexStatus() {
       return data
     },
     staleTime: 1000 * 60 * 2,
+    enabled,
   })
 }
 
@@ -142,7 +143,7 @@ export function useUnmatchedSteamGames() {
   })
 }
 
-export function useSteamStatus() {
+export function useSteamStatus({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...libraryKeys.tab("steam"), "status"],
     queryFn: async () => {
@@ -152,6 +153,7 @@ export function useSteamStatus() {
       return data
     },
     staleTime: 1000 * 60 * 2,
+    enabled,
   })
 }
 
@@ -205,7 +207,7 @@ export function useSpotifyLibraryScan() {
   })
 }
 
-export function useSpotifyStatus() {
+export function useSpotifyStatus({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...libraryKeys.tab("spotify"), "status"],
     queryFn: async () => {
@@ -215,6 +217,7 @@ export function useSpotifyStatus() {
       return data
     },
     staleTime: 1000 * 60 * 2,
+    enabled,
   })
 }
 

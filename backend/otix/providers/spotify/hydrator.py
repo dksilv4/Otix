@@ -15,6 +15,8 @@ from otix.providers.spotify.transformer import (
     extract_spotify_url,
     extract_image,
     extract_artist_spotify_ids,
+    extract_track_isrc,
+    extract_album_upc,
 )
 
 
@@ -37,6 +39,8 @@ class SpotifyHydrator:
         # Top-level album enrichment
         album.spotify_url = extract_spotify_url(sp_album) or album.spotify_url
         album.spotify_popularity = extract_popularity(sp_album)
+        if not album.barcode:
+            album.barcode = extract_album_upc(sp_album)
         if not album.preview_url:
             album.preview_url = _pick_preview_from_album(sp_album)
 
@@ -143,6 +147,8 @@ class SpotifyHydrator:
 
             track.spotify_id = sp_t.get("id")
             track.preview_url = sp_t.get("preview_url")
+            if not track.isrc:
+                track.isrc = extract_track_isrc(sp_t)
             if not track.duration_ms:
                 track.duration_ms = sp_t.get("duration_ms")
 

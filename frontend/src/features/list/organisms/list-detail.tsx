@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useParams, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -10,6 +10,7 @@ import {
   SearchIcon,
   XIcon,
   UsersIcon,
+  GripVerticalIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
@@ -25,6 +26,7 @@ import {
   useDeleteList,
   useRemoveFromList,
   useAddToList,
+  useReorderList,
 } from "../list-queries"
 import { ListComposer } from "./list-composer"
 import {
@@ -51,12 +53,16 @@ export function ListDetail() {
   const removeItem = useRemoveFromList()
   const addToList = useAddToList()
 
+  const reorderList = useReorderList(listId)
+
   const [composerOpen, setComposerOpen] = useState(false)
   const [addingMode, setAddingMode] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchType, setSearchType] = useState<string>("all")
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
 
   const itemIds = new Set(list?.items.map((i) => i.id) ?? [])
 
@@ -111,6 +117,31 @@ export function ListDetail() {
   async function handleRemoveItem(mediaItemId: string) {
     await removeItem.mutateAsync({ listId, mediaItemId })
   }
+
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDropIndex(index)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    if (dragIndex != null && dropIndex != null && dragIndex !== dropIndex && list) {
+      const newItems = [...list.items]
+      const [removed] = newItems.splice(dragIndex, 1)
+      newItems.splice(dropIndex, 0, removed)
+      reorderList.mutate(newItems.map((i) => i.id))
+    }
+    setDragIndex(null)
+    setDropIndex(null)
+  }, [dragIndex, dropIndex, list, reorderList])
+
+  const handleDragLeave = useCallback(() => {
+    setDropIndex(null)
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -209,22 +240,14 @@ export function ListDetail() {
       {/* Search panel */}
       {addingMode && (
         <div className="space-y-6">
-          <div
-            className={cn(
-              "max-w-2xl p-4 rounded-[2rem]",
-              "bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]",
-              "backdrop-blur-xl shadow-[var(--dk-shadow-glass)]",
-            )}
-          >
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
             <SearchField
               value={searchQuery}
               onChange={setSearchQuery}
               placeholder="Search movies, shows, or games..."
-              className="w-full"
+              className="flex-1 w-full"
             />
-          </div>
 
-          <div className="flex justify-center">
             <DkTabs
               defaultValue="all"
               value={searchType}
@@ -332,36 +355,60 @@ export function ListDetail() {
               )}
             </div>
           ) : (
-            <MediaGrid>
-              {list.items.map((item) => (
-                <div key={item.id} className="relative group/item">
-                  <MediaCard
-                    id={item.id}
-                    mediaType={item.mediaType as "movie" | "show" | "game"}
-                    title={item.title}
-                    posterUrl={item.posterUrl}
-                    textlessPosterUrl={item.textlessPosterUrl}
-                    logoUrl={item.logoUrl}
-                    releaseDate={item.releaseDate}
-                  />
-                  {isOwner && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleRemoveItem(item.id)
-                      }}
-                      className={cn(
-                        "absolute top-2 right-2 rounded-full p-1.5",
-                        "bg-black/70 text-white/70 hover:text-red-400",
-                        "opacity-0 group-hover/item:opacity-100 transition-opacity",
-                      )}
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </MediaGrid>
+            <>
+              {isOwner && list.items.length > 1 && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  Drag items to reorder your list.
+                </p>
+              )}
+              <MediaGrid>
+                {list.items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "relative group/item transition-opacity duration-150",
+                      dragIndex === index && "opacity-50",
+                      dropIndex === index && dragIndex !== index && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg",
+                    )}
+                    draggable={isOwner}
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDragLeave={handleDragLeave}
+                  >
+                    {isOwner && (
+                      <div className="absolute top-2 left-2 z-10 rounded-full p-1 bg-black/70 text-white/50 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+                        <GripVerticalIcon className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                    <MediaCard
+                      id={item.id}
+                      mediaType={item.mediaType as "movie" | "show" | "game"}
+                      title={item.title}
+                      posterUrl={item.posterUrl}
+                      textlessPosterUrl={item.textlessPosterUrl}
+                      logoUrl={item.logoUrl}
+                      releaseDate={item.releaseDate}
+                    />
+                    {isOwner && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleRemoveItem(item.id)
+                        }}
+                        className={cn(
+                          "absolute top-2 right-2 rounded-full p-1.5",
+                          "bg-black/70 text-white/70 hover:text-red-400",
+                          "opacity-0 group-hover/item:opacity-100 transition-opacity",
+                        )}
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </MediaGrid>
+            </>
           )}
         </>
       )}

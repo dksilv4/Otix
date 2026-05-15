@@ -51,7 +51,7 @@ from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
 from otix.providers.spotify.client import SpotifyProvider
 from otix.providers.spotify.hydrator import SpotifyHydrator
-from otix.providers.spotify.transformer import extract_artist_spotify_ids
+from otix.providers.spotify.transformer import extract_artist_spotify_ids, extract_track_isrc, extract_album_upc
 from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.steamgrid.client import SteamGridDBProvider
@@ -2817,6 +2817,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
             spotify_url=raw.get("external_urls", {}).get("spotify"),
             spotify_popularity=raw.get("popularity"),
             preview_url=None,
+            barcode=extract_album_upc(raw),
         )
         session.add(album)
         await _create_spotify_artist_credits(session, item.id, artists_data)
@@ -2831,6 +2832,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
                 duration_ms=track_data.get("duration_ms"),
                 preview_url=track_data.get("preview_url"),
                 spotify_id=track_data.get("id"),
+                isrc=extract_track_isrc(track_data),
             )
             session.add(track)
 

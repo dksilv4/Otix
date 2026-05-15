@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { Heart, Download, X, Copy, Check } from 'lucide-react'
+import { Heart, Download, X, Copy, Check, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth'
 import {
   useLikeList,
   useUnlikeList,
   useInviteCollaborator,
   useRemoveCollaborator,
+  useAcceptInvitation,
+  useDeclineInvitation,
   useRankHistory,
   getExportUrl,
   type UserListDetailOut,
@@ -169,18 +172,52 @@ interface CollaboratorsModalProps {
 }
 
 export function CollaboratorsModal({ list, open, onClose }: CollaboratorsModalProps) {
-  const [inviteUserId, setInviteUserId] = useState('')
+  const { user } = useAuth()
+  const [inviteUsername, setInviteUsername] = useState('')
   const [permission, setPermission] = useState('VIEW')
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [isLookingUp, setIsLookingUp] = useState(false)
   const invite = useInviteCollaborator(list.id)
   const remove = useRemoveCollaborator(list.id)
+  const accept = useAcceptInvitation(list.id)
+  const decline = useDeclineInvitation(list.id)
+
+  const isOwner = user?.id === list.userId
+  const collaborators = list.collaborators ?? []
+
+  // Pending invitations for the current user
+  const myPending = collaborators.filter(
+    (c) => c.userId === user?.id && c.status === 'pending',
+  )
+  // Other collaborators (accepted, or pending for other users)
+  const others = collaborators.filter(
+    (c) => !(c.userId === user?.id && c.status === 'pending'),
+  )
+
+  const handleInvite = async () => {
+    const username = inviteUsername.trim()
+    if (!username) return
+    setLookupError(null)
+    setIsLookingUp(true)
+    try {
+      const { data } = await apiClient.get<{ id: string; username: string }>(
+        '/users/' + encodeURIComponent(username),
+      )
+      invite.mutate(
+        { userId: data.id, permission },
+        {
+          onSuccess: () => setInviteUsername(''),
+          onError: () => setLookupError('Failed to send invitation.'),
+        },
+      )
+    } catch {
+      setLookupError('User not found.')
+    } finally {
+      setIsLookingUp(false)
+    }
+  }
 
   if (!open) return null
-
-  const handleInvite = () => {
-    if (!inviteUserId.trim()) return
-    invite.mutate({ userId: inviteUserId.trim(), permission })
-    setInviteUserId('')
-  }
 
   return (
     <AnimatePresence>
@@ -207,57 +244,131 @@ export function CollaboratorsModal({ list, open, onClose }: CollaboratorsModalPr
 
           <h3 className="text-lg font-semibold mb-4">Collaborators</h3>
 
-          {/* Current collaborators */}
-          {list.collaborators && list.collaborators.length > 0 ? (
+          {/* My pending invitations */}
+          {myPending.length > 0 && (
             <div className="space-y-2 mb-4">
-              {list.collaborators.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-lg bg-[var(--dk-surface-glass)] px-3 py-2">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Your Invitations
+              </label>
+              {myPending.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{list.name}</span>
+                    <span className="text-[10px] text-amber-400">
+                      {c.permission} · pending
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => accept.mutate()}
+                      disabled={accept.isPending}
+                      className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => decline.mutate()}
+                      disabled={decline.isPending}
+                      className="rounded-lg bg-red-500/20 px-2.5 py-1 text-[11px] font-medium text-red-400 hover:bg-red-500/30 transition-colors"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Collaborator list */}
+          {others.length > 0 ? (
+            <div className="space-y-2 mb-4">
+              {myPending.length > 0 && (
+                <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Collaborators
+                </label>
+              )}
+              {others.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between rounded-lg bg-[var(--dk-surface-glass)] px-3 py-2"
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">
                       {c.user?.username || c.userId}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      {c.permission} · {c.status}
+                      {c.permission}
+                      {c.status === 'pending' && ' · pending'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => remove.mutate(c.userId)}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    Remove
-                  </button>
+                  {isOwner && (
+                    <button
+                      onClick={() => remove.mutate(c.userId)}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground mb-4">No collaborators yet.</p>
+            myPending.length === 0 && (
+              <p className="text-xs text-muted-foreground mb-4">
+                No collaborators yet.
+              </p>
+            )
           )}
 
-          {/* Invite */}
-          <div className="flex gap-2">
-            <input
-              value={inviteUserId}
-              onChange={(e) => setInviteUserId(e.target.value)}
-              placeholder="User ID to invite..."
-              className="flex-1 rounded-lg border border-white/[0.06] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs"
-            />
-            <select
-              value={permission}
-              onChange={(e) => setPermission(e.target.value)}
-              className="rounded-lg border border-white/[0.06] bg-[var(--dk-surface-glass)] px-2 py-2 text-xs"
-            >
-              <option value="VIEW">View</option>
-              <option value="EDIT">Edit</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-            <button
-              onClick={handleInvite}
-              disabled={invite.isPending}
-              className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-            >
-              Invite
-            </button>
-          </div>
+          {/* Invite (owner only) */}
+          {isOwner && (
+            <div className="space-y-2">
+              <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Invite
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={inviteUsername}
+                  onChange={(e) => {
+                    setInviteUsername(e.target.value)
+                    setLookupError(null)
+                  }}
+                  placeholder="Username to invite..."
+                  className="flex-1 rounded-lg border border-white/[0.06] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleInvite()
+                  }}
+                />
+                <select
+                  value={permission}
+                  onChange={(e) => setPermission(e.target.value)}
+                  className="rounded-lg border border-white/[0.06] bg-[var(--dk-surface-glass)] px-2 py-2 text-xs"
+                >
+                  <option value="VIEW">View</option>
+                  <option value="EDIT">Edit</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                <button
+                  onClick={handleInvite}
+                  disabled={invite.isPending || isLookingUp || !inviteUsername.trim()}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isLookingUp ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : invite.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : null}
+                  Invite
+                </button>
+              </div>
+              {lookupError && (
+                <p className="text-[11px] text-red-400">{lookupError}</p>
+              )}
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

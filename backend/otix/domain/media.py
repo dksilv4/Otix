@@ -189,6 +189,7 @@ class Track(Base, TimestampMixin):
     preview_url: Mapped[str | None] = mapped_column(String(500))
     spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
     musicbrainz_recording_id: Mapped[str | None] = mapped_column(String(36), unique=True)
+    isrc: Mapped[str | None] = mapped_column(String(20), unique=True)
     audio_features: Mapped[dict | None] = mapped_column(JSONB)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

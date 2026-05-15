@@ -84,12 +84,17 @@ def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
 
 def to_track(raw: dict[str, JSONValue]) -> Track:
     dur = raw.get("length")
+    isrcs = raw.get("isrcs")
+    first_isrc: str | None = None
+    if isinstance(isrcs, list) and isrcs:
+        first_isrc = str(isrcs[0]) if isrcs[0] else None
     return Track(
         track_number=raw.get("position", 0) if isinstance(raw.get("position"), int) else 0,
         disc_number=1,
         title=str(raw.get("title", "Unknown Track")),
         duration_ms=int(dur) if dur else None,
         musicbrainz_recording_id=str(raw.get("id", "")) if raw.get("id") else None,
+        isrc=first_isrc,
     )
 
 

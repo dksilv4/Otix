@@ -51,3 +51,23 @@ def extract_artist_spotify_ids(raw: dict[str, JSONValue]) -> list[str]:
 
 def extract_release_date(raw: dict[str, JSONValue]) -> str | None:
     return raw.get("release_date") if isinstance(raw.get("release_date"), str) else None
+
+
+def extract_track_isrc(track_data: dict[str, JSONValue]) -> str | None:
+    """Extract ISRC from a Spotify track object's external_ids."""
+    ext = track_data.get("external_ids")
+    if isinstance(ext, dict):
+        isrc = ext.get("isrc")
+        if isinstance(isrc, str) and isrc:
+            return isrc
+    return None
+
+
+def extract_album_upc(album_data: dict[str, JSONValue]) -> str | None:
+    """Extract UPC/EAN barcode from a Spotify album object's external_ids."""
+    ext = album_data.get("external_ids")
+    if isinstance(ext, dict):
+        upc = ext.get("upc") or ext.get("ean")
+        if isinstance(upc, str) and upc:
+            return upc
+    return None
