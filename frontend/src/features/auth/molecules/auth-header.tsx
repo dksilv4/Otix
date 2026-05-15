@@ -20,7 +20,7 @@ export function AuthHeader({ title, subtitle, className, children }: AuthHeaderP
       >
         {title}
       </h2>
-      <p className="mt-2 text-base text-muted-foreground">{subtitle}</p>
+      <p className="mt-2 text-base text-white/30">{subtitle}</p>
     </div>
   )
 }

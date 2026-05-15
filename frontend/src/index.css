@@ -172,6 +172,14 @@
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+/* ── Aurora gradient background ── */
+.auth-aurora-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 80% 100%, rgba(96, 165, 250, 0.12) 0%, transparent 50%),
+    linear-gradient(135deg, #0a0b1e 0%, #1a1b2e 50%, #16213e 100%);
+}
+
 /* ── Scrollbar hide utility ── */
 .scrollbar-none {
   scrollbar-width: none;

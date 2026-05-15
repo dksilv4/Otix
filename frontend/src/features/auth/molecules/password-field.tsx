@@ -52,24 +52,24 @@ export function PasswordField({
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           className={cn(
-            'flex h-12 w-full rounded-xl bg-[var(--dk-surface-ghost-hover)] px-4 pr-12 text-base transition-all placeholder:text-muted-foreground/60',
-            'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-[var(--dk-surface-ghost-active)]',
-            'focus:shadow-[var(--dk-shadow-lg)]',
-            'hover:bg-[var(--dk-surface-ghost-active)]',
-            error && 'ring-2 ring-destructive/50 focus:ring-destructive/50',
+            'flex min-h-[52px] w-full rounded-xl bg-[var(--dk-surface-glass)] px-5 pr-12 text-base transition-all duration-200 placeholder:text-white/30',
+            'focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)]',
+            'hover:bg-[var(--dk-surface-glass-hover)]',
+            'shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]',
+            error && 'ring-1 ring-red-400/40 focus:ring-red-400/50',
           )}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-white/25 hover:text-white/60 transition-colors"
           aria-label={visible ? 'Hide password' : 'Show password'}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
       {error && (
-        <p id={errorId} role="alert" className="text-xs text-destructive">
+        <p id={errorId} role="alert" className="text-xs text-red-300">
           {error}
         </p>
       )}

@@ -1,22 +1,15 @@
 import { useState, useCallback, useRef, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate, useSearch, useLocation } from '@tanstack/react-router'
-import { LogIn, UserPlus, Loader2, Check, Shield, ArrowLeft } from 'lucide-react'
+import { LogIn, UserPlus, Loader2, Check, Shield, ArrowLeft, ArrowRight } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../auth-provider'
 import { AuthHeader } from '../molecules/auth-header'
 import { PasswordField } from '../molecules/password-field'
 import { PasswordStrengthBar } from '../atoms/password-strength-bar'
-import { useMemo } from 'react'
 import { Logo } from '@ui/atoms/logo'
-import authBg1 from '@/assets/auth-bg-1.png'
-import authBg2 from '@/assets/auth-bg-2.png'
-import authBg3 from '@/assets/auth-bg-3.png'
-import authBg4 from '@/assets/auth-bg-4.png'
-import authBg5 from '@/assets/auth-bg-5.png'
+import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { cn } from '@/lib/utils'
-
-const bgImages = [authBg1, authBg2, authBg3, authBg4, authBg5]
 
 type FormMode = 'login' | 'register'
 
@@ -74,11 +67,12 @@ function validateRegisterFields(fields: RegisterFields): { errors: FieldErrors; 
 }
 
 const inputClasses = cn(
-  'flex h-12 w-full rounded-xl bg-[var(--dk-surface-ghost-hover)] px-4 text-base transition-all',
-  'placeholder:text-muted-foreground/60',
-  'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-[var(--dk-surface-ghost-active)]',
-  'focus:shadow-[var(--dk-shadow-lg)]',
-  'hover:bg-[var(--dk-surface-ghost-active)]',
+  'flex min-h-[52px] w-full rounded-xl px-5 text-base transition-all duration-200',
+  'bg-[var(--dk-surface-glass)]',
+  'placeholder:text-white/30',
+  'focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)]',
+  'hover:bg-[var(--dk-surface-glass-hover)]',
+  'shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]',
 )
 
 const tabSpring = { type: 'spring' as const, stiffness: 500, damping: 30 }
@@ -222,28 +216,21 @@ export function AuthPage() {
 
   const isLogin = mode === 'login'
 
-  const bgImage = useMemo(() => bgImages[Math.floor(Math.random() * bgImages.length)], [])
-
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
-      {/* Random background image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      />
-      {/* Subtle gradient overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
+    <div className="fixed inset-0 flex items-center justify-center p-4 auth-aurora-bg">
 
       <div
         className={cn(
           'relative z-10 w-full max-w-[440px] flex flex-col items-center',
           'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-          'bg-[var(--dk-surface-overlay)] backdrop-blur-xl',
-          'shadow-[var(--dk-shadow-glass)]',
+          'bg-[var(--dk-surface-glass)] backdrop-blur-2xl',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]',
         )}
         style={{ animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
-        <Logo className="h-16" />
+        <div className="mb-2">
+          <Logo className="h-20 drop-shadow-[0_0_24px_rgba(255,255,255,0.15)]" />
+        </div>
 
         <AuthHeader
           title={isLogin ? 'Welcome back' : 'Join Otix'}
@@ -258,11 +245,11 @@ export function AuthPage() {
         {twoFactorChallenge && (
           <form onSubmit={handleVerifyTwoFactor} className="w-full space-y-4">
             <div className="flex items-center justify-center gap-3 py-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <Shield className="h-7 w-7 text-primary" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--dk-surface-glass)]">
+                <Shield className="h-7 w-7 text-white/50" />
               </div>
             </div>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-white/40">
               Enter the 6-digit code from your authenticator app.
             </p>
 
@@ -270,7 +257,7 @@ export function AuthPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-destructive text-center"
+                className="rounded-2xl border border-red-400/20 bg-red-500/8 px-4 py-3 text-sm text-red-300 text-center"
               >
                 {totpError}
               </motion.div>
@@ -285,32 +272,33 @@ export function AuthPage() {
               onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               autoFocus
-              className="w-full rounded-2xl bg-[var(--dk-surface-ghost-hover)] px-4 py-5 text-center text-2xl font-mono tracking-[0.3em] placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-[var(--dk-surface-ghost-active)] transition-all"
+              className="w-full rounded-xl bg-[var(--dk-surface-glass)] px-4 py-5 text-center text-2xl font-mono tracking-[0.3em] placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)] transition-all duration-200 shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]"
             />
 
-            <button
-              type="submit"
-              disabled={totpCode.length !== 6 || totpSubmitting || showSuccess}
-              className={cn(
-                'flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold uppercase tracking-wider transition-all',
-                'bg-primary text-primary-foreground',
-                'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                'hover:bg-primary/90 active:scale-[0.98]',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                showSuccess && '!bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]',
-              )}
-            >
-              {showSuccess ? (
-                <Check className="h-5 w-5" />
-              ) : totpSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Shield className="h-5 w-5" />
-              )}
-              <span>
-                {showSuccess ? 'Verified' : totpSubmitting ? 'Verifying…' : 'Verify'}
-              </span>
-            </button>
+            <div className="flex justify-center pt-2">
+              <button
+                type="submit"
+                disabled={totpCode.length !== 6 || totpSubmitting || showSuccess}
+                className={cn(
+                  'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
+                  'bg-white text-black',
+                  'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                  'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
+                  'active:scale-95',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                  showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
+                )}
+                aria-label="Verify code"
+              >
+                {showSuccess ? (
+                  <Check className="h-6 w-6 text-black" />
+                ) : totpSubmitting ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <ArrowRight className="h-6 w-6" />
+                )}
+              </button>
+            </div>
 
             <button
               type="button"
@@ -319,7 +307,7 @@ export function AuthPage() {
                 setTotpCode('')
                 setTotpError('')
               }}
-              className="flex items-center justify-center gap-1.5 w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center justify-center gap-1.5 w-full py-2 text-sm text-white/30 hover:text-white/70 transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to sign in
@@ -330,9 +318,9 @@ export function AuthPage() {
         {/* Tabs — hidden during 2FA challenge */}
         {!twoFactorChallenge && (
         <>
-        <div className="relative flex mb-8 p-1 rounded-2xl bg-[var(--dk-surface-ghost-active)] w-full">
+        <div className="relative flex mb-8 p-1 rounded-2xl bg-[var(--dk-surface-glass-hover)] w-full">
           <motion.div
-            className="absolute top-1 bottom-1 rounded-xl bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-sm)]"
+            className="absolute top-1 bottom-1 rounded-xl bg-white/[0.10] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
             initial={false}
             animate={{ left: isLogin ? '0.25rem' : '50%', width: 'calc(50% - 0.25rem)' }}
             transition={tabSpring}
@@ -342,7 +330,7 @@ export function AuthPage() {
             onClick={() => switchMode('login')}
             className={cn(
               'relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200',
-              isLogin ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+              isLogin ? 'text-white/90' : 'text-white/35 hover:text-white/70',
             )}
           >
             <LogIn className="h-4 w-4" />
@@ -353,7 +341,7 @@ export function AuthPage() {
             onClick={() => switchMode('register')}
             className={cn(
               'relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200',
-              !isLogin ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+              !isLogin ? 'text-white/90' : 'text-white/35 hover:text-white/70',
             )}
           >
             <UserPlus className="h-4 w-4" />
@@ -370,7 +358,7 @@ export function AuthPage() {
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -8, height: 0 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full mb-5 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-destructive"
+              className="w-full mb-5 rounded-2xl border border-red-400/20 bg-red-500/8 px-4 py-3 text-sm text-red-300"
             >
               {authError}
             </motion.div>
@@ -405,10 +393,10 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.identity}
                   aria-describedby={fieldErrors.identity ? 'identity-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.identity && 'ring-2 ring-destructive/50')}
+                  className={cn(inputClasses, fieldErrors.identity && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
                 />
                 {fieldErrors.identity && (
-                  <p id="identity-error" role="alert" className="text-xs text-destructive">
+                  <p id="identity-error" role="alert" className="text-xs text-red-300">
                     {fieldErrors.identity}
                   </p>
                 )}
@@ -428,35 +416,36 @@ export function AuthPage() {
               <div className="flex justify-end">
                 <Link
                   to="/auth/forgot-password"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-xs text-white/30 hover:text-white/70 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || showSuccess}
-                className={cn(
-                  'flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold uppercase tracking-wider transition-all',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                  'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary',
-                  showSuccess && '!bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]',
-                )}
-              >
-                {showSuccess ? (
-                  <Check className="h-5 w-5" />
-                ) : isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <LogIn className="h-5 w-5" />
-                )}
-                <span>
-                  {showSuccess ? 'Signed In' : isSubmitting ? 'Signing in…' : 'Sign In'}
-                </span>
-              </button>
+              <div className="flex justify-center pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || showSuccess}
+                  className={cn(
+                    'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
+                    'bg-white text-black',
+                    'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                    'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
+                    'active:scale-95',
+                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                    showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
+                  )}
+                  aria-label={isLogin ? 'Sign in' : 'Create account'}
+                >
+                  {showSuccess ? (
+                    <Check className="h-6 w-6 text-black" />
+                  ) : isSubmitting ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
             </motion.form>
           ) : (
             <motion.form
@@ -481,10 +470,10 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.email}
                   aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.email && 'ring-2 ring-destructive/50')}
+                  className={cn(inputClasses, fieldErrors.email && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
                 />
                 {fieldErrors.email && (
-                  <p id="email-error" role="alert" className="text-xs text-destructive">
+                  <p id="email-error" role="alert" className="text-xs text-red-300">
                     {fieldErrors.email}
                   </p>
                 )}
@@ -502,10 +491,10 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.username}
                   aria-describedby={fieldErrors.username ? 'username-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.username && 'ring-2 ring-destructive/50')}
+                  className={cn(inputClasses, fieldErrors.username && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
                 />
                 {fieldErrors.username && (
-                  <p id="username-error" role="alert" className="text-xs text-destructive">
+                  <p id="username-error" role="alert" className="text-xs text-red-300">
                     {fieldErrors.username}
                   </p>
                 )}
@@ -534,49 +523,53 @@ export function AuthPage() {
                 error={fieldErrors.confirmPassword}
               />
 
-              <button
-                type="submit"
-                disabled={isSubmitting || showSuccess}
-                className={cn(
-                  'flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold uppercase tracking-wider transition-all',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                  'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary',
-                  showSuccess && '!bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]',
-                )}
-              >
-                {showSuccess ? (
-                  <Check className="h-5 w-5" />
-                ) : isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <UserPlus className="h-5 w-5" />
-                )}
-                <span>
-                  {showSuccess ? 'Created' : isSubmitting ? 'Creating account…' : 'Create Account'}
-                </span>
-              </button>
+              <div className="flex justify-center pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || showSuccess}
+                  className={cn(
+                    'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
+                    'bg-white text-black',
+                    'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                    'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
+                    'active:scale-95',
+                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
+                    showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
+                  )}
+                  aria-label="Create account"
+                >
+                  {showSuccess ? (
+                    <Check className="h-6 w-6 text-black" />
+                  ) : isSubmitting ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <ArrowRight className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
             </motion.form>
           )}
         </AnimatePresence>
 
-        <div className="mt-6 pt-5 border-t border-border/30">
-          <button
-            type="button"
-            onClick={handleSteamLogin}
-            disabled={steamLoading || isSubmitting}
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-[#171a21] text-[#c6d4df] text-sm font-semibold hover:bg-[#1e2329] active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            {steamLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.4c5.304 0 9.6 4.296 9.6 9.6s-4.296 9.6-9.6 9.6S2.4 17.304 2.4 12 6.696 2.4 12 2.4zm-1.894 4.258c-1.768 0-3.202 1.434-3.202 3.202a3.202 3.202 0 004.882 2.69l2.484 3.47c.236.33.656.406.938.17l.848-.71a.63.63 0 00.104-.895l-2.484-3.47a3.202 3.202 0 00-3.57-4.457zm0 1.659c.852 0 1.543.691 1.543 1.543s-.691 1.544-1.543 1.544-1.543-.692-1.543-1.544.691-1.543 1.543-1.543z"/>
-              </svg>
-            )}
-            <span>{steamLoading ? 'Redirecting…' : 'Continue with Steam'}</span>
-          </button>
+        <div className="mt-6 pt-5 border-t border-white/[0.08] w-full">
+          <p className="text-center text-xs text-white/20 mb-4 tracking-wider uppercase">or continue with</p>
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleSteamLogin}
+              disabled={steamLoading || isSubmitting}
+              className="relative flex h-12 w-12 items-center justify-center rounded-full overflow-hidden text-white/80 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 group"
+              aria-label="Continue with Steam"
+              style={{ background: 'linear-gradient(135deg, #1b2838 0%, #1d3f5f 100%)' }}
+            >
+              <div className="absolute inset-0 bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-opacity" />
+              {steamLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin relative z-10" />
+              ) : (
+                <SteamIcon className="h-5 w-5 relative z-10" />
+              )}
+            </button>
+          </div>
         </div>
         </>
         )}

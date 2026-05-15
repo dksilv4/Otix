@@ -29,7 +29,7 @@ export function PasswordStrengthBar({ password, className }: PasswordStrengthBar
             key={i}
             className={cn(
               'h-1.5 rounded-full transition-all duration-500',
-              i < activeCount ? `${colors.bar} ${colors.glow}` : 'bg-muted',
+              i < activeCount ? `${colors.bar} ${colors.glow}` : 'bg-white/10',
             )}
           />
         ))}
