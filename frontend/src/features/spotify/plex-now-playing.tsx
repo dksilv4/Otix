@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive, Zap, Radio } from 'lucide-react'
+import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive, Zap } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
@@ -44,14 +44,6 @@ interface PlexSessionsResponse {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────
-
-function formatProgress(offset: number | null, duration: number | null): string {
-  if (!offset || !duration || duration <= 0) return ''
-  const pct = Math.round((offset / duration) * 100)
-  const mins = Math.floor(offset / 60000)
-  const totalMins = Math.floor(duration / 60000)
-  return `${mins}m / ${totalMins}m`
-}
 
 function formatTitle(s: PlexSession): string {
   if (s.media_type === 'episode' && s.grandparent_title) {

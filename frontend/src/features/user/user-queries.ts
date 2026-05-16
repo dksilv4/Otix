@@ -79,6 +79,7 @@ export interface ReviewWithUser {
   title: string | null
   content: string | null
   isSpoiler: boolean
+  isPrivate: boolean
   createdAt: string
   updatedAt: string
   user: {

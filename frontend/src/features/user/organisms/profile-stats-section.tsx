@@ -4,10 +4,10 @@ import { userQueries } from '../user-queries'
 import { Skeleton } from '@ui/atoms/skeleton'
 
 const STAT_ITEMS = [
-  { key: 'review_count', label: 'Reviews', icon: MessageSquareText },
-  { key: 'interaction_count', label: 'Interactions', icon: Heart },
-  { key: 'workout_count', label: 'Workouts', icon: Dumbbell },
-  { key: 'list_count', label: 'Lists', icon: List },
+  { key: 'reviewCount' as const, label: 'Reviews', icon: MessageSquareText },
+  { key: 'interactionCount' as const, label: 'Interactions', icon: Heart },
+  { key: 'workoutCount' as const, label: 'Workouts', icon: Dumbbell },
+  { key: 'listCount' as const, label: 'Lists', icon: List },
 ] as const
 
 export function StatsSection({ username }: { username: string }) {
@@ -33,7 +33,7 @@ export function StatsSection({ username }: { username: string }) {
           >
             <Icon className="h-4 w-4 text-muted-foreground mb-2" />
             <p className="text-2xl font-bold tabular-nums">
-              {(stats as Record<string, number>)[key] ?? 0}
+              {stats[key] ?? 0}
             </p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </div>

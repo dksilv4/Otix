@@ -56,8 +56,8 @@ export function ActivitySection({ username }: { username: string }) {
               <p className="text-sm truncate">
                 {event.mediaItem ? (
                   <Link
-                    to="/media/$mediaId"
-                    params={{ mediaId: event.mediaItem.id }}
+                    to="/media/$mediaType/$mediaId"
+                    params={{ mediaType: event.mediaItem.mediaType, mediaId: event.mediaItem.id }}
                     className="hover:text-primary transition-colors"
                   >
                     {event.summary}

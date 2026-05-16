@@ -25,8 +25,8 @@ export function TopRatedSection({ username }: { username: string }) {
         {items.map((item) => (
           <Link
             key={item.review.mediaItemId}
-            to="/media/$mediaId"
-            params={{ mediaId: item.mediaItem.id }}
+            to="/media/$mediaType/$mediaId"
+            params={{ mediaType: item.mediaItem.mediaType, mediaId: item.mediaItem.id }}
             className="group relative overflow-hidden rounded-xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)] hover:shadow-[var(--dk-shadow-md)] transition-all"
           >
             <div className="aspect-[2/3] bg-[var(--dk-surface-raised)]">
