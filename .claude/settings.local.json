@@ -153,7 +153,8 @@
       "Skill(superpowers:brainstorming)",
       "PowerShell(docker ps --format '{{.Names}}' | ForEach-Object { $logs = docker logs --since 10m $_ 2>&1 | Select-String -Pattern \"\\(?i\\)\\\\b\\(error|critical|fatal|exception|traceback|panic\\)\\\\b\" | Select-Object -Last 20; if \\($logs\\) { Write-Host \"=== $_ ===\"; $logs } })",
       "Bash(Get-ChildItem *)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "PowerShell(docker ps -q | ForEach-Object { $id=$_; $name = \\(docker inspect --format='{{.Name}}' $id\\).TrimStart\\('/'\\); $logs = docker logs --since 10m --until 0s $id 2>&1 | Select-String -Pattern \"\\(?i\\)\\\\bERROR\\\\b|\\\\bCRITICAL\\\\b|\\\\bFATAL\\\\b|Traceback|MissingGreenlet|duplicate key|value too long\" | Select-Object -Last 20; if \\($logs\\) { Write-Host \"=== $name ===\"; $logs } })"
     ]
   },
   "outputStyle": "default"

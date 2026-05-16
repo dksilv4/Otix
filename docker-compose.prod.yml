@@ -1,3 +1,50 @@
+x-otix-env: &otix-env
+  # ── Database ──
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+  DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+  REDIS_URL: redis://redis:6379/1
+  CELERY_BROKER_URL: redis://redis:6379/0
+  # ── App ──
+  APP_ENV: production
+  DEBUG: "false"
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  # ── Auth ──
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+  # ── CORS ──
+  FRONTEND_BASE_URL: ${FRONTEND_BASE_URL}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+  # ── TMDB ──
+  TMDB_API_KEY: ${TMDB_API_KEY}
+  TMDB_RAT: ${TMDB_RAT}
+  # ── OMDb ──
+  OMDB_API_KEY: ${OMDB_API_KEY}
+  # ── Fanart ──
+  FANART_API_KEY: ${FANART_API_KEY}
+  FANART_CLIENT_KEY: ${FANART_CLIENT_KEY}
+  # ── IGDB ──
+  IGDB_CLIENT_ID: ${IGDB_CLIENT_ID}
+  IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET}
+  # ── Steam ──
+  STEAM_API_KEY: ${STEAM_API_KEY}
+  # ── Steam Grid ──
+  STEAM_GRID_API_KEY: ${STEAM_GRID_API_KEY}
+  # ── RAWG ──
+  RAWG_API_KEY: ${RAWG_API_KEY}
+  # ── Email ──
+  RESEND_API_KEY: ${RESEND_API_KEY}
+  EMAIL_FROM: ${EMAIL_FROM:-admin@otix.app}
+  # ── Spotify ──
+  SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+  SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+  # ── Last.fm ──
+  LASTFM_API_KEY: ${LASTFM_API_KEY}
+  # ── MusicBrainz ──
+  MUSICBRAINZ_RPS_LIMIT: ${MUSICBRAINZ_RPS_LIMIT:-1}
+  # ── Celery ──
+  CELERY_WORKER_FAST_CONCURRENCY: ${CELERY_WORKER_FAST_CONCURRENCY:-6}
+  CELERY_WORKER_SLOW_CONCURRENCY: ${CELERY_WORKER_SLOW_CONCURRENCY:-2}
+  CELERY_WORKER_CCU_CONCURRENCY: ${CELERY_WORKER_CCU_CONCURRENCY:-1}
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -28,14 +75,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      APP_ENV: production
-      DEBUG: "false"
+      <<: *otix-env
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -53,14 +94,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      APP_ENV: production
-      DEBUG: "false"
+      <<: *otix-env
     depends_on:
       db:
         condition: service_healthy
@@ -73,14 +108,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      APP_ENV: production
-      DEBUG: "false"
+      <<: *otix-env
     depends_on:
       db:
         condition: service_healthy
