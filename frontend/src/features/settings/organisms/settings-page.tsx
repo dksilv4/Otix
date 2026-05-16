@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Dot } from 'lucide-react'
@@ -236,9 +237,9 @@ function ProfileSection({
     tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden') ||
     JSON.stringify(profileSections) !== JSON.stringify(user?.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
 
-  const applyCoverEditor = async (url: string) => {
+  const applyCoverEditor = async (url: string, keepOpen = false) => {
     setBackgroundUrl(url)
-    setEditingCover(false)
+    if (!keepOpen) setEditingCover(false)
     setSaving(true)
     try {
       const { data } = await apiClient.patch('/auth/me', {
@@ -259,9 +260,9 @@ function ProfileSection({
     }
   }
 
-  const applyAvatarEditor = async (url: string) => {
+  const applyAvatarEditor = async (url: string, keepOpen = false) => {
     setAvatarUrl(url)
-    setEditingAvatar(false)
+    if (!keepOpen) setEditingAvatar(false)
     setSaving(true)
     try {
       const { data } = await apiClient.patch('/auth/me', {
@@ -303,24 +304,27 @@ function ProfileSection({
 
         {/* Cover area — clickable to change */}
         <div className="relative h-40 group">
-          {editingCover ? (
-            <div className="absolute inset-x-4 bottom-4 md:left-auto md:right-4 md:w-[28rem] z-20">
-              <AssetEditor
-                label="Cover Image"
-                value={backgroundUrl}
-                onSubmit={applyCoverEditor}
-                onCancel={() => setEditingCover(false)}
-              />
-            </div>
-          ) : (
-            <button
-              onClick={() => setEditingCover(true)}
-              className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-black/70 hover:text-white transition-all"
-            >
-              <Pencil className="h-3 w-3" />
-              Change Cover
-            </button>
+          {editingCover && createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditingCover(false)}>
+              <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md">
+                <AssetEditor
+                  label="Cover Image"
+                  value={backgroundUrl}
+                  onSubmit={(url) => applyCoverEditor(url, false)}
+                  onRemove={() => applyCoverEditor('', true)}
+                  onCancel={() => setEditingCover(false)}
+                />
+              </div>
+            </div>,
+            document.body,
           )}
+          <button
+            onClick={() => setEditingCover(true)}
+            className="absolute bottom-4 right-4 z-10 flex items-center gap-1.5 rounded-lg bg-black/50 backdrop-blur-sm px-3 py-1.5 text-xs font-medium text-white/80 hover:bg-black/70 hover:text-white transition-all"
+          >
+            <Pencil className="h-3 w-3" />
+            Change Cover
+          </button>
         </div>
 
         {/* Avatar + name + bio — glass overlay */}
@@ -331,17 +335,22 @@ function ProfileSection({
               <div className="rounded-full ring-4 ring-white/10">
                 <DkAvatar src={avatarUrl || null} name={user.username} size="xl" />
               </div>
-              {editingAvatar ? (
-                <div className="absolute left-0 top-full z-20 mt-3">
-                  <AssetEditor
-                    compact
-                    label="Avatar Image"
-                    value={avatarUrl}
-                    onSubmit={applyAvatarEditor}
-                    onCancel={() => setEditingAvatar(false)}
-                  />
-                </div>
-              ) : (
+              {editingAvatar && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setEditingAvatar(false)}>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AssetEditor
+                      compact
+                      label="Avatar Image"
+                      value={avatarUrl}
+                      onSubmit={(url) => applyAvatarEditor(url, false)}
+                      onRemove={() => applyAvatarEditor('', true)}
+                      onCancel={() => setEditingAvatar(false)}
+                    />
+                  </div>
+                </div>,
+                document.body,
+              )}
+              {!editingAvatar && (
                 <button
                   onClick={() => setEditingAvatar(true)}
                   className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity"
@@ -582,12 +591,14 @@ function AssetEditor({
   label,
   onCancel,
   onSubmit,
+  onRemove,
   value,
 }: {
   compact?: boolean
   label: string
   onCancel: () => void
   onSubmit: (url: string) => void
+  onRemove?: () => void
   value: string
 }) {
   const [mode, setMode] = useState<'file' | 'url'>('file')
@@ -776,7 +787,7 @@ function AssetEditor({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => onSubmit('')}
+              onClick={() => onRemove?.() ?? onSubmit('')}
               className="text-red-400/70 hover:text-red-400 border-red-400/10 hover:border-red-400/30"
             >
               Remove
