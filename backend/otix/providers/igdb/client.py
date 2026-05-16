@@ -48,11 +48,6 @@ def get_http_client() -> httpx.AsyncClient:
 
     if _shared_client is not None and _shared_client_loop_id != current_loop_id:
         # Event loop changed (Celery prefork child) — discard inherited client
-        try:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(_shared_client.aclose())
-        except Exception:
-            pass
         _shared_client = None
 
     if _shared_client is None or _shared_client.is_closed:
