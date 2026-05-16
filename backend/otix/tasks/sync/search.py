@@ -52,9 +52,9 @@ async def _search_backfill(query: str, media_type: str | None = None) -> dict:
 
     providers = []
     if media_type in (None, "movie"):
-        providers.append(("tmdb_movie", _backfill_tmdb(query, redis, query_hash, "movie")))
+        providers.append(("tmdb_movie", _backfill_tmdb_movies(query, redis, query_hash)))
     if media_type in (None, "show"):
-        providers.append(("tmdb_show", _backfill_tmdb(query, redis, query_hash, "show")))
+        providers.append(("tmdb_show", _backfill_tmdb_shows(query, redis, query_hash)))
     if media_type in (None, "game"):
         providers.append(("igdb_game", _backfill_igdb_games(query, redis, query_hash)))
     if media_type in (None, "music"):
@@ -77,7 +77,9 @@ async def _search_backfill(query: str, media_type: str | None = None) -> dict:
 async def _backfill_tmdb(query: str, redis: aioredis.Redis, query_hash: str, media_type: str) -> dict:
     provider = TMDBProvider(redis)
     ids: set[str] = set()
+    # TMDB API returns "tv" but our task is "sync.tmdb.show"
     entity_kind = "movie" if media_type == "movie" else "tv"
+    task_suffix = media_type if media_type == "movie" else "show"
 
     try:
         coros = [provider.search_multi(query, page=p) for p in range(1, 4)]
@@ -102,7 +104,7 @@ async def _backfill_tmdb(query: str, redis: aioredis.Redis, query_hash: str, med
 
     enqueued = 0
     for ext_id in missing:
-        app.send_task(f"sync.tmdb.{media_type}", args=[int(ext_id)])
+        app.send_task(f"sync.tmdb.{task_suffix}", args=[int(ext_id)])
         enqueued += 1
     await _mark_backfill_provider_done(redis, query_hash, f"tmdb_{media_type}", enqueued)
     return {"enqueued": enqueued, "skipped": len(ids) - enqueued}
@@ -165,4 +167,4 @@ async def _backfill_tmdb_movies(query: str, redis: aioredis.Redis, query_hash: s
 
 
 async def _backfill_tmdb_shows(query: str, redis: aioredis.Redis, query_hash: str) -> dict:
-    return await _backfill_tmdb(query, redis, query_hash, "tv")
+    return await _backfill_tmdb(query, redis, query_hash, "show")

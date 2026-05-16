@@ -256,7 +256,7 @@ async def _enrich_fanart() -> dict:
         # ── Watchlist priority: items in user watchlists missing artwork ──
         watchlist_sub = (
             select(UserListItem.media_item_id)
-            .join(UserList, UserList.id == UserListItem.user_list_id)
+            .join(UserList, UserList.id == UserListItem.list_id)
             .where(UserList.user_id.isnot(None))
             .distinct()
         ).subquery()
@@ -605,7 +605,7 @@ async def _match_spotify() -> dict:
         # Also include watchlisted items regardless of recency (prioritize them)
         watchlist_sub = (
             select(UserListItem.media_item_id)
-            .join(UserList, UserList.id == UserListItem.user_list_id)
+            .join(UserList, UserList.id == UserListItem.list_id)
             .where(UserList.user_id.isnot(None))
             .distinct()
         ).subquery()

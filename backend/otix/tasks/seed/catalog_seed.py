@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import httpx
 import json
 import os
 import tempfile
@@ -27,15 +28,20 @@ import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
 
-import httpx
-import redis.asyncio as aioredis
 import structlog
 
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
+
+from otix.tasks.seed import (
+    TMDB_EXPORT_BASE,
+    check_fast_queue_backlog,
+    download_export,
+    load_state,
+    save_state,
+)
 
 logger = structlog.get_logger()
 
@@ -45,8 +51,13 @@ IGDB_PAGES_PER_CYCLE = 3
 MUSICBRAINZ_LIMIT = 100
 MUSICBRAINZ_PAGES_PER_CYCLE = 3
 LOCK_TTL = 300
-TMDB_EXPORT_BASE = "https://files.tmdb.org/p/exports"
 STEAM_APP_LIST_URL = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
+
+# Backward-compatible re-exports for tests and internal callers
+_load_state = load_state
+_save_state = save_state
+_check_fast_queue_backlog = check_fast_queue_backlog
+_download_export = download_export
 
 # Per-seeder Redis keys
 _PEOPLE_STATE = "otix:catalog_seed:people:state"
@@ -66,22 +77,6 @@ SEEN_TTL = 30 * 86400  # 30 days — covers the full seeding window + restart ma
 
 
 # ── State helpers ────────────────────────────────────────────────────
-
-
-async def _load_state(key: str, default: dict | None = None) -> dict:
-    redis = await get_redis()
-    raw = await redis.get(key)
-    if raw:
-        try:
-            return json.loads(raw)
-        except (json.JSONDecodeError, TypeError):
-            pass
-    return default or {}
-
-
-async def _save_state(key: str, state: dict) -> None:
-    redis = await get_redis()
-    await redis.set(key, json.dumps(state))
 
 
 # ── Dedup helpers ─────────────────────────────────────────────────────
@@ -214,101 +209,28 @@ async def _seed_loop(
 # ── Beat tasks ───────────────────────────────────────────────────────
 
 
-@app.task(name="seed.people_cycle", queue="default")
+@app.task(name="seed.people_cycle")
 def seed_people_cycle() -> dict:
     from otix.lib.concurrency import run_async
     return run_async(_seed_loop("people", _PEOPLE_STATE, _PEOPLE_LOCK, _process_people_batch))
 
 
-@app.task(name="seed.steam_cycle", queue="default")
+@app.task(name="seed.steam_cycle")
 def seed_steam_cycle() -> dict:
     from otix.lib.concurrency import run_async
     return run_async(_seed_loop("steam", _STEAM_STATE, _STEAM_LOCK, _process_steam_batch))
 
 
-@app.task(name="seed.igdb_cycle", queue="default")
+@app.task(name="seed.igdb_cycle")
 def seed_igdb_cycle() -> dict:
     from otix.lib.concurrency import run_async
     return run_async(_seed_loop("igdb", _IGDB_STATE, _IGDB_LOCK, _process_igdb_batch))
 
 
-@app.task(name="seed.musicbrainz_cycle", queue="default")
+@app.task(name="seed.musicbrainz_cycle")
 def seed_musicbrainz_cycle() -> dict:
     from otix.lib.concurrency import run_async
     return run_async(_seed_loop("musicbrainz", _MUSICBRAINZ_STATE, _MUSICBRAINZ_LOCK, _process_musicbrainz_batch))
-
-
-# ── TMDB export download ─────────────────────────────────────────────
-
-
-async def _download_export(export_type: str) -> Path | None:
-    from datetime import timedelta as _td
-
-    now = datetime.now(timezone.utc)
-    dates = [now.strftime("%m_%d_%Y")]
-    yesterday = now - _td(days=1)
-    dates.append(yesterday.strftime("%m_%d_%Y"))
-
-    for date_str in dates:
-        url = f"{TMDB_EXPORT_BASE}/{export_type}_{date_str}.json.gz"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json.gz", prefix="otix_seed_")
-        try:
-            async with httpx.AsyncClient(timeout=300) as client:
-                async with client.stream("GET", url) as response:
-                    if response.status_code == 404:
-                        tmp.close()
-                        os.unlink(tmp.name)
-                        continue
-                    response.raise_for_status()
-                    async for chunk in response.aiter_bytes(chunk_size=65536):
-                        tmp.write(chunk)
-            tmp.close()
-            logger.info("seed export downloaded", url=url, path=tmp.name)
-            return Path(tmp.name)
-        except Exception:
-            tmp.close()
-            try:
-                os.unlink(tmp.name)
-            except OSError:
-                pass
-            raise
-
-    logger.warning("seed export not available", export_type=export_type)
-    return None
-
-
-# ── Queue backlog safety ──────────────────────────────────────────────
-
-
-async def _check_fast_queue_backlog() -> tuple[int, bool]:
-    """Check the fast queue backlog against the configured threshold.
-
-    Returns (length, throttled). Duplicated from sync.py to avoid circular imports.
-    """
-    broker_url = settings.celery_broker
-    parsed = urlparse(broker_url)
-    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
-
-    r: aioredis.Redis | None = None
-    try:
-        r = aioredis.from_url(broker_redis_url, decode_responses=True)
-        length = await r.llen("fast") or 0
-    except Exception:
-        logger.warning("failed to check fast queue backlog", exc_info=True)
-        return 0, False
-    finally:
-        if r is not None:
-            await r.aclose()
-
-    threshold = settings.celery_fast_queue_max_backlog
-    throttled = length > threshold
-    if throttled:
-        logger.info(
-            "fast queue backlog throttle active (catalog seed)",
-            queue_length=length,
-            threshold=threshold,
-        )
-    return length, throttled
 
 
 # ── TMDB People seeder ───────────────────────────────────────────────

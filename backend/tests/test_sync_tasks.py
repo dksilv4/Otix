@@ -573,7 +573,7 @@ class TestBackfillProviders:
 
         with (
             patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"550", "680"}),
+            patch("otix.tasks.sync.search.filter_missing_ids", return_value={"550", "680"}),
             patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
@@ -600,7 +600,7 @@ class TestBackfillProviders:
 
         with (
             patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"1399"}),
+            patch("otix.tasks.sync.search.filter_missing_ids", return_value={"1399"}),
             patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
@@ -626,7 +626,7 @@ class TestBackfillProviders:
 
         with (
             patch("otix.tasks.sync.search.IGDBProvider") as mock_cls,
-            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"1942"}),
+            patch("otix.tasks.sync.search.filter_missing_ids", return_value={"1942"}),
             patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
@@ -662,7 +662,7 @@ class TestBackfillProviders:
 
         with (
             patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._common.filter_missing_ids", return_value=set()),
+            patch("otix.tasks.sync.search.filter_missing_ids", return_value=set()),
             patch("otix.tasks.sync.search.app.send_task"),
         ):
             mock_provider = MagicMock()

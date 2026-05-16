@@ -9,8 +9,8 @@ Queue design (9 queues, per-provider isolation):
   steamgrid  — SteamGridDB provider, 2 rps (shared provider worker)
   musicbrainz — MusicBrainz provider, 1 rps (shared provider worker)
   lastfm     — Last.fm provider, 5 rps (shared provider worker)
-  user       — user-initiated syncs, XP (2 workers)
-  control    — maintenance, seed cycles, embedding, catch-all (2 workers)
+  user       — user-initiated syncs, XP, seed cycles (2 workers)
+  control    — maintenance, embedding, catch-all (4 workers)
   ccu        — Steam CCU (1 worker)
 
 Rate limiting is handled in-app by BaseProvider's Redis token bucket.
@@ -30,7 +30,7 @@ def route_task(name: str, *args, **kwargs) -> str | None:
     if name.startswith("steam.ccu."):
         return "ccu"
     if name.startswith("seed."):
-        return "control"
+        return "user"
     if name.startswith("maintenance."):
         if "steam_ccu" in name:
             return "ccu"
@@ -77,8 +77,10 @@ app.config_from_object(
         "result_expires": 3600,
         "task_acks_late": True,
         "task_reject_on_worker_lost": True,
+        "worker_hijack_root_logger": False,
         "worker_prefetch_multiplier": settings.celery_worker_prefetch_multiplier,
         "task_default_queue": "control",
+        "beat_max_loop_interval": 30,  # wake at least every 30s for minutely tasks
         "task_queues": [
             Queue("fast", queue_arguments={"x-max-priority": 10}),
             Queue("igdb", queue_arguments={"x-max-priority": 10}),
@@ -148,15 +150,15 @@ app.config_from_object(
                 "task": "seed.musicbrainz_cycle",
                 "schedule": crontab(minute="*/5"),
             },
-            # TMDB daily export import (every 15 min at off-peak)
-            "seed-tmdb-export": {
-                "task": "seed.tmdb_export_cycle",
-                "schedule": crontab(minute="8,23,38,53"),
+            # TMDB daily import (download all exports, insert stubs, detect deletions)
+            "seed-tmdb-daily-import": {
+                "task": "seed.tmdb_daily_import",
+                "schedule": crontab(hour="3", minute="7"),
             },
-            # TMDB backlog drain (every 5 min)
+            # TMDB backlog drain (every 1 min — 500 stubs/min)
             "seed-tmdb-backlog": {
                 "task": "seed.tmdb_backlog_cycle",
-                "schedule": crontab(minute="*/5"),
+                "schedule": crontab(minute="*"),
             },
             # Steam enrichment scan (every 15 min at off-peak minute)
             "enrich-steam": {
@@ -201,17 +203,16 @@ app.config_from_object(
     }
 )
 
-# Suppress SQLAlchemy engine INFO logs. We set the level both here (module
-# import time, catches most cases) and again via worker_process_init (after
-# Celery reconfigures logging post-fork).
-import logging as _logging
-_logging.getLogger("sqlalchemy.engine").setLevel(_logging.WARNING)
+# worker_hijack_root_logger=False keeps Celery from overwriting our log levels.
+# We call setup_logging at import time and re-apply after each fork.
+from otix.infrastructure.logging import setup_logging  # noqa: E402
+import celery.signals  # noqa: E402
 
-import celery.signals
+setup_logging()
 
 @celery.signals.worker_process_init.connect
-def _suppress_sqlalchemy_logs(**kwargs):
-    _logging.getLogger("sqlalchemy.engine").setLevel(_logging.WARNING)
+def _on_worker_process_init(**kwargs):
+    setup_logging()
 
 
 # Register tasks — explicit imports so tasks are guaranteed to be discovered.

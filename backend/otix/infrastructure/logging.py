@@ -43,5 +43,14 @@ def setup_logging() -> None:
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
 
-    for noisy_logger in ("uvicorn.access", "httpx", "httpcore", "sqlalchemy.engine"):
+    for noisy_logger in (
+        "uvicorn.access",
+        "httpx",
+        "httpcore",
+        "sqlalchemy.engine",
+        "sqlalchemy.engine.Engine",
+        "sqlalchemy.pool",
+        "urllib3",
+        "redis.asyncio",
+    ):
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)

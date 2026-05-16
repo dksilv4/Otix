@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -81,8 +81,8 @@ class Movie(Base):
 
     media_item_id: Mapped[otix_pk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
     runtime: Mapped[int | None] = mapped_column(Integer)
-    budget: Mapped[int | None] = mapped_column()
-    revenue: Mapped[int | None] = mapped_column()
+    budget: Mapped[int | None] = mapped_column(BigInteger)
+    revenue: Mapped[int | None] = mapped_column(BigInteger)
     tagline: Mapped[str | None] = mapped_column(String(1000))
     is_anime: Mapped[bool] = mapped_column(default=False)
     collection_id: Mapped[str | None] = mapped_column(String(16), ForeignKey("collections.id"))
@@ -231,6 +231,23 @@ class ExternalID(Base):
     __table_args__ = (
         UniqueConstraint("provider", "external_id", name="uq_external_id_provider_ext"),
         Index("ix_external_ids_stubs", "provider", "media_item_id", "is_adult", "created_at"),
+    )
+
+
+class TMDBDeletedID(Base):
+    __tablename__ = "tmdb_deleted_ids"
+
+    id: Mapped[otix_pk]
+    tmdb_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    media_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(1000))
+    detection_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    media_item: Mapped[MediaItem | None] = relationship("MediaItem")
+
+    __table_args__ = (
+        UniqueConstraint("tmdb_id", "media_type", name="uq_tmdb_deleted_id"),
     )
 
 

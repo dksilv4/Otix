@@ -86,26 +86,26 @@ def _make_steam_json(apps: list[dict], have_more: bool = False, last_appid: int 
 
 class TestLoadSaveState:
     async def test_load_returns_default_when_no_state(self, fakeredis):
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             state = await _load_state(_PEOPLE_STATE, {"status": "new"})
         assert state == {"status": "new"}
 
     async def test_save_and_load_roundtrip(self, fakeredis):
         state = {"file_path": "/tmp/test.gz", "entries_processed": 1000}
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             await _save_state(_PEOPLE_STATE, state)
             loaded = await _load_state(_PEOPLE_STATE)
         assert loaded == state
 
     async def test_load_handles_corrupt_json(self, fakeredis):
         await fakeredis.set(_PEOPLE_STATE, "not valid json{{{")
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             state = await _load_state(_PEOPLE_STATE, {"fallback": True})
         assert state == {"fallback": True}
 
     async def test_seeders_have_independent_state(self, fakeredis):
         """Each seeder uses its own Redis key."""
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             await _save_state(_PEOPLE_STATE, {"entries_processed": 100})
             await _save_state(_STEAM_STATE, {"entries_processed": 200})
             await _save_state(_IGDB_STATE, {"offset": 300})
@@ -251,7 +251,7 @@ class TestLogProgress:
 
 class TestLogOverallSummary:
     async def test_all_running(self, fakeredis):
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
@@ -267,7 +267,7 @@ class TestLogOverallSummary:
     async def test_one_done(self, fakeredis):
         await fakeredis.set(_PEOPLE_STATE, json.dumps({"entries_processed": 2000, "pipeline": "done"}))
         await fakeredis.set(_STEAM_STATE, json.dumps({"entries_processed": 500, "total": 1000}))
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
@@ -280,7 +280,7 @@ class TestLogOverallSummary:
         await fakeredis.set(_PEOPLE_STATE, json.dumps({"entries_processed": 2000, "pipeline": "done"}))
         await fakeredis.set(_STEAM_STATE, json.dumps({"entries_processed": 1000, "pipeline": "done"}))
         await fakeredis.set(_IGDB_STATE, json.dumps({"offset": 5000, "pipeline": "done"}))
-        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
             with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
@@ -302,9 +302,7 @@ class TestDownloadExport:
                 return httpx.Response(200, content=gz_data, request=request)
 
         async with httpx.AsyncClient(transport=OKTransport()) as client:
-            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
-                mock_cls.return_value.__aenter__.return_value = client
-                mock_cls.return_value.__aexit__.return_value = None
+            with patch("otix.tasks.seed._get_export_client", return_value=client):
                 path = await _download_export("person_ids")
 
         assert path is not None
@@ -326,9 +324,7 @@ class TestDownloadExport:
                 return httpx.Response(200, content=gzip.compress(b'[{"id":1}]'), request=request)
 
         async with httpx.AsyncClient(transport=FallbackTransport()) as client:
-            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
-                mock_cls.return_value.__aenter__.return_value = client
-                mock_cls.return_value.__aexit__.return_value = None
+            with patch("otix.tasks.seed._get_export_client", return_value=client):
                 path = await _download_export("person_ids")
 
         assert path is not None
@@ -344,9 +340,7 @@ class TestDownloadExport:
                 return httpx.Response(404, content=b"{}", request=request)
 
         async with httpx.AsyncClient(transport=Always404()) as client:
-            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
-                mock_cls.return_value.__aenter__.return_value = client
-                mock_cls.return_value.__aexit__.return_value = None
+            with patch("otix.tasks.seed._get_export_client", return_value=client):
                 path = await _download_export("person_ids")
 
         assert path is None
@@ -357,9 +351,7 @@ class TestDownloadExport:
                 return httpx.Response(500, content=b"error", request=request)
 
         async with httpx.AsyncClient(transport=ErrorTransport()) as client:
-            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
-                mock_cls.return_value.__aenter__.return_value = client
-                mock_cls.return_value.__aexit__.return_value = None
+            with patch("otix.tasks.seed._get_export_client", return_value=client):
                 with pytest.raises(Exception):
                     await _download_export("person_ids")
 
@@ -913,7 +905,8 @@ class TestSeedLoop:
     @pytest.fixture
     def mock_redis(self, fakeredis):
         with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
-            yield fakeredis
+            with patch("otix.tasks.seed.get_redis", return_value=fakeredis):
+                yield fakeredis
 
     @pytest.fixture
     def mock_process(self):
@@ -968,12 +961,12 @@ class TestSeedLoop:
 class TestCeleryTasks:
     def test_people_task_registered(self):
         assert seed_people_cycle.name == "seed.people_cycle"
-        assert seed_people_cycle.queue == "default"
+        assert getattr(seed_people_cycle, 'queue', None) is None
 
     def test_steam_task_registered(self):
         assert seed_steam_cycle.name == "seed.steam_cycle"
-        assert seed_steam_cycle.queue == "default"
+        assert getattr(seed_steam_cycle, 'queue', None) is None
 
     def test_igdb_task_registered(self):
         assert seed_igdb_cycle.name == "seed.igdb_cycle"
-        assert seed_igdb_cycle.queue == "default"
+        assert getattr(seed_igdb_cycle, 'queue', None) is None
