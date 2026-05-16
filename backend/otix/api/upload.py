@@ -59,5 +59,6 @@ async def upload_file(
     filepath = upload_dir / filename
     filepath.write_bytes(contents)
 
-    base_url = f"{request.url.scheme}://{request.url.netloc}"
+    scheme = request.headers.get("X-Forwarded-Proto", "https")
+    base_url = f"{scheme}://{request.url.netloc}"
     return {"url": f"{base_url}/uploads/{filename}"}
