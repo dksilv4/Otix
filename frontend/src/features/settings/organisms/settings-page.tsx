@@ -771,6 +771,17 @@ function AssetEditor({
           {mode === 'file' ? 'Pick a file and apply.' : 'Enter applies. Escape cancels.'}
         </p>
         <div className="flex items-center gap-2">
+          {value && (
+            <DkButton
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => onSubmit('')}
+              className="text-red-400/70 hover:text-red-400 border-red-400/10 hover:border-red-400/30"
+            >
+              Remove
+            </DkButton>
+          )}
           <DkButton
             type="button"
             size="sm"
