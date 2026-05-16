@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import otix.tasks.sync as sync_tasks
+import otix.tasks.sync.spotify as sync_tasks
 from otix.domain.media import Album, MediaItem
 from otix.domain.people import MediaCredit, Person
-from otix.tasks.sync import (
+from otix.tasks.sync.spotify import (
     _backfill_spotify_album_titles,
     _create_spotify_artist_credits,
     _get_or_create_spotify_artist,

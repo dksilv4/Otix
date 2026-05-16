@@ -8,22 +8,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from otix.domain.sync import ProviderState
-from otix.tasks.sync import (
+from otix.tasks.sync.search import (
     _backfill_igdb_games,
     _backfill_tmdb_movies,
     _backfill_tmdb_shows,
-    _compute_game_next_sync_at,
-    _compute_hash,
-    _compute_next_sync_at,
-    _enqueue_list_items,
-    _filter_missing_ids,
-    _filter_stale_ids,
-    _get_last_change_check,
     _search_backfill,
-    _set_last_change_check,
-    _sync_tmdb_discover_list,
     search_backfill_task,
 )
+from otix.tasks.sync.igdb import _compute_game_next_sync_at
+from otix.tasks.sync._common import (
+    compute_content_hash as _compute_hash,
+    compute_next_sync_at as _compute_next_sync_at,
+    enqueue_list_items as _enqueue_list_items,
+    filter_missing_ids as _filter_missing_ids,
+    filter_stale_ids as _filter_stale_ids,
+    get_last_change_check as _get_last_change_check,
+    set_last_change_check as _set_last_change_check,
+)
+from otix.tasks.sync.tmdb import _sync_tmdb_discover_list
 
 
 # ── Pure function tests ──────────────────────────────────────────────
@@ -213,7 +215,7 @@ class TestFilterStaleIds:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             result = await _filter_stale_ids("tmdb", {"550", "680"})
             assert result == {"550", "680"}
 
@@ -224,7 +226,7 @@ class TestFilterStaleIds:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             result = await _filter_stale_ids("tmdb", {"550", "680"})
             assert result == {"680"}
 
@@ -237,8 +239,8 @@ class TestEnqueueListItems:
     async def test_enqueues_stale_only(self):
         """Should enqueue tasks for stale IDs, skip fresh ones."""
         with (
-            patch("otix.tasks.sync._filter_stale_ids", return_value={"680"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync._common.filter_stale_ids", return_value={"680"}),
+            patch("otix.tasks.sync._common.app.send_task") as mock_send,
         ):
             enqueued, skipped = await _enqueue_list_items("tmdb", "movie", {"550", "680"})
             assert enqueued == 1
@@ -247,16 +249,16 @@ class TestEnqueueListItems:
 
     async def test_correct_task_name_for_show(self):
         with (
-            patch("otix.tasks.sync._filter_stale_ids", return_value={"1399"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync._common.filter_stale_ids", return_value={"1399"}),
+            patch("otix.tasks.sync._common.app.send_task") as mock_send,
         ):
             await _enqueue_list_items("tmdb", "show", {"1399"})
             mock_send.assert_called_once_with("sync.tmdb.show", args=[1399])
 
     async def test_all_stale(self):
         with (
-            patch("otix.tasks.sync._filter_stale_ids", return_value={"550", "680"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync._common.filter_stale_ids", return_value={"550", "680"}),
+            patch("otix.tasks.sync._common.app.send_task") as mock_send,
         ):
             enqueued, skipped = await _enqueue_list_items("tmdb", "movie", {"550", "680"})
             assert enqueued == 2
@@ -273,7 +275,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             result = await _get_last_change_check("tmdb")
             expected = datetime.now(timezone.utc) - timedelta(hours=24)
             assert abs((result - expected).total_seconds()) < 5
@@ -288,7 +290,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             result = await _get_last_change_check("tmdb")
             assert result == state.last_sync_at
 
@@ -300,7 +302,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             now = datetime.now(timezone.utc)
             await _set_last_change_check("tmdb", now)
             added = mock_session.add.call_args[0][0]
@@ -319,7 +321,7 @@ class TestProviderStateHelpers:
         def _factory():
             return mock_session
 
-        with patch("otix.tasks.sync.async_session", _factory):
+        with patch("otix.tasks.sync._common.async_session", _factory):
             now = datetime.now(timezone.utc)
             await _set_last_change_check("tmdb", now)
             assert state.last_sync_at == now
@@ -346,9 +348,9 @@ class TestDiscoverListDispatch:
     ):
         """Verify each valid list_type + media_type combo dispatches without error."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync.TMDBProvider") as mock_provider_cls,
-            patch("otix.tasks.sync._enqueue_list_items", return_value=(0, 0)),
+            patch("otix.tasks.sync.tmdb.get_redis"),
+            patch("otix.tasks.sync.tmdb.TMDBProvider") as mock_provider_cls,
+            patch("otix.tasks.sync._common.enqueue_list_items", return_value=(0, 0)),
         ):
             mock_provider = MagicMock()
 
@@ -371,8 +373,8 @@ class TestDiscoverListDispatch:
     async def test_invalid_list_type_raises(self):
         """Unknown list type should raise KeyError."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync.TMDBProvider") as mock_provider_cls,
+            patch("otix.tasks.sync.tmdb.get_redis"),
+            patch("otix.tasks.sync.tmdb.TMDBProvider") as mock_provider_cls,
         ):
             mock_provider = MagicMock()
             mock_provider_cls.return_value = mock_provider
@@ -448,7 +450,7 @@ class TestFilterMissingIds:
         """IDs that don't exist in ExternalID table should be returned."""
         mock_session = _make_async_session_mock(scalars_result=[])
 
-        with patch("otix.tasks.sync.async_session", return_value=mock_session):
+        with patch("otix.tasks.sync._common.async_session", return_value=mock_session):
             result = await _filter_missing_ids("tmdb", {"550", "680"})
             assert result == {"550", "680"}
 
@@ -456,7 +458,7 @@ class TestFilterMissingIds:
         """IDs already in the database should be excluded."""
         mock_session = _make_async_session_mock(scalars_result=["550"])
 
-        with patch("otix.tasks.sync.async_session", return_value=mock_session):
+        with patch("otix.tasks.sync._common.async_session", return_value=mock_session):
             result = await _filter_missing_ids("tmdb", {"550", "680"})
             assert result == {"680"}
 
@@ -464,7 +466,7 @@ class TestFilterMissingIds:
         """When all IDs exist, should return empty set."""
         mock_session = _make_async_session_mock(scalars_result=["550", "680"])
 
-        with patch("otix.tasks.sync.async_session", return_value=mock_session):
+        with patch("otix.tasks.sync._common.async_session", return_value=mock_session):
             result = await _filter_missing_ids("tmdb", {"550", "680"})
             assert result == set()
 
@@ -477,7 +479,7 @@ class TestFilterMissingIds:
         """Should only filter against the specified provider's IDs."""
         mock_session = _make_async_session_mock(scalars_result=["550"])
 
-        with patch("otix.tasks.sync.async_session", return_value=mock_session):
+        with patch("otix.tasks.sync._common.async_session", return_value=mock_session):
             result = await _filter_missing_ids("igdb", {"550", "680"})
             # The result list says 550 exists, but it was queried for "igdb"
             # Since the mock doesn't actually filter by provider, we verify the
@@ -489,10 +491,10 @@ class TestSearchBackfill:
     async def test_runs_providers_independently(self):
         """Each provider should run in isolation via _search_backfill."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync._backfill_tmdb_movies") as mock_movies,
-            patch("otix.tasks.sync._backfill_tmdb_shows") as mock_shows,
-            patch("otix.tasks.sync._backfill_igdb_games") as mock_games,
+            patch("otix.tasks.sync.search.get_redis"),
+            patch("otix.tasks.sync.search._backfill_tmdb_movies") as mock_movies,
+            patch("otix.tasks.sync.search._backfill_tmdb_shows") as mock_shows,
+            patch("otix.tasks.sync.search._backfill_igdb_games") as mock_games,
         ):
             mock_movies.return_value = {"enqueued": 2, "skipped": 5}
             mock_shows.return_value = {"enqueued": 1, "skipped": 3}
@@ -508,10 +510,10 @@ class TestSearchBackfill:
     async def test_provider_failure_isolated(self):
         """When one provider fails, others should still complete."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync._backfill_tmdb_movies") as mock_movies,
-            patch("otix.tasks.sync._backfill_tmdb_shows") as mock_shows,
-            patch("otix.tasks.sync._backfill_igdb_games") as mock_games,
+            patch("otix.tasks.sync.search.get_redis"),
+            patch("otix.tasks.sync.search._backfill_tmdb_movies") as mock_movies,
+            patch("otix.tasks.sync.search._backfill_tmdb_shows") as mock_shows,
+            patch("otix.tasks.sync.search._backfill_igdb_games") as mock_games,
         ):
             mock_movies.side_effect = RuntimeError("TMDB API down")
             mock_shows.return_value = {"enqueued": 1, "skipped": 0}
@@ -526,10 +528,10 @@ class TestSearchBackfill:
     async def test_respects_media_type_filter_movies_only(self):
         """When media_type='movie', only movie provider runs."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync._backfill_tmdb_movies") as mock_movies,
-            patch("otix.tasks.sync._backfill_tmdb_shows") as mock_shows,
-            patch("otix.tasks.sync._backfill_igdb_games") as mock_games,
+            patch("otix.tasks.sync.search.get_redis"),
+            patch("otix.tasks.sync.search._backfill_tmdb_movies") as mock_movies,
+            patch("otix.tasks.sync.search._backfill_tmdb_shows") as mock_shows,
+            patch("otix.tasks.sync.search._backfill_igdb_games") as mock_games,
         ):
             mock_movies.return_value = {"enqueued": 2, "skipped": 0}
 
@@ -544,10 +546,10 @@ class TestSearchBackfill:
     async def test_respects_media_type_filter_games_only(self):
         """When media_type='game', only game provider runs."""
         with (
-            patch("otix.tasks.sync.get_redis"),
-            patch("otix.tasks.sync._backfill_tmdb_movies") as mock_movies,
-            patch("otix.tasks.sync._backfill_tmdb_shows") as mock_shows,
-            patch("otix.tasks.sync._backfill_igdb_games") as mock_games,
+            patch("otix.tasks.sync.search.get_redis"),
+            patch("otix.tasks.sync.search._backfill_tmdb_movies") as mock_movies,
+            patch("otix.tasks.sync.search._backfill_tmdb_shows") as mock_shows,
+            patch("otix.tasks.sync.search._backfill_igdb_games") as mock_games,
         ):
             mock_games.return_value = {"enqueued": 1, "skipped": 0}
 
@@ -570,9 +572,9 @@ class TestBackfillProviders:
         redis = await self._make_redis_mock()
 
         with (
-            patch("otix.tasks.sync.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._filter_missing_ids", return_value={"550", "680"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
+            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"550", "680"}),
+            patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
             mock_provider.search_multi = AsyncMock(
@@ -597,9 +599,9 @@ class TestBackfillProviders:
         redis = await self._make_redis_mock()
 
         with (
-            patch("otix.tasks.sync.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._filter_missing_ids", return_value={"1399"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
+            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"1399"}),
+            patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
             mock_provider.search_multi = AsyncMock(
@@ -623,9 +625,9 @@ class TestBackfillProviders:
         redis = await self._make_redis_mock()
 
         with (
-            patch("otix.tasks.sync.IGDBProvider") as mock_cls,
-            patch("otix.tasks.sync._filter_missing_ids", return_value={"1942"}),
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync.search.IGDBProvider") as mock_cls,
+            patch("otix.tasks.sync._common.filter_missing_ids", return_value={"1942"}),
+            patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
             mock_provider.search_games = AsyncMock(return_value=[{"id": 1942}])
@@ -642,8 +644,8 @@ class TestBackfillProviders:
         redis = await self._make_redis_mock()
 
         with (
-            patch("otix.tasks.sync.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync.app.send_task") as mock_send,
+            patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
+            patch("otix.tasks.sync.search.app.send_task") as mock_send,
         ):
             mock_provider = MagicMock()
             mock_provider.search_multi = AsyncMock(return_value={"results": []})
@@ -659,9 +661,9 @@ class TestBackfillProviders:
         redis = await self._make_redis_mock()
 
         with (
-            patch("otix.tasks.sync.TMDBProvider") as mock_cls,
-            patch("otix.tasks.sync._filter_missing_ids", return_value=set()),
-            patch("otix.tasks.sync.app.send_task"),
+            patch("otix.tasks.sync.search.TMDBProvider") as mock_cls,
+            patch("otix.tasks.sync._common.filter_missing_ids", return_value=set()),
+            patch("otix.tasks.sync.search.app.send_task"),
         ):
             mock_provider = MagicMock()
             mock_provider.search_multi = AsyncMock(return_value={"results": []})

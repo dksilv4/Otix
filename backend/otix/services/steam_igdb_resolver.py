@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.media import ExternalID, Game, UserSteamGame
 from otix.infrastructure.redis import get_redis
 from otix.providers.igdb.client import IGDBProvider
-from otix.tasks.sync import _sync_igdb_game
+from otix.tasks.sync.igdb import _sync_igdb_game
 
 logger = structlog.get_logger()
 

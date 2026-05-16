@@ -46,7 +46,7 @@ async def hydrate_movies(limit: int) -> int:
 
     print(f"Enqueuing Fanart enrichment for {len(movies)} movies:")
     for mid, title, pop in movies:
-        task = app.send_task("sync.fanart.movie", args=[mid])
+        task = app.send_task("sync.fanart.enrich", args=["movie", mid])
         print(f"  {mid}  {pop:.1f}  {title}  -> {task.id}")
 
     return len(movies)
@@ -80,14 +80,14 @@ async def hydrate_shows(limit: int) -> int:
 
     print(f"Enqueuing Fanart enrichment for {len(shows)} shows:")
     for mid, title, pop in shows:
-        task = app.send_task("sync.fanart.show", args=[mid])
+        task = app.send_task("sync.fanart.enrich", args=["show", mid])
         print(f"  {mid}  {pop:.1f}  {title}  -> {task.id}")
 
     return len(shows)
 
 
 async def hydrate_single_movie(media_item_id: str) -> int:
-    app.send_task("sync.fanart.movie", args=[media_item_id])
+    app.send_task("sync.fanart.enrich", args=["movie", media_item_id])
     print(f"Enqueued Fanart enrichment for {media_item_id}")
     return 1
 

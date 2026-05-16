@@ -65,11 +65,11 @@ async def _get_or_create_media_for_tmdb(
 
     # Sync the item into the catalog first
     if media_type == "movie":
-        from otix.tasks.sync import _sync_tmdb_movie
-        await _sync_tmdb_movie(tmdb_id, force=False)
+        from otix.tasks.sync.tmdb import _sync_tmdb_media
+        await _sync_tmdb_media(tmdb_id, "movie", force=False)
     elif media_type == "tv":
-        from otix.tasks.sync import _sync_tmdb_show
-        await _sync_tmdb_show(tmdb_id, force=False)
+        from otix.tasks.sync.tmdb import _sync_tmdb_media
+        await _sync_tmdb_media(tmdb_id, "show", force=False)
 
     await session.flush()
     return await _find_media_by_tmdb_id(session, tmdb_id)

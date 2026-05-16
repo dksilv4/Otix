@@ -148,6 +148,16 @@ app.config_from_object(
                 "task": "seed.musicbrainz_cycle",
                 "schedule": crontab(minute="*/5"),
             },
+            # TMDB daily export import (every 15 min at off-peak)
+            "seed-tmdb-export": {
+                "task": "seed.tmdb_export_cycle",
+                "schedule": crontab(minute="8,23,38,53"),
+            },
+            # TMDB backlog drain (every 5 min)
+            "seed-tmdb-backlog": {
+                "task": "seed.tmdb_backlog_cycle",
+                "schedule": crontab(minute="*/5"),
+            },
             # Steam enrichment scan (every 15 min at off-peak minute)
             "enrich-steam": {
                 "task": "maintenance.enrich_steam",
@@ -205,7 +215,18 @@ def _suppress_sqlalchemy_logs(**kwargs):
 
 
 # Register tasks — explicit imports so tasks are guaranteed to be discovered.
-import otix.tasks.sync  # noqa: E402, F811
-import otix.tasks.maintenance  # noqa: E402, F811
-import otix.tasks.catalog_seed  # noqa: E402, F811
-import otix.tasks.xp  # noqa: E402, F811
+import otix.tasks.sync.tmdb  # noqa: E402
+import otix.tasks.sync.igdb  # noqa: E402
+import otix.tasks.sync.steam  # noqa: E402
+import otix.tasks.sync.fanart  # noqa: E402
+import otix.tasks.sync.omdb  # noqa: E402
+import otix.tasks.sync.lastfm  # noqa: E402
+import otix.tasks.sync.musicbrainz  # noqa: E402
+import otix.tasks.sync.spotify  # noqa: E402
+import otix.tasks.sync.search  # noqa: E402
+import otix.tasks.sync.embedding  # noqa: E402
+import otix.tasks.sync.media  # noqa: E402
+import otix.tasks.maintenance  # noqa: E402
+import otix.tasks.seed.catalog_seed  # noqa: E402
+import otix.tasks.seed.tmdb_seed  # noqa: E402
+import otix.tasks.xp  # noqa: E402
