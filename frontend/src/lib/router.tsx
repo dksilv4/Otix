@@ -1,5 +1,5 @@
-import { lazy } from "react"
-import { createRouter, createRootRoute, createRoute, Outlet, useLocation } from "@tanstack/react-router"
+import { lazy, useEffect } from "react"
+import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
 
@@ -11,7 +11,6 @@ const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({
 const HomePage = lazy(() => import("@discover/organisms/home-page").then(m => ({ default: m.HomePage })))
 const PersonDetail = lazy(() => import("@person/organisms/person-detail").then(m => ({ default: m.PersonDetail })))
 const LibraryPage = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryPage })))
-const LibraryLanding = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryLanding })))
 const ListDetail = lazy(() => import("@/features/list/organisms/list-detail").then(m => ({ default: m.ListDetail })))
 const SettingsPage = lazy(() => import("@/features/settings/organisms/settings-page").then(m => ({ default: m.SettingsPage })))
 const UserProfilePage = lazy(() => import("@/features/user/organisms/user-profile-page").then(m => ({ default: m.UserProfilePage })))
@@ -26,6 +25,7 @@ const SteamConnectCallbackPage = lazy(() => import("@auth/organisms/steam-connec
 const PlexConnectCallbackPage = lazy(() => import("@auth/organisms/plex-connect-callback-page").then(m => ({ default: m.PlexConnectCallbackPage })))
 const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-connect-callback-page").then(m => ({ default: m.SpotifyConnectCallbackPage })))
 const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
+const AdminPage = lazy(() => import("@/features/admin/organisms/admin-page").then(m => ({ default: m.AdminPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -70,10 +70,18 @@ const personDetailRoute = createRoute({
 
 // ── Library ──
 
+function LibraryDefault() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    navigate({ to: "/library/$tab", params: { tab: "overview" }, replace: true })
+  }, [navigate])
+  return <LoadingPage />
+}
+
 const libraryIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
-  component: LibraryLanding,
+  component: LibraryDefault,
 })
 
 const libraryRoute = createRoute({
@@ -204,6 +212,12 @@ const dkUiRoute = createRoute({
   component: DkUiShowcase,
 })
 
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: AdminPage,
+})
+
 // ── Assemble ──
 
 const routeTree = rootRoute.addChildren([
@@ -230,6 +244,7 @@ const routeTree = rootRoute.addChildren([
   browseRoute,
   notificationsRoute,
   dkUiRoute,
+  adminRoute,
 ])
 
 export const router = createRouter({

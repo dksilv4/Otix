@@ -3,14 +3,6 @@ import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
 import { Calendar, Clock } from 'lucide-react'
 
-interface ExternalRating {
-  id: string
-  provider: string
-  score: number
-  maxScore: number
-  voteCount?: number
-}
-
 interface Genre {
   id: string
   name: string
@@ -26,7 +18,6 @@ interface MediaHeroProps {
   textlessPosterUrl?: string | null
   releaseDate?: string | null
   genres?: Genre[]
-  externalRatings?: ExternalRating[]
   avgRating?: number | null
   ratingCount?: number
   tagline?: string | null
@@ -69,50 +60,6 @@ function backdropSrc(url: string): string {
   return url
 }
 
-function providerLabel(key: string): string {
-  const map: Record<string, string> = {
-    imdb: 'IMDb',
-    metacritic: 'Metacritic',
-    rotten_tomatoes: 'RT',
-    letterboxd: 'Letterboxd',
-    rawg: 'RAWG',
-    steam_user: 'Steam',
-    steam_metacritic: 'Steam MC',
-    tmdb: 'TMDb',
-    igdb_critic: 'IGDB Critic',
-    igdb_user: 'IGDB User',
-    spotify: 'Spotify',
-    lastfm: 'Last.fm',
-    musicbrainz: 'MusicBrainz',
-  }
-  return map[key] ?? key
-}
-
-interface ProviderStyle {
-  bg: string
-  text: string
-  star: string
-  score: string
-}
-
-function providerStyle(key: string): ProviderStyle {
-  const s: Record<string, ProviderStyle> = {
-    imdb:         { bg: 'bg-[#f5c518]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    metacritic:   { bg: 'bg-[#1c1c1c]', text: 'text-white', star: 'text-[#66cc33]', score: 'text-[#66cc33]' },
-    steam_metacritic: { bg: 'bg-[#1c1c1c]', text: 'text-white', star: 'text-[#66cc33]', score: 'text-[#66cc33]' },
-    rotten_tomatoes:  { bg: 'bg-[#fa320a]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    letterboxd:   { bg: 'bg-[#00e054]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    steam_user:   { bg: 'bg-[#1a9fff]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    tmdb:         { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    igdb_critic:  { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    igdb_user:    { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    spotify:      { bg: 'bg-[#1DB954]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    lastfm:       { bg: 'bg-[#d51007]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    musicbrainz:  { bg: 'bg-[#ba478f]', text: 'text-white', star: 'text-white', score: 'text-white' },
-  }
-  return s[key] ?? { bg: 'bg-muted', text: 'text-muted-foreground', star: 'text-amber-400', score: 'text-foreground' }
-}
-
 function mediaTypeLabel(type: string): string {
   if (type === 'movie') return 'Movie'
   if (type === 'show') return 'TV'
@@ -129,7 +76,6 @@ export function MediaHero({
   textlessPosterUrl,
   releaseDate,
   genres,
-  externalRatings,
   tagline,
   overview,
   runtime,
@@ -246,28 +192,6 @@ export function MediaHero({
                 </Badge>
               )}
             </div>
-
-            {/* External ratings */}
-            {externalRatings && externalRatings.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {externalRatings.map((r) => {
-                  const style = providerStyle(r.provider)
-                  return (
-                    <span
-                      key={r.id}
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold',
-                        style.bg,
-                        style.text,
-                      )}
-                    >
-                      {providerLabel(r.provider)}
-                      <span className="tabular-nums">{Math.round(r.score)}</span>
-                    </span>
-                  )
-                })}
-              </div>
-            )}
 
             {/* Overview */}
             {overview && (

@@ -33,10 +33,11 @@ export interface LibraryResponse {
   hasMore: boolean
 }
 
-export const LIBRARY_TABS = ["watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"] as const
+export const LIBRARY_TABS = ["overview", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
+  overview: "Overview",
   watchlist: "Watchlist",
   like: "Liked",
   watched: "Watched",

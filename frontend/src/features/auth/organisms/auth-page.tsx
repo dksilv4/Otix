@@ -558,7 +558,7 @@ export function AuthPage() {
               type="button"
               onClick={handleSteamLogin}
               disabled={steamLoading || isSubmitting}
-              className="relative flex h-12 w-12 items-center justify-center rounded-full overflow-hidden text-white/80 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 group"
+              className="relative flex h-14 w-14 items-center justify-center rounded-full overflow-hidden text-white/80 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 group"
               aria-label="Continue with Steam"
               style={{ background: 'linear-gradient(135deg, #1b2838 0%, #1d3f5f 100%)' }}
             >

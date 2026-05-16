@@ -5,6 +5,7 @@ import {
   BookmarkIcon,
   BellIcon,
   Cog6ToothIcon,
+  ShieldCheckIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/solid"
 import { useAuth } from "@/features/auth/auth-provider"
@@ -55,6 +56,9 @@ export function MenuDropdown() {
     ...(user ? [
       { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },
       { to: "/notifications" as string, icon: <BellIcon className="h-[18px] w-[18px]" />, label: "Notifications", params: undefined as any },
+    ] : []),
+    ...(user?.isAdmin ? [
+      { to: "/admin" as string, icon: <ShieldCheckIcon className="h-[18px] w-[18px]" />, label: "Admin", params: undefined as any },
     ] : []),
     { to: "/settings", icon: <Cog6ToothIcon className="h-[18px] w-[18px]" />, label: "Settings", params: undefined },
   ]

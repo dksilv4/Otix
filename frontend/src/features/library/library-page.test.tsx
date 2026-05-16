@@ -84,6 +84,7 @@ vi.mock("./library-queries", () => ({
   })),
   useSaveSpotifyTrack: vi.fn(() => ({ mutate: vi.fn() })),
   TAB_LABELS: {
+    overview: "Overview",
     watchlist: "Watchlist",
     like: "Liked",
     watched: "Watched",
@@ -95,7 +96,7 @@ vi.mock("./library-queries", () => ({
     wishlist: "Wishlist",
     lists: "Lists",
   },
-  LIBRARY_TABS: ["watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"],
+  LIBRARY_TABS: ["overview", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"],
 }))
 
 vi.mock("@/features/list/list-queries", () => ({
@@ -121,7 +122,7 @@ vi.mock("@/features/dk-ui/molecules/toast", () => ({
 }))
 
 // Import after mocks
-import { LibraryPage, LibraryLanding } from "./library-page"
+import { LibraryPage } from "./library-page"
 import { useAuth } from "@/features/auth/auth-provider"
 import { useParams } from "@tanstack/react-router"
 import { useLibraryTab } from "./library-queries"
@@ -158,8 +159,9 @@ describe("LibraryPage", () => {
     expect(screen.getByText("Your saved, liked, watched items, and lists.")).toBeInTheDocument()
   })
 
-  it("renders the tab bar with core tabs", () => {
+  it("renders the tab bar with overview and core tabs", () => {
     render(<LibraryPage />)
+    expect(screen.getByText("Overview")).toBeInTheDocument()
     expect(screen.getByText("Watchlist")).toBeInTheDocument()
     expect(screen.getByText("Liked")).toBeInTheDocument()
     expect(screen.getByText("Watched")).toBeInTheDocument()
@@ -188,7 +190,7 @@ describe("LibraryPage", () => {
 
   it("shows platform tabs for connected user", () => {
     render(<LibraryPage />)
-    // User has steamId, plexId, spotifyId → all platform tabs should show
+    expect(screen.getByText("Overview")).toBeInTheDocument()
     expect(screen.getByText("Steam")).toBeInTheDocument()
     expect(screen.getByText("Plex")).toBeInTheDocument()
     expect(screen.getByText("Spotify")).toBeInTheDocument()
@@ -251,49 +253,3 @@ describe("LibraryPage", () => {
   })
 })
 
-describe("LibraryLanding", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("renders the library header", () => {
-    render(<LibraryLanding />)
-    expect(screen.getByText("Library")).toBeInTheDocument()
-  })
-
-  it("renders quick-access cards for core tabs", () => {
-    render(<LibraryLanding />)
-    expect(screen.getByText("Quick Access")).toBeInTheDocument()
-    expect(screen.getAllByText("Watchlist").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Liked").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Lists").length).toBeGreaterThan(0)
-  })
-
-  it("renders browse all link", () => {
-    render(<LibraryLanding />)
-    expect(screen.getByText("Browse all library tabs →")).toBeInTheDocument()
-  })
-
-  it("navigates to tab page on quick-access click", async () => {
-    render(<LibraryLanding />)
-    const watchlistButtons = screen.getAllByText("Watchlist")
-    await userEvent.click(watchlistButtons[0])
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "/library/$tab",
-        params: { tab: "watchlist" },
-      })
-    )
-  })
-
-  it("navigates to browse all on link click", async () => {
-    render(<LibraryLanding />)
-    await userEvent.click(screen.getByText("Browse all library tabs →"))
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "/library/$tab",
-        params: { tab: "watchlist" },
-      })
-    )
-  })
-})

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
 import { useParams, useNavigate } from "@tanstack/react-router"
-import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, ListIcon, MusicIcon, PlusIcon, RefreshCw } from "lucide-react"
+import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, LayoutDashboardIcon, ListIcon, MusicIcon, PlusIcon, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
@@ -324,7 +324,7 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
   )
 }
 
-// ── Library Landing Page (/) ──
+// ── Overview Tab Content ──
 
 function ListsPreviewSection() {
   const navigate = useNavigate()
@@ -367,56 +367,14 @@ function ListsPreviewSection() {
   )
 }
 
-export function LibraryLanding() {
-  const navigate = useNavigate()
+function OverviewTabContent() {
   const { user } = useAuth()
   const platforms = getPlatformTabs(user)
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Library</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your saved, liked, watched items, and lists.
-        </p>
-      </div>
-
-      {/* Quick-access row */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Quick Access
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {CORE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => navigate({ to: "/library/$tab", params: { tab: tab.id } })}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] p-4 text-left hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                {tab.icon}
-              </div>
-              <span className="text-sm font-medium">{TAB_LABELS[tab.id]}</span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/library/$tab", params: { tab: "lists" } })}
-            className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] p-4 text-left hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <ListIcon className="h-4 w-4" />
-            </div>
-            <span className="text-sm font-medium">Lists</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Your Lists section */}
       <ListsPreviewSection />
 
-      {/* Platform dashboard sections */}
       {platforms.map((platform) => {
         const def = getPlatform(platform.id)
         if (!def) return null
@@ -424,15 +382,19 @@ export function LibraryLanding() {
         return <Section key={platform.id} />
       })}
 
-      {/* Browse all link */}
-      <div className="flex justify-center pt-4">
-        <button
-          onClick={() => navigate({ to: "/library/$tab", params: { tab: "watchlist" } })}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Browse all library tabs →
-        </button>
-      </div>
+      {platforms.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-muted-foreground">
+            <LayoutDashboardIcon className="h-6 w-6" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">
+            Your library overview
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+            Connect platforms like Steam, Plex, or Spotify to see your library stats here. Browse tabs above to explore your collection.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -443,15 +405,18 @@ export function LibraryPage() {
   const params = useParams({ from: "/library/$tab" })
   const navigate = useNavigate()
   const rawTab = params.tab as string
-  const activeTab: LibraryTab = LIBRARY_TABS.includes(rawTab as LibraryTab) ? (rawTab as LibraryTab) : "watchlist"
+  const activeTab: LibraryTab = LIBRARY_TABS.includes(rawTab as LibraryTab) ? (rawTab as LibraryTab) : "overview"
 
   const [composerOpen, setComposerOpen] = useState(false)
   const createList = useCreateList()
   const { user, isLoading: authLoading } = useAuth()
 
-  // Build visible tabs: core + platforms + special
+  // Build visible tabs: overview + core + platforms + special
   const visibleTabs = useMemo(() => {
     const tabs: Array<{ id: string; label: string; icon: React.ReactNode }> = []
+
+    // Overview tab (always first)
+    tabs.push({ id: "overview", label: TAB_LABELS.overview, icon: <LayoutDashboardIcon className="h-4 w-4" /> })
 
     // Core tabs
     for (const t of CORE_TABS) {
@@ -496,6 +461,9 @@ export function LibraryPage() {
 
   // Resolve content for the active tab
   const renderContent = () => {
+    if (activeTab === "overview") {
+      return <OverviewTabContent />
+    }
     if (activeTab === "lists") {
       return <ListsTabContent onCreateClick={() => setComposerOpen(true)} />
     }

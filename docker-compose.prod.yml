@@ -1,0 +1,106 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-otix}
+      POSTGRES_USER: ${POSTGRES_USER:-otix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-otix} -d ${POSTGRES_DB:-otix}"]
+      interval: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      APP_ENV: production
+      DEBUG: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      APP_ENV: production
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A otix.infrastructure.celery.app worker -Q fast,igdb,fanart,omdb,steamgrid,musicbrainz,lastfm,user,control,ccu -c 4 -n otix@%h --loglevel WARNING
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      APP_ENV: production
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A otix.infrastructure.celery.app beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

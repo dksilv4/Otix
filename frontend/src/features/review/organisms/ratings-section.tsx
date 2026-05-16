@@ -157,10 +157,10 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                   )}
                   style={{ fontFamily: "var(--dk-font-mono)" }}
                 >
-                  {hasOtixRating ? otixScore.toFixed(1) : "—"}
+                  {hasOtixRating ? (otixScore * 10).toFixed(0) : "—"}
                 </span>
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                  out of 10
+                  out of 100
                 </span>
               </div>
 
@@ -183,40 +183,41 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
 
         {/* ── External Ratings — compact row ── */}
         {hasExternalRatings && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {externalRatings.map((r) => {
               const theme = providerTheme(r.provider)
               const logo = providerLogo(r.provider)
+              const normalized = Math.round((r.score / r.maxScore) * 100)
               return (
                 <div
                   key={r.id}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold',
+                    'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold',
                     theme.bg,
                     theme.text,
                   )}
-                  title={`${r.score}/${r.maxScore}${r.voteCount ? ` (${r.voteCount.toLocaleString()} votes)` : ''}`}
+                  title={`${r.score}/${r.maxScore} → ${normalized}/100${r.voteCount ? ` · ${r.voteCount.toLocaleString()} votes` : ''}`}
                 >
                   {isSteamProvider(r.provider) ? (
-                    <SteamIcon className="h-3.5 w-3.5 opacity-90 shrink-0" />
+                    <SteamIcon className="h-4 w-4 opacity-90 shrink-0" />
                   ) : r.provider === "plex" ? (
-                    <PlexIcon className="h-3.5 w-3.5 opacity-90 shrink-0" />
+                    <PlexIcon className="h-4 w-4 opacity-90 shrink-0" />
                   ) : logo ? (
                     <img
                       src={logo}
                       alt=""
                       className={cn(
-                        'h-3.5 w-auto max-w-[3.5rem] object-contain opacity-90 shrink-0',
+                        'h-4 w-auto max-w-[4rem] object-contain opacity-90 shrink-0',
                         theme.logoInvert && 'invert brightness-0',
                       )}
                     />
                   ) : (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">
                       {providerLabel(r.provider)}
                     </span>
                   )}
-                  <span className={cn('tabular-nums', theme.score)}>
-                    {Math.round(r.score)}
+                  <span className={cn('tabular-nums text-base', theme.score)}>
+                    {normalized}
                   </span>
                 </div>
               )

@@ -97,9 +97,11 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.params = convertKeysToSnakeCase(config.params)
   }
 
-  // For FormData, remove Content-Type so the browser sets the correct multipart boundary
-  if (config.data instanceof FormData && config.headers) {
-    config.headers.set('Content-Type', undefined)
+  // For FormData, delete Content-Type so the browser sets the correct multipart boundary.
+  // Using delete is more reliable than set(_, undefined) across axios versions.
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+    delete config.headers['content-type']
   }
 
   return config

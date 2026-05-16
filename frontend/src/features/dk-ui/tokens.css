@@ -19,12 +19,12 @@
    Surface Tokens
    ═══════════════════════════════════════════════ */
 :root {
-  --dk-surface-root: oklch(0.955 0 0);
-  --dk-surface-base: oklch(0.985 0 0);
-  --dk-surface-raised: oklch(1 0 0);
-  --dk-surface-overlay: oklch(1 0 0);
-  --dk-surface-glass: oklch(1 0 0 / 0.06);
-  --dk-surface-glass-hover: oklch(1 0 0 / 0.12);
+  --dk-surface-root: oklch(0.96 0 0);
+  --dk-surface-base: oklch(0.92 0 0);
+  --dk-surface-raised: oklch(0.88 0 0);
+  --dk-surface-overlay: oklch(0.85 0 0);
+  --dk-surface-glass: oklch(0 0 0 / 0.03);
+  --dk-surface-glass-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-active: oklch(0 0 0 / 0.1);
 }

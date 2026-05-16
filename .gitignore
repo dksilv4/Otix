@@ -11,3 +11,5 @@
 
 /backend/data/
 /package-lock.json
+/.claude
+/.agents

@@ -29,7 +29,9 @@ async def upload_file(
     request: Request,
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
+    # Browser may send content-type with parameters (e.g. "image/png; charset=binary")
+    ct = file.content_type or ""
+    if not any(ct.startswith(allowed) for allowed in ALLOWED_CONTENT_TYPES):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported file type: {file.content_type}. Allowed: png, jpeg, webp, gif",
@@ -42,6 +44,7 @@ async def upload_file(
             detail=f"Unsupported extension: {ext}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
+    await file.seek(0)
     contents = await file.read()
     if len(contents) > MAX_SIZE:
         raise HTTPException(

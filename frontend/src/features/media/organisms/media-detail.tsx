@@ -390,7 +390,6 @@ export function MediaDetail() {
           textlessPosterUrl={detail.textlessPosterUrl}
           releaseDate={detail.releaseDate}
           genres={detail.genres}
-          externalRatings={detail.externalRatings}
           avgRating={detail.avgRating}
           ratingCount={detail.ratingCount}
           overview={detail.overview}
