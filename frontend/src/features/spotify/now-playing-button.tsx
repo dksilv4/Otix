@@ -8,6 +8,7 @@ import { PlexSessionList } from './plex-now-playing'
 import type { PlexSession } from './plex-now-playing'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/features/auth/auth-provider'
 import { cn } from '@/lib/utils'
 
 interface PlexSessionsResponse {
@@ -46,6 +47,8 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const { user: currentUser } = useAuth()
+
   const { data: plexSessions = [] } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
@@ -55,6 +58,7 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
     refetchInterval: 15000,
     staleTime: 10000,
     retry: false,
+    enabled: !!currentUser?.plexId,
   })
 
   const handleClickOutside = useCallback(

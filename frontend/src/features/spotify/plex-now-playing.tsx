@@ -5,6 +5,7 @@ import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive } from 'lucide-r
 import { apiClient } from '@/lib/api-client'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth/auth-provider'
 
 export interface PlexSession {
   session_id: string
@@ -330,6 +331,8 @@ export function PlexNowPlaying() {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const { user: currentUser } = useAuth()
+
   const { data } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
@@ -339,6 +342,7 @@ export function PlexNowPlaying() {
     refetchInterval: 15000,
     staleTime: 10000,
     retry: false,
+    enabled: !!currentUser?.plexId,
   })
 
   const sessions = data ?? []

@@ -88,6 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorChallenge(null)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const res = await apiClient.get('/auth/me')
+    setUser(res.data)
+  }, [])
+
   return (
     <AuthContext.Provider
       value={{
@@ -100,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         cancelTwoFactor,
         register,
         logout,
+        refreshUser,
       }}
     >
       {children}

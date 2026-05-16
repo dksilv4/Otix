@@ -45,4 +45,5 @@ export interface AuthState {
   cancelTwoFactor: () => void
   register: (email: string, username: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  refreshUser: () => Promise<void>
 }

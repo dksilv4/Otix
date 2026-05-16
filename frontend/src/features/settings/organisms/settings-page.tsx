@@ -152,6 +152,7 @@ function ProfileSection({
   } | null
   isAuthenticated: boolean
 }) {
+  const { refreshUser } = useAuth()
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const [backgroundUrl, setBackgroundUrl] = useState(user?.backgroundUrl ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
@@ -219,6 +220,7 @@ function ProfileSection({
       setAvatarUrl(data.avatarUrl ?? '')
       setBackgroundUrl(data.backgroundUrl ?? '')
       setSaved(true)
+      refreshUser()
     } catch {
       // leave fields as-is
     } finally {
@@ -253,6 +255,7 @@ function ProfileSection({
       setAvatarUrl(data.avatarUrl ?? '')
       setBackgroundUrl(data.backgroundUrl ?? '')
       setSaved(true)
+      refreshUser()
     } catch {
       // leave fields as-is
     } finally {
@@ -276,6 +279,7 @@ function ProfileSection({
       setAvatarUrl(data.avatarUrl ?? '')
       setBackgroundUrl(data.backgroundUrl ?? '')
       setSaved(true)
+      refreshUser()
     } catch {
       // leave fields as-is
     } finally {
