@@ -442,22 +442,8 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    if body.username is not None:
-        current_user.username = body.username
-    if body.email is not None:
-        current_user.email = body.email
-    if body.bio is not None:
-        current_user.bio = body.bio
-    if body.avatar_url is not None:
-        current_user.avatar_url = body.avatar_url
-    if body.background_url is not None:
-        current_user.background_url = body.background_url
-    if body.integration_visibility is not None:
-        current_user.integration_visibility = body.integration_visibility
-    if body.profile_sections is not None:
-        current_user.profile_sections = body.profile_sections
-    if body.daily_mood_checkins_enabled is not None:
-        current_user.daily_mood_checkins_enabled = body.daily_mood_checkins_enabled
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
     await db.commit()
     await db.refresh(current_user)
     return _user_response(current_user)
