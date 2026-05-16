@@ -8,7 +8,7 @@ vi.mock("framer-motion", () => ({
   useInView: () => [() => {}, true],
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
   motion: {
-    div: ({ children, ...props }: Record<string, unknown>) => React.createElement("div", props, children),
+    div: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement("div", props as Record<string, unknown>, children),
   },
 }))
 
@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: vi.fn(() => ({ tab: "watchlist" })),
   useNavigate: vi.fn(() => mockNavigate),
   useSearch: vi.fn(() => ({})),
-  Link: ({ children, ...props }: Record<string, unknown>) => React.createElement("a", props, children),
+  Link: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement("a", props as Record<string, unknown>, children),
 }))
 
 // Mock auth

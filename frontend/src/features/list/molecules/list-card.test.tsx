@@ -6,8 +6,8 @@ import type { UserListOut } from "../list-queries"
 
 // Mock TanStack Router Link
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, children, className, ...props }: Record<string, unknown>) =>
-    React.createElement("a", { href: `/list/${params ? (params as Record<string, string>).listId : ""}`, className, ...props }, children),
+  Link: ({ to, params, children, className, ...props }: { to?: unknown; params?: Record<string, string>; children?: React.ReactNode; className?: string; [key: string]: unknown }) =>
+    React.createElement("a", { href: `/list/${params ? params.listId : ""}`, className, ...props } as Record<string, unknown>, children),
 }))
 
 function makeList(overrides: Partial<UserListOut> = {}): UserListOut {

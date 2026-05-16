@@ -3,8 +3,8 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Dot } from 'lucide-react'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
-import { MOTION_OPTIONS, useMotionPreference, type MotionPreference } from '@/lib/motion-preference'
-import { useTheme } from '@/lib/theme'
+import { MOTION_OPTIONS, useMotionPreference } from '@/lib/motion-preference'
+import { useTheme, type ThemeSetting } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
 import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
 import { apiClient, API_BASE_URL } from '@/lib/api-client'
@@ -846,7 +846,7 @@ function applyAccentColor(color: string) {
   localStorage.setItem(ACCENT_STORAGE_KEY, color)
 }
 
-function AppearanceSection({ theme, onSetTheme }: { theme: string; onSetTheme: (t: string) => void }) {
+function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; onSetTheme: (t: ThemeSetting) => void }) {
   const { shaderQuality, setShaderQuality } = useShaderQuality()
   const { motionPreference, setMotionPreference } = useMotionPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
@@ -1711,8 +1711,8 @@ function IntegrationMarketplaceModal({
               className="flex items-center gap-4 rounded-2xl bg-[var(--dk-surface-raised)] p-4 border-l-[3px]"
               style={{ borderLeftColor: integration.brandColor }}
             >
-              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', integration.brandBg)}>
-                <Icon className="h-5 w-5" style={{ color: integration.brandColor }} />
+              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', integration.brandBg)} style={{ color: integration.brandColor }}>
+                <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{integration.name}</p>
@@ -1746,7 +1746,6 @@ function IntegrationMarketplaceModal({
   )
 }
 
-const integrationConnectButton = 'shrink-0 shadow-none'
 const integrationSyncButton = 'shrink-0 bg-primary/10 text-primary shadow-none hover:bg-primary/15'
 const integrationDangerButton = 'shrink-0 bg-destructive/10 text-destructive shadow-none hover:bg-destructive/15'
 const integrationActionRow = 'border-t border-border/20 px-4 py-4'

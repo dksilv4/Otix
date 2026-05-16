@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { ListComposer } from "./list-composer"
-import type { UserListCreate } from "../list-queries"
 
 describe("ListComposer", () => {
   it("renders nothing when closed", () => {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 type Theme = 'light' | 'dark'
-type ThemeSetting = Theme | 'system'
+export type ThemeSetting = Theme | 'system'
 
 const ThemeContext = createContext<{
   theme: ThemeSetting

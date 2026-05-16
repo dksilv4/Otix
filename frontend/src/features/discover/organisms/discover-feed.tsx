@@ -2,10 +2,10 @@ import { DiscoverHero } from '@discover/organisms/discover-hero'
 import { MediaSection } from '@discover/organisms/media-section'
 
 const sections = [
-  { title: 'Movies', mediaType: 'movie' as const, viewAllHref: '/search?type=movie' },
-  { title: 'TV Shows', mediaType: 'show' as const, viewAllHref: '/search?type=show' },
-  { title: 'Games', mediaType: 'game' as const, viewAllHref: '/search?type=game' },
-  { title: 'Music', mediaType: 'music' as const, viewAllHref: '/search?type=music' },
+  { title: 'Movies', mediaType: 'movie' as const, listType: 'popular' },
+  { title: 'TV Shows', mediaType: 'show' as const, listType: 'popular' },
+  { title: 'Games', mediaType: 'game' as const, listType: 'popular' },
+  { title: 'Music', mediaType: 'music' as const, listType: 'upcoming' },
 ]
 
 export function DiscoverFeed() {

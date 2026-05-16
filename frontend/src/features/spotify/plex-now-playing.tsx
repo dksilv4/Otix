@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive, Zap } from 'lucide-react'
+import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
