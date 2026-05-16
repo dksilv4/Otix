@@ -88,12 +88,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.otix-api.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.otix-api.entrypoints=websecure"
-      - "traefik.http.routers.otix-api.tls.certResolver=letsencrypt"
-      - "traefik.http.services.otix-api.loadbalancer.server.port=8000"
     restart: unless-stopped
 
   worker:
@@ -133,12 +127,6 @@ services:
     depends_on:
       - api
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.otix-frontend.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.otix-frontend.entrypoints=websecure"
-      - "traefik.http.routers.otix-frontend.tls.certResolver=letsencrypt"
-      - "traefik.http.services.otix-frontend.loadbalancer.server.port=80"
 
 volumes:
   pgdata:
