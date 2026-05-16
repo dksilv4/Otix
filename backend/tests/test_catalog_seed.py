@@ -17,8 +17,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-import otix.tasks.catalog_seed as cs
-from otix.tasks.catalog_seed import (
+import otix.tasks.seed.catalog_seed as cs
+from otix.tasks.seed.catalog_seed import (
     BATCH_ENTRIES,
     IGDB_LIMIT,
     IGDB_PAGES_PER_CYCLE,
@@ -86,26 +86,26 @@ def _make_steam_json(apps: list[dict], have_more: bool = False, last_appid: int 
 
 class TestLoadSaveState:
     async def test_load_returns_default_when_no_state(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             state = await _load_state(_PEOPLE_STATE, {"status": "new"})
         assert state == {"status": "new"}
 
     async def test_save_and_load_roundtrip(self, fakeredis):
         state = {"file_path": "/tmp/test.gz", "entries_processed": 1000}
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             await _save_state(_PEOPLE_STATE, state)
             loaded = await _load_state(_PEOPLE_STATE)
         assert loaded == state
 
     async def test_load_handles_corrupt_json(self, fakeredis):
         await fakeredis.set(_PEOPLE_STATE, "not valid json{{{")
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             state = await _load_state(_PEOPLE_STATE, {"fallback": True})
         assert state == {"fallback": True}
 
     async def test_seeders_have_independent_state(self, fakeredis):
         """Each seeder uses its own Redis key."""
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             await _save_state(_PEOPLE_STATE, {"entries_processed": 100})
             await _save_state(_STEAM_STATE, {"entries_processed": 200})
             await _save_state(_IGDB_STATE, {"offset": 300})
@@ -126,7 +126,7 @@ class TestLoadSaveState:
 
 class TestEnqueueIfNew:
     async def test_enqueues_new_id(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             with patch.object(cs.app, "send_task") as mock_send:
                 result = await _enqueue_if_new(_PEOPLE_SEEN, "sync.tmdb.person", 287)
 
@@ -136,7 +136,7 @@ class TestEnqueueIfNew:
 
     async def test_skips_duplicate_id(self, fakeredis):
         await fakeredis.sadd(_PEOPLE_SEEN, "287")
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             with patch.object(cs.app, "send_task") as mock_send:
                 result = await _enqueue_if_new(_PEOPLE_SEEN, "sync.tmdb.person", 287)
 
@@ -144,7 +144,7 @@ class TestEnqueueIfNew:
         mock_send.assert_not_called()
 
     async def test_sets_ttl_on_first_add(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             with patch.object(cs.app, "send_task"):
                 await _enqueue_if_new(_STEAM_SEEN, "sync.steam.update_app", 10)
         ttl = await fakeredis.ttl(_STEAM_SEEN)
@@ -152,7 +152,7 @@ class TestEnqueueIfNew:
         assert ttl <= SEEN_TTL
 
     async def test_seeders_have_independent_seen_sets(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             with patch.object(cs.app, "send_task"):
                 await _enqueue_if_new(_PEOPLE_SEEN, "sync.tmdb.person", 1)
                 await _enqueue_if_new(_STEAM_SEEN, "sync.steam.update_app", 1)
@@ -164,12 +164,12 @@ class TestEnqueueIfNew:
 class TestClearSeen:
     async def test_deletes_seen_set(self, fakeredis):
         await fakeredis.sadd(_PEOPLE_SEEN, "1", "2", "3")
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             await _clear_seen(_PEOPLE_SEEN)
         assert await fakeredis.exists(_PEOPLE_SEEN) == 0
 
     async def test_clear_empty_set_noop(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             await _clear_seen(_PEOPLE_SEEN)
 
 
@@ -181,7 +181,7 @@ class TestClearSeen:
 class TestLogProgress:
     async def test_people_log(self):
         state = {"entries_processed": 1500}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("people", state)
         msg = mock_log.call_args[0][0]
         assert "seed.people" in msg
@@ -190,7 +190,7 @@ class TestLogProgress:
     async def test_with_cycle_result(self):
         state = {"entries_processed": 500}
         result = {"enqueued": 500}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("steam", state, cycle_result=result)
         msg = mock_log.call_args[0][0]
         assert "enqueued=500" in msg
@@ -198,7 +198,7 @@ class TestLogProgress:
     async def test_with_skipped(self):
         state = {"entries_processed": 500}
         result = {"enqueued": 400, "skipped": 100}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("people", state, cycle_result=result)
         msg = mock_log.call_args[0][0]
         assert "enqueued=400" in msg
@@ -206,7 +206,7 @@ class TestLogProgress:
 
     async def test_done_status(self):
         state = {"entries_processed": 1000, "pipeline": "done"}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("people", state)
         msg = mock_log.call_args[0][0]
         assert "done" in msg
@@ -214,7 +214,7 @@ class TestLogProgress:
 
     async def test_running_status(self):
         state = {"entries_processed": 500}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("steam", state)
         msg = mock_log.call_args[0][0]
         assert "running" in msg
@@ -222,14 +222,14 @@ class TestLogProgress:
     async def test_with_error(self):
         state = {"entries_processed": 0}
         result = {"error": "batch_failed"}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("igdb", state, cycle_result=result)
         msg = mock_log.call_args[0][0]
         assert "batch_failed" in msg
 
     async def test_with_percentage(self):
         state = {"entries_processed": 7500, "total": 10000}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("steam", state)
         msg = mock_log.call_args[0][0]
         assert "7500/10000" in msg
@@ -237,7 +237,7 @@ class TestLogProgress:
 
     async def test_igdb_log(self):
         state = {"offset": 150}
-        with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
             _log_progress("igdb", state)
         msg = mock_log.call_args[0][0]
         assert "seed.igdb" in msg
@@ -251,8 +251,8 @@ class TestLogProgress:
 
 class TestLogOverallSummary:
     async def test_all_running(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
-            with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+            with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
         msg = mock_log.call_args[0][0]
@@ -267,8 +267,8 @@ class TestLogOverallSummary:
     async def test_one_done(self, fakeredis):
         await fakeredis.set(_PEOPLE_STATE, json.dumps({"entries_processed": 2000, "pipeline": "done"}))
         await fakeredis.set(_STEAM_STATE, json.dumps({"entries_processed": 500, "total": 1000}))
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
-            with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+            with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
         msg = mock_log.call_args[0][0]
@@ -280,8 +280,8 @@ class TestLogOverallSummary:
         await fakeredis.set(_PEOPLE_STATE, json.dumps({"entries_processed": 2000, "pipeline": "done"}))
         await fakeredis.set(_STEAM_STATE, json.dumps({"entries_processed": 1000, "pipeline": "done"}))
         await fakeredis.set(_IGDB_STATE, json.dumps({"offset": 5000, "pipeline": "done"}))
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
-            with patch("otix.tasks.catalog_seed.logger.info") as mock_log:
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
+            with patch("otix.tasks.seed.catalog_seed.logger.info") as mock_log:
                 await _log_overall_summary()
 
         msg = mock_log.call_args[0][0]
@@ -302,7 +302,7 @@ class TestDownloadExport:
                 return httpx.Response(200, content=gz_data, request=request)
 
         async with httpx.AsyncClient(transport=OKTransport()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 path = await _download_export("person_ids")
@@ -326,7 +326,7 @@ class TestDownloadExport:
                 return httpx.Response(200, content=gzip.compress(b'[{"id":1}]'), request=request)
 
         async with httpx.AsyncClient(transport=FallbackTransport()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 path = await _download_export("person_ids")
@@ -344,7 +344,7 @@ class TestDownloadExport:
                 return httpx.Response(404, content=b"{}", request=request)
 
         async with httpx.AsyncClient(transport=Always404()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 path = await _download_export("person_ids")
@@ -357,7 +357,7 @@ class TestDownloadExport:
                 return httpx.Response(500, content=b"error", request=request)
 
         async with httpx.AsyncClient(transport=ErrorTransport()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 with pytest.raises(Exception):
@@ -372,29 +372,29 @@ class TestDownloadExport:
 class TestProcessPeopleBatch:
     @pytest.fixture(autouse=True)
     def mock_backlog(self):
-        with patch("otix.tasks.catalog_seed._check_fast_queue_backlog", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._check_fast_queue_backlog", new_callable=AsyncMock) as m:
             m.return_value = (0, False)
             yield m
 
     @pytest.fixture(autouse=True)
     def mock_save(self):
-        with patch("otix.tasks.catalog_seed._save_state", new_callable=AsyncMock):
+        with patch("otix.tasks.seed.catalog_seed._save_state", new_callable=AsyncMock):
             yield
 
     @pytest.fixture(autouse=True)
     def mock_clear(self):
-        with patch("otix.tasks.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
             yield m
 
     @pytest.fixture
     def mock_enqueue(self):
-        with patch("otix.tasks.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
             m.return_value = True
             yield m
 
     @pytest.fixture
     def mock_download(self):
-        with patch("otix.tasks.catalog_seed._download_export") as mock:
+        with patch("otix.tasks.seed.catalog_seed._download_export") as mock:
             yield mock
 
     @pytest.fixture
@@ -563,7 +563,7 @@ class TestProcessPeopleBatch:
 
         state = {"file_path": str(gz_path), "entries_processed": 0}
 
-        with patch("otix.tasks.catalog_seed.gzip.open", return_value=FailingFile(str(gz_path), "rt", encoding="utf-8")):
+        with patch("otix.tasks.seed.catalog_seed.gzip.open", return_value=FailingFile(str(gz_path), "rt", encoding="utf-8")):
             result = await _process_people_batch(state)
 
         assert result["error"] == "batch_failed"
@@ -592,7 +592,7 @@ class TestDownloadSteamAppList:
                 return httpx.Response(200, content=data.encode(), request=request)
 
         async with httpx.AsyncClient(transport=OKTransport()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 path = await _download_steam_app_list()
@@ -610,7 +610,7 @@ class TestDownloadSteamAppList:
                 raise httpx.ConnectError("connection refused")
 
         async with httpx.AsyncClient(transport=ErrorTransport()) as client:
-            with patch("otix.tasks.catalog_seed.httpx.AsyncClient") as mock_cls:
+            with patch("otix.tasks.seed.catalog_seed.httpx.AsyncClient") as mock_cls:
                 mock_cls.return_value.__aenter__.return_value = client
                 mock_cls.return_value.__aexit__.return_value = None
                 with pytest.raises(Exception):
@@ -625,23 +625,23 @@ class TestDownloadSteamAppList:
 class TestProcessSteamBatch:
     @pytest.fixture(autouse=True)
     def mock_save(self):
-        with patch("otix.tasks.catalog_seed._save_state", new_callable=AsyncMock):
+        with patch("otix.tasks.seed.catalog_seed._save_state", new_callable=AsyncMock):
             yield
 
     @pytest.fixture(autouse=True)
     def mock_clear(self):
-        with patch("otix.tasks.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
             yield m
 
     @pytest.fixture
     def mock_enqueue(self):
-        with patch("otix.tasks.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
             m.return_value = True
             yield m
 
     @pytest.fixture
     def mock_download(self):
-        with patch("otix.tasks.catalog_seed._download_steam_app_list") as mock:
+        with patch("otix.tasks.seed.catalog_seed._download_steam_app_list") as mock:
             yield mock
 
     async def test_first_batch_exhausts_small_file(self, mock_enqueue, mock_clear):
@@ -798,17 +798,17 @@ class TestProcessSteamBatch:
 class TestProcessIGDBBatch:
     @pytest.fixture(autouse=True)
     def mock_save(self):
-        with patch("otix.tasks.catalog_seed._save_state", new_callable=AsyncMock):
+        with patch("otix.tasks.seed.catalog_seed._save_state", new_callable=AsyncMock):
             yield
 
     @pytest.fixture(autouse=True)
     def mock_clear(self):
-        with patch("otix.tasks.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._clear_seen", new_callable=AsyncMock) as m:
             yield m
 
     @pytest.fixture
     def mock_enqueue(self):
-        with patch("otix.tasks.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed._enqueue_if_new", new_callable=AsyncMock) as m:
             m.return_value = True
             yield m
 
@@ -826,7 +826,7 @@ class TestProcessIGDBBatch:
 
     @pytest.fixture
     def mock_sleep(self):
-        with patch("otix.tasks.catalog_seed.asyncio.sleep", new_callable=AsyncMock) as m:
+        with patch("otix.tasks.seed.catalog_seed.asyncio.sleep", new_callable=AsyncMock) as m:
             yield m
 
     async def test_single_page(self, mock_enqueue, mock_igdb_provider, mock_redis, mock_sleep):
@@ -912,7 +912,7 @@ class TestProcessIGDBBatch:
 class TestSeedLoop:
     @pytest.fixture
     def mock_redis(self, fakeredis):
-        with patch("otix.tasks.catalog_seed.get_redis", return_value=fakeredis):
+        with patch("otix.tasks.seed.catalog_seed.get_redis", return_value=fakeredis):
             yield fakeredis
 
     @pytest.fixture

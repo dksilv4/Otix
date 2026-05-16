@@ -27,7 +27,7 @@ from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
-from otix.tasks.sync import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHOLD
+from otix.tasks.sync.search import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHOLD
 
 media_router = APIRouter(prefix="/media", tags=["media"])
 

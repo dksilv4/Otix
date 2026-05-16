@@ -18,6 +18,9 @@ class Company(Base):
     name: Mapped[str] = mapped_column(String(500), nullable=False)
     slug: Mapped[str] = mapped_column(String(500), nullable=False, unique=True)
     igdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+    logo_url: Mapped[str | None] = mapped_column(String(2000))
+    origin_country: Mapped[str | None] = mapped_column(String(10))
 
     involved_companies: Mapped[list[InvolvedCompany]] = relationship(
         "InvolvedCompany", back_populates="company"

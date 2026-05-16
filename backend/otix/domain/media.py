@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -219,12 +219,19 @@ class ExternalID(Base):
     id: Mapped[otix_pk]
     provider: Mapped[str] = mapped_column(String(20), nullable=False)
     external_id: Mapped[str] = mapped_column(String(100), nullable=False)
-    media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=True)
+    media_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="external_ids")
+    media_item: Mapped[MediaItem | None] = relationship("MediaItem", back_populates="external_ids")
+
+    __table_args__ = (
+        UniqueConstraint("provider", "external_id", name="uq_external_id_provider_ext"),
+        Index("ix_external_ids_stubs", "provider", "media_item_id", "is_adult", "created_at"),
+    )
 
 
 class Platform(Base):

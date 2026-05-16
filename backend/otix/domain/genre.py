@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, otix_fk, otix_pk
@@ -26,6 +26,7 @@ class Keyword(Base):
 
     id: Mapped[otix_pk]
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
 
     media_items: Mapped[list[MediaKeyword]] = relationship("MediaKeyword", back_populates="keyword")
 

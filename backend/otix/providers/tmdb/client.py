@@ -204,6 +204,22 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    # ── Companies / Networks ──────────────────────────────────────
+
+    async def get_company(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/company/{tmdb_id}")
+        return response.json()
+
+    async def get_network(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/network/{tmdb_id}")
+        return response.json()
+
+    # ── Keywords ─────────────────────────────────────────────────
+
+    async def get_keyword(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/keyword/{tmdb_id}")
+        return response.json()
+
     # ── Search ──────────────────────────────────────────────────
 
     async def search_multi(self, query: str, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:

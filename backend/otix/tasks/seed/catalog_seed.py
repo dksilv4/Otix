@@ -9,12 +9,9 @@ Each seeder runs on its own beat schedule with independent Redis state/lock:
 
   IGDB Games: Offset pagination, small batches to stay under 4 rps limit.
 
-  MusicBrainz: API-based incremental seeder (complement to dump import).
-  For the initial bulk seed, use the dump-based importer instead:
-      python -m otix.scripts.import_musicbrainz_dump /path/to/mbdump.tar.bz2
-  The dump (~7 GB) is available from:
-      https://data.metabrainz.org/pub/musicbrainz/data/fullexport/
-  This API seeder provides incremental coverage for recently added releases.
+  MusicBrainz: API-based incremental seeder. Walks the catalog by decade
+  using date-range search queries to provide incremental coverage for
+  recently added releases.
 
 Each seeder reaches "done" independently when its catalog is exhausted.
 """

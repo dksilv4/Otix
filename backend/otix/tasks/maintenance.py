@@ -36,21 +36,19 @@ def refresh_discover_feed() -> dict:
     content_hash guards.
     """
     # Change-based sync — catches items modified in the last 24h
-    app.send_task("sync.tmdb.movie_changes", args=[24])
-    app.send_task("sync.tmdb.show_changes", args=[24])
-    app.send_task("sync.tmdb.person_changes", args=[24])
+    for entity_type in ("movie", "show", "person"):
+        app.send_task("sync.tmdb.changes", args=[entity_type, 24])
 
     # Discover lists — broad coverage across multiple list types
-    app.send_task("sync.tmdb.popular_movies", args=[3])
-    app.send_task("sync.tmdb.popular_shows", args=[3])
-    app.send_task("sync.tmdb.trending_movies", args=[3])
-    app.send_task("sync.tmdb.trending_shows", args=[3])
-    app.send_task("sync.tmdb.top_rated_movies", args=[2])
-    app.send_task("sync.tmdb.top_rated_shows", args=[2])
-    app.send_task("sync.tmdb.upcoming_movies", args=[2])
-    app.send_task("sync.tmdb.now_playing_movies", args=[2])
-    app.send_task("sync.tmdb.on_the_air_shows", args=[2])
-    app.send_task("sync.tmdb.airing_today_shows", args=[2])
+    discover_lists = [
+        ("popular", "movie", 3), ("popular", "show", 3),
+        ("trending", "movie", 3), ("trending", "show", 3),
+        ("top_rated", "movie", 2), ("top_rated", "show", 2),
+        ("upcoming", "movie", 2), ("now_playing", "movie", 2),
+        ("on_the_air", "show", 2), ("airing_today", "show", 2),
+    ]
+    for list_type, media_type, pages in discover_lists:
+        app.send_task("sync.tmdb.discover_list", args=[list_type, media_type, pages])
 
     logger.info("discover feed refresh enqueued")
     return {"status": "ok", "message": "discover and change syncs enqueued"}
@@ -67,9 +65,9 @@ def refresh_game_feed() -> dict:
     app.send_task("sync.igdb.game_changes", args=[24])
 
     # Discover lists
-    app.send_task("sync.igdb.popular_games", args=[25])
-    app.send_task("sync.igdb.recent_games", args=[50])
-    app.send_task("sync.igdb.upcoming_games", args=[25])
+    app.send_task("sync.igdb.discover_list", args=["popular", 25])
+    app.send_task("sync.igdb.discover_list", args=["recent", 50])
+    app.send_task("sync.igdb.discover_list", args=["upcoming", 25])
 
     logger.info("game feed refresh enqueued")
     return {"status": "ok", "message": "game discover and change syncs enqueued"}
@@ -332,19 +330,19 @@ async def _enrich_fanart() -> dict:
 
     # Enqueue watchlist items first, then the rest
     for mid in wl_movie_ids:
-        app.send_task("sync.fanart.movie", args=[mid])
+        app.send_task("sync.fanart.enrich", args=["movie",mid])
         movies_enqueued += 1
 
     for mid in wl_show_ids:
-        app.send_task("sync.fanart.show", args=[mid])
+        app.send_task("sync.fanart.enrich", args=["show",mid])
         shows_enqueued += 1
 
     for mid in wl_game_ids:
-        app.send_task("sync.fanart.game", args=[mid])
+        app.send_task("sync.fanart.enrich", args=["game",mid])
         games_enqueued += 1
 
     for mid in wl_music_ids:
-        app.send_task("sync.fanart.music", args=[mid])
+        app.send_task("sync.fanart.enrich", args=["music",mid])
         music_enqueued += 1
 
     # Already-enriched watchlist items, skip in the main loop
@@ -357,22 +355,22 @@ async def _enrich_fanart() -> dict:
 
     for media_item_id, _ in movie_rows:
         if media_item_id not in wl_seen_by_type["movie"]:
-            app.send_task("sync.fanart.movie", args=[media_item_id])
+            app.send_task("sync.fanart.enrich", args=["movie",media_item_id])
             movies_enqueued += 1
 
     for media_item_id, _ in show_rows:
         if media_item_id not in wl_seen_by_type["show"]:
-            app.send_task("sync.fanart.show", args=[media_item_id])
+            app.send_task("sync.fanart.enrich", args=["show",media_item_id])
             shows_enqueued += 1
 
     for media_item_id, _ in game_rows:
         if media_item_id not in wl_seen_by_type["game"]:
-            app.send_task("sync.fanart.game", args=[media_item_id])
+            app.send_task("sync.fanart.enrich", args=["game",media_item_id])
             games_enqueued += 1
 
     for (media_item_id,) in music_rows:
         if media_item_id not in wl_seen_by_type["music"]:
-            app.send_task("sync.fanart.music", args=[media_item_id])
+            app.send_task("sync.fanart.enrich", args=["music",media_item_id])
             music_enqueued += 1
 
     wl_total = len(wl_movie_ids) + len(wl_show_ids) + len(wl_game_ids) + len(wl_music_ids)

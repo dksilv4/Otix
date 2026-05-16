@@ -16,10 +16,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.collection import Collection
-from otix.domain.genre import Genre, MediaGenre
+from otix.domain.company import Company
+from otix.domain.genre import Genre, Keyword, MediaGenre
 from otix.domain.media import ExternalID, MediaItem, Movie
 from otix.domain.people import MediaCredit, Person, PersonAsset
 from otix.lib.genres import normalize_genre_names
+from otix.lib.slug import slugify
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.transformer import _parse_date
 
@@ -480,6 +482,21 @@ class TMDBHydrator:
                 )
             )
             existing_urls.add(c["url"])
+
+    # ── Company (production company / network) ─────────────────────
+
+    async def hydrate_company(self, company: Company, raw: dict) -> None:
+        company.name = raw.get("name", company.name)
+        company.slug = slugify(company.name)
+        logo = raw.get("logo_path")
+        if logo:
+            company.logo_url = _tmdb_image(logo)
+        company.origin_country = raw.get("origin_country")
+
+    # ── Keyword ────────────────────────────────────────────────────
+
+    async def hydrate_keyword(self, keyword: Keyword, raw: dict) -> None:
+        keyword.name = raw.get("name", keyword.name)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
