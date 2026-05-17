@@ -110,7 +110,7 @@ async def download_export(export_type: str, caller: str = "seed") -> Path | None
 
     client = _get_export_client()
     for date_str in dates:
-        url = f"{TMDB_EXPORT_BASE}/{export_type}_{date_str}.json.gz"
+        url = f"{TMDB_EXPORT_BASE}/{export_type}_{date_str}.json.gz?api_key={settings.tmdb_api_key}"
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json.gz", prefix=f"otix_{caller}_")
         try:
             async with client.stream("GET", url) as response:
