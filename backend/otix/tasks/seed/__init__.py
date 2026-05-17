@@ -114,7 +114,7 @@ async def download_export(export_type: str, caller: str = "seed") -> Path | None
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json.gz", prefix=f"otix_{caller}_")
         try:
             async with client.stream("GET", url) as response:
-                if response.status_code == 404:
+                if response.status_code in (403, 404):
                     tmp.close()
                     os.unlink(tmp.name)
                     continue
