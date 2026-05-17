@@ -74,6 +74,8 @@ class WorkoutService:
         await self.session.flush()
 
         app.send_task("xp.award", args=[user_id, WORKOUT_COMPLETE])
+        app.send_task("streak.update", args=[user_id])
+        app.send_task("gamification.check_badges", args=[user_id])
 
         # Reload with relationships
         return await self.get_workout(workout.id)

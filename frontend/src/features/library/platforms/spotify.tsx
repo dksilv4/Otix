@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { HeartIcon, ListIcon, RefreshCw } from "lucide-react"
+import { HeartIcon, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
@@ -9,8 +9,6 @@ import {
   useLibraryTab,
   useSpotifyLibraryScan,
   useSpotifyStatus,
-  useSpotifyPlaylists,
-  useSpotifyPlaylistTracks,
   useSpotifyLikedTracks,
   useSaveSpotifyTrack,
   type SpotifyTrack,
@@ -85,7 +83,7 @@ function SpotifyEmptyState({ onScan, isScanning, scanResult, scanError }: Platfo
 // ── Track List ──
 
 function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
-  const { playWithQueue, currentTrack, isPlaying, togglePlay } = useSpotifyPlayer()
+  const { playWithQueue, setQueueMetadata, currentTrack, isPlaying, togglePlay } = useSpotifyPlayer()
   const saveSpotifyTrack = useSaveSpotifyTrack()
   const rateTrack = useRateTrack()
   const { toast } = useToast()
@@ -146,6 +144,16 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
           .slice(i)
           .filter((tr) => tr.uri)
           .map((tr) => tr.uri as string)
+        const subsequentMeta = subsequentUris.map((uri, j) => {
+          const src = tracks[i + j]
+          return {
+            uri,
+            id: src.id,
+            name: src.name,
+            artist: src.artist,
+            albumArt: src.albumArt,
+          }
+        })
         return (
           <div
             key={`${t.id}-${i}`}
@@ -156,6 +164,7 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
                 if (isCurrent) {
                   togglePlay()
                 } else {
+                  setQueueMetadata(subsequentMeta)
                   playWithQueue(subsequentUris)
                 }
               }
@@ -167,6 +176,7 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
                   if (isCurrent) {
                     togglePlay()
                   } else {
+                    setQueueMetadata(subsequentMeta)
                     playWithQueue(subsequentUris)
                   }
                 }
@@ -232,25 +242,17 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
 
 // ── View types ──
 
-type SpotifyView =
-  | { type: 'overview' }
-  | { type: 'playlist'; id: string }
-  | { type: 'liked' }
+type SpotifyView = { type: 'overview' } | { type: 'liked' }
 
-type LibrarySearchParams = {
-  view?: string
-  playlist?: string
-}
+type LibrarySearchParams = { view?: string }
 
 function parseSpotifyView(search: LibrarySearchParams): SpotifyView {
   if (search.view === 'liked') return { type: 'liked' }
-  if (search.view === 'playlist' && search.playlist) return { type: 'playlist', id: search.playlist }
   return { type: 'overview' }
 }
 
 function spotifySearchForView(view: SpotifyView) {
   if (view.type === 'liked') return { view: 'liked' }
-  if (view.type === 'playlist') return { view: 'playlist', playlist: view.id }
   return {}
 }
 
@@ -261,7 +263,6 @@ function SpotifyTabContent() {
   const likedInView = useInView(likedLoadMoreRef, { margin: '0px 0px 800px 0px' })
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as LibrarySearchParams
-  const { playWithQueue } = useSpotifyPlayer()
   const view = parseSpotifyView(search)
   const setSpotifyView = (nextView: SpotifyView) => {
     navigate({
@@ -272,7 +273,6 @@ function SpotifyTabContent() {
   }
 
   const albumsQuery = useLibraryTab('spotify')
-  const playlistsQuery = useSpotifyPlaylists()
   const likedTracksQuery = useSpotifyLikedTracks()
   const spotifyStatusQuery = useSpotifyStatus()
   const spotifyScan = useSpotifyLibraryScan()
@@ -282,15 +282,6 @@ function SpotifyTabContent() {
     [likedTracksQuery.data],
   )
   const likedTotal = likedTracksQuery.data?.pages[0]?.total ?? 0
-  const playlistSummary = view.type === 'playlist'
-    ? playlistsQuery.data?.find((playlist) => playlist.id === view.id)
-    : null
-
-  const playlistDetailQuery = useSpotifyPlaylistTracks(
-    view.type === 'playlist' ? view.id : null,
-  )
-  const playlistName = playlistDetailQuery.data?.name ?? playlistSummary?.name ?? 'Playlist'
-  const playlistImageUrl = playlistDetailQuery.data?.imageUrl ?? playlistSummary?.imageUrl ?? null
 
   // Auto-scan
   useEffect(() => {
@@ -309,7 +300,6 @@ function SpotifyTabContent() {
 
   // Overview view
   if (view.type === 'overview') {
-    const playlists = playlistsQuery.data ?? []
     const albums = albumsQuery.data?.pages.flatMap((p) => p.items) ?? []
 
     return (
@@ -317,7 +307,7 @@ function SpotifyTabContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Playlists
+              Liked Songs
             </h2>
             {spotifyStatusQuery.data && spotifyStatusQuery.data.trackCount > 0 && (
               <button
@@ -331,62 +321,19 @@ function SpotifyTabContent() {
             )}
           </div>
 
-          {playlistsQuery.isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-[var(--dk-surface-glass)] animate-pulse" />
-              ))}
+          <button
+            type="button"
+            onClick={() => setSpotifyView({ type: 'liked' })}
+            className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden w-full max-w-[200px]"
+          >
+            <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
+              <HeartIcon className="h-12 w-12 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              <button
-                type="button"
-                onClick={() => setSpotifyView({ type: 'liked' })}
-                className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden"
-              >
-                <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
-                  <HeartIcon className="h-12 w-12 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
-                </div>
-                <div className="p-3 text-left">
-                  <p className="text-sm font-semibold truncate">Liked Songs</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
-                </div>
-              </button>
-
-              {playlists.map((pl) => (
-                <button
-                  key={pl.id}
-                  type="button"
-                  onClick={() => setSpotifyView({ type: 'playlist', id: pl.id })}
-                  className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden"
-                >
-                  <div className="aspect-square w-full overflow-hidden">
-                    {pl.imageUrl ? (
-                      <img
-                        src={pl.imageUrl}
-                        alt={pl.name}
-                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-white/[0.04]">
-                        <ListIcon className="h-10 w-10 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3 text-left">
-                    <p className="text-sm font-semibold truncate">{pl.name}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {pl.trackCount} {pl.trackCount === 1 ? 'track' : 'tracks'}
-                    </p>
-                  </div>
-                </button>
-              ))}
+            <div className="p-3 text-left">
+              <p className="text-sm font-semibold truncate">Liked Songs</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
             </div>
-          )}
-
-          {playlistsQuery.isError && (
-            <p className="text-sm text-destructive">Failed to load playlists.</p>
-          )}
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -420,7 +367,7 @@ function SpotifyTabContent() {
     )
   }
 
-  // Detail view (playlist or liked tracks)
+  // Liked tracks detail view
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -435,87 +382,42 @@ function SpotifyTabContent() {
           Back
         </button>
         <div className="flex items-center gap-3">
-          {view.type === 'playlist' && playlistImageUrl ? (
-            <img src={playlistImageUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-          ) : view.type === 'liked' ? (
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#1DB954]/20 to-[#1DB954]/5">
-              <HeartIcon className="h-5 w-5 text-[#1DB954]" />
-            </div>
-          ) : null}
-          <div>
-            <h2 className="text-lg font-bold">
-              {view.type === 'playlist' ? playlistName : 'Liked Songs'}
-            </h2>
-            {view.type === 'playlist' && playlistDetailQuery.data && (
-              <p className="text-xs text-muted-foreground">
-                {playlistDetailQuery.data.tracks.length} tracks
-              </p>
-            )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#1DB954]/20 to-[#1DB954]/5">
+            <HeartIcon className="h-5 w-5 text-[#1DB954]" />
           </div>
+          <h2 className="text-lg font-bold">Liked Songs</h2>
         </div>
-        {view.type === 'playlist' && (
-          <button
-            type="button"
-            onClick={() => {
-              const tracks = playlistDetailQuery.data?.tracks
-              if (tracks && tracks.length > 0) {
-                const uris = tracks.filter((t) => t.uri).map((t) => t.uri as string)
-                if (uris.length > 0) playWithQueue(uris)
-              }
-            }}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#1DB954] px-4 py-2 text-xs font-semibold text-black hover:bg-[#1DB954]/90 transition-colors"
-          >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
-            </svg>
-            Play All
-          </button>
-        )}
       </div>
 
-      {view.type === 'playlist' ? (
-        playlistDetailQuery.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-12 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
-            ))}
-          </div>
-        ) : playlistDetailQuery.isError ? (
-          <p className="text-destructive">Failed to load playlist tracks.</p>
-        ) : (
-          <SpotifyTrackList tracks={playlistDetailQuery.data?.tracks ?? []} />
-        )
+      {likedTracksQuery.isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+          ))}
+        </div>
+      ) : likedTracksQuery.isError ? (
+        <p className="text-destructive">Failed to load liked tracks.</p>
       ) : (
-        likedTracksQuery.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-12 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
-            ))}
+        <>
+          <SpotifyTrackList tracks={likedTracks} />
+          <div ref={likedLoadMoreRef} className="flex justify-center py-4">
+            {likedTracksQuery.isFetchingNextPage && (
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            )}
+            {likedTracksQuery.hasNextPage && !likedTracksQuery.isFetchingNextPage && (
+              <button
+                type="button"
+                onClick={() => likedTracksQuery.fetchNextPage()}
+                className="rounded-full px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
+              >
+                Load more
+              </button>
+            )}
+            {!likedTracksQuery.hasNextPage && likedTracks.length > 0 && (
+              <p className="text-xs text-muted-foreground">End of list</p>
+            )}
           </div>
-        ) : likedTracksQuery.isError ? (
-          <p className="text-destructive">Failed to load liked tracks.</p>
-        ) : (
-          <>
-            <SpotifyTrackList tracks={likedTracks} />
-            <div ref={likedLoadMoreRef} className="flex justify-center py-4">
-              {likedTracksQuery.isFetchingNextPage && (
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              )}
-              {likedTracksQuery.hasNextPage && !likedTracksQuery.isFetchingNextPage && (
-                <button
-                  type="button"
-                  onClick={() => likedTracksQuery.fetchNextPage()}
-                  className="rounded-full px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
-                >
-                  Load more
-                </button>
-              )}
-              {!likedTracksQuery.hasNextPage && likedTracks.length > 0 && (
-                <p className="text-xs text-muted-foreground">End of list</p>
-              )}
-            </div>
-          </>
-        )
+        </>
       )}
     </div>
   )
@@ -527,8 +429,6 @@ function SpotifyDashboardSection() {
   const navigate = useNavigate()
   const likedTracksQuery = useSpotifyLikedTracks()
   const likedTotal = likedTracksQuery.data?.pages[0]?.total ?? 0
-  const playlistsQuery = useSpotifyPlaylists()
-  const playlists = playlistsQuery.data?.slice(0, 4) ?? []
 
   return (
     <div className="space-y-4">
@@ -543,49 +443,19 @@ function SpotifyDashboardSection() {
           View all
         </button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <button
-          type="button"
-          onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" }, search: { view: "liked" } as never })}
-          className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden"
-        >
-          <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
-            <HeartIcon className="h-10 w-10 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
-          </div>
-          <div className="p-3 text-left">
-            <p className="text-sm font-semibold truncate">Liked Songs</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
-          </div>
-        </button>
-        {playlists.map((pl) => (
-          <button
-            key={pl.id}
-            type="button"
-            onClick={() =>
-              navigate({ to: "/library/$tab", params: { tab: "spotify" }, search: { view: "playlist", playlist: pl.id } as never })
-            }
-            className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden"
-          >
-            <div className="aspect-square w-full overflow-hidden">
-              {pl.imageUrl ? (
-                <img
-                  src={pl.imageUrl}
-                  alt={pl.name}
-                  className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-white/[0.04]">
-                  <ListIcon className="h-8 w-8 text-muted-foreground/40" />
-                </div>
-              )}
-            </div>
-            <div className="p-3 text-left">
-              <p className="text-sm font-semibold truncate">{pl.name}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{pl.trackCount} tracks</p>
-            </div>
-          </button>
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" }, search: { view: "liked" } as never })}
+        className="group relative flex flex-col rounded-xl border border-white/[0.06] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden w-full max-w-[200px]"
+      >
+        <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
+          <HeartIcon className="h-10 w-10 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
+        </div>
+        <div className="p-3 text-left">
+          <p className="text-sm font-semibold truncate">Liked Songs</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
+        </div>
+      </button>
     </div>
   )
 }

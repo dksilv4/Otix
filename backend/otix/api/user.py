@@ -9,14 +9,21 @@ from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
 from otix.api.schemas.user import PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
+from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
+from otix.api.schemas.user_badge import BadgeOut
 from otix.api.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
 from otix.domain.media import MediaItem
 from otix.domain.review import Review
 from otix.domain.user import User
+from otix.domain.user_streak import UserStreak
 from otix.domain.workout import Workout
+from otix.lib.levels import compute_level_info
+from otix.services.follow_service import FollowService
 from otix.services.friend_service import FriendService
+from otix.services.gamification_service import GamificationService
+from otix.services.karma_service import KarmaService
 from otix.services.review_service import ReviewService
 from otix.services.steam_auth_service import get_steam_user_info
 from otix.services.user_rating_service import UserRatingService
@@ -92,6 +99,27 @@ async def get_user_profile(
     rating_service = UserRatingService(db)
     reputation = await rating_service.compute_composite_score(user.id)
 
+    # Follow info
+    follow_service = FollowService(db)
+    follow_counts = await follow_service.get_counts(user.id)
+    is_following = False
+    if current_user and not is_own_profile:
+        is_following = await follow_service.is_following(current_user.id, user.id)
+
+    # Gamification
+    gamification = compute_level_info(user.total_xp)
+    # XP rank
+    xp_rank_result = await db.execute(
+        select(func.count()).select_from(User).where(User.total_xp > user.total_xp)
+    )
+    higher_count = xp_rank_result.scalar() or 0
+    xp_rank = higher_count + 1
+    total_users = await db.scalar(select(func.count()).select_from(User)) or 0
+    xp_percentile = round((total_users - higher_count) / total_users * 100, 1) if total_users > 0 else 100.0
+
+    # Streaks
+    streak = await db.scalar(select(UserStreak).where(UserStreak.user_id == user.id))
+
     return UserProfileOut(
         id=user.id,
         username=user.username,
@@ -103,12 +131,25 @@ async def get_user_profile(
         total_xp=user.total_xp,
         avg_user_rating=user.avg_user_rating,
         user_rating_count=user.user_rating_count,
+        is_admin=user.is_admin,
         composite_score=reputation.get("composite_score"),
         profile_sections=user.profile_sections if user.profile_sections else None,
         steam=steam,
         plex=plex,
         tmdb_username=tmdb_username,
         friendship_status=friendship_status,
+        is_following=is_following,
+        follower_count=follow_counts["followers"],
+        following_count=follow_counts["following"],
+        level=gamification["level"],
+        level_title=gamification["level_title"],
+        xp_rank=xp_rank,
+        xp_percentile=xp_percentile,
+        karma=user.karma,
+        current_login_streak=streak.current_login_streak if streak else 0,
+        longest_login_streak=streak.longest_login_streak if streak else 0,
+        current_review_streak=streak.current_review_streak if streak else 0,
+        longest_review_streak=streak.longest_review_streak if streak else 0,
     )
 
 
@@ -206,6 +247,23 @@ async def get_user_reputation(
         direct_rating=result.get("direct_rating"),
         components=result.get("components", {}),
     )
+
+
+# ── Badges ──
+
+
+@user_router.get("/{username}/badges", response_model=list[BadgeOut])
+async def get_user_badges(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> list[BadgeOut]:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    service = GamificationService(db)
+    badges = await service.get_user_badges(user.id)
+    return [BadgeOut(**b) for b in badges]
 
 
 # ── Profile Sections Data ──
@@ -368,3 +426,43 @@ async def get_user_activity(
     # Sort merged timeline by timestamp desc
     events.sort(key=lambda e: e["timestamp"], reverse=True)
     return events[:limit]
+
+
+# ── Karma ──
+
+
+@user_router.get("/{username}/karma", response_model=KarmaOut)
+async def get_user_karma(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> KarmaOut:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    service = KarmaService(db)
+    balance = await service.get_karma_balance(user.id)
+    return KarmaOut(balance=balance)
+
+
+@user_router.get("/{username}/karma/transactions", response_model=list[KarmaTransactionOut])
+async def get_user_karma_transactions(
+    username: str,
+    cursor: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> list[KarmaTransactionOut]:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    service = KarmaService(db)
+    items, _ = await service.get_karma_transactions(user.id, cursor=cursor, limit=limit)
+    return [
+        KarmaTransactionOut(
+            amount=item.amount,
+            reason=item.reason,
+            created_at=item.created_at,
+        )
+        for item in items
+    ]

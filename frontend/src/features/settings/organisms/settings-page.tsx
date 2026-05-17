@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Dot } from 'lucide-react'
+import { CropModal } from '@/features/settings/molecules/crop-modal'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
 import { MOTION_OPTIONS, useMotionPreference } from '@/lib/motion-preference'
 import { useTheme, type ThemeSetting } from '@/lib/theme'
@@ -55,7 +56,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl pb-16">
+    <div className="mx-auto lg:max-w-5xl pb-16">
       <Helmet>
         <title>Settings - Otix</title>
       </Helmet>
@@ -91,7 +92,12 @@ export function SettingsPage() {
                 <div className="flex items-center gap-3">
                   <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{user.username}</p>
+                    <p className="text-sm font-medium truncate">
+                      {user.username}
+                      {user.isAdmin && (
+                        <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
+                      )}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   </div>
                 </div>
@@ -317,6 +323,7 @@ function ProfileSection({
                   onSubmit={(url) => applyCoverEditor(url, false)}
                   onRemove={() => applyCoverEditor('', true)}
                   onCancel={() => setEditingCover(false)}
+                  cropConfig={{ shape: 'rect', aspect: 16 / 9, outputSize: { width: 1200, height: 675 } }}
                 />
               </div>
             </div>,
@@ -349,6 +356,7 @@ function ProfileSection({
                       onSubmit={(url) => applyAvatarEditor(url, false)}
                       onRemove={() => applyAvatarEditor('', true)}
                       onCancel={() => setEditingAvatar(false)}
+                      cropConfig={{ shape: 'round', aspect: 1, outputSize: { width: 400, height: 400 } }}
                     />
                   </div>
                 </div>,
@@ -365,37 +373,39 @@ function ProfileSection({
             </div>
 
             <div className="pb-1 min-w-0 flex-1 relative z-10">
-              <h3 className="text-lg font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{user.username}</h3>
+              <h3 className="text-lg font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+                {user.username}
+                {user.isAdmin && (
+                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80" />
+                )}
+              </h3>
             </div>
           </div>
 
-          {/* Bio — inline editable */}
+          {/* Bio */}
           <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <label htmlFor="profile-bio" className="text-sm font-medium text-white/90">
-                Bio
-              </label>
+            <div className="relative">
+              <textarea
+                id="profile-bio"
+                value={bio}
+                onChange={(e) => {
+                  if (e.target.value.length <= BIO_MAX_LENGTH) setBio(e.target.value)
+                }}
+                placeholder="Write a short bio..."
+                rows={4}
+                className="w-full resize-none rounded-2xl bg-white/[0.06] backdrop-blur-sm px-4 py-3 text-sm text-white placeholder:text-white/25 transition-colors focus:outline-none focus:bg-white/[0.10]"
+              />
               <span
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-[11px] tabular-nums bg-white/10 backdrop-blur-sm',
+                  'absolute bottom-3 right-2 rounded-full px-2 py-0.5 text-[11px] tabular-nums bg-black/40 backdrop-blur-sm',
                   bio.length > BIO_MAX_LENGTH * 0.85
                     ? 'text-primary'
-                    : 'text-white/60',
+                    : 'text-white/50',
                 )}
               >
                 {bio.length}/{BIO_MAX_LENGTH}
               </span>
             </div>
-            <textarea
-              id="profile-bio"
-              value={bio}
-              onChange={(e) => {
-                if (e.target.value.length <= BIO_MAX_LENGTH) setBio(e.target.value)
-              }}
-              placeholder="Write a short bio..."
-              rows={4}
-              className="w-full resize-none rounded-2xl bg-white/[0.06] backdrop-blur-sm px-4 py-3 text-sm text-white placeholder:text-white/25 transition-colors focus:outline-none focus:bg-white/[0.10]"
-            />
             <p className="mt-2 text-[11px] text-white/40">
               Keep it short. This appears on your public profile.
             </p>
@@ -597,6 +607,7 @@ function AssetEditor({
   onSubmit,
   onRemove,
   value,
+  cropConfig,
 }: {
   compact?: boolean
   label: string
@@ -604,6 +615,7 @@ function AssetEditor({
   onSubmit: (url: string) => void
   onRemove?: () => void
   value: string
+  cropConfig?: { shape: 'round' | 'rect'; aspect: number; outputSize: { width: number; height: number } }
 }) {
   const [mode, setMode] = useState<'file' | 'url'>('file')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -611,20 +623,42 @@ function AssetEditor({
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [urlDraft, setUrlDraft] = useState(value)
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     return () => {
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
+      if (cropImageUrl) URL.revokeObjectURL(cropImageUrl)
     }
-  }, [previewObjectUrl])
+  }, [previewObjectUrl, cropImageUrl])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const objectUrl = URL.createObjectURL(file)
+    if (cropConfig) {
+      if (cropImageUrl) URL.revokeObjectURL(cropImageUrl)
+      setCropImageUrl(objectUrl)
+    } else {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
+      setSelectedFile(file)
+      setPreviewObjectUrl(objectUrl)
+    }
+  }
+
+  const handleCropComplete = (blob: Blob) => {
     if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
-    setSelectedFile(file)
-    setPreviewObjectUrl(URL.createObjectURL(file))
+    const croppedFile = new File([blob], 'cropped.webp', { type: 'image/webp' })
+    setSelectedFile(croppedFile)
+    setPreviewObjectUrl(URL.createObjectURL(blob))
+    setCropImageUrl(null)
+  }
+
+  const handleCropCancel = () => {
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl)
+    setCropImageUrl(null)
+    fileInputRef.current && (fileInputRef.current.value = '')
   }
 
   const handleApply = async () => {
@@ -654,7 +688,26 @@ function AssetEditor({
   const showCurrentUrl = mode === 'file' && value && !previewObjectUrl
 
   return (
-    <div
+    <>
+      {cropImageUrl && cropConfig && createPortal(
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={handleCropCancel}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <CropModal
+              imageUrl={cropImageUrl}
+              shape={cropConfig.shape}
+              aspect={cropConfig.aspect}
+              outputSize={cropConfig.outputSize}
+              onComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
+      <div
       className={cn(
         'rounded-2xl border border-white/[0.12] bg-black/80 p-5 text-white shadow-2xl backdrop-blur-2xl ring-1 ring-white/[0.06] animate-in fade-in zoom-in-95 origin-top duration-150',
         compact ? 'w-80' : 'w-full',
@@ -819,6 +872,7 @@ function AssetEditor({
         </div>
       </div>
     </div>
+    </>
   )
 }
 
@@ -2329,7 +2383,7 @@ function IntegrationsSection() {
     {
       id: 'spotify',
       name: 'Spotify',
-      description: 'Link your Spotify account to sync liked songs and playlists.',
+      description: 'Link your Spotify account to sync your liked songs and saved albums.',
       brandColor: BRAND_COLORS.spotify,
       brandBg: 'bg-[#1db954]/10',
       icon: SpotifyIcon,
@@ -2708,7 +2762,7 @@ function IntegrationsSection() {
               <p className="text-xs text-muted-foreground">
                 {isSpotifyConnected && spotifyUsername
                   ? `Linked to "${spotifyUsername}"`
-                  : 'Link your Spotify account to sync playlists and liked songs.'}
+                  : 'Link your Spotify account to sync liked songs and saved albums.'}
               </p>
             </div>
           </div>

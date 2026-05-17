@@ -47,7 +47,7 @@ interface TabBarProps {
 
 function TabBar({ tabs, activeTab, onTabClick }: TabBarProps) {
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1 mb-6">
+    <div className="-mx-4 px-4 flex gap-2 overflow-visible min-w-max pb-1 mb-6">
       {tabs.map((tab) => (
         <button
           key={tab.id}

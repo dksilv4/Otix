@@ -5,7 +5,7 @@ const sections = [
   { title: 'Movies', mediaType: 'movie' as const, listType: 'popular' },
   { title: 'TV Shows', mediaType: 'show' as const, listType: 'popular' },
   { title: 'Games', mediaType: 'game' as const, listType: 'popular' },
-  { title: 'Music', mediaType: 'music' as const, listType: 'upcoming' },
+  { title: 'Music', mediaType: 'music' as const, listType: 'popular' },
 ]
 
 export function DiscoverFeed() {

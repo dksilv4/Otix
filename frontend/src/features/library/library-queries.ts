@@ -222,15 +222,6 @@ export function useSpotifyStatus({ enabled = true }: { enabled?: boolean } = {})
   })
 }
 
-export interface SpotifyPlaylist {
-  id: string
-  name: string
-  description: string | null
-  trackCount: number
-  imageUrl: string | null
-  spotifyUrl: string | null
-}
-
 export interface SpotifyTrack {
   id: string
   name: string
@@ -246,13 +237,6 @@ export interface SpotifyTrack {
   ratingCount?: number
 }
 
-export interface SpotifyPlaylistDetail {
-  id: string
-  name: string
-  imageUrl: string | null
-  tracks: SpotifyTrack[]
-}
-
 export interface SpotifyLikedTracks {
   tracks: SpotifyTrack[]
   total: number
@@ -262,33 +246,6 @@ export interface SpotifyLikedTracks {
 
 export function getSpotifyLikedTracksNextPageParam(lastPage: SpotifyLikedTracks) {
   return lastPage.nextOffset ?? undefined
-}
-
-export function useSpotifyPlaylists() {
-  return useQuery({
-    queryKey: [...libraryKeys.tab("spotify"), "playlists"],
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ playlists: SpotifyPlaylist[] }>(
-        "/library/spotify/playlists",
-      )
-      return data.playlists
-    },
-    staleTime: 1000 * 60 * 5,
-  })
-}
-
-export function useSpotifyPlaylistTracks(playlistId: string | null) {
-  return useQuery({
-    queryKey: [...libraryKeys.tab("spotify"), "playlist", playlistId],
-    queryFn: async () => {
-      const { data } = await apiClient.get<SpotifyPlaylistDetail>(
-        `/library/spotify/playlists/${playlistId}`,
-      )
-      return data
-    },
-    enabled: !!playlistId,
-    staleTime: 1000 * 60 * 5,
-  })
 }
 
 export function useSpotifyLikedTracks() {

@@ -189,12 +189,15 @@ interface PersonListResponse {
 
 // ── Shared player content (used by dropdown and floating bar) ──
 
+export type QueuePlacement = 'above' | 'below'
+
 export interface SpotifyPlayerContentProps {
   showPinButton?: boolean
   showDragHandle?: boolean
   pinLabel?: string
   onPin?: () => void
   onDismiss?: () => void
+  queuePlacement?: QueuePlacement
   dragPointerHandlers?: {
     onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
     onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
@@ -210,6 +213,7 @@ export function SpotifyPlayerContent({
   pinLabel = 'Pin player',
   onPin,
   onDismiss,
+  queuePlacement = 'below',
   dragPointerHandlers,
   isDragging = false,
 }: SpotifyPlayerContentProps) {
@@ -279,7 +283,7 @@ export function SpotifyPlayerContent({
 
   return (
     <div
-      className="relative rounded-2xl p-3 space-y-2 overflow-hidden"
+      className="relative rounded-2xl p-3 space-y-2"
       style={{
         background: `linear-gradient(135deg, ${backgroundColor} 0%, ${surfaceColor} 56%, ${rgbaCss(palette.accent, 0.22)} 100%)`,
         backdropFilter: 'blur(24px) saturate(145%)',
@@ -496,7 +500,10 @@ export function SpotifyPlayerContent({
             <div
               data-player-control
               ref={queueRef}
-              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/[0.08] backdrop-blur-md overflow-hidden"
+              className={cn(
+                'absolute right-0 w-56 rounded-xl border border-white/[0.08] backdrop-blur-md overflow-hidden',
+                queuePlacement === 'above' ? 'bottom-full mb-2' : 'top-full mt-2',
+              )}
               style={{
                 background: `linear-gradient(135deg, ${rgbaCss(palette.background, 0.98)}, ${rgbaCss(palette.surface, 0.96)})`,
                 borderColor: rgbaCss(palette.accent, 0.22),
@@ -795,6 +802,7 @@ export function SpotifyPlayerBar({ onUnpin }: { onUnpin?: () => void }) {
         pinLabel="Unpin player"
         onPin={onUnpin}
         onDismiss={() => setDismissedKey(currentTrack?.uri ?? null)}
+        queuePlacement="above"
         dragPointerHandlers={dragPointerHandlers}
         isDragging={isDraggingPlayer}
       />

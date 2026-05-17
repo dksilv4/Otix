@@ -10,7 +10,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, Track, UserSpotifyPlaylist, UserSpotifyPlaylistTrack
+from otix.domain.media import Album, Track
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
@@ -47,41 +47,6 @@ async def _fetch_all_saved_albums(access_token: str, spotify: SpotifyProvider) -
         if not page_items:
             break
         items.extend(page_items)
-        offset += len(page_items)
-        if resp.get("total") and offset >= resp["total"]:
-            break
-    return items
-
-
-async def _fetch_all_playlists(access_token: str, spotify: SpotifyProvider) -> list[dict]:
-    """Fetch all user playlists from Spotify, handling pagination."""
-    playlists: list[dict] = []
-    offset = 0
-    while True:
-        resp = await spotify.get_user_playlists(access_token, limit=SPOTIFY_PAGE_LIMIT, offset=offset)
-        page_items = resp.get("items", [])
-        if not page_items:
-            break
-        playlists.extend(page_items)
-        offset += len(page_items)
-        if resp.get("total") and offset >= resp["total"]:
-            break
-    return playlists
-
-
-async def _fetch_all_playlist_tracks(access_token: str, spotify: SpotifyProvider, playlist_id: str) -> list[dict]:
-    """Fetch all tracks for a playlist from Spotify, handling pagination."""
-    items: list[dict] = []
-    offset = 0
-    while True:
-        resp = await spotify.get_playlist_tracks(access_token, playlist_id, limit=100, offset=offset)
-        page_items = resp.get("items", [])
-        if not page_items:
-            break
-        for item in page_items:
-            track = item.get("track")
-            if track and track.get("id"):
-                items.append(track)
         offset += len(page_items)
         if resp.get("total") and offset >= resp["total"]:
             break
@@ -214,161 +179,18 @@ async def sync_spotify_user_library(
             # Keep the set fresh for 7 days; re-sync resets the TTL
             await redis.expire(key, 7 * 24 * 3600)
 
-        # ── 7. Sync user playlists ─────────────────────────────────────────
-        await _emit("fetching_playlists")
-        playlists = await _fetch_all_playlists(access_token, spotify)
-        await _emit("playlists_fetched", count=len(playlists))
-
-        playlist_count = 0
-        if playlists:
-            # Get existing playlist IDs for this user
-            existing_pl_result = await session.execute(
-                select(UserSpotifyPlaylist.spotify_id).where(
-                    UserSpotifyPlaylist.user_id == user.id
-                )
-            )
-            existing_spotify_ids = {row[0] for row in existing_pl_result}
-
-            for pl in playlists:
-                spotify_id = pl.get("id")
-                if not spotify_id:
-                    continue
-
-                images = pl.get("images", [])
-                image_url = images[0].get("url") if images else None
-                owner = pl.get("owner", {})
-                name = pl.get("name") or "Untitled"
-                description = pl.get("description")
-                track_count = pl.get("tracks", {}).get("total", 0) or 0
-
-                if spotify_id in existing_spotify_ids:
-                    # Update existing
-                    result = await session.execute(
-                        select(UserSpotifyPlaylist).where(
-                            UserSpotifyPlaylist.user_id == user.id,
-                            UserSpotifyPlaylist.spotify_id == spotify_id,
-                        )
-                    )
-                    existing = result.scalar_one_or_none()
-                    if existing:
-                        existing.name = name
-                        existing.description = description
-                        existing.image_url = image_url
-                        existing.track_count = track_count
-                else:
-                    session.add(
-                        UserSpotifyPlaylist(
-                            user_id=user.id,
-                            spotify_id=spotify_id,
-                            name=name,
-                            description=description,
-                            image_url=image_url,
-                            track_count=track_count,
-                            spotify_url=pl.get("external_urls", {}).get("spotify"),
-                        )
-                    )
-                playlist_count += 1
-
-        await session.flush()
-
-        # ── 8. Sync playlist tracks ───────────────────────────────────────
-        playlist_track_count = 0
-        if playlists:
-            await _emit("fetching_playlist_tracks", count=len(playlists))
-
-            for pl in playlists:
-                pl_spotify_id = pl.get("id")
-                if not pl_spotify_id:
-                    continue
-
-                # Get the persistent playlist row
-                pl_result = await session.execute(
-                    select(UserSpotifyPlaylist).where(
-                        UserSpotifyPlaylist.user_id == user.id,
-                        UserSpotifyPlaylist.spotify_id == pl_spotify_id,
-                    )
-                )
-                pl_row = pl_result.scalar_one_or_none()
-                if not pl_row:
-                    continue
-
-                # Fetch all tracks for this playlist
-                sp_tracks = await _fetch_all_playlist_tracks(access_token, spotify, pl_spotify_id)
-
-                # Delete removed tracks (ones no longer in Spotify)
-                incoming_ids = {t["id"] for t in sp_tracks if t.get("id")}
-                existing_track_ids = await session.execute(
-                    select(UserSpotifyPlaylistTrack.id, UserSpotifyPlaylistTrack.spotify_track_id).where(
-                        UserSpotifyPlaylistTrack.playlist_id == pl_row.id
-                    )
-                )
-                for track_id, spotify_track_id in existing_track_ids.all():
-                    if spotify_track_id not in incoming_ids:
-                        await session.delete(
-                            await session.get(UserSpotifyPlaylistTrack, track_id)
-                        )
-
-                # Upsert incoming tracks
-                for i, t in enumerate(sp_tracks):
-                    stid = t.get("id")
-                    if not stid:
-                        continue
-                    album = t.get("album", {})
-                    album_images = album.get("images", [])
-                    artists = t.get("artists", [])
-
-                    existing_track = await session.scalar(
-                        select(UserSpotifyPlaylistTrack).where(
-                            UserSpotifyPlaylistTrack.playlist_id == pl_row.id,
-                            UserSpotifyPlaylistTrack.spotify_track_id == stid,
-                        )
-                    )
-                    if existing_track:
-                        existing_track.name = t.get("name") or "Untitled"
-                        existing_track.artist_name = artists[0].get("name") if artists else "Unknown Artist"
-                        existing_track.album_name = album.get("name")
-                        existing_track.album_image_url = album_images[0].get("url") if album_images else None
-                        existing_track.duration_ms = t.get("duration_ms")
-                        existing_track.uri = t.get("uri")
-                        existing_track.preview_url = t.get("preview_url")
-                        existing_track.position = i
-                    else:
-                        session.add(
-                            UserSpotifyPlaylistTrack(
-                                playlist_id=pl_row.id,
-                                spotify_track_id=stid,
-                                name=t.get("name") or "Untitled",
-                                artist_name=artists[0].get("name") if artists else "Unknown Artist",
-                                album_name=album.get("name"),
-                                album_image_url=album_images[0].get("url") if album_images else None,
-                                duration_ms=t.get("duration_ms"),
-                                uri=t.get("uri"),
-                                preview_url=t.get("preview_url"),
-                                position=i,
-                                added_at=t.get("added_at"),
-                            )
-                        )
-                    playlist_track_count += 1
-
-            await session.flush()
-            await _emit("playlist_tracks_synced", count=playlist_track_count)
-
         logger.info(
             "spotify library synced",
             user_id=user.id,
             liked_total=liked_total,
             liked_matched=liked_matched,
             liked_seeded=liked_seeded,
-            playlist_count=playlist_count,
-            playlist_track_count=playlist_track_count,
         )
 
         result = {
             "liked_total": liked_total,
             "liked_matched": liked_matched,
             "liked_seeded": liked_seeded,
-            "playlist_count": playlist_count,
-            "playlist_track_count": playlist_track_count,
         }
         await _emit("sync_complete", **result)
         if task_id:

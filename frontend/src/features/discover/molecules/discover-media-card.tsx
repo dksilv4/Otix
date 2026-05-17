@@ -10,7 +10,7 @@ export function DiscoverMediaCard({ item, className }: DiscoverMediaCardProps) {
   return (
     <MediaCard
       id={item.id}
-      mediaType={item.mediaType as 'movie' | 'show' | 'game'}
+      mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}
       title={item.title}
       posterUrl={item.posterUrl}
       textlessPosterUrl={item.textlessPosterUrl}

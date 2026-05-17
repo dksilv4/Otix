@@ -1,9 +1,11 @@
 import { useState } from "react"
 import { Link } from '@tanstack/react-router'
-import { EyeOff, Eye, Trash2, Pencil } from "lucide-react"
+import { EyeOff, Eye, Trash2, Pencil, Shield, ThumbsUp, ThumbsDown } from "lucide-react"
 import { StarRating } from "@ui/atoms/star-rating"
 import { DkButton } from "@/features/dk-ui/atoms/button"
+import { useAuth } from '@/features/auth/auth-provider'
 import { useSwipe } from "../hooks/use-swipe"
+import { useReviewVoteCounts, useVoteReview } from "../review-vote-queries"
 import type { ReviewWithUserOut } from "../review-queries"
 
 interface ReviewCardProps {
@@ -75,6 +77,9 @@ function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
                 className="text-sm font-semibold hover:text-primary transition-colors"
               >
                 {review.user.username}
+                {review.user.isAdmin && (
+                  <Shield className="h-3.5 w-3.5 inline-block text-amber-400/80" />
+                )}
               </Link>
               {isOwn && (
                 <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
@@ -144,6 +149,9 @@ function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
           </div>
         )}
 
+        {/* Review votes */}
+        <ReviewVoteSection review={review} />
+
         {/* Action buttons (desktop) */}
         {isOwn && (
           <div className="mt-3 flex gap-2 pt-1">
@@ -170,6 +178,47 @@ function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ReviewVoteSection({ review }: { review: ReviewWithUserOut }) {
+  const { user: currentUser } = useAuth()
+  const { data: voteCounts } = useReviewVoteCounts(review.userId, review.mediaItemId)
+  const voteMutation = useVoteReview(review.userId, review.mediaItemId)
+
+  if (!currentUser) return null
+
+  const upvotes = voteCounts?.up ?? 0
+  const downvotes = voteCounts?.down ?? 0
+  const myVote = voteCounts?.my_vote ?? null
+
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <button
+        onClick={() => voteMutation.mutate('up')}
+        disabled={voteMutation.isPending}
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+          myVote === 'up'
+            ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
+            : 'text-muted-foreground/50 hover:text-emerald-400 hover:bg-emerald-500/10'
+        }`}
+      >
+        <ThumbsUp className="h-3 w-3" />
+        {upvotes > 0 && <span className="tabular-nums">{upvotes}</span>}
+      </button>
+      <button
+        onClick={() => voteMutation.mutate('down')}
+        disabled={voteMutation.isPending}
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+          myVote === 'down'
+            ? 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30'
+            : 'text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10'
+        }`}
+      >
+        <ThumbsDown className="h-3 w-3" />
+        {downvotes > 0 && <span className="tabular-nums">{downvotes}</span>}
+      </button>
     </div>
   )
 }

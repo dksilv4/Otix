@@ -111,7 +111,7 @@ export function MediaHero({
       )}
 
       {/* Content */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
         <div className="flex flex-row items-end justify-between gap-6 sm:gap-8 lg:gap-12">
           {/* Poster */}
           <div className="w-28 shrink-0 sm:w-44 lg:w-56 xl:w-64">

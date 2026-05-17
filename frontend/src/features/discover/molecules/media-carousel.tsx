@@ -147,7 +147,7 @@ export function MediaCarousel({ items, isLoading, className }: MediaCarouselProp
             className="shrink-0"
             style={{
               width: 'var(--card-width, 240px)',
-              aspectRatio: '2 / 3',
+              aspectRatio: item.mediaType === 'music' ? '1 / 1' : '2 / 3',
               scrollSnapAlign: 'start',
             }}
           >

@@ -38,9 +38,14 @@ from otix.domain.media import (
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.people import MediaCredit, Person
 from otix.domain.sync import ProviderState, SyncJob
+from otix.domain.follow import Follow
 from otix.domain.friend import FriendRequest
+from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.notification import Notification
-from otix.domain.user import AuthActionToken, RefreshToken, User, UserSession
+from otix.domain.review_vote import ReviewVote
+from otix.domain.user import AuthActionToken, RefreshToken, User, UserRating, UserSession
+from otix.domain.user_badge import UserBadge
+from otix.domain.user_streak import UserStreak
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
 
 __all__ = [
@@ -49,16 +54,17 @@ __all__ = [
     "Collection",
     "CollectionItem",
     "Company",
-
     "Episode",
     "Exercise",
     "ExternalID",
     "ExternalRating",
+    "Follow",
     "FriendRequest",
     "Game",
     "GameMode",
     "Genre",
     "InvolvedCompany",
+    "KarmaTransaction",
     "Keyword",
     "ListItemRankHistory",
     "MediaListCollaborator",
@@ -79,21 +85,25 @@ __all__ = [
     "ProviderState",
     "RefreshToken",
     "Review",
+    "ReviewVote",
     "Season",
     "Show",
     "SyncJob",
     "Track",
     "TrackRating",
     "User",
+    "UserBadge",
     "UserMoodCheckIn",
     "UserList",
     "UserListItem",
+    "UserRating",
     "UserSession",
     "UserMediaInteraction",
     "UserPlexItem",
     "UserPlexLibrary",
     "UserPlexServer",
     "UserSteamGame",
+    "UserStreak",
     "Workout",
     "WorkoutExercise",
 ]

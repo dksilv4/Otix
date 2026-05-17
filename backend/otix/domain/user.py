@@ -10,16 +10,21 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
+    from otix.domain.follow import Follow
     from otix.domain.friend import FriendRequest
     from otix.domain.interaction import UserMediaInteraction
+    from otix.domain.karma_transaction import KarmaTransaction
     from otix.domain.list import UserList
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
     from otix.domain.review import Review
+    from otix.domain.review_vote import ReviewVote
+    from otix.domain.user_badge import UserBadge
+    from otix.domain.user_streak import UserStreak
     from otix.domain.workout import Workout
 
 
-DEFAULT_PROFILE_SECTIONS = ["reviews", "stats", "top_rated", "recent_activity"]
+DEFAULT_PROFILE_SECTIONS = ["reviews", "top_rated", "recent_activity", "badges"]
 
 
 class AuthActionType(str, enum.Enum):
@@ -69,6 +74,7 @@ class User(Base, TimestampMixin):
     avg_user_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     user_rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     profile_sections: Mapped[list] = mapped_column(JSON, default=lambda: DEFAULT_PROFILE_SECTIONS.copy(), nullable=False)
+    karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
@@ -88,6 +94,18 @@ class User(Base, TimestampMixin):
     )
     ratings_received: Mapped[list[UserRating]] = relationship(
         "UserRating", foreign_keys="UserRating.rated_user_id", back_populates="rated_user"
+    )
+    badges: Mapped[list[UserBadge]] = relationship("UserBadge", back_populates="user")
+    karma_transactions: Mapped[list[KarmaTransaction]] = relationship("KarmaTransaction", back_populates="user")
+    streak: Mapped[UserStreak] = relationship("UserStreak", back_populates="user", uselist=False)
+    followers: Mapped[list[Follow]] = relationship(
+        "Follow", foreign_keys="Follow.followed_id", back_populates="followed"
+    )
+    following: Mapped[list[Follow]] = relationship(
+        "Follow", foreign_keys="Follow.follower_id", back_populates="follower"
+    )
+    given_votes: Mapped[list[ReviewVote]] = relationship(
+        "ReviewVote", foreign_keys="ReviewVote.user_id", back_populates="voter"
     )
 
 

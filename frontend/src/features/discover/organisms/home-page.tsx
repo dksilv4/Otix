@@ -38,7 +38,7 @@ const SECTIONS = [
   { title: 'Trending Movies', mediaType: 'movie' as const, listType: 'trending' },
   { title: 'Trending Shows', mediaType: 'show' as const, listType: 'trending' },
   { title: 'Popular Games', mediaType: 'game' as const, listType: 'popular' },
-  { title: 'New Music', mediaType: 'music' as const, listType: 'upcoming' },
+  { title: 'New Music', mediaType: 'music' as const, listType: 'popular' },
 ]
 
 function getGreeting(): string {

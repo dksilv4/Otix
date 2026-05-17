@@ -44,6 +44,7 @@ class ReviewOut(BaseModel):
 class ReviewUserOut(BaseModel):
     id: str
     username: str
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}
 

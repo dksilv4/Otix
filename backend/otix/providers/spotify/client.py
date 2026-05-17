@@ -85,6 +85,8 @@ class SpotifyProvider(BaseProvider):
 
     async def _get(self, path: str, params: dict | None = None) -> dict:
         resp = await self._request("GET", f"/{path.lstrip('/')}", params=params, headers=await self._auth_headers())
+        if resp.status_code >= 400:
+            raise ProviderError(f"Spotify API returned {resp.status_code} for {path}")
         return resp.json()
 
     # ── Catalog ──────────────────────────────────────────────────────────
@@ -145,6 +147,8 @@ class SpotifyProvider(BaseProvider):
             params=params,
             headers={"Authorization": f"Bearer {access_token}"},
         )
+        if resp.status_code >= 400:
+            raise ProviderError(f"Spotify API returned {resp.status_code} for {path}")
         return resp.json()
 
     async def get_user_profile(self, access_token: str) -> dict:
@@ -168,11 +172,4 @@ class SpotifyProvider(BaseProvider):
         if resp.status_code >= 400:
             raise ProviderError(f"Spotify save tracks failed: {resp.status_code}")
 
-    async def get_user_playlists(self, access_token: str, limit: int = 50, offset: int = 0) -> dict:
-        return await self._user_request(access_token, "me/playlists", {"limit": limit, "offset": offset})
 
-    async def get_playlist(self, access_token: str, playlist_id: str) -> dict:
-        return await self._user_request(access_token, f"playlists/{playlist_id}")
-
-    async def get_playlist_tracks(self, access_token: str, playlist_id: str, limit: int = 100, offset: int = 0) -> dict:
-        return await self._user_request(access_token, f"playlists/{playlist_id}/tracks", {"limit": limit, "offset": offset})

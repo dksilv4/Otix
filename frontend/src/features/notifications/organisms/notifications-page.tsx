@@ -216,7 +216,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-16">
+    <div className="mx-auto lg:max-w-2xl pb-16">
       <Helmet>
         <title>Notifications - Otix</title>
       </Helmet>

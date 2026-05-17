@@ -15,7 +15,7 @@ export interface ReviewOut {
 }
 
 export interface ReviewWithUserOut extends ReviewOut {
-  user: { id: string; username: string }
+  user: { id: string; username: string; isAdmin?: boolean }
 }
 
 export interface ScoreOnlyOut {

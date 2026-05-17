@@ -13,9 +13,11 @@ export interface UserReputationOut {
   avgUserRating: number | null
   userRatingCount: number
   compositeScore: number | null
-  activityScore: number | null
-  directRating: number | null
-  components: Record<string, number>
+  components: {
+    contribution: number
+    trust: number
+    tenure: number
+  }
 }
 
 export const userRatingKeys = {

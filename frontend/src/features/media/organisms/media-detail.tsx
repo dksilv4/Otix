@@ -47,7 +47,7 @@ function DetailSkeleton() {
     <div className="space-y-8">
       <div className="relative">
         <Skeleton className="h-72 w-full sm:h-96" />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="relative z-10 mx-auto lg:max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8 sm:flex-row">
             <Skeleton className="mx-auto h-72 w-48 shrink-0 rounded-lg sm:mx-0 sm:h-80 sm:w-56" />
             <div className="flex flex-col justify-center gap-3">
@@ -65,14 +65,14 @@ function DetailSkeleton() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-lg" />
           ))}
         </div>
       </div>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
         <Skeleton className="mb-3 h-6 w-24" />
         <div className="flex gap-3 overflow-hidden">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -402,7 +402,7 @@ export function MediaDetail() {
       </div>
 
       {/* ── Content sections ── */}
-      <div className="mx-auto max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto lg:max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
         <AdminRehydrateAction mediaId={detail.id} />
 
         {/* Interactions — Like, Watchlist, Watched, Played */}

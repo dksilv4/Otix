@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
@@ -98,7 +98,12 @@ export function UserMenu() {
             >
               <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">{user?.username}</p>
+                <p className="text-sm font-semibold truncate">
+                  {user?.username}
+                  {user?.isAdmin && (
+                    <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </Link>

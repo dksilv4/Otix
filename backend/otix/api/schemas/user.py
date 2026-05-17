@@ -37,3 +37,21 @@ class UserProfileOut(BaseModel):
     plex: PlexIntegrationPublic | None = None
     tmdb_username: str | None = None
     friendship_status: FriendshipStatusOut | None = None
+    # Follow
+    is_following: bool = False
+    follower_count: int = 0
+    following_count: int = 0
+    # Gamification
+    level: int = 1
+    level_title: str = "Novice"
+    xp_rank: int | None = None
+    xp_percentile: float | None = None
+    # Admin
+    is_admin: bool = False
+    # Karma
+    karma: int = 0
+    # Streaks (populated in Phase 4)
+    current_login_streak: int = 0
+    longest_login_streak: int = 0
+    current_review_streak: int = 0
+    longest_review_streak: int = 0

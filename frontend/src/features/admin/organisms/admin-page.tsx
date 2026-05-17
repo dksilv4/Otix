@@ -60,7 +60,7 @@ export function AdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
+    <div className="mx-auto lg:max-w-4xl pb-16">
       <Helmet>
         <title>Admin - Otix</title>
       </Helmet>

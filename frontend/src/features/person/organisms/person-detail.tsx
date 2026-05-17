@@ -24,7 +24,7 @@ export function PersonDetail() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-5xl space-y-8 px-4 pt-24 sm:px-6 lg:px-8">
+      <div className="mx-auto lg:max-w-5xl space-y-8 px-4 pt-24 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           <Skeleton className="h-40 w-40 rounded-full" />
           <div className="space-y-3 text-center sm:text-left">
@@ -65,7 +65,7 @@ export function PersonDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-4 pt-24 pb-16 sm:px-6 lg:px-8">
+    <div className="mx-auto lg:max-w-5xl space-y-10 px-4 pt-24 pb-16 sm:px-6 lg:px-8">
       <Helmet>
         <title>{`${person.name} - Otix`}</title>
         <meta name="description" content={person.bio?.slice(0, 200) || `Credits for ${person.name}`} />

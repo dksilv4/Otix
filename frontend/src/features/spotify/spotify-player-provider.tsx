@@ -96,6 +96,7 @@ interface SpotifyPlayerContextValue {
   setVolume: (vol: number) => Promise<void>
   addToQueue: (spotifyUri: string) => Promise<void>
   playWithQueue: (uris: string[]) => Promise<void>
+  setQueueMetadata: (tracks: QueueTrack[]) => void
   dismissError: () => void
 }
 
@@ -205,6 +206,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   const resumeAttemptedRef = useRef(false)
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null)
   const pendingPlaybackRef = useRef<{ uri: string; expiresAt: number } | null>(null)
+  const queuedTracksRef = useRef<QueueTrack[]>([])
 
   const hasSpotify = isAuthenticated && !!user?.spotifyId
 
@@ -378,7 +380,17 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
           albumArt: track.album.images[0]?.url ?? null,
           durationMs: track.duration_ms,
         })
-        setNextTracks(state.track_window.next_tracks.map(trackToQueueTrack))
+
+        // Use our client-side queue when available (shows all upcoming tracks),
+        // otherwise fall back to the SDK's limited next_tracks.
+        const storedQueue = queuedTracksRef.current
+        const currentIdx = storedQueue.findIndex((q) => q.uri === track.uri)
+        if (currentIdx >= 0) {
+          const upcoming = storedQueue.slice(currentIdx + 1)
+          setNextTracks(upcoming.length > 0 ? upcoming : state.track_window.next_tracks.map(trackToQueueTrack))
+        } else {
+          setNextTracks(state.track_window.next_tracks.map(trackToQueueTrack))
+        }
       })
 
       player.addListener('initialization_error', ({ message }: { message: string }) => {
@@ -578,6 +590,10 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     [callSpotifyApi, notifyError],
   )
 
+  const setQueueMetadata = useCallback((tracks: QueueTrack[]) => {
+    queuedTracksRef.current = tracks
+  }, [])
+
   const playWithQueue = useCallback(
     async (uris: string[]) => {
       const deviceId = await waitForValue(() => deviceIdRef.current)
@@ -591,13 +607,13 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       setError(null)
       markPendingPlayback(uris[0])
       try {
-        // Play the first track
-        await startPlayback(deviceId, {
-          uris: [uris[0]],
-        })
+        // Send up to 100 URIs in the play request so Spotify creates an
+        // ephemeral context — skip/next work natively without manual queueing.
+        const batch = uris.slice(0, 100)
+        await startPlayback(deviceId, { uris: batch })
 
-        // Queue the remaining tracks
-        for (let i = 1; i < uris.length; i++) {
+        // Queue any remaining tracks beyond the 100-URI limit.
+        for (let i = 100; i < uris.length; i++) {
           await callSpotifyApi('POST', `/me/player/queue?uri=${encodeURIComponent(uris[i])}`)
         }
       } catch (e) {
@@ -628,6 +644,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     setVolume: setPlayerVolume,
     addToQueue,
     playWithQueue,
+    setQueueMetadata,
     dismissError,
   }
 
@@ -655,6 +672,7 @@ const defaultContextValue: SpotifyPlayerContextValue = {
   setVolume: async () => {},
   addToQueue: async () => {},
   playWithQueue: async () => {},
+  setQueueMetadata: () => {},
   dismissError: () => {},
 }
 

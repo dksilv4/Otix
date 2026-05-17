@@ -78,6 +78,10 @@ class ReviewService:
             amount = REVIEW_WITH_CONTENT if content else REVIEW_SCORE_ONLY
             app.send_task("xp.award", args=[user_id, amount])
 
+        app.send_task("streak.update", args=[user_id])
+        app.send_task("streak.update_review", args=[user_id])
+        app.send_task("gamification.check_badges", args=[user_id])
+
         return existing
 
     async def get_my_review(self, user_id: str, media_item_id: str) -> Review | None:

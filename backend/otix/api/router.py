@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from otix.api.admin import admin_router
 from otix.api.auth import auth_router
 from otix.api.discover import discover_router
+from otix.api.follow import follow_router
 from otix.api.friend import friend_router
 from otix.api.interaction import interaction_router
 from otix.api.library import library_router
@@ -15,6 +16,7 @@ from otix.api.mood import mood_router
 from otix.api.notification import notification_router
 from otix.api.people import people_router
 from otix.api.review import review_router
+from otix.api.review_vote import review_vote_router
 from otix.api.track import track_router
 from otix.api.upload import upload_router
 from otix.api.user import user_router
@@ -25,6 +27,7 @@ api_router.include_router(admin_router)
 api_router.include_router(auth_router)
 api_router.include_router(discover_router)
 api_router.include_router(friend_router)
+api_router.include_router(follow_router)
 api_router.include_router(media_router)
 api_router.include_router(interaction_router)
 api_router.include_router(library_router)
@@ -34,6 +37,7 @@ api_router.include_router(metrics_router)
 api_router.include_router(mood_router)
 api_router.include_router(notification_router)
 api_router.include_router(review_router)
+api_router.include_router(review_vote_router)
 api_router.include_router(track_router)
 api_router.include_router(upload_router)
 api_router.include_router(user_router)

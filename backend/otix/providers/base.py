@@ -110,6 +110,10 @@ class BaseProvider(ABC):
             self._update_cb_gauge()
             response.raise_for_status()
 
+        if response.status_code >= 400:
+            # Client error — don't record success or failure; let caller decide
+            return response
+
         self.circuit_breaker.record_success()
         self._update_cb_gauge()
         return response

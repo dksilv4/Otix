@@ -63,6 +63,12 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         return "control"
     if name.startswith("xp."):
         return "user"
+    if name.startswith("streak."):
+        return "user"
+    if name.startswith("gamification."):
+        return "user"
+    if name.startswith("karma."):
+        return "user"
     return "control"
 
 
@@ -189,6 +195,11 @@ app.config_from_object(
                 "task": "maintenance.enrich_spotify",
                 "schedule": crontab(minute="19,49"),
             },
+            # Spotify artist graph crawl (every 5 min — fans out to related_artists)
+            "crawl-spotify-related": {
+                "task": "sync.spotify.crawl_related",
+                "schedule": crontab(minute="2,7,12,17,22,27,32,37,42,47,52,57"),
+            },
             # Last.fm enrichment scan (every 30 min)
             "enrich-lastfm": {
                 "task": "maintenance.enrich_lastfm",
@@ -231,3 +242,4 @@ import otix.tasks.maintenance  # noqa: E402
 import otix.tasks.seed.catalog_seed  # noqa: E402
 import otix.tasks.seed.tmdb_seed  # noqa: E402
 import otix.tasks.xp  # noqa: E402
+import otix.tasks.gamification  # noqa: E402

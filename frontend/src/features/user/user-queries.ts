@@ -36,6 +36,35 @@ export interface UserProfile {
   plex?: PlexPublicProfile | null
   tmdbUsername?: string | null
   friendshipStatus?: FriendshipStatus | null
+  // Follow
+  isFollowing?: boolean
+  followerCount?: number
+  followingCount?: number
+  // Gamification
+  level?: number
+  levelTitle?: string
+  xpRank?: number | null
+  xpPercentile?: number | null
+  // Karma
+  karma?: number
+  // Admin
+  isAdmin?: boolean
+  // Streaks
+  currentLoginStreak?: number
+  longestLoginStreak?: number
+  currentReviewStreak?: number
+  longestReviewStreak?: number
+}
+
+export interface FollowCounts {
+  followers: number
+  following: number
+}
+
+export interface FollowUser {
+  id: string
+  username: string
+  avatarUrl: string | null
 }
 
 export interface UserStats {
@@ -164,4 +193,42 @@ export const userQueries = {
       },
       staleTime: 1000 * 30,
     }),
+
+  followCounts: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'follow-counts'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<FollowCounts>(`/users/${username}/follow/counts`)
+        return data
+      },
+      staleTime: 1000 * 60 * 2,
+    }),
+}
+
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+
+export function useFollowUser(username: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.post(`/users/${username}/follow`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', username] })
+      queryClient.invalidateQueries({ queryKey: ['user', username, 'follow-counts'] })
+    },
+  })
+}
+
+export function useUnfollowUser(username: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/users/${username}/follow`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', username] })
+      queryClient.invalidateQueries({ queryKey: ['user', username, 'follow-counts'] })
+    },
+  })
 }

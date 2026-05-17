@@ -72,8 +72,6 @@ vi.mock("./library-queries", () => ({
   usePlexStatus: vi.fn(() => ({ data: { itemCount: 0, lastScannedAt: null } })),
   useSpotifyLibraryScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
   useSpotifyStatus: vi.fn(() => ({ data: { trackCount: 0, lastScannedAt: null } })),
-  useSpotifyPlaylists: vi.fn(() => ({ data: [], isLoading: false, isError: false })),
-  useSpotifyPlaylistTracks: vi.fn(() => ({ data: null, isLoading: false, isError: false })),
   useSpotifyLikedTracks: vi.fn(() => ({
     data: { pages: [{ tracks: [], total: 0, nextOffset: null, hasMore: false }] },
     isLoading: false,
@@ -107,6 +105,7 @@ vi.mock("@/features/list/list-queries", () => ({
 vi.mock("@/features/spotify/spotify-player-provider", () => ({
   useSpotifyPlayer: vi.fn(() => ({
     playWithQueue: vi.fn(),
+    setQueueMetadata: vi.fn(),
     currentTrack: null,
     isPlaying: false,
     togglePlay: vi.fn(),

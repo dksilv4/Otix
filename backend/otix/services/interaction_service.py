@@ -104,6 +104,9 @@ class InteractionService:
             )
             app.send_task("xp.award", args=[user_id, amount])
 
+        app.send_task("streak.update", args=[user_id])
+        app.send_task("gamification.check_badges", args=[user_id])
+
         return existing
 
     async def remove_interaction(

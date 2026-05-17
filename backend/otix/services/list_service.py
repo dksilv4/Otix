@@ -33,6 +33,8 @@ class ListService:
         await self.session.flush()
         await self.session.refresh(lst)
         app.send_task("xp.award", args=[user_id, LIST_CREATE])
+        app.send_task("streak.update", args=[user_id])
+        app.send_task("gamification.check_badges", args=[user_id])
         return lst
 
     async def update_list(

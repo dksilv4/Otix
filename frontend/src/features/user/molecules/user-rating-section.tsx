@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { Star, Users } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { StarInput } from '@/features/review/molecules/star-input'
 import { useAuth } from '@/features/auth/auth-provider'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { userRatingQueries, useRateUser, useDeleteUserRating } from '../user-rating-queries'
 import { userQueries } from '../user-queries'
-import { cn } from '@/lib/utils'
 
 interface UserRatingSectionProps {
   username: string
@@ -16,18 +15,11 @@ export function UserRatingSection({ username }: UserRatingSectionProps) {
 
   if (!currentUser) {
     return (
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Star className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Rate this user</p>
-            <p className="text-xs text-muted-foreground">
-              <a href="/auth/login" className="text-primary hover:underline">Sign in</a> to rate
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center gap-3 py-2">
+        <Star className="h-4 w-4 text-primary" />
+        <p className="text-xs text-muted-foreground">
+          <a href="/auth/login" className="text-primary hover:underline">Sign in</a> to rate
+        </p>
       </div>
     )
   }
@@ -39,7 +31,6 @@ function UserRatingContent({ username, currentUsername }: { username: string; cu
   const isOwnProfile = currentUsername === username
 
   const myRatingQuery = useQuery(userRatingQueries.myRating(username))
-  const reputationQuery = useQuery(userRatingQueries.reputation(username))
   const profileQuery = useQuery(userQueries.profile(username))
 
   const rateUser = useRateUser(username)
@@ -47,131 +38,38 @@ function UserRatingContent({ username, currentUsername }: { username: string; cu
 
   const profile = profileQuery.data
   const myRating = myRatingQuery.data
-  const reputation = reputationQuery.data
 
-  if (isOwnProfile) {
-    if (reputationQuery.isLoading) return <RatingCardSkeleton />
-    if (!reputation) return null
+  // Own profile — reputation is already in the hero meta line
+  if (isOwnProfile) return null
 
-    return (
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Users className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">Your Reputation</p>
-            <p className="text-xs text-muted-foreground">
-              {reputation.userRatingCount > 0
-                ? `Rated by ${reputation.userRatingCount} user${reputation.userRatingCount !== 1 ? 's' : ''}`
-                : 'Not yet rated by other users'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-end gap-6">
-          <div className="text-center">
-            <p
-              className={cn(
-                'text-4xl font-extrabold tabular-nums tracking-tight',
-                (reputation.compositeScore ?? 0) >= 7 ? 'text-emerald-400' :
-                (reputation.compositeScore ?? 0) >= 4 ? 'text-amber-400' : 'text-muted-foreground',
-              )}
-            >
-              {reputation.compositeScore?.toFixed(1) ?? '—'}
-            </p>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
-              Score
-            </p>
-          </div>
-
-          <div className="flex-1 space-y-1.5">
-            {reputation.components && Object.entries(reputation.components).map(([key, val]) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="w-20 text-[10px] uppercase tracking-wider text-muted-foreground text-right shrink-0">
-                  {key}
-                </span>
-                <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary/40 transition-all duration-500"
-                    style={{ width: `${(val / 10) * 100}%` }}
-                  />
-                </div>
-                <span className="text-[10px] tabular-nums text-muted-foreground w-6 text-right">
-                  {val.toFixed(1)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Viewing another user's profile
-  if (myRatingQuery.isLoading || !profile) return <RatingCardSkeleton />
+  if (myRatingQuery.isLoading || !profile) return <RatingSectionSkeleton />
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <Star className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold">
-            {myRating ? 'Your Rating' : 'Rate this User'}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {myRating ? `You rated ${username} ${myRating.score}/10` : 'How would you rate this user?'}
-          </p>
-        </div>
+    <section>
+      <div className="flex items-center gap-2 mb-3">
+        <Star className="h-3.5 w-3.5 text-muted-foreground/60" />
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {myRating ? 'Your Rating' : 'Rate'}
+        </h2>
         {myRating && (
           <button
             onClick={() => deleteRating.mutate()}
-            className="ml-auto text-xs text-muted-foreground hover:text-destructive transition-colors"
+            className="ml-auto text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
           >
-            Remove
+            Clear
           </button>
         )}
       </div>
-
-      <StarInput
-        value={myRating?.score ?? null}
-        onChange={(score) => rateUser.mutate(score)}
-        size="md"
-      />
-
-      {profile.compositeScore != null && (
-        <div className="mt-4 pt-4 border-t border-border/30 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Reputation score:</span>
-          <span className={cn(
-            'text-sm font-bold tabular-nums',
-            profile.compositeScore >= 7 ? 'text-emerald-400' :
-            profile.compositeScore >= 4 ? 'text-amber-400' : 'text-muted-foreground',
-          )}>
-            {profile.compositeScore.toFixed(1)}/10
-          </span>
-        </div>
-      )}
-    </div>
+      <StarInput value={myRating?.score ?? null} onChange={(score) => rateUser.mutate(score)} size="sm" />
+    </section>
   )
 }
 
-function RatingCardSkeleton() {
+function RatingSectionSkeleton() {
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)] space-y-4">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-10 w-10 rounded-xl" />
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-3 w-32" />
-        </div>
-      </div>
-      <div className="flex gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-8 rounded" />
-        ))}
-      </div>
-    </div>
+    <section className="space-y-3">
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="h-8 w-32" />
+    </section>
   )
 }

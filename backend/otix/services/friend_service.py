@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 from otix.domain.friend import FriendRequest
 from otix.domain.notification import Notification
 from otix.domain.user import User
+from otix.infrastructure.celery import app
 
 
 class FriendService:
@@ -78,6 +79,10 @@ class FriendService:
         self.session.add(notification)
 
         await self.session.flush()
+
+        app.send_task("gamification.check_badges", args=[request.sender_id])
+        app.send_task("gamification.check_badges", args=[request.receiver_id])
+
         return request
 
     async def reject_request(self, request_id: str, user_id: str) -> FriendRequest:

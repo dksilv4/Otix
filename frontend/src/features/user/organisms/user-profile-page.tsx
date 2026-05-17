@@ -2,19 +2,23 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, MessageSquareText, Star, UserPlus, UserCheck, Clock, Shield } from 'lucide-react'
+import { CalendarDays, Star, UserPlus, UserCheck, Clock, Shield } from 'lucide-react'
 
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
+import { DiamondIcon } from '@/features/dk-ui/atoms/diamond-icon'
+import { OtixIcon } from '@/features/dk-ui/atoms/otix-icon'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { userQueries, computeReviewStats } from '../user-queries'
 import { ProfileSectionRenderer } from './profile-section-renderer'
 import { UserRatingSection } from '../molecules/user-rating-section'
+import { FollowButton } from '../molecules/follow-button'
+import { StreakDisplay } from '../molecules/streak-display'
 
 const GRADIENTS = [
   ['#0f0c29', '#302b63', '#24243e'],
@@ -109,19 +113,13 @@ function XPProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#xpGradient)"
+          stroke="var(--primary)"
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           className="transition-[stroke-dashoffset] duration-700 ease-out"
         />
-        <defs>
-          <linearGradient id="xpGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="var(--primary)" />
-            <stop offset="100%" stopColor="var(--accent)" />
-          </linearGradient>
-        </defs>
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
         {children}
@@ -183,7 +181,7 @@ export function UserProfilePage() {
       </Helmet>
 
       {/* Hero */}
-      <div className="relative flex min-h-[60vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)] animate-hero-fade-in">
+      <div className="relative flex min-h-[75vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)] animate-hero-fade-in">
         {/* Backdrop */}
         {profile.backgroundUrl ? (
           <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -215,7 +213,7 @@ export function UserProfilePage() {
         )}
 
         {/* Content */}
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-8 pt-20 sm:px-6 sm:pb-10 lg:px-8">
+        <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-8 pt-20 sm:px-6 sm:pb-10 lg:px-8">
           <div className="flex flex-row items-end gap-5 sm:gap-8">
             {/* Avatar with XP ring */}
             <div className="shrink-0 animate-hero-scale-in" style={{ animationDelay: '50ms' }}>
@@ -236,18 +234,21 @@ export function UserProfilePage() {
                 style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)', animationDelay: '100ms' }}
               >
                 {profile.username}
+                {profile.isAdmin && (
+                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80" />
+                )}
               </h1>
 
               {/* Meta */}
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium animate-hero-slide-up" style={{ animationDelay: '150ms' }}>
                 <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-white/40" />
-                  Joined {formatJoinDate(profile.createdAt)}
+                  <DiamondIcon className="h-3.5 w-3.5 text-amber-400/80" />
+                  {profile.compositeScore ?? 0}
                 </span>
                 <span aria-hidden className="text-white/15">·</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <MessageSquareText className="h-3.5 w-3.5 text-white/40" />
-                  {profile.reviewCount} review{profile.reviewCount !== 1 ? 's' : ''}
+                  <CalendarDays className="h-3.5 w-3.5 text-white/40" />
+                  Joined {formatJoinDate(profile.createdAt)}
                 </span>
                 {stats?.averageRating != null && (
                   <>
@@ -258,15 +259,11 @@ export function UserProfilePage() {
                     </span>
                   </>
                 )}
-                {profile.compositeScore != null && (
-                  <>
-                    <span aria-hidden className="text-white/15">·</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <Shield className="h-3.5 w-3.5 text-white/40" />
-                      {profile.compositeScore.toFixed(1)} rep
-                    </span>
-                  </>
-                )}
+                <span aria-hidden className="text-white/15">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <OtixIcon className="h-4 w-4 text-amber-400/80" />
+                  {profile.karma?.toLocaleString() ?? 0} karma
+                </span>
               </div>
 
               {profile.bio && (
@@ -275,64 +272,81 @@ export function UserProfilePage() {
                 </p>
               )}
 
-              {/* Friend actions */}
-              {currentUser && currentUser.username !== username && profile.friendshipStatus && (
-                <div className="mt-3 animate-hero-slide-up" style={{ animationDelay: '250ms' }}>
-                  {profile.friendshipStatus.status === 'none' && (
-                    <DkButton
-                      variant="glass"
-                      size="xs"
-                      onClick={async () => {
-                        await apiClient.post(`/friends/requests/${profile.id}`)
-                        queryClient.invalidateQueries({ queryKey: ['user', username] })
-                      }}
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Add Friend
-                    </DkButton>
-                  )}
-                  {profile.friendshipStatus.status === 'pending_sent' && (
-                    <DkButton variant="secondary" size="xs" disabled>
-                      <Clock className="h-3.5 w-3.5" />
-                      Request Sent
-                    </DkButton>
-                  )}
-                  {profile.friendshipStatus.status === 'pending_received' && (
-                    <div className="flex gap-2">
-                      <DkButton
-                        variant="glass"
-                        size="xs"
-                        onClick={async () => {
-                          const requestId = profile.friendshipStatus?.requestId
-                          if (requestId) {
-                            await apiClient.post(`/friends/requests/${requestId}/accept`)
+              {/* Follow + Friend actions */}
+              {currentUser && currentUser.username !== username && (
+                <div className="mt-3 flex items-center gap-2 animate-hero-slide-up" style={{ animationDelay: '250ms' }}>
+                  <FollowButton
+                    username={username}
+                    isFollowing={profile.isFollowing ?? false}
+                  />
+                  {profile.friendshipStatus && (
+                    <>
+                      {profile.friendshipStatus.status === 'none' && (
+                        <DkButton
+                          variant="glass"
+                          size="xs"
+                          onClick={async () => {
+                            await apiClient.post(`/friends/requests/${profile.id}`)
                             queryClient.invalidateQueries({ queryKey: ['user', username] })
-                          }
-                        }}
-                      >
-                        Accept
-                      </DkButton>
-                      <DkButton
-                        variant="secondary"
-                        size="xs"
-                        onClick={async () => {
-                          const requestId = profile.friendshipStatus?.requestId
-                          if (requestId) {
-                            await apiClient.post(`/friends/requests/${requestId}/reject`)
-                            queryClient.invalidateQueries({ queryKey: ['user', username] })
-                          }
-                        }}
-                      >
-                        Decline
-                      </DkButton>
-                    </div>
+                          }}
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          Add Friend
+                        </DkButton>
+                      )}
+                      {profile.friendshipStatus.status === 'pending_sent' && (
+                        <DkButton variant="secondary" size="xs" disabled>
+                          <Clock className="h-3.5 w-3.5" />
+                          Request Sent
+                        </DkButton>
+                      )}
+                      {profile.friendshipStatus.status === 'pending_received' && (
+                        <div className="flex gap-2">
+                          <DkButton
+                            variant="glass"
+                            size="xs"
+                            onClick={async () => {
+                              const requestId = profile.friendshipStatus?.requestId
+                              if (requestId) {
+                                await apiClient.post(`/friends/requests/${requestId}/accept`)
+                                queryClient.invalidateQueries({ queryKey: ['user', username] })
+                              }
+                            }}
+                          >
+                            Accept
+                          </DkButton>
+                          <DkButton
+                            variant="secondary"
+                            size="xs"
+                            onClick={async () => {
+                              const requestId = profile.friendshipStatus?.requestId
+                              if (requestId) {
+                                await apiClient.post(`/friends/requests/${requestId}/reject`)
+                                queryClient.invalidateQueries({ queryKey: ['user', username] })
+                              }
+                            }}
+                          >
+                            Decline
+                          </DkButton>
+                        </div>
+                      )}
+                      {profile.friendshipStatus.status === 'friends' && (
+                        <DkButton variant="secondary" size="xs" disabled>
+                          <UserCheck className="h-3.5 w-3.5" />
+                          Friends
+                        </DkButton>
+                      )}
+                    </>
                   )}
-                  {profile.friendshipStatus.status === 'friends' && (
-                    <DkButton variant="secondary" size="xs" disabled>
-                      <UserCheck className="h-3.5 w-3.5" />
-                      Friends
-                    </DkButton>
-                  )}
+                  {/* Follower counts */}
+                  <span className="text-xs text-white/30 ml-1">
+                    {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
+                  </span>
+                </div>
+              )}
+              {currentUser && currentUser.username === username && (
+                <div className="mt-3 animate-hero-slide-up text-xs text-white/30" style={{ animationDelay: '250ms' }}>
+                  {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
                 </div>
               )}
             </div>
@@ -342,7 +356,7 @@ export function UserProfilePage() {
           <div className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06] animate-hero-reveal-bar" style={{ animationDelay: '300ms' }}>
             {/* Fill */}
             <div
-              className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary/40 via-primary/30 to-accent/25 transition-all duration-700 ease-out"
+              className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary via-primary to-accent transition-all duration-700 ease-out"
               style={{ width: `${barProgress * 100}%` }}
             />
             {/* Subtle top highlight across the whole bar */}
@@ -356,6 +370,9 @@ export function UserProfilePage() {
                 </span>
                 <span className="text-sm font-extrabold text-primary tabular-nums leading-none">
                   {gamification.level}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground/50 ml-0.5">
+                  · {profile.levelTitle ?? gamification.level}
                 </span>
               </div>
 
@@ -372,13 +389,31 @@ export function UserProfilePage() {
                 </span>
               </div>
             </div>
+            {/* XP Rank position */}
+            {profile.xpRank != null && (
+              <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground/30 animate-hero-reveal-bar" style={{ animationDelay: '350ms' }}>
+                <span>#{profile.xpRank.toLocaleString()}</span>
+                {profile.xpPercentile != null && (
+                  <span>· Top {profile.xpPercentile}%</span>
+                )}
+              </div>
+            )}
+            {/* Streaks */}
+            <div className="mt-2 animate-hero-reveal-bar" style={{ animationDelay: '380ms' }}>
+              <StreakDisplay
+                loginStreak={profile.currentLoginStreak ?? 0}
+                longestLoginStreak={profile.longestLoginStreak ?? 0}
+                reviewStreak={profile.currentReviewStreak ?? 0}
+                longestReviewStreak={profile.longestReviewStreak ?? 0}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Platform links — floating below hero */}
       {(profile.steam || profile.plex || profile.tmdbUsername) && (
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3 animate-hero-slide-up" style={{ animationDelay: '350ms' }}>
+        <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3 animate-hero-slide-up" style={{ animationDelay: '350ms' }}>
           <div className="flex flex-wrap gap-1.5">
             {profile.steam && (
               <a
@@ -418,7 +453,7 @@ export function UserProfilePage() {
       )}
 
       {/* Profile content */}
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
+      <div className="mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
         <UserRatingSection username={username} />
         <ProfileSectionRenderer
           username={username}

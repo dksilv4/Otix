@@ -154,9 +154,10 @@ export function DiscoverHero({ className }: { className?: string }) {
                     detail.mediaType === 'movie' && 'bg-rose-600',
                     detail.mediaType === 'show' && 'bg-violet-600',
                     detail.mediaType === 'game' && 'bg-emerald-600',
+                    detail.mediaType === 'music' && 'bg-amber-600',
                   )}
                 >
-                  {detail.mediaType === 'movie' ? 'Movie' : detail.mediaType === 'show' ? 'TV' : 'Game'}
+                  {detail.mediaType === 'movie' ? 'Movie' : detail.mediaType === 'show' ? 'TV' : detail.mediaType === 'game' ? 'Game' : 'Music'}
                 </Badge>
 
                 {/* Rating */}
@@ -195,7 +196,7 @@ export function DiscoverHero({ className }: { className?: string }) {
               <Link
                 to="/media/$mediaType/$mediaId"
                 params={{
-                  mediaType: detail.mediaType as 'movie' | 'show' | 'game',
+                  mediaType: detail.mediaType as 'movie' | 'show' | 'game' | 'music',
                   mediaId: detail.id,
                 }}
               >

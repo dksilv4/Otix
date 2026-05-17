@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from otix.domain.media import Album, ExternalID, MediaItem, Track
 from otix.domain.people import MediaCredit, Person
@@ -443,6 +443,59 @@ async def _sync_related_artists(spotify_artist_id: str) -> dict:
         created=created,
     )
     return {"artist_id": spotify_artist_id, "count": len(related), "created": created}
+
+
+# ── Artist graph crawl ──────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.crawl_related",
+    bind=True,
+    max_retries=1,
+)
+def crawl_spotify_related_task(self, batch_size: int = 5) -> dict:
+    """Pick artists whose related artists haven't been fetched and enqueue discovery.
+
+    Scheduled by Celery beat to continuously expand the Spotify artist graph.
+    Prioritizes popular artists first; recrawls after 30 days.
+    """
+    return run_async(_crawl_spotify_related(batch_size))
+
+
+async def _crawl_spotify_related(batch_size: int = 5) -> dict:
+    from datetime import timedelta
+
+    recrawl_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(Person)
+            .where(
+                Person.spotify_artist_id.isnot(None),
+                or_(
+                    Person.spotify_related_crawled_at.is_(None),
+                    Person.spotify_related_crawled_at < recrawl_cutoff,
+                ),
+            )
+            .order_by(Person.spotify_popularity.desc().nullslast())
+            .limit(batch_size)
+        )
+        artists = result.scalars().all()
+
+    enqueued = 0
+    for person in artists:
+        async with async_session() as session:
+            p = await session.get(Person, person.id)
+            p.spotify_related_crawled_at = datetime.now(timezone.utc)
+            await session.commit()
+
+        app.send_task("sync.spotify.related_artists", args=[person.spotify_artist_id])
+        enqueued += 1
+
+    if enqueued:
+        logger.info("crawl_related enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
 
 
 @app.task(

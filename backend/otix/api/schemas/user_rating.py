@@ -23,6 +23,6 @@ class UserReputationOut(BaseModel):
     avg_user_rating: float | None = None
     user_rating_count: int = 0
     composite_score: float | None = None
-    activity_score: float | None = None
-    direct_rating: float | None = None
     components: dict = Field(default_factory=dict)
+
+    model_config = {"from_attributes": True}

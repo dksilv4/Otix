@@ -1,7 +1,7 @@
 import { ReviewsSection } from './profile-reviews-section'
-import { StatsSection } from './profile-stats-section'
 import { TopRatedSection } from './profile-top-rated-section'
 import { ActivitySection } from './profile-activity-section'
+import { BadgesSection } from './profile-badges-section'
 
 interface ProfileSectionRendererProps {
   username: string
@@ -10,9 +10,9 @@ interface ProfileSectionRendererProps {
 
 const SECTION_COMPONENTS: Record<string, React.FC<{ username: string }>> = {
   reviews: ReviewsSection,
-  stats: StatsSection,
   top_rated: TopRatedSection,
   recent_activity: ActivitySection,
+  badges: BadgesSection,
 }
 
 export function ProfileSectionRenderer({ username, sections }: ProfileSectionRendererProps) {
