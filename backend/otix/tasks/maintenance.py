@@ -876,13 +876,21 @@ async def _catalog_hydration() -> dict:
     provider_map = _MEDIA_SYNC_MAP
 
     async with async_session() as session:
-        # Single join: stale items with their primary external ID
+        # Stale items (past their next_sync_at) or never-synced stubs (Plex-created, completeness <= 0.2)
         result = await session.execute(
             select(MediaItem.id, MediaItem.media_type, ExternalID.external_id)
             .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
             .where(
-                MediaItem.next_sync_at.isnot(None),
-                MediaItem.next_sync_at < now,
+                or_(
+                    and_(
+                        MediaItem.next_sync_at.isnot(None),
+                        MediaItem.next_sync_at < now,
+                    ),
+                    and_(
+                        MediaItem.next_sync_at.is_(None),
+                        MediaItem.completeness_score <= 0.2,
+                    ),
+                ),
                 or_(
                     and_(
                         MediaItem.media_type.in_(["movie", "show"]),
@@ -898,7 +906,7 @@ async def _catalog_hydration() -> dict:
                     ),
                 ),
             )
-            .order_by(MediaItem.next_sync_at.asc())
+            .order_by(MediaItem.next_sync_at.asc().nullsfirst())
             .limit(50)
         )
         rows = result.all()
