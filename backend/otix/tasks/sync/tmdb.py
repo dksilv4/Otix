@@ -277,11 +277,14 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     else:
                         ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id)
                         session.add(ext_id)
+                    _seasons = list(show.seasons)
                     session.add(show)
                     await session.flush()
-                    for s in show.seasons:
+                    for s in _seasons:
                         s.show_id = show.media_item_id
-                    new_seasons = list(show.seasons)
+                        session.add(s)
+                    await session.flush()
+                    new_seasons = _seasons
 
             await session.flush()
 
