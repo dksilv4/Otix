@@ -409,9 +409,11 @@ async def sync_plex(
     progress: ProgressCallback | None = None,
 ) -> dict:
     servers = await discover_plex_servers(db, user, progress=progress)
+    logger.info("plex sync discovered servers", count=len(servers), names=[s.name for s in servers])
     summary = {"servers": len(servers), "libraries": 0, "total": 0, "matched": 0, "seeded": 0}
     failed_servers: list[str] = []
     for server in servers:
+        logger.info("plex sync processing server", name=server.name, base_url=server.base_url)
         try:
             libraries = await discover_plex_libraries(db, user, server, progress=progress)
         except Exception:
@@ -437,6 +439,7 @@ async def sync_plex(
     for key in ("total", "matched", "seeded"):
         summary[key] += wl_result[key]
 
+    logger.info("plex sync complete", summary=summary)
     if failed_servers:
         summary["failed_servers"] = failed_servers
 
