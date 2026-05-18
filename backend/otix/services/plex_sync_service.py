@@ -213,6 +213,7 @@ async def discover_plex_libraries(
 
 
 async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, guids: dict[str, str]) -> str:
+    # Return existing resolved media if any GUID already matches
     for provider, external_id in guids.items():
         existing = await db.scalar(
             select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
@@ -220,6 +221,7 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         if existing and existing.media_item_id is not None:
             return existing.media_item_id
 
+    # Create a stub MediaItem — the TMDB sync task will backfill details later
     title = str(item.get("title") or "Untitled")
     year = item.get("year")
     slug = slugify(f"{title}-{year}") if year else slugify(title)
@@ -238,8 +240,17 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         db.add(Movie(media_item_id=media.id))
     else:
         db.add(Show(media_item_id=media.id))
+
+    # Upsert ExternalIDs: update existing stubs, insert new ones
     for provider, external_id in guids.items():
-        db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=media.id))
+        ext = await db.scalar(
+            select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
+        )
+        if ext is not None:
+            ext.media_item_id = media.id
+        else:
+            db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=media.id))
+
     return media.id
 
 
