@@ -232,7 +232,7 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         if existing and existing.media_item_id is not None:
             return existing.media_item_id
 
-    # Create a stub MediaItem — the TMDB sync task will backfill details later
+    # Create a stub MediaItem — the catalog hydration cycle will backfill details
     title = str(item.get("title") or "Untitled")
     year = item.get("year")
     slug = slugify(f"{title}-{year}") if year else slugify(title)
@@ -244,6 +244,7 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         poster_url=item.get("thumb"),
         release_date=None,
         completeness_score=0.15,
+        next_sync_at=datetime.now(timezone.utc),
     )
     db.add(media)
     await db.flush()
