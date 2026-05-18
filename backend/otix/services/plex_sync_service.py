@@ -397,19 +397,34 @@ async def sync_plex(
 ) -> dict:
     servers = await discover_plex_servers(db, user, progress=progress)
     summary = {"servers": len(servers), "libraries": 0, "total": 0, "matched": 0, "seeded": 0}
+    failed_servers: list[str] = []
     for server in servers:
-        libraries = await discover_plex_libraries(db, user, server, progress=progress)
+        try:
+            libraries = await discover_plex_libraries(db, user, server, progress=progress)
+        except Exception:
+            logger.warning("plex server unreachable, skipping",
+                           server_name=server.name, machine_id=server.machine_identifier, exc_info=True)
+            failed_servers.append(server.name)
+            continue
         summary["libraries"] += len(libraries)
         for library in libraries:
             if not library.selected:
                 continue
-            result = await sync_plex_library(db, user, server, library, progress=progress)
+            try:
+                result = await sync_plex_library(db, user, server, library, progress=progress)
+            except Exception:
+                logger.warning("plex library sync failed, skipping",
+                               server_name=server.name, library_title=library.title, exc_info=True)
+                continue
             for key in ("total", "matched", "seeded"):
                 summary[key] += result[key]
-                
+
     wl_result = await sync_plex_watchlist(db, user, progress=progress)
     for key in ("total", "matched", "seeded"):
         summary[key] += wl_result[key]
+
+    if failed_servers:
+        summary["failed_servers"] = failed_servers
 
     await db.commit()
     logger.info("plex sync completed", user_id=user.id, **summary)
