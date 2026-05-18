@@ -217,7 +217,7 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         existing = await db.scalar(
             select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
         )
-        if existing:
+        if existing and existing.media_item_id is not None:
             return existing.media_item_id
 
     title = str(item.get("title") or "Untitled")
@@ -325,10 +325,11 @@ async def sync_plex_library(
             },
         )
         await db.execute(stmt)
-        if viewed:
-            await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})
-        if view_offset:
-            await _upsert_interaction(db, user.id, media_item_id, "started", {"source": "plex", "view_offset": view_offset, "duration": item.get("duration")})
+        if media_item_id:
+            if viewed:
+                await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})
+            if view_offset:
+                await _upsert_interaction(db, user.id, media_item_id, "started", {"source": "plex", "view_offset": view_offset, "duration": item.get("duration")})
 
         if (i + 1) % 5 == 0:
             await _safe_progress(progress, "library_progress", server_name=server.name, library_name=library.title, items_processed=i + 1, items_total=items_total)
