@@ -217,6 +217,7 @@ class PlexLibraryResponse(BaseModel):
 class PlexDiscoveryResponse(BaseModel):
     servers: list[PlexServerResponse]
     libraries: list[PlexLibraryResponse]
+    unreachable_servers: list[str] | None = None
 
 
 class PlexSyncResponse(BaseModel):

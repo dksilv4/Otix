@@ -992,10 +992,6 @@ async def plex_discover_servers(
 ) -> PlexDiscoveryResponse:
     try:
         servers = await discover_plex_servers(db, current_user)
-        libraries = []
-        for server in servers:
-            libraries.extend(await discover_plex_libraries(db, current_user, server))
-        await db.commit()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except httpx.HTTPStatusError as e:
@@ -1028,9 +1024,23 @@ async def plex_discover_servers(
     except Exception:
         logger.exception("plex discover failed", user_id=current_user.id)
         raise HTTPException(status_code=500, detail="Failed to discover Plex servers. Please try again later.")
+
+    # Discover libraries per-server, skipping unreachable ones
+    libraries = []
+    unreachable_servers = []
+    for server in servers:
+        try:
+            libraries.extend(await discover_plex_libraries(db, current_user, server))
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError):
+            logger.warning("plex server unreachable during discovery, skipping",
+                           server_name=server.name, machine_id=server.machine_identifier)
+            unreachable_servers.append(server.name)
+    await db.commit()
+
     return PlexDiscoveryResponse(
         servers=[PlexServerResponse.model_validate(server) for server in servers],
         libraries=[PlexLibraryResponse.model_validate(library) for library in libraries],
+        unreachable_servers=unreachable_servers if unreachable_servers else None,
     )
 
 
