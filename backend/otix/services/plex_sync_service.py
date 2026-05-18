@@ -174,6 +174,17 @@ async def discover_plex_servers(
         servers.append(server)
         await _safe_progress(progress, "server_found", server_name=server.name, machine_id=machine_id)
     await db.flush()
+
+    # Include DB-only servers that plex.tv didn't return (e.g., temporarily unlisted)
+    seen_ids = {s.machine_identifier for s in servers}
+    db_servers = (await db.scalars(
+        select(UserPlexServer).where(UserPlexServer.user_id == user.id)
+    )).all()
+    for s in db_servers:
+        if s.machine_identifier not in seen_ids and s.base_url:
+            servers.append(s)
+            await _safe_progress(progress, "server_from_db", server_name=s.name, machine_id=s.machine_identifier)
+
     return servers
 
 
