@@ -250,6 +250,7 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
             ext.media_item_id = media.id
         else:
             db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=media.id))
+    await db.flush()
 
     return media.id
 
@@ -427,6 +428,7 @@ async def sync_plex(
             except Exception:
                 logger.warning("plex library sync failed, skipping",
                                server_name=server.name, library_title=library.title, exc_info=True)
+                await db.rollback()
                 continue
             for key in ("total", "matched", "seeded"):
                 summary[key] += result[key]
