@@ -26,6 +26,19 @@ async def lifespan(app: FastAPI) -> Any:
     logger = structlog.get_logger()
     logger.info("otix api starting", env=settings.app_env)
 
+    # Run pending database migrations before accepting requests.
+    # Alembic acquires an advisory lock so concurrent API containers don't race.
+    try:
+        from alembic.config import Config
+        from alembic import command
+
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
+        command.upgrade(alembic_cfg, "head")
+        logger.info("migrations applied")
+    except Exception:
+        logger.exception("migrations failed — continuing startup")
+
     await get_redis()
 
     yield
