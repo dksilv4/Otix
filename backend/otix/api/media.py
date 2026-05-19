@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -32,16 +33,41 @@ from otix.tasks.sync.search import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHO
 
 media_router = APIRouter(prefix="/media", tags=["media"])
 
+SEARCH_CACHE_TTL = 30
+EMBEDDING_CACHE_TTL = 300
 
-async def _embed_query(query: str) -> list[float] | None:
-    """Generate an embedding for a search query. Returns None on any failure
-    (e.g. model not yet downloaded, or embedding disabled)."""
-    try:
-        from otix.services.embedding_service import EmbeddingService
 
-        return await EmbeddingService().embed(query)
-    except Exception:
-        return None
+def _cache_key(q: str, media_type: str | None, sort_by: str | None, page: int, page_size: int) -> str:
+    raw = f"{q.lower().strip()}:{media_type or ''}:{sort_by or ''}:{page}:{page_size}"
+    return f"search:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
+
+
+def _embedding_cache_key(q: str) -> str:
+    return f"emb:{hashlib.sha256(q.lower().strip().encode()).hexdigest()[:16]}"
+
+
+async def _embed_query(q: str) -> list[float] | None:
+    """Generate an embedding. Checks Redis cache first; on miss, generates
+    in background so next search with same query uses the cached value."""
+    redis = await get_redis()
+    emb_key = _embedding_cache_key(q)
+    cached = await redis.get(emb_key)
+    if cached:
+        return json.loads(cached)
+
+    # Fire generation in background; don't block this request
+    async def _generate_and_cache():
+        try:
+            from otix.services.embedding_service import EmbeddingService
+
+            embedding = await EmbeddingService().embed(q)
+            if embedding:
+                await redis.set(emb_key, json.dumps(embedding), ex=EMBEDDING_CACHE_TTL)
+        except Exception:
+            pass
+
+    asyncio.create_task(_generate_and_cache())
+    return None
 
 
 @media_router.get("", response_model=MediaItemListResponse)
@@ -121,8 +147,18 @@ async def search_media(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
-    # Embed the query for semantic ranking. Failures are non-blocking:
-    # search degrades gracefully to FTS + trigram only.
+    redis = await get_redis()
+    cache_key = _cache_key(q, media_type, sort_by, page, page_size)
+
+    # Return cached result when available (skips DB + embedding entirely).
+    # Only cache non-authenticated results (user_interactions are skipped).
+    if current_user is None:
+        cached = await redis.get(cache_key)
+        if cached:
+            return MediaItemListResponse.model_validate(json.loads(cached))
+
+    # Embed the query for semantic ranking. Uses Redis cache when available;
+    # on cold miss, generation fires in background so the next search is fast.
     query_embedding = await _embed_query(q)
 
     service = MediaService(db)
@@ -155,7 +191,6 @@ async def search_media(
     # like gibberish (random char mix with no alphabetic core).
     backfill_pending = False
     if page == 1 and total < BACKFILL_THRESHOLD and _should_backfill(q):
-        redis = await get_redis()
         query_hash = _poll_query_hash(q, media_type)
         key = f"backfill:{query_hash}"
         if not await redis.get(key):
@@ -163,12 +198,18 @@ async def search_media(
             app.send_task("search.backfill", args=[q, media_type])
             backfill_pending = True
 
-    return MediaItemListResponse(
+    response = MediaItemListResponse(
         items=summaries,
         has_more=has_more,
         total=total,
         backfill_pending=backfill_pending,
     )
+
+    # Cache unauthenticated results so repeated/refined searches skip the DB
+    if current_user is None:
+        await redis.set(cache_key, response.model_dump_json(), ex=SEARCH_CACHE_TTL)
+
+    return response
 
 
 def _should_backfill(q: str) -> bool:

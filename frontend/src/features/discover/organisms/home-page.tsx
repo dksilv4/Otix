@@ -309,6 +309,15 @@ function HomeExperience() {
     }
   }, [moodNote, moodNoteContext, moodNoteSaving])
 
+  // Pre-warm the API connection when the search input receives focus
+  const prewarmedRef = useRef(false)
+  const handleSearchFocus = useCallback(() => {
+    if (!prewarmedRef.current) {
+      prewarmedRef.current = true
+      apiClient.get('/health')
+    }
+  }, [])
+
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Don't capture when typing in another input
@@ -364,6 +373,7 @@ function HomeExperience() {
               value={isMoodNoteMode ? moodNote : query}
               onChange={isMoodNoteMode ? setMoodNote : setQuery}
               onSubmit={isMoodNoteMode ? handleMoodNoteSubmit : undefined}
+              onFocus={isMoodNoteMode ? undefined : handleSearchFocus}
               placeholder={
                 isMoodNoteMode
                   ? `Optional note for ${moodNoteContext.label.toLowerCase()}`
@@ -372,7 +382,7 @@ function HomeExperience() {
                     : PLACEHOLDERS[placeholderIndex]
               }
               disabled={moodNoteSaving}
-              debounceMs={isMoodNoteMode ? 0 : 300}
+              debounceMs={isMoodNoteMode ? 0 : 150}
               leadingIcon={isMoodNoteMode ? moodNoteContext.Icon : undefined}
               modeLabel={isMoodNoteMode ? 'Note' : 'Discover'}
               showSubmitWhenEmpty={isMoodNoteMode}

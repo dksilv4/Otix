@@ -11,6 +11,7 @@ interface ChatSearchInputProps {
   value: string
   onChange: (value: string) => void
   onSubmit?: () => void
+  onFocus?: () => void
   placeholder?: string
   disabled?: boolean
   debounceMs?: number
@@ -25,6 +26,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   value,
   onChange,
   onSubmit,
+  onFocus,
   placeholder = "What are you in the mood for?",
   disabled = false,
   debounceMs = 300,
@@ -58,8 +60,14 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
     onChange('')
   }
 
+  const flushAndSubmit = () => {
+    clearTimeout(timerRef.current)
+    onChange(inputValue)
+    if (onSubmit) onSubmit()
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && onSubmit) onSubmit()
+    if (e.key === 'Enter') flushAndSubmit()
   }
 
   return (
@@ -82,6 +90,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
             value={inputValue}
             onChange={(e) => handleChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={onFocus}
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
@@ -96,7 +105,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
           />
           {(inputValue || showSubmitWhenEmpty) && (
             <button
-              onClick={onSubmit || handleClear}
+              onClick={inputValue ? flushAndSubmit : (onSubmit || handleClear)}
               className={cn(
                 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
                 'bg-primary/20 text-primary',
