@@ -14,6 +14,10 @@ export interface User {
   spotifyId?: string | null
   spotifyUsername?: string | null
   spotifyAvatarUrl?: string | null
+  googleId?: string | null
+  googleName?: string | null
+  googleEmail?: string | null
+  googleAvatarUrl?: string | null
   avatarUrl?: string | null
   bio?: string | null
   backgroundUrl?: string | null

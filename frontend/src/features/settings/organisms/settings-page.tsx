@@ -148,6 +148,7 @@ function ProfileSection({
   user: {
     email: string
     username: string
+    isAdmin?: boolean
     bio?: string | null
     avatarUrl?: string | null
     backgroundUrl?: string | null
@@ -1631,6 +1632,8 @@ type YouTubeSyncEvent =
   | { type: 'sync_started' }
   | { type: 'fetching_history' }
   | { type: 'history_fetched'; count: number }
+  | { type: 'fetching_liked_videos' }
+  | { type: 'liked_videos_fetched'; count: number }
   | { type: 'videos_analyzed'; total: number; music_videos: number }
   | { type: 'matching_complete'; matched: number; total_music: number }
   | { type: 'sync_complete'; total: number; music_videos: number; matched: number; channel_links: number }
