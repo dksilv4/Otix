@@ -999,3 +999,35 @@ async def _sync_spotify_user_library(user_id: str, task_id: str | None = None) -
         result = await sync_spotify_user_library(session, user, token, task_id=task_id)
         await session.commit()
         return result
+
+
+# ── Recently played sync ─────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.recently_played",
+    bind=True,
+    max_retries=1,
+)
+def sync_spotify_recently_played_task(self, user_id: str, task_id: str | None = None) -> dict | None:
+    """Sync a user's recently played Spotify tracks into Otix as listened interactions."""
+    return run_async(_sync_spotify_recently_played(user_id, task_id))
+
+
+async def _sync_spotify_recently_played(user_id: str, task_id: str | None = None) -> dict | None:
+    from otix.services.spotify_auth_service import get_user_access_token
+    from otix.services.spotify_library_service import sync_spotify_recently_played
+
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        if user is None or user.spotify_id is None:
+            return None
+
+        token = await get_user_access_token(user)
+        if token is None:
+            logger.warning("spotify recently played sync failed, no valid token", user_id=user_id)
+            return None
+
+        result = await sync_spotify_recently_played(session, user, token, task_id=task_id)
+        await session.commit()
+        return result

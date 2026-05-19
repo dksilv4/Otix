@@ -68,7 +68,7 @@ class MusicBrainzProvider(BaseProvider):
 
     # ── Release (Album) ─────────────────────────────────────────────────
 
-    async def get_release(self, mbid: str, inc: str = "artists+recordings+labels+genres+release-groups") -> dict:
+    async def get_release(self, mbid: str, inc: str = "artists+recordings+labels+genres+release-groups+url-rels") -> dict:
         return await self._get(f"release/{mbid}", {"inc": inc})
 
     async def browse_releases_by_artist(self, mbid: str, limit: int = 50, offset: int = 0) -> list[dict]:

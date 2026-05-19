@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import ExternalID, MediaItem, Movie, Show, UserPlexItem, UserPlexLibrary, UserPlexServer
+from otix.domain.media import Album, ExternalID, MediaItem, Movie, Show, UserPlexItem, UserPlexLibrary, UserPlexServer
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.lib.slug import slugify
@@ -70,6 +70,7 @@ def _parse_guid_id(value: str) -> tuple[str, str] | None:
         ("imdb", r"(tt\d+)"),
         ("tmdb", r"tmdb://(\d+)|themoviedb://(\d+)"),
         ("tvdb", r"tvdb://(\d+)"),
+        ("musicbrainz", r"mbid://([a-f0-9-]{36})"),
     ]
     for provider, pattern in patterns:
         match = re.search(pattern, lower)
@@ -99,6 +100,8 @@ def _media_type(item: dict, library_type: str | None = None) -> str | None:
         return "movie"
     if plex_type in {"show", "season", "episode"}:
         return "show"
+    if plex_type in {"track", "album", "artist"}:
+        return "music"
     return None
 
 
@@ -201,7 +204,7 @@ async def discover_plex_libraries(
     libraries: list[UserPlexLibrary] = []
     for item in _container_items(data):
         lib_type = item.get("type")
-        if lib_type not in {"movie", "show"}:
+        if lib_type not in {"movie", "show", "artist"}:
             continue
         key = str(item.get("key") or "")
         if not key:
@@ -250,6 +253,9 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
     await db.flush()
     if media_type == "movie":
         db.add(Movie(media_item_id=media.id))
+    elif media_type == "music":
+        mbid = guids.get("musicbrainz")
+        db.add(Album(media_item_id=media.id, musicbrainz_id=mbid))
     else:
         db.add(Show(media_item_id=media.id))
 
@@ -293,8 +299,10 @@ async def sync_plex_library(
     if not token or not server.base_url:
         return {"total": 0, "matched": 0, "seeded": 0}
 
-    data = await _get_json(f"{server.base_url}/library/sections/{library.section_key}/all?includeGuids=1", token)
-    items = [it for it in _container_items(data) if _media_type(it, library.library_type) in {"movie", "show"}]
+    # Music libraries return artists by default; use type=9 to get albums directly
+    extra_params = "&type=9" if library.library_type == "artist" else ""
+    data = await _get_json(f"{server.base_url}/library/sections/{library.section_key}/all?includeGuids=1{extra_params}", token)
+    items = [it for it in _container_items(data) if _media_type(it, library.library_type) in {"movie", "show", "music"}]
     items_total = len(items)
     await _safe_progress(progress, "syncing_library", server_name=server.name, library_name=library.title, items_total=items_total)
 
@@ -350,10 +358,21 @@ async def sync_plex_library(
         )
         await db.execute(stmt)
         if media_item_id:
-            if viewed:
-                await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})
-            if view_offset:
-                await _upsert_interaction(db, user.id, media_item_id, "started", {"source": "plex", "view_offset": view_offset, "duration": item.get("duration")})
+            if media_type == "music":
+                last_listened = item.get("lastViewedAt")
+                listened = view_count > 0 or last_listened is not None
+                if listened:
+                    extra = {"source": "plex", "view_count": view_count}
+                    if last_listened:
+                        dt = _dt_from_plex(last_listened)
+                        if dt:
+                            extra["last_played_at"] = dt.isoformat()
+                    await _upsert_interaction(db, user.id, media_item_id, "listened", extra)
+            else:
+                if viewed:
+                    await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})
+                if view_offset:
+                    await _upsert_interaction(db, user.id, media_item_id, "started", {"source": "plex", "view_offset": view_offset, "duration": item.get("duration")})
 
         if (i + 1) % 5 == 0:
             await _safe_progress(progress, "library_progress", server_name=server.name, library_name=library.title, items_processed=i + 1, items_total=items_total)

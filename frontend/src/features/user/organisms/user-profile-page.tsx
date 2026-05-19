@@ -38,9 +38,49 @@ function pickGradient(username: string): string {
   return `linear-gradient(160deg, ${a} 0%, ${b} 50%, ${c} 100%)`
 }
 
-function formatJoinDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+function formatMemberSince(dateStr: string): { label: string; tooltip: string } {
+  const joined = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - joined.getTime()
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const years = Math.floor(days / 365)
+  const months = Math.floor((days % 365) / 30)
+
+  const exact = joined.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+
+  if (years < 1) {
+    if (months < 1) return { label: 'this month', tooltip: exact }
+    return { label: `${months}mo ago`, tooltip: exact }
+  }
+  if (years === 1 && months === 0) return { label: '1yr ago', tooltip: exact }
+  if (years === 1) return { label: `1yr ${months}mo ago`, tooltip: exact }
+  return { label: `${years}yr ago`, tooltip: exact }
+}
+
+// ── Level tier colors ──
+
+interface LevelTier {
+  color: string
+  barColor: string
+  glow: string
+  hasShimmer: boolean
+  hasGlow: boolean
+}
+
+const LEVEL_TIERS: { min: number; tier: LevelTier }[] = [
+  { min: 50, tier: { color: '#a78bfa', barColor: '#a78bfa33', glow: '#8b5cf633', hasShimmer: true, hasGlow: true } },
+  { min: 35, tier: { color: '#22d3ee', barColor: '#22d3ee33', glow: '#06b6d433', hasShimmer: true, hasGlow: true } },
+  { min: 20, tier: { color: '#34d399', barColor: '#34d39933', glow: '#10b98133', hasShimmer: false, hasGlow: true } },
+  { min: 10, tier: { color: '#fbbf24', barColor: '#fbbf2433', glow: '#eab30833', hasShimmer: false, hasGlow: false } },
+  { min: 5,  tier: { color: '#94a3b8', barColor: '#94a3b833', glow: '#64748b33', hasShimmer: false, hasGlow: false } },
+  { min: 1,  tier: { color: '#d97706', barColor: '#d9770633', glow: '#b4530933', hasShimmer: false, hasGlow: false } },
+]
+
+function getLevelTier(level: number): LevelTier {
+  for (const entry of LEVEL_TIERS) {
+    if (level >= entry.min) return entry.tier
+  }
+  return LEVEL_TIERS[LEVEL_TIERS.length - 1].tier
 }
 
 // ── Gamification ──
@@ -72,11 +112,13 @@ function XPProgressRing({
   progress,
   size,
   strokeWidth = 3,
+  strokeColor = 'var(--primary)',
   children,
 }: {
   progress: number
   size: number
   strokeWidth?: number
+  strokeColor?: string
   children: React.ReactNode
 }) {
   const [animProgress, setAnimProgress] = useState(0)
@@ -113,7 +155,7 @@ function XPProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--primary)"
+          stroke={strokeColor}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -173,6 +215,7 @@ export function UserProfilePage() {
 
   const profile = profileQuery.data
   const gamification = computeGamification(profile.totalXp)
+  const tier = getLevelTier(gamification.level)
 
   return (
     <div className="pb-16">
@@ -217,7 +260,7 @@ export function UserProfilePage() {
           <div className="flex flex-row items-end gap-5 sm:gap-8">
             {/* Avatar with XP ring */}
             <div className="shrink-0 animate-hero-scale-in" style={{ animationDelay: '50ms' }}>
-              <XPProgressRing progress={gamification.xpProgress} size={120} strokeWidth={4}>
+              <XPProgressRing progress={gamification.xpProgress} size={120} strokeWidth={4} strokeColor={tier.color}>
                 <DkAvatar
                   src={profile.avatarUrl}
                   name={profile.username}
@@ -241,14 +284,19 @@ export function UserProfilePage() {
 
               {/* Meta */}
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium animate-hero-slide-up" style={{ animationDelay: '150ms' }}>
+                {(() => {
+                  const m = formatMemberSince(profile.createdAt)
+                  return (
+                    <span className="inline-flex items-center gap-1.5" title={m.tooltip}>
+                      <CalendarDays className="h-3.5 w-3.5 text-white/40" />
+                      Joined {m.label}
+                    </span>
+                  )
+                })()}
+                <span aria-hidden className="text-white/15">·</span>
                 <span className="inline-flex items-center gap-1.5">
                   <DiamondIcon className="h-3.5 w-3.5 text-amber-400/80" />
                   {profile.compositeScore ?? 0}
-                </span>
-                <span aria-hidden className="text-white/15">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-white/40" />
-                  Joined {formatJoinDate(profile.createdAt)}
                 </span>
                 {stats?.averageRating != null && (
                   <>
@@ -262,7 +310,7 @@ export function UserProfilePage() {
                 <span aria-hidden className="text-white/15">·</span>
                 <span className="inline-flex items-center gap-1.5">
                   <OtixIcon className="h-4 w-4 text-amber-400/80" />
-                  {profile.karma?.toLocaleString() ?? 0} karma
+                  {profile.karma?.toLocaleString() ?? 0} aura
                 </span>
               </div>
 
@@ -353,22 +401,49 @@ export function UserProfilePage() {
           </div>
 
           {/* XP Bar */}
-          <div className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06] animate-hero-reveal-bar" style={{ animationDelay: '300ms' }}>
+          <div
+            className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06] animate-hero-reveal-bar"
+            style={{
+              animationDelay: '300ms',
+              boxShadow: tier.hasGlow ? `0 0 20px ${tier.glow}, inset 0 0 12px ${tier.glow}` : undefined,
+            }}
+          >
             {/* Fill */}
             <div
-              className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r from-primary via-primary to-accent transition-all duration-700 ease-out"
-              style={{ width: `${barProgress * 100}%` }}
+              className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700 ease-out"
+              style={{
+                width: `${barProgress * 100}%`,
+                background: tier.barColor,
+              }}
             />
+            {/* Shimmer effect (level 35+) */}
+            {tier.hasShimmer && (
+              <div
+                className="absolute inset-y-0 left-0 rounded-lg overflow-hidden pointer-events-none"
+                style={{ width: `${barProgress * 100}%` }}
+              >
+                <div
+                  className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  style={{ animation: 'xpShimmer 2s ease-in-out infinite' }}
+                />
+              </div>
+            )}
             {/* Subtle top highlight across the whole bar */}
             <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent w-full pointer-events-none" />
 
             {/* Content overlay */}
             <div className="relative h-full flex items-center justify-between px-5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: `${tier.color}b3` }}
+                >
                   Level
                 </span>
-                <span className="text-sm font-extrabold text-primary tabular-nums leading-none">
+                <span
+                  className="text-sm font-extrabold tabular-nums leading-none"
+                  style={{ color: tier.color }}
+                >
                   {gamification.level}
                 </span>
                 <span className="text-xs font-medium text-muted-foreground/50 ml-0.5">
@@ -457,7 +532,11 @@ export function UserProfilePage() {
         <UserRatingSection username={username} />
         <ProfileSectionRenderer
           username={username}
-          sections={profile.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity']}
+          sections={profile.profileSections ?? ['hall_of_fame', 'library_breakdown', 'mood_timeline']}
+          loginStreak={profile.currentLoginStreak ?? 0}
+          longestLoginStreak={profile.longestLoginStreak ?? 0}
+          reviewStreak={profile.currentReviewStreak ?? 0}
+          longestReviewStreak={profile.longestReviewStreak ?? 0}
         />
       </div>
     </div>

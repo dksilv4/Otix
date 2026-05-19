@@ -49,6 +49,10 @@ class UserResponse(BaseModel):
     spotify_username: str | None = None
     spotify_email: str | None = None
     spotify_avatar_url: str | None = None
+    google_id: str | None = None
+    google_email: str | None = None
+    google_name: str | None = None
+    google_avatar_url: str | None = None
     avatar_url: str | None = None
     bio: str | None = None
     background_url: str | None = None
@@ -56,6 +60,7 @@ class UserResponse(BaseModel):
     total_xp: int = 0
     profile_sections: list[str] | None = None
     daily_mood_checkins_enabled: bool = True
+    hall_of_fame_media_ids: list[str] = []
 
 
 class UserUpdateRequest(BaseModel):
@@ -67,6 +72,7 @@ class UserUpdateRequest(BaseModel):
     integration_visibility: dict[str, str] | None = None
     profile_sections: list[str] | None = None
     daily_mood_checkins_enabled: bool | None = None
+    hall_of_fame_media_ids: list[str] | None = None
 
 
 # ── Email verification ──────────────────────────────────────────
@@ -190,6 +196,16 @@ class SpotifyCallbackRequest(BaseModel):
     state: str
 
 
+class GoogleInitiateResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
+class GoogleCallbackRequest(BaseModel):
+    code: str
+    state: str
+
+
 class PlexServerResponse(BaseModel):
     id: str
     machine_identifier: str
@@ -299,6 +315,9 @@ class IntegrationProviderResponse(BaseModel):
     spotify_username: str | None = None
     spotify_avatar_url: str | None = None
     spotify_stats: dict | None = None
+    google_email: str | None = None
+    google_name: str | None = None
+    google_avatar_url: str | None = None
 
 
 class TmdbRatingSyncRequest(BaseModel):

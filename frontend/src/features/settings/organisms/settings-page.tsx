@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
+import { GoogleIcon } from '@/features/dk-ui/atoms/google-icon'
 import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 
 const BIO_MAX_LENGTH = 250
@@ -1626,6 +1627,43 @@ type SpotifyProgressState = {
   detail?: string
 }
 
+type YouTubeSyncEvent =
+  | { type: 'sync_started' }
+  | { type: 'fetching_history' }
+  | { type: 'history_fetched'; count: number }
+  | { type: 'videos_analyzed'; total: number; music_videos: number }
+  | { type: 'matching_complete'; matched: number; total_music: number }
+  | { type: 'sync_complete'; total: number; music_videos: number; matched: number; channel_links: number }
+  | { type: 'error'; message: string }
+
+type YouTubeProgressState = {
+  phase: string
+  detail?: string
+}
+
+async function* parseYouTubeSseEvents(response: Response): AsyncGenerator<YouTubeSyncEvent> {
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const frames = buffer.split('\n\n')
+    buffer = frames.pop() || ''
+
+    for (const frame of frames) {
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('data: ')) {
+          yield JSON.parse(line.slice(6)) as YouTubeSyncEvent
+        }
+      }
+    }
+  }
+}
+
 async function* parseSpotifySseEvents(response: Response): AsyncGenerator<SpotifySyncEvent> {
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()
@@ -1740,6 +1778,7 @@ const BRAND_COLORS: Record<string, string> = {
   plex: '#e5a00d',
   spotify: '#1db954',
   tmdb: '#01b4e4',
+  google: '#4285F4',
 }
 
 function CollapsibleActions({ children, count }: { children: React.ReactNode; count: number }) {
@@ -1883,11 +1922,25 @@ function IntegrationsSection() {
   const [spotifySyncing, setSpotifySyncing] = useState(false)
   const [spotifySyncResult, setSpotifySyncResult] = useState<{ likedTotal: number; likedMatched: number; likedSeeded: number } | null>(null)
   const [spotifyProgress, setSpotifyProgress] = useState<SpotifyProgressState | null>(null)
-  const isSpotifyConnected = spotifyConnected || Boolean(user?.spotifyId)
-  const isSteamConnected = steamConnected || Boolean(user?.steamId)
+  const isSpotifyConnected = spotifyConnected
+  const [googleConnected, setGoogleConnected] = useState(Boolean(user?.googleId))
+  const [googleName, setGoogleName] = useState<string | null>(user?.googleName ?? null)
+  const [googleEmail, setGoogleEmail] = useState<string | null>(user?.googleEmail ?? null)
+  const [googleAvatarUrl, setGoogleAvatarUrl] = useState<string | null>(user?.googleAvatarUrl ?? null)
+  const [googleConnecting, setGoogleConnecting] = useState(false)
+  const [googleDisconnecting, setGoogleDisconnecting] = useState(false)
+  const [googleMessage, setGoogleMessage] = useState('')
+  const [googleError, setGoogleError] = useState('')
+  const [youtubeSyncing, setYoutubeSyncing] = useState(false)
+  const [youtubeSyncResult, setYoutubeSyncResult] = useState<{ total: number; music_videos: number; matched: number; channel_links: number } | null>(null)
+  const [youtubeProgress, setYoutubeProgress] = useState<YouTubeProgressState | null>(null)
+  const [youtubeError, setYoutubeError] = useState('')
+  const [youtubeMessage, setYoutubeMessage] = useState('')
+  const isGoogleConnected = googleConnected
+  const isSteamConnected = steamConnected
   const displayedSteamId = steamId ?? user?.steamId ?? null
-  const isPlexConnected = plexConnected || Boolean(user?.plexId)
-  const isTmdbConnected = tmdbConnected || Boolean(user?.tmdbUsername)
+  const isPlexConnected = plexConnected
+  const isTmdbConnected = tmdbConnected
   const [marketplaceOpen, setMarketplaceOpen] = useState(false)
   const hasAnyConnected = isSteamConnected || isPlexConnected || isSpotifyConnected || isTmdbConnected
 
@@ -1937,6 +1990,19 @@ function IntegrationsSection() {
         setSpotifyUsername(spotifyProvider.spotifyUsername ?? null)
         setSpotifyAvatarUrl(spotifyProvider.spotifyAvatarUrl ?? null)
         setSpotifyStats(spotifyProvider.spotifyStats ?? null)
+      }
+      const googleProvider = (data.providers as Array<{
+        name: string
+        connected: boolean
+        googleName: string | null
+        googleEmail: string | null
+        googleAvatarUrl: string | null
+      }>).find((p) => p.name === 'google')
+      if (googleProvider) {
+        setGoogleConnected(googleProvider.connected)
+        setGoogleName(googleProvider.googleName ?? null)
+        setGoogleEmail(googleProvider.googleEmail ?? null)
+        setGoogleAvatarUrl(googleProvider.googleAvatarUrl ?? null)
       }
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
@@ -2050,6 +2116,111 @@ function IntegrationsSection() {
       setSpotifyError(extractIntegrationMessage(err))
     } finally {
       setSpotifyDisconnecting(false)
+    }
+  }
+
+  const handleGoogleConnect = async () => {
+    setGoogleConnecting(true)
+    setGoogleError('')
+    try {
+      const { data } = await apiClient.post('/auth/integrations/google')
+      window.location.href = data.authUrl
+    } catch (err) {
+      setGoogleConnecting(false)
+      setGoogleError(extractIntegrationMessage(err))
+    }
+  }
+
+  const handleGoogleDisconnect = async () => {
+    setGoogleDisconnecting(true)
+    setGoogleError('')
+    setGoogleMessage('')
+    try {
+      await apiClient.delete('/auth/integrations/google')
+      setGoogleConnected(false)
+      setGoogleName(null)
+      setGoogleEmail(null)
+      setGoogleAvatarUrl(null)
+      setGoogleMessage('Google account unlinked.')
+    } catch (err) {
+      setGoogleError(extractIntegrationMessage(err))
+    } finally {
+      setGoogleDisconnecting(false)
+    }
+  }
+
+  const handleYouTubeSync = async () => {
+    abortRef.current?.abort()
+    const abortController = new AbortController()
+    abortRef.current = abortController
+
+    setYoutubeSyncing(true)
+    setYoutubeError('')
+    setYoutubeSyncResult(null)
+    setYoutubeMessage('')
+    setYoutubeProgress({ phase: 'Starting sync...' })
+
+    try {
+      const { data } = await apiClient.post<{ taskId: string }>('/auth/integrations/youtube/sync')
+      const token = localStorage.getItem('otix-access-token')
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/integrations/youtube/sync/${data.taskId}/stream`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: abortController.signal,
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`SSE connection failed: ${response.status}`)
+      }
+
+      for await (const event of parseYouTubeSseEvents(response)) {
+        switch (event.type) {
+          case 'sync_started':
+            setYoutubeProgress({ phase: 'Connected to YouTube...' })
+            break
+          case 'fetching_liked_videos':
+            setYoutubeProgress({ phase: 'Fetching liked videos from YouTube...' })
+            break
+          case 'liked_videos_fetched':
+            setYoutubeProgress({ phase: `Fetched ${event.count} liked videos` })
+            break
+          case 'videos_analyzed':
+            setYoutubeProgress({
+              phase: `Found ${event.music_videos} music videos out of ${event.total} total`,
+            })
+            break
+          case 'matching_complete':
+            setYoutubeProgress({
+              phase: `Matched ${event.matched} of ${event.total_music} music videos`,
+            })
+            break
+          case 'sync_complete':
+            setYoutubeSyncResult({
+              total: event.total,
+              music_videos: event.music_videos,
+              matched: event.matched,
+              channel_links: event.channel_links,
+            })
+            setYoutubeMessage(
+              `Synced ${event.total} liked videos: ${event.music_videos} music videos, ${event.matched} matched to catalog, ${event.channel_links} channels linked.`,
+            )
+            setYoutubeProgress(null)
+            break
+          case 'error':
+            setYoutubeError(event.message)
+            setYoutubeProgress(null)
+            break
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      setYoutubeError(extractIntegrationMessage(err))
+      setYoutubeProgress(null)
+    } finally {
+      setYoutubeSyncing(false)
     }
   }
 
@@ -2390,6 +2561,17 @@ function IntegrationsSection() {
       isConnected: isSpotifyConnected,
       onConnect: handleSpotifyConnect,
       connecting: spotifyConnecting,
+    },
+    {
+      id: 'google',
+      name: 'Google',
+      description: 'Link your Google account to enable YouTube Music and other Google integrations.',
+      brandColor: BRAND_COLORS.google,
+      brandBg: 'bg-[#4285F4]/10',
+      icon: GoogleIcon,
+      isConnected: isGoogleConnected,
+      onConnect: handleGoogleConnect,
+      connecting: googleConnecting,
     },
     {
       id: 'tmdb',
@@ -2852,6 +3034,85 @@ function IntegrationsSection() {
             </div>
           {spotifyMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{spotifyMessage}</p>}
           {spotifyError && <p className="mt-3 text-xs text-destructive">{spotifyError}</p>}
+        </div>
+          )}
+
+          {isGoogleConnected && (
+        <div
+          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
+          style={{ borderLeftColor: BRAND_COLORS.google }}
+        >
+          <div className="flex items-center gap-2 mb-5">
+            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isGoogleConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
+            <div>
+              <h3 className="text-base font-semibold">Google</h3>
+              <p className="text-xs text-muted-foreground">
+                {isGoogleConnected && googleEmail
+                  ? `Linked to "${googleEmail}"`
+                  : 'Link your Google account for YouTube Music and more.'}
+              </p>
+            </div>
+          </div>
+
+            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {googleAvatarUrl ? (
+                    <img
+                      src={googleAvatarUrl}
+                      alt={googleName ?? 'Google avatar'}
+                      className="h-10 w-10 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4285F4]/15">
+                      <GoogleIcon className="h-5 w-5 text-[#4285F4]" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{googleName ?? 'Google User'}</p>
+                    <p className="text-xs text-muted-foreground">{googleEmail ?? 'Google account linked'}</p>
+                  </div>
+                </div>
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <span className={integrationActionHeader}>Account</span>
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleGoogleDisconnect}
+                    loading={googleDisconnecting}
+                    className={integrationDangerButton}
+                  >
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    Unlink
+                  </DkButton>
+                </div>
+              </div>
+            </div>
+          <CollapsibleActions count={1}>
+              <div className="flex items-center justify-between">
+                <p className={integrationActionHeader}>YouTube Sync</p>
+                <div className="flex items-center gap-1.5">
+                  {youtubeProgress && (
+                    <span className="text-[11px] text-muted-foreground text-right leading-tight max-w-[160px]">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>
+                  )}
+                  <DkButton
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleYouTubeSync}
+                    loading={youtubeSyncing}
+                    disabled={youtubeSyncing}
+                    className={integrationSyncButton}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                    {youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'}
+                  </DkButton>
+                </div>
+              </div>
+              </CollapsibleActions>
+          {googleMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{googleMessage}</p>}
+          {googleError && <p className="mt-3 text-xs text-destructive">{googleError}</p>}
+          {youtubeMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{youtubeMessage}</p>}
+          {youtubeError && <p className="mt-3 text-xs text-destructive">{youtubeError}</p>}
         </div>
           )}
 

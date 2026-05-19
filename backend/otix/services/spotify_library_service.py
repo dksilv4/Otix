@@ -205,6 +205,166 @@ async def sync_spotify_user_library(
         raise
 
 
+async def sync_spotify_recently_played(
+    session: AsyncSession,
+    user: User,
+    access_token: str,
+    task_id: str | None = None,
+) -> dict:
+    """Sync user's recently played tracks from Spotify, creating 'listened' interactions.
+
+    Uses a Redis cursor so each poll only fetches plays since the last sync.
+    Returns summary: {total, matched, seeded}
+    """
+    from otix.lib.spotify_progress import publish_progress, store_result, store_progress
+    from otix.services.interaction_service import InteractionService
+
+    async def _emit(event_type: str, **kwargs) -> None:
+        if task_id:
+            await publish_progress(task_id, event_type, **kwargs)
+            await store_progress(task_id, event_type, **kwargs)
+
+    redis = await get_redis()
+    spotify = SpotifyProvider(redis)
+    interaction_service = InteractionService(session)
+
+    await _emit("sync_started")
+
+    try:
+        # ── 1. Read cursor ───────────────────────────────────────────────
+        cursor_key = f"spotify:recently_played:{user.id}:after"
+        cursor_raw = await redis.get(cursor_key)
+        after_ms: int | None = int(cursor_raw) if cursor_raw else None
+
+        # ── 2. Fetch recently played ─────────────────────────────────────
+        await _emit("fetching_tracks")
+        resp = await spotify.get_user_recently_played(access_token, limit=50, after=after_ms)
+        items = resp.get("items", []) or []
+        await _emit("tracks_fetched", count=len(items))
+
+        if not items:
+            await _emit("sync_complete", total=0, matched=0, seeded=0)
+            if task_id:
+                await store_result(task_id, {"total": 0, "matched": 0, "seeded": 0})
+            return {"total": 0, "matched": 0, "seeded": 0}
+
+        # ── 3. Extract track → album mappings ────────────────────────────
+        track_spotify_ids: list[str] = []
+        track_played_at: dict[str, str] = {}  # track_spotify_id -> played_at ISO8601
+        track_to_album: dict[str, str] = {}  # track_spotify_id -> album_spotify_id
+
+        for entry in items:
+            track_data = entry.get("track")
+            if not track_data or not track_data.get("id"):
+                continue
+            track_id = track_data["id"]
+            track_spotify_ids.append(track_id)
+            track_played_at[track_id] = entry.get("played_at", "")
+
+            album_data = track_data.get("album", {})
+            album_id = album_data.get("id")
+            if album_id:
+                track_to_album[track_id] = album_id
+
+        total = len(track_spotify_ids)
+
+        # ── 4. Match tracks to Otix albums ───────────────────────────────
+        await _emit("matching_tracks", count=total)
+        track_album_map: dict[str, str] = {}  # track_spotify_id -> album media_item_id
+        missing_album_ids: set[str] = set()
+        seen_album_media_ids: set[str] = set()
+
+        if track_spotify_ids:
+            result = await session.execute(
+                select(Track.spotify_id, Track.album_id).where(
+                    Track.spotify_id.in_(track_spotify_ids)
+                )
+            )
+            for row in result:
+                if row[0]:
+                    track_album_map[row[0]] = row[1]
+
+        matched = 0
+        seeded = 0
+        for track_id in track_spotify_ids:
+            media_item_id = track_album_map.get(track_id)
+            if media_item_id:
+                matched += 1
+                seen_album_media_ids.add(media_item_id)
+            else:
+                album_spotify_id = track_to_album.get(track_id)
+                if album_spotify_id:
+                    missing_album_ids.add(album_spotify_id)
+
+        await _emit("tracks_matched", matched=matched, total=total)
+
+        # ── 5. Create listened interactions ──────────────────────────────
+        listened_count = 0
+        for media_item_id in seen_album_media_ids:
+            # Use the latest played_at across all tracks for this album
+            latest_played_at = ""
+            for track_id in track_spotify_ids:
+                if track_album_map.get(track_id) == media_item_id:
+                    at = track_played_at.get(track_id, "")
+                    if at > latest_played_at:
+                        latest_played_at = at
+
+            extra = {"source": "spotify_recently_played"}
+            if latest_played_at:
+                extra["played_at"] = latest_played_at
+
+            await interaction_service.set_interaction(
+                user.id, media_item_id, "listened", extra
+            )
+            listened_count += 1
+
+        if listened_count:
+            await _emit("interactions_created", count=listened_count)
+
+        # ── 6. Seed missing albums ───────────────────────────────────────
+        if missing_album_ids:
+            await _emit("seeding_albums", count=len(missing_album_ids))
+        for album_spotify_id in missing_album_ids:
+            _seed_album_from_spotify(album_spotify_id)
+            seeded += 1
+        if missing_album_ids:
+            await _emit("albums_seeded", count=seeded)
+
+        await session.flush()
+
+        # ── 7. Update cursor to newest played_at ────────────────────────
+        newest_played_at = max(
+            (e.get("played_at", "") for e in items if e.get("played_at")),
+            default="",
+        )
+        if newest_played_at:
+            # Convert ISO8601 to Unix ms for the Spotify API `after` param
+            try:
+                from datetime import datetime, timezone
+                dt = datetime.fromisoformat(newest_played_at.replace("Z", "+00:00"))
+                new_cursor = int(dt.timestamp() * 1000)
+                await redis.set(cursor_key, new_cursor, ex=7 * 24 * 3600)
+            except (ValueError, OSError):
+                pass
+
+        result = {"total": total, "matched": matched, "seeded": seeded}
+        logger.info(
+            "spotify recently played synced",
+            user_id=user.id, **result, listened_count=listened_count,
+        )
+        await _emit("sync_complete", **result)
+        if task_id:
+            await store_result(task_id, result)
+        return result
+
+    except Exception:
+        logger.exception("spotify recently played sync failed", user_id=user.id)
+        await _emit("error", message="Spotify recently played sync failed. Please try again.")
+        if task_id:
+            await store_result(task_id, {"error": "Sync failed"})
+        raise
+
+
 def _seed_album_from_spotify(spotify_id: str) -> None:
     """Enqueue a Spotify album seeding task via the existing pipeline."""
     app.send_task("sync.spotify.seed_album", args=[spotify_id])

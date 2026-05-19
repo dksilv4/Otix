@@ -33,6 +33,7 @@ class UserProfileOut(BaseModel):
     user_rating_count: int = 0
     composite_score: float | None = None
     profile_sections: list[str] | None = None
+    hall_of_fame_media_ids: list[str] = []
     steam: SteamIntegrationPublic | None = None
     plex: PlexIntegrationPublic | None = None
     tmdb_username: str | None = None
@@ -55,3 +56,31 @@ class UserProfileOut(BaseModel):
     longest_login_streak: int = 0
     current_review_streak: int = 0
     longest_review_streak: int = 0
+
+
+class HallOfFameItem(BaseModel):
+    id: str
+    title: str
+    media_type: str
+    poster_url: str | None = None
+    release_year: int | None = None
+
+
+class LibraryStatsOut(BaseModel):
+    total_items: int = 0
+    by_media_type: dict[str, int] = {}
+    total_watch_time_minutes: int = 0
+    completion_rate: float = 0.0
+    most_active_day: str | None = None
+    most_active_hour: int | None = None
+
+
+class MoodCheckinOut(BaseModel):
+    date: str
+    mood: str
+    feeling: str | None = None
+    note: str | None = None
+
+
+class MoodTimelineOut(BaseModel):
+    checkins: list[MoodCheckinOut] = []

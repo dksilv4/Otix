@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from otix.domain.media import Album, ExternalID, MediaItem
 from otix.infrastructure.celery import app
@@ -90,6 +91,9 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
         hydrator = MusicBrainzHydrator(provider, session)
         await hydrator.hydrate_all(album, raw)
 
+        # Save all URL relationship external IDs (Spotify, YouTube Music, Apple Music, etc.)
+        await _upsert_url_external_ids(session, item.id, getattr(album, "_external_ids", []))
+
         item.content_hash = content_hash
         item.synced_at = datetime.now(timezone.utc)
         item.next_sync_at = compute_next_sync_at("album", raw, 0)
@@ -108,3 +112,18 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
         app.send_task("embedding.generate", args=[item.id])
 
         return {"otix_id": item.id, "mbid": mbid, "title": item.title}
+
+
+async def _upsert_url_external_ids(session, media_item_id: int, external_ids: list[tuple[str, str]]) -> None:
+    """Insert ExternalID records for MusicBrainz url-rels, skipping existing."""
+    if not external_ids:
+        return
+    rows = [
+        {"provider": provider, "external_id": ext_id, "media_item_id": media_item_id, "media_type": "music"}
+        for provider, ext_id in external_ids
+    ]
+    await session.execute(
+        pg_insert(ExternalID.__table__).values(rows).on_conflict_do_nothing(
+            index_elements=["provider", "external_id"]
+        )
+    )

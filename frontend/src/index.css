@@ -264,6 +264,18 @@
   animation: equalizer 0.9s ease-in-out infinite;
 }
 
+/* ── XP bar shimmer (level 35+) ── */
+@keyframes xpShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── XP bar glow pulse (level 50+) ── */
+@keyframes xpGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 /* ── Slow spin (album art) ── */
 @keyframes spinSlow {
   from { transform: rotate(0deg); }

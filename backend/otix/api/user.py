@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
-from otix.api.schemas.user import PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
+from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
 from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
 from otix.api.schemas.user_badge import BadgeOut
 from otix.api.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
@@ -16,6 +16,7 @@ from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
 from otix.domain.media import MediaItem
 from otix.domain.review import Review
+from otix.domain.mood import UserMoodCheckIn
 from otix.domain.user import User
 from otix.domain.user_streak import UserStreak
 from otix.domain.workout import Workout
@@ -24,6 +25,7 @@ from otix.services.follow_service import FollowService
 from otix.services.friend_service import FriendService
 from otix.services.gamification_service import GamificationService
 from otix.services.karma_service import KarmaService
+from otix.services.media_service import MediaService
 from otix.services.review_service import ReviewService
 from otix.services.steam_auth_service import get_steam_user_info
 from otix.services.user_rating_service import UserRatingService
@@ -134,6 +136,7 @@ async def get_user_profile(
         is_admin=user.is_admin,
         composite_score=reputation.get("composite_score"),
         profile_sections=user.profile_sections if user.profile_sections else None,
+        hall_of_fame_media_ids=user.hall_of_fame_media_ids or [],
         steam=steam,
         plex=plex,
         tmdb_username=tmdb_username,
@@ -466,3 +469,148 @@ async def get_user_karma_transactions(
         )
         for item in items
     ]
+
+
+# ── Hall of Fame ──
+
+
+@user_router.get("/{username}/hall-of-fame", response_model=list[HallOfFameItem])
+async def get_user_hall_of_fame(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> list[HallOfFameItem]:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    media_ids = user.hall_of_fame_media_ids or []
+    if not media_ids:
+        return []
+
+    service = MediaService(db)
+    items = await service.get_media_items_by_ids(media_ids)
+
+    return [
+        HallOfFameItem(
+            id=item.id,
+            title=item.title,
+            media_type=item.media_type,
+            poster_url=item.poster_url,
+            release_year=item.release_date.year if item.release_date else None,
+        )
+        for item in items
+    ]
+
+
+# ── Library Stats ──
+
+
+@user_router.get("/{username}/library-stats", response_model=LibraryStatsOut)
+async def get_user_library_stats(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> LibraryStatsOut:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Count interactions by media type
+    type_result = await db.execute(
+        select(MediaItem.media_type, func.count())
+        .join(UserMediaInteraction, UserMediaInteraction.media_item_id == MediaItem.id)
+        .where(UserMediaInteraction.user_id == user.id)
+        .group_by(MediaItem.media_type)
+    )
+    by_media_type: dict[str, int] = {}
+    total = 0
+    for media_type, cnt in type_result:
+        by_media_type[media_type] = cnt
+        total += cnt
+
+    # Completion rate: watched+played+listened / (watched+played+listened+started)
+    watched_played = await db.scalar(
+        select(func.count())
+        .select_from(UserMediaInteraction)
+        .where(
+            UserMediaInteraction.user_id == user.id,
+            UserMediaInteraction.interaction_type.in_(["watched", "played", "listened"]),
+        )
+    ) or 0
+    started = await db.scalar(
+        select(func.count())
+        .select_from(UserMediaInteraction)
+        .where(
+            UserMediaInteraction.user_id == user.id,
+            UserMediaInteraction.interaction_type == "started",
+        )
+    ) or 0
+    completed_total = watched_played + started
+    completion_rate = watched_played / completed_total if completed_total > 0 else 0.0
+
+    # Most active day of week
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    day_result = await db.execute(
+        select(func.extract("dow", UserMediaInteraction.created_at), func.count())
+        .where(UserMediaInteraction.user_id == user.id)
+        .group_by(func.extract("dow", UserMediaInteraction.created_at))
+        .order_by(func.count().desc())
+        .limit(1)
+    )
+    day_row = day_result.one_or_none()
+    most_active_day = day_names[int(day_row[0])] if day_row and day_row[0] is not None else None
+
+    # Most active hour
+    hour_result = await db.execute(
+        select(func.extract("hour", UserMediaInteraction.created_at), func.count())
+        .where(UserMediaInteraction.user_id == user.id)
+        .group_by(func.extract("hour", UserMediaInteraction.created_at))
+        .order_by(func.count().desc())
+        .limit(1)
+    )
+    hour_row = hour_result.one_or_none()
+    most_active_hour = int(hour_row[0]) if hour_row and hour_row[0] is not None else None
+
+    return LibraryStatsOut(
+        total_items=total,
+        by_media_type=by_media_type,
+        total_watch_time_minutes=0,
+        completion_rate=round(completion_rate, 2),
+        most_active_day=most_active_day,
+        most_active_hour=most_active_hour,
+    )
+
+
+# ── Mood Timeline ──
+
+
+@user_router.get("/{username}/mood-timeline", response_model=MoodTimelineOut)
+async def get_user_mood_timeline(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> MoodTimelineOut:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    checkins_result = await db.scalars(
+        select(UserMoodCheckIn)
+        .where(
+            UserMoodCheckIn.user_id == user.id,
+            UserMoodCheckIn.status == "submitted",
+        )
+        .order_by(UserMoodCheckIn.checkin_date.desc())
+        .limit(30)
+    )
+    checkins = list(checkins_result)
+
+    return MoodTimelineOut(
+        checkins=[
+            MoodCheckinOut(
+                date=c.checkin_date.isoformat(),
+                mood=c.mood,
+                feeling=c.feeling,
+                note=c.note,
+            )
+            for c in checkins
+        ]
+    )

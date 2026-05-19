@@ -45,6 +45,8 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         if "user_library" in name or "seed_album" in name:
             return "user"
         return "fast"  # match_album, enrich_album
+    if name.startswith("sync.youtube."):
+        return "user"
     if name.startswith("sync.igdb."):
         return "igdb"
     if name.startswith("sync.fanart."):
@@ -190,6 +192,16 @@ app.config_from_object(
                 "task": "maintenance.sync_plex_accounts",
                 "schedule": crontab(minute="11,41"),
             },
+            # Spotify recently played sync (every 7 min, off-peak minute)
+            "sync-spotify-recently-played": {
+                "task": "maintenance.sync_spotify_recently_played",
+                "schedule": crontab(minute="4,11,18,25,32,39,46,53"),
+            },
+            # YouTube watch history sync (every 15 min at off-peak minutes)
+            "sync-youtube-watch-history": {
+                "task": "maintenance.sync_youtube_watch_history",
+                "schedule": crontab(minute="8,23,38,53"),
+            },
             # Spotify enrichment scan (every 30 min)
             "enrich-spotify": {
                 "task": "maintenance.enrich_spotify",
@@ -235,6 +247,7 @@ import otix.tasks.sync.omdb  # noqa: E402
 import otix.tasks.sync.lastfm  # noqa: E402
 import otix.tasks.sync.musicbrainz  # noqa: E402
 import otix.tasks.sync.spotify  # noqa: E402
+import otix.tasks.sync.youtube  # noqa: E402
 import otix.tasks.sync.search  # noqa: E402
 import otix.tasks.sync.embedding  # noqa: E402
 import otix.tasks.sync.media  # noqa: E402

@@ -50,6 +50,7 @@ export interface MediaItemDetail {
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null
   steamRtimeLastPlayed?: number | null
+  youtubeVideoId?: string | null
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>

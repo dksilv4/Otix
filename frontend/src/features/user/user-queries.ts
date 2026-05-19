@@ -45,7 +45,7 @@ export interface UserProfile {
   levelTitle?: string
   xpRank?: number | null
   xpPercentile?: number | null
-  // Karma
+  // Aura
   karma?: number
   // Admin
   isAdmin?: boolean
@@ -203,6 +203,60 @@ export const userQueries = {
       },
       staleTime: 1000 * 60 * 2,
     }),
+
+  hallOfFame: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'hall-of-fame'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<HallOfFameItem[]>(`/users/${username}/hall-of-fame`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  libraryStats: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'library-stats'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<LibraryStats>(`/users/${username}/library-stats`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  moodTimeline: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'mood-timeline'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<{ checkins: MoodCheckin[] }>(`/users/${username}/mood-timeline`)
+        return data.checkins
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+}
+
+export interface MoodCheckin {
+  date: string
+  mood: string
+  feeling: string | null
+  note: string | null
+}
+
+export interface LibraryStats {
+  totalItems: number
+  byMediaType: Record<string, number>
+  totalWatchTimeMinutes: number
+  completionRate: number
+  mostActiveDay: string | null
+  mostActiveHour: number | null
+}
+
+export interface HallOfFameItem {
+  id: string
+  title: string
+  mediaType: string
+  posterUrl: string | null
+  releaseYear: number | null
 }
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -229,6 +283,18 @@ export function useUnfollowUser(username: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', username] })
       queryClient.invalidateQueries({ queryKey: ['user', username, 'follow-counts'] })
+    },
+  })
+}
+
+export function useUpdateHallOfFame(username: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (mediaIds: string[]) => {
+      await apiClient.patch('/auth/me', { hall_of_fame_media_ids: mediaIds })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', username, 'hall-of-fame'] })
     },
   })
 }

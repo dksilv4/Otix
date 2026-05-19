@@ -272,3 +272,14 @@ class MediaService:
 
         result = await self.session.scalars(q)
         return list(result), total
+
+    async def get_media_items_by_ids(self, ids: list[str]) -> list[MediaItem]:
+        if not ids:
+            return []
+        result = await self.session.scalars(
+            select(MediaItem).where(MediaItem.id.in_(ids))
+        )
+        items = list(result)
+        id_order = {id_: idx for idx, id_ in enumerate(ids)}
+        items.sort(key=lambda item: id_order.get(item.id, 999))
+        return items

@@ -161,6 +161,19 @@ class SpotifyProvider(BaseProvider):
         """List liked/saved tracks. Returns: {href, items: [{added_at, track}], ...}"""
         return await self._user_request(access_token, "me/tracks", {"limit": limit, "offset": offset})
 
+    async def get_user_recently_played(
+        self, access_token: str, limit: int = 50, after: int | None = None
+    ) -> dict:
+        """Get the last played tracks for the current user.
+
+        Returns: {items: [{track: TrackObject, played_at: ISO8601, context: ...}], ...}
+        ``after`` is a Unix timestamp in milliseconds.
+        """
+        params: dict[str, int] = {"limit": limit}
+        if after is not None:
+            params["after"] = after
+        return await self._user_request(access_token, "me/player/recently-played", params)
+
     async def save_user_tracks(self, access_token: str, track_ids: list[str]) -> None:
         """Add tracks to the user's Spotify liked songs."""
         resp = await self._request(

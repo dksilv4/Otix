@@ -365,6 +365,10 @@ class MediaItemDetail(BaseModel):
     steam_playtime_2weeks: int | None = None
     steam_rtime_last_played: int | None = None
 
+    # YouTube video (populated when user has a matched liked video for this media)
+    youtube_video_id: str | None = None
+    youtube_channel_title: str | None = None
+
     genres: list[GenreOut] = []
     external_ratings: list[ExternalRatingOut] = []
     credits: list[MediaCreditOut] = []

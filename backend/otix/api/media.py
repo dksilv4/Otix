@@ -21,6 +21,7 @@ from otix.api.schemas.media import (
     MediaItemSummary,
 )
 from otix.domain.genre import Genre
+from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import MediaItem, UserSteamGame
 from otix.domain.user import User
 from otix.infrastructure.celery import app
@@ -359,6 +360,19 @@ async def get_media_item(
             user_id=current_user.id, media_item_id=media_id,
         )
         result.user_interactions = UserInteractionState(**state)
+
+        # Look up YouTube video if user has a liked-videos match for this media
+        youtube_interaction = await db.scalar(
+            select(UserMediaInteraction).where(
+                UserMediaInteraction.user_id == current_user.id,
+                UserMediaInteraction.media_item_id == media_id,
+                UserMediaInteraction.interaction_type == "listened",
+                UserMediaInteraction.extra_data["source"].as_string() == "youtube_liked_videos",
+            ).limit(1)
+        )
+        if youtube_interaction and youtube_interaction.extra_data:
+            result.youtube_video_id = youtube_interaction.extra_data.get("video_id")
+            result.youtube_channel_title = youtube_interaction.extra_data.get("channel_title")
 
         # Load Steam playtime if the game has a steam_app_id
         if item.game and item.game.steam_app_id:

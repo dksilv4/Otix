@@ -100,7 +100,7 @@ class AuthService:
             email=email,
             username=username,
             hashed_password=hash_password(password),
-            is_admin=username.lower() == "demo" or email.lower().startswith("demo@"),
+            is_admin=False,
         )
         self.session.add(user)
         await self.session.flush()

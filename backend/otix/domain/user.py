@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from otix.domain.workout import Workout
 
 
-DEFAULT_PROFILE_SECTIONS = ["reviews", "top_rated", "recent_activity", "badges"]
+DEFAULT_PROFILE_SECTIONS: list[str] = ["hall_of_fame", "library_breakdown", "mood_timeline"]
 
 
 class AuthActionType(str, enum.Enum):
@@ -68,12 +68,20 @@ class User(Base, TimestampMixin):
     spotify_access_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     spotify_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     spotify_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    google_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
+    google_email: Mapped[str | None] = mapped_column(String(320), nullable=True, default=None)
+    google_name: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
+    google_avatar_url: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
+    google_access_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    google_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    google_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     integration_visibility: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     total_xp: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
     daily_mood_checkins_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     avg_user_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     user_rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     profile_sections: Mapped[list] = mapped_column(JSON, default=lambda: DEFAULT_PROFILE_SECTIONS.copy(), nullable=False)
+    hall_of_fame_media_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")

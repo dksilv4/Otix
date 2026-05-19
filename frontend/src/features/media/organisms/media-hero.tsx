@@ -1,7 +1,7 @@
 import { Badge } from '@ui/atoms/badge'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
-import { Calendar, Clock } from 'lucide-react'
+import { Calendar, Clock, ExternalLink } from 'lucide-react'
 
 interface Genre {
   id: string
@@ -23,11 +23,11 @@ interface MediaHeroProps {
   tagline?: string | null
   overview?: string | null
   runtime?: number | null
-  /** Album / music total length in milliseconds */
   albumDurationMs?: number | null
   status?: string | null
   isAnime?: boolean
   className?: string
+  youtubeVideoId?: string | null
 }
 
 function formatYear(dateStr?: string | null): string {
@@ -83,6 +83,7 @@ export function MediaHero({
   status,
   isAnime,
   className,
+  youtubeVideoId,
 }: MediaHeroProps) {
   const year = formatYear(releaseDate)
   const formattedRuntime = formatRuntime(runtime)
@@ -91,6 +92,10 @@ export function MediaHero({
   const hasLogo = Boolean(logo)
   const heroBackdrop =
     backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
+
+  const youtubeUrl = youtubeVideoId
+    ? `https://www.youtube.com/watch?v=${youtubeVideoId}`
+    : null
 
   return (
     <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden lg:min-h-[75vh] rounded-3xl shadow-[var(--dk-shadow-glass)]', className)}>
@@ -102,9 +107,7 @@ export function MediaHero({
             alt=""
             className="h-full w-full object-cover object-[center_20%]"
           />
-          {/* Gradient overlays — fade to background */}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />
-          {/* Subtle accent glow */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
         </div>
@@ -200,16 +203,26 @@ export function MediaHero({
               </p>
             )}
 
-            {/* Genres */}
-            {genres && genres.length > 0 && (
-              <div className="flex gap-1.5">
-                {genres.map((g) => (
+            {/* Genres + YouTube link */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {genres && genres.length > 0 &&
+                genres.map((g) => (
                   <Badge key={g.id} variant="secondary" className="border-white/10 bg-white/5">
                     {g.name}
                   </Badge>
                 ))}
-              </div>
-            )}
+              {youtubeUrl && (
+                <a
+                  href={youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 transition-colors"
+                >
+                  Watch on YouTube
+                  <ExternalLink size={12} />
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>

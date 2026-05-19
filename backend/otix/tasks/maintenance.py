@@ -101,6 +101,50 @@ async def _sync_plex_accounts() -> dict:
     return {"synced": synced, "failed": failed}
 
 
+@app.task(name="maintenance.sync_spotify_recently_played")
+def sync_spotify_recently_played() -> dict:
+    return run_async(_sync_spotify_recently_played())
+
+
+async def _sync_spotify_recently_played() -> dict:
+    from otix.infrastructure.celery import app as celery_app
+
+    synced = 0
+    failed = 0
+    async with async_session() as session:
+        users = list((await session.scalars(select(User).where(User.spotify_refresh_token.isnot(None)))).all())
+        for user in users:
+            try:
+                celery_app.send_task("sync.spotify.recently_played", args=[user.id])
+                synced += 1
+            except Exception:
+                logger.exception("scheduled spotify recently played sync enqueue failed", user_id=user.id)
+                failed += 1
+    return {"synced": synced, "failed": failed}
+
+
+@app.task(name="maintenance.sync_youtube_watch_history")
+def sync_youtube_watch_history() -> dict:
+    return run_async(_sync_youtube_watch_history())
+
+
+async def _sync_youtube_watch_history() -> dict:
+    from otix.infrastructure.celery import app as celery_app
+
+    synced = 0
+    failed = 0
+    async with async_session() as session:
+        users = list((await session.scalars(select(User).where(User.google_refresh_token.isnot(None)))).all())
+        for user in users:
+            try:
+                celery_app.send_task("sync.youtube.watch_history", args=[user.id])
+                synced += 1
+            except Exception:
+                logger.exception("scheduled youtube watch history sync enqueue failed", user_id=user.id)
+                failed += 1
+    return {"synced": synced, "failed": failed}
+
+
 @app.task(name="maintenance.plex_sync_user", acks_late=True, reject_on_worker_lost=True)
 def plex_sync_user(task_id: str, user_id: str) -> dict:
     """Sync Plex libraries for a single user, publishing progress via Redis pub/sub.

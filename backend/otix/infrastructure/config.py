@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     spotify_request_timeout_seconds: int = 15
     spotify_global_rps_limit: int = 3
 
+    # Google
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # Last.fm
     lastfm_api_key: str = ""
     lastfm_request_timeout_seconds: int = 15

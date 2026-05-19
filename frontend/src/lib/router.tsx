@@ -24,6 +24,7 @@ const SteamCallbackPage = lazy(() => import("@auth/organisms/steam-callback-page
 const SteamConnectCallbackPage = lazy(() => import("@auth/organisms/steam-connect-callback-page").then(m => ({ default: m.SteamConnectCallbackPage })))
 const PlexConnectCallbackPage = lazy(() => import("@auth/organisms/plex-connect-callback-page").then(m => ({ default: m.PlexConnectCallbackPage })))
 const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-connect-callback-page").then(m => ({ default: m.SpotifyConnectCallbackPage })))
+const GoogleConnectCallbackPage = lazy(() => import("@auth/organisms/google-connect-callback-page").then(m => ({ default: m.GoogleConnectCallbackPage })))
 const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
 const AdminPage = lazy(() => import("@/features/admin/organisms/admin-page").then(m => ({ default: m.AdminPage })))
 
@@ -192,6 +193,12 @@ const tmdbConnectCallbackRoute = createRoute({
   component: TmdbConnectCallbackPage,
 })
 
+const googleConnectCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/google/connect/callback",
+  component: GoogleConnectCallbackPage,
+})
+
 // ── Browse & Notifications ──
 
 const browseRoute = createRoute({
@@ -241,6 +248,7 @@ const routeTree = rootRoute.addChildren([
   steamConnectCallbackRoute,
   plexConnectCallbackRoute,
   tmdbConnectCallbackRoute,
+  googleConnectCallbackRoute,
   browseRoute,
   notificationsRoute,
   dkUiRoute,

@@ -22,6 +22,8 @@ class Person(Base):
     imdb_id: Mapped[str | None] = mapped_column(String(20), unique=True)
     musicbrainz_artist_id: Mapped[str | None] = mapped_column(String(36), unique=True)
     spotify_artist_id: Mapped[str | None] = mapped_column(String(50), unique=True)
+    youtube_channel_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    youtube_channel_title: Mapped[str | None] = mapped_column(String(500))
     spotify_follower_count: Mapped[int | None] = mapped_column(Integer)
     spotify_popularity: Mapped[int | None] = mapped_column(Integer)
     spotify_genres: Mapped[list | None] = mapped_column(JSONB)

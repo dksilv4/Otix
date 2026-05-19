@@ -37,6 +37,8 @@ from otix.api.schemas.auth import (
     ResetPasswordResponse,
     SendVerificationEmailResponse,
     SessionListResponse,
+    GoogleCallbackRequest,
+    GoogleInitiateResponse,
     SpotifyCallbackRequest,
     SpotifyInitiateResponse,
     SteamCallbackRequest,
@@ -421,6 +423,10 @@ def _user_response(user: User) -> UserResponse:
         spotify_username=user.spotify_username,
         spotify_email=user.spotify_email,
         spotify_avatar_url=user.spotify_avatar_url,
+        google_id=user.google_id,
+        google_email=user.google_email,
+        google_name=user.google_name,
+        google_avatar_url=user.google_avatar_url,
         avatar_url=user.avatar_url,
         bio=user.bio,
         background_url=user.background_url,
@@ -428,6 +434,7 @@ def _user_response(user: User) -> UserResponse:
         total_xp=user.total_xp,
         profile_sections=user.profile_sections if user.profile_sections else None,
         daily_mood_checkins_enabled=user.daily_mood_checkins_enabled,
+        hall_of_fame_media_ids=user.hall_of_fame_media_ids or [],
     )
 
 
@@ -611,6 +618,13 @@ async def list_integrations(
             spotify_username=current_user.spotify_username,
             spotify_avatar_url=current_user.spotify_avatar_url,
             spotify_stats=await _spotify_stats(current_user),
+        ),
+        IntegrationProviderResponse(
+            name="google",
+            connected=current_user.google_id is not None,
+            google_email=current_user.google_email,
+            google_name=current_user.google_name,
+            google_avatar_url=current_user.google_avatar_url,
         ),
     ]
     return IntegrationsResponse(providers=providers)
@@ -851,6 +865,53 @@ async def spotify_disconnect(
     return {"message": "Spotify account unlinked successfully"}
 
 
+# ── Google ────────────────────────────────────────────────────────
+
+
+@auth_router.post("/integrations/google", response_model=GoogleInitiateResponse)
+async def google_connect_initiate(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Start Google account linking. Returns authorization URL."""
+    from otix.services.google_auth_service import build_google_link_url
+
+    url, state = await build_google_link_url()
+    return {"auth_url": url, "state": state}
+
+
+@auth_router.post("/integrations/google/callback")
+async def google_connect_callback(
+    body: GoogleCallbackRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Complete Google account linking with the authorization code."""
+    from otix.services.google_auth_service import link_google_to_user
+
+    try:
+        await link_google_to_user(db, current_user, body.code, body.state)
+    except HTTPException:
+        raise
+    except Exception as err:
+        logger.exception("google linking failed", user_id=current_user.id)
+        raise HTTPException(status_code=500, detail="Failed to link Google account. Please try again.") from err
+
+    await db.commit()
+    return {"message": "Google account linked successfully"}
+
+
+@auth_router.delete("/integrations/google")
+async def google_disconnect(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from otix.services.google_auth_service import unlink_google_from_user
+
+    await unlink_google_from_user(db, current_user)
+    await db.commit()
+    return {"message": "Google account unlinked successfully"}
+
+
 @auth_router.post("/integrations/spotify/sync", status_code=status.HTTP_202_ACCEPTED)
 async def spotify_sync_library(
     current_user: User = Depends(get_current_user),
@@ -943,6 +1004,113 @@ async def spotify_sync_stream(
                     if time.monotonic() > deadline:
                         break
                     # Send keep-alive comment so proxies don't close the connection
+                    yield ":keepalive\n\n"
+                    continue
+
+                data = message["data"]
+                yield f"data: {data}\n\n"
+                deadline = time.monotonic() + 300.0
+
+                event = json.loads(data)
+                if event.get("type") in ("sync_complete", "error"):
+                    break
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@auth_router.post("/integrations/spotify/recently-played/sync", status_code=status.HTTP_202_ACCEPTED)
+async def spotify_sync_recently_played(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Start a Spotify recently played sync. Returns a task_id for SSE streaming."""
+    if current_user.spotify_id is None:
+        raise HTTPException(status_code=400, detail="No Spotify account linked")
+
+    task_id = str(uuid.uuid4())
+    logger.info("spotify recently played sync task started", user_id=current_user.id, task_id=task_id)
+
+    asyncio.create_task(_run_spotify_recently_played_background(task_id, current_user.id))
+
+    return {"task_id": task_id}
+
+
+async def _run_spotify_recently_played_background(task_id: str, user_id: str) -> None:
+    """Run the Spotify recently played sync in a background asyncio task."""
+    from otix.infrastructure.database import async_session
+    from otix.services.spotify_auth_service import get_user_access_token
+    from otix.services.spotify_library_service import sync_spotify_recently_played
+
+    try:
+        async with async_session() as session:
+            user = await session.get(User, user_id)
+            if user is None or user.spotify_id is None:
+                return
+
+            token = await get_user_access_token(user)
+            if token is None:
+                logger.warning("spotify recently played sync failed, no valid token", user_id=user_id)
+                from otix.lib.spotify_progress import publish_progress, store_result
+                await publish_progress(task_id, "error", message="No valid Spotify token. Try reconnecting your account.")
+                await store_result(task_id, {"error": "No valid token"})
+                return
+
+            await sync_spotify_recently_played(session, user, token, task_id=task_id)
+            await session.commit()
+    except Exception:
+        logger.exception("spotify recently played sync background task failed", user_id=user_id, task_id=task_id)
+
+
+@auth_router.get("/integrations/spotify/recently-played/sync/{task_id}/stream")
+async def spotify_recently_played_sync_stream(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """SSE endpoint that streams Spotify recently played sync progress events."""
+    from otix.lib.spotify_progress import get_stored_result, get_latest_progress
+
+    channel = f"spotify:sync:{task_id}:events"
+
+    stored = await get_stored_result(task_id)
+    if stored is not None:
+        stored["type"] = "sync_complete"
+        payload = json.dumps(stored)
+
+        async def replay():
+            yield f"data: {payload}\n\n"
+
+        return StreamingResponse(
+            replay(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    latest = await get_latest_progress(task_id)
+
+    async def event_generator():
+        if latest is not None:
+            yield f"data: {json.dumps(latest)}\n\n"
+
+        redis = await get_redis()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            deadline = time.monotonic() + 300.0
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message is None:
+                    if time.monotonic() > deadline:
+                        break
                     yield ":keepalive\n\n"
                     continue
 
@@ -1259,3 +1427,109 @@ async def steam_resolve_unmatched(
         "failed": result.failed,
         "total": result.total,
     }
+
+
+# ── YouTube watch history sync ──────────────────────────────────────────
+
+
+@auth_router.post("/integrations/youtube/sync", status_code=status.HTTP_202_ACCEPTED)
+async def youtube_sync_watch_history(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Start a YouTube watch history sync. Returns a task_id for SSE streaming."""
+    if current_user.google_id is None:
+        raise HTTPException(status_code=400, detail="No Google account linked")
+
+    task_id = str(uuid.uuid4())
+    logger.info("youtube sync task started", user_id=current_user.id, task_id=task_id)
+
+    asyncio.create_task(_run_youtube_sync_background(task_id, current_user.id))
+
+    return {"task_id": task_id}
+
+
+async def _run_youtube_sync_background(task_id: str, user_id: str) -> None:
+    from otix.infrastructure.database import async_session
+    from otix.lib.youtube_progress import publish_progress, store_result
+    from otix.services.youtube_sync_service import sync_youtube_watch_history
+
+    try:
+        async with async_session() as session:
+            user = await session.get(User, user_id)
+            if user is None or user.google_id is None:
+                return
+
+            await sync_youtube_watch_history(session, user, task_id=task_id)
+            await session.commit()
+    except Exception as e:
+        logger.exception("youtube sync background task failed", user_id=user_id, task_id=task_id)
+        msg = str(e)
+        if hasattr(e, 'message'):
+            msg = e.message
+        await publish_progress(task_id, "error", message=msg)
+        await store_result(task_id, {"error": msg})
+
+
+@auth_router.get("/integrations/youtube/sync/{task_id}/stream")
+async def youtube_sync_stream(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """SSE endpoint that streams YouTube sync progress events via Redis pub/sub."""
+    from otix.lib.youtube_progress import get_stored_result, get_latest_progress
+
+    channel = f"youtube:sync:{task_id}:events"
+
+    stored = await get_stored_result(task_id)
+    if stored is not None:
+        stored["type"] = "sync_complete"
+        payload = json.dumps(stored)
+
+        async def replay():
+            yield f"data: {payload}\n\n"
+
+        return StreamingResponse(
+            replay(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    latest = await get_latest_progress(task_id)
+
+    async def event_generator():
+        if latest is not None:
+            yield f"data: {json.dumps(latest)}\n\n"
+
+        redis = await get_redis()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            deadline = time.monotonic() + 300.0
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message is None:
+                    if time.monotonic() > deadline:
+                        break
+                    yield ":keepalive\n\n"
+                    continue
+
+                data = message["data"]
+                yield f"data: {data}\n\n"
+                deadline = time.monotonic() + 300.0
+
+                event = json.loads(data)
+                if event.get("type") in ("sync_complete", "error"):
+                    break
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

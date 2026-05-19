@@ -1,21 +1,31 @@
-import { ReviewsSection } from './profile-reviews-section'
-import { TopRatedSection } from './profile-top-rated-section'
-import { ActivitySection } from './profile-activity-section'
-import { BadgesSection } from './profile-badges-section'
+import { HallOfFameSection } from './profile-hall-of-fame-section'
+import { LibraryBreakdownSection } from './profile-library-breakdown-section'
+import { MoodTimelineSection } from './profile-mood-timeline-section'
+import { StreakShowcaseSection } from './profile-streak-showcase-section'
 
 interface ProfileSectionRendererProps {
   username: string
   sections: string[]
+  loginStreak: number
+  longestLoginStreak: number
+  reviewStreak: number
+  longestReviewStreak: number
 }
 
 const SECTION_COMPONENTS: Record<string, React.FC<{ username: string }>> = {
-  reviews: ReviewsSection,
-  top_rated: TopRatedSection,
-  recent_activity: ActivitySection,
-  badges: BadgesSection,
+  hall_of_fame: HallOfFameSection,
+  library_breakdown: LibraryBreakdownSection,
+  mood_timeline: MoodTimelineSection,
 }
 
-export function ProfileSectionRenderer({ username, sections }: ProfileSectionRendererProps) {
+export function ProfileSectionRenderer({
+  username,
+  sections,
+  loginStreak,
+  longestLoginStreak,
+  reviewStreak,
+  longestReviewStreak,
+}: ProfileSectionRendererProps) {
   return (
     <div className="space-y-10">
       {sections.map((sectionId) => {
@@ -23,6 +33,14 @@ export function ProfileSectionRenderer({ username, sections }: ProfileSectionRen
         if (!Component) return null
         return <Component key={sectionId} username={username} />
       })}
+
+      {/* Streak Showcase always renders at the bottom (not configurable) */}
+      <StreakShowcaseSection
+        loginStreak={loginStreak}
+        longestLoginStreak={longestLoginStreak}
+        reviewStreak={reviewStreak}
+        longestReviewStreak={longestReviewStreak}
+      />
     </div>
   )
 }
