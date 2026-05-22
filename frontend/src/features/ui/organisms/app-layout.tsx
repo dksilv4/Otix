@@ -95,8 +95,19 @@ function AppShell({ children }: { children: ReactNode }) {
       <MenuDropdown />
       <div className="fixed top-4 right-4 z-[9998] flex items-center gap-2">
         <NowPlayingButton isPinned={isPinned} onPin={handlePin} />
-        <NotificationBell />
-        <UserMenu />
+        <div
+          className={cn(
+            'flex items-center rounded-[2rem]',
+            'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
+            'backdrop-blur-lg',
+            'shadow-[var(--dk-shadow-glass)]',
+            'px-2 py-1.5 gap-1',
+          )}
+        >
+          <NotificationBell bare />
+          <div className="w-px h-5 bg-white/[0.08]" />
+          <UserMenu bare />
+        </div>
       </div>
 
       <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>

@@ -13,7 +13,10 @@ interface ProfileSectionRendererProps {
 }
 
 const SECTION_COMPONENTS: Record<string, React.FC<{ username: string }>> = {
-  hall_of_fame: HallOfFameSection,
+  hof_movie: (props) => <HallOfFameSection {...props} mediaType="movie" />,
+  hof_show: (props) => <HallOfFameSection {...props} mediaType="show" />,
+  hof_game: (props) => <HallOfFameSection {...props} mediaType="game" />,
+  hof_music: (props) => <HallOfFameSection {...props} mediaType="music" />,
   library_breakdown: LibraryBreakdownSection,
   mood_timeline: MoodTimelineSection,
 }

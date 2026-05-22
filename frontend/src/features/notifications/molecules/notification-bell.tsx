@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, Users } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,7 +26,7 @@ function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export function NotificationBell() {
+export function NotificationBell({ bare }: { bare?: boolean }) {
   const { isAuthenticated } = useAuth()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -71,7 +71,7 @@ export function NotificationBell() {
   }, [open, handleClickOutside])
 
   const handleAction = async (notification: Notification, action: 'accept' | 'reject') => {
-    const requestId = notification.metadataJson?.request_id as string | undefined
+    const requestId = notification.metadataJson?.requestId as string | undefined
     if (!requestId) return
     try {
       await apiClient.post(`/friends/requests/${requestId}/${action}`)
@@ -83,15 +83,28 @@ export function NotificationBell() {
     }
   }
 
+  const handleListAction = async (notification: Notification, action: 'accept' | 'decline') => {
+    const listId = notification.metadataJson?.listId as string | undefined
+    if (!listId) return
+    try {
+      await apiClient.post(`/list/${listId}/collaborators/${action}`)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['list'] })
+    } catch {
+      // ignored
+    }
+  }
+
   if (!isAuthenticated) return null
 
   return (
-    <>
+    <div className="relative">
       <button
         type="button"
         data-notification-trigger
         onClick={() => setOpen(!open)}
-        className={cn(pillBase, 'p-1.5 cursor-pointer relative')}
+        className={cn(!bare && pillBase, !bare && 'p-1.5', 'cursor-pointer relative')}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -110,7 +123,7 @@ export function NotificationBell() {
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed top-[4.5rem] right-4 z-[9999]',
+              'absolute right-0 top-full mt-2 z-[9999]',
               'w-80 max-h-[28rem] overflow-y-auto p-3 rounded-[1.5rem]',
               'bg-[var(--dk-surface-overlay)]',
               'backdrop-blur-xl',
@@ -147,7 +160,7 @@ export function NotificationBell() {
                     )}
                   >
                     <DkAvatar
-                      name={n.type === 'friend_request' ? '?' : n.type === 'friend_rejected' ? '✕' : n.type === 'friend_removed' ? '−' : ''}
+                      name={n.type === 'friend_request' ? '?' : n.type === 'friend_rejected' ? '✕' : n.type === 'friend_removed' ? '−' : n.type === 'list_invitation' ? '👥' : ''}
                       size="sm"
                       className="shrink-0 mt-0.5"
                     />
@@ -179,6 +192,24 @@ export function NotificationBell() {
                           </button>
                         </div>
                       )}
+                      {n.type === 'list_invitation' && (
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            type="button"
+                            className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                            onClick={() => handleListAction(n, 'accept')}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+                            onClick={() => handleListAction(n, 'decline')}
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      )}
                     </div>
                     {!n.isRead && (
                       <button
@@ -203,6 +234,6 @@ export function NotificationBell() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }

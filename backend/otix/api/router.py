@@ -14,6 +14,7 @@ from otix.api.media import media_router
 from otix.api.metrics import metrics_router
 from otix.api.mood import mood_router
 from otix.api.notification import notification_router
+from otix.api.onboarding import onboarding_router
 from otix.api.people import people_router
 from otix.api.review import review_router
 from otix.api.review_vote import review_vote_router
@@ -36,6 +37,7 @@ api_router.include_router(people_router)
 api_router.include_router(metrics_router)
 api_router.include_router(mood_router)
 api_router.include_router(notification_router)
+api_router.include_router(onboarding_router)
 api_router.include_router(review_router)
 api_router.include_router(review_vote_router)
 api_router.include_router(track_router)

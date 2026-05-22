@@ -115,9 +115,9 @@ export function MediaHero({
 
       {/* Content */}
       <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
-        <div className="flex flex-row items-end justify-between gap-6 sm:gap-8 lg:gap-12">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12">
           {/* Poster */}
-          <div className="w-28 shrink-0 sm:w-44 lg:w-56 xl:w-64">
+          <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">
             <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
               <Image
                 src={posterUrl || undefined}
@@ -129,13 +129,13 @@ export function MediaHero({
           </div>
 
           {/* Info */}
-          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:items-start lg:text-left">
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
             {/* Logo or title */}
             {hasLogo ? (
               <img
                 src={logo}
                 alt={title}
-                className="mb-2 max-h-20 sm:max-h-24 lg:max-h-28 max-w-[70%] sm:max-w-[55%] lg:max-w-[45%] object-contain"
+                className="mb-2 max-h-24 sm:max-h-24 lg:max-h-28 max-w-[85%] sm:max-w-[55%] lg:max-w-[45%] object-contain"
                 style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
               />
             ) : (
@@ -198,7 +198,7 @@ export function MediaHero({
 
             {/* Overview */}
             {overview && (
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-left">
                 {overview.length > 400 ? overview.slice(0, 400) + '…' : overview}
               </p>
             )}

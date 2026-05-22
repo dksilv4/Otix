@@ -14,6 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from otix.api.deps import get_current_admin_user, get_db, get_optional_user
+from otix.api.schemas.admin_edit import (
+    ApproveRejectRequest,
+    MediaAssetList,
+    MediaAssetOut,
+    MediaEditProposalCreate,
+    MediaEditProposalList,
+    MediaEditProposalOut,
+)
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import (
     GenreOut,
@@ -21,10 +29,12 @@ from otix.api.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
 )
+from otix.domain.asset import MediaAsset
 from otix.domain.genre import Genre
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import MediaItem, UserSteamGame
 from otix.domain.user import User
+from otix.services.admin_edit_service import AdminEditService
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
@@ -74,6 +84,8 @@ async def _embed_query(q: str) -> list[float] | None:
 async def list_media(
     media_type: str | None = Query(None, description="movie, show, game, or music"),
     genre: str | None = Query(None, description="Genre slug"),
+    language: str | None = Query(None, description="Language code (e.g. 'ja', 'ko')"),
+    is_anime: bool | None = Query(None, description="Filter to anime (movie/show only)"),
     has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
     sort_by: str | None = Query(None, description="popularity, rating, release_date, or title"),
     cursor: str | None = Query(None, description="Pagination cursor (media item id) — cursor mode only"),
@@ -82,10 +94,16 @@ async def list_media(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
+    # Normalize regional language variants
+    if language and len(language) > 2:
+        language = language.split("-")[0]
+
     service = MediaService(db)
     items, has_more, total = await service.list_media(
         media_type=media_type,
         genre=genre,
+        language=language,
+        is_anime=is_anime,
         has_artwork=has_artwork,
         sort_by=sort_by,
         cursor=cursor,
@@ -382,6 +400,131 @@ async def poll_search_updates(
     )
 
 
+# ── Media assets ─────────────────────────────────────────────────
+
+
+@media_router.get("/{media_id}/assets", response_model=MediaAssetList)
+async def list_media_assets(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
+) -> MediaAssetList:
+    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
+
+    assets = await db.scalars(
+        select(MediaAsset)
+        .where(MediaAsset.media_item_id == media_id)
+        .order_by(MediaAsset.asset_type, MediaAsset.lang, MediaAsset.score.desc())
+    )
+    asset_list = list(assets)
+    return MediaAssetList(
+        items=[MediaAssetOut.model_validate(a) for a in asset_list],
+        total=len(asset_list),
+    )
+
+
+# ── Admin edit proposals ────────────────────────────────────────
+
+
+@media_router.post("/{media_id}/edit-proposals", response_model=MediaEditProposalOut)
+async def create_edit_proposal(
+    media_id: str,
+    body: MediaEditProposalCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+) -> MediaEditProposalOut:
+    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
+
+    service = AdminEditService(db)
+    proposal = await service.create_proposal(
+        media_item_id=media_id,
+        proposer_user_id=current_user.id,
+        changes=body.changes,
+        image_overrides=[o.model_dump() for o in body.image_overrides] if body.image_overrides else None,
+    )
+    return MediaEditProposalOut.model_validate(proposal)
+
+
+@media_router.get("/{media_id}/edit-proposals", response_model=MediaEditProposalList)
+async def list_edit_proposals(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
+) -> MediaEditProposalList:
+    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
+
+    service = AdminEditService(db)
+    proposals = await service.get_proposals_for_media(media_id)
+    return MediaEditProposalList(
+        items=[MediaEditProposalOut.model_validate(p) for p in proposals],
+        total=len(proposals),
+    )
+
+
+@media_router.post(
+    "/{media_id}/edit-proposals/{proposal_id}/approve",
+    response_model=MediaEditProposalOut,
+)
+async def approve_edit_proposal(
+    media_id: str,
+    proposal_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+) -> MediaEditProposalOut:
+    service = AdminEditService(db)
+    try:
+        proposal = await service.approve_proposal(proposal_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return MediaEditProposalOut.model_validate(proposal)
+
+
+@media_router.post(
+    "/{media_id}/edit-proposals/{proposal_id}/reject",
+    response_model=MediaEditProposalOut,
+)
+async def reject_edit_proposal(
+    media_id: str,
+    proposal_id: str,
+    body: ApproveRejectRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+) -> MediaEditProposalOut:
+    service = AdminEditService(db)
+    try:
+        proposal = await service.reject_proposal(proposal_id, current_user.id, body.rejection_reason)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return MediaEditProposalOut.model_validate(proposal)
+
+
+@media_router.post(
+    "/{media_id}/edit-proposals/{proposal_id}/undo",
+    response_model=MediaEditProposalOut,
+)
+async def undo_approve_edit_proposal(
+    media_id: str,
+    proposal_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+) -> MediaEditProposalOut:
+    service = AdminEditService(db)
+    try:
+        proposal = await service.undo_approval(proposal_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return MediaEditProposalOut.model_validate(proposal)
+
+
+# ── Detail endpoint ──────────────────────────────────────────────
+
+
 @media_router.get("/{media_id}", response_model=MediaItemDetail)
 async def get_media_item(
     media_id: str,
@@ -427,5 +570,30 @@ async def get_media_item(
                 result.steam_playtime_forever = steam_game.playtime_forever
                 result.steam_playtime_2weeks = steam_game.playtime_2weeks
                 result.steam_rtime_last_played = steam_game.rtime_last_played
+
+        # Apply image overrides for the user's preferred languages
+        if current_user is not None:
+            edit_service = AdminEditService(db)
+            overrides = await edit_service.get_image_overrides_for_media(media_id)
+            if overrides:
+                preferred = current_user.preferred_languages or []
+                for image_type, lang_map in overrides.items():
+                    override_url = None
+                    # Check each preferred language in order; also check '*' wildcard
+                    for lang in preferred:
+                        if lang in lang_map:
+                            override_url = lang_map[lang]
+                            break
+                    if override_url is None and "*" in lang_map:
+                        override_url = lang_map["*"]
+                    if override_url is not None:
+                        if image_type == "poster":
+                            result.poster_url = override_url
+                        elif image_type == "backdrop":
+                            result.backdrop_url = override_url
+                        elif image_type == "logo":
+                            result.logo_url = override_url
+                        elif image_type == "textless_poster":
+                            result.textless_poster_url = override_url
 
     return result

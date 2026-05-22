@@ -15,9 +15,11 @@ from otix.api.schemas.admin import (
     TMDBDeletedIDItem,
     TMDBDeletedIDListResponse,
 )
+from otix.api.schemas.admin_edit import MediaEditProposalList, MediaEditProposalOut
 from otix.domain.media import ExternalID, MediaItem, TMDBDeletedID
 from otix.domain.people import Person
 from otix.domain.user import User
+from otix.services.admin_edit_service import AdminEditService
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -191,3 +193,24 @@ async def get_deleted_tmdb_ids(
         page=page,
         page_size=page_size,
     )
+
+
+@admin_router.get("/edit-proposals", response_model=MediaEditProposalList)
+async def get_edit_proposals(
+    status: str | None = Query(None, description="Filter by status: pending, approved, or rejected"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
+) -> MediaEditProposalList:
+    service = AdminEditService(db)
+    proposals, total = await service.get_all_proposals(status=status, limit=limit, offset=offset)
+    items = []
+    for p in proposals:
+        out = MediaEditProposalOut.model_validate(p)
+        if p.media_item:
+            out.media_title = p.media_item.title
+            out.media_type = p.media_item.media_type
+            out.media_poster_url = p.media_item.poster_url
+        items.append(out)
+    return MediaEditProposalList(items=items, total=total)

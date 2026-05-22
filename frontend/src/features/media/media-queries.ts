@@ -221,6 +221,9 @@ export const mediaQueries = {
   list: (opts?: {
     type?: string
     genre?: string
+    language?: string
+    isAnime?: boolean | null
+    hasArtwork?: boolean
     sortBy?: string
     page?: number
     limit?: number
@@ -228,9 +231,12 @@ export const mediaQueries = {
     queryOptions({
       queryKey: mediaKeys.list(opts?.type, opts),
       queryFn: async () => {
-        const params: Record<string, string | number> = { limit: opts?.limit ?? 50 }
+        const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 50 }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
+        if (opts?.language) params.language = opts.language
+        if (opts?.isAnime != null) params.is_anime = opts.isAnime
+        if (opts?.hasArtwork) params.has_artwork = true
         if (opts?.sortBy) {
           params.sort_by = opts.sortBy
           if (opts?.page) params.page = opts.page

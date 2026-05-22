@@ -83,12 +83,25 @@ def sync_igdb_game_changes_task(self, lookback_hours: int = 24) -> dict:
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
-def _update_media_item_from(existing: MediaItem, incoming: MediaItem) -> None:
+async def _update_media_item_from(
+    session, existing: MediaItem, incoming: MediaItem
+) -> None:
+    from otix.services.admin_edit_service import AdminEditService
+
     existing.title = incoming.title
     existing.overview = incoming.overview
     existing.slug = incoming.slug
-    existing.poster_url = incoming.poster_url or existing.poster_url
-    existing.backdrop_url = incoming.backdrop_url or existing.backdrop_url
+
+    protected = await AdminEditService.get_protected_image_types(session, existing.id)
+    for img_type, field in [("poster", "poster_url"), ("backdrop", "backdrop_url")]:
+        proposed = getattr(incoming, field, None)
+        current = getattr(existing, field, None)
+        if proposed and current and img_type in protected and current != proposed:
+            svc = AdminEditService(session)
+            await svc.create_system_proposal_for_image(existing.id, img_type, proposed)
+        elif proposed:
+            setattr(existing, field, proposed)
+
     existing.release_date = incoming.release_date or existing.release_date
     existing.popularity = incoming.popularity
     existing.original_language = incoming.original_language
@@ -192,7 +205,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 )
                 existing_item = await session.get(MediaItem, conflict.media_item_id)
                 existing_game = conflict
-                _update_media_item_from(existing_item, item)
+                await _update_media_item_from(session, existing_item, item)
                 _update_game_from(existing_game, game)
                 item = existing_item
                 game = existing_game
@@ -207,9 +220,35 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
             if ext_id is not None:
                 existing = await session.get(MediaItem, ext_id.media_item_id)
                 if existing is not None:
+                    # Snapshot protected fields before merge so we can restore them.
+                    from otix.services.admin_edit_service import AdminEditService
+                    protected = await AdminEditService.get_protected_image_types(session, existing.id)
+                    pre_urls = {}
+                    if protected:
+                        _field_map = {"poster": "poster_url", "backdrop": "backdrop_url",
+                                      "logo": "logo_url", "textless_poster": "textless_poster_url"}
+                        for img_type in protected:
+                            field = _field_map.get(img_type)
+                            if field:
+                                pre_urls[img_type] = getattr(existing, field, None)
+
                     item.id = existing.id
                     game.media_item_id = existing.id
                     await session.merge(item)
+
+                    # Restore protected fields and create system proposals.
+                    for img_type in protected:
+                        field = _field_map.get(img_type)
+                        if not field:
+                            continue
+                        pre_val = pre_urls.get(img_type)
+                        post_val = getattr(item, field, None)
+                        if pre_val and pre_val != post_val:
+                            setattr(item, field, pre_val)
+                            svc = AdminEditService(session)
+                            await svc.create_system_proposal_for_image(
+                                item.id, img_type, post_val
+                            )
                 else:
                     session.add(item)
                     await session.flush()

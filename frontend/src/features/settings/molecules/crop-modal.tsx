@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
-import { SlidersHorizontal, Check, X } from 'lucide-react'
+import { SlidersHorizontal, Check, X, AlertTriangle } from 'lucide-react'
 import { getCroppedBlob } from '@/lib/crop-image'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 
@@ -26,13 +26,17 @@ export function CropModal({
   const [rotation, setRotation] = useState(0)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
   const [processing, setProcessing] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedAreaPixels(croppedPixels)
+    setError(null)
   }, [])
 
   const handleApply = async () => {
     if (!croppedAreaPixels) return
+    setError(null)
     setProcessing(true)
     try {
       const blob = await getCroppedBlob(
@@ -42,9 +46,11 @@ export function CropModal({
         'image/webp',
         0.92,
       )
+      setSuccess(true)
       onComplete(blob)
-    } catch {
-      // fall through — blob creation failed
+    } catch (err) {
+      console.error('Crop failed:', err)
+      setError('Failed to crop image. The image may be from a blocked origin.')
     } finally {
       setProcessing(false)
     }
@@ -92,6 +98,14 @@ export function CropModal({
         />
       </div>
 
+      {/* error */}
+      {error && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </div>
+      )}
+
       {/* zoom slider */}
       <div className="flex items-center gap-3 mt-4 shrink-0">
         <span className="text-[11px] text-white/30 w-8 text-right tabular-nums">
@@ -129,10 +143,11 @@ export function CropModal({
             variant="primary"
             onClick={handleApply}
             loading={processing}
-            disabled={!croppedAreaPixels}
+            disabled={!croppedAreaPixels || success}
+            className={success ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}
           >
             <Check className="h-3.5 w-3.5 mr-1" />
-            Apply
+            {success ? "Applied" : "Apply"}
           </DkButton>
         </div>
       </div>

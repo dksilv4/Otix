@@ -204,11 +204,13 @@ export const userQueries = {
       staleTime: 1000 * 60 * 2,
     }),
 
-  hallOfFame: (username: string) =>
+  hallOfFame: (username: string, mediaType?: string) =>
     queryOptions({
-      queryKey: ['user', username, 'hall-of-fame'],
+      queryKey: ['user', username, 'hall-of-fame', mediaType ?? 'all'],
       queryFn: async () => {
-        const { data } = await apiClient.get<HallOfFameItem[]>(`/users/${username}/hall-of-fame`)
+        const params: Record<string, string> = {}
+        if (mediaType) params.media_type = mediaType
+        const { data } = await apiClient.get<HallOfFameItem[]>(`/users/${username}/hall-of-fame`, { params })
         return data
       },
       staleTime: 1000 * 60 * 5,
@@ -290,8 +292,9 @@ export function useUnfollowUser(username: string) {
 export function useUpdateHallOfFame(username: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (mediaIds: string[]) => {
-      await apiClient.patch('/auth/me', { hall_of_fame_media_ids: mediaIds })
+    mutationFn: async ({ mediaType, mediaIds, current }: { mediaType: string; mediaIds: string[]; current: Record<string, string[]> }) => {
+      const updated = { ...current, [mediaType]: mediaIds }
+      await apiClient.patch('/auth/me', { hall_of_fame_media_ids: updated })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', username, 'hall-of-fame'] })

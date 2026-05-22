@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Bell, CheckCheck, UserPlus, UserCheck, UserX, UserMinus, Heart, MessageSquareText } from 'lucide-react'
+import { Bell, CheckCheck, UserPlus, UserCheck, UserX, UserMinus, Heart, MessageSquareText, Users } from 'lucide-react'
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth'
 import { notificationQueries, useMarkRead, useMarkAllRead, type Notification } from '../notification-queries'
@@ -15,6 +15,7 @@ const TYPE_ICONS: Record<string, typeof Heart> = {
   friend_removed: UserMinus,
   like: Heart,
   comment: MessageSquareText,
+  list_invitation: Users,
 }
 
 function formatTimeAgo(dateStr: string): string {
@@ -65,14 +66,27 @@ function NotificationRow({
   const queryClient = useQueryClient()
   const Icon = TYPE_ICONS[notification.type] ?? Bell
   const isFriendRequest = notification.type === 'friend_request'
+  const isListInvitation = notification.type === 'list_invitation'
 
   const handleAction = async (action: 'accept' | 'reject') => {
-    const requestId = notification.metadataJson?.request_id as string | undefined
+    const requestId = notification.metadataJson?.requestId as string | undefined
     if (!requestId) return
     try {
       await apiClient.post(`/friends/requests/${requestId}/${action}`)
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['friends'] })
+    } catch {
+      // ignored
+    }
+  }
+
+  const handleListAction = async (action: 'accept' | 'decline') => {
+    const listId = notification.metadataJson?.listId as string | undefined
+    if (!listId) return
+    try {
+      await apiClient.post(`/list/${listId}/collaborators/${action}`)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['list'] })
     } catch {
       // ignored
     }
@@ -135,6 +149,24 @@ function NotificationRow({
               type="button"
               className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
               onClick={() => handleAction('reject')}
+            >
+              Decline
+            </button>
+          </div>
+        )}
+        {isListInvitation && (
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+              onClick={() => handleListAction('accept')}
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+              onClick={() => handleListAction('decline')}
             >
               Decline
             </button>

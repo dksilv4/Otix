@@ -7,6 +7,7 @@ RULES:
 - This package is the leaf — it depends on nothing internal.
 """
 
+from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
@@ -71,6 +72,8 @@ __all__ = [
     "MediaListLike",
     "MediaAsset",
     "MediaCredit",
+    "MediaEditProposal",
+    "MediaImageOverride",
     "MediaGameMode",
     "MediaGenre",
     "MediaItem",

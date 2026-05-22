@@ -27,6 +27,9 @@ const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-co
 const GoogleConnectCallbackPage = lazy(() => import("@auth/organisms/google-connect-callback-page").then(m => ({ default: m.GoogleConnectCallbackPage })))
 const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
 const AdminPage = lazy(() => import("@/features/admin/organisms/admin-page").then(m => ({ default: m.AdminPage })))
+const AdminProposalsPage = lazy(() => import("@/features/admin/organisms/admin-proposals-page").then(m => ({ default: m.AdminProposalsPage })))
+const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboarding-page").then(m => ({ default: m.OnboardingPage })))
+const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -225,6 +228,29 @@ const adminRoute = createRoute({
   component: AdminPage,
 })
 
+const adminProposalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/proposals",
+  component: AdminProposalsPage,
+})
+
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: OnboardingPage,
+})
+
+const searchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/search",
+  component: SearchPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    q: (search.q as string) || '',
+    type: (search.type as string) || 'all',
+    sort: (search.sort as string) || '',
+  }),
+})
+
 // ── Assemble ──
 
 const routeTree = rootRoute.addChildren([
@@ -253,6 +279,9 @@ const routeTree = rootRoute.addChildren([
   notificationsRoute,
   dkUiRoute,
   adminRoute,
+  adminProposalsRoute,
+  onboardingRoute,
+  searchRoute,
 ])
 
 export const router = createRouter({

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from otix.domain.workout import Workout
 
 
-DEFAULT_PROFILE_SECTIONS: list[str] = ["hall_of_fame", "library_breakdown", "mood_timeline"]
+DEFAULT_PROFILE_SECTIONS: list[str] = ["hof_movie", "hof_show", "hof_game", "hof_music", "library_breakdown", "mood_timeline"]
 
 
 class AuthActionType(str, enum.Enum):
@@ -81,7 +81,29 @@ class User(Base, TimestampMixin):
     avg_user_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     user_rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     profile_sections: Mapped[list] = mapped_column(JSON, default=lambda: DEFAULT_PROFILE_SECTIONS.copy(), nullable=False)
-    hall_of_fame_media_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    profile_card_sections: Mapped[list] = mapped_column(JSON, default=lambda: ["reviews", "stats", "top_rated", "recent_activity"], nullable=False)
+    hall_of_fame_media_ids: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    preferred_media_types: Mapped[list] = mapped_column(JSON, default=lambda: ["movie", "show", "game", "music"], nullable=False)
+    preferred_genres: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    preferred_languages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    discover_emphases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+
+    @property
+    def hof_ids(self) -> dict[str, list[str]]:
+        """Normalize hall_of_fame_media_ids to the current dict format.
+
+        Handles legacy list-format data stored before the per-media-type change.
+        Non-empty lists from old data would break Pydantic validation since
+        ``or {}`` only triggers for falsy values (empty lists).
+        """
+        raw = self.hall_of_fame_media_ids
+        if isinstance(raw, dict):
+            return raw
+        if isinstance(raw, list):
+            return {}
+        return {}
+
     karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")

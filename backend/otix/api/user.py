@@ -136,7 +136,7 @@ async def get_user_profile(
         is_admin=user.is_admin,
         composite_score=reputation.get("composite_score"),
         profile_sections=user.profile_sections if user.profile_sections else None,
-        hall_of_fame_media_ids=user.hall_of_fame_media_ids or [],
+        hall_of_fame_media_ids=user.hof_ids,
         steam=steam,
         plex=plex,
         tmdb_username=tmdb_username,
@@ -477,13 +477,23 @@ async def get_user_karma_transactions(
 @user_router.get("/{username}/hall-of-fame", response_model=list[HallOfFameItem])
 async def get_user_hall_of_fame(
     username: str,
+    media_type: str | None = Query(None, description="Filter by media type (movie, show, game, music)"),
     db: AsyncSession = Depends(get_db),
 ) -> list[HallOfFameItem]:
     user = await db.scalar(select(User).where(User.username == username))
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    media_ids = user.hall_of_fame_media_ids or []
+    hof = user.hof_ids
+
+    if media_type:
+        media_ids = hof.get(media_type, [])
+    else:
+        media_ids = []
+        for ids in hof.values():
+            if isinstance(ids, list):
+                media_ids.extend(ids)
+
     if not media_ids:
         return []
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -12,6 +12,8 @@ from otix.domain.list import (
     UserListItem,
 )
 from otix.domain.media import MediaItem
+from otix.domain.notification import Notification
+from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.lib.xp import LIST_CREATE
 
@@ -97,7 +99,17 @@ class ListService:
     async def list_user_lists(self, user_id: str) -> list[UserList]:
         result = await self.session.scalars(
             select(UserList)
-            .where(UserList.user_id == user_id)
+            .where(
+                or_(
+                    UserList.user_id == user_id,
+                    UserList.id.in_(
+                        select(MediaListCollaborator.list_id).where(
+                            MediaListCollaborator.user_id == user_id,
+                            MediaListCollaborator.status == "accepted",
+                        )
+                    ),
+                )
+            )
             .order_by(UserList.updated_at.desc())
         )
         return list(result)
@@ -229,6 +241,17 @@ class ListService:
             status="pending",
         )
         self.session.add(collab)
+
+        actor = await self.session.scalar(select(User).where(User.id == actor_id))
+        notification = Notification(
+            user_id=target_user_id,
+            type="list_invitation",
+            title="List Collaboration Invite",
+            body=f"{actor.username if actor else 'Someone'} invited you to collaborate on \"{lst.name}\"",
+            metadata_json={"list_id": list_id, "actor_id": actor_id},
+        )
+        self.session.add(notification)
+
         await self.session.flush()
         await self.session.refresh(collab)
         return collab
@@ -251,28 +274,61 @@ class ListService:
     async def accept_collaboration(
         self, list_id: str, user_id: str
     ) -> bool:
-        result = await self.session.execute(
-            update(MediaListCollaborator)
+        collab = await self.session.scalar(
+            select(MediaListCollaborator)
+            .options(joinedload(MediaListCollaborator.list))
             .where(
                 MediaListCollaborator.list_id == list_id,
                 MediaListCollaborator.user_id == user_id,
                 MediaListCollaborator.status == "pending",
             )
-            .values(status="accepted")
         )
-        return result.rowcount > 0
+        if collab is None:
+            return False
+
+        collab.status = "accepted"
+
+        acceptor = await self.session.scalar(select(User).where(User.id == user_id))
+        notification = Notification(
+            user_id=collab.list.user_id,
+            type="list_invitation_accepted",
+            title="Invitation Accepted",
+            body=f"{acceptor.username if acceptor else 'Someone'} accepted your invitation to \"{collab.list.name}\"",
+            metadata_json={"list_id": list_id, "user_id": user_id},
+        )
+        self.session.add(notification)
+
+        await self.session.flush()
+        return True
 
     async def decline_collaboration(
         self, list_id: str, user_id: str
     ) -> bool:
-        result = await self.session.execute(
-            delete(MediaListCollaborator).where(
+        collab = await self.session.scalar(
+            select(MediaListCollaborator)
+            .options(joinedload(MediaListCollaborator.list))
+            .where(
                 MediaListCollaborator.list_id == list_id,
                 MediaListCollaborator.user_id == user_id,
                 MediaListCollaborator.status == "pending",
             )
         )
-        return result.rowcount > 0
+        if collab is None:
+            return False
+
+        decliner = await self.session.scalar(select(User).where(User.id == user_id))
+        notification = Notification(
+            user_id=collab.list.user_id,
+            type="list_invitation_declined",
+            title="Invitation Declined",
+            body=f"{decliner.username if decliner else 'Someone'} declined your invitation to \"{collab.list.name}\"",
+            metadata_json={"list_id": list_id, "user_id": user_id},
+        )
+        self.session.add(notification)
+
+        await self.session.delete(collab)
+        await self.session.flush()
+        return True
 
     async def get_collaborators(self, list_id: str) -> list[MediaListCollaborator]:
         result = await self.session.scalars(

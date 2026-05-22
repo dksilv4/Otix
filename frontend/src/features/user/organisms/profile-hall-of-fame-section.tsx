@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Crown, Plus, Search, X } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -14,13 +14,20 @@ const MEDIA_TYPE_COLORS: Record<string, string> = {
   music: '#eab308',
 }
 
+const MEDIA_TYPE_LABELS: Record<string, string> = {
+  movie: 'Movies',
+  show: 'Shows',
+  game: 'Games',
+  music: 'Music',
+}
+
 const EMPTY_SLOTS = Array.from({ length: 5 })
 
-export function HallOfFameSection({ username }: { username: string }) {
+export function HallOfFameSection({ username, mediaType }: { username: string; mediaType: string }) {
   const { user: currentUser } = useAuth()
   const isOwner = currentUser?.username === username
 
-  const hallQuery = useQuery(userQueries.hallOfFame(username))
+  const hallQuery = useQuery(userQueries.hallOfFame(username, mediaType))
   const updateHall = useUpdateHallOfFame(username)
 
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -32,11 +39,15 @@ export function HallOfFameSection({ username }: { username: string }) {
 
   if (!hasItems && !isOwner) return null
 
+  const currentHofDict = currentUser?.hall_of_fame_media_ids ?? {}
+
   return (
     <section>
       <div className="flex items-center gap-2 mb-4">
         <Crown className="h-4 w-4 text-amber-400" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Hall of Fame</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          {MEDIA_TYPE_LABELS[mediaType] ?? mediaType}
+        </h2>
         {isOwner && hasItems && (
           <button
             onClick={() => setPickerOpen(true)}
@@ -53,7 +64,7 @@ export function HallOfFameSection({ username }: { username: string }) {
           className="w-full rounded-2xl border-2 border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)] p-8 text-center hover:border-white/[0.15] transition-colors"
         >
           <Crown className="h-5 w-5 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground/50">Curate your top 5 all-time favorites</p>
+          <p className="text-xs text-muted-foreground/50">Curate your top 5 {MEDIA_TYPE_LABELS[mediaType]?.toLowerCase() ?? mediaType}</p>
         </button>
       ) : (
         <div className="grid grid-cols-5 gap-2 sm:gap-3">
@@ -103,7 +114,6 @@ export function HallOfFameSection({ username }: { username: string }) {
                 )}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 pt-6">
                   <p className="text-[10px] font-medium text-white/90 leading-tight truncate">{item.title}</p>
-                  <p className="text-[9px] text-white/40 truncate">{item.mediaType}</p>
                 </div>
                 <div
                   className="absolute top-1.5 left-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white/90"
@@ -115,7 +125,7 @@ export function HallOfFameSection({ username }: { username: string }) {
                   <button
                     onClick={() => {
                       const newIds = items.filter((_, idx) => idx !== i).map((it) => it.id)
-                      updateHall.mutate(newIds)
+                      updateHall.mutate({ mediaType, mediaIds: newIds, current: currentHofDict })
                     }}
                     className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -130,9 +140,10 @@ export function HallOfFameSection({ username }: { username: string }) {
 
       {pickerOpen && (
         <HallOfFamePicker
+          mediaType={mediaType}
           currentIds={items.map((i) => i.id)}
           onSave={(ids) => {
-            updateHall.mutate(ids)
+            updateHall.mutate({ mediaType, mediaIds: ids, current: currentHofDict })
             setPickerOpen(false)
           }}
           onClose={() => setPickerOpen(false)}
@@ -143,10 +154,12 @@ export function HallOfFameSection({ username }: { username: string }) {
 }
 
 function HallOfFamePicker({
+  mediaType,
   currentIds,
   onSave,
   onClose,
 }: {
+  mediaType: string
   currentIds: string[]
   onSave: (ids: string[]) => void
   onClose: () => void
@@ -155,23 +168,49 @@ function HallOfFamePicker({
   const [results, setResults] = useState<MediaItemSummary[]>([])
   const [selected, setSelected] = useState<string[]>(currentIds)
   const [searching, setSearching] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const doSearch = async (q: string) => {
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
+  const doSearch = (q: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+
     if (q.length < 2) {
       setResults([])
+      setSearching(false)
       return
     }
+
     setSearching(true)
-    try {
-      const { data } = await apiClient.get<{ items: MediaItemSummary[] }>('/media/search', {
-        params: { query: q, limit: '15' },
-      })
-      setResults(data.items ?? [])
-    } catch {
-      setResults([])
-    } finally {
-      setSearching(false)
-    }
+
+    timerRef.current = setTimeout(async () => {
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      try {
+        const { data } = await apiClient.get<{ items: MediaItemSummary[] }>('/media/search', {
+          params: { q, media_type: mediaType, page_size: '15' },
+          signal: controller.signal,
+        })
+        if (!controller.signal.aborted) {
+          setResults(data.items ?? [])
+          setSearching(false)
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'CanceledError') return
+        if (!controller.signal.aborted) {
+          setResults([])
+          setSearching(false)
+        }
+      }
+    }, 200)
   }
 
   const toggleItem = (id: string) => {
@@ -181,6 +220,8 @@ function HallOfFamePicker({
       return [...prev, id]
     })
   }
+
+  const placeholder = `Search ${MEDIA_TYPE_LABELS[mediaType]?.toLowerCase() ?? mediaType}...`
 
   return (
     <div className="fixed inset-0 z-[var(--dk-z-modal)] flex items-start justify-center pt-[15vh]">
@@ -196,7 +237,7 @@ function HallOfFamePicker({
               setQuery(e.target.value)
               doSearch(e.target.value)
             }}
-            placeholder="Search movies, shows, games, music..."
+            placeholder={placeholder}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/30"
           />
           <span className="text-[10px] text-muted-foreground/40 tabular-nums">{selected.length}/5</span>
@@ -250,8 +291,7 @@ function HallOfFamePicker({
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{item.title}</p>
                     <p className="text-[10px] text-muted-foreground/50">
-                      {item.mediaType}
-                      {item.releaseDate && ` · ${new Date(item.releaseDate).getFullYear()}`}
+                      {item.releaseDate && `${new Date(item.releaseDate).getFullYear()}`}
                     </p>
                   </div>
                   <div

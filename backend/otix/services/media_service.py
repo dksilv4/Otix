@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import case, false, literal_column, select, func, text, type_coerce
+from sqlalchemy import case, false, literal_column, or_, select, func, text, type_coerce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -39,6 +39,9 @@ class MediaService:
         include_total: bool = False,
         date_from: date | None = None,
         date_to: date | None = None,
+        media_ids: list[str] | None = None,
+        language: str | None = None,
+        is_anime: bool | None = None,
     ) -> tuple[list[MediaItem], bool, int | None]:
         _sort_fields = {
             "popularity": MediaItem.popularity,
@@ -79,6 +82,32 @@ class MediaService:
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
 
+        if media_ids:
+            query = query.where(MediaItem.id.in_(media_ids))
+
+        if language:
+            query = query.where(MediaItem.original_language == language)
+
+        if is_anime is not None:
+            if is_anime:
+                movie_cond = Movie.is_anime == True
+                show_cond = Show.is_anime == True
+            else:
+                movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
+                show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
+            if media_type == "movie":
+                query = query.where(
+                    MediaItem.id.in_(
+                        select(Movie.media_item_id).where(movie_cond)
+                    )
+                )
+            elif media_type == "show":
+                query = query.where(
+                    MediaItem.id.in_(
+                        select(Show.media_item_id).where(show_cond)
+                    )
+                )
+
         if date_from is not None:
             query = query.where(MediaItem.release_date >= date_from)
         if date_to is not None:
@@ -91,6 +120,37 @@ class MediaService:
                 count_query = count_query.where(MediaItem.media_type == media_type)
             if genre:
                 count_query = count_query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
+            if has_artwork:
+                count_query = count_query.where(
+                    MediaItem.textless_poster_url.isnot(None)
+                    | (
+                        (MediaItem.media_type == "music")
+                        & MediaItem.poster_url.isnot(None)
+                    )
+                )
+            if language:
+                count_query = count_query.where(MediaItem.original_language == language)
+            if is_anime is not None:
+                if is_anime:
+                    movie_cond = Movie.is_anime == True
+                    show_cond = Show.is_anime == True
+                else:
+                    movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
+                    show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
+                if media_type == "movie":
+                    count_query = count_query.where(
+                        MediaItem.id.in_(
+                            select(Movie.media_item_id).where(movie_cond)
+                        )
+                    )
+                elif media_type == "show":
+                    count_query = count_query.where(
+                        MediaItem.id.in_(
+                            select(Show.media_item_id).where(show_cond)
+                        )
+                    )
+            if media_ids:
+                count_query = count_query.where(MediaItem.id.in_(media_ids))
             if date_from is not None:
                 count_query = count_query.where(MediaItem.release_date >= date_from)
             if date_to is not None:

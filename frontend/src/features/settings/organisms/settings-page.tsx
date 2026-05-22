@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Dot } from 'lucide-react'
+import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Heart, Film, Tv, Gamepad2, Music } from 'lucide-react'
 import { CropModal } from '@/features/settings/molecules/crop-modal'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
 import { MOTION_OPTIONS, useMotionPreference } from '@/lib/motion-preference'
 import { useTheme, type ThemeSetting } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
+import { useQuery } from '@tanstack/react-query'
 import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
 import { apiClient, API_BASE_URL } from '@/lib/api-client'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
@@ -25,10 +26,11 @@ import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 
 const BIO_MAX_LENGTH = 250
 
-type Section = 'profile' | 'appearance' | 'account' | 'integrations'
+type Section = 'profile' | 'preferences' | 'appearance' | 'account' | 'integrations'
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'preferences', label: 'Preferences', icon: Heart },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'account', label: 'Account', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Link2 },
@@ -44,16 +46,22 @@ export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<Section>(() =>
     isSettingsSection(search.section) ? search.section : 'profile',
   )
+  const [mobileView, setMobileView] = useState<'menu' | 'section'>('menu')
   const { theme, setTheme } = useTheme()
   const { user, isAuthenticated } = useAuth()
 
   const handleSectionChange = (section: Section) => {
     setActiveSection(section)
+    setMobileView('section')
     navigate({
       to: '/settings',
       search: section === 'profile' ? {} : ({ section } as never),
       replace: true,
     })
+  }
+
+  const handleBackToMenu = () => {
+    setMobileView('menu')
   }
 
   return (
@@ -62,8 +70,47 @@ export function SettingsPage() {
         <title>Settings - Otix</title>
       </Helmet>
 
-      <div className="mt-6 flex gap-8">
-        <aside className="w-56 shrink-0">
+      <div className="mt-6 md:flex md:gap-8">
+        {/* Mobile menu page */}
+        <div className={cn('md:hidden', mobileView === 'section' && 'hidden')}>
+          <h1 className="mb-6 text-2xl font-bold tracking-[-0.02em]">Settings</h1>
+          <nav className="space-y-1">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSectionChange(item.id)}
+                  className="flex w-full items-center gap-4 rounded-xl px-4 py-4 text-base font-medium transition-all active:scale-[0.98] hover:bg-[var(--dk-surface-glass)]"
+                >
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                  <span>{item.label}</span>
+                  <ChevronDown className="h-4 w-4 ml-auto -rotate-90 text-muted-foreground/40" />
+                </button>
+              )
+            })}
+          </nav>
+
+          {user && (
+            <div className="mt-8 px-4 pt-6 border-t border-border/40">
+              <div className="flex items-center gap-3">
+                <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user.username}
+                    {user.isAdmin && (
+                      <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop sidebar */}
+        <aside className="hidden md:block w-56 shrink-0">
           <div className="sticky top-24 space-y-1">
             <h1 className="px-3 mb-4 text-lg font-bold tracking-[-0.02em]">Settings</h1>
             <nav className="space-y-0.5">
@@ -107,9 +154,21 @@ export function SettingsPage() {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0">
+        {/* Content area */}
+        <main className={cn('flex-1 min-w-0', mobileView === 'menu' && 'hidden md:block')}>
+          {/* Mobile back button */}
+          <button
+            onClick={handleBackToMenu}
+            className="md:hidden flex items-center gap-2 mb-6 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronDown className="h-4 w-4 rotate-90" />
+            Settings
+          </button>
           {activeSection === 'profile' && (
             <ProfileSection user={user} isAuthenticated={isAuthenticated} />
+          )}
+          {activeSection === 'preferences' && (
+            <PreferencesSection />
           )}
           {activeSection === 'appearance' && (
             <AppearanceSection theme={theme} onSetTheme={setTheme} />
@@ -139,6 +198,205 @@ const PROFILE_SECTION_OPTIONS = [
   { id: 'recent_activity', label: 'Recent Activity', description: 'Timeline of recent actions' },
 ] as const
 
+// ── Preferences ──
+
+const MEDIA_TYPES = [
+  { value: 'movie', label: 'Movies', Icon: Film, color: 'text-amber-400' },
+  { value: 'show', label: 'Shows', Icon: Tv, color: 'text-violet-400' },
+  { value: 'game', label: 'Games', Icon: Gamepad2, color: 'text-emerald-400' },
+  { value: 'music', label: 'Music', Icon: Music, color: 'text-rose-400' },
+] as const
+
+const LANGUAGES = [
+  { code: 'ja', label: 'Japanese', flag: '🇯🇵' },
+  { code: 'ko', label: 'Korean', flag: '🇰🇷' },
+  { code: 'zh', label: 'Chinese', flag: '🇨🇳' },
+  { code: 'pt-PT', label: 'Portuguese', flag: '🇵🇹' },
+  { code: 'pt-BR', label: 'Brazilian', flag: '🇧🇷' },
+  { code: 'es', label: 'Spanish', flag: '🇪🇸' },
+  { code: 'fr', label: 'French', flag: '🇫🇷' },
+  { code: 'de', label: 'German', flag: '🇩🇪' },
+  { code: 'it', label: 'Italian', flag: '🇮🇹' },
+  { code: 'hi', label: 'Hindi', flag: '🇮🇳' },
+  { code: 'ar', label: 'Arabic', flag: '🇸🇦' },
+  { code: 'ru', label: 'Russian', flag: '🇷🇺' },
+  { code: 'th', label: 'Thai', flag: '🇹🇭' },
+  { code: 'tr', label: 'Turkish', flag: '🇹🇷' },
+  { code: 'pl', label: 'Polish', flag: '🇵🇱' },
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+]
+
+interface GenreOption {
+  id: string
+  name: string
+  slug: string
+}
+
+function PreferencesSection() {
+  const { user, refreshUser } = useAuth()
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(user?.preferredMediaTypes ?? ['movie', 'show', 'game', 'music'])
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(user?.preferredGenres ?? [])
+  const [selectedLangs, setSelectedLangs] = useState<string[]>(user?.preferredLanguages ?? [])
+  const [isSaving, setIsSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const { data: allGenres = [], isLoading: genresLoading } = useQuery({
+    queryKey: ['genres', 'settings'],
+    queryFn: async () => {
+      const results = await Promise.all(
+        MEDIA_TYPES.map(async (mt) => {
+          const { data } = await apiClient.get<GenreOption[]>('/media/genres', { params: { media_type: mt.value } })
+          return data
+        }),
+      )
+      const seen = new Set<string>()
+      const deduped: GenreOption[] = []
+      for (const genre of results.flat()) {
+        if (!seen.has(genre.slug)) {
+          seen.add(genre.slug)
+          deduped.push(genre)
+        }
+      }
+      return deduped
+    },
+    staleTime: 1000 * 60 * 30,
+  })
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    setSaved(false)
+    try {
+      await apiClient.patch('/auth/me', {
+        preferred_media_types: selectedTypes,
+        preferred_genres: selectedGenres,
+        preferred_languages: selectedLangs,
+      })
+      await refreshUser()
+      setSaved(true)
+    } catch { /* error handled silently */ }
+    finally { setIsSaving(false) }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Content Preferences</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your media preferences to personalize your home page.
+        </p>
+      </div>
+
+      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)] space-y-6">
+        {/* Media Types */}
+        <div>
+          <p className="text-sm font-medium mb-3">Preferred Media Types</p>
+          <div className="grid grid-cols-2 gap-2">
+            {MEDIA_TYPES.map(({ value, label, Icon, color }) => {
+              const isSelected = selectedTypes.includes(value)
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSelectedTypes(prev =>
+                    prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value],
+                  )}
+                  className={cn(
+                    'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200',
+                    isSelected
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-[var(--dk-border)] bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <Icon className={cn('h-4 w-4', color)} />
+                  {label}
+                  {isSelected && <Check className="h-3.5 w-3.5 ml-auto" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Genres */}
+        <div>
+          <p className="text-sm font-medium mb-3">Favorite Genres</p>
+          {genresLoading ? (
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-8 w-20 rounded-full bg-[var(--dk-surface-glass)] animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+              {allGenres.map(g => {
+                const isSelected = selectedGenres.includes(g.slug)
+                return (
+                  <button
+                    key={g.slug}
+                    type="button"
+                    onClick={() => setSelectedGenres(prev =>
+                      prev.includes(g.slug) ? prev.filter(gg => gg !== g.slug) : [...prev, g.slug],
+                    )}
+                    className={cn(
+                      'rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
+                      isSelected
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {g.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Languages */}
+        <div>
+          <p className="text-sm font-medium mb-3">Language Preferences</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {LANGUAGES.map(({ code, label, flag }) => {
+              const isSelected = selectedLangs.includes(code)
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setSelectedLangs(prev =>
+                    prev.includes(code) ? prev.filter(l => l !== code) : [...prev, code],
+                  )}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200',
+                    isSelected
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  <span className="text-base">{flag}</span>
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Save */}
+        <div className="flex items-center gap-3 pt-2">
+          <DkButton onClick={handleSave} disabled={isSaving || selectedTypes.length === 0}>
+            {isSaving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+            Save Preferences
+          </DkButton>
+          {saved && (
+            <span className="text-sm text-emerald-400 flex items-center gap-1">
+              <Check className="h-3.5 w-3.5" />
+              Saved
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Profile ──
 
 function ProfileSection({
@@ -156,7 +414,7 @@ function ProfileSection({
     plexId?: string | null
     tmdbUsername?: string | null
     integrationVisibility?: Record<string, string> | null
-    profileSections?: string[] | null
+    profileCardSections?: string[] | null
   } | null
   isAuthenticated: boolean
 }) {
@@ -174,7 +432,7 @@ function ProfileSection({
     user?.integrationVisibility?.tmdb ?? 'hidden'
   )
   const [profileSections, setProfileSections] = useState<string[]>(
-    user?.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'],
+    user?.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'],
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -190,7 +448,7 @@ function ProfileSection({
       setSteamVisibility(user.integrationVisibility?.steam ?? 'hidden')
       setPlexVisibility(user.integrationVisibility?.plex ?? 'hidden')
       setTmdbVisibility(user.integrationVisibility?.tmdb ?? 'hidden')
-      setProfileSections(user.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
+      setProfileSections(user.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
       setInitialized(true)
     }
   }, [user, initialized])
@@ -222,7 +480,7 @@ function ProfileSection({
         avatar_url: avatarUrl || null,
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
-        profile_sections: profileSections,
+        profile_card_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -245,7 +503,7 @@ function ProfileSection({
     steamVisibility !== (user?.integrationVisibility?.steam ?? 'hidden') ||
     plexVisibility !== (user?.integrationVisibility?.plex ?? 'hidden') ||
     tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden') ||
-    JSON.stringify(profileSections) !== JSON.stringify(user?.profileSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
+    JSON.stringify(profileSections) !== JSON.stringify(user?.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
 
   const applyCoverEditor = async (url: string, keepOpen = false) => {
     setBackgroundUrl(url)
@@ -257,7 +515,7 @@ function ProfileSection({
         avatar_url: avatarUrl || null,
         background_url: url || null,
         integration_visibility: integrationVisibility,
-        profile_sections: profileSections,
+        profile_card_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -281,7 +539,7 @@ function ProfileSection({
         avatar_url: url || null,
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
-        profile_sections: profileSections,
+        profile_card_sections: profileSections,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -1747,22 +2005,38 @@ function formatAccountAge(unixTimestamp: number | null): string {
   return `${adjustedYears} years on Steam`
 }
 
+const PERSONA_STATES: Record<number, string> = {
+  0: 'Offline',
+  1: 'Online',
+  2: 'Busy',
+  3: 'Away',
+  4: 'Snooze',
+  5: 'Looking to trade',
+  6: 'Looking to play',
+}
+
+function personaStateLabel(state: number | null): string {
+  if (state === null || state === undefined) return 'Unknown'
+  return PERSONA_STATES[state] ?? 'Unknown'
+}
+
 function PersonaStateBadge({ state }: { state: number | null }) {
   if (state === null || state === undefined) return null
-  const states: Record<number, { label: string; color: string }> = {
-    0: { label: 'Offline', color: 'bg-muted-foreground/30' },
-    1: { label: 'Online', color: 'bg-green-500' },
-    2: { label: 'Busy', color: 'bg-amber-500' },
-    3: { label: 'Away', color: 'bg-amber-500/70' },
-    4: { label: 'Snooze', color: 'bg-blue-400/60' },
-    5: { label: 'Looking to trade', color: 'bg-sky-400' },
-    6: { label: 'Looking to play', color: 'bg-sky-400' },
+  const colorMap: Record<number, string> = {
+    0: 'bg-muted-foreground/30',
+    1: 'bg-green-500',
+    2: 'bg-amber-500',
+    3: 'bg-amber-500/70',
+    4: 'bg-blue-400/60',
+    5: 'bg-sky-400',
+    6: 'bg-sky-400',
   }
-  const s = states[state] ?? { label: 'Unknown', color: 'bg-muted-foreground/30' }
+  const label = PERSONA_STATES[state] ?? 'Unknown'
+  const color = colorMap[state] ?? 'bg-muted-foreground/30'
   return (
     <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-      <span className={cn('inline-block h-2 w-2 rounded-full', s.color)} />
-      {s.label}
+      <span className={cn('inline-block h-2 w-2 rounded-full', color)} />
+      {label}
     </span>
   )
 }
@@ -1784,94 +2058,206 @@ const BRAND_COLORS: Record<string, string> = {
   google: '#4285F4',
 }
 
-function CollapsibleActions({ children, count }: { children: React.ReactNode; count: number }) {
-  const [open, setOpen] = useState(true)
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 w-full border-t border-border/20 px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronDown className={cn('h-3 w-3 transition-transform', !open && '-rotate-90')} />
-        {open ? 'Actions' : `Actions (${count})`}
-      </button>
-      {open && children}
-    </>
-  )
+const BRAND_BG: Record<string, string> = {
+  steam: 'bg-[#1a6bcc]/10',
+  plex: 'bg-[#e5a00d]/10',
+  spotify: 'bg-[#1db954]/10',
+  tmdb: 'bg-[#01b4e4]/10',
+  google: 'bg-[#4285F4]/10',
 }
 
-interface MarketplaceIntegration {
-  id: string
+// ── Integration card (iOS-style expandable) ──
+
+function IntegrationCard({
+  name,
+  description,
+  brandColor,
+  brandBg,
+  icon: Icon,
+  isConnected,
+  expanded,
+  onToggle,
+  onConnect,
+  connecting,
+  onDisconnect,
+  disconnecting,
+  children,
+}: {
   name: string
   description: string
   brandColor: string
   brandBg: string
   icon: React.ComponentType<{ className?: string }>
   isConnected: boolean
-  onConnect: () => void
-  connecting: boolean
-}
-
-function IntegrationMarketplaceModal({
-  open,
-  onOpenChange,
-  integrations,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  integrations: MarketplaceIntegration[]
+  expanded: boolean
+  onToggle: () => void
+  onConnect?: () => void
+  connecting?: boolean
+  onDisconnect?: () => void
+  disconnecting?: boolean
+  children?: React.ReactNode
 }) {
   return (
-    <DkDialog open={open} onOpenChange={onOpenChange} title="Browse Integrations" description="Connect your accounts to sync data across platforms.">
-      <div className="grid grid-cols-1 gap-3 mt-2">
-        {integrations.map((integration) => {
-          const Icon = integration.icon
-          return (
-            <div
-              key={integration.id}
-              className="flex items-center gap-4 rounded-2xl bg-[var(--dk-surface-raised)] p-4 border-l-[3px]"
-              style={{ borderLeftColor: integration.brandColor }}
-            >
-              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', integration.brandBg)} style={{ color: integration.brandColor }}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">{integration.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{integration.description}</p>
-              </div>
+    <div className="rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-md)] overflow-hidden">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={isConnected ? onToggle : undefined}
+        className={cn(
+          'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors',
+          isConnected && 'hover:bg-[var(--dk-surface-glass)] active:bg-[var(--dk-surface-glass)]',
+        )}
+        style={{ borderLeft: `3px solid ${brandColor}` }}
+      >
+        <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold">{name}</p>
+            {isConnected && <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{description}</p>
+        </div>
+        {isConnected ? (
+          <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
+        ) : (
+          <DkButton size="sm" variant="primary" onClick={onConnect} loading={connecting} className="shrink-0 shadow-none">
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Connect
+          </DkButton>
+        )}
+      </button>
+
+      {/* Expanded content */}
+      {isConnected && expanded && (
+        <div className="border-t border-border/20">
+          {children}
+          {onDisconnect && (
+            <div className="border-t border-border/20 px-5 py-3">
               <DkButton
                 size="sm"
-                variant={integration.isConnected ? 'ghost' : 'primary'}
-                onClick={integration.onConnect}
-                loading={integration.connecting}
-                disabled={integration.isConnected}
-                className="shrink-0 shadow-none"
+                variant="ghost"
+                onClick={onDisconnect}
+                loading={disconnecting}
+                className="w-full bg-destructive/10 text-destructive shadow-none hover:bg-destructive/15"
               >
-                {integration.isConnected ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 mr-1.5" />
-                    Connected
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-3.5 w-3.5 mr-1.5" />
-                    Add
-                  </>
-                )}
+                <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                Disconnect {name}
               </DkButton>
             </div>
-          )
-        })}
-      </div>
-    </DkDialog>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
-const integrationSyncButton = 'shrink-0 bg-primary/10 text-primary shadow-none hover:bg-primary/15'
-const integrationDangerButton = 'shrink-0 bg-destructive/10 text-destructive shadow-none hover:bg-destructive/15'
-const integrationActionRow = 'border-t border-border/20 px-4 py-4'
-const integrationActionHeader = 'text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60'
+// ── Integration profile row ──
+
+function IntegrationProfile({
+  avatarUrl,
+  avatarAlt,
+  name,
+  detail,
+  brandColor,
+  brandBg,
+  icon: Icon,
+  meta,
+}: {
+  avatarUrl?: string | null
+  avatarAlt: string
+  name: string
+  detail: string
+  brandColor?: string
+  brandBg?: string
+  icon?: React.ComponentType<{ className?: string }>
+  meta?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3 px-5 py-4">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt={avatarAlt} className="h-10 w-10 rounded-xl object-cover ring-1 ring-border/20" />
+      ) : (
+        <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl', brandBg || 'bg-muted/20')} style={brandColor ? { color: brandColor } : undefined}>
+          {Icon && <Icon className="h-5 w-5" />}
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium truncate">{name}</p>
+        <p className="text-xs text-muted-foreground truncate">{detail}</p>
+      </div>
+      {meta}
+    </div>
+  )
+}
+
+// ── Integration action row ──
+
+function IntegrationAction({
+  label,
+  description,
+  result,
+  buttonLabel,
+  buttonIcon: ButtonIcon,
+  onPress,
+  loading,
+  disabled,
+  progress,
+  children,
+  muted,
+}: {
+  label: string
+  description: string
+  result?: string | null
+  buttonLabel: string
+  buttonIcon?: React.ComponentType<{ className?: string }>
+  onPress: () => void
+  loading?: boolean
+  disabled?: boolean
+  progress?: React.ReactNode
+  children?: React.ReactNode
+  muted?: boolean
+}) {
+  return (
+    <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-[var(--dk-surface-overlay)]/30')}>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">{label}</p>
+          {progress}
+        </div>
+        <p className="mt-1 text-sm font-medium">{description}</p>
+        {result && <p className="text-xs text-muted-foreground mt-0.5">{result}</p>}
+        {children}
+      </div>
+      <DkButton
+        size="sm"
+        variant="ghost"
+        onClick={onPress}
+        loading={loading}
+        disabled={disabled}
+        className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+      >
+        {ButtonIcon && <ButtonIcon className="h-3.5 w-3.5 mr-1.5" />}
+        {buttonLabel}
+      </DkButton>
+    </div>
+  )
+}
+
+// ── Integration stats row ──
+
+function IntegrationStats({ items }: { items: { label: string; value: string | number }[] }) {
+  return (
+    <div className="flex flex-wrap gap-x-5 gap-y-1 px-5 py-3 text-xs text-muted-foreground border-t border-border/20">
+      {items.map((item) => (
+        <span key={item.label}>
+          <strong className="text-foreground">{item.value}</strong> {item.label}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 function IntegrationsSection() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -1944,9 +2330,8 @@ function IntegrationsSection() {
   const displayedSteamId = steamId ?? user?.steamId ?? null
   const isPlexConnected = plexConnected
   const isTmdbConnected = tmdbConnected
-  const [marketplaceOpen, setMarketplaceOpen] = useState(false)
-  const hasAnyConnected = isSteamConnected || isPlexConnected || isSpotifyConnected || isTmdbConnected
-
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const fetchIntegrations = async () => {
     try {
       const { data } = await apiClient.get('/auth/integrations')
@@ -2531,725 +2916,278 @@ function IntegrationsSection() {
     )
   }
 
-  const marketplaceIntegrations: MarketplaceIntegration[] = [
+  const toggleExpand = (id: string) => {
+    setExpandedId(expandedId === id ? null : id)
+  }
+
+  const query = searchQuery.toLowerCase().trim()
+
+  const integrationDefs = [
     {
       id: 'steam',
       name: 'Steam',
-      description: 'Sign in with Steam, sync your game library, and import your wishlist.',
-      brandColor: BRAND_COLORS.steam,
-      brandBg: 'bg-[#1a6bcc]/10',
-      icon: SteamIcon,
+      keywords: 'steam game library wishlist sign in valve',
+      description: isSteamConnected && steamProfile?.personaname ? `Linked as ${steamProfile.personaname}` : 'Sign in with Steam, sync your game library, and import your wishlist.',
       isConnected: isSteamConnected,
+      brandColor: BRAND_COLORS.steam,
+      brandBg: BRAND_BG.steam,
+      icon: SteamIcon,
       onConnect: handleConnect,
       connecting,
+      onDisconnect: handleDisconnect,
+      disconnecting,
     },
     {
       id: 'plex',
       name: 'Plex',
-      description: 'Link your Plex account to import and sync your media servers.',
-      brandColor: BRAND_COLORS.plex,
-      brandBg: 'bg-[#e5a00d]/10',
-      icon: PlexIcon,
+      keywords: 'plex media server watchlist library sync',
+      description: isPlexConnected && plex?.plexUsername ? `Linked as ${plex.plexUsername}` : 'Link your Plex account to import and sync your media servers.',
       isConnected: isPlexConnected,
+      brandColor: BRAND_COLORS.plex,
+      brandBg: BRAND_BG.plex,
+      icon: PlexIcon,
       onConnect: handlePlexConnect,
       connecting: plexConnecting,
+      onDisconnect: handlePlexDisconnect,
+      disconnecting: plexDisconnecting,
     },
     {
       id: 'spotify',
       name: 'Spotify',
-      description: 'Link your Spotify account to sync your liked songs and saved albums.',
-      brandColor: BRAND_COLORS.spotify,
-      brandBg: 'bg-[#1db954]/10',
-      icon: SpotifyIcon,
+      keywords: 'spotify music liked songs albums library sync',
+      description: isSpotifyConnected && spotifyUsername ? `Linked as ${spotifyUsername}` : 'Link your Spotify account to sync your liked songs and saved albums.',
       isConnected: isSpotifyConnected,
+      brandColor: BRAND_COLORS.spotify,
+      brandBg: BRAND_BG.spotify,
+      icon: SpotifyIcon,
       onConnect: handleSpotifyConnect,
       connecting: spotifyConnecting,
+      onDisconnect: handleSpotifyDisconnect,
+      disconnecting: spotifyDisconnecting,
     },
     {
       id: 'google',
       name: 'Google',
-      description: 'Link your Google account to enable YouTube Music and other Google integrations.',
-      brandColor: BRAND_COLORS.google,
-      brandBg: 'bg-[#4285F4]/10',
-      icon: GoogleIcon,
+      keywords: 'google youtube music liked videos sync',
+      description: isGoogleConnected && googleEmail ? `Linked as ${googleEmail}` : 'Link your Google account for YouTube Music and more.',
       isConnected: isGoogleConnected,
+      brandColor: BRAND_COLORS.google,
+      brandBg: BRAND_BG.google,
+      icon: GoogleIcon,
       onConnect: handleGoogleConnect,
       connecting: googleConnecting,
+      onDisconnect: handleGoogleDisconnect,
+      disconnecting: googleDisconnecting,
     },
     {
       id: 'tmdb',
       name: 'TMDb',
-      description: 'Link your TMDb account to sync ratings and import your watchlist.',
-      brandColor: BRAND_COLORS.tmdb,
-      brandBg: 'bg-[#01b4e4]/10',
-      icon: TmdbIcon,
+      keywords: 'tmdb themoviedb ratings watchlist movies shows sync import',
+      description: isTmdbConnected && tmdbUsername ? `Linked as ${tmdbUsername}` : 'Link your TMDb account to sync ratings and import your watchlist.',
       isConnected: isTmdbConnected,
+      brandColor: BRAND_COLORS.tmdb,
+      brandBg: BRAND_BG.tmdb,
+      icon: TmdbIcon,
       onConnect: handleTmdbConnect,
       connecting: tmdbConnecting,
+      onDisconnect: handleTmdbDisconnect,
+      disconnecting: tmdbDisconnecting,
     },
   ]
 
+  const filteredIntegrations = query
+    ? integrationDefs.filter((i) =>
+        i.name.toLowerCase().includes(query) ||
+        i.keywords.includes(query) ||
+        i.description.toLowerCase().includes(query)
+      )
+    : integrationDefs
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold tracking-[-0.01em]">Integrations</h2>
-          <p className="text-sm text-muted-foreground mt-1">Connect your Otix account to other platforms.</p>
-        </div>
-        <DkButton size="sm" variant="primary" onClick={() => setMarketplaceOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          Add Integration
-        </DkButton>
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold tracking-[-0.01em]">Integrations</h2>
+        <p className="text-sm text-muted-foreground mt-1">Connect your Otix account to other platforms.</p>
+      </div>
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search integrations..."
+          className="w-full h-9 rounded-xl bg-[var(--dk-surface-raised)] pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none ring-1 ring-border/30 focus:ring-primary/40 transition-all"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading integrations...
         </div>
-      ) : !hasAnyConnected ? (
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-12 text-center shadow-[var(--dk-shadow-md)]">
-          <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-[var(--dk-surface-raised)]">
-            <Plus className="h-6 w-6 text-muted-foreground/40" />
-          </div>
-          <p className="mt-4 text-sm font-medium">No integrations connected yet</p>
-          <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">
-            Connect your accounts to sync data, import your library, and keep everything in one place.
-          </p>
-          <DkButton
-            size="sm"
-            variant="primary"
-            onClick={() => setMarketplaceOpen(true)}
-            className="mt-5"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Browse Integrations
-          </DkButton>
+      ) : filteredIntegrations.length === 0 ? (
+        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-8 text-center shadow-[var(--dk-shadow-md)]">
+          <p className="text-sm text-muted-foreground">No integrations match "{searchQuery}"</p>
         </div>
       ) : (
-        <>
-          {isSteamConnected && (
-        <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
-          style={{ borderLeftColor: BRAND_COLORS.steam }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isSteamConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
-            <div>
-              <h3 className="text-base font-semibold">Steam</h3>
-              <p className="text-xs text-muted-foreground">
-                {isSteamConnected && steamProfile?.personaname
-                  ? `Linked to "${steamProfile.personaname}"`
-                  : 'Link your Steam account to sign in with Steam and show off your profile.'}
-              </p>
-            </div>
-          </div>
-
-            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
-              {/* Profile card */}
-              <div className="flex items-start gap-4 p-4">
-                {/* Avatar */}
-                <div className="shrink-0">
-                  {steamProfile?.avatarfull ? (
-                    <img
-                      src={steamProfile.avatarfull}
-                      alt={steamProfile.personaname ?? 'Steam avatar'}
-                      className="h-14 w-14 rounded-xl ring-2 ring-border/20"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]">
-                      <SteamIcon className="h-7 w-7 opacity-40" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate">
-                      {steamProfile?.personaname ?? 'Steam User'}
-                    </p>
-                    {steamProfile?.personastate !== null && steamProfile?.personastate !== undefined && (
-                      <PersonaStateBadge state={steamProfile.personastate} />
-                    )}
-                  </div>
-
-                  {steamProfile?.realname && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{steamProfile.realname}</p>
-                  )}
-
-                  <div className="flex items-center gap-2 flex-wrap mt-1.5 text-[11px] text-muted-foreground/70">
-                    {steamProfile?.profileurl && (
-                      <a
-                        href={steamProfile.profileurl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 transition-colors hover:text-primary"
-                      >
-                        <Link2 className="h-3 w-3" />
-                        Steam Profile
+        <div className="space-y-2">
+          {filteredIntegrations.map((i) => (
+            <IntegrationCard
+              key={i.id}
+              name={i.name}
+              description={i.description}
+              brandColor={i.brandColor}
+              brandBg={i.brandBg}
+              icon={i.icon}
+              isConnected={i.isConnected}
+              expanded={expandedId === i.id}
+              onToggle={() => toggleExpand(i.id)}
+              onConnect={i.onConnect}
+              connecting={i.connecting}
+              onDisconnect={i.onDisconnect}
+              disconnecting={i.disconnecting}
+            >
+              {/* Steam content */}
+              {i.id === 'steam' && (
+                <>
+                  <IntegrationProfile
+                    avatarUrl={steamProfile?.avatarfull}
+                    avatarAlt={steamProfile?.personaname ?? 'Steam avatar'}
+                    name={steamProfile?.personaname ?? 'Steam User'}
+                    detail={steamProfile?.realname ?? (displayedSteamId ? `Steam ID: ${displayedSteamId}` : 'Steam account linked')}
+                    brandBg={BRAND_BG.steam}
+                    icon={SteamIcon}
+                    brandColor={BRAND_COLORS.steam}
+                    meta={steamProfile?.profileurl && (
+                      <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors shrink-0">
+                        View Profile &rarr;
                       </a>
                     )}
-                    {steamProfile?.timecreated && (
-                      <span>{formatAccountAge(steamProfile.timecreated)}</span>
-                    )}
-                    {steamProfile?.loccountrycode && (
-                      <span className="rounded bg-[var(--dk-surface-overlay)] px-1.5 py-0.5 font-mono text-[10px]">
-                        {steamProfile.loccountrycode}
-                      </span>
-                    )}
-                  </div>
-
-                  {displayedSteamId && (
-                    <p className="mt-1.5 text-[10px] text-muted-foreground/40 font-mono">
-                      Steam ID: {displayedSteamId}
-                    </p>
+                  />
+                  {steamProfile && (
+                    <IntegrationStats items={[
+                      ...(steamProfile.timecreated ? [{ label: 'account age', value: formatAccountAge(steamProfile.timecreated) }] : []),
+                      ...(steamProfile.loccountrycode ? [{ label: 'location', value: steamProfile.loccountrycode }] : []),
+                      ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
+                    ]} />
                   )}
-                </div>
+                  <IntegrationAction label="Library Sync" description="Steam Library" result={scanResult ? `${scanResult.matchedInOtix} matches out of ${scanResult.totalInSteam} games` : null} buttonLabel={scanning ? 'Scanning...' : scanResult ? 'Re-scan' : 'Scan Library'} buttonIcon={RefreshCw} onPress={handleScan} loading={scanning} />
+                  <IntegrationAction label="Wishlist Sync" description="Steam Wishlist" result={wishlistScanResult ? `${wishlistScanResult.matched} matches out of ${wishlistScanResult.total} wishlist items` : null} buttonLabel={wishlistScanning ? 'Scanning...' : wishlistScanResult ? 'Re-scan' : 'Scan Wishlist'} buttonIcon={RefreshCw} onPress={handleWishlistScan} loading={wishlistScanning} muted />
+                  <IntegrationAction label="Game Matching" description="Match unmapped games to IGDB" result={resolveResult ? `${resolveResult.resolved} linked${resolveResult.synced > 0 ? `, ${resolveResult.synced} synced` : ''}${resolveResult.failed > 0 ? `, ${resolveResult.failed} failed` : ''} out of ${resolveResult.total}` : null} buttonLabel={resolving ? 'Resolving...' : resolveResult ? 'Resolve Again' : 'Resolve Unmatched'} buttonIcon={Link2} onPress={handleResolveUnmatched} loading={resolving} />
+                  {steamMessage && <p className="px-5 py-2 text-xs text-green-500">{steamMessage}</p>}
+                  {steamError && <p className="px-5 py-2 text-xs text-destructive">{steamError}</p>}
+                </>
+              )}
 
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className={integrationActionHeader}>Account</span>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleDisconnect}
-                    loading={disconnecting}
-                    className={integrationDangerButton}
-                  >
-                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
-                    Unlink
-                  </DkButton>
-                  {steamProfile?.profileurl && (
-                    <a
-                      href={steamProfile.profileurl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-muted-foreground/50 hover:text-primary transition-colors"
-                    >
-                      View on Steam &rarr;
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              <CollapsibleActions count={3}>
-                <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
-                  <div className="min-w-0">
-                    <p className={integrationActionHeader}>Library Sync</p>
-                    <p className="mt-1 text-sm font-medium">Steam Library</p>
-                    <p className="text-xs text-muted-foreground">
-                      {scanResult
-                        ? `${scanResult.matchedInOtix} matches out of ${scanResult.totalInSteam} games`
-                        : 'Import your Steam games into Otix'}
-                    </p>
-                  </div>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleScan}
-                    loading={scanning}
-                    className={integrationSyncButton}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                    {scanning ? "Scanning..." : scanResult ? "Re-scan" : "Scan Library"}
-                  </DkButton>
-                </div>
-
-                <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4 bg-[var(--dk-surface-overlay)]/30')}>
-                  <div className="min-w-0">
-                    <p className={integrationActionHeader}>Wishlist Sync</p>
-                    <p className="mt-1 text-sm font-medium">Steam Wishlist</p>
-                    <p className="text-xs text-muted-foreground">
-                      {wishlistScanResult
-                        ? `${wishlistScanResult.matched} matches out of ${wishlistScanResult.total} wishlist items`
-                        : 'Import your Steam wishlist into Otix'}
-                    </p>
-                  </div>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleWishlistScan}
-                    loading={wishlistScanning}
-                    className={integrationSyncButton}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                    {wishlistScanning ? "Scanning..." : wishlistScanResult ? "Re-scan" : "Scan Wishlist"}
-                  </DkButton>
-                </div>
-
-                <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
-                  <div className="min-w-0">
-                    <p className={integrationActionHeader}>Game Matching</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {resolveResult
-                        ? `${resolveResult.resolved} linked${resolveResult.synced > 0 ? `, ${resolveResult.synced} synced` : ''}${resolveResult.failed > 0 ? `, ${resolveResult.failed} failed` : ''} out of ${resolveResult.total}`
-                        : 'Look up unmatched Steam games in IGDB'}
-                    </p>
-                  </div>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleResolveUnmatched}
-                    loading={resolving}
-                    className={integrationSyncButton}
-                  >
-                    <Link2 className="h-3.5 w-3.5 mr-1.5" />
-                    {resolving ? 'Resolving...' : resolveResult ? 'Resolve Again' : 'Resolve Unmatched'}
-                  </DkButton>
-                </div>
-              </CollapsibleActions>
-            </div>
-
-          {steamMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{steamMessage}</p>}
-          {steamError && <p className="mt-3 text-xs text-destructive">{steamError}</p>}
-        </div>
-          )}
-
-          {isPlexConnected && (
-        <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
-          style={{ borderLeftColor: BRAND_COLORS.plex }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isPlexConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
-            <div>
-              <h3 className="text-base font-semibold">Plex</h3>
-              <p className="text-xs text-muted-foreground">
-                {isPlexConnected && plex?.plexUsername
-                  ? `Linked to "${plex.plexUsername}"`
-                  : 'Link your Plex account to import and sync your media servers.'}
-              </p>
-            </div>
-          </div>
-
-            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {plex?.plexThumb ? (
-                    <img src={plex.plexThumb} alt={plex.plexUsername ?? 'Plex avatar'} className="h-10 w-10 rounded-xl" />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e5a00d]/15">
-                      <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{plex?.plexUsername ?? 'Plex User'}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {plex?.plexEmail ?? plex?.plexId ?? user?.plexId}
-                    </p>
-                  </div>
-                </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className={integrationActionHeader}>Account</span>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handlePlexDisconnect}
-                    loading={plexDisconnecting}
-                    className={integrationDangerButton}
-                  >
-                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
-                    Unlink
-                  </DkButton>
-                </div>
-              </div>
-              <CollapsibleActions count={2}>
-              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
-                <div className="min-w-0">
-                  <p className={integrationActionHeader}>Library Sync</p>
-                  <p className="mt-1 text-sm font-medium">Plex Library</p>
-                  <p className="text-xs text-muted-foreground">
-                    {plexSyncResult
-                      ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded`
-                      : 'Discover servers, import libraries, and sync watch state'}
-                  </p>
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handlePlexSync}
-                  loading={plexSyncing}
-                  className={integrationSyncButton}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  {plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync' : 'Sync Now'}
-                </DkButton>
-              </div>
-
-              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4 bg-[var(--dk-surface-overlay)]/30')}>
-                <div className="min-w-0">
-                  <p className={integrationActionHeader}>Watchlist Sync</p>
-                  <p className="mt-1 text-sm font-medium">Plex Watchlist</p>
-                  <p className="text-xs text-muted-foreground">
-                    {plexWatchlistSyncResult
-                      ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items`
-                      : 'Import your Plex watchlist into Otix'}
-                  </p>
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handlePlexWatchlistSync}
-                  loading={plexWatchlistSyncing}
-                  className={integrationSyncButton}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  {plexWatchlistSyncing ? "Syncing..." : plexWatchlistSyncResult ? "Re-sync" : "Sync Watchlist"}
-                </DkButton>
-              </div>
-              </CollapsibleActions>
-
-              {plexProgress && (
-                <div className="border-t border-border/20 px-4 py-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-                    <p className="text-sm">{plexProgress.phase}</p>
-                  </div>
-                  {plexProgress.itemsTotal !== undefined && plexProgress.itemsTotal > 0 && (
-                    <div className="space-y-1">
+              {/* Plex content */}
+              {i.id === 'plex' && (
+                <>
+                  <IntegrationProfile
+                    avatarUrl={plex?.plexThumb}
+                    avatarAlt={plex?.plexUsername ?? 'Plex avatar'}
+                    name={plex?.plexUsername ?? 'Plex User'}
+                    detail={plex?.plexEmail ?? (plex?.plexId ?? user?.plexId ?? 'Plex account linked')}
+                    brandBg={BRAND_BG.plex}
+                    icon={PlexIcon}
+                    brandColor={BRAND_COLORS.plex}
+                  />
+                  <IntegrationAction label="Library Sync" description="Plex Library" result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null} buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync' : 'Sync Now'} buttonIcon={RefreshCw} onPress={handlePlexSync} loading={plexSyncing} progress={plexProgress && <span className="text-xs text-primary">{plexProgress.phase}</span>} />
+                  <IntegrationAction label="Watchlist Sync" description="Plex Watchlist" result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null} buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'} buttonIcon={RefreshCw} onPress={handlePlexWatchlistSync} loading={plexWatchlistSyncing} muted />
+                  {plexProgress && plexProgress.itemsTotal !== undefined && plexProgress.itemsTotal > 0 && (
+                    <div className="px-5 py-3 space-y-1 border-t border-border/20">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{plexProgress.itemsProcessed ?? 0} / {plexProgress.itemsTotal} items</span>
-                        <span>
-                          {plexProgress.itemsProcessed !== undefined && plexProgress.itemsTotal
-                            ? `${Math.round((plexProgress.itemsProcessed / plexProgress.itemsTotal) * 100)}%`
-                            : ''}
-                        </span>
+                        <span>{plexProgress.itemsProcessed !== undefined && plexProgress.itemsTotal ? `${Math.round((plexProgress.itemsProcessed / plexProgress.itemsTotal) * 100)}%` : ''}</span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-300"
-                          style={{
-                            width: `${plexProgress.itemsProcessed !== undefined && plexProgress.itemsTotal
-                              ? (plexProgress.itemsProcessed / plexProgress.itemsTotal) * 100
-                              : 0}%`,
-                          }}
-                        />
+                        <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${plexProgress.itemsProcessed !== undefined && plexProgress.itemsTotal ? (plexProgress.itemsProcessed / plexProgress.itemsTotal) * 100 : 0}%` }} />
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-          {plexMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{plexMessage}</p>}
-          {plexError && <p className="mt-3 text-xs text-destructive">{plexError}</p>}
-        </div>
-          )}
-
-          {isSpotifyConnected && (
-        <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
-          style={{ borderLeftColor: BRAND_COLORS.spotify }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isSpotifyConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
-            <div>
-              <h3 className="text-base font-semibold">Spotify</h3>
-              <p className="text-xs text-muted-foreground">
-                {isSpotifyConnected && spotifyUsername
-                  ? `Linked to "${spotifyUsername}"`
-                  : 'Link your Spotify account to sync liked songs and saved albums.'}
-              </p>
-            </div>
-          </div>
-
-            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {spotifyAvatarUrl ? (
-                    <img
-                      src={spotifyAvatarUrl}
-                      alt={spotifyUsername ?? 'Spotify avatar'}
-                      className="h-10 w-10 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1db954]/15">
-                      <SpotifyIcon className="h-5 w-5 text-[#1db954]" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{spotifyUsername ?? 'Spotify User'}</p>
-                    <p className="text-xs text-muted-foreground">Spotify account linked</p>
-                  </div>
-                </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className={integrationActionHeader}>Account</span>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleSpotifyDisconnect}
-                    loading={spotifyDisconnecting}
-                    className={integrationDangerButton}
-                  >
-                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
-                    Unlink
-                  </DkButton>
-                </div>
-              </div>
-
-              {spotifyStats && (
-                <div className={cn(integrationActionRow, 'flex items-center gap-4 flex-wrap')}>
-                  <p className={integrationActionHeader}>Stats</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 w-full">
-                    {Boolean(spotifyStats.product) && (
-                      <span><strong className="text-foreground capitalize">{String(spotifyStats.product)}</strong> plan</span>
-                    )}
-                    {Boolean(spotifyStats.followers) && (
-                      <span><strong className="text-foreground">{String(spotifyStats.followers)}</strong> followers</span>
-                    )}
-                    {Boolean(spotifyStats.country) && (
-                      <span className="rounded bg-[var(--dk-surface-overlay)] px-1.5 py-0.5 font-mono text-[10px]">{String(spotifyStats.country)}</span>
-                    )}
-                  </div>
-                </div>
+                  {plexMessage && <p className="px-5 py-2 text-xs text-green-500">{plexMessage}</p>}
+                  {plexError && <p className="px-5 py-2 text-xs text-destructive">{plexError}</p>}
+                </>
               )}
 
-              <CollapsibleActions count={1}>
-              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
-                <div className="min-w-0">
-                  <p className={integrationActionHeader}>Library Sync</p>
-                  <p className="mt-1 text-sm font-medium">Spotify Library</p>
-                  <p className="text-xs text-muted-foreground">
-                    Import your liked tracks and saved albums into Otix
-                  </p>
-                  {spotifyProgress && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-primary">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>{spotifyProgress.phase}</span>
-                      {spotifyProgress.detail && (
-                        <span className="text-muted-foreground">({spotifyProgress.detail})</span>
-                      )}
-                    </div>
+              {/* Spotify content */}
+              {i.id === 'spotify' && (
+                <>
+                  <IntegrationProfile
+                    avatarUrl={spotifyAvatarUrl}
+                    avatarAlt={spotifyUsername ?? 'Spotify avatar'}
+                    name={spotifyUsername ?? 'Spotify User'}
+                    detail="Spotify account linked"
+                    brandBg={BRAND_BG.spotify}
+                    icon={SpotifyIcon}
+                    brandColor={BRAND_COLORS.spotify}
+                  />
+                  {spotifyStats && (
+                    <IntegrationStats items={[
+                      ...(spotifyStats.product ? [{ label: 'plan', value: String(spotifyStats.product) }] : []),
+                      ...(spotifyStats.followers ? [{ label: 'followers', value: String(spotifyStats.followers) }] : []),
+                      ...(spotifyStats.country ? [{ label: 'country', value: String(spotifyStats.country) }] : []),
+                    ]} />
                   )}
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleSpotifySync}
-                  loading={spotifySyncing}
-                  disabled={spotifySyncing}
-                  className={integrationSyncButton}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  {spotifySyncing ? 'Syncing...' : spotifySyncResult ? 'Re-sync' : 'Sync Library'}
-                </DkButton>
-              </div>
-              </CollapsibleActions>
-            </div>
-          {spotifyMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{spotifyMessage}</p>}
-          {spotifyError && <p className="mt-3 text-xs text-destructive">{spotifyError}</p>}
-        </div>
-          )}
-
-          {isGoogleConnected && (
-        <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
-          style={{ borderLeftColor: BRAND_COLORS.google }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isGoogleConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
-            <div>
-              <h3 className="text-base font-semibold">Google</h3>
-              <p className="text-xs text-muted-foreground">
-                {isGoogleConnected && googleEmail
-                  ? `Linked to "${googleEmail}"`
-                  : 'Link your Google account for YouTube Music and more.'}
-              </p>
-            </div>
-          </div>
-
-            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {googleAvatarUrl ? (
-                    <img
-                      src={googleAvatarUrl}
-                      alt={googleName ?? 'Google avatar'}
-                      className="h-10 w-10 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4285F4]/15">
-                      <GoogleIcon className="h-5 w-5 text-[#4285F4]" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{googleName ?? 'Google User'}</p>
-                    <p className="text-xs text-muted-foreground">{googleEmail ?? 'Google account linked'}</p>
-                  </div>
-                </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className={integrationActionHeader}>Account</span>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleGoogleDisconnect}
-                    loading={googleDisconnecting}
-                    className={integrationDangerButton}
-                  >
-                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
-                    Unlink
-                  </DkButton>
-                </div>
-              </div>
-            </div>
-          <CollapsibleActions count={1}>
-              <div className="flex items-center justify-between">
-                <p className={integrationActionHeader}>YouTube Sync</p>
-                <div className="flex items-center gap-1.5">
-                  {youtubeProgress && (
-                    <span className="text-[11px] text-muted-foreground text-right leading-tight max-w-[160px]">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>
-                  )}
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleYouTubeSync}
-                    loading={youtubeSyncing}
-                    disabled={youtubeSyncing}
-                    className={integrationSyncButton}
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                    {youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'}
-                  </DkButton>
-                </div>
-              </div>
-              </CollapsibleActions>
-          {googleMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{googleMessage}</p>}
-          {googleError && <p className="mt-3 text-xs text-destructive">{googleError}</p>}
-          {youtubeMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{youtubeMessage}</p>}
-          {youtubeError && <p className="mt-3 text-xs text-destructive">{youtubeError}</p>}
-        </div>
-          )}
-
-          {isTmdbConnected && (
-        <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)] border-l-[3px]"
-          style={{ borderLeftColor: BRAND_COLORS.tmdb }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Dot className={cn('h-5 w-5 -mx-1 shrink-0', isTmdbConnected ? 'text-green-500' : 'text-muted-foreground/25')} />
-            <div>
-              <h3 className="text-base font-semibold">TMDb</h3>
-              <p className="text-xs text-muted-foreground">
-                {isTmdbConnected && tmdbUsername
-                  ? `Linked to "${tmdbUsername}"`
-                  : 'Link your TMDb account to sync ratings and watchlist.'}
-              </p>
-            </div>
-          </div>
-
-            <div className="rounded-xl bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {tmdbAvatarUrl ? (
-                    <img
-                      src={tmdbAvatarUrl}
-                      alt={tmdbUsername ?? 'TMDb avatar'}
-                      className="h-10 w-10 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#01b4e4]/15">
-                      <TmdbIcon className="h-5 w-5 text-[#01b4e4]" />
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{tmdbUsername ?? 'TMDb User'}</p>
-                    <p className="text-xs text-muted-foreground">TMDb account linked</p>
-                  </div>
-                </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className={integrationActionHeader}>Account</span>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleTmdbDisconnect}
-                    loading={tmdbDisconnecting}
-                    className={integrationDangerButton}
-                  >
-                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
-                    Unlink
-                  </DkButton>
-                </div>
-              </div>
-
-              {tmdbStats && (
-                <div className={cn(integrationActionRow, 'flex items-center gap-4 flex-wrap')}>
-                  <p className={integrationActionHeader}>Stats</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 w-full">
-                    <span><strong className="text-foreground">{tmdbStats.ratedMovies}</strong> rated movies</span>
-                    <span><strong className="text-foreground">{tmdbStats.ratedTv}</strong> rated shows</span>
-                    <span><strong className="text-foreground">{tmdbStats.watchlistMovies}</strong> watchlist movies</span>
-                    <span><strong className="text-foreground">{tmdbStats.watchlistTv}</strong> watchlist shows</span>
-                  </div>
-                </div>
+                  <IntegrationAction label="Library Sync" description="Spotify Library" result={spotifySyncResult ? `${spotifySyncResult.likedMatched} matched out of ${spotifySyncResult.likedTotal} liked songs` : null} buttonLabel={spotifySyncing ? 'Syncing...' : spotifySyncResult ? 'Re-sync' : 'Sync Library'} buttonIcon={RefreshCw} onPress={handleSpotifySync} loading={spotifySyncing} disabled={spotifySyncing} progress={spotifyProgress && <span className="text-xs text-primary">{spotifyProgress.phase}{spotifyProgress.detail ? ` (${spotifyProgress.detail})` : ''}</span>} />
+                  {spotifyMessage && <p className="px-5 py-2 text-xs text-green-500">{spotifyMessage}</p>}
+                  {spotifyError && <p className="px-5 py-2 text-xs text-destructive">{spotifyError}</p>}
+                </>
               )}
 
-              <CollapsibleActions count={2}>
-              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4')}>
-                <div className="min-w-0">
-                  <p className={integrationActionHeader}>Rating Sync</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <DkDropdown
-                      options={tmdbSyncDirections}
-                      value={tmdbSyncDirection}
-                      onChange={setTmdbSyncDirection}
-                      placeholder="Direction"
-                    />
-                    {tmdbSyncResult && (
-                      <span className="text-xs text-muted-foreground">
-                        {tmdbSyncResult.imported > 0 && `${tmdbSyncResult.imported} imported`}
-                        {tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 && ', '}
-                        {tmdbSyncResult.exported > 0 && `${tmdbSyncResult.exported} exported`}
-                        {tmdbSyncResult.skipped > 0 && ` (${tmdbSyncResult.skipped} skipped)`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleTmdbRatingSync}
-                  loading={tmdbSyncing}
-                  disabled={tmdbSyncDirection === 'disabled'}
-                  className={integrationSyncButton}
-                >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                  {tmdbSyncing ? 'Syncing...' : 'Sync Ratings'}
-                </DkButton>
-              </div>
+              {/* Google content */}
+              {i.id === 'google' && (
+                <>
+                  <IntegrationProfile
+                    avatarUrl={googleAvatarUrl}
+                    avatarAlt={googleName ?? 'Google avatar'}
+                    name={googleName ?? 'Google User'}
+                    detail={googleEmail ?? 'Google account linked'}
+                    brandBg={BRAND_BG.google}
+                    icon={GoogleIcon}
+                    brandColor={BRAND_COLORS.google}
+                  />
+                  <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.music_videos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
+                  {googleMessage && <p className="px-5 py-2 text-xs text-green-500">{googleMessage}</p>}
+                  {googleError && <p className="px-5 py-2 text-xs text-destructive">{googleError}</p>}
+                  {youtubeMessage && <p className="px-5 py-2 text-xs text-green-500">{youtubeMessage}</p>}
+                  {youtubeError && <p className="px-5 py-2 text-xs text-destructive">{youtubeError}</p>}
+                </>
+              )}
 
-              <div className={cn(integrationActionRow, 'flex items-center justify-between gap-4 bg-[var(--dk-surface-overlay)]/30')}>
-                <div className="min-w-0">
-                  <p className={integrationActionHeader}>Watchlist Import</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {tmdbWatchlistResult
-                      ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped`
-                      : 'Import your TMDb watchlist into your Otix library'}
-                  </p>
-                </div>
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleTmdbWatchlistImport}
-                  loading={tmdbWatchlistImporting}
-                  className={integrationSyncButton}
-                >
-                  <Download className="h-3.5 w-3.5 mr-1.5" />
-                  {tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'}
-                </DkButton>
-              </div>
-              </CollapsibleActions>
-            </div>
-          {tmdbMessage && <p className="mt-3 text-xs text-green-500 animate-in fade-in">{tmdbMessage}</p>}
-          {tmdbError && <p className="mt-3 text-xs text-destructive">{tmdbError}</p>}
+              {/* TMDb content */}
+              {i.id === 'tmdb' && (
+                <>
+                  <IntegrationProfile
+                    avatarUrl={tmdbAvatarUrl}
+                    avatarAlt={tmdbUsername ?? 'TMDb avatar'}
+                    name={tmdbUsername ?? 'TMDb User'}
+                    detail="TMDb account linked"
+                    brandBg={BRAND_BG.tmdb}
+                    icon={TmdbIcon}
+                    brandColor={BRAND_COLORS.tmdb}
+                  />
+                  {tmdbStats && (
+                    <IntegrationStats items={[
+                      { label: 'rated movies', value: tmdbStats.ratedMovies },
+                      { label: 'rated shows', value: tmdbStats.ratedTv },
+                      { label: 'watchlist movies', value: tmdbStats.watchlistMovies },
+                      { label: 'watchlist shows', value: tmdbStats.watchlistTv },
+                    ]} />
+                  )}
+                  <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={tmdbSyncResult ? `${tmdbSyncResult.imported > 0 ? `${tmdbSyncResult.imported} imported` : ''}${tmdbSyncResult.imported > 0 && tmdbSyncResult.exported > 0 ? ', ' : ''}${tmdbSyncResult.exported > 0 ? `${tmdbSyncResult.exported} exported` : ''}${tmdbSyncResult.skipped > 0 ? ` (${tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={handleTmdbRatingSync} loading={tmdbSyncing} disabled={tmdbSyncDirection === 'disabled'}>
+                    <div className="mt-2">
+                      <DkDropdown options={tmdbSyncDirections} value={tmdbSyncDirection} onChange={setTmdbSyncDirection} placeholder="Direction" />
+                    </div>
+                  </IntegrationAction>
+                  <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={tmdbWatchlistResult ? `${tmdbWatchlistResult.imported} imported, ${tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={tmdbWatchlistImporting ? 'Importing...' : tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={handleTmdbWatchlistImport} loading={tmdbWatchlistImporting} muted />
+                  {tmdbMessage && <p className="px-5 py-2 text-xs text-green-500">{tmdbMessage}</p>}
+                  {tmdbError && <p className="px-5 py-2 text-xs text-destructive">{tmdbError}</p>}
+                </>
+              )}
+            </IntegrationCard>
+          ))}
         </div>
-          )}
-        </>
       )}
-
-      <IntegrationMarketplaceModal
-        open={marketplaceOpen}
-        onOpenChange={setMarketplaceOpen}
-        integrations={marketplaceIntegrations}
-      />
     </div>
   )
 }

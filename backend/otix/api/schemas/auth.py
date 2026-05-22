@@ -59,8 +59,14 @@ class UserResponse(BaseModel):
     integration_visibility: dict[str, str] | None = None
     total_xp: int = 0
     profile_sections: list[str] | None = None
+    profile_card_sections: list[str] | None = None
     daily_mood_checkins_enabled: bool = True
-    hall_of_fame_media_ids: list[str] = []
+    hall_of_fame_media_ids: dict[str, list[str]] = {}
+    onboarding_completed: bool = False
+    preferred_media_types: list[str] = []
+    preferred_genres: list[str] = []
+    preferred_languages: list[str] = []
+    discover_emphases: list[str] = []
 
 
 class UserUpdateRequest(BaseModel):
@@ -71,8 +77,14 @@ class UserUpdateRequest(BaseModel):
     background_url: str | None = Field(default=None, max_length=2048)
     integration_visibility: dict[str, str] | None = None
     profile_sections: list[str] | None = None
+    profile_card_sections: list[str] | None = None
     daily_mood_checkins_enabled: bool | None = None
-    hall_of_fame_media_ids: list[str] | None = None
+    hall_of_fame_media_ids: dict[str, list[str]] | None = None
+    onboarding_completed: bool | None = None
+    preferred_media_types: list[str] | None = None
+    preferred_genres: list[str] | None = None
+    preferred_languages: list[str] | None = None
+    discover_emphases: list[str] | None = None
 
 
 # ── Email verification ──────────────────────────────────────────

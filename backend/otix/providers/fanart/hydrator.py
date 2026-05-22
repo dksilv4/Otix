@@ -215,6 +215,12 @@ class FanartHydrator:
             media_item_id = assets[0].media_item_id
             media_item = await self.session.get(MediaItem, media_item_id)
             if media_item is not None:
+                # Check which image types are protected by admin '*' overrides.
+                from otix.services.admin_edit_service import AdminEditService
+                protected = await AdminEditService.get_protected_image_types(
+                    self.session, media_item.id
+                )
+
                 # Logo: prefer English, then widest fallback.
                 logo_assets = [a for a in assets if a.asset_type == "logo"]
                 en_logos = [a for a in logo_assets if a.lang == "en"]
@@ -226,7 +232,13 @@ class FanartHydrator:
                 # Music logo + poster promotion is handled in hydrate_music_images
                 # (artist logos go on Person, album covers matched by release group).
                 if best_logo and media_item.media_type != "music":
-                    media_item.logo_url = best_logo.url
+                    if "logo" in protected and media_item.logo_url and media_item.logo_url != best_logo.url:
+                        svc = AdminEditService(self.session)
+                        await svc.create_system_proposal_for_image(
+                            media_item.id, "logo", best_logo.url
+                        )
+                    else:
+                        media_item.logo_url = best_logo.url
 
                 # Poster promotion (non-music only): textless posters → textless_poster_url.
                 if media_item.media_type != "music":
@@ -238,6 +250,12 @@ class FanartHydrator:
                         default=None,
                     )
                     if best_textless:
-                        media_item.textless_poster_url = best_textless.url
+                        if "textless_poster" in protected and media_item.textless_poster_url and media_item.textless_poster_url != best_textless.url:
+                            svc = AdminEditService(self.session)
+                            await svc.create_system_proposal_for_image(
+                                media_item.id, "textless_poster", best_textless.url
+                            )
+                        else:
+                            media_item.textless_poster_url = best_textless.url
 
         return bool(new_assets)

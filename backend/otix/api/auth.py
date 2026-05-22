@@ -433,8 +433,14 @@ def _user_response(user: User) -> UserResponse:
         integration_visibility=user.integration_visibility if user.integration_visibility else None,
         total_xp=user.total_xp,
         profile_sections=user.profile_sections if user.profile_sections else None,
+        profile_card_sections=user.profile_card_sections if user.profile_card_sections else None,
         daily_mood_checkins_enabled=user.daily_mood_checkins_enabled,
-        hall_of_fame_media_ids=user.hall_of_fame_media_ids or [],
+        hall_of_fame_media_ids=user.hof_ids,
+        onboarding_completed=user.onboarding_completed,
+        preferred_media_types=user.preferred_media_types if user.preferred_media_types else [],
+        preferred_genres=user.preferred_genres if user.preferred_genres else [],
+        preferred_languages=user.preferred_languages if user.preferred_languages else [],
+        discover_emphases=user.discover_emphases if user.discover_emphases else [],
     )
 
 

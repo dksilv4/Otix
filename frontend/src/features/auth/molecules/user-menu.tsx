@@ -6,7 +6,7 @@ import { useAuth } from '../auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
 
-export function UserMenu() {
+export function UserMenu({ bare }: { bare?: boolean }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -52,7 +52,7 @@ export function UserMenu() {
     return (
       <Link
         to="/auth/login"
-        className={cn(pillBase, 'p-1.5')}
+        className={cn(!bare && pillBase, !bare && 'p-1.5')}
       >
         <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
       </Link>
@@ -62,12 +62,12 @@ export function UserMenu() {
   const avatarUrl = user?.avatarUrl
 
   return (
-    <>
+    <div className="relative">
       <button
         type="button"
         data-user-menu-trigger
         onClick={() => setOpen(!open)}
-        className={cn(pillBase, 'p-1.5 cursor-pointer')}
+        className={cn(!bare && pillBase, !bare && 'p-1.5', 'cursor-pointer')}
       >
         <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
       </button>
@@ -81,7 +81,7 @@ export function UserMenu() {
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed top-[4.5rem] right-4 z-[9999]',
+              'absolute right-0 top-full mt-2 z-[9999]',
               'w-56 p-3 rounded-[1.5rem]',
               'bg-[var(--dk-surface-overlay)]',
               'backdrop-blur-xl',
@@ -125,6 +125,6 @@ export function UserMenu() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }

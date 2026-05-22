@@ -19,3 +19,8 @@ RATE_USER = 10
 
 # ── Daily Mood Check-ins ──
 MOOD_CHECKIN = 10
+
+# ── Admin Edit Proposals ──
+EDIT_PROPOSAL_CREATE = 50
+EDIT_PROPOSAL_APPROVE = 100
+EDIT_PROPOSAL_REJECT = 30

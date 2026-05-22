@@ -1,22 +1,18 @@
-import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
-import { useInView } from 'framer-motion'
-import { motion, AnimatePresence } from 'framer-motion'
-import { MediaGrid } from '@ui/molecules/media-grid'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
-import { mediaQueries, type MediaListResponse } from '@media/media-queries'
-import { mediaKeys } from '@media/media-keys'
-import { PersonCard } from '@person/molecules/person-card'
-import { personQueries } from '@person/person-queries'
 import { ChatSearchInput } from '../molecules/chat-search-input'
 import { DailyMoodCheckIn, type RecordedMoodContext } from '../molecules/daily-mood-check-in'
+import { EmphasisSelector } from '../molecules/emphasis-selector'
+import { discoverKeys } from '@discover/discover-keys'
+import { discoverQueries, type PersonalizedSection } from '@discover/discover-queries'
 import { DiscoverHero } from './discover-hero'
-import { FilterDropdown, TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
 import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/features/auth/auth-provider'
 
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 import { MediaSection } from './media-section'
-import { DiscoverMediaCard } from '../molecules/discover-media-card'
 import { TmdbConnectCallbackPage } from '@auth/organisms/tmdb-connect-callback-page'
 
 const TYPE_TABS = [
@@ -34,11 +30,11 @@ const PLACEHOLDERS = [
   'What vibe are we on today?',
 ]
 
-const SECTIONS = [
-  { title: 'Trending Movies', mediaType: 'movie' as const, listType: 'trending' },
-  { title: 'Trending Shows', mediaType: 'show' as const, listType: 'trending' },
-  { title: 'Popular Games', mediaType: 'game' as const, listType: 'popular' },
-  { title: 'New Music', mediaType: 'music' as const, listType: 'popular' },
+const DEFAULT_SECTIONS: PersonalizedSection[] = [
+  { id: 'trending_movies', title: 'Trending Movies', mediaType: 'movie', listType: 'trending', genre: null, language: null, isAnime: null, isPersonalized: false, reason: null },
+  { id: 'trending_shows', title: 'Trending Shows', mediaType: 'show', listType: 'trending', genre: null, language: null, isAnime: null, isPersonalized: false, reason: null },
+  { id: 'popular_games', title: 'Popular Games', mediaType: 'game', listType: 'popular', genre: null, language: null, isAnime: null, isPersonalized: false, reason: null },
+  { id: 'new_music', title: 'New Music', mediaType: 'music', listType: 'popular', genre: null, language: null, isAnime: null, isPersonalized: false, reason: null },
 ]
 
 function getGreeting(): string {
@@ -46,196 +42,6 @@ function getGreeting(): string {
   if (hour < 12) return 'Good morning'
   if (hour < 18) return 'Good afternoon'
   return 'Good evening'
-}
-
-function SearchSkeleton({ count = 12 }: { count?: number }) {
-  return (
-    <MediaGrid>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
-        />
-      ))}
-    </MediaGrid>
-  )
-}
-
-function SearchEmpty({ query, type }: { query: string; type: string }) {
-  const typeLabel = type === 'all' ? '' : TYPE_OPTIONS.find((t) => t.value === type)?.label?.toLowerCase()
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-lg font-semibold text-foreground">No results found</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Nothing matches "{query}"{typeLabel ? ` in ${typeLabel}` : ''}. Try a different search.
-      </p>
-    </div>
-  )
-}
-
-function SearchError() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-lg font-semibold text-foreground">Something went wrong</p>
-      <p className="mt-1 text-sm text-muted-foreground">Please try again in a moment.</p>
-    </div>
-  )
-}
-
-function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: string; type: string; sortBy: SortValue; pageSize?: number }) {
-  const isPeopleOnly = type === 'people'
-  const includePeople = type === 'all' || isPeopleOnly
-  const searchType = type === 'all' || isPeopleOnly ? undefined : type
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const isSentinelInView = useInView(sentinelRef, { margin: '0px 0px 200px 0px' })
-
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    ...mediaQueries.search({ query, type: searchType, sortBy: sortBy || undefined }),
-    enabled: query.length > 0 && !isPeopleOnly,
-  })
-
-  const {
-    data: peopleData,
-    isLoading: isPeopleLoading,
-    isError: isPeopleError,
-  } = useQuery({
-    ...personQueries.search(query, 10),
-    enabled: query.length > 0 && includePeople,
-  })
-
-  const items = data?.pages.flatMap((page) => page.items) ?? []
-  const people = peopleData?.items ?? []
-  const total = data?.pages[0]?.total ?? undefined
-  const backfillPending = data?.pages[0]?.backfillPending ?? false
-
-  const queryClient = useQueryClient()
-  const knownIds = useMemo(() => items.map((i) => i.id).join(','), [items])
-
-  // Poll for backfill results
-  useQuery({
-    ...mediaQueries.pollSearch({
-      query,
-      type: searchType,
-      knownIds,
-    }),
-    enabled: query.length > 0 && !isPeopleOnly && backfillPending,
-    refetchInterval: backfillPending ? 3000 : false,
-  })
-
-  // Merge poll results into the infinite query cache
-  const pollQueryKey = mediaKeys.searchPoll({
-    query,
-    type: searchType,
-    knownIds,
-  })
-  const pollData = queryClient.getQueryData<MediaListResponse>(pollQueryKey)
-  useEffect(() => {
-    if (pollData && pollData.items && pollData.items.length > 0) {
-      const searchKey = mediaKeys.search({
-        query,
-        type: searchType,
-        sortBy: sortBy || undefined,
-      })
-      queryClient.setQueryData(searchKey, (old: InfiniteData<MediaListResponse> | undefined) => {
-        if (!old) return old
-        const existingIds = new Set(items.map((i) => i.id))
-        const trulyNew = pollData.items.filter((item) => !existingIds.has(item.id))
-        if (trulyNew.length === 0) return old
-        return {
-          pages: [
-            {
-              ...old.pages[0],
-              items: [...trulyNew, ...old.pages[0].items],
-              total: pollData.total,
-              hasMore: pollData.hasMore || old.pages[0].hasMore,
-              backfillPending: pollData.backfillPending,
-            },
-            ...old.pages.slice(1),
-          ],
-          pageParams: old.pageParams,
-        }
-      })
-    }
-  }, [pollData])
-
-  // Auto-fetch next page when sentinel comes into view
-  useEffect(() => {
-    if (isSentinelInView && hasNextPage && !isFetchingNextPage && !isLoading) {
-      fetchNextPage()
-    }
-  }, [isSentinelInView, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage])
-
-  // Smart skeleton count: how many items remain to be loaded
-  const loadedCount = items.length
-  const remainingCount = total != null ? Math.min(total - loadedCount, pageSize) : pageSize
-  const hasResults = items.length > 0 || people.length > 0
-  const isInitialLoading = (!isPeopleOnly && isLoading) || (includePeople && isPeopleLoading)
-  const hasError = (!isPeopleOnly && isError) || (includePeople && isPeopleError)
-
-  return (
-    <div className="space-y-6">
-      {isInitialLoading ? (
-        <SearchSkeleton />
-      ) : hasError ? (
-        <SearchError />
-      ) : !hasResults ? (
-        <SearchEmpty query={query} type={type} />
-      ) : (
-        <>
-          {includePeople && people.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Artists</h2>
-                <span className="text-xs text-muted-foreground">
-                  {people.length.toLocaleString()} result{people.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                {people.map((person, i) => (
-                  <motion.div
-                    key={person.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
-                  >
-                    <PersonCard
-                      id={person.id}
-                      name={person.name}
-                      imageUrl={person.photoUrl}
-                      role="Artist"
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {total !== undefined && (
-            <p className="text-xs text-muted-foreground">
-              {total.toLocaleString()} result{total !== 1 ? 's' : ''}
-            </p>
-          )}
-          {items.length > 0 && (
-            <MediaGrid>
-              {items.map((item, i) => (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.03, 0.6), duration: 0.2 }}
-                >
-                  <DiscoverMediaCard item={item} />
-                </motion.div>
-              ))}
-            </MediaGrid>
-          )}
-          {isFetchingNextPage && <SearchSkeleton count={remainingCount} />}
-        </>
-      )}
-      {/* Sentinel for infinite scroll — always in DOM so useInView can observe it */}
-      <div ref={sentinelRef} className="h-1" />
-    </div>
-  )
 }
 
 export function HomePage() {
@@ -248,9 +54,11 @@ export function HomePage() {
 }
 
 function HomeExperience() {
+  const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
   const [query, setQuery] = useState('')
   const [activeType, setActiveType] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<SortValue>('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [greeting] = useState(() => getGreeting())
   const [isMoodPromptVisible, setIsMoodPromptVisible] = useState(false)
@@ -258,8 +66,33 @@ function HomeExperience() {
   const [moodNote, setMoodNote] = useState('')
   const [moodNoteResetKey, setMoodNoteResetKey] = useState(0)
   const [moodNoteSaving, setMoodNoteSaving] = useState(false)
+  const [emphases, setEmphases] = useState<string[]>(user?.discoverEmphases ?? [])
+  const queryClient = useQueryClient()
   const searchInputRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Redirect new users to onboarding
+  useEffect(() => {
+    if (isAuthenticated && user && !user.onboardingCompleted) {
+      navigate({ to: '/onboarding', replace: true })
+    }
+  }, [isAuthenticated, user, navigate])
+
+  // Navigate to search page when a query is entered
+  useEffect(() => {
+    if (query.length > 0) {
+      navigate({
+        to: '/search',
+        search: { q: query, type: activeType, sort: '' },
+      })
+    }
+  }, [query])
+
+  // Fetch personalized sections (or fall back to defaults)
+  const { data: sections = DEFAULT_SECTIONS } = useQuery({
+    ...discoverQueries.sections(),
+    enabled: isAuthenticated,
+  })
 
   // Rotate placeholder text
   useEffect(() => {
@@ -271,14 +104,6 @@ function HomeExperience() {
   }, [query])
 
   const isMoodNoteMode = moodNoteContext != null
-  const isSearching = !isMoodNoteMode && query.length > 0
-
-  // Auto-scroll search input to top when search activates
-  useEffect(() => {
-    if (isSearching && searchInputRef.current) {
-      searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [isSearching])
 
   useEffect(() => {
     if (isMoodNoteMode) {
@@ -286,6 +111,11 @@ function HomeExperience() {
       inputRef.current?.focus()
     }
   }, [isMoodNoteMode])
+
+  const handleEmphasesChange = useCallback((newEmphases: string[]) => {
+    setEmphases(newEmphases)
+    queryClient.invalidateQueries({ queryKey: discoverKeys.sections() })
+  }, [queryClient])
 
   const handleMoodRecorded = useCallback((context: RecordedMoodContext) => {
     setMoodNoteContext(context)
@@ -320,10 +150,8 @@ function HomeExperience() {
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Don't capture when typing in another input
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      // Allow Escape to blur even when in the search input
       if (e.key === 'Escape' && target === inputRef.current) {
         if (moodNoteContext) {
           setMoodNote('')
@@ -351,11 +179,10 @@ function HomeExperience() {
   return (
     <div className="relative min-h-[calc(100vh-5rem)]">
       <Suspense fallback={null}>
-        <AnimatedShaderBackground mode={isSearching ? 'active' : 'idle'} />
+        <AnimatedShaderBackground mode="idle" />
       </Suspense>
 
       <div className="relative z-10 flex flex-col items-center px-4 pb-16 w-full">
-        {/* Top 3/4 empty → input at bottom 1/4 */}
         <div className="min-h-[75vh] flex flex-col justify-center items-center w-full gap-6">
           <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center">
             <p className="text-muted-foreground text-sm md:text-base font-medium mb-3">
@@ -388,73 +215,48 @@ function HomeExperience() {
               showSubmitWhenEmpty={isMoodNoteMode}
               submitLabel={isMoodNoteMode ? 'Save note' : 'Search'}
             />
-            {/* Filter/sort pills — outside the glass card, 1rem below */}
-            {isSearching && (
-              <div className="flex items-center gap-2 mt-4">
-                <FilterDropdown
-                  label="Type"
-                  options={TYPE_OPTIONS}
-                  value={activeType === 'all' ? '' : activeType}
-                  onChange={(v) => setActiveType(v || 'all')}
-                />
-                <FilterDropdown
-                  label="Sort"
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onChange={setSortBy}
-                />
-              </div>
-            )}
           </div>
         </div>
 
-        {/* DiscoverHero carousel — glassmorphism, tight to input */}
-        {!isSearching && (
-          <div className="w-full max-w-[1400px] mt-6 mb-12 rounded-[2rem] overflow-hidden bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
-            <DiscoverHero className="bg-transparent" />
+        {/* DiscoverHero carousel */}
+        <div className="w-full max-w-[1400px] mt-6 mb-12 rounded-[2rem] overflow-hidden bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
+          <DiscoverHero className="bg-transparent" />
+        </div>
+
+        {/* Discover sections */}
+        <div className="w-full space-y-8">
+          <div className="flex justify-center">
+            <DkTabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
+              <DkTabList>
+                {TYPE_TABS.map((tab) => (
+                  <DkTab key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </DkTab>
+                ))}
+              </DkTabList>
+            </DkTabs>
           </div>
-        )}
 
-        {/* Content below hero */}
-        <AnimatePresence mode="wait">
-          {isSearching ? (
-            <motion.div
-              key={`search-${query}-${activeType}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: -20 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full"
-            >
-              <SearchResults query={query} type={activeType} sortBy={sortBy} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="discover"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.98, y: -20 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full space-y-8"
-            >
-              {/* Filter tabs — above the discover lists */}
-              <div className="flex justify-center">
-                <DkTabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
-                  <DkTabList>
-                    {TYPE_TABS.map((tab) => (
-                      <DkTab key={tab.value} value={tab.value}>
-                        {tab.label}
-                      </DkTab>
-                    ))}
-                  </DkTabList>
-                </DkTabs>
-              </div>
-
-              {SECTIONS.filter(s => activeType === 'all' || s.mediaType === activeType).map((section) => (
-                <MediaSection key={`${section.mediaType}-${section.listType}`} title={section.title} mediaType={section.mediaType} listType={section.listType} />
-              ))}
-            </motion.div>
+          {isAuthenticated && (
+            <div className="flex justify-center">
+              <EmphasisSelector emphases={emphases} onChange={handleEmphasesChange} />
+            </div>
           )}
-        </AnimatePresence>
+
+          {sections.filter(s => activeType === 'all' || s.mediaType === activeType || !s.mediaType).map((section) => (
+            <MediaSection
+              key={section.id}
+              title={section.title}
+              mediaType={(section.mediaType as 'movie' | 'show' | 'game' | 'music') || undefined}
+              listType={section.listType}
+              genre={section.genre}
+              language={section.language}
+              isAnime={section.isAnime}
+              isPersonalized={section.isPersonalized}
+              reason={section.reason}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )

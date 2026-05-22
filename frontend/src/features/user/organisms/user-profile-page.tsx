@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, Star, UserPlus, UserCheck, Clock, Shield } from 'lucide-react'
+import { CalendarDays, Star, UserPlus, UserCheck, Clock, Shield, Plus, Crown, Activity, BarChart3 } from 'lucide-react'
 
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -171,6 +171,17 @@ function XPProgressRing({
 }
 
 // ── Page ──
+
+const ALL_SECTIONS = [
+  { id: 'hof_movie', label: 'Hall of Fame · Movies', icon: Crown },
+  { id: 'hof_show', label: 'Hall of Fame · Shows', icon: Crown },
+  { id: 'hof_game', label: 'Hall of Fame · Games', icon: Crown },
+  { id: 'hof_music', label: 'Hall of Fame · Music', icon: Crown },
+  { id: 'library_breakdown', label: 'Library Breakdown', icon: BarChart3 },
+  { id: 'mood_timeline', label: 'Mood Timeline', icon: Activity },
+] as const
+
+const DEFAULT_SECTIONS = ['hof_movie', 'hof_show', 'hof_game', 'hof_music', 'library_breakdown', 'mood_timeline']
 
 export function UserProfilePage() {
   const params = useParams({ strict: false }) as { username?: string }
@@ -530,15 +541,99 @@ export function UserProfilePage() {
       {/* Profile content */}
       <div className="mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
         <UserRatingSection username={username} />
-        <ProfileSectionRenderer
-          username={username}
-          sections={profile.profileSections ?? ['hall_of_fame', 'library_breakdown', 'mood_timeline']}
-          loginStreak={profile.currentLoginStreak ?? 0}
-          longestLoginStreak={profile.longestLoginStreak ?? 0}
-          reviewStreak={profile.currentReviewStreak ?? 0}
-          longestReviewStreak={profile.longestReviewStreak ?? 0}
-        />
+
+        {(() => {
+          const currentSections = profile.profileSections ?? DEFAULT_SECTIONS
+          const availableSections = ALL_SECTIONS.filter((s) => !currentSections.includes(s.id))
+          const isOwner = currentUser?.username === username
+
+          return (
+            <>
+              <ProfileSectionRenderer
+                username={username}
+                sections={currentSections}
+                loginStreak={profile.currentLoginStreak ?? 0}
+                longestLoginStreak={profile.longestLoginStreak ?? 0}
+                reviewStreak={profile.currentReviewStreak ?? 0}
+                longestReviewStreak={profile.longestReviewStreak ?? 0}
+              />
+
+              {isOwner && availableSections.length > 0 && (
+                <AddSectionButton
+                  availableSections={availableSections}
+                  currentSections={currentSections}
+                  onSectionsUpdated={(updated) => {
+                    queryClient.setQueryData(['user', username], (prev: typeof profile) => {
+                      if (!prev) return prev
+                      return { ...prev, profileSections: updated }
+                    })
+                  }}
+                />
+              )}
+            </>
+          )
+        })()}
       </div>
+    </div>
+  )
+}
+
+function AddSectionButton({
+  availableSections,
+  currentSections,
+  onSectionsUpdated,
+}: {
+  availableSections: readonly { id: string; label: string; icon: React.ComponentType<{ className?: string }> }[]
+  currentSections: string[]
+  onSectionsUpdated: (sections: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  const handleAdd = async (sectionId: string) => {
+    const updated = [...currentSections, sectionId]
+    try {
+      await apiClient.patch('/auth/me', { profile_sections: updated })
+      onSectionsUpdated(updated)
+    } catch {
+      // silently fail
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full rounded-2xl border-2 border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)] p-6 text-center hover:border-white/[0.15] transition-colors"
+      >
+        <Plus className="h-5 w-5 text-muted-foreground/30 mx-auto mb-1" />
+        <p className="text-xs text-muted-foreground/40">Add section</p>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-2xl bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] border border-white/[0.06] overflow-hidden">
+            <div className="p-2">
+              <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Available Sections</p>
+              {availableSections.map((section) => {
+                const Icon = section.icon
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => handleAdd(section.id)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[var(--dk-surface-glass)] transition-colors"
+                  >
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{section.label}</span>
+                    <Plus className="h-4 w-4 ml-auto text-muted-foreground/30" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

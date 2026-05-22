@@ -3,14 +3,17 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_db, get_optional_user
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import MediaItemListResponse, MediaItemSummary
+from otix.api.schemas.discover import PersonalizedSectionsResponse
 from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
+from otix.services.personalization_service import PersonalizationService
 
 discover_router = APIRouter(prefix="/discover", tags=["discover"])
 
@@ -21,6 +24,9 @@ VALID_LIST_TYPES = {
     "top_rated",
     "upcoming",
     "now_playing",
+    "collaborative",
+    "integration_steam",
+    "integration_plex",
 }
 
 # (list_type) → (sort_by, sort_dir, date_filter)
@@ -30,6 +36,9 @@ _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
     "top_rated": ("rating", "desc", None),
     "upcoming": ("release_date", "asc", "future"),
     "now_playing": ("popularity", "desc", "recent"),
+    "collaborative": ("popularity", "desc", None),
+    "integration_steam": ("popularity", "desc", None),
+    "integration_plex": ("popularity", "desc", None),
 }
 
 
@@ -82,11 +91,28 @@ async def discover_hero(
     return await _build_response(db, items, has_more, current_user)
 
 
+@discover_router.get("/sections", response_model=PersonalizedSectionsResponse)
+async def discover_sections(
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> PersonalizedSectionsResponse:
+    if current_user:
+        service = PersonalizationService(db)
+        profile = await service.compute_profile(current_user)
+        sections = service.generate_sections(profile, user=current_user)
+    else:
+        sections = PersonalizationService.default_sections()
+
+    return PersonalizedSectionsResponse(sections=sections)
+
+
 @discover_router.get("/{media_type}/{list_type}", response_model=MediaItemListResponse)
 async def discover_list(
     media_type: str,
     list_type: str,
     genre: str | None = Query(None, description="Genre slug"),
+    language: str | None = Query(None, description="Language code (e.g. 'ja', 'ko')"),
+    is_anime: bool | None = Query(None, description="Filter to anime (movie/show only)"),
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
@@ -97,13 +123,82 @@ async def discover_list(
     if list_type not in VALID_LIST_TYPES:
         raise HTTPException(status_code=400, detail=f"Invalid list_type: {list_type}")
 
+    # Normalize regional language variants to ISO 639-1 for content filtering
+    if language and len(language) > 2:
+        language = language.split("-")[0]
+
+    service = MediaService(db)
+
+    # Collaborative: seed from similar users' interactions
+    if list_type == "collaborative" and current_user:
+        personalization = PersonalizationService(db)
+        similar = await personalization._find_similar_users(current_user)
+        seed_ids = await personalization._get_collaborative_items(
+            current_user.id, similar, media_type, limit=50,
+        )
+        if seed_ids:
+            items, has_more, _ = await service.list_media(
+                media_type=media_type,
+                has_artwork=True,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+            )
+            return await _build_response(db, items, has_more, current_user)
+
+    # Integration: seed from connected platform data
+    if list_type == "integration_steam" and current_user and current_user.steam_id:
+        seed_query = (
+            "SELECT usg.media_item_id FROM user_steam_games usg "
+            "WHERE usg.user_id = :user_id AND usg.media_item_id IS NOT NULL "
+            "ORDER BY usg.playtime_forever DESC LIMIT :limit"
+        )
+        result = await db.execute(text(seed_query), {"user_id": current_user.id, "limit": limit * 2})
+        seed_ids = [row[0] for row in result.fetchall()]
+        if seed_ids:
+            items, has_more, _ = await service.list_media(
+                media_type=media_type,
+                has_artwork=True,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+            )
+            return await _build_response(db, items, has_more, current_user)
+
+    if list_type == "integration_plex" and current_user and current_user.plex_id:
+        seed_query = (
+            "SELECT upi.media_item_id FROM user_plex_items upi "
+            "WHERE upi.user_id = :user_id AND upi.media_item_id IS NOT NULL "
+            "ORDER BY upi.view_count DESC LIMIT :limit"
+        )
+        result = await db.execute(text(seed_query), {"user_id": current_user.id, "limit": limit * 2})
+        seed_ids = [row[0] for row in result.fetchall()]
+        if seed_ids:
+            items, has_more, _ = await service.list_media(
+                media_type=media_type,
+                has_artwork=True,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+            )
+            return await _build_response(db, items, has_more, current_user)
+
     sort_by, sort_dir, date_filter_name = _LIST_CONFIG[list_type]
     date_from, date_to = _date_filter(date_filter_name)
 
-    service = MediaService(db)
+    # Require artwork only for broad/generic queries. Language and anime
+    # filters target niche content where artwork coverage is sparser.
+    require_artwork = not (language or is_anime is not None)
+
     items, has_more, _ = await service.list_media(
         media_type=media_type,
         genre=genre,
+        language=language,
+        is_anime=is_anime,
+        has_artwork=require_artwork,
         sort_by=sort_by,
         sort_dir=sort_dir,
         cursor=cursor,

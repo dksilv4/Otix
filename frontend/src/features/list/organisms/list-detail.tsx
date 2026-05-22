@@ -81,6 +81,31 @@ export function ListDetail() {
     staleTime: 1000 * 60 * 5,
   })
 
+  const handleDragStart = useCallback((index: number) => {
+    setDragIndex(index)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDropIndex(index)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    if (dragIndex != null && dropIndex != null && dragIndex !== dropIndex && list) {
+      const newItems = [...list.items]
+      const [removed] = newItems.splice(dragIndex, 1)
+      newItems.splice(dropIndex, 0, removed)
+      reorderList.mutate(newItems.map((i) => i.id))
+    }
+    setDragIndex(null)
+    setDropIndex(null)
+  }, [dragIndex, dropIndex, list, reorderList])
+
+  const handleDragLeave = useCallback(() => {
+    setDropIndex(null)
+  }, [])
+
   if (isLoading) {
     return (
       <div className="space-y-8">
@@ -117,31 +142,6 @@ export function ListDetail() {
   async function handleRemoveItem(mediaItemId: string) {
     await removeItem.mutateAsync({ listId, mediaItemId })
   }
-
-  const handleDragStart = useCallback((index: number) => {
-    setDragIndex(index)
-  }, [])
-
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = "move"
-    setDropIndex(index)
-  }, [])
-
-  const handleDragEnd = useCallback(() => {
-    if (dragIndex != null && dropIndex != null && dragIndex !== dropIndex && list) {
-      const newItems = [...list.items]
-      const [removed] = newItems.splice(dragIndex, 1)
-      newItems.splice(dropIndex, 0, removed)
-      reorderList.mutate(newItems.map((i) => i.id))
-    }
-    setDragIndex(null)
-    setDropIndex(null)
-  }, [dragIndex, dropIndex, list, reorderList])
-
-  const handleDragLeave = useCallback(() => {
-    setDropIndex(null)
-  }, [])
 
   return (
     <div className="space-y-8">

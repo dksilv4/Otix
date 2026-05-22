@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams, Link } from '@tanstack/react-router'
+import { useState, useMemo } from 'react'
+import { useParams, useSearch, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { Film, Tv, Gamepad2, Music, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -38,10 +38,15 @@ function BrowseSkeleton() {
 
 export function BrowsePage() {
   const params = useParams({ strict: false }) as { type?: string }
+  const search = useSearch({ strict: false }) as { genre?: string; language?: string; isAnime?: string }
   const mediaType = params.type || 'movie'
 
+  const initialGenre = search.genre || ''
+  const initialLanguage = search.language || undefined
+  const initialIsAnime = search.isAnime === 'true' ? true : search.isAnime === 'false' ? false : undefined
+
   const [sortBy, setSortBy] = useState('popularity')
-  const [selectedGenre, setSelectedGenre] = useState('')
+  const [selectedGenre, setSelectedGenre] = useState(initialGenre)
   const [page, setPage] = useState(1)
 
   // Fetch genres for this media type
@@ -66,6 +71,9 @@ export function BrowsePage() {
     ...mediaQueries.list({
       type: mediaType,
       genre: selectedGenre || undefined,
+      language: initialLanguage,
+      isAnime: initialIsAnime,
+      hasArtwork: !initialLanguage && initialIsAnime == null,
       sortBy,
       page,
       limit: 48,

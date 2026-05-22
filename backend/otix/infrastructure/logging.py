@@ -18,7 +18,6 @@ def setup_logging() -> None:
         structlog.stdlib.PositionalArgumentsFormatter(),
         timestamper,
         structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
     ]
 
@@ -29,6 +28,7 @@ def setup_logging() -> None:
     else:
         processors = shared_processors + [
             structlog.processors.dict_tracebacks,
+            structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
         ]
 

@@ -33,7 +33,7 @@ class UserProfileOut(BaseModel):
     user_rating_count: int = 0
     composite_score: float | None = None
     profile_sections: list[str] | None = None
-    hall_of_fame_media_ids: list[str] = []
+    hall_of_fame_media_ids: dict[str, list[str]] = {}
     steam: SteamIntegrationPublic | None = None
     plex: PlexIntegrationPublic | None = None
     tmdb_username: str | None = None

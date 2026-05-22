@@ -25,6 +25,7 @@ import { InteractionSection } from '@/features/interaction/molecules/interaction
 import type { MediaItemDetail } from '../media-queries'
 import { useAuth } from '@/features/auth/auth-provider'
 import { useToast } from '@/features/dk-ui/molecules/toast'
+import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
 import { RefreshCw, ShieldCheck } from 'lucide-react'
 
 // ── Skeleton ──
@@ -404,8 +405,6 @@ export function MediaDetail() {
 
       {/* ── Content sections ── */}
       <div className="mx-auto lg:max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
-        <AdminRehydrateAction mediaId={detail.id} />
-
         {/* Interactions — Like, Watchlist, Watched, Played */}
         <InteractionSection
           mediaId={detail.id}
@@ -413,6 +412,7 @@ export function MediaDetail() {
           userInteractions={detail.userInteractions}
         >
           <ReviewActionButton mediaId={detail.id} />
+          <AdminActionsMenu mediaId={detail.id} media={detail} />
         </InteractionSection>
 
         {/* Ratings — Otix community + external */}

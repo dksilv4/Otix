@@ -122,7 +122,17 @@ class SteamGridDBHydrator:
         # Promote a text-safe SGDB hero even if IGDB already supplied a backdrop.
         hero = self._pick_hero(heroes)
         if hero and isinstance(hero.get("url"), str) and media_item.backdrop_url != hero["url"]:
-            media_item.backdrop_url = hero["url"]
+            from otix.services.admin_edit_service import AdminEditService
+            protected = await AdminEditService.get_protected_image_types(
+                self.session, media_item.id
+            )
+            if "backdrop" in protected and media_item.backdrop_url:
+                svc = AdminEditService(self.session)
+                await svc.create_system_proposal_for_image(
+                    media_item.id, "backdrop", hero["url"]
+                )
+            else:
+                media_item.backdrop_url = hero["url"]
 
         return added
 
