@@ -39,8 +39,6 @@ export function EmphasisSelector({ emphases, onChange }: EmphasisSelectorProps) 
     }
   }
 
-  if (EMPHASIS_OPTIONS.length === 0) return null
-
   return (
     <div className="flex flex-wrap gap-2 justify-center">
       {EMPHASIS_OPTIONS.map(({ signalId, label }) => {

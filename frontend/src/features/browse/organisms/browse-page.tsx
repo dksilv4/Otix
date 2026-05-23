@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams, useSearch, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'

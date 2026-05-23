@@ -105,7 +105,7 @@ export function MediaHero({
           <img
             src={backdropSrc(heroBackdrop)}
             alt=""
-            className="h-full w-full object-cover object-[center_20%]"
+            className="h-full w-full object-cover object-[center_20%] animate-ken-burns"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
@@ -114,7 +114,7 @@ export function MediaHero({
       )}
 
       {/* Content */}
-      <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8 animate-hero-fade-in">
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12">
           {/* Poster */}
           <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">

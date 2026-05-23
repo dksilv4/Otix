@@ -286,6 +286,36 @@
   animation: spinSlow 8s linear infinite;
 }
 
+/* ── Media hero backdrop Ken Burns ── */
+@keyframes kenBurns {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+.animate-ken-burns {
+  animation: kenBurns 25s ease-out forwards;
+}
+
+/* ── Media hero content fade in ── */
+@keyframes heroFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-hero-fade-in {
+  animation: heroFadeIn 0.6s ease-out forwards;
+}
+
+/* ── Page content fade in (opacity only, for seamless skeleton→content) ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
 /* ── Prefers reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

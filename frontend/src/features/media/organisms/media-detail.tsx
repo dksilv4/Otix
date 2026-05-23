@@ -1,12 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { useQueryClient } from '@tanstack/react-query'
+
 import { useMediaDetail } from '../hooks/use-media-detail'
 import { usePageMeta } from '@/lib/page-context'
-import { apiClient, API_BASE_URL } from '@/lib/api-client'
+
 import { cn } from '@/lib/utils'
-import { mediaKeys } from '../media-keys'
+
 import { MediaHero } from './media-hero'
 import { MovieSection } from './movie-section'
 import { ShowSection } from './show-section'
@@ -23,10 +23,10 @@ import { RatingsSection } from '@/features/review/organisms/ratings-section'
 import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
 import type { MediaItemDetail } from '../media-queries'
-import { useAuth } from '@/features/auth/auth-provider'
-import { useToast } from '@/features/dk-ui/molecules/toast'
+
+
 import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
-import { RefreshCw, ShieldCheck } from 'lucide-react'
+
 
 // ── Skeleton ──
 
@@ -45,41 +45,70 @@ function SectionSkeleton({ height = 200 }: { height?: number }) {
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="relative">
-        <Skeleton className="h-72 w-full sm:h-96" />
-        <div className="relative z-10 mx-auto lg:max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-8 sm:flex-row">
-            <Skeleton className="mx-auto h-72 w-48 shrink-0 rounded-lg sm:mx-0 sm:h-80 sm:w-56" />
-            <div className="flex flex-col justify-center gap-3">
-              <Skeleton className="h-5 w-16" />
-              <Skeleton className="h-10 w-64" />
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-4 w-32" />
-              <div className="flex gap-1.5">
-                <Skeleton className="h-5 w-14" />
-                <Skeleton className="h-5 w-14" />
-                <Skeleton className="h-5 w-14" />
+    <div className="space-y-12">
+      {/* Hero skeleton — matches MediaHero layout */}
+      <div className="relative flex min-h-[65vh] items-end overflow-hidden rounded-3xl border border-white/[0.06] lg:min-h-[75vh]">
+        {/* Backdrop placeholder with subtle shimmer */}
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.06]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12">
+            {/* Poster */}
+            <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">
+              <Skeleton className="aspect-[2/3] w-full rounded-2xl" />
+            </div>
+
+            {/* Info */}
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+              {/* Logo / title */}
+              <Skeleton className="mb-2 h-12 w-56 sm:h-14 lg:h-16" />
+              {/* Tagline */}
+              <Skeleton className="h-4 w-72 sm:h-5 sm:w-80" />
+              {/* Badges row */}
+              <div className="flex gap-2">
+                <Skeleton className="h-7 w-16 rounded-full" />
+                <Skeleton className="h-7 w-14 rounded-full" />
+                <Skeleton className="h-7 w-20 rounded-full" />
               </div>
-              <Skeleton className="h-20 w-full max-w-md" />
+              {/* Overview */}
+              <div className="mt-1 w-full max-w-2xl space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-11/12" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+              {/* Genre badges */}
+              <div className="flex gap-1.5">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-14 rounded-full" />
+                <Skeleton className="h-5 w-18 rounded-full" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Action buttons skeleton */}
       <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-lg" />
+            <Skeleton key={i} className="h-12 rounded-xl" />
           ))}
         </div>
       </div>
+
+      {/* Cast/crew skeleton */}
       <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Skeleton className="mb-3 h-6 w-24" />
-        <div className="flex gap-3 overflow-hidden">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="w-28 shrink-0 text-center">
+        <Skeleton className="mb-4 h-5 w-32" />
+        <div className="flex gap-4 overflow-hidden">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="w-24 shrink-0 text-center">
               <Skeleton className="mx-auto h-20 w-20 rounded-full" />
-              <Skeleton className="mx-auto mt-1.5 h-3 w-16" />
+              <Skeleton className="mx-auto mt-2 h-3 w-16" />
               <Skeleton className="mx-auto mt-1 h-3 w-12" />
             </div>
           ))}
@@ -177,139 +206,6 @@ function seoDescription(overview?: string | null, title?: string): string {
   return `Details for ${title || 'this title'} on Otix`
 }
 
-type MediaRehydrateEvent =
-  | { type: 'rehydrate_started'; title?: string; media_type?: string }
-  | { type: 'provider_started'; provider: string; label: string }
-  | { type: 'provider_complete'; provider: string; label: string }
-  | { type: 'rehydrate_complete'; title?: string }
-  | { type: 'error'; message?: string; error?: string }
-
-async function* parseMediaRehydrateEvents(response: Response): AsyncGenerator<MediaRehydrateEvent> {
-  const reader = response.body?.getReader()
-  if (!reader) return
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-    const frames = buffer.split('\n\n')
-    buffer = frames.pop() || ''
-
-    for (const frame of frames) {
-      for (const line of frame.split('\n')) {
-        if (line.startsWith('data: ')) {
-          yield JSON.parse(line.slice(6)) as MediaRehydrateEvent
-        }
-      }
-    }
-  }
-}
-
-function AdminRehydrateAction({ mediaId }: { mediaId: string }) {
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const queryClient = useQueryClient()
-  const abortRef = useRef<AbortController | null>(null)
-  const [running, setRunning] = useState(false)
-  const [phase, setPhase] = useState<string | null>(null)
-  const [lastProvider, setLastProvider] = useState<string | null>(null)
-
-  useEffect(() => {
-    return () => abortRef.current?.abort()
-  }, [])
-
-  if (!user?.isAdmin) return null
-
-  const refreshMedia = () => {
-    queryClient.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
-  }
-
-  const startRehydrate = async () => {
-    abortRef.current?.abort()
-    const abortController = new AbortController()
-    abortRef.current = abortController
-    setRunning(true)
-    setPhase('Queueing high-priority hydration...')
-    setLastProvider(null)
-
-    try {
-      const { data } = await apiClient.post<{ taskId: string }>(`/media/${mediaId}/rehydrate`)
-      const token = localStorage.getItem('otix-access-token')
-      const response = await fetch(`${API_BASE_URL}/media/${mediaId}/rehydrate/${data.taskId}/stream`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        signal: abortController.signal,
-      })
-
-      if (!response.ok) {
-        throw new Error(`SSE connection failed: ${response.status}`)
-      }
-
-      for await (const event of parseMediaRehydrateEvents(response)) {
-        switch (event.type) {
-          case 'rehydrate_started':
-            setPhase('Hydration started')
-            break
-          case 'provider_started':
-            setPhase(`Running ${event.label}`)
-            setLastProvider(event.label)
-            break
-          case 'provider_complete':
-            setPhase(`Updated ${event.label}`)
-            setLastProvider(event.label)
-            refreshMedia()
-            break
-          case 'rehydrate_complete':
-            setPhase('Hydration complete')
-            refreshMedia()
-            toast({ title: 'Media rehydrated', variant: 'success' })
-            break
-          case 'error':
-            throw new Error(event.message || event.error || 'Hydration failed')
-        }
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      const message = err instanceof Error ? err.message : 'Hydration failed'
-      setPhase(message)
-      toast({ title: 'Could not rehydrate media', description: message, variant: 'error' })
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--dk-surface-glass)] px-4 py-3 shadow-[var(--dk-shadow-sm)]">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <ShieldCheck className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">Admin hydration</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {phase ?? 'Force a full provider refresh for this item.'}
-            {lastProvider && running ? ` · ${lastProvider}` : ''}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={startRehydrate}
-        disabled={running}
-        className={cn(
-          'inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-base)] px-3 py-2 text-xs font-medium text-foreground shadow-[var(--dk-shadow-sm)] transition-colors',
-          'hover:bg-[var(--dk-surface-glass-hover)] disabled:pointer-events-none disabled:opacity-60',
-        )}
-      >
-        <RefreshCw className={cn('h-3.5 w-3.5', running && 'animate-spin')} />
-        {running ? 'Hydrating' : 'Force rehydrate'}
-      </button>
-    </div>
-  )
-}
-
 // ── Page ──
 
 export function MediaDetail() {
@@ -321,6 +217,19 @@ export function MediaDetail() {
   const { setNavLogo } = usePageMeta()
   const heroRef = useRef<HTMLDivElement>(null)
   const logoUrl = data?.logoUrl
+  const [phase, setPhase] = useState<'loading' | 'fading-out' | 'ready'>('loading')
+
+  useEffect(() => {
+    if (isLoading) {
+      setPhase('loading')
+      return
+    }
+    if (data && phase === 'loading') {
+      setPhase('fading-out')
+      const id = setTimeout(() => setPhase('ready'), 200)
+      return () => clearTimeout(id)
+    }
+  }, [isLoading, data, phase])
 
   const handleIntersection = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -347,7 +256,15 @@ export function MediaDetail() {
     }
   }, [handleIntersection, setNavLogo])
 
-  if (isLoading) return <DetailSkeleton />
+  if (phase !== 'ready') {
+    if (isError || (!isLoading && !data)) return <ErrorState mediaType={mediaType} />
+    return (
+      <div className={cn(phase === 'fading-out' && 'transition-opacity duration-200 opacity-0')}>
+        <DetailSkeleton />
+      </div>
+    )
+  }
+
   if (isError || !data) return <ErrorState mediaType={mediaType} />
 
   const detail = data
@@ -357,7 +274,7 @@ export function MediaDetail() {
   const musicCreditsLine = detail.mediaType === 'music' ? formatMusicCreditsLine(detail.credits) : null
 
   return (
-    <div className="space-y-12 pb-16">
+    <div className="animate-fade-in space-y-12 pb-16">
       {/* ── SEO ── */}
       <Helmet>
         <title>{`${titleWithYear} - Otix`}</title>

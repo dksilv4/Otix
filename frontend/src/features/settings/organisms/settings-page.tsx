@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
 import { apiClient, API_BASE_URL } from '@/lib/api-client'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
-import { DkDialog } from '@/features/dk-ui/molecules/dialog'
+
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { DkInput } from '@/features/dk-ui/atoms/input'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -2018,27 +2018,6 @@ const PERSONA_STATES: Record<number, string> = {
 function personaStateLabel(state: number | null): string {
   if (state === null || state === undefined) return 'Unknown'
   return PERSONA_STATES[state] ?? 'Unknown'
-}
-
-function PersonaStateBadge({ state }: { state: number | null }) {
-  if (state === null || state === undefined) return null
-  const colorMap: Record<number, string> = {
-    0: 'bg-muted-foreground/30',
-    1: 'bg-green-500',
-    2: 'bg-amber-500',
-    3: 'bg-amber-500/70',
-    4: 'bg-blue-400/60',
-    5: 'bg-sky-400',
-    6: 'bg-sky-400',
-  }
-  const label = PERSONA_STATES[state] ?? 'Unknown'
-  const color = colorMap[state] ?? 'bg-muted-foreground/30'
-  return (
-    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-      <span className={cn('inline-block h-2 w-2 rounded-full', color)} />
-      {label}
-    </span>
-  )
 }
 
 function extractIntegrationMessage(err: unknown): string {

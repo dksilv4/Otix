@@ -252,7 +252,6 @@ function HomeExperience() {
               genre={section.genre}
               language={section.language}
               isAnime={section.isAnime}
-              isPersonalized={section.isPersonalized}
               reason={section.reason}
             />
           ))}

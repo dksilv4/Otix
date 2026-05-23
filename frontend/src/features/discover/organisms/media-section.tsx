@@ -14,11 +14,10 @@ interface MediaSectionProps {
   genre?: string | null
   language?: string | null
   isAnime?: boolean | null
-  isPersonalized?: boolean
   reason?: string | null
 }
 
-export function MediaSection({ title, mediaType, listType, genre, language, isAnime, isPersonalized, reason }: MediaSectionProps) {
+export function MediaSection({ title, mediaType, listType, genre, language, isAnime, reason }: MediaSectionProps) {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '0px 0px 200px 0px' })
 
