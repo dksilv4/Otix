@@ -106,7 +106,7 @@ class BaseProvider(ABC):
                 raise ProviderError(f"{self.name} request failed: {exc}") from exc
 
         if response.status_code in self._rate_limit_statuses:
-            retry_after = self._handle_rate_limit(response)
+            retry_after = await self._handle_rate_limit(response)
             await self._drain_rate_bucket()
             raise RateLimitError(f"{self.name} rate limited ({response.status_code})", retry_after=retry_after)
 
@@ -123,23 +123,22 @@ class BaseProvider(ABC):
         self._update_cb_gauge()
         return response
 
-    def _handle_rate_limit(self, response: httpx.Response) -> int:
+    async def _handle_rate_limit(self, response: httpx.Response) -> int:
         retry_after = response.headers.get("Retry-After")
         if retry_after and retry_after.isdigit():
             wait = int(retry_after)
             logger.warning("rate limited by provider", provider=self.name, retry_after=wait)
             # Set cooldown so upstream schedulers can back off
-            self._set_cooldown(wait)
+            await self._set_cooldown(wait)
             return wait
         return 0
 
-    def _set_cooldown(self, seconds: int) -> None:
+    async def _set_cooldown(self, seconds: int) -> None:
         """Set a Redis key to signal that this provider is rate limited."""
-        import asyncio as _asyncio
         try:
-            _asyncio.ensure_future(self.rate_limiter.redis.set(
+            await self.rate_limiter.redis.set(
                 f"ratelimit:{self.name}:cooldown", "1", ex=seconds
-            ))
+            )
         except Exception:
             pass
 
