@@ -231,6 +231,7 @@ async def get_user_access_token(user: User) -> str | None:
     try:
         tokens = await refresh_spotify_token(user.spotify_refresh_token)
     except Exception:
+        logger.exception("spotify token refresh exception in get_user_access_token", user_id=user.id)
         return None
 
     new_access = tokens.get("access_token")

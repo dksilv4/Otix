@@ -162,7 +162,8 @@ async function fetchAccessToken(): Promise<string | null> {
   try {
     const { data } = await apiClient.get<{ accessToken: string }>('/auth/integrations/spotify/token')
     return data.accessToken
-  } catch {
+  } catch (e) {
+    console.error('Failed to fetch Spotify access token:', e)
     return null
   }
 }
@@ -292,6 +293,9 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     script.onload = () => {
       sdkLoadedRef.current = true
     }
+    script.onerror = () => {
+      console.error('Failed to load Spotify Web Playback SDK from', SDK_URL)
+    }
     document.body.appendChild(script)
   }, [hasSpotify])
 
@@ -303,19 +307,44 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     let disposed = false
 
     async function initPlayer() {
+      if (disposed) return
+
       const token = await fetchAccessToken()
-      if (!token || disposed) return
+      if (disposed) return
+
+      if (!token) {
+        console.error('Spotify player cannot initialize: failed to fetch access token')
+        notifyError(
+          'Could not start Spotify player',
+          'Check your Spotify connection in Settings and try reconnecting.',
+        )
+        return
+      }
       tokenRef.current = token
 
       player = new window.Spotify.Player({
         name: 'Otix',
         getOAuthToken: (cb: (token: string) => void) => {
-          fetchAccessToken().then((t) => {
+          let attempts = 0
+          const tryFetch = async () => {
+            const t = await fetchAccessToken()
             if (t) {
               tokenRef.current = t
               cb(t)
+              return
             }
-          })
+            attempts++
+            if (attempts < 3) {
+              setTimeout(tryFetch, 1000 * attempts)
+            } else {
+              console.error('Spotify SDK requested token but fetch failed after 3 attempts')
+              notifyError(
+                'Spotify session expired',
+                'Reconnect your Spotify account in Settings.',
+              )
+            }
+          }
+          tryFetch()
         },
         volume: 0.5,
       }) as unknown as SpotifyPlayerInstance

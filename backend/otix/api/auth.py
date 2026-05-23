@@ -1152,9 +1152,18 @@ async def spotify_get_token(
     if current_user.spotify_id is None:
         raise HTTPException(status_code=400, detail="No Spotify account linked")
 
+    if not current_user.spotify_refresh_token:
+        raise HTTPException(
+            status_code=400,
+            detail="Spotify session expired. Please reconnect your account in Settings.",
+        )
+
     token = await get_user_access_token(current_user)
     if token is None:
-        raise HTTPException(status_code=502, detail="Unable to get Spotify token")
+        raise HTTPException(
+            status_code=502,
+            detail="Spotify token refresh failed. Please reconnect your account in Settings.",
+        )
 
     return {"accessToken": token, "expiresIn": 3600}
 
