@@ -16,7 +16,7 @@ function formatCurrency(amount?: number): string {
 }
 
 export function MovieSection({ movie, className }: MovieSectionProps) {
-  if (!movie.budget && !movie.revenue) return null
+  if (movie.runtime == null && movie.budget == null && movie.revenue == null) return null
 
   const profitAbs = movie.revenue != null && movie.budget != null && movie.budget > 0
     ? movie.revenue - movie.budget
@@ -29,6 +29,12 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
       <h2 className="text-lg font-semibold">Details</h2>
 
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {movie.runtime != null && movie.runtime > 0 && (
+          <div className="rounded-xl bg-card p-4">
+            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Runtime</dt>
+            <dd className="mt-1 text-sm font-semibold">{movie.runtime} min</dd>
+          </div>
+        )}
         {movie.budget != null && movie.budget > 0 && (
           <div className="rounded-xl bg-card p-4">
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</dt>

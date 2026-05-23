@@ -14,6 +14,7 @@ export default defineConfig({
       '@discover': path.resolve(__dirname, 'src/features/discover'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
       '@person': path.resolve(__dirname, 'src/features/person'),
+      '@dk-ui': path.resolve(__dirname, 'src/features/dk-ui'),
     },
   },
   server: {

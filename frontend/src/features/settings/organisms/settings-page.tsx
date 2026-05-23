@@ -10,7 +10,7 @@ import { useTheme, type ThemeSetting } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
 import { useQuery } from '@tanstack/react-query'
 import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
-import { apiClient, API_BASE_URL } from '@/lib/api-client'
+import { apiClient, API_BASE_URL, convertKeysToCamelCase } from '@/lib/api-client'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
@@ -1878,7 +1878,7 @@ type SpotifySyncEvent =
   | { type: 'tracks_matched'; matched: number; total: number }
   | { type: 'seeding_albums'; count: number }
   | { type: 'albums_seeded'; count: number }
-  | { type: 'sync_complete'; liked_total: number; liked_matched: number; liked_seeded: number }
+  | { type: 'sync_complete'; likedTotal: number; likedMatched: number; likedSeeded: number }
   | { type: 'error'; message: string }
 
 type SpotifyProgressState = {
@@ -1892,9 +1892,9 @@ type YouTubeSyncEvent =
   | { type: 'history_fetched'; count: number }
   | { type: 'fetching_liked_videos' }
   | { type: 'liked_videos_fetched'; count: number }
-  | { type: 'videos_analyzed'; total: number; music_videos: number }
-  | { type: 'matching_complete'; matched: number; total_music: number }
-  | { type: 'sync_complete'; total: number; music_videos: number; matched: number; channel_links: number }
+  | { type: 'videos_analyzed'; total: number; musicVideos: number }
+  | { type: 'matching_complete'; matched: number; totalMusic: number }
+  | { type: 'sync_complete'; total: number; musicVideos: number; matched: number; channelLinks: number }
   | { type: 'error'; message: string }
 
 type YouTubeProgressState = {
@@ -1918,7 +1918,7 @@ async function* parseYouTubeSseEvents(response: Response): AsyncGenerator<YouTub
     for (const frame of frames) {
       for (const line of frame.split('\n')) {
         if (line.startsWith('data: ')) {
-          yield JSON.parse(line.slice(6)) as YouTubeSyncEvent
+          yield convertKeysToCamelCase(JSON.parse(line.slice(6))) as YouTubeSyncEvent
         }
       }
     }
@@ -1941,7 +1941,7 @@ async function* parseSpotifySseEvents(response: Response): AsyncGenerator<Spotif
     for (const frame of frames) {
       for (const line of frame.split('\n')) {
         if (line.startsWith('data: ')) {
-          yield JSON.parse(line.slice(6)) as SpotifySyncEvent
+          yield convertKeysToCamelCase(JSON.parse(line.slice(6))) as SpotifySyncEvent
         }
       }
     }
@@ -1964,29 +1964,7 @@ async function* parseSseEvents(response: Response): AsyncGenerator<PlexSyncEvent
     for (const frame of frames) {
       for (const line of frame.split('\n')) {
         if (line.startsWith('data: ')) {
-          const parsed = JSON.parse(line.slice(6))
-          // Convert snake_case to camelCase client-side since SSE bypasses axios interceptor
-          if (parsed.server_name) {
-            parsed.serverName = parsed.server_name
-            delete parsed.server_name
-          }
-          if (parsed.library_name) {
-            parsed.libraryName = parsed.library_name
-            delete parsed.library_name
-          }
-          if (parsed.library_type) {
-            parsed.libraryType = parsed.library_type
-            delete parsed.library_type
-          }
-          if (parsed.items_total !== undefined) {
-            parsed.itemsTotal = parsed.items_total
-            delete parsed.items_total
-          }
-          if (parsed.items_processed !== undefined) {
-            parsed.itemsProcessed = parsed.items_processed
-            delete parsed.items_processed
-          }
-          yield parsed as PlexSyncEvent
+          yield convertKeysToCamelCase(JSON.parse(line.slice(6))) as PlexSyncEvent
         }
       }
     }
@@ -2266,6 +2244,7 @@ function IntegrationsSection() {
   const [steamProfile, setSteamProfile] = useState<SteamProfile | null>(null)
   const [plexConnected, setPlexConnected] = useState(Boolean(user?.plexId))
   const [plex, setPlex] = useState<PlexIntegration | null>(null)
+  const [plexWatchHistoryEnabled, setPlexWatchHistoryEnabled] = useState(user?.plexWatchHistoryEnabled ?? false)
   const [tmdbConnected, setTmdbConnected] = useState(Boolean(user?.tmdbUsername))
   const [tmdbUsername, setTmdbUsername] = useState<string | null>(user?.tmdbUsername ?? null)
   const [tmdbAvatarUrl, setTmdbAvatarUrl] = useState<string | null>(user?.tmdbAvatarUrl ?? null)
@@ -2300,7 +2279,7 @@ function IntegrationsSection() {
   const [googleMessage, setGoogleMessage] = useState('')
   const [googleError, setGoogleError] = useState('')
   const [youtubeSyncing, setYoutubeSyncing] = useState(false)
-  const [youtubeSyncResult, setYoutubeSyncResult] = useState<{ total: number; music_videos: number; matched: number; channel_links: number } | null>(null)
+  const [youtubeSyncResult, setYoutubeSyncResult] = useState<{ total: number; musicVideos: number; matched: number; channelLinks: number } | null>(null)
   const [youtubeProgress, setYoutubeProgress] = useState<YouTubeProgressState | null>(null)
   const [youtubeError, setYoutubeError] = useState('')
   const [youtubeMessage, setYoutubeMessage] = useState('')
@@ -2556,23 +2535,23 @@ function IntegrationsSection() {
             break
           case 'videos_analyzed':
             setYoutubeProgress({
-              phase: `Found ${event.music_videos} music videos out of ${event.total} total`,
+              phase: `Found ${event.musicVideos} music videos out of ${event.total} total`,
             })
             break
           case 'matching_complete':
             setYoutubeProgress({
-              phase: `Matched ${event.matched} of ${event.total_music} music videos`,
+              phase: `Matched ${event.matched} of ${event.totalMusic} music videos`,
             })
             break
           case 'sync_complete':
             setYoutubeSyncResult({
               total: event.total,
-              music_videos: event.music_videos,
+              musicVideos: event.musicVideos,
               matched: event.matched,
-              channel_links: event.channel_links,
+              channelLinks: event.channelLinks,
             })
             setYoutubeMessage(
-              `Synced ${event.total} liked videos: ${event.music_videos} music videos, ${event.matched} matched to catalog, ${event.channel_links} channels linked.`,
+              `Synced ${event.total} liked videos: ${event.musicVideos} music videos, ${event.matched} matched to catalog, ${event.channelLinks} channels linked.`,
             )
             setYoutubeProgress(null)
             break
@@ -2642,9 +2621,9 @@ function IntegrationsSection() {
             setSpotifyProgress({ phase: `Seeded ${event.count} new albums` })
             break
           case 'sync_complete':
-            setSpotifySyncResult({ likedTotal: event.liked_total, likedMatched: event.liked_matched, likedSeeded: event.liked_seeded })
+            setSpotifySyncResult({ likedTotal: event.likedTotal, likedMatched: event.likedMatched, likedSeeded: event.likedSeeded })
             setSpotifyMessage(
-              `Synced ${event.liked_total} liked tracks: ${event.liked_matched} matched in catalog, ${event.liked_seeded} new albums seeded.`,
+              `Synced ${event.likedTotal} liked tracks: ${event.likedMatched} matched in catalog, ${event.likedSeeded} new albums seeded.`,
             )
             setSpotifyProgress(null)
             break
@@ -3072,6 +3051,25 @@ function IntegrationsSection() {
                   />
                   <IntegrationAction label="Library Sync" description="Plex Library" result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null} buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync' : 'Sync Now'} buttonIcon={RefreshCw} onPress={handlePlexSync} loading={plexSyncing} progress={plexProgress && <span className="text-xs text-primary">{plexProgress.phase}</span>} />
                   <IntegrationAction label="Watchlist Sync" description="Plex Watchlist" result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null} buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'} buttonIcon={RefreshCw} onPress={handlePlexWatchlistSync} loading={plexWatchlistSyncing} muted />
+                  <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-border/20">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Watch History Sync</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Sync episode-level watch history from Plex to your Otix library.
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={plexWatchHistoryEnabled}
+                      onCheckedChange={async (checked) => {
+                        setPlexWatchHistoryEnabled(checked)
+                        try {
+                          await apiClient.patch('/auth/me', { plex_watch_history_enabled: checked })
+                        } catch {
+                          setPlexWatchHistoryEnabled(!checked)
+                        }
+                      }}
+                    />
+                  </div>
                   {plexProgress && plexProgress.itemsTotal !== undefined && plexProgress.itemsTotal > 0 && (
                     <div className="px-5 py-3 space-y-1 border-t border-border/20">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -3125,7 +3123,7 @@ function IntegrationsSection() {
                     icon={GoogleIcon}
                     brandColor={BRAND_COLORS.google}
                   />
-                  <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.music_videos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
+                  <IntegrationAction label="YouTube Sync" description="YouTube Liked Videos" result={youtubeSyncResult ? `${youtubeSyncResult.total} videos (${youtubeSyncResult.matched} matched, ${youtubeSyncResult.musicVideos} music)` : null} buttonLabel={youtubeSyncing ? 'Syncing...' : youtubeSyncResult ? 'Re-sync' : 'Sync Liked Videos'} buttonIcon={RefreshCw} onPress={handleYouTubeSync} loading={youtubeSyncing} disabled={youtubeSyncing} progress={youtubeProgress && <span className="text-xs text-primary">{youtubeProgress.phase}{youtubeProgress.detail ? ` (${youtubeProgress.detail})` : ''}</span>} />
                   {googleMessage && <p className="px-5 py-2 text-xs text-green-500">{googleMessage}</p>}
                   {googleError && <p className="px-5 py-2 text-xs text-destructive">{googleError}</p>}
                   {youtubeMessage && <p className="px-5 py-2 text-xs text-green-500">{youtubeMessage}</p>}

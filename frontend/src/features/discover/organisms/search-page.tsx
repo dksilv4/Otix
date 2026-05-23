@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChatSearchInput } from '../molecules/chat-search-input'
-import { FilterDropdown, TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
+import { TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
+import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { SearchResults } from './search-results'
 
 export interface SearchRouteParams {
@@ -80,13 +81,15 @@ export function SearchPage() {
               debounceMs={150}
             />
             <div className="flex items-center gap-2 mt-4">
-              <FilterDropdown
+              <DkDropdown
+                variant="filter"
                 label="Type"
                 options={TYPE_OPTIONS}
                 value={type === 'all' ? '' : type}
                 onChange={(v) => updateSearch({ type: v || 'all' })}
               />
-              <FilterDropdown
+              <DkDropdown
+                variant="filter"
                 label="Sort"
                 options={SORT_OPTIONS}
                 value={sort as SortValue}

@@ -287,12 +287,12 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       return
     }
 
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      sdkLoadedRef.current = true
+    }
     const script = document.createElement('script')
     script.src = SDK_URL
     script.async = true
-    script.onload = () => {
-      sdkLoadedRef.current = true
-    }
     script.onerror = () => {
       console.error('Failed to load Spotify Web Playback SDK from', SDK_URL)
     }
@@ -356,11 +356,13 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         setIsReady(true)
         setError(null)
 
-        // Resume playback from last session
+        // Resume playback from last session, or transfer from another device
         if (!resumeAttemptedRef.current && !disposed) {
           resumeAttemptedRef.current = true
           const saved = loadPlaybackState()
-          if (saved && saved.uri) {
+
+          if (saved && saved.uri && saved.wasPlaying) {
+            // Case 1: Was playing in Otix before reload — resume exactly where we left off
             try {
               const token = tokenRef.current || (await fetchAccessToken())
               if (!token) return
@@ -374,6 +376,31 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
               })
             } catch {
               clearPlaybackState()
+            }
+          } else {
+            // Case 2: No local resume state — check if the user is playing on another
+            // Spotify device (phone, desktop app, etc.) and transfer playback here.
+            try {
+              const token = tokenRef.current || (await fetchAccessToken())
+              if (!token) return
+              const res = await fetch('https://api.spotify.com/v1/me/player', {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (res.status === 200) {
+                const playerState = await res.json()
+                if (playerState.device && playerState.device.id !== device_id && playerState.item) {
+                  await fetch('https://api.spotify.com/v1/me/player', {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ device_ids: [device_id] }),
+                  })
+                }
+              }
+            } catch {
+              // Optional — don't notify the user for this best-effort transfer
             }
           }
         }
@@ -463,9 +490,21 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
     const timeout = setTimeout(tryInit, 500)
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (playerRef.current && !disposed) {
+          playerRef.current.connect()
+        } else if (!playerRef.current && !disposed && window.Spotify) {
+          initPlayer()
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       disposed = true
       clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', handleVisibility)
       if (player) {
         player.disconnect()
         playerRef.current = null

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +11,7 @@ from otix.domain.base import Base, otix_fk, otix_pk
 
 if TYPE_CHECKING:
     from otix.domain.media import MediaItem
+    from otix.domain.user import User
 
 
 class Person(Base):
@@ -42,6 +43,7 @@ class Person(Base):
 
     credits: Mapped[list[MediaCredit]] = relationship("MediaCredit", back_populates="person")
     assets: Mapped[list[PersonAsset]] = relationship("PersonAsset", back_populates="person")
+    followers: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="person")
 
 
 class PersonAsset(Base):
@@ -69,3 +71,14 @@ class MediaCredit(Base):
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="credits")
     person: Mapped[Person] = relationship("Person", back_populates="credits")
+
+
+class UserPersonFollow(Base):
+    __tablename__ = "user_person_follows"
+
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    person_id: Mapped[otix_fk] = mapped_column(ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    user: Mapped[User] = relationship("User", back_populates="person_follows")
+    person: Mapped[Person] = relationship("Person", back_populates="followers")

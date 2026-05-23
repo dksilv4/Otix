@@ -15,6 +15,7 @@ from otix.domain.interaction import UserMediaInteraction
 if TYPE_CHECKING:
     from otix.domain.collection import CollectionItem
     from otix.domain.company import InvolvedCompany
+    from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.people import MediaCredit
     from otix.domain.review import Review
     from otix.domain.user import User
@@ -134,6 +135,7 @@ class Episode(Base):
 
     season: Mapped[Season] = relationship("Season", back_populates="episodes")
     external_ratings: Mapped[list["ExternalRating"]] = relationship("ExternalRating", back_populates="episode")
+    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="episode")
 
 
 class Game(Base):

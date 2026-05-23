@@ -2,9 +2,27 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from otix.api.schemas.common import PaginatedResponse
+
+
+class EpisodeOut(BaseModel):
+    episode_number: int
+    name: str | None = None
+    air_date: date | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class SeasonOut(BaseModel):
+    season_number: int
+    name: str | None = None
+    first_air_date: date | None = None
+    last_air_date: date | None = None
+    episodes: list[EpisodeOut] = []
+
+    model_config = {"from_attributes": True}
 
 
 class PersonCreditMediaOut(BaseModel):
@@ -14,20 +32,51 @@ class PersonCreditMediaOut(BaseModel):
     slug: str
     poster_url: str | None = None
     release_date: date | None = None
+    seasons: list[SeasonOut] | None = None
 
     model_config = {"from_attributes": True}
 
+    @model_validator(mode="before")
     @classmethod
-    def from_credit(cls, credit) -> PersonCreditMediaOut:
-        item = credit.media_item
-        return cls(
-            id=item.id,
-            media_type=item.media_type,
-            title=item.title,
-            slug=item.slug,
-            poster_url=item.poster_url,
-            release_date=item.release_date,
-        )
+    def _from_orm(cls, data: object) -> object:
+        if isinstance(data, dict):
+            return data
+        item = data
+        seasons = None
+        if item.media_type == "show" and item.show is not None and item.show.seasons:
+            seasons = []
+            for s in sorted(item.show.seasons, key=lambda s: s.season_number):
+                first_air = None
+                last_air = None
+                episodes: list[EpisodeOut] = []
+                if s.episodes:
+                    air_dates = [e.air_date for e in s.episodes if e.air_date]
+                    if air_dates:
+                        first_air = min(air_dates)
+                        last_air = max(air_dates)
+                    episodes = [
+                        EpisodeOut(episode_number=e.episode_number, name=e.name, air_date=e.air_date)
+                        for e in sorted(s.episodes, key=lambda e: e.episode_number)
+                        if e.air_date is not None
+                    ]
+                seasons.append(
+                    SeasonOut(
+                        season_number=s.season_number,
+                        name=s.name,
+                        first_air_date=first_air,
+                        last_air_date=last_air,
+                        episodes=episodes,
+                    )
+                )
+        return {
+            "id": item.id,
+            "media_type": item.media_type,
+            "title": item.title,
+            "slug": item.slug,
+            "poster_url": item.poster_url,
+            "release_date": item.release_date,
+            "seasons": seasons,
+        }
 
 
 class PersonCreditOut(BaseModel):
@@ -61,6 +110,8 @@ class PersonDetail(BaseModel):
     deathday: date | None = None
     place_of_birth: str | None = None
     synced_at: datetime | None = None
+    follower_count: int = 0
+    is_followed: bool | None = None
 
     credits: list[PersonCreditOut] = []
 

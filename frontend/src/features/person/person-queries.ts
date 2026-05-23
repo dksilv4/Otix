@@ -1,5 +1,19 @@
-import { queryOptions } from '@tanstack/react-query'
+import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
+
+export interface EpisodeInfo {
+  episodeNumber: number
+  name: string | null
+  airDate: string | null
+}
+
+export interface SeasonInfo {
+  seasonNumber: number
+  name: string | null
+  firstAirDate: string | null
+  lastAirDate: string | null
+  episodes: EpisodeInfo[]
+}
 
 export interface PersonCredit {
   id: string
@@ -10,6 +24,7 @@ export interface PersonCredit {
     slug: string
     posterUrl: string | null
     releaseDate: string | null
+    seasons: SeasonInfo[] | null
   }
   role: string
   characterName?: string
@@ -20,11 +35,12 @@ export interface PersonDetail {
   id: string
   name: string
   photoUrl: string | null
-  bio: string | null
-  birthDate: string | null
-  deathDate: string | null
-  birthplace: string | null
-  knownFor: string | null
+  biography: string | null
+  birthday: string | null
+  deathday: string | null
+  placeOfBirth: string | null
+  followerCount: number
+  isFollowed: boolean | null
   credits: PersonCredit[]
 }
 
@@ -82,4 +98,70 @@ export const personQueries = {
       },
       staleTime: 1000 * 60 * 30,
     }),
+}
+
+export function useFollowPerson(personId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<{ followed: boolean; followerCount: number }>(
+        `/person/${personId}/follow`
+      )
+      return data
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['person', personId] })
+      const prev = queryClient.getQueryData<PersonDetail>(['person', personId])
+      if (prev) {
+        queryClient.setQueryData<PersonDetail>(['person', personId], {
+          ...prev,
+          isFollowed: true,
+          followerCount: prev.followerCount + 1,
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(['person', personId], context.prev)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['person', personId] })
+    },
+  })
+}
+
+export function useUnfollowPerson(personId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete<{ followed: boolean; followerCount: number }>(
+        `/person/${personId}/follow`
+      )
+      return data
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['person', personId] })
+      const prev = queryClient.getQueryData<PersonDetail>(['person', personId])
+      if (prev) {
+        queryClient.setQueryData<PersonDetail>(['person', personId], {
+          ...prev,
+          isFollowed: false,
+          followerCount: Math.max(0, prev.followerCount - 1),
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(['person', personId], context.prev)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['person', personId] })
+    },
+  })
 }

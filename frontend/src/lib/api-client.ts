@@ -21,7 +21,7 @@ function isObject(o: unknown): o is Record<string, unknown> {
   return o === Object(o) && !Array.isArray(o) && typeof o !== 'function'
 }
 
-function convertKeysToCamelCase(o: unknown): unknown {
+export function convertKeysToCamelCase(o: unknown): unknown {
   if (isObject(o)) {
     const n: Record<string, unknown> = {}
     Object.keys(o).forEach((k) => {

@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import React from 'react'
+
+// Mock framer-motion to skip exit animations in jsdom
+vi.mock('framer-motion', () => ({
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => children,
+  motion: {
+    div: ({ children, ...props }: any) => React.createElement('div', props, children),
+  },
+}))
+
 import { DkAvatar } from './atoms/avatar'
 import { DkBadge } from './atoms/badge'
 import { DkButton } from './atoms/button'
@@ -80,6 +90,29 @@ describe('dk-ui atoms', () => {
     await userEvent.click(screen.getByText('Select...'))
     await userEvent.click(screen.getByText('Outside'))
     expect(screen.queryByText('Movie')).not.toBeInTheDocument()
+  })
+
+  it('renders filter variant with label prefix and glass styling', async () => {
+    const onChange = vi.fn()
+    render(
+      <DkDropdown
+        variant="filter"
+        label="Type"
+        options={[
+          { value: '', label: 'All Types' },
+          { value: 'movie', label: 'Movies' },
+        ]}
+        value=""
+        onChange={onChange}
+      />,
+    )
+
+    expect(screen.getByText('Type: All Types')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Type: All Types'))
+    expect(screen.getByText('Movies')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Movies'))
+    expect(onChange).toHaveBeenCalledWith('movie')
+    expect(screen.queryByText('All Types')).not.toBeInTheDocument()
   })
 })
 

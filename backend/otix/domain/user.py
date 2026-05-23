@@ -13,10 +13,12 @@ if TYPE_CHECKING:
     from otix.domain.follow import Follow
     from otix.domain.friend import FriendRequest
     from otix.domain.interaction import UserMediaInteraction
+    from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.karma_transaction import KarmaTransaction
     from otix.domain.list import UserList
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
+    from otix.domain.people import UserPersonFollow
     from otix.domain.review import Review
     from otix.domain.review_vote import ReviewVote
     from otix.domain.user_badge import UserBadge
@@ -55,6 +57,7 @@ class User(Base, TimestampMixin):
     plex_email: Mapped[str | None] = mapped_column(String(320), nullable=True, default=None)
     plex_thumb: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     plex_auth_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    plex_watch_history_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     tmdb_session_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
     tmdb_account_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True, default=None)
     tmdb_username: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
@@ -107,6 +110,7 @@ class User(Base, TimestampMixin):
     karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
+    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="user")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
     lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")
     workouts: Mapped[list[Workout]] = relationship("Workout", back_populates="user")
@@ -137,6 +141,7 @@ class User(Base, TimestampMixin):
     given_votes: Mapped[list[ReviewVote]] = relationship(
         "ReviewVote", foreign_keys="ReviewVote.user_id", back_populates="voter"
     )
+    person_follows: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="user")
 
 
 class RefreshToken(Base):
