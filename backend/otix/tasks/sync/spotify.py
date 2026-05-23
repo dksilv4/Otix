@@ -17,7 +17,7 @@ from otix.lib.concurrency import run_async
 from otix.lib.progress import incr as _progress_incr
 from otix.lib.slug import slugify
 from otix.lib.types import JSONValue
-from otix.providers.base import RateLimitError
+from otix.providers.base import BaseProvider, RateLimitError
 from otix.providers.spotify.client import SpotifyProvider
 from otix.providers.spotify.hydrator import SpotifyHydrator
 from otix.providers.spotify.transformer import extract_artist_spotify_ids, extract_track_isrc, extract_album_upc
@@ -193,7 +193,10 @@ async def _apply_legacy_spotify_album_title_split(session, item: MediaItem) -> d
 )
 def sync_spotify_match_album_task(self, otix_id: str) -> dict | None:
     """Search Spotify for an album and cross-link by artist+title."""
-    return run_async(_sync_spotify_match_album(otix_id))
+    try:
+        return run_async(_sync_spotify_match_album(otix_id))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 60)
 
 
 async def _sync_spotify_match_album(otix_id: str) -> dict | None:
@@ -207,6 +210,8 @@ async def _sync_spotify_match_album(otix_id: str) -> dict | None:
 
         try:
             results = await provider.search(album.media_item.title, "album", limit=3)
+        except RateLimitError:
+            raise
         except Exception:
             return None
 
@@ -277,7 +282,10 @@ async def _sync_spotify_enrich_album(otix_id: str, spotify_id: str) -> dict | No
 )
 def sync_spotify_seed_album_task(self, spotify_id: str) -> dict | None:
     """Fetch an album from Spotify by ID and create it in the Otix catalog."""
-    return run_async(_sync_spotify_seed_album(spotify_id))
+    try:
+        return run_async(_sync_spotify_seed_album(spotify_id))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 60)
 
 
 async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
@@ -382,7 +390,10 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
 )
 def sync_related_artists_task(self, spotify_artist_id: str) -> dict:
     """Fetch related artists from Spotify, find-or-create Person records, enqueue enrichment."""
-    return run_async(_sync_related_artists(spotify_artist_id))
+    try:
+        return run_async(_sync_related_artists(spotify_artist_id))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 120)
 
 
 async def _sync_related_artists(spotify_artist_id: str) -> dict:
@@ -391,6 +402,8 @@ async def _sync_related_artists(spotify_artist_id: str) -> dict:
 
     try:
         related = await provider.get_related_artists(spotify_artist_id)
+    except RateLimitError:
+        raise
     except Exception:
         logger.warning("related_artists: fetch failed", spotify_artist_id=spotify_artist_id)
         return {"artist_id": spotify_artist_id, "count": 0, "error": "fetch failed"}
@@ -465,6 +478,12 @@ def crawl_spotify_related_task(self, batch_size: int = 5) -> dict:
 async def _crawl_spotify_related(batch_size: int = 5) -> dict:
     from datetime import timedelta
 
+    redis = await get_redis()
+    cooldown = await BaseProvider.check_cooldown(redis, "spotify")
+    if cooldown > 0:
+        logger.info("crawl_related skipped: spotify rate limited", cooldown_remaining=cooldown)
+        return {"enqueued": 0, "status": "cooldown", "cooldown_remaining": cooldown}
+
     recrawl_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
     async with async_session() as session:
@@ -507,7 +526,10 @@ async def _crawl_spotify_related(batch_size: int = 5) -> dict:
 )
 def enrich_spotify_artist_task(self, spotify_artist_id: str, trigger_discography: bool = True) -> dict:
     """Enrich a Person record with Spotify artist metadata."""
-    return run_async(_enrich_spotify_artist(spotify_artist_id, trigger_discography))
+    try:
+        return run_async(_enrich_spotify_artist(spotify_artist_id, trigger_discography))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 120)
 
 
 async def _enrich_spotify_artist(spotify_artist_id: str, trigger_discography: bool = True) -> dict:
@@ -516,6 +538,8 @@ async def _enrich_spotify_artist(spotify_artist_id: str, trigger_discography: bo
 
     try:
         artist = await provider.get_artist(spotify_artist_id)
+    except RateLimitError:
+        raise
     except Exception:
         logger.warning("enrich_artist: fetch failed", spotify_artist_id=spotify_artist_id)
         return {"artist_id": spotify_artist_id, "error": "fetch failed"}
@@ -610,7 +634,10 @@ async def _fetch_all_artist_albums(provider: SpotifyProvider, artist_id: str) ->
 )
 def sync_artist_discography_task(self, spotify_artist_id: str) -> dict:
     """Fetch all albums for a Spotify artist, seed missing ones into Otix."""
-    return run_async(_sync_artist_discography(spotify_artist_id))
+    try:
+        return run_async(_sync_artist_discography(spotify_artist_id))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 120)
 
 
 async def _sync_artist_discography(spotify_artist_id: str) -> dict:
@@ -619,6 +646,8 @@ async def _sync_artist_discography(spotify_artist_id: str) -> dict:
 
     try:
         albums = await _fetch_all_artist_albums(provider, spotify_artist_id)
+    except RateLimitError:
+        raise
     except Exception:
         logger.warning("artist_discography: fetch failed", spotify_artist_id=spotify_artist_id)
         return {"artist_id": spotify_artist_id, "total": 0, "new": 0, "error": "fetch failed"}
@@ -764,7 +793,10 @@ async def _backfill_spotify_album_titles(limit: int = 500) -> dict:
 )
 def backfill_album_artists_task(self, limit: int | None = None) -> dict:
     """Find all albums with Spotify IDs and ensure every artist has a Person record."""
-    return run_async(_backfill_album_artists(limit))
+    try:
+        return run_async(_backfill_album_artists(limit))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 120)
 
 
 async def _backfill_album_artists(limit: int | None = None) -> dict:
@@ -792,6 +824,8 @@ async def _backfill_album_artists(limit: int | None = None) -> dict:
     for spotify_id, _media_item_id in album_rows:
         try:
             sp_album = await provider.get_album(spotify_id)
+        except RateLimitError:
+            raise
         except Exception:
             api_errors += 1
             continue
@@ -855,7 +889,10 @@ async def _backfill_album_artists(limit: int | None = None) -> dict:
 )
 def backfill_audio_features_task(self, batch_size: int = 500) -> dict:
     """Backfill per-track audio features for tracks missing them."""
-    return run_async(_backfill_audio_features(batch_size))
+    try:
+        return run_async(_backfill_audio_features(batch_size))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 60)
 
 
 async def _backfill_audio_features(batch_size: int = 500) -> dict:
@@ -887,6 +924,8 @@ async def _backfill_audio_features(batch_size: int = 500) -> dict:
         chunk = missing_ids[i:i + 100]
         try:
             features_list = await provider.get_audio_features_batch(chunk)
+        except RateLimitError:
+            raise
         except Exception:
             failed += len(chunk)
             continue

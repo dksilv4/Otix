@@ -30,6 +30,10 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
+# Pre-download the ONNX embedding model so it doesn't fail at runtime
+ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+
 EXPOSE 8000
 
 CMD ["uvicorn", "entrypoints.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

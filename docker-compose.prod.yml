@@ -42,7 +42,9 @@ x-otix-env: &otix-env
   MUSICBRAINZ_RPS_LIMIT: ${MUSICBRAINZ_RPS_LIMIT:-1}
   # ── Celery ──
   CELERY_WORKER_FAST_CONCURRENCY: ${CELERY_WORKER_FAST_CONCURRENCY:-6}
-  CELERY_WORKER_SLOW_CONCURRENCY: ${CELERY_WORKER_SLOW_CONCURRENCY:-2}
+  CELERY_WORKER_PROVIDER_CONCURRENCY: ${CELERY_WORKER_PROVIDER_CONCURRENCY:-3}
+  CELERY_WORKER_USER_CONCURRENCY: ${CELERY_WORKER_USER_CONCURRENCY:-2}
+  CELERY_WORKER_CONTROL_CONCURRENCY: ${CELERY_WORKER_CONTROL_CONCURRENCY:-4}
   CELERY_WORKER_CCU_CONCURRENCY: ${CELERY_WORKER_CCU_CONCURRENCY:-1}
 
 services:
@@ -63,6 +65,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -90,7 +93,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  worker:
+  worker-fast:
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -102,7 +105,93 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    command: celery -A otix.infrastructure.celery.app worker -Q fast,igdb,fanart,omdb,steamgrid,musicbrainz,lastfm,user,control,ccu -c 4 -n otix@%h --loglevel WARNING
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping -d fast@$HOSTNAME 2>&1 | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: celery -A otix.infrastructure.celery.app worker -Q fast -c ${CELERY_WORKER_FAST_CONCURRENCY:-6} -n fast@%h --loglevel WARNING
+
+  worker-provider:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      <<: *otix-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping -d provider@$HOSTNAME 2>&1 | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,omdb,steamgrid,musicbrainz,lastfm -c ${CELERY_WORKER_PROVIDER_CONCURRENCY:-3} -n provider@%h --loglevel WARNING
+
+  worker-user:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      <<: *otix-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping -d user@$HOSTNAME 2>&1 | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: celery -A otix.infrastructure.celery.app worker -Q user -c ${CELERY_WORKER_USER_CONCURRENCY:-2} -n user@%h --loglevel WARNING
+
+  worker-control:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      <<: *otix-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping -d control@$HOSTNAME 2>&1 | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: celery -A otix.infrastructure.celery.app worker -Q control -c ${CELERY_WORKER_CONTROL_CONCURRENCY:-4} -n control@%h --loglevel WARNING
+
+  worker-ccu:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      <<: *otix-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping -d ccu@$HOSTNAME 2>&1 | grep -q OK || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    command: celery -A otix.infrastructure.celery.app worker -Q ccu -c ${CELERY_WORKER_CCU_CONCURRENCY:-1} -n ccu@%h --loglevel WARNING
 
   beat:
     build:
@@ -116,6 +205,12 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A otix.infrastructure.celery.app inspect ping 2>&1 | grep -q OK || pgrep -f 'celery beat' > /dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     command: celery -A otix.infrastructure.celery.app beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
 
   frontend:
