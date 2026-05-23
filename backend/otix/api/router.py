@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from otix.api.admin import admin_router
 from otix.api.auth import auth_router
 from otix.api.discover import discover_router
+from otix.api.episode_interaction import episode_interaction_router
 from otix.api.follow import follow_router
 from otix.api.friend import friend_router
 from otix.api.interaction import interaction_router
@@ -31,6 +32,7 @@ api_router.include_router(friend_router)
 api_router.include_router(follow_router)
 api_router.include_router(media_router)
 api_router.include_router(interaction_router)
+api_router.include_router(episode_interaction_router)
 api_router.include_router(library_router)
 api_router.include_router(list_router)
 api_router.include_router(people_router)

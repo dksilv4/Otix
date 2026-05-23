@@ -31,7 +31,7 @@ export const notificationQueries = {
         const { data } = await apiClient.get<NotificationListResponse>('/notifications', { params })
         return data
       },
-      staleTime: 1000 * 30,
+      staleTime: 3000,
     }),
 
   unreadCount: () =>
@@ -41,7 +41,7 @@ export const notificationQueries = {
         const { data } = await apiClient.get<UnreadCount>('/notifications/unread-count')
         return data
       },
-      staleTime: 1000 * 15,
+      staleTime: 3000,
     }),
 }
 

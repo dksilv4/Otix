@@ -3,12 +3,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db
+from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.people import (
     PersonDetail,
     PersonListResponse,
     PersonSummary,
 )
+from otix.domain.people import Person, UserPersonFollow
+from otix.domain.user import User
 from otix.services.people_service import PeopleService
 
 people_router = APIRouter(prefix="/person", tags=["person"])
@@ -51,13 +53,70 @@ async def search_people(
 async def get_person(
     person_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> PersonDetail:
     service = PeopleService(db)
-    person = await service.get_person(person_id)
+    user_id = current_user.id if current_user else None
+    person = await service.get_person(person_id, user_id=user_id)
     if person is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
 
     return PersonDetail.model_validate(person)
+
+
+@people_router.post("/{person_id}/follow")
+async def follow_person(
+    person_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    person = await db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
+
+    try:
+        existing = await db.get(UserPersonFollow, (current_user.id, person_id))
+        if not existing:
+            follow = UserPersonFollow(user_id=current_user.id, person_id=person_id)
+            db.add(follow)
+            await db.commit()
+
+        from sqlalchemy import func, select
+
+        count = await db.scalar(
+            select(func.count()).where(UserPersonFollow.person_id == person_id)
+        )
+        return {"followed": True, "follower_count": count or 0}
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to follow person")
+
+
+@people_router.delete("/{person_id}/follow")
+async def unfollow_person(
+    person_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    person = await db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
+
+    try:
+        follow = await db.get(UserPersonFollow, (current_user.id, person_id))
+        if follow:
+            await db.delete(follow)
+            await db.commit()
+
+        from sqlalchemy import func, select
+
+        count = await db.scalar(
+            select(func.count()).where(UserPersonFollow.person_id == person_id)
+        )
+        return {"followed": False, "follower_count": count or 0}
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to unfollow person")
 
 
 @people_router.get("/{person_id}/related")

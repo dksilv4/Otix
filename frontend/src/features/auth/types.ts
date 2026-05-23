@@ -23,6 +23,7 @@ export interface User {
   backgroundUrl?: string | null
   integrationVisibility?: Record<string, string> | null
   dailyMoodCheckinsEnabled?: boolean
+  plexWatchHistoryEnabled?: boolean
   hall_of_fame_media_ids?: Record<string, string[]>
   profileCardSections?: string[] | null
   onboardingCompleted?: boolean

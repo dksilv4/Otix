@@ -9,15 +9,18 @@ from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
 from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
+from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
 from otix.api.schemas.user_badge import BadgeOut
 from otix.api.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
+from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
-from otix.domain.media import MediaItem
+from otix.domain.media import Episode, MediaItem, Season
+from otix.domain.notification import Notification
 from otix.domain.review import Review
 from otix.domain.mood import UserMoodCheckIn
-from otix.domain.user import User
+from otix.domain.user import User, UserRating
 from otix.domain.user_streak import UserStreak
 from otix.domain.workout import Workout
 from otix.lib.levels import compute_level_info
@@ -205,8 +208,31 @@ async def rate_user(
     if user.id == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot rate yourself")
 
+    existing = await db.scalar(
+        select(UserRating).where(
+            UserRating.rater_id == current_user.id,
+            UserRating.rated_user_id == user.id,
+        )
+    )
+
     service = UserRatingService(db)
     rating = await service.upsert_rating(current_user.id, user.id, body.score)
+
+    notification = Notification(
+        user_id=user.id,
+        type="user_rating",
+        title="New Rating",
+        body=f"{current_user.username} rated you {body.score}/10",
+        metadata_json={
+            "rater_id": current_user.id,
+            "rater_username": current_user.username,
+            "score": body.score,
+            "is_new": existing is None,
+            "prev_score": existing.score if existing else None,
+        },
+    )
+    db.add(notification)
+
     await db.commit()
     return UserRatingOut.model_validate(rating)
 
@@ -384,6 +410,18 @@ async def get_user_activity(
     )
     interaction_rows = interactions.all()
 
+    # Fetch recent episode interactions
+    episode_interactions = await db.execute(
+        select(UserEpisodeInteraction, Episode, Season, MediaItem)
+        .join(Episode, Episode.id == UserEpisodeInteraction.episode_id)
+        .join(Season, Season.id == Episode.season_id)
+        .join(MediaItem, MediaItem.id == Season.show_id)
+        .where(UserEpisodeInteraction.user_id == user.id)
+        .order_by(UserEpisodeInteraction.created_at.desc())
+        .limit(limit)
+    )
+    episode_rows = episode_interactions.all()
+
     # Build unified timeline
     events: list[dict] = []
 
@@ -418,6 +456,19 @@ async def get_user_activity(
             "timestamp": interaction.created_at.isoformat(),
             "summary": f"{past_tense} {media.title}",
             "interaction_type": action,
+            "media_item": {
+                "id": media.id,
+                "title": media.title,
+                "media_type": media.media_type,
+                "poster_url": media.poster_url,
+            },
+        })
+
+    for ei, episode, season, media in episode_rows:
+        events.append({
+            "type": "episode_watched",
+            "timestamp": ei.created_at.isoformat(),
+            "summary": f"Watched S{season.season_number}E{episode.episode_number} of {media.title}",
             "media_item": {
                 "id": media.id,
                 "title": media.title,
@@ -580,10 +631,13 @@ async def get_user_library_stats(
     hour_row = hour_result.one_or_none()
     most_active_hour = int(hour_row[0]) if hour_row and hour_row[0] is not None else None
 
+    episode_service = EpisodeInteractionService(db)
+    total_watch_time_minutes = await episode_service.get_user_watch_time_minutes(user.id)
+
     return LibraryStatsOut(
         total_items=total,
         by_media_type=by_media_type,
-        total_watch_time_minutes=0,
+        total_watch_time_minutes=total_watch_time_minutes,
         completion_rate=round(completion_rate, 2),
         most_active_day=most_active_day,
         most_active_hour=most_active_hour,

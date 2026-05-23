@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { Film, Tv, Gamepad2, Music, ChevronLeft, ChevronRight } from 'lucide-react'
 import { mediaQueries, type MediaItemSummary } from '@/features/media/media-queries'
-import { FilterDropdown, SORT_OPTIONS } from '@/features/discover/molecules/search-sort-bar'
+import { SORT_OPTIONS } from '@/features/discover/molecules/search-sort-bar'
+import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { MediaCard } from '@/features/ui/molecules/media-card'
@@ -129,14 +130,16 @@ export function BrowsePage() {
         {/* Filters bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FilterDropdown
+            <DkDropdown
+              variant="filter"
               label="Sort"
               options={BROWSE_SORT_OPTIONS}
               value={sortBy}
               onChange={handleSortChange}
             />
             {genres && genres.length > 0 && (
-              <FilterDropdown
+              <DkDropdown
+                variant="filter"
                 label="Genre"
                 options={genreOptions}
                 value={selectedGenre}

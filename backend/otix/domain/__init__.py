@@ -13,6 +13,7 @@ from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
 
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
+from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
 from otix.domain.review import Review
@@ -37,7 +38,7 @@ from otix.domain.media import (
     UserSteamGame,
 )
 from otix.domain.mood import UserMoodCheckIn
-from otix.domain.people import MediaCredit, Person
+from otix.domain.people import MediaCredit, Person, UserPersonFollow
 from otix.domain.sync import ProviderState, SyncJob
 from otix.domain.follow import Follow
 from otix.domain.friend import FriendRequest
@@ -101,7 +102,9 @@ __all__ = [
     "UserListItem",
     "UserRating",
     "UserSession",
+    "UserEpisodeInteraction",
     "UserMediaInteraction",
+    "UserPersonFollow",
     "UserPlexItem",
     "UserPlexLibrary",
     "UserPlexServer",

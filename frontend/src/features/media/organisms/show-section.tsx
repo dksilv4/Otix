@@ -1,15 +1,20 @@
 import { useState, useRef, useEffect, useMemo, useCallback, useLayoutEffect } from "react"
-import { ChevronLeft, ChevronRight, X, Star } from "lucide-react"
+import { ChevronLeft, ChevronRight, X, Star, CheckCircle2, Circle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
 import { cn } from "@/lib/utils"
+import { DkDialog } from "@dk-ui/molecules/dialog"
 import type { ShowDetail, SeasonOut, EpisodeOut, ExternalRatingOut } from "../media-queries"
+import type { EpisodeInteractionState } from "@/features/interaction/episode-interaction-queries"
 
 const flipTransition = { duration: 0.32, ease: [0.16, 1, 0.3, 1] } as const
 
 interface ShowSectionProps {
   show: ShowDetail
   className?: string
+  episodeInteractions?: Record<string, EpisodeInteractionState>
+  onToggleEpisodeWatched?: (episodeId: string, active: boolean) => void
+  onMarkSeasonWatched?: (seasonNumber: number, active: boolean) => void
 }
 
 function formatDate(dateStr?: string | null): string | null {
@@ -39,7 +44,6 @@ function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
 }
 
 function scoreToColor(score: number, maxScore: number = 10): string {
-  // Heatmap scale: cool (low) → warm (high)
   const t = Math.max(0, Math.min(1, score / maxScore))
   if (t < 0.25) return "bg-blue-800/60"
   if (t < 0.45) return "bg-blue-600/60"
@@ -83,7 +87,32 @@ function EpisodeHeatmap({ episodes }: { episodes: EpisodeOut[] }) {
   )
 }
 
-export function ShowSection({ show, className }: ShowSectionProps) {
+// ── Progress Bar ──
+
+function SeasonProgressBar({ watched, total }: { watched: number; total: number }) {
+  const pct = total > 0 ? Math.round((watched / total) * 100) : 0
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+        {watched}/{total}
+      </span>
+    </div>
+  )
+}
+
+export function ShowSection({
+  show,
+  className,
+  episodeInteractions,
+  onToggleEpisodeWatched,
+  onMarkSeasonWatched,
+}: ShowSectionProps) {
   const seasons = useMemo(() => {
     if (!show.seasons || show.seasons.length === 0) return []
     return [...show.seasons]
@@ -93,6 +122,7 @@ export function ShowSection({ show, className }: ShowSectionProps) {
 
   const [selectedSeasonNum, setSelectedSeasonNum] = useState<number>(() => getPreferredSeason(seasons))
   const [selectedEpisodeNum, setSelectedEpisodeNum] = useState<number | null>(null)
+  const [confirmSeasonNum, setConfirmSeasonNum] = useState<number | null>(null)
   const flipSourceRef = useRef<DOMRect | null>(null)
 
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -141,6 +171,23 @@ export function ShowSection({ show, className }: ShowSectionProps) {
     episodesRef.current?.scrollBy({ left: dir === "left" ? -520 : 520, behavior: "smooth" })
   }
 
+  const getSeasonProgress = useCallback(
+    (season: SeasonOut) => {
+      const episodes = season.episodes || []
+      let watched = 0
+      for (const ep of episodes) {
+        if (episodeInteractions?.[ep.id]?.watched) watched++
+      }
+      return { watched, total: episodes.length }
+    },
+    [episodeInteractions],
+  )
+
+  // Confirmation dialog for season mark-all
+  const confirmSeason = seasons.find((s) => s.seasonNumber === confirmSeasonNum)
+  const confirmProgress = confirmSeason ? getSeasonProgress(confirmSeason) : { watched: 0, total: 0 }
+  const confirmUnwatched = confirmProgress.total - confirmProgress.watched
+
   if (seasons.length === 0) {
     return (
       <section className={cn(className)}>
@@ -156,6 +203,7 @@ export function ShowSection({ show, className }: ShowSectionProps) {
   const hasEpisodes = !!currentSeason?.episodes && currentSeason.episodes.length > 0
   const currentEpisode = currentSeason?.episodes?.find((e) => e.episodeNumber === selectedEpisodeNum)
   const seasonPoster = currentSeason?.posterUrl
+  const seasonProgress = currentSeason ? getSeasonProgress(currentSeason) : { watched: 0, total: 0 }
 
   return (
     <section className={cn("space-y-6", className)}>
@@ -236,7 +284,7 @@ export function ShowSection({ show, className }: ShowSectionProps) {
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex flex-col gap-2 min-w-0 flex-1">
               <h3 className="text-base font-semibold">
                 {currentSeason.name || `Season ${currentSeason.seasonNumber}`}
               </h3>
@@ -250,6 +298,29 @@ export function ShowSection({ show, className }: ShowSectionProps) {
               {/* Episode ratings heatmap */}
               {hasEpisodes && (
                 <EpisodeHeatmap episodes={currentSeason.episodes} />
+              )}
+
+              {/* Watch progress */}
+              {hasEpisodes && currentSeason.seasonNumber !== 0 && (
+                <SeasonProgressBar watched={seasonProgress.watched} total={seasonProgress.total} />
+              )}
+
+              {/* Mark season as watched */}
+              {hasEpisodes && onMarkSeasonWatched && confirmUnwatched > 0 && currentSeason.seasonNumber !== 0 && (
+                <button
+                  onClick={() => setConfirmSeasonNum(currentSeason.seasonNumber)}
+                  className="self-start text-xs text-muted-foreground hover:text-emerald-400 transition-colors"
+                >
+                  Mark all as watched
+                </button>
+              )}
+              {hasEpisodes && onMarkSeasonWatched && seasonProgress.watched === seasonProgress.total && seasonProgress.total > 0 && currentSeason.seasonNumber !== 0 && (
+                <button
+                  onClick={() => onMarkSeasonWatched(currentSeason.seasonNumber, false)}
+                  className="self-start text-xs text-muted-foreground hover:text-red-400 transition-colors"
+                >
+                  Mark all as unwatched
+                </button>
               )}
 
               {currentSeason.overview && (
@@ -290,17 +361,20 @@ export function ShowSection({ show, className }: ShowSectionProps) {
                     const isActive = selectedEpisodeNum === episode.episodeNumber
                     const thumb = episode.stillUrl || seasonPoster
                     const runtime = formatRuntime(episode.runtime)
+                    const isWatched = episodeInteractions?.[episode.id]?.watched ?? false
 
                     return (
                       <button
                         key={episode.id}
                         onClick={(e) => {
+                          // Don't open modal if clicking the watch toggle
+                          if ((e.target as HTMLElement).closest("[data-watch-toggle]")) return
                           const thumbEl = e.currentTarget.querySelector("[data-thumb]")
                           flipSourceRef.current = thumbEl?.getBoundingClientRect() ?? null
                           setSelectedEpisodeNum(episode.episodeNumber)
                         }}
                         className={cn(
-                          "shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden transition-all",
+                          "shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden transition-all relative",
                           "bg-[var(--dk-surface-glass)] ring-1 ring-white/[0.04] hover:ring-white/[0.08]",
                           isActive && "ring-foreground/20 ring-2",
                         )}
@@ -328,6 +402,29 @@ export function ShowSection({ show, className }: ShowSectionProps) {
                           {runtime && (
                             <span className="absolute bottom-1.5 right-1.5 rounded-md bg-background/80 backdrop-blur px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                               {runtime}
+                            </span>
+                          )}
+
+                          {/* Watch toggle */}
+                          {onToggleEpisodeWatched && (
+                            <span
+                              data-watch-toggle
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onToggleEpisodeWatched(episode.id, !isWatched)
+                              }}
+                              className={cn(
+                                "absolute top-1.5 left-1.5 rounded-full p-0.5 backdrop-blur transition-colors cursor-pointer",
+                                isWatched
+                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  : "bg-background/50 text-muted-foreground/50 hover:text-muted-foreground",
+                              )}
+                            >
+                              {isWatched ? (
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              ) : (
+                                <Circle className="h-3.5 w-3.5" />
+                              )}
                             </span>
                           )}
                         </div>
@@ -371,6 +468,38 @@ export function ShowSection({ show, className }: ShowSectionProps) {
           )}
         </div>
       )}
+
+      {/* ── Mark Season Confirmation Dialog ── */}
+      <DkDialog
+        open={confirmSeasonNum !== null}
+        onOpenChange={(open) => { if (!open) setConfirmSeasonNum(null) }}
+        title={`Mark season as watched?`}
+        description={
+          confirmUnwatched > 0
+            ? `This will mark all ${confirmUnwatched} remaining episodes in ${confirmSeason?.name || `Season ${confirmSeasonNum}`} as watched.`
+            : `All episodes are already watched.`
+        }
+      >
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={() => setConfirmSeasonNum(null)}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              if (confirmSeasonNum !== null && onMarkSeasonWatched) {
+                onMarkSeasonWatched(confirmSeasonNum, true)
+              }
+              setConfirmSeasonNum(null)
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+          >
+            Mark {confirmUnwatched} as Watched
+          </button>
+        </div>
+      </DkDialog>
 
       {/* ── Episode Detail Modal ── */}
       <AnimatePresence>

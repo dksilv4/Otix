@@ -12,8 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import Album, ExternalID, MediaItem, Movie, Show, UserPlexItem, UserPlexLibrary, UserPlexServer
+from otix.domain.media import Album, Episode, ExternalID, MediaItem, Movie, Season, Show, UserPlexItem, UserPlexLibrary, UserPlexServer
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.lib.slug import slugify
@@ -288,6 +289,75 @@ async def _upsert_interaction(db: AsyncSession, user_id: str, media_item_id: str
     await db.execute(stmt)
 
 
+async def _upsert_episode_interaction(db: AsyncSession, user_id: str, episode_id: str) -> None:
+    stmt = pg_insert(UserEpisodeInteraction.__table__).values({
+        "user_id": user_id,
+        "episode_id": episode_id,
+    }).on_conflict_do_nothing()
+    await db.execute(stmt)
+
+
+async def _resolve_episode(
+    db: AsyncSession,
+    grandparent_guids: dict[str, str],
+    parent_index: int,
+    episode_index: int,
+) -> tuple[str | None, str | None]:
+    """Resolve a Plex episode to a catalog Episode and its parent show MediaItem.
+
+    Returns (episode_id, show_media_item_id) or (None, None).
+    """
+    # Find the show via grandparent GUIDs
+    show_media_id = None
+    for provider, external_id in grandparent_guids.items():
+        ext = await db.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+            )
+        )
+        if ext and ext.media_item_id:
+            show_media_id = ext.media_item_id
+            break
+
+    if show_media_id is None:
+        return None, None
+
+    # Find the season
+    season = await db.scalar(
+        select(Season).where(
+            Season.show_id == show_media_id,
+            Season.season_number == parent_index,
+        )
+    )
+    if season is None:
+        return None, show_media_id
+
+    # Find the episode
+    episode = await db.scalar(
+        select(Episode).where(
+            Episode.season_id == season.id,
+            Episode.episode_number == episode_index,
+        )
+    )
+    if episode is None:
+        from otix.domain.base import gen_otix_id
+        episode = Episode(
+            id=gen_otix_id(),
+            season_id=season.id,
+            episode_number=episode_index,
+            name=None,
+            overview=None,
+            runtime=None,
+            air_date=None,
+            still_url=None,
+        )
+        db.add(episode)
+        await db.flush()
+
+    return episode.id, show_media_id
+
+
 async def sync_plex_library(
     db: AsyncSession,
     user: User,
@@ -311,6 +381,66 @@ async def sync_plex_library(
         media_type = _media_type(item, library.library_type)
         total += 1
         guids = extract_guids(item)
+
+        plex_item_type = item.get("type")
+
+        # Episode handling: resolve to catalog hierarchy and track per-episode
+        if plex_item_type == "episode" and user.plex_watch_history_enabled:
+            grandparent_guid_str = item.get("grandparentGuid")
+            grandparent_guids = extract_guids({"guid": grandparent_guid_str, "Guid": item.get("GrandparentGuid")} if grandparent_guid_str else {})
+            parent_index = item.get("parentIndex")
+            episode_index = item.get("index")
+
+            if grandparent_guids and parent_index is not None and episode_index is not None:
+                episode_id, show_media_id = await _resolve_episode(
+                    db, grandparent_guids, int(parent_index), int(episode_index)
+                )
+                if episode_id and show_media_id:
+                    view_count = int(item.get("viewCount") or 0)
+                    if view_count > 0:
+                        await _upsert_episode_interaction(db, user.id, episode_id)
+                    matched += 1
+
+                    # Track in UserPlexItem under the show's MediaItem
+                    stmt = pg_insert(UserPlexItem).values(
+                        user_id=user.id,
+                        server_id=server.id,
+                        library_id=library.id,
+                        media_item_id=show_media_id,
+                        rating_key=str(item.get("ratingKey")),
+                        guid=item.get("guid"),
+                        media_type="show",
+                        title=str(item.get("grandparentTitle") or item.get("title") or "Untitled"),
+                        year=item.get("year"),
+                        thumb_url=item.get("thumb"),
+                        viewed=view_count > 0,
+                        view_count=view_count,
+                        view_offset=item.get("viewOffset"),
+                        duration=item.get("duration"),
+                        last_viewed_at=_dt_from_plex(item.get("lastViewedAt")),
+                        guids=grandparent_guids,
+                        raw=item,
+                    ).on_conflict_do_update(
+                        constraint="uq_user_plex_item",
+                        set_={
+                            "library_id": library.id,
+                            "media_item_id": show_media_id,
+                            "title": str(item.get("grandparentTitle") or item.get("title") or "Untitled"),
+                            "viewed": view_count > 0,
+                            "view_count": view_count,
+                            "view_offset": item.get("viewOffset"),
+                            "last_viewed_at": _dt_from_plex(item.get("lastViewedAt")),
+                            "guids": grandparent_guids,
+                            "raw": item,
+                        },
+                    )
+                    await db.execute(stmt)
+
+                    if (i + 1) % 5 == 0:
+                        await _safe_progress(progress, "library_progress", server_name=server.name, library_name=library.title, items_processed=i + 1, items_total=items_total)
+                    continue
+            # Fall through to normal handling if episode resolution failed
+
         before = await db.scalar(select(ExternalID).where(
             ExternalID.provider.in_(list(guids.keys()) or ["__none__"]),
             ExternalID.external_id.in_(list(guids.values()) or ["__none__"]),

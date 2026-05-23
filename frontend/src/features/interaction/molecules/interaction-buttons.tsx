@@ -3,6 +3,7 @@ import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
+import { DkDialog } from '@dk-ui/molecules/dialog'
 import {
   useToggleInteraction,
   useUserInteractions,
@@ -107,12 +108,12 @@ function InteractionButton({
   Icon,
   active,
   mediaId,
-}: ButtonDef & { active: boolean; mediaId: string }) {
+  onClick,
+}: ButtonDef & { active: boolean; mediaId: string; onClick?: () => void }) {
   const toggle = useToggleInteraction(mediaId)
   const [localActive, setLocalActive] = useState<boolean | null>(null)
   const prevActiveRef = useRef(active)
 
-  // Reset local state when server confirms
   useEffect(() => {
     if (active !== prevActiveRef.current) {
       prevActiveRef.current = active
@@ -122,17 +123,23 @@ function InteractionButton({
 
   const isActive = localActive ?? active
 
+  const handleClick = () => {
+    if (onClick) {
+      onClick()
+      return
+    }
+    const nextActive = !isActive
+    setLocalActive(nextActive)
+    toggle.mutate({ type, active: nextActive })
+    if (nextActive) {
+      showXPToast(XP_VALUES[type])
+    }
+  }
+
   return (
     <button
       type="button"
-      onClick={() => {
-        const nextActive = !isActive
-        setLocalActive(nextActive)
-        toggle.mutate({ type, active: nextActive })
-        if (nextActive) {
-          showXPToast(XP_VALUES[type])
-        }
-      }}
+      onClick={handleClick}
       disabled={toggle.isPending}
       className={cn(
         'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-[var(--dk-surface-base)] px-3 py-3 transition-all duration-150',
@@ -140,7 +147,6 @@ function InteractionButton({
         toggle.isPending && 'pointer-events-none',
       )}
     >
-      {/* Ambient glow when active */}
       {isActive && (
         <div
           className={cn(
@@ -174,6 +180,10 @@ interface InteractionSectionProps {
   className?: string
   userInteractions?: UserInteractionState | null
   children?: ReactNode
+  /** For shows: callback when "Watched" is clicked (shows confirmation first) */
+  onShowWatchedToggle?: (active: boolean) => void
+  /** For shows: total episodes info for confirmation dialog */
+  showEpisodeInfo?: { watched: number; total: number }
 }
 
 function InteractionSection({
@@ -182,8 +192,12 @@ function InteractionSection({
   className,
   userInteractions,
   children,
+  onShowWatchedToggle,
+  showEpisodeInfo,
 }: InteractionSectionProps) {
   const { isAuthenticated } = useAuth()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<boolean>(false)
 
   const { data: fetchedInteractions } = useUserInteractions(mediaId, {
     enabled: isAuthenticated && userInteractions == null,
@@ -217,16 +231,62 @@ function InteractionSection({
   return (
     <section className={cn(className)}>
       <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
-        {visibleButtons.map((btn) => (
-          <InteractionButton
-            key={btn.type}
-            {...btn}
-            active={interactions?.[btn.type] ?? false}
-            mediaId={mediaId}
-          />
-        ))}
+        {visibleButtons.map((btn) => {
+          const isWatchedBtn = btn.type === 'watched' && mediaType === 'show' && onShowWatchedToggle
+          return (
+            <InteractionButton
+              key={btn.type}
+              {...btn}
+              active={interactions?.[btn.type] ?? false}
+              mediaId={mediaId}
+              onClick={
+                isWatchedBtn
+                  ? () => {
+                      setConfirmAction(!(interactions?.watched ?? false))
+                      setConfirmOpen(true)
+                    }
+                  : undefined
+              }
+            />
+          )
+        })}
         {children}
       </div>
+
+      {/* Show-level watch confirmation dialog */}
+      <DkDialog
+        open={confirmOpen}
+        onOpenChange={(open) => { if (!open) setConfirmOpen(false) }}
+        title={confirmAction ? "Mark show as watched?" : "Mark show as unwatched?"}
+        description={
+          confirmAction
+            ? showEpisodeInfo
+              ? `This will mark all ${showEpisodeInfo.total - showEpisodeInfo.watched} remaining episodes as watched.`
+              : "This will mark all episodes in this show as watched."
+            : "This will mark all episodes in this show as unwatched."
+        }
+      >
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={() => setConfirmOpen(false)}
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onShowWatchedToggle?.(confirmAction)
+              setConfirmOpen(false)
+            }}
+            className={cn(
+              "px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors",
+              confirmAction ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500",
+            )}
+          >
+            {confirmAction ? "Mark All Watched" : "Mark All Unwatched"}
+          </button>
+        </div>
+      </DkDialog>
     </section>
   )
 }

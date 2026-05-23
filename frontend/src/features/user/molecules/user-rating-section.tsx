@@ -1,9 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Star } from 'lucide-react'
 import { StarInput } from '@/features/review/molecules/star-input'
 import { useAuth } from '@/features/auth/auth-provider'
-import { Skeleton } from '@ui/atoms/skeleton'
-import { userRatingQueries, useRateUser, useDeleteUserRating } from '../user-rating-queries'
+import { userRatingQueries, useRateUser } from '../user-rating-queries'
 import { userQueries } from '../user-queries'
 
 interface UserRatingSectionProps {
@@ -15,16 +15,25 @@ export function UserRatingSection({ username }: UserRatingSectionProps) {
 
   if (!currentUser) {
     return (
-      <div className="flex items-center gap-3 py-2">
-        <Star className="h-4 w-4 text-primary" />
-        <p className="text-xs text-muted-foreground">
-          <a href="/auth/login" className="text-primary hover:underline">Sign in</a> to rate
-        </p>
-      </div>
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Star className="h-3.5 w-3.5 text-primary" />
+        <a href="/auth/login" className="text-primary hover:underline">Sign in</a> to rate
+      </span>
     )
   }
 
   return <UserRatingContent username={username} currentUsername={currentUser.username} />
+}
+
+function useAnimatedScore(target: number) {
+  const [anim, setAnim] = useState(0)
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnim(target))
+    return () => cancelAnimationFrame(id)
+  }, [target])
+
+  return anim
 }
 
 function UserRatingContent({ username, currentUsername }: { username: string; currentUsername: string }) {
@@ -34,42 +43,22 @@ function UserRatingContent({ username, currentUsername }: { username: string; cu
   const profileQuery = useQuery(userQueries.profile(username))
 
   const rateUser = useRateUser(username)
-  const deleteRating = useDeleteUserRating(username)
 
   const profile = profileQuery.data
   const myRating = myRatingQuery.data
+  const loading = myRatingQuery.isLoading || !profile
 
-  // Own profile — reputation is already in the hero meta line
-  if (isOwnProfile) return null
+  const ownAvgRating = profile?.avgUserRating != null ? Math.round(profile.avgUserRating) : 0
+  const otherScore = loading ? 0 : (myRating?.score ?? 0)
 
-  if (myRatingQuery.isLoading || !profile) return <RatingSectionSkeleton />
+  const target = isOwnProfile ? ownAvgRating : otherScore
+  const displayScore = useAnimatedScore(target)
 
-  return (
-    <section>
-      <div className="flex items-center gap-2 mb-3">
-        <Star className="h-3.5 w-3.5 text-muted-foreground/60" />
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {myRating ? 'Your Rating' : 'Rate'}
-        </h2>
-        {myRating && (
-          <button
-            onClick={() => deleteRating.mutate()}
-            className="ml-auto text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      <StarInput value={myRating?.score ?? null} onChange={(score) => rateUser.mutate(score)} size="sm" />
-    </section>
-  )
-}
+  // Own profile — readonly, show average rating from others
+  if (isOwnProfile) {
+    return <StarInput value={displayScore} onChange={() => {}} size="sm" disabled />
+  }
 
-function RatingSectionSkeleton() {
-  return (
-    <section className="space-y-3">
-      <Skeleton className="h-4 w-20" />
-      <Skeleton className="h-8 w-32" />
-    </section>
-  )
+  // Other user's profile — interactive
+  return <StarInput value={displayScore} onChange={(s) => rateUser.mutate(s)} size="sm" />
 }

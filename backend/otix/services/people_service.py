@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from otix.domain.media import MediaItem
-from otix.domain.people import MediaCredit, Person
+from otix.domain.media import MediaItem, Season, Show
+from otix.domain.people import MediaCredit, Person, UserPersonFollow
 
 
 class PeopleService:
@@ -42,15 +42,51 @@ class PeopleService:
 
         return items, has_more
 
-    async def get_person(self, person_id: str) -> Person | None:
-        return await self.session.scalar(
+    async def get_person(self, person_id: str, user_id: str | None = None) -> Person | None:
+        person = await self.session.scalar(
             select(Person)
             .options(
                 selectinload(Person.credits)
-                .joinedload(MediaCredit.media_item),
+                .joinedload(MediaCredit.media_item)
+                .joinedload(MediaItem.show)
+                .selectinload(Show.seasons)
+                .selectinload(Season.episodes),
             )
             .where(Person.id == person_id)
         )
+        if person is None:
+            return None
+
+        # Sort credits by release_date descending, nulls last
+        null_credits = [c for c in person.credits if not c.media_item.release_date]
+        dated_credits = [c for c in person.credits if c.media_item.release_date]
+        dated_credits.sort(key=lambda c: c.media_item.release_date, reverse=True)  # type: ignore[arg-type]
+        person.credits = dated_credits + null_credits
+
+        # Get follower count (resilient to migration not yet applied)
+        try:
+            follow_count = await self.session.scalar(
+                select(func.count()).where(UserPersonFollow.person_id == person_id)
+            )
+            person.follower_count = follow_count or 0
+        except Exception:
+            person.follower_count = 0
+
+        # Check if user follows this person
+        person.is_followed = None
+        if user_id:
+            try:
+                follow = await self.session.scalar(
+                    select(UserPersonFollow).where(
+                        UserPersonFollow.user_id == user_id,
+                        UserPersonFollow.person_id == person_id,
+                    )
+                )
+                person.is_followed = follow is not None
+            except Exception:
+                person.is_followed = False
+
+        return person
 
     async def search_people(
         self,

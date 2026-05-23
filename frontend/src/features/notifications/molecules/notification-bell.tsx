@@ -27,26 +27,87 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 export function NotificationBell({ bare }: { bare?: boolean }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
+  const prevCountRef = useRef(0)
+  const processedIdsRef = useRef(new Set<string>())
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: isAuthenticated,
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   })
 
   const { data: listData } = useQuery({
     ...notificationQueries.list(),
-    enabled: open && isAuthenticated,
+    enabled: isAuthenticated,
+    refetchInterval: 5000,
   })
 
   const notifications = listData?.items ?? []
   const unreadCount = unreadData?.count ?? 0
+
+  // When unread count increases, handle notification types with direct cache updates
+  useEffect(() => {
+    if (unreadCount <= prevCountRef.current || !user?.username) {
+      prevCountRef.current = unreadCount
+      return
+    }
+    prevCountRef.current = unreadCount
+
+    queryClient.fetchQuery(notificationQueries.list()).then((data) => {
+      if (!data?.items) return
+      const profileKey = ['user', user.username]
+      const profile = queryClient.getQueryData(profileKey) as Record<string, unknown> | undefined
+
+      for (const n of data.items) {
+        if (processedIdsRef.current.has(n.id)) continue
+        processedIdsRef.current.add(n.id)
+
+        if (n.type === 'user_rating' && profile) {
+          const meta = n.metadataJson as { score: number; isNew: boolean; prevScore: number | null }
+          const oldAvg = (profile.avgUserRating as number) ?? 0
+          const oldCount = (profile.userRatingCount as number) ?? 0
+          const { score, isNew, prevScore } = meta
+
+          let newAvg: number
+          let newCount: number
+          if (isNew) {
+            newCount = oldCount + 1
+            newAvg = (oldAvg * oldCount + score) / newCount
+          } else {
+            newCount = oldCount
+            newAvg = oldCount > 0 ? (oldAvg * oldCount - (prevScore ?? 0) + score) / oldCount : score
+          }
+
+          queryClient.setQueryData(profileKey, {
+            ...profile,
+            avgUserRating: Math.round(newAvg * 100) / 100,
+            userRatingCount: newCount,
+          })
+        }
+
+        if (n.type === 'follow' && profile) {
+          queryClient.setQueryData(profileKey, {
+            ...profile,
+            followerCount: ((profile.followerCount as number) ?? 0) + 1,
+          })
+        }
+
+        if (n.type === 'friend_accepted' && profile) {
+          queryClient.setQueryData(profileKey, {
+            ...profile,
+            friendshipStatus: { status: 'friends', requestId: null },
+          })
+          queryClient.invalidateQueries({ queryKey: ['friends'] })
+        }
+      }
+    })
+  }, [unreadCount, user?.username, queryClient])
 
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
@@ -71,15 +132,19 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
   }, [open, handleClickOutside])
 
   const handleAction = async (notification: Notification, action: 'accept' | 'reject') => {
-    const requestId = notification.metadataJson?.requestId as string | undefined
+    const meta = notification.metadataJson as Record<string, unknown>
+    const requestId = meta.requestId as string | undefined
     if (!requestId) return
     try {
       await apiClient.post(`/friends/requests/${requestId}/${action}`)
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
       queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
       queryClient.invalidateQueries({ queryKey: ['friends'] })
+      if (action === 'accept' && user?.username) {
+        queryClient.invalidateQueries({ queryKey: ['user', user.username] })
+      }
     } catch {
-      // ignored
+      // silently fail
     }
   }
 

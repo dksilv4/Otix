@@ -5,7 +5,6 @@ import { Helmet } from 'react-helmet-async'
 import { useMediaDetail } from '../hooks/use-media-detail'
 import { usePageMeta } from '@/lib/page-context'
 
-import { cn } from '@/lib/utils'
 
 import { MediaHero } from './media-hero'
 import { MovieSection } from './movie-section'
@@ -22,6 +21,7 @@ import { ReviewsListSection } from '@/features/review/organisms/reviews-list-sec
 import { RatingsSection } from '@/features/review/organisms/ratings-section'
 import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
+import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched, useMarkShowWatched } from '@/features/interaction/episode-interaction-queries'
 import type { MediaItemDetail } from '../media-queries'
 
 
@@ -214,22 +214,26 @@ export function MediaDetail() {
   const mediaId = params.mediaId || ''
 
   const { data, isLoading, isError } = useMediaDetail(mediaId)
+  const isShowDetail = data?.mediaType === 'show'
+  const episodeInteractions = useEpisodeInteractions(mediaId, { enabled: isShowDetail })
+  const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
+  const markSeasonWatched = useMarkSeasonWatched(mediaId)
+  const markShowWatched = useMarkShowWatched(mediaId)
   const { setNavLogo } = usePageMeta()
   const heroRef = useRef<HTMLDivElement>(null)
   const logoUrl = data?.logoUrl
-  const [phase, setPhase] = useState<'loading' | 'fading-out' | 'ready'>('loading')
+  const [phase, setPhase] = useState<'loading' | 'ready'>('loading')
 
   useEffect(() => {
     if (isLoading) {
       setPhase('loading')
       return
     }
-    if (data && phase === 'loading') {
-      setPhase('fading-out')
+    if (data) {
       const id = setTimeout(() => setPhase('ready'), 200)
       return () => clearTimeout(id)
     }
-  }, [isLoading, data, phase])
+  }, [isLoading, data])
 
   const handleIntersection = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -258,11 +262,7 @@ export function MediaDetail() {
 
   if (phase !== 'ready') {
     if (isError || (!isLoading && !data)) return <ErrorState mediaType={mediaType} />
-    return (
-      <div className={cn(phase === 'fading-out' && 'transition-opacity duration-200 opacity-0')}>
-        <DetailSkeleton />
-      </div>
-    )
+    return <DetailSkeleton />
   }
 
   if (isError || !data) return <ErrorState mediaType={mediaType} />
@@ -327,6 +327,22 @@ export function MediaDetail() {
           mediaId={detail.id}
           mediaType={displayType}
           userInteractions={detail.userInteractions}
+          onShowWatchedToggle={
+            isShowDetail
+              ? (active) => markShowWatched.mutate(active)
+              : undefined
+          }
+          showEpisodeInfo={
+            isShowDetail && episodeInteractions.data
+              ? (() => {
+                  const eps = Object.values(episodeInteractions.data.episodes)
+                  return {
+                    watched: eps.filter((e) => e.watched).length,
+                    total: eps.length,
+                  }
+                })()
+              : undefined
+          }
         >
           <ReviewActionButton mediaId={detail.id} />
           <AdminActionsMenu mediaId={detail.id} media={detail} />
@@ -341,7 +357,18 @@ export function MediaDetail() {
 
         {/* Type-specific details */}
         {isMovie(detail) && <MovieSection movie={detail.movie} />}
-        {isShow(detail) && <ShowSection show={detail.show} />}
+        {isShow(detail) && (
+  <ShowSection
+    show={detail.show}
+    episodeInteractions={episodeInteractions.data?.episodes}
+    onToggleEpisodeWatched={(episodeId, active) =>
+      toggleEpisodeWatched.mutate({ episodeId, active })
+    }
+    onMarkSeasonWatched={(seasonNumber, active) =>
+      markSeasonWatched.mutate({ seasonNumber, active })
+    }
+  />
+)}
         {isGame(detail) && (
           <GameSection
             game={detail.game}

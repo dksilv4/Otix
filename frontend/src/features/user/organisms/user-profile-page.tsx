@@ -289,8 +289,11 @@ export function UserProfilePage() {
               >
                 {profile.username}
                 {profile.isAdmin && (
-                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80" />
+                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80 align-middle" />
                 )}
+                <span className="inline-flex items-center ml-2.5 align-middle [&>div>span:last-child]:hidden scale-[0.8]">
+                  <UserRatingSection username={username} />
+                </span>
               </h1>
 
               {/* Meta */}
@@ -540,8 +543,6 @@ export function UserProfilePage() {
 
       {/* Profile content */}
       <div className="mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
-        <UserRatingSection username={username} />
-
         {(() => {
           const currentSections = profile.profileSections ?? DEFAULT_SECTIONS
           const availableSections = ALL_SECTIONS.filter((s) => !currentSections.includes(s.id))
@@ -552,6 +553,17 @@ export function UserProfilePage() {
               <ProfileSectionRenderer
                 username={username}
                 sections={currentSections}
+                isOwner={isOwner}
+                onRemoveSection={isOwner ? async (sectionId) => {
+                  const updated = currentSections.filter((s) => s !== sectionId)
+                  try {
+                    await apiClient.patch('/auth/me', { profile_sections: updated })
+                    queryClient.setQueryData(['user', username], (prev: typeof profile) => {
+                      if (!prev) return prev
+                      return { ...prev, profileSections: updated }
+                    })
+                  } catch { /* silently fail */ }
+                } : undefined}
                 loginStreak={profile.currentLoginStreak ?? 0}
                 longestLoginStreak={profile.longestLoginStreak ?? 0}
                 reviewStreak={profile.currentReviewStreak ?? 0}
