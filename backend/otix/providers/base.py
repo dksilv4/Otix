@@ -23,9 +23,12 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC
+from typing import TYPE_CHECKING
 import httpx
 import structlog
-from redis.asyncio import Redis
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
 
 from otix.lib.circuit_breaker import CircuitBreaker, State as CBState
 from otix.lib.metrics import CIRCUIT_BREAKER_STATE, track_api_call
@@ -39,7 +42,9 @@ class ProviderError(Exception):
 
 
 class RateLimitError(ProviderError):
-    pass
+    def __init__(self, message: str = "", retry_after: int = 0):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 class CircuitOpenError(ProviderError):
@@ -101,9 +106,9 @@ class BaseProvider(ABC):
                 raise ProviderError(f"{self.name} request failed: {exc}") from exc
 
         if response.status_code in self._rate_limit_statuses:
-            self._handle_rate_limit(response)
+            retry_after = self._handle_rate_limit(response)
             await self._drain_rate_bucket()
-            raise RateLimitError(f"{self.name} rate limited ({response.status_code})")
+            raise RateLimitError(f"{self.name} rate limited ({response.status_code})", retry_after=retry_after)
 
         if response.status_code >= 500:
             self.circuit_breaker.record_failure()
@@ -118,11 +123,34 @@ class BaseProvider(ABC):
         self._update_cb_gauge()
         return response
 
-    def _handle_rate_limit(self, response: httpx.Response) -> None:
+    def _handle_rate_limit(self, response: httpx.Response) -> int:
         retry_after = response.headers.get("Retry-After")
         if retry_after and retry_after.isdigit():
             wait = int(retry_after)
             logger.warning("rate limited by provider", provider=self.name, retry_after=wait)
+            # Set cooldown so upstream schedulers can back off
+            self._set_cooldown(wait)
+            return wait
+        return 0
+
+    def _set_cooldown(self, seconds: int) -> None:
+        """Set a Redis key to signal that this provider is rate limited."""
+        import asyncio as _asyncio
+        try:
+            _asyncio.ensure_future(self.rate_limiter.redis.set(
+                f"ratelimit:{self.name}:cooldown", "1", ex=seconds
+            ))
+        except Exception:
+            pass
+
+    @staticmethod
+    async def check_cooldown(redis: "Redis", provider_name: str) -> int:
+        """Return remaining cooldown seconds for a provider, or 0 if not rate limited."""
+        try:
+            remaining = await redis.ttl(f"ratelimit:{provider_name}:cooldown")
+            return remaining if remaining > 0 else 0
+        except Exception:
+            return 0
 
     async def _drain_rate_bucket(self) -> None:
         """Drain the token bucket so subsequent requests are throttled."""
