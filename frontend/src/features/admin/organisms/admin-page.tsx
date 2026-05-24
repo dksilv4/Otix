@@ -4,6 +4,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/solid"
 import { useAuth } from "@/features/auth"
 import { Navigate } from "@tanstack/react-router"
 import { useAdminStats, useAdminMetrics, REFETCH_INTERVAL } from "@/features/admin/admin-queries"
+import type { EnrichmentCounts } from "@/features/admin/admin-queries"
 import { LineChart } from "@/features/admin/molecules/line-chart"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@ui/atoms/skeleton"
@@ -14,6 +15,90 @@ const MEDIA_LABELS: Record<string, string> = {
   music: "Music",
   game: "Games",
   person: "People",
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  fanart: "Fanart",
+  omdb: "OMDb",
+  igdb: "IGDB",
+  steam: "Steam",
+  steamgrid: "SteamGrid",
+  musicbrainz: "MusicBrainz",
+  lastfm: "Last.fm",
+  spotify: "Spotify",
+  embedding: "Embedding",
+  imdb: "IMDb",
+}
+
+const ENRICHMENT_PROVIDERS: Record<string, string[]> = {
+  movie: ["fanart", "omdb", "embedding"],
+  show: ["fanart", "omdb", "embedding"],
+  music: ["fanart", "musicbrainz", "lastfm", "spotify", "embedding"],
+  game: ["fanart", "igdb", "steam", "steamgrid", "embedding"],
+  person: ["fanart", "spotify", "musicbrainz", "imdb"],
+}
+
+function EnrichmentCard({
+  type,
+  counts,
+  delta,
+}: {
+  type: string
+  counts: EnrichmentCounts
+  delta: EnrichmentCounts
+}) {
+  const providers = ENRICHMENT_PROVIDERS[type] ?? []
+  const label = MEDIA_LABELS[type] ?? type
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl p-4",
+        "bg-[var(--dk-surface-glass)] backdrop-blur-xl",
+        "shadow-[var(--dk-shadow-glass)]",
+      )}
+    >
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+        {label}
+      </p>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Total</span>
+          <span className="font-mono tabular-nums font-medium">
+            {counts.total.toLocaleString()}
+            <DeltaBadge value={delta.total} />
+          </span>
+        </div>
+        {providers.map((provider) => (
+          <div key={provider} className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{PROVIDER_LABELS[provider] ?? provider}</span>
+            <span className="font-mono tabular-nums">
+              {counts[provider as keyof EnrichmentCounts]?.toLocaleString() ?? "0"}
+              <DeltaBadge
+                value={(delta[provider as keyof EnrichmentCounts] as number) ?? 0}
+              />
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DeltaBadge({ value }: { value: number | null | undefined }) {
+  if (!value) return null
+  const sign = value > 0 ? "+" : ""
+  return (
+    <span
+      className={cn(
+        "ml-1.5 text-[11px] font-medium",
+        value > 0 ? "text-emerald-400" : "text-red-400",
+      )}
+    >
+      {sign}
+      {value.toLocaleString()}
+    </span>
+  )
 }
 
 const CHART_TYPES = ["movie", "show", "music", "game", "person"] as const
@@ -263,6 +348,26 @@ function AdminContent() {
             ))
           )}
         </div>
+
+        {/* Enrichment breakdown */}
+        {data.enrichment && (
+          <div className="mb-6">
+            <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Enrichment
+            </h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(data.enrichment).map(([type, counts]) => (
+                <EnrichmentCard
+                  key={type}
+                  type={type}
+                  counts={counts}
+                  delta={data.deltas?.[type] ?? ({} as EnrichmentCounts)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {chartSection("media")}
       </section>
 

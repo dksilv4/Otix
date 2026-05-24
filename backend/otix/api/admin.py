@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -12,18 +13,22 @@ from otix.api.schemas.admin import (
     AdminMetricsResponse,
     AdminRecentUser,
     AdminStatsResponse,
+    EnrichmentCounts,
     TMDBDeletedIDItem,
     TMDBDeletedIDListResponse,
 )
 from otix.api.schemas.admin_edit import MediaEditProposalList, MediaEditProposalOut
 from otix.domain.media import ExternalID, MediaItem, TMDBDeletedID
-from otix.domain.people import Person
+from otix.domain.people import Person, PersonAsset
 from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.services.admin_edit_service import AdminEditService
 
 admin_router = APIRouter(prefix="/admin", tags=["admin"])
 
 VALID_MEDIA_TYPES = {"movie", "show", "music", "game", "person"}
+
+ENRICHMENT_REDIS_KEY = "admin:prev_enrichment"
 
 
 @admin_router.get("/stats", response_model=AdminStatsResponse)
@@ -60,9 +65,126 @@ async def get_admin_stats(
         for row in recent_users_result
     ]
 
+    # ── Enrichment counts per media type ──
+    enrichment: dict[str, EnrichmentCounts] = {}
+
+    _ENRICH_SQL = {
+        "fanart": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = 'fanart' AND mi.media_type = :mt",
+        "omdb": "SELECT COUNT(DISTINCT er.media_item_id) FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id WHERE er.provider = 'imdb' AND mi.media_type = :mt",
+        "embedding": "SELECT COUNT(*) FROM media_items WHERE media_type = :mt AND embedding IS NOT NULL",
+        "generic": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = :provider AND mi.media_type = :mt",
+    }
+
+    try:
+        _has_embedding = await db.scalar(
+            text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
+        )
+    except Exception:
+        _has_embedding = False
+
+    for mt in ("movie", "show", "music", "game"):
+        ec = EnrichmentCounts(total=media_counts.get(mt, 0))
+        params = {"mt": mt}
+
+        try:
+            if _has_embedding:
+                ec.embedding = await db.scalar(text(_ENRICH_SQL["embedding"]), params) or 0
+        except Exception:
+            pass
+
+        try:
+            ec.fanart = await db.scalar(text(_ENRICH_SQL["fanart"]), params) or 0
+        except Exception:
+            pass
+
+        if mt in ("movie", "show"):
+            try:
+                ec.omdb = await db.scalar(text(_ENRICH_SQL["omdb"]), params) or 0
+            except Exception:
+                pass
+        elif mt == "game":
+            for provider in ("igdb", "steam", "steamgrid"):
+                try:
+                    val = await db.scalar(text(_ENRICH_SQL["generic"]), {**params, "provider": provider}) or 0
+                    setattr(ec, provider, val)
+                except Exception:
+                    pass
+        elif mt == "music":
+            for provider in ("musicbrainz", "lastfm", "spotify"):
+                try:
+                    val = await db.scalar(text(_ENRICH_SQL["generic"]), {**params, "provider": provider}) or 0
+                    setattr(ec, provider, val)
+                except Exception:
+                    pass
+
+        enrichment[mt] = ec
+
+    # ── People enrichment ──
+    pe = EnrichmentCounts(total=people_count or 0)
+    try:
+        pe.fanart = await db.scalar(
+            select(func.count(PersonAsset.id)).where(PersonAsset.provider == "fanart")
+        ) or 0
+    except Exception:
+        pass
+    try:
+        pe.spotify = await db.scalar(
+            select(func.count(Person.id)).where(Person.spotify_artist_id.isnot(None))
+        ) or 0
+    except Exception:
+        pass
+    try:
+        pe.musicbrainz = await db.scalar(
+            select(func.count(Person.id)).where(Person.musicbrainz_artist_id.isnot(None))
+        ) or 0
+    except Exception:
+        pass
+    try:
+        pe.imdb = await db.scalar(
+            select(func.count(Person.id)).where(Person.imdb_id.isnot(None))
+        ) or 0
+    except Exception:
+        pass
+    enrichment["person"] = pe
+
+    # ── Deltas (compare to previous snapshot in Redis) ──
+    deltas: dict[str, EnrichmentCounts] = {}
+    try:
+        redis = await get_redis()
+        prev_raw = await redis.get(ENRICHMENT_REDIS_KEY)
+        prev_data: dict[str, dict[str, int]] = json.loads(prev_raw) if prev_raw else {}
+
+        for key, ec in enrichment.items():
+            prev = prev_data.get(key, {})
+            deltas[key] = EnrichmentCounts(
+                total=ec.total - prev.get("total", ec.total),
+                fanart=ec.fanart - prev.get("fanart", ec.fanart),
+                omdb=ec.omdb - prev.get("omdb", ec.omdb),
+                igdb=ec.igdb - prev.get("igdb", ec.igdb),
+                steam=ec.steam - prev.get("steam", ec.steam),
+                steamgrid=ec.steamgrid - prev.get("steamgrid", ec.steamgrid),
+                musicbrainz=ec.musicbrainz - prev.get("musicbrainz", ec.musicbrainz),
+                lastfm=ec.lastfm - prev.get("lastfm", ec.lastfm),
+                spotify=ec.spotify - prev.get("spotify", ec.spotify),
+                embedding=ec.embedding - prev.get("embedding", ec.embedding),
+                imdb=ec.imdb - prev.get("imdb", ec.imdb),
+            )
+
+        # Store current snapshot for next comparison (expire after 24h)
+        current_snapshot = {
+            key: ec.model_dump() for key, ec in enrichment.items()
+        }
+        await redis.set(ENRICHMENT_REDIS_KEY, json.dumps(current_snapshot), ex=86400)
+    except Exception:
+        # Redis unavailable — return zero deltas
+        for key in enrichment:
+            deltas[key] = EnrichmentCounts()
+
     return AdminStatsResponse(
         total_users=total_users or 0,
         media_counts=media_counts,
+        enrichment=enrichment,
+        deltas=deltas,
         stub_counts=stub_counts,
         people_count=people_count or 0,
         recent_users=recent_users,

@@ -31,27 +31,28 @@ class YouTubeClient:
         self._token = access_token
 
     async def _get(self, path: str, params: dict | None = None, *, debug: bool = False) -> dict:
+        from otix.infrastructure.http_client import get_http_client
         url = f"{API_BASE}/{path.lstrip('/')}"
         headers = {"Authorization": f"Bearer {self._token}"}
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(url, params=params, headers=headers)
-            if debug:
-                logger.info("youtube_api_debug", path=path, params=params, status=resp.status_code, body=resp.text[:2000])
-            if resp.status_code >= 400:
-                error_text = resp.text
-                try:
-                    error_data = resp.json()
-                    error_msg = error_data.get("error", {}).get("message", error_text)
-                except Exception:
-                    error_msg = error_text
+        client = get_http_client()
+        resp = await client.get(url, params=params, headers=headers)
+        if debug:
+            logger.info("youtube_api_debug", path=path, params=params, status=resp.status_code, body=resp.text[:2000])
+        if resp.status_code >= 400:
+            error_text = resp.text
+            try:
+                error_data = resp.json()
+                error_msg = error_data.get("error", {}).get("message", error_text)
+            except Exception:
+                error_msg = error_text
 
-                if "insufficient authentication scopes" in error_msg.lower():
-                    raise ProviderError(
-                        "Your Google account needs to be re-linked to access YouTube. "
-                        "Please unlink then re-link your Google account in Settings to grant the YouTube permission."
-                    )
-                raise ProviderError(f"YouTube API returned {resp.status_code} for {path}: {error_msg}")
-            return resp.json()
+            if "insufficient authentication scopes" in error_msg.lower():
+                raise ProviderError(
+                    "Your Google account needs to be re-linked to access YouTube. "
+                    "Please unlink then re-link your Google account in Settings to grant the YouTube permission."
+                )
+            raise ProviderError(f"YouTube API returned {resp.status_code} for {path}: {error_msg}")
+        return resp.json()
 
     async def get_watch_history(self, page_token: str | None = None) -> dict:
         """Fetch one page of the user's watch history.

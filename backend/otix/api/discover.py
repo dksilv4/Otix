@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,11 +14,15 @@ from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import MediaItemListResponse, MediaItemSummary
 from otix.api.schemas.discover import PersonalizedSectionsResponse
 from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
 from otix.services.personalization_service import PersonalizationService
 
 discover_router = APIRouter(prefix="/discover", tags=["discover"])
+
+_DISCOVER_TTL = 15
+_SECTIONS_TTL = 30
 
 VALID_MEDIA_TYPES = {"movie", "show", "game", "music"}
 VALID_LIST_TYPES = {
@@ -83,12 +90,21 @@ async def discover_hero(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
+    uid = current_user.id if current_user else "anon"
+    cache_key = f"discover:hero:{limit}:{uid}"
+    redis = await get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return MediaItemListResponse.model_validate(json.loads(cached))
+
     service = MediaService(db)
     items, has_more, _ = await service.list_media(
         has_artwork=True,
         limit=limit,
     )
-    return await _build_response(db, items, has_more, current_user)
+    response = await _build_response(db, items, has_more, current_user)
+    await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+    return response
 
 
 @discover_router.get("/sections", response_model=PersonalizedSectionsResponse)
@@ -96,6 +112,13 @@ async def discover_sections(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> PersonalizedSectionsResponse:
+    uid = current_user.id if current_user else "anon"
+    cache_key = f"discover:sections:{uid}"
+    redis = await get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return PersonalizedSectionsResponse.model_validate(json.loads(cached))
+
     if current_user:
         service = PersonalizationService(db)
         profile = await service.compute_profile(current_user)
@@ -103,7 +126,9 @@ async def discover_sections(
     else:
         sections = PersonalizationService.default_sections()
 
-    return PersonalizedSectionsResponse(sections=sections)
+    response = PersonalizedSectionsResponse(sections=sections)
+    await redis.set(cache_key, response.model_dump_json(), ex=_SECTIONS_TTL)
+    return response
 
 
 @discover_router.get("/{media_type}/{list_type}", response_model=MediaItemListResponse)
@@ -127,6 +152,14 @@ async def discover_list(
     if language and len(language) > 2:
         language = language.split("-")[0]
 
+    uid = current_user.id if current_user else "anon"
+    raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}"
+    cache_key = f"discover:list:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
+    redis = await get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return MediaItemListResponse.model_validate(json.loads(cached))
+
     service = MediaService(db)
 
     # Collaborative: seed from similar users' interactions
@@ -145,7 +178,9 @@ async def discover_list(
                 limit=limit,
                 media_ids=seed_ids,
             )
-            return await _build_response(db, items, has_more, current_user)
+            response = await _build_response(db, items, has_more, current_user)
+            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            return response
 
     # Integration: seed from connected platform data
     if list_type == "integration_steam" and current_user and current_user.steam_id:
@@ -165,7 +200,9 @@ async def discover_list(
                 limit=limit,
                 media_ids=seed_ids,
             )
-            return await _build_response(db, items, has_more, current_user)
+            response = await _build_response(db, items, has_more, current_user)
+            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            return response
 
     if list_type == "integration_plex" and current_user and current_user.plex_id:
         seed_query = (
@@ -184,7 +221,9 @@ async def discover_list(
                 limit=limit,
                 media_ids=seed_ids,
             )
-            return await _build_response(db, items, has_more, current_user)
+            response = await _build_response(db, items, has_more, current_user)
+            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            return response
 
     sort_by, sort_dir, date_filter_name = _LIST_CONFIG[list_type]
     date_from, date_to = _date_filter(date_filter_name)
@@ -206,4 +245,6 @@ async def discover_list(
         date_from=date_from,
         date_to=date_to,
     )
-    return await _build_response(db, items, has_more, current_user)
+    response = await _build_response(db, items, has_more, current_user)
+    await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+    return response

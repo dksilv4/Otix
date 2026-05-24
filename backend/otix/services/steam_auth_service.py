@@ -224,14 +224,16 @@ async def get_steam_user_info(steam_id: str) -> dict | None:
     if not settings.steam_api_key:
         return None
 
+    from otix.infrastructure.http_client import get_http_client
+
     url = f"{STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/"
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, params={
-                "key": settings.steam_api_key,
-                "steamids": steam_id,
-            })
-            data = resp.json()
+        client = get_http_client()
+        resp = await client.get(url, params={
+            "key": settings.steam_api_key,
+            "steamids": steam_id,
+        })
+        data = resp.json()
     except Exception:
         logger.exception("steam user info request failed")
         return None

@@ -5,7 +5,6 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.pool import NullPool
 
 from otix.infrastructure.config import settings
 
@@ -19,8 +18,9 @@ def _get_engine() -> AsyncEngine:
     current_pid = os.getpid()
 
     if _engine is not None and _pid != current_pid:
-        # Process changed (Celery prefork child) — discard inherited engine.
-        # NullPool means no connections to leak; the old engine is simply dropped.
+        # Process changed (Celery prefork child) — dispose the parent's pool
+        # synchronously (connections are invalid in the child anyway).
+        _engine.sync_engine.dispose()
         _engine = None
         _session_factory = None
 
@@ -28,7 +28,9 @@ def _get_engine() -> AsyncEngine:
         _engine = create_async_engine(
             settings.database_url,
             echo=settings.debug,
-            poolclass=NullPool,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_pre_ping=True,
             connect_args={"timeout": settings.db_connect_timeout},
         )
         _pid = current_pid

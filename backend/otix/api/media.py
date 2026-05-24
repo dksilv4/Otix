@@ -525,12 +525,27 @@ async def undo_approve_edit_proposal(
 # ── Detail endpoint ──────────────────────────────────────────────
 
 
+_MEDIA_DETAIL_TTL = 30
+
+
+def _media_cache_key(media_id: str, user_id: str | None) -> str:
+    uid = user_id or "anon"
+    return f"media:detail:{media_id}:{uid}"
+
+
 @media_router.get("/{media_id}", response_model=MediaItemDetail)
 async def get_media_item(
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemDetail:
+    uid = current_user.id if current_user else None
+    cache_key = _media_cache_key(media_id, uid)
+    redis = await get_redis()
+    cached = await redis.get(cache_key)
+    if cached:
+        return MediaItemDetail.model_validate(json.loads(cached))
+
     service = MediaService(db)
     item = await service.get_media_item(media_id)
     if item is None:
@@ -572,28 +587,28 @@ async def get_media_item(
                 result.steam_rtime_last_played = steam_game.rtime_last_played
 
         # Apply image overrides for the user's preferred languages
-        if current_user is not None:
-            edit_service = AdminEditService(db)
-            overrides = await edit_service.get_image_overrides_for_media(media_id)
-            if overrides:
-                preferred = current_user.preferred_languages or []
-                for image_type, lang_map in overrides.items():
-                    override_url = None
-                    # Check each preferred language in order; also check '*' wildcard
-                    for lang in preferred:
-                        if lang in lang_map:
-                            override_url = lang_map[lang]
-                            break
-                    if override_url is None and "*" in lang_map:
-                        override_url = lang_map["*"]
-                    if override_url is not None:
-                        if image_type == "poster":
-                            result.poster_url = override_url
-                        elif image_type == "backdrop":
-                            result.backdrop_url = override_url
-                        elif image_type == "logo":
-                            result.logo_url = override_url
-                        elif image_type == "textless_poster":
-                            result.textless_poster_url = override_url
+        edit_service = AdminEditService(db)
+        overrides = await edit_service.get_image_overrides_for_media(media_id)
+        if overrides:
+            preferred = current_user.preferred_languages or []
+            for image_type, lang_map in overrides.items():
+                override_url = None
+                for lang in preferred:
+                    if lang in lang_map:
+                        override_url = lang_map[lang]
+                        break
+                if override_url is None and "*" in lang_map:
+                    override_url = lang_map["*"]
+                if override_url is not None:
+                    if image_type == "poster":
+                        result.poster_url = override_url
+                    elif image_type == "backdrop":
+                        result.backdrop_url = override_url
+                    elif image_type == "logo":
+                        result.logo_url = override_url
+                    elif image_type == "textless_poster":
+                        result.textless_poster_url = override_url
 
+    response_data = result.model_dump(mode="json")
+    await redis.set(cache_key, json.dumps(response_data), ex=_MEDIA_DETAIL_TTL)
     return result

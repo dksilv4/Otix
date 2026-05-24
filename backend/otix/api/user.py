@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,6 +59,14 @@ async def get_user_profile(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    is_own_profile = current_user is not None and current_user.id == user.id
+
+    # Kick off the external Steam API call early so it overlaps with DB queries
+    steam_task = None
+    if user.steam_id:
+        steam_task = asyncio.create_task(get_steam_user_info(user.steam_id))
+
+    # DB queries — now fast (~1-2ms each with connection pooling)
     review_count = await db.scalar(
         select(func.count()).select_from(Review).where(
             Review.user_id == user.id,
@@ -64,30 +74,45 @@ async def get_user_profile(
             Review.is_private == False,  # noqa: E712
         )
     )
+    xp_rank_result = await db.execute(
+        select(func.count()).select_from(User).where(User.total_xp > user.total_xp)
+    )
+    total_users = await db.scalar(select(func.count()).select_from(User))
+    streak = await db.scalar(select(UserStreak).where(UserStreak.user_id == user.id))
+    rating_service = UserRatingService(db)
+    reputation = await rating_service.compute_composite_score(user.id)
+    follow_service = FollowService(db)
+    follow_counts = await follow_service.get_counts(user.id)
 
-    is_own_profile = current_user is not None and current_user.id == user.id
-    is_friend = False
-    friendship_status = None
+    is_following = False
+    if current_user and not is_own_profile:
+        is_following = await follow_service.is_following(current_user.id, user.id)
 
+    status_data = None
     if current_user and not is_own_profile:
         friend_service = FriendService(db)
         status_data = await friend_service.get_friendship_status(current_user.id, user.id)
+
+    # Await the Steam API call (already running during DB queries)
+    steam_profile = await steam_task if steam_task else None
+
+    is_friend = False
+    friendship_status = None
+    if status_data:
         friendship_status = FriendshipStatusOut(**status_data)
         is_friend = status_data["status"] == "friends"
 
     visibility = user.integration_visibility or {}
 
     steam = None
-    if user.steam_id and (is_own_profile or _visibility_allows(visibility, "steam", is_friend)):
-        profile = await get_steam_user_info(user.steam_id)
-        if profile:
-            steam = SteamIntegrationPublic(
-                personaname=profile.get("personaname"),
-                avatarfull=profile.get("avatarfull"),
-                profileurl=profile.get("profileurl"),
-                loccountrycode=profile.get("loccountrycode"),
-                personastate=profile.get("personastate"),
-            )
+    if steam_profile and (is_own_profile or _visibility_allows(visibility, "steam", is_friend)):
+        steam = SteamIntegrationPublic(
+            personaname=steam_profile.get("personaname"),
+            avatarfull=steam_profile.get("avatarfull"),
+            profileurl=steam_profile.get("profileurl"),
+            loccountrycode=steam_profile.get("loccountrycode"),
+            personastate=steam_profile.get("personastate"),
+        )
 
     plex = None
     if user.plex_id and (is_own_profile or _visibility_allows(visibility, "plex", is_friend)):
@@ -100,30 +125,11 @@ async def get_user_profile(
     if user.tmdb_session_id and (is_own_profile or _visibility_allows(visibility, "tmdb", is_friend)):
         tmdb_username = user.tmdb_username
 
-    # Compute composite reputation score
-    rating_service = UserRatingService(db)
-    reputation = await rating_service.compute_composite_score(user.id)
-
-    # Follow info
-    follow_service = FollowService(db)
-    follow_counts = await follow_service.get_counts(user.id)
-    is_following = False
-    if current_user and not is_own_profile:
-        is_following = await follow_service.is_following(current_user.id, user.id)
-
-    # Gamification
     gamification = compute_level_info(user.total_xp)
-    # XP rank
-    xp_rank_result = await db.execute(
-        select(func.count()).select_from(User).where(User.total_xp > user.total_xp)
-    )
     higher_count = xp_rank_result.scalar() or 0
     xp_rank = higher_count + 1
-    total_users = await db.scalar(select(func.count()).select_from(User)) or 0
-    xp_percentile = round((total_users - higher_count) / total_users * 100, 1) if total_users > 0 else 100.0
-
-    # Streaks
-    streak = await db.scalar(select(UserStreak).where(UserStreak.user_id == user.id))
+    total_users_count = total_users or 0
+    xp_percentile = round((total_users_count - higher_count) / total_users_count * 100, 1) if total_users_count > 0 else 100.0
 
     return UserProfileOut(
         id=user.id,
@@ -144,7 +150,7 @@ async def get_user_profile(
         plex=plex,
         tmdb_username=tmdb_username,
         friendship_status=friendship_status,
-        is_following=is_following,
+        is_following=is_following or False,
         follower_count=follow_counts["followers"],
         following_count=follow_counts["following"],
         level=gamification["level"],
