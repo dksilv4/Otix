@@ -7,6 +7,7 @@ interface CollectionMovie {
   posterUrl: string | null
   releaseDate: string | null
   slug: string
+  isAdult?: boolean
 }
 
 interface CollectionSectionProps {

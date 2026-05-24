@@ -28,6 +28,7 @@ export interface LibraryResponse {
     steamRtimeLastPlayed?: number | null
     plexViewCount?: number | null
     plexLastViewedAt?: string | null
+    isAdult?: boolean
   }>
   nextCursor: string | null
   hasMore: boolean
@@ -168,6 +169,7 @@ export interface WishlistItem {
   textlessPosterUrl: string | null
   releaseDate: string | null
   steamPriority: number
+  isAdult?: boolean
 }
 
 export interface WishlistListResponse {

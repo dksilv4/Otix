@@ -512,7 +512,6 @@ function HomeExperience() {
                 disabled={moodNoteSaving}
                 debounceMs={isMoodNoteMode ? 0 : 150}
                 leadingIcon={isMoodNoteMode ? moodNoteContext.Icon : undefined}
-                modeLabel={isMoodNoteMode ? 'Note' : 'Discover'}
                 showSubmitWhenEmpty={isMoodNoteMode}
                 submitLabel={isMoodNoteMode ? 'Save note' : 'Search'}
                 activeMode={activeMode}

@@ -7,9 +7,7 @@ import { steamPlatform } from "./steam"
 import { plexPlatform } from "./plex"
 import { spotifyPlatform } from "./spotify"
 import { useLibraryTab, useSteamLibraryScan, useSteamStatus, useUnmatchedSteamGames, usePlexStatus, usePlexLibraryScan, useSpotifyStatus, useSpotifyLibraryScan, useSpotifyLikedTracks } from "../library-queries"
-import { useSpotifyPlayer } from "@/features/spotify/spotify-player-provider"
-import { useRateTrack } from "@/features/media/media-queries"
-import { useToast } from "@/features/dk-ui/molecules/toast"
+
 
 // Setup query client
 const queryClient = new QueryClient({
