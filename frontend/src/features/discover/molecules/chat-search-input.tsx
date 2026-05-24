@@ -23,7 +23,6 @@ interface ChatSearchInputProps {
   disabled?: boolean
   debounceMs?: number
   leadingIcon?: LucideIcon
-  modeLabel?: string
   showSubmitWhenEmpty?: boolean
   submitLabel?: string
   className?: string
@@ -40,7 +39,6 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   disabled = false,
   debounceMs = 300,
   leadingIcon,
-  modeLabel = 'Discover',
   showSubmitWhenEmpty = false,
   submitLabel = 'Search',
   className,

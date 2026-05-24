@@ -55,6 +55,7 @@ export interface UserListDetailOut extends UserListOut {
       watched: boolean
       played: boolean
     } | null
+    isAdult?: boolean
   }>
   collaborators: CollaboratorOut[]
 }
