@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     database_url_sync: str = "postgresql://otium:password@localhost:5432/otium_prod_v1"
     db_conn_max_age: int = 0
     db_connect_timeout: int = 5
-    db_pool_size: int = 10
-    db_max_overflow: int = 20
+    db_pool_size: int = 1
+    db_max_overflow: int = 2
     run_migrations: bool = True
 
     # Redis
