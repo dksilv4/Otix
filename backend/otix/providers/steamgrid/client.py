@@ -7,6 +7,8 @@ Rate limit: 100 requests / 5 min (free tier), enforced via Redis token bucket.
 
 from __future__ import annotations
 
+import os
+
 import httpx
 from redis.asyncio import Redis
 
@@ -16,15 +18,23 @@ from otix.providers.base import BaseProvider
 
 
 _steamgrid_client: httpx.AsyncClient | None = None
+_steamgrid_pid: int | None = None
 
 
 def _get_steamgrid_client() -> httpx.AsyncClient:
-    global _steamgrid_client
+    global _steamgrid_client, _steamgrid_pid
+    current_pid = os.getpid()
+
+    if _steamgrid_client is not None and _steamgrid_pid != current_pid:
+        _steamgrid_client = None
+        _steamgrid_pid = None
+
     if _steamgrid_client is None or _steamgrid_client.is_closed:
         _steamgrid_client = httpx.AsyncClient(
             base_url="https://www.steamgriddb.com/api/v2",
             timeout=settings.steamgrid_request_timeout_seconds,
         )
+        _steamgrid_pid = current_pid
     return _steamgrid_client
 
 
