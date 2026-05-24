@@ -122,6 +122,7 @@ async def register(
             email=body.email,
             username=body.username,
             password=body.password,
+            date_of_birth=body.date_of_birth,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
@@ -441,6 +442,8 @@ def _user_response(user: User) -> UserResponse:
         preferred_genres=user.preferred_genres if user.preferred_genres else [],
         preferred_languages=user.preferred_languages if user.preferred_languages else [],
         discover_emphases=user.discover_emphases if user.discover_emphases else [],
+        date_of_birth=user.date_of_birth,
+        show_adult_content=user.show_adult_content,
     )
 
 

@@ -239,7 +239,7 @@ export function NotificationsPage() {
         <div className="text-center space-y-3">
           <Bell className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <h2 className="text-lg font-semibold">Sign in to view notifications</h2>
-          <a href="/auth" className="text-sm text-primary hover:underline">
+          <a href="/auth/login" className="text-sm text-primary hover:underline">
             Sign in
           </a>
         </div>

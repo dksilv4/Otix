@@ -137,13 +137,21 @@ describe('dk-ui molecules', () => {
 
   it('closes dialogs from escape, overlay, and close button', async () => {
     const onOpenChange = vi.fn()
-    const { rerender } = render(
-      <DkDialog open onOpenChange={onOpenChange} title="Settings">
+    const { rerender, container } = render(
+      <DkDialog open onOpenChange={onOpenChange} title="Settings" description="Some Description">
         Content
       </DkDialog>,
     )
 
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByText('Some Description')).toBeInTheDocument()
+
+    // Test overlay click
+    const overlay = container.querySelector('.bg-black\\/40')
+    expect(overlay).toBeInTheDocument()
+    await userEvent.click(overlay!)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onOpenChange).toHaveBeenCalledWith(false)
 
@@ -160,9 +168,23 @@ describe('dk-ui molecules', () => {
     function ToastTrigger() {
       const { toast } = useToast()
       return (
-        <button onClick={() => toast({ title: 'Saved', description: 'Changes applied', variant: 'success', duration: 1000 })}>
-          Toast
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => toast({ title: 'Saved', description: 'Changes applied', variant: 'success', duration: 1000 })}>
+            Toast Success
+          </button>
+          <button onClick={() => toast({ title: 'Warning Msg', variant: 'warning' })}>
+            Toast Warning
+          </button>
+          <button onClick={() => toast({ title: 'Error Msg', variant: 'error' })}>
+            Toast Error
+          </button>
+          <button onClick={() => toast({ title: 'Info Msg', variant: 'info' })}>
+            Toast Info
+          </button>
+          <button onClick={() => toast({ title: 'Default Msg', variant: 'default' })}>
+            Toast Default
+          </button>
+        </div>
       )
     }
 
@@ -172,10 +194,36 @@ describe('dk-ui molecules', () => {
       </DkToastProvider>,
     )
 
-    await userEvent.click(screen.getByText('Toast'))
+    await userEvent.click(screen.getByText('Toast Success'))
     expect(screen.getByRole('alert')).toHaveTextContent('Saved')
-
     await userEvent.click(screen.getByLabelText('Dismiss'))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Saved')).not.toBeInTheDocument())
+
+    // Click warning
+    await userEvent.click(screen.getByText('Toast Warning'))
+    expect(screen.getByText('Warning Msg')).toBeInTheDocument()
+
+    // Click error
+    await userEvent.click(screen.getByText('Toast Error'))
+    expect(screen.getByText('Error Msg')).toBeInTheDocument()
+
+    // Click info
+    await userEvent.click(screen.getByText('Toast Info'))
+    expect(screen.getByText('Info Msg')).toBeInTheDocument()
+
+    // Click default
+    await userEvent.click(screen.getByText('Toast Default'))
+    expect(screen.getByText('Default Msg')).toBeInTheDocument()
+  })
+
+  it('throws error when useToast is used outside provider', () => {
+    const TestComponent = () => {
+      useToast()
+      return null
+    }
+    // Suppress console error logs for expected errors
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(() => render(<TestComponent />)).toThrow('useToast must be inside DkToastProvider')
+    spy.mockRestore()
   })
 })

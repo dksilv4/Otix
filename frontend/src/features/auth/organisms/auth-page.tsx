@@ -23,6 +23,7 @@ interface RegisterFields {
   username: string
   password: string
   confirmPassword: string
+  dateOfBirth: string
 }
 
 interface FieldErrors {
@@ -31,6 +32,7 @@ interface FieldErrors {
   username?: string
   password?: string
   confirmPassword?: string
+  dateOfBirth?: string
 }
 
 function extractErrorMessage(err: unknown): string {
@@ -63,6 +65,19 @@ function validateRegisterFields(fields: RegisterFields): { errors: FieldErrors; 
     errors.password = 'Password must contain uppercase, lowercase, and a number'
   if (!fields.confirmPassword) errors.confirmPassword = 'Please confirm your password'
   else if (fields.password !== fields.confirmPassword) errors.confirmPassword = 'Passwords do not match'
+  if (!fields.dateOfBirth) errors.dateOfBirth = 'Date of birth is required'
+  else {
+    const dob = new Date(fields.dateOfBirth)
+    if (isNaN(dob.getTime())) errors.dateOfBirth = 'Please enter a valid date'
+    else {
+      const today = new Date()
+      let age = today.getFullYear() - dob.getFullYear()
+      const m = today.getMonth() - dob.getMonth()
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+      if (age < 13) errors.dateOfBirth = 'You must be at least 13 years old'
+      else if (age > 120) errors.dateOfBirth = 'Please enter a valid date'
+    }
+  }
   return { errors, valid: Object.keys(errors).length === 0 }
 }
 
@@ -102,6 +117,7 @@ export function AuthPage() {
   const [username, setUsername] = useState('')
   const [regPassword, setRegPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
 
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [authError, setAuthError] = useState('')
@@ -164,6 +180,7 @@ export function AuthPage() {
       username,
       password: regPassword,
       confirmPassword,
+      dateOfBirth,
     })
     if (!valid) {
       setFieldErrors(errors)
@@ -172,7 +189,7 @@ export function AuthPage() {
 
     setIsSubmitting(true)
     try {
-      await register(email, username, regPassword)
+      await register(email, username, regPassword, dateOfBirth)
       setShowSuccess(true)
       setTimeout(() => {
         navigate({ to: search.redirect || '/' })
@@ -496,6 +513,26 @@ export function AuthPage() {
                 {fieldErrors.username && (
                   <p id="username-error" role="alert" className="text-xs text-red-300">
                     {fieldErrors.username}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <input
+                  id="reg-dob"
+                  name="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  required
+                  aria-invalid={!!fieldErrors.dateOfBirth}
+                  aria-describedby={fieldErrors.dateOfBirth ? 'dob-error' : undefined}
+                  className={cn(inputClasses, fieldErrors.dateOfBirth && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
+                />
+                {fieldErrors.dateOfBirth && (
+                  <p id="dob-error" role="alert" className="text-xs text-red-300">
+                    {fieldErrors.dateOfBirth}
                   </p>
                 )}
               </div>

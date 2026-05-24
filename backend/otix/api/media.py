@@ -38,7 +38,7 @@ from otix.services.admin_edit_service import AdminEditService
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
-from otix.services.media_service import MediaService
+from otix.services.media_service import MediaService, should_exclude_adult
 from otix.tasks.sync.search import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHOLD
 
 media_router = APIRouter(prefix="/media", tags=["media"])
@@ -47,8 +47,8 @@ SEARCH_CACHE_TTL = 30
 EMBEDDING_CACHE_TTL = 300
 
 
-def _cache_key(q: str, media_type: str | None, sort_by: str | None, page: int, page_size: int) -> str:
-    raw = f"{q.lower().strip()}:{media_type or ''}:{sort_by or ''}:{page}:{page_size}"
+def _cache_key(q: str, media_type: str | None, sort_by: str | None, page: int, page_size: int, exclude_adult: bool = True) -> str:
+    raw = f"{q.lower().strip()}:{media_type or ''}:{sort_by or ''}:{page}:{page_size}:adult{0 if exclude_adult else 1}"
     return f"search:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
 
 
@@ -98,6 +98,7 @@ async def list_media(
     if language and len(language) > 2:
         language = language.split("-")[0]
 
+    exclude_adult = should_exclude_adult(current_user)
     service = MediaService(db)
     items, has_more, total = await service.list_media(
         media_type=media_type,
@@ -110,6 +111,7 @@ async def list_media(
         page=page,
         limit=limit,
         include_total=True,
+        exclude_adult=exclude_adult,
     )
 
     next_cursor = items[-1].id if has_more and items else None
@@ -165,8 +167,9 @@ async def search_media(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
+    exclude_adult = should_exclude_adult(current_user)
     redis = await get_redis()
-    cache_key = _cache_key(q, media_type, sort_by, page, page_size)
+    cache_key = _cache_key(q, media_type, sort_by, page, page_size, exclude_adult)
 
     # Return cached result when available (skips DB + embedding entirely).
     # Only cache non-authenticated results (user_interactions are skipped).
@@ -180,13 +183,14 @@ async def search_media(
     query_embedding = await _embed_query(q)
 
     service = MediaService(db)
-    items, total = await service.search_media(
+    items, total, has_more = await service.search_media(
         query_str=q,
         media_type=media_type,
         sort_by=sort_by,
         page=page,
         page_size=page_size,
         query_embedding=query_embedding,
+        exclude_adult=exclude_adult,
     )
 
     summaries = [MediaItemSummary.model_validate(item) for item in items]
@@ -200,8 +204,6 @@ async def search_media(
         for summary in summaries:
             state = batch.get(summary.id, {})
             summary.user_interactions = UserInteractionState(**state)
-
-    has_more = (page * page_size) < total
 
     # Fire-and-forget backfill only when local results are sparse.
     # Dedup via Redis: same query within 5 min won't re-trigger.
@@ -359,12 +361,16 @@ async def poll_search_updates(
     Re-runs the search and returns items not already in `known_ids`.
     Also reports whether backfill is still in progress via `backfill_pending`.
     """
+    exclude_adult = should_exclude_adult(current_user)
+    query_embedding = await _embed_query(q)
     service = MediaService(db)
-    items, total = await service.search_media(
+    items, total, has_more = await service.search_media(
         query_str=q,
         media_type=media_type,
         page=1,
         page_size=page_size,
+        query_embedding=query_embedding,
+        exclude_adult=exclude_adult,
     )
 
     known = set(known_ids.split(",")) if known_ids else set()

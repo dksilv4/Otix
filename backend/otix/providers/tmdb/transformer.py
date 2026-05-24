@@ -43,6 +43,7 @@ def to_media_item(raw: dict[str, JSONValue], media_type: str) -> MediaItem:
         release_date=_parse_date(raw.get("release_date") or raw.get("first_air_date")),
         popularity=raw.get("popularity", 0.0),
         original_language=raw.get("original_language"),
+        is_adult=raw.get("adult", False),
     )
 
 

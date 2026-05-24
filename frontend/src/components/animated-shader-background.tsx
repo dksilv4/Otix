@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import * as THREE from 'three'
+import { Scene, OrthographicCamera, WebGLRenderer, ShaderMaterial, Vector2, PlaneGeometry, Mesh } from 'three'
 import { useShaderQuality } from '@/lib/shader-quality'
 
 type ShaderMode = 'idle' | 'active'
@@ -155,12 +155,12 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
     const speed = base.speed
     const shake = base.shake
 
-    const scene = new THREE.Scene()
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    const scene = new Scene()
+    const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1)
 
-    let renderer: THREE.WebGLRenderer
+    let renderer: WebGLRenderer
     try {
-      renderer = new THREE.WebGLRenderer({
+      renderer = new WebGLRenderer({
         antialias: quality.antialias,
         alpha: true,
         powerPreference: quality.powerPreference,
@@ -197,10 +197,10 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
     const shakeStr = shake.toFixed(4)
     const intensityStr = intensity.toFixed(2)
 
-    const material = new THREE.ShaderMaterial({
+    const material = new ShaderMaterial({
       uniforms: {
         iTime: { value: 0 },
-        iResolution: { value: new THREE.Vector2(renderW, renderH) },
+        iResolution: { value: new Vector2(renderW, renderH) },
       },
       vertexShader: `
         void main() {
@@ -265,8 +265,8 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
       `,
     })
 
-    const geometry = new THREE.PlaneGeometry(2, 2)
-    const mesh = new THREE.Mesh(geometry, material)
+    const geometry = new PlaneGeometry(2, 2)
+    const mesh = new Mesh(geometry, material)
     scene.add(mesh)
 
     const resizeRenderer = () => {

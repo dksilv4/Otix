@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, func
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
@@ -91,6 +91,8 @@ class User(Base, TimestampMixin):
     preferred_genres: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     preferred_languages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     discover_emphases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
+    show_adult_content: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
 
     @property
     def hof_ids(self) -> dict[str, list[str]]:

@@ -237,8 +237,21 @@ function PreferencesSection() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>(user?.preferredMediaTypes ?? ['movie', 'show', 'game', 'music'])
   const [selectedGenres, setSelectedGenres] = useState<string[]>(user?.preferredGenres ?? [])
   const [selectedLangs, setSelectedLangs] = useState<string[]>(user?.preferredLanguages ?? [])
+  const [showAdultContent, setShowAdultContent] = useState(user?.showAdultContent ?? false)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  const userAge = (() => {
+    if (!user?.dateOfBirth) return null
+    const dob = new Date(user.dateOfBirth)
+    if (isNaN(dob.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - dob.getFullYear()
+    const m = today.getMonth() - dob.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+    return age
+  })()
+  const isAdult = userAge !== null && userAge >= 18
 
   const { data: allGenres = [], isLoading: genresLoading } = useQuery({
     queryKey: ['genres', 'settings'],
@@ -393,6 +406,29 @@ function PreferencesSection() {
           )}
         </div>
       </div>
+
+      {isAdult && (
+        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Show 18+ Content</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Include adult-rated media in search results and recommendations.
+              </p>
+            </div>
+            <DkSwitch
+              checked={showAdultContent}
+              onCheckedChange={async (checked: boolean) => {
+                setShowAdultContent(checked)
+                try {
+                  await apiClient.patch('/auth/me', { show_adult_content: checked })
+                  await refreshUser()
+                } catch { setShowAdultContent(!checked) }
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

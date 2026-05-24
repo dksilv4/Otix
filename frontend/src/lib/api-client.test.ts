@@ -1,3 +1,4 @@
+import axios from 'axios'
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -16,6 +17,7 @@ describe('apiClient', () => {
   afterEach(() => {
     vi.resetModules()
     localStorage.clear()
+    axios.defaults.adapter = undefined
   })
 
   it('adds bearer tokens and converts request and response keys', async () => {
@@ -29,6 +31,7 @@ describe('apiClient', () => {
       })
     }
     apiClient.defaults.adapter = adapter
+    axios.defaults.adapter = adapter
     localStorage.setItem('otix-access-token', 'access-123')
 
     const response = await apiClient.post(
@@ -54,10 +57,12 @@ describe('apiClient', () => {
     const form = new FormData()
     form.append('avatar', new Blob(['x']), 'avatar.txt')
     let seenConfig: InternalAxiosRequestConfig | undefined
-    apiClient.defaults.adapter = async (config) => {
+    const testAdapter = async (config: any) => {
       seenConfig = config
       return jsonResponse(config, { ok: true })
     }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
 
     await apiClient.post('/upload', form)
 
@@ -67,16 +72,119 @@ describe('apiClient', () => {
 
   it('does not camelize non-json response payloads', async () => {
     const { apiClient } = await import('./api-client')
-    apiClient.defaults.adapter = async (config) => ({
+    const testAdapter = async (config: any) => ({
       data: { still_snake: true },
       status: 200,
       statusText: 'OK',
       headers: { 'content-type': 'text/plain' },
       config,
     })
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
 
     const response = await apiClient.get('/plain')
 
     expect(response.data).toEqual({ still_snake: true })
   })
+
+  it('normalizes FastAPI 422 validation errors in error response', async () => {
+    const { apiClient } = await import('./api-client')
+    const testAdapter = async (config: any) => {
+      const err = new Error('Request failed with status code 422') as any
+      err.response = {
+        data: {
+          detail: [
+            { loc: ['body', 'password'], msg: 'field required' },
+            { loc: ['body', 'username'], msg: 'too short' }
+          ]
+        },
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        headers: { 'content-type': 'application/json' },
+        config,
+      }
+      err.config = config
+      throw err
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    await expect(apiClient.post('/validation')).rejects.toThrowError()
+    try {
+      await apiClient.post('/validation')
+    } catch (e: any) {
+      expect(e.response.data.detail).toBe('password: field required; username: too short')
+    }
+  })
+
+  it('triggers token refresh flow on 401 error', async () => {
+    const { apiClient } = await import('./api-client')
+    let requestCount = 0
+    const testAdapter = async (config: any) => {
+      requestCount++
+      if (config.url?.includes('/auth/refresh')) {
+        return jsonResponse(config, { access_token: 'new-token-999' })
+      }
+      if (requestCount === 1) {
+        const err = new Error('Unauthorized') as any
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Unauthorized',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      return jsonResponse(config, { success: true })
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    const res = await apiClient.get('/some-secure-data')
+    expect(res.data).toEqual({ success: true })
+    expect(localStorage.getItem('otix-access-token')).toBe('new-token-999')
+  })
+
+  it('handles token refresh failure', async () => {
+    const { apiClient } = await import('./api-client')
+    let sessionExpiredDispatched = false
+    window.addEventListener('auth:sessionExpired', () => {
+      sessionExpiredDispatched = true
+    })
+
+    let requestCount = 0
+    const testAdapter = async (config: any) => {
+      requestCount++
+      if (config.url?.includes('/auth/refresh')) {
+        const err = new Error('Refresh failed') as any
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Refresh token expired',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      if (requestCount === 1) {
+        const err = new Error('Unauthorized') as any
+        err.response = {
+          status: 401,
+          headers: {},
+          data: 'Unauthorized',
+          config,
+        }
+        err.config = config
+        throw err
+      }
+      return jsonResponse(config, { success: true })
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    await expect(apiClient.get('/secure-page')).rejects.toThrow()
+    expect(sessionExpiredDispatched).toBe(true)
+  })
 })
+

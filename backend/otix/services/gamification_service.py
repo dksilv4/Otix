@@ -85,6 +85,93 @@ class GamificationService:
         await self.session.flush()
         return {"streak": streak.current_review_streak}
 
+    async def update_workout_streak(self, user_id: str) -> dict:
+        """Called when a workout is logged. Tracks consecutive days with a workout."""
+        today = date.today()
+        streak = await self.session.scalar(
+            select(UserStreak).where(UserStreak.user_id == user_id)
+        )
+        if not streak:
+            streak = UserStreak(user_id=user_id)
+            self.session.add(streak)
+
+        if streak.last_workout_date == today:
+            return {"streak": streak.current_workout_streak}
+
+        if streak.last_workout_date and (today - streak.last_workout_date).days == 1:
+            streak.current_workout_streak += 1
+        else:
+            streak.current_workout_streak = 1
+
+        streak.last_workout_date = today
+        streak.longest_workout_streak = max(streak.longest_workout_streak, streak.current_workout_streak)
+
+        bonus_xp = 0
+        if streak.current_workout_streak == 7:
+            bonus_xp = 50
+        elif streak.current_workout_streak == 30:
+            bonus_xp = 200
+
+        if bonus_xp > 0:
+            app.send_task("xp.award", args=[user_id, bonus_xp])
+
+        await self.session.flush()
+        return {
+            "streak": streak.current_workout_streak,
+            "milestone_hit": bonus_xp > 0,
+            "bonus_xp": bonus_xp,
+        }
+
+    async def recalculate_workout_streak(self, user_id: str) -> dict:
+        """Recalculate workout streak after an undo/delete. Walks backwards from today."""
+        from otix.domain.workout import Workout
+        from datetime import timedelta
+
+        today = date.today()
+        streak = await self.session.scalar(
+            select(UserStreak).where(UserStreak.user_id == user_id)
+        )
+        if not streak:
+            streak = UserStreak(user_id=user_id)
+            self.session.add(streak)
+
+        # Get all workout dates for this user, ordered descending
+        result = await self.session.execute(
+            select(Workout.started_at)
+            .where(Workout.user_id == user_id)
+            .order_by(Workout.started_at.desc())
+        )
+        workout_dates = [row[0].date() for row in result.all()]
+
+        if not workout_dates:
+            streak.current_workout_streak = 0
+            streak.last_workout_date = None
+            await self.session.flush()
+            return {"streak": 0}
+
+        # Calculate streak backwards from today
+        current_streak = 0
+        check_date = today
+        for wd in sorted(set(workout_dates), reverse=True):
+            if wd == check_date:
+                current_streak += 1
+                check_date = check_date - timedelta(days=1)
+            elif wd < check_date:
+                break
+
+        # Also check if the most recent workout was today (for the check_date start)
+        if current_streak == 0:
+            most_recent = max(workout_dates)
+            if most_recent == today:
+                current_streak = 1
+
+        streak.current_workout_streak = current_streak
+        streak.last_workout_date = today if current_streak > 0 else streak.last_workout_date
+        streak.longest_workout_streak = max(streak.longest_workout_streak, current_streak)
+
+        await self.session.flush()
+        return {"streak": current_streak}
+
     async def get_streaks(self, user_id: str) -> dict:
         streak = await self.session.scalar(
             select(UserStreak).where(UserStreak.user_id == user_id)
@@ -101,6 +188,8 @@ class GamificationService:
             "longest_login_streak": streak.longest_login_streak,
             "current_review_streak": streak.current_review_streak,
             "longest_review_streak": streak.longest_review_streak,
+            "current_workout_streak": streak.current_workout_streak,
+            "longest_workout_streak": streak.longest_workout_streak,
         }
 
     # ── Badges ──

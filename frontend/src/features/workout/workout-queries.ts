@@ -140,6 +140,90 @@ export function useExercises() {
   )
 }
 
+export interface WorkoutTodayResponse {
+  checkedIn: boolean
+  workout: WorkoutListOut | null
+  currentStreak: number
+  longestStreak: number
+}
+
+export function useTodayWorkout() {
+  return useQuery(
+    queryOptions({
+      queryKey: workoutKeys.today(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<WorkoutTodayResponse>('/workout/today')
+        return data
+      },
+      staleTime: 1000 * 60 * 2,
+    }),
+  )
+}
+
+export function useCheckIn() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.post<WorkoutTodayResponse>('/workout/today')
+      return data
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(workoutKeys.today(), data)
+      qc.invalidateQueries({ queryKey: workoutKeys.list() })
+      qc.invalidateQueries({ queryKey: ['workouts', 'heatmap'] })
+    },
+  })
+}
+
+export function useUndoCheckIn() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.delete('/workout/today')
+    },
+    onSuccess: () => {
+      qc.setQueryData(workoutKeys.today(), {
+        checkedIn: false,
+        workout: null,
+        currentStreak: 0,
+        longestStreak: 0,
+      })
+      qc.invalidateQueries({ queryKey: workoutKeys.today() })
+      qc.invalidateQueries({ queryKey: workoutKeys.list() })
+      qc.invalidateQueries({ queryKey: ['workouts', 'heatmap'] })
+    },
+  })
+}
+
+export interface HeatmapDateEntry {
+  date: string
+  count: number
+  volumeKg: number | null
+}
+
+export interface WorkoutHeatmapResponse {
+  weeks: number
+  dates: HeatmapDateEntry[]
+}
+
+export function useHeatmap(weeks = 12) {
+  return useQuery(
+    queryOptions({
+      queryKey: workoutKeys.heatmap(weeks),
+      queryFn: async () => {
+        const { data } = await apiClient.get<WorkoutHeatmapResponse>('/workout/heatmap', {
+          params: { weeks },
+        })
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      refetchOnMount: true,
+    }),
+  )
+}
+
 export function useCategories() {
   return useQuery(
     queryOptions({

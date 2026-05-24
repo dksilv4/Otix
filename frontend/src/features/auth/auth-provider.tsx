@@ -70,8 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorChallenge(null)
   }, [])
 
-  const register = useCallback(async (email: string, username: string, password: string) => {
-    const res = await apiClient.post('/auth/register', { email, username, password })
+  const register = useCallback(async (email: string, username: string, password: string, dateOfBirth: string) => {
+    const res = await apiClient.post('/auth/register', { email, username, password, date_of_birth: dateOfBirth })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
     const me = await apiClient.get('/auth/me')
     setUser(me.data)

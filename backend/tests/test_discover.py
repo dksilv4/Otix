@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -25,6 +23,16 @@ def _mock_db():
     session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
     session.get = AsyncMock(return_value=None)
     return session
+
+
+@pytest.fixture(autouse=True)
+def mock_redis():
+    with patch("otix.api.discover.get_redis") as mock_get:
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=None)
+        mock_client.set = AsyncMock()
+        mock_get.return_value = mock_client
+        yield mock_client
 
 
 @pytest.fixture

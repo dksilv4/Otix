@@ -124,6 +124,7 @@ function MediaTabContent({ tab }: { tab: LibraryTab }) {
             textlessPosterUrl={item.textlessPosterUrl}
             logoUrl={item.logoUrl}
             releaseDate={item.releaseDate}
+            isAdult={item.isAdult}
           />
         ))}
       </MediaGrid>
@@ -243,6 +244,7 @@ function WishlistTabContent() {
               textlessPosterUrl={item.textlessPosterUrl}
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
+              isAdult={item.isAdult}
             />
             {item.steamPriority > 0 && (
               <div className="mt-1.5">

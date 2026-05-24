@@ -56,7 +56,7 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
         <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
         <div className="rounded-3xl border border-white/[0.06] bg-[var(--dk-surface-base)] p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <a href="/auth" className="font-medium text-primary hover:underline">
+            <a href="/auth/login" className="font-medium text-primary hover:underline">
               Sign in
             </a>
             {" "}to rate and review this title.

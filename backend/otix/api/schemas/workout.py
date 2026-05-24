@@ -84,3 +84,21 @@ class WorkoutListOut(BaseModel):
 class CategoryOut(BaseModel):
     category: str
     count: int
+
+
+class WorkoutTodayResponse(BaseModel):
+    checked_in: bool
+    workout: WorkoutListOut | None = None
+    current_streak: int = 0
+    longest_streak: int = 0
+
+
+class HeatmapDateEntry(BaseModel):
+    date: str
+    count: int = 0
+    volume_kg: float | None = None
+
+
+class WorkoutHeatmapResponse(BaseModel):
+    weeks: int
+    dates: list[HeatmapDateEntry]

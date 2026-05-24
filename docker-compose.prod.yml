@@ -56,6 +56,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-otix}
       POSTGRES_USER: ${POSTGRES_USER:-otix}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: postgres -c jit=off
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

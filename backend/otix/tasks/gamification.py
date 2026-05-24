@@ -24,6 +24,14 @@ async def _update_review_streak(user_id: str) -> dict:
         return result
 
 
+async def _update_workout_streak(user_id: str) -> dict:
+    async with async_session() as session:
+        service = GamificationService(session)
+        result = await service.update_workout_streak(user_id)
+        await session.commit()
+        return result
+
+
 async def _check_badges(user_id: str) -> list[str]:
     async with async_session() as session:
         service = GamificationService(session)
@@ -40,6 +48,11 @@ def streak_update_task(self, user_id: str) -> dict:
 @app.task(name="streak.update_review", bind=True, max_retries=3, default_retry_delay=5, autoretry_for=(Exception,))
 def streak_update_review_task(self, user_id: str) -> dict:
     return run_async(_update_review_streak(user_id))
+
+
+@app.task(name="streak.update_workout", bind=True, max_retries=3, default_retry_delay=5, autoretry_for=(Exception,))
+def streak_update_workout_task(self, user_id: str) -> dict:
+    return run_async(_update_workout_streak(user_id))
 
 
 @app.task(name="gamification.check_badges", bind=True, max_retries=3, default_retry_delay=5, autoretry_for=(Exception,))

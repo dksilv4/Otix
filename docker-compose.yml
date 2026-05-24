@@ -9,11 +9,36 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_buffers=2GB
+      -c effective_cache_size=5GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=256MB
+      -c wal_buffers=64MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c idle_in_transaction_session_timeout=30000
+      -c idle_session_timeout=600000
+      -c max_wal_size=4GB
+      -c min_wal_size=1GB
+      -c checkpoint_completion_target=0.9
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c jit=off
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
       interval: 2s
       retries: 10
       start_period: 3s
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+          memory: 4G
+        reservations:
+          cpus: "1"
+          memory: 1G
 
   redis:
     image: redis:7-alpine
@@ -23,6 +48,14 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
 
   api:
     build:
@@ -64,6 +97,14 @@ services:
       redis:
         condition: service_healthy
     command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
 
   worker-provider:
     build:

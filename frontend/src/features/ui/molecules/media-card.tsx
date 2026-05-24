@@ -1,6 +1,9 @@
+import { memo, useMemo, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
+import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
 
 interface MediaCardProps {
@@ -14,6 +17,7 @@ interface MediaCardProps {
   avgRating?: number | null
   ratingCount?: number
   showTypeBadge?: boolean
+  isAdult?: boolean
   zoomed?: boolean
   className?: string
 }
@@ -32,7 +36,7 @@ const mediaTypeLabel: Record<string, string> = {
   music: 'Music',
 }
 
-export function MediaCard({
+export const MediaCard = memo(function MediaCard({
   id,
   mediaType,
   title,
@@ -43,15 +47,22 @@ export function MediaCard({
   avgRating,
   ratingCount: _ratingCount,
   showTypeBadge = true,
+  isAdult,
   zoomed = true,
   className,
 }: MediaCardProps) {
   const year = releaseDate?.slice(0, 4)
+  const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
+  const queryClient = useQueryClient()
+  const handlePrefetch = useCallback(() => {
+    queryClient.prefetchQuery(mediaQueries.detail(id))
+  }, [queryClient, id])
 
   return (
     <Link
       to="/media/$mediaType/$mediaId"
-      params={{ mediaType, mediaId: id }}
+      params={params}
+      onMouseEnter={handlePrefetch}
       className={cn(
         'group block relative rounded-lg overflow-hidden',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
@@ -86,9 +97,21 @@ export function MediaCard({
         </div>
       )}
 
+      {/* 18+ badge — top right, always visible */}
+      {isAdult && (
+        <div className="absolute top-2 right-2">
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-white bg-red-600">
+            18+
+          </span>
+        </div>
+      )}
+
       {/* Otix rating — top right */}
       {avgRating != null && avgRating > 0 && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out">
+        <div className={cn(
+          'absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out',
+          isAdult ? 'top-8' : 'top-2',
+        )}>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white bg-primary/80 backdrop-blur-sm">
             <Star className="h-3 w-3 fill-current" />
             {avgRating.toFixed(1)}
@@ -120,4 +143,4 @@ export function MediaCard({
       </div>
     </Link>
   )
-}
+})

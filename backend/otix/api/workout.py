@@ -9,8 +9,10 @@ from otix.api.schemas.workout import (
     CategoryOut,
     ExerciseOut,
     WorkoutCreate,
+    WorkoutHeatmapResponse,
     WorkoutListOut,
     WorkoutOut,
+    WorkoutTodayResponse,
     WorkoutUpdate,
 )
 from otix.domain.user import User
@@ -89,6 +91,108 @@ async def list_workouts(
         "next_cursor": next_cursor,
         "has_more": has_more,
     }
+
+
+# ── Today check-in endpoints (before /{workout_id} to avoid path shadowing) ──
+
+
+@workout_router.get("/today", response_model=WorkoutTodayResponse)
+async def get_today_workout(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    service = WorkoutService(db)
+    status = await service.get_today_status(current_user.id)
+
+    workout_out = None
+    if status["workout"]:
+        w = status["workout"]
+        total_sets = sum(len(we.sets) for we in w.workout_exercises)
+        workout_out = WorkoutListOut(
+            id=w.id,
+            user_id=w.user_id,
+            raw_input=w.raw_input,
+            notes=w.notes,
+            started_at=w.started_at,
+            completed_at=w.completed_at,
+            created_at=w.created_at,
+            updated_at=w.updated_at,
+            exercise_count=len(w.workout_exercises),
+            total_sets=total_sets,
+            exercises=[
+                {"exercise_name": we.exercise.name, "sets": we.sets}
+                for we in w.workout_exercises
+            ],
+        )
+
+    return {
+        "checked_in": status["checked_in"],
+        "workout": workout_out,
+        "current_streak": status["current_streak"],
+        "longest_streak": status["longest_streak"],
+    }
+
+
+@workout_router.post("/today", response_model=WorkoutTodayResponse, status_code=status.HTTP_201_CREATED)
+async def check_in_today(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    service = WorkoutService(db)
+    workout = await service.check_in_today(current_user.id)
+
+    status_result = await service.get_today_status(current_user.id)
+
+    w = workout
+    total_sets = sum(len(we.sets) for we in w.workout_exercises)
+    workout_out = WorkoutListOut(
+        id=w.id,
+        user_id=w.user_id,
+        raw_input=w.raw_input,
+        notes=w.notes,
+        started_at=w.started_at,
+        completed_at=w.completed_at,
+        created_at=w.created_at,
+        updated_at=w.updated_at,
+        exercise_count=len(w.workout_exercises),
+        total_sets=total_sets,
+        exercises=[
+            {"exercise_name": we.exercise.name, "sets": we.sets}
+            for we in w.workout_exercises
+        ],
+    )
+
+    return {
+        "checked_in": True,
+        "workout": workout_out,
+        "current_streak": status_result["current_streak"],
+        "longest_streak": status_result["longest_streak"],
+    }
+
+
+@workout_router.delete("/today", status_code=status.HTTP_204_NO_CONTENT)
+async def undo_check_in(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    service = WorkoutService(db)
+    await service.undo_check_in(current_user.id)
+
+
+# ── Heatmap endpoint (before /{workout_id} to avoid path shadowing) ──
+
+
+@workout_router.get("/heatmap", response_model=WorkoutHeatmapResponse)
+async def get_heatmap(
+    weeks: int = Query(12, ge=4, le=52),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    service = WorkoutService(db)
+    return await service.get_heatmap(current_user.id, weeks=weeks)
+
+
+# ── Parameterized workout_id routes (after all explicit paths) ──
 
 
 @workout_router.get("/{workout_id}", response_model=WorkoutOut)
