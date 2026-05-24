@@ -69,10 +69,12 @@ async def get_admin_stats(
     enrichment: dict[str, EnrichmentCounts] = {}
 
     _ENRICH_SQL = {
-        "fanart": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = 'fanart' AND mi.media_type = :mt",
+        "fanart": "SELECT COUNT(DISTINCT ma.media_item_id) FROM media_assets ma JOIN media_items mi ON mi.id = ma.media_item_id WHERE ma.provider = 'fanart' AND mi.media_type = :mt",
         "omdb": "SELECT COUNT(DISTINCT er.media_item_id) FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id WHERE er.provider = 'imdb' AND mi.media_type = :mt",
         "embedding": "SELECT COUNT(*) FROM media_items WHERE media_type = :mt AND embedding IS NOT NULL",
-        "generic": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = :provider AND mi.media_type = :mt",
+        "external_ids": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = :provider AND mi.media_type = :mt",
+        "media_assets": "SELECT COUNT(DISTINCT ma.media_item_id) FROM media_assets ma JOIN media_items mi ON mi.id = ma.media_item_id WHERE ma.provider = :provider AND mi.media_type = :mt",
+        "external_ratings": "SELECT COUNT(DISTINCT er.media_item_id) FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id WHERE er.provider = :provider AND mi.media_type = :mt",
     }
 
     try:
@@ -103,16 +105,26 @@ async def get_admin_stats(
             except Exception:
                 pass
         elif mt == "game":
-            for provider in ("igdb", "steam", "steamgrid"):
+            _game_providers = [
+                ("igdb", "external_ids"),
+                ("steam", "media_assets"),
+                ("steamgrid", "media_assets"),
+            ]
+            for provider, sql_key in _game_providers:
                 try:
-                    val = await db.scalar(text(_ENRICH_SQL["generic"]), {**params, "provider": provider}) or 0
+                    val = await db.scalar(text(_ENRICH_SQL[sql_key]), {**params, "provider": provider}) or 0
                     setattr(ec, provider, val)
                 except Exception:
                     pass
         elif mt == "music":
-            for provider in ("musicbrainz", "lastfm", "spotify"):
+            _music_providers = [
+                ("musicbrainz", "external_ids"),
+                ("lastfm", "external_ratings"),
+                ("spotify", "external_ids"),
+            ]
+            for provider, sql_key in _music_providers:
                 try:
-                    val = await db.scalar(text(_ENRICH_SQL["generic"]), {**params, "provider": provider}) or 0
+                    val = await db.scalar(text(_ENRICH_SQL[sql_key]), {**params, "provider": provider}) or 0
                     setattr(ec, provider, val)
                 except Exception:
                     pass
