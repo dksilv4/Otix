@@ -1062,3 +1062,39 @@ async def _progress_summary() -> dict:
         "user_queue": user_depth,
         "control_queue": control_depth,
     }
+
+
+@app.task(name="maintenance.backfill_embeddings")
+def backfill_embeddings() -> dict:
+    """Enqueue embedding generation for items that lack one.
+
+    Runs periodically as a safety net until all items have embeddings.
+    """
+    return run_async(_backfill_embeddings())
+
+
+async def _backfill_embeddings() -> dict:
+    from sqlalchemy import text as _text
+
+    async with async_session() as session:
+        col_exists = await session.scalar(
+            _text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
+        )
+        if not col_exists:
+            logger.info("backfill_embeddings: embedding column not yet available, skipping")
+            return {"enqueued": 0, "reason": "column_missing"}
+
+        result = await session.execute(
+            _text("SELECT id FROM media_items WHERE embedding IS NULL LIMIT 500")
+        )
+        rows = result.all()
+
+        enqueued = 0
+        for (item_id,) in rows:
+            app.send_task("embedding.generate", args=[item_id])
+            enqueued += 1
+
+        if enqueued:
+            logger.info("backfill_embeddings: enqueued embedding tasks", count=enqueued)
+
+    return {"enqueued": enqueued}

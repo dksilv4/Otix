@@ -125,6 +125,11 @@ app.config_from_object(
                 "task": "maintenance.enrich_fanart",
                 "schedule": crontab(minute="7,22,37,52"),
             },
+            # Embedding backfill (every 3 min until all items have embeddings)
+            "backfill-embeddings": {
+                "task": "maintenance.backfill_embeddings",
+                "schedule": crontab(minute="*/3"),
+            },
             # OMDb enrichment scan (every 30 min at off-peak minutes)
             "enrich-omdb": {
                 "task": "maintenance.enrich_omdb",
