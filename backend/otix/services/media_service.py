@@ -194,28 +194,33 @@ class MediaService:
         item = await self.session.scalar(
             select(MediaItem)
             .options(
-                joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
-                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
-                joinedload(MediaItem.game),
-                joinedload(MediaItem.album).selectinload(Album.tracks),
                 selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
                 selectinload(MediaItem.external_ratings),
                 selectinload(MediaItem.credits).joinedload(MediaCredit.person),
                 selectinload(MediaItem.involved_companies).joinedload(InvolvedCompany.company),
                 selectinload(MediaItem.platforms).joinedload(MediaPlatform.platform),
                 selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
+                # Type-specific: use selectinload for collections to avoid cartesian blowup
+                joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
+                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
+                joinedload(MediaItem.game),
+                joinedload(MediaItem.album).selectinload(Album.tracks),
             )
             .where(MediaItem.id == media_id)
         )
 
-        if item is not None and item.movie is not None and item.movie.revenue:
+        if item is None:
+            return None
+
+        # Movie ranking queries — count(*) with index scan, ~1ms each
+        if item.movie is not None and item.movie.revenue:
             rank = await self.session.scalar(
                 select(func.count()).select_from(Movie).where(Movie.revenue > item.movie.revenue)
             )
             if rank is not None:
                 item.movie.revenue_rank = rank + 1
 
-        if item is not None and item.movie is not None and item.movie.budget and item.movie.revenue:
+        if item.movie is not None and item.movie.budget and item.movie.revenue:
             movie = item.movie
             profit_pct = round(((movie.revenue - movie.budget) / movie.budget) * 100, 1)
             movie.profit_pct = profit_pct
@@ -225,9 +230,7 @@ class MediaService:
 
             higher = await self.session.scalar(
                 select(func.count()).select_from(Movie).where(
-                    Movie.budget > 0,
-                    Movie.revenue.isnot(None),
-                    profit_expr > profit_abs,
+                    Movie.budget > 0, Movie.revenue.isnot(None), profit_expr > profit_abs
                 )
             )
             if higher is not None:
@@ -235,9 +238,7 @@ class MediaService:
 
             lower = await self.session.scalar(
                 select(func.count()).select_from(Movie).where(
-                    Movie.budget > 0,
-                    Movie.revenue.isnot(None),
-                    profit_expr < profit_abs,
+                    Movie.budget > 0, Movie.revenue.isnot(None), profit_expr < profit_abs
                 )
             )
             if lower is not None:

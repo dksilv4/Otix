@@ -19,14 +19,16 @@ STEAM_API_BASE = "https://api.steampowered.com"
 async def _fetch_owned_games(steam_id: str) -> list[dict]:
     """Fetch owned games from Steam Web API directly (no rate limiter needed for one-off scans)."""
     url = f"{STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/"
+    from otix.infrastructure.http_client import get_http_client
+
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(url, params={
-                "key": settings.steam_api_key,
-                "steamid": steam_id,
-                "include_appinfo": 1,
-                "include_played_free_games": 1,
-            })
+        client = get_http_client()
+        resp = await client.get(url, params={
+            "key": settings.steam_api_key,
+            "steamid": steam_id,
+            "include_appinfo": 1,
+            "include_played_free_games": 1,
+        })
     except Exception as exc:
         logger.exception("steam owned games request failed")
         raise RuntimeError(f"Failed to connect to Steam API: {exc}") from exc
@@ -258,8 +260,9 @@ async def _fetch_wishlist(steam_id: str) -> list[dict]:
     """
     url = f"https://store.steampowered.com/wishlist/profiles/{steam_id}/wishlistdata/?p=0"
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=False) as client:
-            resp = await client.get(url)
+        from otix.infrastructure.http_client import get_http_client
+        client = get_http_client()
+        resp = await client.get(url, follow_redirects=False)
     except Exception as exc:
         logger.exception("steam wishlist request failed")
         raise RuntimeError(f"Failed to connect to Steam Store: {exc}") from exc

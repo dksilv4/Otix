@@ -28,13 +28,13 @@ class SteamProvider(BaseProvider):
     """Async Steam API client with rate limiting."""
 
     def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
-        client = http_client or httpx.AsyncClient(
-            timeout=settings.steam_request_timeout_seconds,
-        )
+        if http_client is None:
+            from otix.infrastructure.http_client import get_http_client
+            http_client = get_http_client()
         super().__init__(
             name="steam",
             redis=redis,
-            http_client=client,
+            http_client=http_client,
             rate=settings.steam_global_rps_limit,
             burst=settings.steam_global_rps_limit * 2,
         )

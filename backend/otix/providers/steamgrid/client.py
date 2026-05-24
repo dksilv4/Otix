@@ -15,16 +15,26 @@ from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider
 
 
+_steamgrid_client: httpx.AsyncClient | None = None
+
+
+def _get_steamgrid_client() -> httpx.AsyncClient:
+    global _steamgrid_client
+    if _steamgrid_client is None or _steamgrid_client.is_closed:
+        _steamgrid_client = httpx.AsyncClient(
+            base_url="https://www.steamgriddb.com/api/v2",
+            timeout=settings.steamgrid_request_timeout_seconds,
+        )
+    return _steamgrid_client
+
+
 class SteamGridDBError(Exception):
     pass
 
 
 class SteamGridDBProvider(BaseProvider):
     def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
-        client = http_client or httpx.AsyncClient(
-            base_url="https://www.steamgriddb.com/api/v2",
-            timeout=settings.steamgrid_request_timeout_seconds,
-        )
+        client = http_client or _get_steamgrid_client()
         super().__init__(
             name="steamgrid",
             redis=redis,

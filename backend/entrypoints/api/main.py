@@ -14,6 +14,7 @@ from sqlalchemy import select
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import dispose_engine
 from otix.infrastructure.logging import setup_logging
+from otix.infrastructure.http_client import close_http_client
 from otix.infrastructure.redis import close_redis, get_redis
 from otix.api.router import api_router
 
@@ -44,6 +45,7 @@ async def lifespan(app: FastAPI) -> Any:
     yield
 
     await close_redis()
+    await close_http_client()
     await dispose_engine()
     logger.info("otix api stopped")
 

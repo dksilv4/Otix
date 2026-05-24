@@ -8,9 +8,25 @@ interface AdminRecentUser {
   createdAt: string
 }
 
+export interface EnrichmentCounts {
+  total: number
+  fanart: number
+  omdb: number
+  igdb: number
+  steam: number
+  steamgrid: number
+  musicbrainz: number
+  lastfm: number
+  spotify: number
+  embedding: number
+  imdb: number
+}
+
 export interface AdminStats {
   totalUsers: number
   mediaCounts: Record<string, number>
+  enrichment: Record<string, EnrichmentCounts>
+  deltas: Record<string, EnrichmentCounts>
   stubCounts: { total: number }
   peopleCount: number
   recentUsers: AdminRecentUser[]
