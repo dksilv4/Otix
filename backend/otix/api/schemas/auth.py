@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=150, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str = Field(min_length=8, max_length=128)
+    date_of_birth: date
 
 
 class LoginRequest(BaseModel):
@@ -67,6 +68,8 @@ class UserResponse(BaseModel):
     preferred_genres: list[str] = []
     preferred_languages: list[str] = []
     discover_emphases: list[str] = []
+    date_of_birth: date | None = None
+    show_adult_content: bool = False
 
 
 class UserUpdateRequest(BaseModel):
@@ -85,6 +88,7 @@ class UserUpdateRequest(BaseModel):
     preferred_genres: list[str] | None = None
     preferred_languages: list[str] | None = None
     discover_emphases: list[str] | None = None
+    show_adult_content: bool | None = None
 
 
 # ── Email verification ──────────────────────────────────────────

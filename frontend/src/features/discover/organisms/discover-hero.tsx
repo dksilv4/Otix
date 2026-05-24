@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +10,39 @@ import { cn } from '@/lib/utils'
 
 const AUTOPLAY_INTERVAL = 8000
 const ZOOM_DURATION = 14
+
+const SLIDE_FADE = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.6, ease: 'easeInOut' as const },
+} as const
+
+const KEN_BURNS = {
+  initial: { scale: 1.02 },
+  animate: { scale: 1.08 },
+  transition: { duration: ZOOM_DURATION, ease: 'linear' as const },
+} as const
+
+const CONTENT_FADE = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3 },
+} as const
+
+const MEDIA_TYPE_COLOR: Record<string, string> = {
+  movie: 'bg-rose-600',
+  show: 'bg-violet-600',
+  game: 'bg-emerald-600',
+  music: 'bg-amber-600',
+}
+
+const MEDIA_TYPE_LABEL: Record<string, string> = {
+  movie: 'Movie',
+  show: 'TV',
+  game: 'Game',
+  music: 'Music',
+}
 
 // Upscale TMDB images from w500 to w1280 for hero-sized rendering.
 // Fanart and IGDB (t_1080p) URLs are already high quality — pass through.
@@ -26,17 +59,23 @@ export function DiscoverHero({ className }: { className?: string }) {
     ...discoverQueries.hero(),
   })
 
-  const items = heroQuery.data?.pages.flatMap((page) => page.items) ?? []
+  const items = useMemo(
+    () => heroQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [heroQuery.data],
+  )
   const activeItem = items[activeIndex]
   const activeId = activeItem?.id
 
-  // Pre-fetch details for all hero items so autoplay transitions are instant
+  // Pre-fetch detail for current and next hero item so transitions are instant
   const queryClient = useQueryClient()
   useEffect(() => {
-    for (const item of items) {
-      queryClient.prefetchQuery(mediaQueries.detail(item.id))
+    if (items.length === 0) return
+    const nextIndex = (activeIndex + 1) % items.length
+    const toFetch = [items[activeIndex], items[nextIndex]]
+    for (const item of toFetch) {
+      if (item) queryClient.prefetchQuery(mediaQueries.detail(item.id))
     }
-  }, [items, queryClient])
+  }, [items, activeIndex, queryClient])
 
   // Fetch detail only for the active item (not all 6)
   const detailQuery = useQuery({
@@ -66,14 +105,17 @@ export function DiscoverHero({ className }: { className?: string }) {
   const bgImageRaw = detail?.backdropUrl || detail?.textlessPosterUrl || null
   const bgImage = bgImageRaw ? heroImage(bgImageRaw) : null
 
+  const handleMouseEnter = useCallback(() => setIsPaused(true), [])
+  const handleMouseLeave = useCallback(() => setIsPaused(false), [])
+
   if (hasError) return null
   if (!isLoading && items.length === 0) return null
 
   return (
     <div
       className="relative w-full min-h-[55vh]"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* ── Inner container ── */}
       <div className={cn('relative w-full min-h-[55vh] rounded-[2rem] overflow-hidden', className)}>
@@ -97,19 +139,14 @@ export function DiscoverHero({ className }: { className?: string }) {
         <AnimatePresence>
           <motion.div
             key={activeId}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            {...SLIDE_FADE}
             className="absolute inset-0"
           >
             {/* Backdrop with Ken Burns zoom */}
             {bgImage && (
               <motion.div
                 key={`bg-${activeId}`}
-                initial={{ scale: 1.02 }}
-                animate={{ scale: 1.08 }}
-                transition={{ duration: ZOOM_DURATION, ease: 'linear' }}
+                {...KEN_BURNS}
                 className="absolute inset-0"
                 style={{
                   backgroundImage: `url(${bgImage})`,
@@ -127,9 +164,7 @@ export function DiscoverHero({ className }: { className?: string }) {
 
             {/* Content */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              {...CONTENT_FADE}
               className="relative z-10 flex flex-col items-center justify-end h-full p-10 pb-16"
             >
               {/* Logo or text title */}
@@ -151,13 +186,10 @@ export function DiscoverHero({ className }: { className?: string }) {
                 <Badge
                   className={cn(
                     'text-white border-none text-[11px]',
-                    detail.mediaType === 'movie' && 'bg-rose-600',
-                    detail.mediaType === 'show' && 'bg-violet-600',
-                    detail.mediaType === 'game' && 'bg-emerald-600',
-                    detail.mediaType === 'music' && 'bg-amber-600',
+                    MEDIA_TYPE_COLOR[detail.mediaType],
                   )}
                 >
-                  {detail.mediaType === 'movie' ? 'Movie' : detail.mediaType === 'show' ? 'TV' : detail.mediaType === 'game' ? 'Game' : 'Music'}
+                  {MEDIA_TYPE_LABEL[detail.mediaType] ?? 'Media'}
                 </Badge>
 
                 {/* Rating */}
@@ -234,7 +266,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                   key={activeId}
                   initial={{ width: '0%' }}
                   animate={{ width: '100%' }}
-                  transition={{ duration: AUTOPLAY_INTERVAL / 1000, ease: 'linear' }}
+                  transition={{ duration: 8, ease: 'linear' }}
                   className="absolute inset-0 bg-white rounded-full"
                 />
               )}

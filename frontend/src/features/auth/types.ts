@@ -31,6 +31,8 @@ export interface User {
   preferredGenres?: string[]
   preferredLanguages?: string[]
   discoverEmphases?: string[]
+  dateOfBirth?: string | null
+  showAdultContent?: boolean
 }
 
 export interface TokenResponse {
@@ -55,7 +57,7 @@ export interface AuthState {
   login: (identity: string, password: string) => Promise<void>
   verifyTwoFactor: (code: string) => Promise<void>
   cancelTwoFactor: () => void
-  register: (email: string, username: string, password: string) => Promise<void>
+  register: (email: string, username: string, password: string, dateOfBirth: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }

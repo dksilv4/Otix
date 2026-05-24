@@ -255,7 +255,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     if ext_id is not None:
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id)
+                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id, is_adult=raw.get("adult", False))
                         session.add(ext_id)
                     session.add(movie)
             else:
@@ -283,6 +283,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     media_item.release_date = item.release_date
                     media_item.popularity = item.popularity
                     media_item.original_language = item.original_language
+                    media_item.is_adult = item.is_adult
 
                     existing_show = await session.get(Show, media_item.id)
                     if existing_show is not None:
@@ -320,7 +321,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     if ext_id is not None:
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id)
+                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id, is_adult=raw.get("adult", False))
                         session.add(ext_id)
                     _seasons = list(show.seasons)
                     session.add(show)

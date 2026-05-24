@@ -16,7 +16,7 @@ from otix.api.schemas.discover import PersonalizedSectionsResponse
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
-from otix.services.media_service import MediaService
+from otix.services.media_service import MediaService, should_exclude_adult
 from otix.services.personalization_service import PersonalizationService
 
 discover_router = APIRouter(prefix="/discover", tags=["discover"])
@@ -90,8 +90,9 @@ async def discover_hero(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
+    exclude_adult = should_exclude_adult(current_user)
     uid = current_user.id if current_user else "anon"
-    cache_key = f"discover:hero:{limit}:{uid}"
+    cache_key = f"discover:hero:{limit}:{uid}:adult{0 if exclude_adult else 1}"
     redis = await get_redis()
     cached = await redis.get(cache_key)
     if cached:
@@ -101,6 +102,7 @@ async def discover_hero(
     items, has_more, _ = await service.list_media(
         has_artwork=True,
         limit=limit,
+        exclude_adult=exclude_adult,
     )
     response = await _build_response(db, items, has_more, current_user)
     await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
@@ -152,8 +154,9 @@ async def discover_list(
     if language and len(language) > 2:
         language = language.split("-")[0]
 
+    exclude_adult = should_exclude_adult(current_user)
     uid = current_user.id if current_user else "anon"
-    raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}"
+    raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}:adult{0 if exclude_adult else 1}"
     cache_key = f"discover:list:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
     redis = await get_redis()
     cached = await redis.get(cache_key)
@@ -177,6 +180,7 @@ async def discover_list(
                 sort_dir="desc",
                 limit=limit,
                 media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
@@ -199,6 +203,7 @@ async def discover_list(
                 sort_dir="desc",
                 limit=limit,
                 media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
@@ -220,6 +225,7 @@ async def discover_list(
                 sort_dir="desc",
                 limit=limit,
                 media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
@@ -244,6 +250,7 @@ async def discover_list(
         limit=limit,
         date_from=date_from,
         date_to=date_to,
+        exclude_adult=exclude_adult,
     )
     response = await _build_response(db, items, has_more, current_user)
     await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)

@@ -41,6 +41,7 @@ export const discoverQueries = {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '' as string,
       staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 5,
     }),
 
   hero: () =>
@@ -55,6 +56,7 @@ export const discoverQueries = {
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '' as string,
       staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
     }),
 
   sections: () =>
@@ -65,5 +67,6 @@ export const discoverQueries = {
         return data.sections
       },
       staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 30,
     }),
 }

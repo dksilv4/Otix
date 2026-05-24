@@ -151,6 +151,7 @@ function PlexTabContent() {
               textlessPosterUrl={item.textlessPosterUrl}
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
+              isAdult={item.isAdult}
             />
             {item.plexViewCount != null && item.plexViewCount > 0 && (
               <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -224,6 +225,7 @@ function PlexDashboardSection() {
               textlessPosterUrl={item.textlessPosterUrl}
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
+              isAdult={item.isAdult}
             />
             {item.plexViewCount != null && item.plexViewCount > 0 && (
               <div className="mt-1.5">

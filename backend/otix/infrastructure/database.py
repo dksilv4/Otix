@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -33,6 +34,14 @@ def _get_engine() -> AsyncEngine:
             pool_pre_ping=True,
             connect_args={"timeout": settings.db_connect_timeout},
         )
+
+        # Set pg_trgm similarity threshold for the % operator used in search.
+        @event.listens_for(_engine.sync_engine, "connect")
+        def _set_pg_trgm_limit(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("SELECT set_limit(0.2)")
+            cursor.close()
+
         _pid = current_pid
         _session_factory = async_sessionmaker(
             _engine,

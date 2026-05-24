@@ -21,6 +21,7 @@ export interface MediaItemSummary {
   playedCount: number
   startedCount?: number
   listenedCount?: number
+  isAdult?: boolean
   userInteractions?: UserInteractionState | null
 }
 
@@ -46,6 +47,7 @@ export interface MediaItemDetail {
   playedCount: number
   startedCount?: number
   listenedCount?: number
+  isAdult?: boolean
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null

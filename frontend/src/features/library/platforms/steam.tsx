@@ -233,6 +233,7 @@ function SteamTabContent() {
               textlessPosterUrl={item.textlessPosterUrl}
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
+              isAdult={item.isAdult}
             />
             {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
               <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -351,6 +352,7 @@ function SteamDashboardSection() {
               textlessPosterUrl={item.textlessPosterUrl}
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
+              isAdult={item.isAdult}
             />
             {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
               <div className="mt-1.5">

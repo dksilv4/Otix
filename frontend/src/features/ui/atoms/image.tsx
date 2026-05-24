@@ -29,6 +29,8 @@ function Image({ className, src, alt, fallback, onError, ...props }: ImageProps)
       <img
         src={src}
         alt={alt}
+        loading="lazy"
+        decoding="async"
         className={cn(
           "h-full w-full object-cover transition-opacity",
           isLoading ? "opacity-0" : "opacity-100",

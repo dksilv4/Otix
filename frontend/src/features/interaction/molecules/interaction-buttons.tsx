@@ -211,7 +211,7 @@ function InteractionSection({
       <section className={cn(className)}>
         <div className="rounded-3xl border border-white/[0.06] bg-[var(--dk-surface-base)] p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <a href="/auth" className="font-medium text-primary hover:underline">
+            <a href="/auth/login" className="font-medium text-primary hover:underline">
               Sign in
             </a>{' '}
             to like, {listLabel}, and track this title.

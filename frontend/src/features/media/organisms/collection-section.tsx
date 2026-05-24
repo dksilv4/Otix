@@ -61,6 +61,7 @@ export function CollectionSection({ collection, currentMediaId, className }: Col
                   releaseDate={movie.releaseDate}
                   showTypeBadge={false}
                   zoomed={false}
+                  isAdult={movie.isAdult}
                 />
               </div>
             )

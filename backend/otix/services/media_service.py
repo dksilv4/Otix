@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import case, false, literal_column, or_, select, func, text, type_coerce
+from sqlalchemy import case, false, literal_column, or_, select, func, text, type_coerce, union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
+
+from otix.domain.user import User
 
 from otix.domain.company import InvolvedCompany
 from otix.domain.media import (
@@ -22,7 +24,22 @@ from otix.domain.genre import Genre, MediaGenre
 from otix.domain.people import MediaCredit, Person
 
 
+def should_exclude_adult(user: User | None) -> bool:
+    if user is None:
+        return True
+    if user.date_of_birth is None:
+        return True
+    today = date.today()
+    dob = user.date_of_birth
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    if age < 18:
+        return True
+    return not user.show_adult_content
+
+
 class MediaService:
+    _has_embedding_column: bool | None = None
+
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -42,6 +59,7 @@ class MediaService:
         media_ids: list[str] | None = None,
         language: str | None = None,
         is_anime: bool | None = None,
+        exclude_adult: bool = False,
     ) -> tuple[list[MediaItem], bool, int | None]:
         _sort_fields = {
             "popularity": MediaItem.popularity,
@@ -108,6 +126,9 @@ class MediaService:
                     )
                 )
 
+        if exclude_adult:
+            query = query.where(MediaItem.is_adult == False)
+
         if date_from is not None:
             query = query.where(MediaItem.release_date >= date_from)
         if date_to is not None:
@@ -149,6 +170,8 @@ class MediaService:
                             select(Show.media_item_id).where(show_cond)
                         )
                     )
+            if exclude_adult:
+                count_query = count_query.where(MediaItem.is_adult == False)
             if media_ids:
                 count_query = count_query.where(MediaItem.id.in_(media_ids))
             if date_from is not None:
@@ -254,38 +277,42 @@ class MediaService:
         page: int = 1,
         page_size: int = 24,
         query_embedding: list[float] | None = None,
+        exclude_adult: bool = False,
     ) -> tuple[list[MediaItem], int]:
         tsquery = func.plainto_tsquery("english", query_str)
 
-        # Hybrid: full-text on precomputed search_vector + trigram fuzzy match.
-        # Person/artist credits are matched separately so music searches like
-        # "Ariana Grande" can return albums even when the title does not include
-        # the artist name.
-        fts_match = MediaItem.search_vector.op("@@")(tsquery)
-        fuzzy_match = func.similarity(MediaItem.title, query_str) > 0.2
-        credit_media_ids = list(
-            await self.session.scalars(
-                select(MediaCredit.media_item_id)
-                .join(Person, Person.id == MediaCredit.person_id)
-                .where(Person.name.ilike(f"%{query_str}%"))
-                .distinct()
-                .limit(500)
-            )
-        )
-        credit_person_match = (
-            MediaItem.id.in_(credit_media_ids)
-            if credit_media_ids
-            else false()
+        # Three independent index-backed search branches combined via UNION.
+        # OR conditions force PostgreSQL into a sequential scan; UNION lets each
+        # branch use its dedicated index (GIN on search_vector, GiST trigram on
+        # title, GIN trigram on people.name + FK on media_credits).
+        fts_ids = select(MediaItem.id).where(MediaItem.search_vector.op("@@")(tsquery))
+        fuzzy_ids = select(MediaItem.id).where(MediaItem.title.op("%")(query_str))
+        credit_ids = (
+            select(MediaItem.id)
+            .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
+            .join(Person, Person.id == MediaCredit.person_id)
+            .where(Person.name.ilike(f"%{query_str}%"))
         )
 
-        base_q = select(MediaItem).where(fts_match | fuzzy_match | credit_person_match)
+        matched_ids = union(fts_ids, fuzzy_ids, credit_ids).subquery()
+
+        # Whether an item was matched via credit/person (for ranking boost).
+        credit_person_match = (
+            select(1)
+            .select_from(MediaCredit)
+            .join(Person, Person.id == MediaCredit.person_id)
+            .where(
+                MediaCredit.media_item_id == MediaItem.id,
+                Person.name.ilike(f"%{query_str}%"),
+            )
+            .exists()
+        )
+
+        base_q = select(MediaItem).where(MediaItem.id.in_(select(matched_ids)))
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
-
-        # Count total before pagination
-        count_q = select(func.count()).select_from(base_q.subquery())
-        total_result = await self.session.execute(count_q)
-        total = total_result.scalar_one()
+        if exclude_adult:
+            base_q = base_q.where(MediaItem.is_adult == False)
 
         # Ranking: blend ts_rank, trigram similarity, vector similarity, credit
         # matches, and popularity.
@@ -298,10 +325,13 @@ class MediaService:
         # no embedding column exists (pgvector unavailable), no embedding for the
         # item, or no query embedding was provided.
         if query_embedding is not None:
-            col_check = await self.session.execute(
-                text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
-            )
-            if col_check.scalar_one():
+            if MediaService._has_embedding_column is None:
+                col_check = await self.session.execute(
+                    text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
+                )
+                MediaService._has_embedding_column = col_check.scalar_one()
+
+            if MediaService._has_embedding_column:
                 from pgvector.sqlalchemy import Vector
                 vector_sim = func.coalesce(
                     1 - literal_column('embedding').op('<=>')(type_coerce(query_embedding, Vector(384))),
@@ -327,12 +357,25 @@ class MediaService:
 
         q = base_q.order_by(order)
 
-        # Paginate
+        # Paginate — fetch one extra row to determine has_more without COUNT.
         offset = (page - 1) * page_size
-        q = q.offset(offset).limit(page_size)
+        q = q.offset(offset).limit(page_size + 1)
 
         result = await self.session.scalars(q)
-        return list(result), total
+        items = list(result)
+        has_more = len(items) > page_size
+        if has_more:
+            items = items[:page_size]
+
+        # Only count on page 1 (for "X results" display).
+        if page == 1:
+            count_q = select(func.count()).select_from(matched_ids)
+            total_result = await self.session.execute(count_q)
+            total = total_result.scalar_one()
+        else:
+            total = None
+
+        return items, total, has_more
 
     async def get_media_items_by_ids(self, ids: list[str]) -> list[MediaItem]:
         if not ids:

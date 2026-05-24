@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Menu } from 'lucide-react'
 import { Button } from '@ui/atoms/button'
 import { Logo } from '@ui/atoms/logo'
-import { NavigationProvider, MenuDropdown, useNavigation } from '@navigation'
+import { NavigationProvider, MenuDropdown, useNavigation, NavSearch } from '@navigation'
 import { usePageMeta } from '@/lib/page-context'
 import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
@@ -95,6 +95,7 @@ function AppShell({ children }: { children: ReactNode }) {
       <MenuDropdown />
       <div className="fixed top-4 right-4 z-[9998] flex items-center gap-2">
         <NowPlayingButton isPinned={isPinned} onPin={handlePin} />
+        <NavSearch />
         <div
           className={cn(
             'flex items-center rounded-[2rem]',

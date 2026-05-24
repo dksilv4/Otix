@@ -22,7 +22,10 @@ class UserStreak(Base, TimestampMixin):
     longest_login_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     current_review_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     longest_review_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    current_workout_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    longest_workout_streak: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_activity_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     last_review_week: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_workout_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     user: Mapped[User] = relationship("User", back_populates="streak")

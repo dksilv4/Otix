@@ -1,11 +1,18 @@
 import { useState, useRef, useEffect, forwardRef } from 'react'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight, Dumbbell, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const MODES = [
-  { id: 'discover', label: 'Discover' },
-] as const
+export interface ModeDef {
+  id: string
+  label: string
+  icon: LucideIcon
+}
+
+const MODES: ModeDef[] = [
+  { id: 'discover', label: 'Discover', icon: Sparkles },
+  { id: 'workout', label: 'Workout', icon: Dumbbell },
+]
 
 interface ChatSearchInputProps {
   value: string
@@ -20,6 +27,8 @@ interface ChatSearchInputProps {
   showSubmitWhenEmpty?: boolean
   submitLabel?: string
   className?: string
+  activeMode?: string
+  onModeChange?: (modeId: string) => void
 }
 
 export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps>(function ChatSearchInput({
@@ -30,11 +39,13 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   placeholder = "What are you in the mood for?",
   disabled = false,
   debounceMs = 300,
-  leadingIcon: LeadingIcon = Sparkles,
+  leadingIcon,
   modeLabel = 'Discover',
   showSubmitWhenEmpty = false,
   submitLabel = 'Search',
   className,
+  activeMode = 'discover',
+  onModeChange,
 }, ref) {
   const [inputValue, setInputValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -67,8 +78,13 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') flushAndSubmit()
+    if (e.key === 'Enter') {
+      if (onSubmit) flushAndSubmit()
+    }
   }
+
+  const activeModeDef = MODES.find((m) => m.id === activeMode)
+  const ResolvedIcon = leadingIcon ?? activeModeDef?.icon ?? Sparkles
 
   return (
     <div className={cn('relative w-full max-w-3xl', className)}>
@@ -84,7 +100,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
       >
         {/* Input row */}
         <div className="flex items-center gap-3 px-5 pt-5 pb-2">
-          <LeadingIcon className="h-5 w-5 shrink-0 text-primary/50" />
+          <ResolvedIcon className="h-5 w-5 shrink-0 text-primary/50" />
           <input
             ref={ref}
             value={inputValue}
@@ -122,18 +138,25 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
 
         {/* Tools row */}
         <div className="flex items-center gap-2 px-5 pb-4">
-          {MODES.map(() => (
-            <button
-              key={modeLabel}
-              className={cn(
-                'px-3 py-1.5 rounded-full text-xs font-medium',
-                'transition-all duration-200',
-                'bg-primary/15 text-primary',
-              )}
-            >
-              {modeLabel}
-            </button>
-          ))}
+          {MODES.map((mode) => {
+            const isActive = mode.id === activeMode
+            return (
+              <button
+                key={mode.id}
+                onClick={() => onModeChange?.(mode.id)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+                  'transition-all duration-200',
+                  isActive
+                    ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
+                    : 'bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
+                )}
+              >
+                <mode.icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                {mode.label}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

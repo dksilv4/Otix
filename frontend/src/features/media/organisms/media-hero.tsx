@@ -26,6 +26,7 @@ interface MediaHeroProps {
   albumDurationMs?: number | null
   status?: string | null
   isAnime?: boolean
+  isAdult?: boolean
   className?: string
   youtubeVideoId?: string | null
 }
@@ -82,6 +83,7 @@ export function MediaHero({
   albumDurationMs,
   status,
   isAnime,
+  isAdult,
   className,
   youtubeVideoId,
 }: MediaHeroProps) {
@@ -156,6 +158,14 @@ export function MediaHero({
 
             {/* Meta tags row */}
             <div className="flex flex-wrap gap-2">
+              {isAdult && (
+                <Badge
+                  variant="destructive"
+                  className="gap-1.5 border-0 bg-red-600 px-3 py-1.5 text-sm font-bold backdrop-blur"
+                >
+                  18+
+                </Badge>
+              )}
               {isAnime ? (
                 <Badge
                   variant="secondary"

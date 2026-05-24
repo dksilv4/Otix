@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import bcrypt
 import structlog
@@ -87,7 +87,7 @@ class AuthService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def register(self, email: str, username: str, password: str) -> User:
+    async def register(self, email: str, username: str, password: str, date_of_birth: date) -> User:
         existing = await self.session.scalar(
             select(User).where((User.email == email) | (User.username == username))
         )
@@ -101,6 +101,7 @@ class AuthService:
             username=username,
             hashed_password=hash_password(password),
             is_admin=False,
+            date_of_birth=date_of_birth,
         )
         self.session.add(user)
         await self.session.flush()

@@ -1,7 +1,22 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render as originalRender, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
+
+const render = (ui: React.ReactElement) => {
+  return originalRender(
+    React.createElement(QueryClientProvider, { client: queryClient }, ui)
+  )
+}
 
 // Mock framer-motion
 vi.mock("framer-motion", () => ({

@@ -1,9 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from '@tanstack/react-router'
 import { HelmetProvider } from 'react-helmet-async'
-import { queryClient } from '@/lib/query-client'
+import { queryClient, persistOptions } from '@/lib/query-client'
 import { router } from '@/lib/router'
 import { ShaderQualityProvider } from '@/lib/shader-quality'
 import { MotionPreferenceProvider } from '@/lib/motion-preference'
@@ -17,7 +17,10 @@ import './index.css'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+      >
         <ShaderQualityProvider>
           <MotionPreferenceProvider>
             <ThemeProvider>
@@ -25,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
                 <DkToastProvider>
                   <SpotifyPlayerProvider>
                     <PageMetaProvider>
-                      <RouterProvider router={router} />
+                      <RouterProvider router={router} context={{ queryClient }} />
                     </PageMetaProvider>
                   </SpotifyPlayerProvider>
                 </DkToastProvider>
@@ -33,7 +36,7 @@ createRoot(document.getElementById('root')!).render(
             </ThemeProvider>
           </MotionPreferenceProvider>
         </ShaderQualityProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </HelmetProvider>
   </StrictMode>,
 )

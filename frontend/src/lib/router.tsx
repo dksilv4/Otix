@@ -1,5 +1,6 @@
 import { lazy, useEffect } from "react"
 import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
+import type { QueryClient } from "@tanstack/react-query"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
 
@@ -284,8 +285,13 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
 ])
 
+export interface RouterContext {
+  queryClient: QueryClient
+}
+
 export const router = createRouter({
   routeTree,
+  context: {} as RouterContext,
   defaultPreload: "intent",
   defaultPendingComponent: LoadingPage,
   scrollRestoration: true,
@@ -294,5 +300,6 @@ export const router = createRouter({
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router
+    context: RouterContext
   }
 }

@@ -295,6 +295,7 @@ export function ListDetail() {
                       textlessPosterUrl={item.textlessPosterUrl}
                       logoUrl={item.logoUrl}
                       releaseDate={item.releaseDate}
+                      isAdult={item.isAdult}
                     />
                     {alreadyAdded ? (
                       <span
@@ -389,6 +390,7 @@ export function ListDetail() {
                       textlessPosterUrl={item.textlessPosterUrl}
                       logoUrl={item.logoUrl}
                       releaseDate={item.releaseDate}
+                      isAdult={item.isAdult}
                     />
                     {isOwner && (
                       <button

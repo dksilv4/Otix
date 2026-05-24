@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
 import type { MediaItemSummary } from '@media/media-queries'
 
@@ -6,7 +7,7 @@ interface DiscoverMediaCardProps {
   className?: string
 }
 
-export function DiscoverMediaCard({ item, className }: DiscoverMediaCardProps) {
+export const DiscoverMediaCard = memo(function DiscoverMediaCard({ item, className }: DiscoverMediaCardProps) {
   return (
     <MediaCard
       id={item.id}
@@ -18,7 +19,8 @@ export function DiscoverMediaCard({ item, className }: DiscoverMediaCardProps) {
       releaseDate={item.releaseDate}
       avgRating={item.avgRating}
       ratingCount={item.ratingCount}
+      isAdult={item.isAdult}
       className={className}
     />
   )
-}
+})

@@ -358,6 +358,7 @@ function SpotifyTabContent() {
                   textlessPosterUrl={item.textlessPosterUrl}
                   logoUrl={item.logoUrl}
                   releaseDate={item.releaseDate}
+                  isAdult={item.isAdult}
                 />
               ))}
             </MediaGrid>

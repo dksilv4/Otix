@@ -177,6 +177,7 @@ export function BrowsePage() {
                   logoUrl={item.logoUrl}
                   releaseDate={item.releaseDate}
                   avgRating={item.avgRating}
+                  isAdult={item.isAdult}
                 />
               ))}
             </MediaGrid>

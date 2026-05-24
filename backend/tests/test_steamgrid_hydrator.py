@@ -79,6 +79,7 @@ async def test_hydrate_promotes_text_safe_hero_over_existing_backdrop():
     session = MagicMock()
     session.get = AsyncMock(return_value=media_item)
     session.scalar = AsyncMock(return_value=None)
+    session.scalars = AsyncMock(return_value=[])
 
     added = await SteamGridDBHydrator(provider, session).hydrate(
         game,
@@ -115,6 +116,7 @@ async def test_hydrate_stores_all_assets_but_only_promotes_text_safe_hero():
     session = MagicMock()
     session.get = AsyncMock(return_value=media_item)
     session.scalar = AsyncMock(return_value=None)
+    session.scalars = AsyncMock(return_value=[])
 
     added = await SteamGridDBHydrator(provider, session).hydrate(
         game,

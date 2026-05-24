@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
+import { memo, useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { DiscoverMediaCard } from './discover-media-card'
 import { Skeleton } from '@ui/atoms/skeleton'
@@ -15,7 +15,10 @@ const BASE_ITEM_WIDTH = 240
 const BASE_GAP = 20
 const BUTTON_INSET = 40 // button overlap on each side
 
-export function MediaCarousel({ items, isLoading, className }: MediaCarouselProps) {
+const SKELETON_CONTAINER_STYLE = { gap: 'var(--carousel-gap, 1.25rem)' } as const
+const SKELETON_ITEM_STYLE = { width: 'var(--card-width, 240px)' } as const
+
+export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, className }: MediaCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showLeft, setShowLeft] = useState(false)
@@ -76,7 +79,7 @@ export function MediaCarousel({ items, isLoading, className }: MediaCarouselProp
   }, [items, updateArrows])
 
   // ── Scroll by visible cards ──
-  const scroll = (dir: 'left' | 'right') => {
+  const scroll = useCallback((dir: 'left' | 'right') => {
     const el = scrollRef.current
     if (!el) return
     const firstChild = el.querySelector(':scope > *') as HTMLElement | null
@@ -85,17 +88,17 @@ export function MediaCarousel({ items, isLoading, className }: MediaCarouselProp
     const gap = parseFloat(getComputedStyle(el).gap || '0')
     const step = (cardWidth + gap) * Math.max(1, visibleCount - 1)
     el.scrollBy({ left: dir === 'left' ? -step : step, behavior: 'smooth' })
-  }
+  }, [visibleCount])
 
   if (isLoading) {
     return (
       <div ref={containerRef} className={cn('relative', className)}>
-        <div className="flex overflow-hidden" style={{ gap: 'var(--carousel-gap, 1.25rem)' }}>
+        <div className="flex overflow-hidden" style={SKELETON_CONTAINER_STYLE}>
           {Array.from({ length: visibleCount }).map((_, i) => (
             <div
               key={i}
               className="shrink-0 space-y-2"
-              style={{ width: 'var(--card-width, 240px)' }}
+              style={SKELETON_ITEM_STYLE}
             >
               <Skeleton className="aspect-[2/3] w-full rounded-lg" />
               <Skeleton className="h-4 w-3/4" />
@@ -169,4 +172,4 @@ export function MediaCarousel({ items, isLoading, className }: MediaCarouselProp
       </button>
     </div>
   )
-}
+})

@@ -27,6 +27,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/three')) return 'three'
+          if (id.includes('node_modules/framer-motion')) return 'framer-motion'
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react'
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

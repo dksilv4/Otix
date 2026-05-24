@@ -125,6 +125,94 @@ class TestGetPerson:
 
         assert result is None
 
+    async def test_get_person_with_credits_sorting(
+        self, service: PeopleService, mock_db_session: AsyncMock
+    ):
+        from otix.domain.people import MediaCredit
+        from otix.domain.media import MediaItem
+
+        person = _make_person("01", "Brad Pitt")
+        
+        # Create media items with and without release dates
+        item_no_date = MediaItem(release_date=None)
+        item_date_older = MediaItem(release_date=date(2010, 1, 1))
+        item_date_newer = MediaItem(release_date=date(2020, 1, 1))
+
+        credit_no_date = MediaCredit(media_item=item_no_date)
+        credit_date_older = MediaCredit(media_item=item_date_older)
+        credit_date_newer = MediaCredit(media_item=item_date_newer)
+
+        person.credits = [credit_no_date, credit_date_older, credit_date_newer]
+
+        # First scalar call is get_person lookup
+        # Second scalar call is follower count lookup
+        mock_db_session.scalar.side_effect = [person, 5]
+
+        result = await service.get_person("oti_pers01")
+
+        assert result is person
+        # Check credits sorted: newer date, older date, no date
+        assert result.credits == [credit_date_newer, credit_date_older, credit_no_date]
+        assert result.follower_count == 5
+
+    async def test_get_person_follower_count_exception(
+        self, service: PeopleService, mock_db_session: AsyncMock
+    ):
+        person = _make_person("01", "Brad Pitt")
+        person.credits = []
+
+        # First scalar call: get_person (returns person)
+        # Second scalar call: follower count (raises Exception)
+        mock_db_session.scalar.side_effect = [person, Exception("DB Error")]
+
+        result = await service.get_person("oti_pers01")
+        assert result is person
+        assert result.follower_count == 0
+
+    async def test_get_person_user_follows(
+        self, service: PeopleService, mock_db_session: AsyncMock
+    ):
+        from otix.domain.people import UserPersonFollow
+        person = _make_person("01", "Brad Pitt")
+        person.credits = []
+
+        # First scalar call: get_person
+        # Second scalar call: follower count
+        # Third scalar call: user follows check
+        mock_follow = UserPersonFollow(user_id="user1", person_id="oti_pers01")
+        mock_db_session.scalar.side_effect = [person, 10, mock_follow]
+
+        result = await service.get_person("oti_pers01", user_id="user1")
+        assert result.is_followed is True
+
+    async def test_get_person_user_does_not_follow(
+        self, service: PeopleService, mock_db_session: AsyncMock
+    ):
+        person = _make_person("01", "Brad Pitt")
+        person.credits = []
+
+        # First scalar call: get_person
+        # Second scalar call: follower count
+        # Third scalar call: user follows check (returns None)
+        mock_db_session.scalar.side_effect = [person, 10, None]
+
+        result = await service.get_person("oti_pers01", user_id="user1")
+        assert result.is_followed is False
+
+    async def test_get_person_user_follow_exception(
+        self, service: PeopleService, mock_db_session: AsyncMock
+    ):
+        person = _make_person("01", "Brad Pitt")
+        person.credits = []
+
+        # First scalar call: get_person
+        # Second scalar call: follower count
+        # Third scalar call: user follows check (raises Exception)
+        mock_db_session.scalar.side_effect = [person, 10, Exception("DB Error")]
+
+        result = await service.get_person("oti_pers01", user_id="user1")
+        assert result.is_followed is False
+
 
 # ── search_people ──────────────────────────────────────────────────
 

@@ -48,6 +48,7 @@ class MediaItem(Base, TimestampMixin):
     played_count: Mapped[int] = mapped_column(Integer, default=0)
     started_count: Mapped[int] = mapped_column(Integer, default=0)
     listened_count: Mapped[int] = mapped_column(Integer, default=0)
+    is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),

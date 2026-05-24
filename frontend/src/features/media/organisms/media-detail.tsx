@@ -316,6 +316,7 @@ export function MediaDetail() {
           tagline={detail.movie?.tagline || detail.game?.reviewSummary || musicCreditsLine}
           status={detail.show?.status || detail.game?.releaseStatus}
           isAnime={detail.show?.isAnime}
+          isAdult={detail.isAdult}
           youtubeVideoId={detail.youtubeVideoId}
         />
       </div>
