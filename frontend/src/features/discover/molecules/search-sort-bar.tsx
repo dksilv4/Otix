@@ -16,6 +16,9 @@ export const SORT_OPTIONS = [
   { value: 'rating', label: 'Top Rated' },
   { value: 'release_date', label: 'Newest' },
   { value: 'title', label: 'A–Z' },
+  { value: 'revenue', label: 'Highest Revenue' },
+  { value: 'budget', label: 'Highest Budget' },
+  { value: 'profit', label: 'Most Profitable' },
 ] as const
 
 export type TypeValue = (typeof TYPE_OPTIONS)[number]['value']

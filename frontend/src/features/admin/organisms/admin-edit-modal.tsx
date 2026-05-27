@@ -1,5 +1,10 @@
 import { useState, useMemo, useCallback } from 'react'
 import { DkDialog } from '@/features/dk-ui/molecules/dialog'
+import { DkInput } from '@/features/dk-ui/atoms/input'
+import { DkTextarea } from '@/features/dk-ui/atoms/textarea'
+import { DkSelect } from '@/features/dk-ui/atoms/select'
+import { DkButton } from '@/features/dk-ui/atoms/button'
+import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@/features/dk-ui/molecules/tabs'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 import { useCreateProposal, useMediaAssets, ADMIN_XP, type ImageOverrideItem, type MediaAsset } from '../admin-edit-queries'
 import type { MediaItemDetail } from '@/features/media/media-queries'
@@ -41,8 +46,6 @@ const IMAGE_TYPES = [
   { value: 'textless_poster', label: 'Textless Poster' },
 ]
 
-type Tab = 'fields' | 'images' | 'preview'
-
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -61,7 +64,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
   const { toast } = useToast()
   const createProposal = useCreateProposal(mediaId)
   const { data: assetData, isLoading: assetsLoading } = useMediaAssets(mediaId)
-  const [tab, setTab] = useState<Tab>('fields')
+  const [tab, setTab] = useState('fields')
 
   // Fields state
   const [title, setTitle] = useState(media.title)
@@ -220,64 +223,39 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
       className="max-w-2xl"
     >
       <div className="space-y-5">
-        {/* Tabs */}
-        <div className="flex gap-1 rounded-xl bg-[var(--dk-surface-ghost)] p-1">
-          {(['fields', 'images', 'preview'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className="flex-1 rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors"
-              style={{
-                background: tab === t ? 'var(--dk-surface-base)' : 'transparent',
-                color: tab === t ? 'var(--foreground)' : 'var(--muted-foreground)',
-                boxShadow: tab === t ? 'var(--dk-shadow-sm)' : 'none',
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <DkTabs defaultValue="fields" value={tab} onValueChange={setTab}>
+          <DkTabList className="w-full">
+            <DkTab value="fields" className="flex-1">Fields</DkTab>
+            <DkTab value="images" className="flex-1">Images</DkTab>
+            <DkTab value="preview" className="flex-1">Preview</DkTab>
+          </DkTabList>
 
-        {/* Fields tab */}
-        {tab === 'fields' && (
-          <div className="space-y-3">
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Title</span>
-              <input
-                type="text"
+          {/* Fields tab */}
+          <DkTabPanel value="fields">
+            <div className="space-y-3">
+              <DkInput
+                label="Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Overview</span>
-              <textarea
+              <DkTextarea
+                label="Overview"
                 value={overview}
                 onChange={(e) => setOverview(e.target.value)}
                 rows={4}
-                className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-vertical"
               />
-            </label>
-            {media.mediaType === 'movie' && (
-              <label className="block space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">Tagline</span>
-                <input
-                  type="text"
+              {media.mediaType === 'movie' && (
+                <DkInput
+                  label="Tagline"
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
-              </label>
-            )}
-            {media.mediaType === 'show' && (
-              <label className="block space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">Status</span>
-                <select
+              )}
+              {media.mediaType === 'show' && (
+                <DkSelect
+                  label="Status"
                   value={showStatus}
                   onChange={(e) => setShowStatus(e.target.value)}
-                  className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="">—</option>
                   <option value="returning_series">Returning Series</option>
@@ -286,24 +264,18 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                   <option value="in_production">In Production</option>
                   <option value="planned">Planned</option>
                   <option value="pilot">Pilot</option>
-                </select>
-              </label>
-            )}
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Release Date</span>
-              <input
+                </DkSelect>
+              )}
+              <DkInput
+                label="Release Date"
                 type="date"
                 value={releaseDate}
                 onChange={(e) => setReleaseDate(e.target.value)}
-                className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Original Language</span>
-              <select
+              <DkSelect
+                label="Original Language"
                 value={originalLanguage}
                 onChange={(e) => setOriginalLanguage(e.target.value)}
-                className="w-full rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">—</option>
                 {LANGUAGES.filter((l) => l.code !== '*').map((l) => (
@@ -311,236 +283,233 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                     {l.label}
                   </option>
                 ))}
-              </select>
-            </label>
-          </div>
-        )}
-
-        {/* Images tab — asset browser */}
-        {tab === 'images' && (
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Browse existing media assets and select images per language.
-              Selected overrides apply when users with matching language preferences view this page.
-            </p>
-
-            {/* Filter bar */}
-            <div className="flex gap-2">
-              <select
-                value={browseType}
-                onChange={(e) => setBrowseType(e.target.value)}
-                className="rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              >
-                {IMAGE_TYPES.map((it) => (
-                  <option key={it.value} value={it.value}>
-                    {it.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={browseLang}
-                onChange={(e) => setBrowseLang(e.target.value)}
-                className="rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
+              </DkSelect>
             </div>
+          </DkTabPanel>
 
-            {/* Asset grid */}
-            {assetsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : filteredAssets.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <Image className="h-8 w-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No assets found for this type.</p>
-                <p className="text-xs text-muted-foreground/60">
-                  Try selecting a different image type.
-                </p>
-              </div>
-            ) : (
-              <div className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                {filteredAssets.map((asset) => {
-                  const selected = isAssetSelected(asset)
-                  return (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      onClick={() => selectAsset(asset)}
-                      disabled={selected}
-                      className={cn(
-                        'relative h-28 w-full overflow-hidden rounded-xl border-2 transition-all bg-black/20',
-                        selected
-                          ? 'border-primary ring-2 ring-primary/30'
-                          : 'border-[var(--dk-border)] hover:border-primary/50',
-                      )}
-                    >
-                      <img
-                        src={asset.url}
-                        alt=""
-                        className="h-full w-full object-contain p-1"
-                        loading="lazy"
-                      />
-                      {selected && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-primary/30">
-                          <Check className="h-6 w-6 text-white drop-shadow-lg" />
-                        </div>
-                      )}
-                      {needsCrop(asset) && (
-                        <span className="absolute top-1 left-1 flex items-center gap-0.5 rounded-md bg-primary/80 px-1.5 py-0.5 text-[9px] font-medium text-white">
-                          <Crop className="h-2.5 w-2.5" />
-                          Crop
-                        </span>
-                      )}
-                      {!needsCrop(asset) && asset.lang && (
-                        <span className="absolute top-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
-                          {asset.lang.toUpperCase()}
-                        </span>
-                      )}
-                      {asset.provider && (
-                        <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] text-white/70">
-                          {asset.provider}
-                        </span>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Selected overrides */}
-            {imageOverrides.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Selected Overrides ({imageOverrides.length})
-                </p>
-                <div className="space-y-1.5">
-                  {imageOverrides.map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] p-2"
-                    >
-                      <img
-                        src={item.url}
-                        alt=""
-                        className="h-12 w-9 shrink-0 rounded-lg object-cover"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-foreground">
-                          {typeLabel(item.imageType)}
-                        </p>
-                        <p className="truncate text-[10px] text-muted-foreground">
-                          {langLabel(item.languageCode)} · {item.url}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeImageOverride(i)}
-                        className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Crop overlay — backdrop → textless poster */}
-        {cropAsset && (
-          <div className="fixed inset-0 z-[calc(var(--dk-z-modal)+1)] flex items-center justify-center bg-black/60">
-            <CropModal
-              imageUrl={cropAsset.url}
-              shape="rect"
-              aspect={2 / 3}
-              outputSize={{ width: 600, height: 900 }}
-              onComplete={handleCropComplete}
-              onCancel={() => setCropAsset(null)}
-            />
-          </div>
-        )}
-
-        {/* Preview tab */}
-        {tab === 'preview' && (
-          <div className="space-y-3">
-            {!hasChanges ? (
-              <p className="text-center text-sm text-muted-foreground py-4">
-                No changes to preview.
+          {/* Images tab — asset browser */}
+          <DkTabPanel value="images">
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Browse existing media assets and select images per language.
+                Selected overrides apply when users with matching language preferences view this page.
               </p>
-            ) : (
-              <>
-                {Object.keys(changes).length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Field Changes</p>
-                    <div className="rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] p-3">
-                      {Object.entries(changes).map(([field, value]) => (
-                        <div key={field} className="flex gap-2 py-1 text-sm">
-                          <span className="w-36 shrink-0 font-medium text-muted-foreground">
-                            {field}
+
+              {/* Filter bar */}
+              <div className="flex gap-2">
+                <DkSelect
+                  value={browseType}
+                  onChange={(e) => setBrowseType(e.target.value)}
+                  className="h-10 text-sm"
+                >
+                  {IMAGE_TYPES.map((it) => (
+                    <option key={it.value} value={it.value}>
+                      {it.label}
+                    </option>
+                  ))}
+                </DkSelect>
+                <DkSelect
+                  value={browseLang}
+                  onChange={(e) => setBrowseLang(e.target.value)}
+                  className="h-10 text-sm"
+                >
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code}>
+                      {l.label}
+                    </option>
+                  ))}
+                </DkSelect>
+              </div>
+
+              {/* Asset grid */}
+              {assetsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredAssets.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <Image className="h-8 w-8 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">No assets found for this type.</p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Try selecting a different image type.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                  {filteredAssets.map((asset) => {
+                    const selected = isAssetSelected(asset)
+                    return (
+                      <button
+                        key={asset.id}
+                        type="button"
+                        onClick={() => selectAsset(asset)}
+                        disabled={selected}
+                        className={cn(
+                          'relative w-full overflow-hidden rounded-xl transition-all bg-black/20',
+                          selected
+                            ? 'ring-2 ring-primary'
+                            : 'ring-1 ring-white/10 hover:ring-primary/50',
+                        )}
+                      >
+                        <img
+                          src={asset.url}
+                          alt=""
+                          className="w-full h-auto object-contain p-1"
+                          loading="lazy"
+                        />
+                        {selected && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-primary/30">
+                            <Check className="h-6 w-6 text-white drop-shadow-lg" />
+                          </div>
+                        )}
+                        {needsCrop(asset) && (
+                          <span className="absolute top-1 left-1 flex items-center gap-0.5 rounded-md bg-primary/80 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                            <Crop className="h-2.5 w-2.5" />
+                            Crop
                           </span>
-                          <span className="text-emerald-400">
-                            {value === null ? '(clear)' : String(value)}
+                        )}
+                        {!needsCrop(asset) && asset.lang && (
+                          <span className="absolute top-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                            {asset.lang.toUpperCase()}
                           </span>
+                        )}
+                        {asset.provider && (
+                          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] text-white/70">
+                            {asset.provider}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Selected overrides */}
+              {imageOverrides.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Selected Overrides ({imageOverrides.length})
+                  </p>
+                  <div className="space-y-1.5">
+                    {imageOverrides.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2 ring-1 ring-white/10"
+                      >
+                        <img
+                          src={item.url}
+                          alt=""
+                          className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground">
+                            {typeLabel(item.imageType)}
+                          </p>
+                          <p className="truncate text-[10px] text-muted-foreground">
+                            {langLabel(item.languageCode)} · {item.url}
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImageOverride(i)}
+                          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                )}
-                {imageOverrides.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Image Overrides</p>
-                    <div className="space-y-1.5">
-                      {imageOverrides.map((item, i) => (
-                        <div key={i} className="flex items-center gap-3 rounded-xl border border-[var(--dk-border)] bg-[var(--dk-surface-ghost)] p-2">
-                          <img
-                            src={item.url}
-                            alt=""
-                            className="h-12 w-9 shrink-0 rounded-lg object-cover"
-                          />
-                          <div className="min-w-0 text-sm">
-                            <span className="font-medium">
-                              {typeLabel(item.imageType)}
+                </div>
+              )}
+            </div>
+          </DkTabPanel>
+
+          {/* Preview tab */}
+          <DkTabPanel value="preview">
+            <div className="space-y-3">
+              {!hasChanges ? (
+                <p className="text-center text-sm text-muted-foreground py-4">
+                  No changes to preview.
+                </p>
+              ) : (
+                <>
+                  {Object.keys(changes).length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Field Changes</p>
+                      <div className="rounded-xl bg-[var(--dk-surface-ghost)] p-3 ring-1 ring-white/10">
+                        {Object.entries(changes).map(([field, value]) => (
+                          <div key={field} className="flex gap-2 py-1 text-sm">
+                            <span className="w-36 shrink-0 font-medium text-muted-foreground">
+                              {field}
                             </span>
-                            <span className="text-muted-foreground">
-                              {' '}· {langLabel(item.languageCode)}
+                            <span className="text-emerald-400">
+                              {value === null ? '(clear)' : String(value)}
                             </span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+                  )}
+                  {imageOverrides.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Image Overrides</p>
+                      <div className="space-y-1.5">
+                        {imageOverrides.map((item, i) => (
+                          <div key={i} className="flex items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2 ring-1 ring-white/10">
+                            <img
+                              src={item.url}
+                              alt=""
+                              className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                            />
+                            <div className="min-w-0 text-sm">
+                              <span className="font-medium">
+                                {typeLabel(item.imageType)}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {' '}· {langLabel(item.languageCode)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </DkTabPanel>
+        </DkTabs>
 
         {/* Submit */}
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="rounded-xl px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
-          >
+          <DkButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
-          </button>
-          <button
-            type="button"
+          </DkButton>
+          <DkButton
+            variant="primary"
+            size="sm"
             onClick={handleSubmit}
             disabled={!hasChanges || createProposal.isPending}
-            className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:pointer-events-none disabled:opacity-50 transition-opacity"
+            loading={createProposal.isPending}
           >
-            {createProposal.isPending ? 'Submitting...' : 'Submit Proposal'}
-          </button>
+            Submit Proposal
+          </DkButton>
         </div>
       </div>
+
+      {/* Crop overlay — backdrop → textless poster */}
+      {cropAsset && (
+        <div className="fixed inset-0 z-[calc(var(--dk-z-modal)+1)] flex items-center justify-center bg-black/60">
+          <CropModal
+            imageUrl={cropAsset.url}
+            shape="rect"
+            aspect={2 / 3}
+            outputSize={{ width: 600, height: 900 }}
+            onComplete={handleCropComplete}
+            onCancel={() => setCropAsset(null)}
+          />
+        </div>
+      )}
     </DkDialog>
   )
 }

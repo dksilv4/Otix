@@ -1,12 +1,49 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link } from '@tanstack/react-router'
-import { EyeOff, Eye, Trash2, Pencil, Shield, ThumbsUp, ThumbsDown } from "lucide-react"
+import { Trash2, Pencil, Shield, ThumbsUp, ThumbsDown, Clock } from "lucide-react"
 import { StarRating } from "@ui/atoms/star-rating"
-import { DkButton } from "@/features/dk-ui/atoms/button"
 import { useAuth } from '@/features/auth/auth-provider'
-import { useSwipe } from "../hooks/use-swipe"
 import { useReviewVoteCounts, useVoteReview } from "../review-vote-queries"
 import type { ReviewWithUserOut } from "../review-queries"
+
+function isInCooldown(cooldownUntil: string | null): boolean {
+  if (!cooldownUntil) return false
+  return new Date(cooldownUntil) > new Date()
+}
+
+function formatRemaining(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
+
+function CooldownBadge({ cooldownUntil }: { cooldownUntil: string }) {
+  const [remaining, setRemaining] = useState(() => new Date(cooldownUntil).getTime() - Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const ms = new Date(cooldownUntil).getTime() - Date.now()
+      if (ms <= 0) {
+        setRemaining(0)
+        clearInterval(timer)
+      } else {
+        setRemaining(ms)
+      }
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldownUntil])
+
+  if (remaining <= 0) return null
+
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-500/60">
+      <Clock className="w-2.5 h-2.5" />
+      {formatRemaining(remaining)}
+    </span>
+  )
+}
 
 interface ReviewCardProps {
   review: ReviewWithUserOut
@@ -28,153 +65,73 @@ function formatDate(dateStr: string): string {
 }
 
 function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
-  const [spoilerRevealed, setSpoilerRevealed] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const swipe = useSwipe({
-    onSwipeLeft: isOwn ? () => setConfirmDelete(true) : undefined,
-    onSwipeRight: isOwn ? onEdit : undefined,
-  })
-
-  const showSpoilerOverlay = review.isSpoiler && !spoilerRevealed
-
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[var(--dk-surface-base)]">
-      {/* Swipe action backgrounds - only visible during swipe */}
-      {isOwn && (
-        <>
-          <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-center bg-destructive/10 rounded-r-2xl">
-            <Trash2 className="w-4 h-4 text-destructive" />
-          </div>
-          <div className="absolute inset-y-0 left-0 w-24 flex items-center justify-center bg-primary/10 rounded-l-2xl">
-            <Pencil className="w-4 h-4 text-primary" />
-          </div>
-        </>
-      )}
+    <div className="w-fit rounded-xl border border-white/[0.04] bg-[var(--dk-surface-base)] px-4 py-3.5">
+      {/* Top row: user, date, score */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <Link
+            to="/u/$username"
+            params={{ username: review.user.username }}
+            className="text-sm font-medium hover:text-primary transition-colors truncate"
+          >
+            {review.user.username}
+            {review.user.isAdmin && (
+              <Shield className="h-3 w-3 inline-block text-amber-400/80 ml-1" />
+            )}
+          </Link>
+          <span className="text-xs text-muted-foreground/40">·</span>
+          <span className="text-xs text-muted-foreground/50">{formatDate(review.createdAt)}</span>
 
-      <div
-        className="relative bg-[var(--dk-surface-base)] p-5"
-        style={{
-          transform: `translateX(${swipe.translateX}px)`,
-          transition: swipe.isSwiping ? "none" : "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
-        onTouchStart={swipe.onTouchStart}
-        onTouchMove={swipe.onTouchMove}
-        onTouchEnd={swipe.onTouchEnd}
-      >
-        {/* Header row */}
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-sm font-semibold ring-1 ring-white/[0.06]">
-            {review.user.username.charAt(0).toUpperCase()}
-          </div>
-
-          {/* User + meta */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link
-                to="/u/$username"
-                params={{ username: review.user.username }}
-                className="text-sm font-semibold hover:text-primary transition-colors"
-              >
-                {review.user.username}
-                {review.user.isAdmin && (
-                  <Shield className="h-3.5 w-3.5 inline-block text-amber-400/80" />
-                )}
-              </Link>
-              {isOwn && (
-                <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                  You
-                </span>
-              )}
-              {review.isSpoiler && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                  <EyeOff className="w-2.5 h-2.5" />
-                  Spoiler
-                </span>
-              )}
-              {isOwn && review.isPrivate && (
-                <span className="text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-1.5 py-0.5 rounded-full">
-                  Private
-                </span>
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground/60">{formatDate(review.createdAt)}</span>
-          </div>
-
-          {/* Score pill */}
-          {review.score != null && (
-            <div className="shrink-0 flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-2.5 py-1 ring-1 ring-white/[0.04]">
-              <StarRating score={review.score} maxScore={10} size="sm" />
-              <span className="text-sm font-bold tabular-nums">{review.score}</span>
-              <span className="text-[10px] text-muted-foreground/50">/10</span>
-            </div>
+          {/* Subtle badges */}
+          {isOwn && (
+            <span className="text-[10px] text-primary/60">you</span>
+          )}
+          {isOwn && review.cooldownUntil && isInCooldown(review.cooldownUntil) && (
+            <CooldownBadge cooldownUntil={review.cooldownUntil} />
+          )}
+          {review.isSpoiler && (
+            <span className="text-[10px] text-amber-500/60">spoiler</span>
+          )}
+          {isOwn && review.isPrivate && (
+            <span className="text-[10px] text-muted-foreground/50">private</span>
           )}
         </div>
 
-        {/* Title */}
-        {review.title && (
-          <h4 className="mt-3 text-sm font-semibold">{review.title}</h4>
-        )}
-
-        {/* Rating-only (score but no text) */}
-        {!review.title && !review.content && review.score != null && (
-          <p className="mt-2 text-xs text-muted-foreground/50 italic">Rated only</p>
-        )}
-
-        {/* Content */}
-        {review.content && (
-          <div className="mt-2">
-            {showSpoilerOverlay ? (
-              <div className="relative rounded-xl overflow-hidden">
-                <p className="text-sm text-muted-foreground/70 line-clamp-4 blur-[3px] select-none">
-                  {review.content}
-                </p>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-[var(--dk-surface-base)]/70 backdrop-blur-[2px]">
-                  <EyeOff className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Spoiler Warning</span>
-                  <button
-                    onClick={() => setSpoilerRevealed(true)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1 text-xs font-medium text-foreground ring-1 ring-white/[0.06] hover:bg-[var(--dk-surface-glass-hover)] transition-all"
-                  >
-                    <Eye className="w-3 h-3" />
-                    Reveal
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
-                {review.content}
-              </p>
-            )}
+        {review.score != null && (
+          <div className="shrink-0 flex items-center gap-1">
+            <StarRating score={review.score} maxScore={10} size="sm" />
+            <span className="text-sm font-semibold tabular-nums">{review.score}</span>
           </div>
         )}
+      </div>
 
-        {/* Review votes */}
+      {/* Content */}
+      {review.content && (
+        <p className="mt-2 text-sm text-foreground/75 leading-relaxed">
+          {review.content}
+        </p>
+      )}
+
+      {/* Actions row: votes + edit/delete */}
+      <div className="mt-2.5 flex items-center justify-between">
         <ReviewVoteSection review={review} />
-
-        {/* Action buttons (desktop) */}
         {isOwn && (
-          <div className="mt-3 flex gap-2 pt-1">
-            <DkButton variant="ghost" size="xs" onClick={onEdit}>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={onEdit}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.04] transition-colors"
+            >
               <Pencil className="w-3 h-3" />
               Edit
-            </DkButton>
-            {confirmDelete ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Delete?</span>
-                <DkButton variant="destructive" size="xs" onClick={onDelete}>
-                  Yes
-                </DkButton>
-                <DkButton variant="ghost" size="xs" onClick={() => setConfirmDelete(false)}>
-                  No
-                </DkButton>
-              </div>
-            ) : (
-              <DkButton variant="ghost" size="xs" onClick={() => setConfirmDelete(true)}>
-                <Trash2 className="w-3 h-3" />
-                Delete
-              </DkButton>
-            )}
+            </button>
+            <button
+              onClick={onDelete}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
           </div>
         )}
       </div>
@@ -187,21 +144,21 @@ function ReviewVoteSection({ review }: { review: ReviewWithUserOut }) {
   const { data: voteCounts } = useReviewVoteCounts(review.userId, review.mediaItemId)
   const voteMutation = useVoteReview(review.userId, review.mediaItemId)
 
-  if (!currentUser) return null
+  if (!currentUser) return <div />
 
   const upvotes = voteCounts?.up ?? 0
   const downvotes = voteCounts?.down ?? 0
   const myVote = voteCounts?.my_vote ?? null
 
   return (
-    <div className="mt-2 flex items-center gap-2">
+    <div className="flex items-center gap-1">
       <button
         onClick={() => voteMutation.mutate('up')}
         disabled={voteMutation.isPending}
-        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] transition-colors ${
           myVote === 'up'
-            ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30'
-            : 'text-muted-foreground/50 hover:text-emerald-400 hover:bg-emerald-500/10'
+            ? 'text-emerald-400'
+            : 'text-muted-foreground/40 hover:text-emerald-400'
         }`}
       >
         <ThumbsUp className="h-3 w-3" />
@@ -210,10 +167,10 @@ function ReviewVoteSection({ review }: { review: ReviewWithUserOut }) {
       <button
         onClick={() => voteMutation.mutate('down')}
         disabled={voteMutation.isPending}
-        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] transition-colors ${
           myVote === 'down'
-            ? 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30'
-            : 'text-muted-foreground/50 hover:text-red-400 hover:bg-red-500/10'
+            ? 'text-red-400'
+            : 'text-muted-foreground/40 hover:text-red-400'
         }`}
       >
         <ThumbsDown className="h-3 w-3" />

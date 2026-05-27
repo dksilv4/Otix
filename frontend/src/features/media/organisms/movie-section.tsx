@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import type { MovieDetail } from '../media-queries'
 import { cn } from '@/lib/utils'
 
@@ -36,13 +37,23 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
           </div>
         )}
         {movie.budget != null && movie.budget > 0 && (
-          <div className="rounded-xl bg-card p-4">
+          <Link
+            to="/browse/$type"
+            params={{ type: 'movie' }}
+            search={{ sort: 'budget' }}
+            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+          >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</dt>
             <dd className="mt-1 text-sm font-semibold">{formatCurrency(movie.budget)}</dd>
-          </div>
+          </Link>
         )}
         {movie.revenue != null && movie.revenue > 0 && (
-          <div className="rounded-xl bg-card p-4">
+          <Link
+            to="/browse/$type"
+            params={{ type: 'movie' }}
+            search={{ sort: 'revenue' }}
+            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+          >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</dt>
             <dd className="mt-1 flex items-center gap-2">
               <span className="text-sm font-semibold">{formatCurrency(movie.revenue)}</span>
@@ -52,10 +63,15 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
                 </span>
               )}
             </dd>
-          </div>
+          </Link>
         )}
         {hasProfit && (
-          <div className="rounded-xl bg-card p-4">
+          <Link
+            to="/browse/$type"
+            params={{ type: 'movie' }}
+            search={isProfitable ? { sort: 'profit' } : { sort: 'profit', dir: 'asc' }}
+            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+          >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {isProfitable ? 'Profit' : 'Loss'}
             </dt>
@@ -79,7 +95,7 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
                 </span>
               )}
             </dd>
-          </div>
+          </Link>
         )}
       </dl>
     </section>

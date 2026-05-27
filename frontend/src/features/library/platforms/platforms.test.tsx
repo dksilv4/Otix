@@ -66,6 +66,7 @@ vi.mock("@/features/spotify/spotify-player-provider", () => ({
     setQueueMetadata: mockSetQueueMetadata,
     currentTrack: null,
     isPlaying: false,
+		    isReady: true,
     togglePlay: mockTogglePlay,
   })),
 }))

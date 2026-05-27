@@ -5,10 +5,8 @@ import { useToast } from '@/features/dk-ui/molecules/toast'
 import { apiClient, API_BASE_URL } from '@/lib/api-client'
 import { mediaKeys } from '@/features/media/media-keys'
 import { AdminEditModal } from '../organisms/admin-edit-modal'
-import { AdminProposalsList } from '../organisms/admin-proposals-list'
-import { useMediaProposals } from '../admin-edit-queries'
 import { cn } from '@/lib/utils'
-import { Shield, Pencil, RefreshCw, List, ChevronDown } from 'lucide-react'
+import { Shield, Pencil, RefreshCw, ChevronDown, X } from 'lucide-react'
 import type { MediaItemDetail } from '@/features/media/media-queries'
 
 interface Props {
@@ -22,14 +20,11 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
   const queryClient = useQueryClient()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
-  const [showProposals, setShowProposals] = useState(false)
   const [rehydrating, setRehydrating] = useState(false)
   const [rehydratePhase, setRehydratePhase] = useState<string | null>(null)
+  const [rehydrateLog, setRehydrateLog] = useState<string[]>([])
   const menuRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
-  const { data: proposalsData } = useMediaProposals(mediaId)
-
-  const pendingCount = proposalsData?.items.filter((p) => p.status === 'pending').length ?? 0
 
   // Close menu on outside click
   useEffect(() => {
@@ -59,6 +54,7 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
     abortRef.current = controller
     setRehydrating(true)
     setRehydratePhase('Queueing...')
+    setRehydrateLog(['Queueing rehydration task...'])
 
     try {
       const { data } = await apiClient.post<{ taskId: string }>(`/media/${mediaId}/rehydrate`)
@@ -87,17 +83,21 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
             switch (event.type) {
               case 'provider_started':
                 setRehydratePhase(`Running ${event.label}`)
+                setRehydrateLog((prev) => [...prev, `Started: ${event.label}`])
                 break
               case 'provider_complete':
                 refreshMedia()
+                setRehydrateLog((prev) => [...prev, `Completed: ${event.label}`])
                 break
               case 'rehydrate_complete':
                 refreshMedia()
                 setRehydratePhase(null)
                 setRehydrating(false)
+                setRehydrateLog((prev) => [...prev, 'Rehydration complete'])
                 toast({ title: 'Media rehydrated', variant: 'success' })
                 return
               case 'error':
+                setRehydrateLog((prev) => [...prev, `Error: ${event.message}`])
                 throw new Error(event.message || 'Hydration failed')
             }
           }
@@ -105,7 +105,9 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      toast({ title: 'Rehydrate failed', description: String(err), variant: 'error' })
+      const msg = String(err)
+      setRehydrateLog((prev) => [...prev, `Failed: ${msg}`])
+      toast({ title: 'Rehydrate failed', description: msg, variant: 'error' })
     } finally {
       setRehydrating(false)
       setRehydratePhase(null)
@@ -114,63 +116,70 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
 
   return (
     <>
-      <div ref={menuRef} className="relative">
-        <button
-          type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          className={cn(
-            'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-[var(--dk-surface-base)] px-3 py-3 transition-all duration-150',
-            'hover:bg-[var(--dk-surface-glass)]',
-            'ring-1 ring-amber-500/20',
-          )}
-        >
-          <Shield className="relative h-5 w-5 text-amber-400" />
-          <span className="relative flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground">
-            Admin
-            <ChevronDown className="h-3 w-3" />
-          </span>
-          {pendingCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
-              {pendingCount}
+      <div className="flex flex-col items-center">
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className={cn(
+              'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-amber-500/15 px-3 py-3 transition-all duration-150',
+              'hover:bg-amber-500/25',
+            )}
+          >
+            <Shield className="relative h-5 w-5 text-amber-400" />
+            <span className="relative flex items-center gap-0.5 text-[11px] font-medium text-amber-300/80">
+              Admin
+              <ChevronDown className={cn('h-3 w-3 transition-transform', menuOpen && 'rotate-180')} />
             </span>
-          )}
-        </button>
+          </button>
 
-        {menuOpen && (
-          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-2xl border border-[var(--dk-border)] bg-[var(--dk-surface-glass)] p-1.5 shadow-[var(--dk-shadow-dialog)] z-[var(--dk-z-modal)]">
+          {menuOpen && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-2xl bg-[var(--dk-surface-base)] p-1.5 shadow-[var(--dk-shadow-dialog)] z-[var(--dk-z-modal)]">
+              <button
+                type="button"
+                onClick={() => { setEditOpen(true); setMenuOpen(false) }}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-[var(--dk-surface-base)] transition-colors"
+              >
+                <Pencil className="h-4 w-4 text-amber-400" />
+                Edit Media
+              </button>
+              <button
+                type="button"
+                onClick={() => { startRehydrate(); setMenuOpen(false) }}
+                disabled={rehydrating}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-[var(--dk-surface-base)] transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={cn('h-4 w-4 text-muted-foreground', rehydrating && 'animate-spin')} />
+                {rehydrating ? (rehydratePhase ?? 'Hydrating...') : 'Force Rehydrate'}
+              </button>
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* SSE rehydration log — fixed bottom-right corner */}
+      {rehydrateLog.length > 0 && (
+        <div className="fixed bottom-4 right-4 w-72 rounded-xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-dialog)] z-[var(--dk-z-modal)]">
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Rehydration Log</p>
             <button
               type="button"
-              onClick={() => { setEditOpen(true); setMenuOpen(false) }}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-[var(--dk-surface-base)] transition-colors"
+              onClick={() => setRehydrateLog([])}
+              className="rounded-lg p-0.5 text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors"
             >
-              <Pencil className="h-4 w-4 text-amber-400" />
-              Edit Media
-            </button>
-            <button
-              type="button"
-              onClick={() => { startRehydrate(); setMenuOpen(false) }}
-              disabled={rehydrating}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-[var(--dk-surface-base)] transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn('h-4 w-4 text-muted-foreground', rehydrating && 'animate-spin')} />
-              {rehydrating ? (rehydratePhase ?? 'Hydrating...') : 'Force Rehydrate'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowProposals(!showProposals); setMenuOpen(false) }}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-[var(--dk-surface-base)] transition-colors"
-            >
-              <List className="h-4 w-4 text-muted-foreground" />
-              Proposals
-              {pendingCount > 0 && (
-                <span className="ml-auto rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
-                  {pendingCount} pending
-                </span>
-              )}
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
-        )}
-      </div>
+          <div className="max-h-40 space-y-0.5 overflow-y-auto">
+            {rehydrateLog.map((entry, i) => (
+              <p key={i} className="text-xs text-muted-foreground font-mono">
+                {entry}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       <AdminEditModal
         open={editOpen}
@@ -178,12 +187,6 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
         mediaId={mediaId}
         media={media}
       />
-
-      {showProposals && (
-        <div className="col-span-full w-full">
-          <AdminProposalsList mediaId={mediaId} media={media} />
-        </div>
-      )}
     </>
   )
 }

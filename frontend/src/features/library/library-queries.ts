@@ -28,6 +28,8 @@ export interface LibraryResponse {
     steamRtimeLastPlayed?: number | null
     plexViewCount?: number | null
     plexLastViewedAt?: string | null
+    albumArtistName?: string | null
+    albumTrackCount?: number | null
     isAdult?: boolean
   }>
   nextCursor: string | null
@@ -51,11 +53,11 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   lists: "Lists",
 }
 
-export function useLibraryTab(tab: LibraryTab) {
+export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, string>) {
   return useInfiniteQuery({
-    queryKey: libraryKeys.tab(tab),
+    queryKey: libraryKeys.tab(tab, extraParams),
     queryFn: async ({ pageParam }: { pageParam: string | null }) => {
-      const params: Record<string, string> = { limit: "48" }
+      const params: Record<string, string> = { limit: "48", ...extraParams }
       if (pageParam) params.cursor = pageParam
       const { data } = await apiClient.get<LibraryResponse>("/library/" + tab, { params })
       return data

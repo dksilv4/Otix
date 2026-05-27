@@ -93,6 +93,7 @@ class User(Base, TimestampMixin):
     discover_emphases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
     show_adult_content: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
 
     @property
     def hof_ids(self) -> dict[str, list[str]]:

@@ -12,6 +12,7 @@ from otix.api.schemas.interaction import (
     UserInteractionState,
 )
 from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
 
 interaction_router = APIRouter(prefix="/media", tags=["interaction"])
@@ -56,6 +57,11 @@ async def set_interaction(
         extra_data=body.extra_data or None,
     )
     counts = await service.get_counts(media_id)
+
+    # Invalidate the media-detail cache so the next GET returns fresh user_interactions
+    redis = await get_redis()
+    await redis.delete(f"media:detail:{media_id}:{current_user.id}")
+
     return InteractionToggleResponse(
         interaction=InteractionOut.model_validate(interaction),
         counts=InteractionCounts(**counts),
@@ -87,3 +93,7 @@ async def remove_interaction(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Interaction not found"
         )
+
+    # Invalidate the media-detail cache so the next GET returns fresh user_interactions
+    redis = await get_redis()
+    await redis.delete(f"media:detail:{media_id}:{current_user.id}")

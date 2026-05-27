@@ -340,8 +340,11 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             await hydrator.hydrate_images(item, raw)
             await hydrator.hydrate_videos(item, raw)
             await hydrator.hydrate_releases(item, raw)
+            if media_type == "show":
+                await hydrator.hydrate_content_ratings(item, raw)
             await hydrator.hydrate_ratings(item, raw)
             await hydrator.hydrate_external_ids(item, raw)
+            await hydrator.hydrate_involved_companies(item, raw)
 
             # ── Media-type-specific hydration ───────────────────────
             if media_type == "movie":
@@ -713,6 +716,121 @@ async def _sync_tmdb_keyword(tmdb_id: int) -> dict | None:
         logger.info("tmdb keyword synced", name=keyword.name, tmdb_id=tmdb_id)
         SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type="keyword", status="success")
         return {"otix_id": keyword.id, "name": keyword.name, "tmdb_id": tmdb_id}
+
+
+# ── Production companies hydration ─────────────────────────────────────
+
+
+@app.task(
+    name="sync.tmdb.hydrate_production_companies",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+)
+def sync_tmdb_hydrate_production_companies_task(self, media_item_id: str) -> dict | None:
+    """Hydrate involved companies with production=True for a single media item."""
+    return run_async(_hydrate_production_companies(media_item_id))
+
+
+async def _hydrate_production_companies(media_item_id: str) -> dict | None:
+    async with async_session() as session:
+        ext_id = await session.scalar(
+            select(ExternalID).where(
+                ExternalID.media_item_id == media_item_id,
+                ExternalID.provider == "tmdb",
+            )
+        )
+        if ext_id is None:
+            logger.warning("no tmdb external id for media item", media_item_id=media_item_id)
+            return None
+
+        item = await session.get(MediaItem, media_item_id)
+        if item is None or item.media_type not in ("movie", "show"):
+            return None
+
+        redis = await get_redis()
+        provider = TMDBProvider(redis)
+        hydrator = TMDBHydrator(provider, session)
+
+        try:
+            if item.media_type == "movie":
+                raw = await provider.get_movie(int(ext_id.external_id))
+            else:
+                raw = await provider.get_show(int(ext_id.external_id))
+        except Exception:
+            logger.exception("failed to fetch tmdb data for production companies", media_item_id=media_item_id)
+            raise
+
+        await hydrator.hydrate_involved_companies(item, raw)
+        await session.commit()
+
+        # Invalidate media detail caches so fresh data is served immediately
+        from otix.infrastructure.redis import get_redis as _get_redis
+        _redis = await _get_redis()
+        cache_pattern = f"media:detail:{media_item_id}:*"
+        keys = [key async for key in _redis.scan_iter(match=cache_pattern, count=100)]
+        if keys:
+            await _redis.delete(*keys)
+
+        logger.info("production companies hydrated", media_item_id=media_item_id, title=item.title)
+        return {"media_item_id": media_item_id, "title": item.title}
+
+
+# ── Content ratings hydration (TV shows) ──────────────────────────────
+
+
+@app.task(
+    name="sync.tmdb.hydrate_content_ratings",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+)
+def sync_tmdb_hydrate_content_ratings_task(self, media_item_id: str) -> dict | None:
+    """Hydrate TV content ratings (TV-G, TV-14, etc.) for a single show."""
+    return run_async(_hydrate_content_ratings(media_item_id))
+
+
+async def _hydrate_content_ratings(media_item_id: str) -> dict | None:
+    async with async_session() as session:
+        ext_id = await session.scalar(
+            select(ExternalID).where(
+                ExternalID.media_item_id == media_item_id,
+                ExternalID.provider == "tmdb",
+            )
+        )
+        if ext_id is None:
+            return None
+
+        item = await session.get(MediaItem, media_item_id)
+        if item is None or item.media_type != "show":
+            return None
+
+        redis = await get_redis()
+        provider = TMDBProvider(redis)
+        hydrator = TMDBHydrator(provider, session)
+
+        try:
+            raw = await provider.get_show_content_ratings(int(ext_id.external_id))
+        except Exception:
+            logger.exception("failed to fetch content ratings", media_item_id=media_item_id)
+            raise
+
+        # Wrap in the format hydrate_content_ratings expects
+        await hydrator.hydrate_content_ratings(item, {"content_ratings": raw})
+        await session.commit()
+
+        # Invalidate media detail caches
+        from otix.infrastructure.redis import get_redis as _get_redis
+        _redis = await _get_redis()
+        cache_pattern = f"media:detail:{media_item_id}:*"
+        keys = [key async for key in _redis.scan_iter(match=cache_pattern, count=100)]
+        if keys:
+            await _redis.delete(*keys)
+
+        logger.info("content ratings hydrated", media_item_id=media_item_id, title=item.title)
+        return {"media_item_id": media_item_id, "title": item.title}
 
 
 def _tmdb_image(path: str | None, size: str = "w500") -> str | None:

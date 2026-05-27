@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 
 import { useMediaDetail } from '../hooks/use-media-detail'
 import { usePageMeta } from '@/lib/page-context'
+import { useAuth } from '@/features/auth'
 
 
 import { MediaHero } from './media-hero'
@@ -224,6 +225,8 @@ export function MediaDetail() {
   const logoUrl = data?.logoUrl
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading')
 
+  const { user } = useAuth()
+
   useEffect(() => {
     if (isLoading) {
       setPhase('loading')
@@ -273,6 +276,16 @@ export function MediaDetail() {
   const displayType = detail.mediaType as 'movie' | 'show' | 'game' | 'music'
   const musicCreditsLine = detail.mediaType === 'music' ? formatMusicCreditsLine(detail.credits) : null
 
+  const userCountry = (user?.country || 'us').toLowerCase()
+  const certification =
+    detail.releases?.find(
+      (r) => r.countryCode === userCountry && r.certification,
+    )?.certification ||
+    (userCountry !== 'us'
+      ? detail.releases?.find((r) => r.countryCode === 'us' && r.certification)?.certification
+      : null) ||
+    null
+
   return (
     <div className="animate-fade-in space-y-12 pb-16">
       {/* ── SEO ── */}
@@ -317,6 +330,8 @@ export function MediaDetail() {
           status={detail.show?.status || detail.game?.releaseStatus}
           isAnime={detail.show?.isAnime}
           isAdult={detail.isAdult}
+          certification={certification}
+          originalLanguage={detail.originalLanguage}
           youtubeVideoId={detail.youtubeVideoId}
         />
       </div>
@@ -381,7 +396,7 @@ export function MediaDetail() {
           />
         )}
 
-        {isMusic(detail) && <MusicSection album={detail.album} />}
+        {isMusic(detail) && <MusicSection album={detail.album} mediaItemId={detail.id} />}
         {detail.mediaType === 'music' && !detail.album && (
           <p className="text-center text-sm text-muted-foreground">
             Album details are still syncing for this release.
@@ -400,6 +415,7 @@ export function MediaDetail() {
             <div className="flex flex-wrap gap-1.5">
               {detail.involvedCompanies.map((ic) => {
                 const roles: string[] = []
+                if (ic.production) roles.push('Production')
                 if (ic.developer) roles.push('Dev')
                 if (ic.publisher) roles.push('Pub')
                 if (ic.porting) roles.push('Port')

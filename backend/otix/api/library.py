@@ -164,6 +164,7 @@ async def get_steam_wishlist_tab(
 async def get_plex_library_tab(
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(48, ge=1, le=100),
+    media_type: str | None = Query(None, description="Filter by media type: movie, show, music"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MediaItemListResponse:
@@ -174,8 +175,9 @@ async def get_plex_library_tab(
         )
 
     from otix.domain.media import MediaItem, UserPlexItem
-    from sqlalchemy.orm import joinedload
-    
+    from otix.domain.people import MediaCredit
+    from sqlalchemy.orm import joinedload, selectinload
+
     query = (
         select(MediaItem, UserPlexItem.view_count, UserPlexItem.last_viewed_at)
         .join(UserPlexItem, UserPlexItem.media_item_id == MediaItem.id)
@@ -183,6 +185,8 @@ async def get_plex_library_tab(
             joinedload(MediaItem.movie),
             joinedload(MediaItem.show),
             joinedload(MediaItem.game),
+            joinedload(MediaItem.album),
+            selectinload(MediaItem.credits).joinedload(MediaCredit.person),
         )
         .where(
             UserPlexItem.user_id == current_user.id,
@@ -193,6 +197,9 @@ async def get_plex_library_tab(
             UserPlexItem.id
         )
     )
+
+    if media_type:
+        query = query.where(MediaItem.media_type == media_type)
     
     if cursor:
         try:
@@ -218,6 +225,15 @@ async def get_plex_library_tab(
         summary = MediaItemSummary.model_validate(media_item)
         summary.plex_view_count = view_count
         summary.plex_last_viewed_at = last_viewed_at
+        if media_item.media_type == "music" and media_item.album:
+            summary.album_track_count = media_item.album.track_count
+            if media_item.credits:
+                artist_credit = next(
+                    (c for c in media_item.credits if c.role in ("artist", "primary") and c.person),
+                    media_item.credits[0] if media_item.credits[0].person else None,
+                )
+                if artist_credit and artist_credit.person:
+                    summary.album_artist_name = artist_credit.person.name
         summaries.append(summary)
         
     return MediaItemListResponse(
@@ -225,6 +241,41 @@ async def get_plex_library_tab(
         next_cursor=next_cursor,
         has_more=has_more,
     )
+
+
+@library_router.get("/plex/thumb/{media_item_id}")
+async def get_plex_thumb(
+    media_item_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Redirect to the Plex server's authenticated thumbnail for a media item."""
+    from fastapi.responses import RedirectResponse
+
+    from otix.domain.media import UserPlexItem, UserPlexServer
+
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == current_user.id,
+            UserPlexItem.media_item_id == media_item_id,
+        )
+    )
+    if plex_item is None or not plex_item.thumb_url:
+        raise HTTPException(status_code=404, detail="No Plex thumbnail for this item")
+
+    server = await db.get(UserPlexServer, plex_item.server_id)
+    if server is None or not server.base_url:
+        raise HTTPException(status_code=404, detail="Plex server not found")
+
+    token = server.access_token or current_user.plex_auth_token
+    if not token:
+        raise HTTPException(status_code=404, detail="No Plex auth token")
+
+    thumb = plex_item.thumb_url
+    url = f"{server.base_url}{thumb}" if thumb.startswith("/") else thumb
+    url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={token}"
+
+    return RedirectResponse(url=url)
 
 
 @library_router.get("/plex/status")

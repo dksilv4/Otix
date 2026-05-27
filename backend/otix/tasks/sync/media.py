@@ -143,6 +143,15 @@ async def _force_rehydrate_media(task_id: str, media_item_id: str) -> dict:
         else:
             raise ValueError(f"Unsupported media type: {media_type}")
 
+        # Invalidate all per-user media detail caches
+        from otix.infrastructure.redis import get_redis
+        redis = await get_redis()
+        cache_pattern = f"media:detail:{media_item_id}:*"
+        keys = [key async for key in redis.scan_iter(match=cache_pattern, count=100)]
+        if keys:
+            await redis.delete(*keys)
+            logger.info("invalidated media detail caches", media_item_id=media_item_id, keys_deleted=len(keys))
+
         result = {"media_item_id": media_item_id, "media_type": media_type, "title": title}
         await store_result(task_id, result)
         await _rehydrate_emit(task_id, "rehydrate_complete", **result)

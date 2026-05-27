@@ -309,7 +309,14 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     async function initPlayer() {
       if (disposed) return
 
-      const token = await fetchAccessToken()
+      // Retry token fetch up to 3 times for transient failures
+      let token: string | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        token = await fetchAccessToken()
+        if (token) break
+        if (attempt < 2) await sleep(1000 * (attempt + 1))
+      }
+
       if (disposed) return
 
       if (!token) {
@@ -325,6 +332,13 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       player = new window.Spotify.Player({
         name: 'Otix',
         getOAuthToken: (cb: (token: string) => void) => {
+          // If we already have a token, use it immediately so the SDK
+          // doesn't block on connect() waiting for a network round-trip.
+          if (tokenRef.current) {
+            cb(tokenRef.current)
+            return
+          }
+
           let attempts = 0
           const tryFetch = async () => {
             const t = await fetchAccessToken()
@@ -338,6 +352,9 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
               setTimeout(tryFetch, 1000 * attempts)
             } else {
               console.error('Spotify SDK requested token but fetch failed after 3 attempts')
+              // Must call cb even on failure — otherwise connect() hangs
+              // forever and the player never reaches a terminal state.
+              cb('')
               notifyError(
                 'Spotify session expired',
                 'Reconnect your Spotify account in Settings.',
@@ -472,9 +489,16 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         }, 700)
       })
 
-      const connected = await player.connect()
-      if (!connected && !disposed) {
-        notifyError('Could not connect Spotify player')
+      try {
+        const connected = await player.connect()
+        if (!connected && !disposed) {
+          notifyError('Could not connect Spotify player')
+        }
+      } catch (err) {
+        console.error('Spotify player connect threw:', err)
+        if (!disposed) {
+          notifyError('Could not connect Spotify player')
+        }
       }
     }
 
@@ -490,12 +514,19 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
     const timeout = setTimeout(tryInit, 500)
 
+    let reconnecting = false
+
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        if (playerRef.current && !disposed) {
-          playerRef.current.connect()
-        } else if (!playerRef.current && !disposed && window.Spotify) {
-          initPlayer()
+      if (document.visibilityState === 'visible' && !disposed) {
+        if (playerRef.current) {
+          playerRef.current.connect().catch((err) => {
+            console.error('Spotify player reconnect threw:', err)
+          })
+        } else if (!reconnecting && window.Spotify) {
+          reconnecting = true
+          initPlayer().finally(() => {
+            reconnecting = false
+          })
         }
       }
     }
@@ -518,11 +549,32 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   }, [getPendingPlaybackUri, hasSpotify, notifyError, playbackStarted])
 
   const callSpotifyApi = useCallback(async (method: string, path: string, body?: unknown) => {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const token = tokenRef.current || (await fetchAccessToken())
-      if (!token) throw new Error('No Spotify token')
+    let token = tokenRef.current || (await fetchAccessToken())
+    if (!token) throw new Error('No Spotify token')
 
-      const res = await fetch(`https://api.spotify.com/v1${path}`, {
+    const res = await fetch(`https://api.spotify.com/v1${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+
+    if (res.ok) {
+      if (res.status === 204) return null
+      return res.json()
+    }
+
+    if (res.status === 401) {
+      // Token expired — fetch a fresh one from the backend and retry once
+      tokenRef.current = null
+      const newToken = await fetchAccessToken()
+      if (!newToken) throw new Error('Failed to refresh token')
+      tokenRef.current = newToken
+      token = newToken
+
+      const retryRes = await fetch(`https://api.spotify.com/v1${path}`, {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
@@ -531,23 +583,13 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         ...(body ? { body: JSON.stringify(body) } : {}),
       })
 
-      if (res.ok) {
-        if (res.status === 204) return null
-        return res.json()
+      if (retryRes.ok) {
+        if (retryRes.status === 204) return null
+        return retryRes.json()
       }
-
-      if (res.status === 401 && attempt === 0) {
-        tokenRef.current = null
-        const newToken = await fetchAccessToken()
-        if (!newToken) throw new Error('Failed to refresh token')
-        tokenRef.current = newToken
-        continue
-      }
-
-      throw new Error(`Spotify API error: ${res.status}`)
     }
 
-    throw new Error('Spotify API error')
+    throw new Error(`Spotify API error: ${res.status}`)
   }, [])
 
   const startPlayback = useCallback(
@@ -682,7 +724,12 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
         // Queue any remaining tracks beyond the 100-URI limit.
         for (let i = 100; i < uris.length; i++) {
-          await callSpotifyApi('POST', `/me/player/queue?uri=${encodeURIComponent(uris[i])}`)
+          try {
+            await callSpotifyApi('POST', `/me/player/queue?uri=${encodeURIComponent(uris[i])}`)
+          } catch {
+            // Queueing failed for this track, but playback already started —
+            // continue queueing remaining tracks rather than failing entirely.
+          }
         }
       } catch (e) {
         console.error('Play error:', e)

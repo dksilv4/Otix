@@ -9,7 +9,7 @@ from __future__ import annotations
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
@@ -47,6 +47,7 @@ class IGDBHydrator:
         await self.hydrate_companies(media_item, raw)
         await self.hydrate_platforms(media_item, raw)
         await self.hydrate_modes(media_item, raw)
+        await self.hydrate_age_ratings(media_item, raw)
 
     # ── External ID ─────────────────────────────────────────────────
 
@@ -388,5 +389,90 @@ class IGDBHydrator:
                 MediaGameMode(
                     media_item_id=media_item.id,
                     game_mode_id=mode.id,
+                )
+            )
+
+    # ── Age ratings ────────────────────────────────────────────────────
+
+    _AGE_RATING_ORG_MAP: dict[int, tuple[str, str]] = {
+        1: ("ESRB", "us"),
+        2: ("PEGI", "gb"),
+        3: ("CERO", "jp"),
+        4: ("USK", "de"),
+        5: ("GRAC", "kr"),
+        6: ("ClassInd", "br"),
+        7: ("ACB", "au"),
+    }
+
+    _AGE_RATING_LABEL_MAP: dict[int, str] = {
+        # ESRB (org=1)
+        1: "RP", 2: "EC", 3: "E", 4: "E10+", 5: "T", 6: "M", 7: "AO",
+        # PEGI (org=2)
+        8: "3", 9: "7", 10: "12", 11: "16", 12: "18",
+        # CERO (org=3)
+        13: "A", 14: "B", 15: "C", 16: "D", 17: "Z",
+        # USK (org=4)
+        18: "0", 19: "6", 20: "12", 21: "16", 22: "18",
+        # GRAC (org=5)
+        23: "ALL", 24: "12+", 25: "15+", 26: "18+",
+        # ClassInd (org=6)
+        27: "ER", 28: "L", 29: "10", 30: "12", 31: "14", 32: "16", 33: "18",
+        # ACB (org=7)
+        34: "G", 35: "PG", 36: "M", 37: "MA15+", 38: "R18+",
+    }
+
+    async def hydrate_age_ratings(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
+        """Fetch and store age ratings (ESRB, PEGI, etc.) for a game."""
+        age_rating_ids: list[int] = raw.get("age_ratings", []) or []
+
+        # If raw doesn't include age_ratings (e.g. from fields *), fetch explicitly
+        if not age_rating_ids:
+            igdb_id = raw.get("id")
+            if not igdb_id:
+                return
+            try:
+                game = await self.provider.get_game(int(igdb_id), fields="age_ratings")
+            except Exception:
+                return
+            if not game:
+                return
+            age_rating_ids = game.get("age_ratings", []) or []
+
+        if not age_rating_ids:
+            return
+
+        try:
+            entries = await self.provider.get_age_ratings(age_rating_ids)
+        except Exception:
+            return
+
+        if not entries:
+            return
+
+        await self.session.execute(
+            delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id)
+        )
+
+        for entry in entries:
+            org_id = entry.get("organization")
+            cat_id = entry.get("rating_category")
+            if org_id is None or cat_id is None:
+                continue
+
+            org_info = self._AGE_RATING_ORG_MAP.get(org_id)
+            if not org_info:
+                continue
+
+            system_name, country_code = org_info
+            label = self._AGE_RATING_LABEL_MAP.get(cat_id)
+            if not label:
+                continue
+
+            self.session.add(
+                MediaRelease(
+                    media_item_id=media_item.id,
+                    country_code=country_code,
+                    release_date=None,
+                    certification=f"{system_name}: {label}",
                 )
             )

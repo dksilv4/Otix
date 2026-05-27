@@ -37,6 +37,7 @@ class ReviewOut(BaseModel):
     is_private: bool = False
     created_at: datetime
     updated_at: datetime
+    cooldown_until: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -58,6 +59,7 @@ class ReviewWithUserOut(BaseModel):
     is_spoiler: bool = False
     created_at: datetime
     updated_at: datetime
+    cooldown_until: datetime | None = None
     user: ReviewUserOut
 
     model_config = {"from_attributes": True}

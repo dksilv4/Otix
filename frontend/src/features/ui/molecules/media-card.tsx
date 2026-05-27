@@ -20,6 +20,9 @@ interface MediaCardProps {
   isAdult?: boolean
   zoomed?: boolean
   className?: string
+  /** Optional subtitle shown below the year — e.g. financial data like "+$42M" */
+  subtitle?: string | null
+  subtitleColor?: string
 }
 
 const mediaTypeColor: Record<string, string> = {
@@ -50,6 +53,8 @@ export const MediaCard = memo(function MediaCard({
   isAdult,
   zoomed = true,
   className,
+  subtitle,
+  subtitleColor,
 }: MediaCardProps) {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -82,6 +87,21 @@ export const MediaCard = memo(function MediaCard({
 
       {/* Darkening gradient — fades in on hover */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out pointer-events-none" />
+
+      {/* Financial subtitle — always visible pill at bottom */}
+      {subtitle && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+          <span
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm"
+            style={{
+              color: subtitleColor ?? '#e2e8f0',
+              backgroundColor: 'rgba(0,0,0,0.65)',
+            }}
+          >
+            {subtitle}
+          </span>
+        </div>
+      )}
 
       {/* Type badge — top left */}
       {showTypeBadge && (

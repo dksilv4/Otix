@@ -23,6 +23,8 @@ export interface MediaItemSummary {
   listenedCount?: number
   isAdult?: boolean
   userInteractions?: UserInteractionState | null
+  revenue?: number | null
+  budget?: number | null
 }
 
 export interface MediaItemDetail {
@@ -71,6 +73,12 @@ export interface MediaItemDetail {
     publisher: boolean
     porting: boolean
     supporting: boolean
+    production: boolean
+  }>
+  releases: Array<{
+    countryCode: string
+    releaseDate: string | null
+    certification: string | null
   }>
   platforms: Array<{ id: string; platform: { id: string; name: string; slug: string; logoImageId?: string } }>
   gameModes: Array<{ id: string; gameMode: { id: string; name: string; slug: string } }>
@@ -227,6 +235,7 @@ export const mediaQueries = {
     isAnime?: boolean | null
     hasArtwork?: boolean
     sortBy?: string
+    sortDir?: string
     page?: number
     limit?: number
   }) =>
@@ -236,16 +245,51 @@ export const mediaQueries = {
         const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 50 }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
+        if (opts?.certification) params.certification = opts.certification
         if (opts?.language) params.language = opts.language
         if (opts?.isAnime != null) params.is_anime = opts.isAnime
         if (opts?.hasArtwork) params.has_artwork = true
         if (opts?.sortBy) {
           params.sort_by = opts.sortBy
+          if (opts?.sortDir) params.sort_dir = opts.sortDir
           if (opts?.page) params.page = opts.page
         }
         const { data } = await apiClient.get<MediaListResponse>('/media', { params })
         return data
       },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  infiniteList: (opts?: {
+    type?: string
+    genre?: string
+    language?: string
+    isAnime?: boolean | null
+    hasArtwork?: boolean
+    sortBy?: string
+    sortDir?: string
+    limit?: number
+  }) =>
+    infiniteQueryOptions({
+      queryKey: mediaKeys.infiniteList(opts?.type, opts),
+      queryFn: async ({ pageParam }) => {
+        const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 48 }
+        if (opts?.type) params.media_type = opts.type
+        if (opts?.genre) params.genre = opts.genre
+        if (opts?.certification) params.certification = opts.certification
+        if (opts?.language) params.language = opts.language
+        if (opts?.isAnime != null) params.is_anime = opts.isAnime
+        if (opts?.hasArtwork) params.has_artwork = true
+        if (opts?.sortBy) {
+          params.sort_by = opts.sortBy
+          if (opts?.sortDir) params.sort_dir = opts.sortDir
+        }
+        params.page = pageParam
+        const { data } = await apiClient.get<MediaListResponse>('/media', { params })
+        return data
+      },
+      getNextPageParam: (lastPage, allPages) => lastPage.hasMore ? allPages.length + 1 : undefined,
+      initialPageParam: 1,
       staleTime: 1000 * 60 * 5,
     }),
 

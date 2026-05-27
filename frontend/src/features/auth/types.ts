@@ -33,6 +33,7 @@ export interface User {
   discoverEmphases?: string[]
   dateOfBirth?: string | null
   showAdultContent?: boolean
+  country?: string | null
 }
 
 export interface TokenResponse {

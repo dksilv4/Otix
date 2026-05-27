@@ -1,11 +1,16 @@
 import { useState } from "react"
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, Lock } from "lucide-react"
 import { DkButton } from "@/features/dk-ui/atoms/button"
 import { DkInput } from "@/features/dk-ui/atoms/input"
 import { DkCheckbox } from "@/features/dk-ui/atoms/checkbox"
 import { StarInput } from "./star-input"
 import { useUpsertReview, useDeleteReview, type ReviewOut } from "../review-queries"
 import { cn } from "@/lib/utils"
+
+function isPastCooldown(cooldownUntil: string | null): boolean {
+  if (!cooldownUntil) return true
+  return new Date(cooldownUntil) <= new Date()
+}
 
 interface ReviewComposerProps {
   mediaId: string
@@ -25,11 +30,13 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
   const upsert = useUpsertReview(mediaId)
   const deleteReview = useDeleteReview(mediaId)
 
+  const reviewLocked = existingReview ? isPastCooldown(existingReview.cooldownUntil) : false
+
   const trimmedContent = content.trim()
   const hasRating = score > 0
   const hasReviewText = trimmedContent.length >= 10
   const hasShortReviewText = trimmedContent.length > 0 && !hasReviewText
-  const canSave = (hasRating || hasReviewText) && !hasShortReviewText
+  const canSave = hasRating || hasReviewText
   const charCount = content.length
   const isSaving = upsert.isPending
   const isDeleting = deleteReview.isPending
@@ -82,7 +89,7 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={200}
-        disabled={isSaving}
+        disabled={isSaving || reviewLocked}
       />
 
       {/* Content */}
@@ -99,7 +106,7 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
           value={content}
           onChange={(e) => setContent(e.target.value)}
           maxLength={5000}
-          disabled={isSaving}
+          disabled={isSaving || reviewLocked}
         />
         <span
           className={cn(
@@ -113,11 +120,11 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
       </div>
 
       {/* Spoiler toggle */}
-      <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+      <label className={cn("flex items-center gap-2.5 select-none group", reviewLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
         <DkCheckbox
           checked={isSpoiler}
           onCheckedChange={(v) => setIsSpoiler(!!v)}
-          disabled={isSaving}
+          disabled={isSaving || reviewLocked}
         />
         <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
           Contains spoilers
@@ -125,16 +132,24 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
       </label>
 
       {/* Privacy toggle */}
-      <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+      <label className={cn("flex items-center gap-2.5 select-none group", reviewLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
         <DkCheckbox
           checked={isPrivate}
           onCheckedChange={(v) => setIsPrivate(!!v)}
-          disabled={isSaving}
+          disabled={isSaving || reviewLocked}
         />
         <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
           Make this review private
         </span>
       </label>
+
+      {/* Cooldown lock notice */}
+      {reviewLocked && (
+        <div className="flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2.5 text-sm text-amber-400">
+          <Lock className="w-4 h-4 shrink-0" />
+          Review text is locked. You can still update your rating or delete this review.
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -152,7 +167,7 @@ function ReviewComposer({ mediaId, existingReview, onClose, onSaved }: ReviewCom
           className="flex-1"
           variant="primary"
         >
-          {isSaving ? "Saving..." : existingReview ? "Update Review" : "Submit Review"}
+          {isSaving ? "Saving..." : existingReview ? (reviewLocked ? "Update Rating" : "Update Review") : "Submit Review"}
         </DkButton>
         {existingReview && (
           <DkButton

@@ -10,7 +10,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse, StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db
@@ -444,6 +444,7 @@ def _user_response(user: User) -> UserResponse:
         discover_emphases=user.discover_emphases if user.discover_emphases else [],
         date_of_birth=user.date_of_birth,
         show_adult_content=user.show_adult_content,
+        country=user.country,
     )
 
 
@@ -1168,6 +1169,7 @@ async def spotify_get_token(
             detail="Spotify token refresh failed. Please reconnect your account in Settings.",
         )
 
+    await db.commit()
     return {"accessToken": token, "expiresIn": 3600}
 
 

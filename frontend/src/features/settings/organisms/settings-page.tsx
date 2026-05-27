@@ -185,6 +185,34 @@ export function SettingsPage() {
   )
 }
 
+const COUNTRY_OPTIONS = [
+  { value: 'us', label: 'United States' },
+  { value: 'gb', label: 'United Kingdom' },
+  { value: 'ca', label: 'Canada' },
+  { value: 'au', label: 'Australia' },
+  { value: 'de', label: 'Germany' },
+  { value: 'fr', label: 'France' },
+  { value: 'jp', label: 'Japan' },
+  { value: 'br', label: 'Brazil' },
+  { value: 'kr', label: 'South Korea' },
+  { value: 'in', label: 'India' },
+  { value: 'mx', label: 'Mexico' },
+  { value: 'es', label: 'Spain' },
+  { value: 'it', label: 'Italy' },
+  { value: 'nl', label: 'Netherlands' },
+  { value: 'se', label: 'Sweden' },
+  { value: 'no', label: 'Norway' },
+  { value: 'dk', label: 'Denmark' },
+  { value: 'fi', label: 'Finland' },
+  { value: 'pl', label: 'Poland' },
+  { value: 'ru', label: 'Russia' },
+  { value: 'cn', label: 'China' },
+  { value: 'nz', label: 'New Zealand' },
+  { value: 'ie', label: 'Ireland' },
+  { value: 'pt', label: 'Portugal' },
+  { value: 'ar', label: 'Argentina' },
+]
+
 const VISIBILITY_OPTIONS = [
   { value: 'everyone', label: 'Everyone' },
   { value: 'friends', label: 'Friends only' },
@@ -467,6 +495,7 @@ function ProfileSection({
   const [tmdbVisibility, setTmdbVisibility] = useState(
     user?.integrationVisibility?.tmdb ?? 'hidden'
   )
+  const [country, setCountry] = useState(user?.country ?? '')
   const [profileSections, setProfileSections] = useState<string[]>(
     user?.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'],
   )
@@ -484,6 +513,7 @@ function ProfileSection({
       setSteamVisibility(user.integrationVisibility?.steam ?? 'hidden')
       setPlexVisibility(user.integrationVisibility?.plex ?? 'hidden')
       setTmdbVisibility(user.integrationVisibility?.tmdb ?? 'hidden')
+      setCountry(user.country ?? '')
       setProfileSections(user.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
       setInitialized(true)
     }
@@ -517,6 +547,7 @@ function ProfileSection({
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
         profile_card_sections: profileSections,
+        country: country || null,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -539,6 +570,7 @@ function ProfileSection({
     steamVisibility !== (user?.integrationVisibility?.steam ?? 'hidden') ||
     plexVisibility !== (user?.integrationVisibility?.plex ?? 'hidden') ||
     tmdbVisibility !== (user?.integrationVisibility?.tmdb ?? 'hidden') ||
+    country !== (user?.country ?? '') ||
     JSON.stringify(profileSections) !== JSON.stringify(user?.profileCardSections ?? ['reviews', 'stats', 'top_rated', 'recent_activity'])
 
   const applyCoverEditor = async (url: string, keepOpen = false) => {
@@ -552,6 +584,7 @@ function ProfileSection({
         background_url: url || null,
         integration_visibility: integrationVisibility,
         profile_card_sections: profileSections,
+        country: country || null,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -576,6 +609,7 @@ function ProfileSection({
         background_url: backgroundUrl || null,
         integration_visibility: integrationVisibility,
         profile_card_sections: profileSections,
+        country: country || null,
       })
       setBio(data.bio ?? '')
       setAvatarUrl(data.avatarUrl ?? '')
@@ -706,6 +740,22 @@ function ProfileSection({
               Keep it short. This appears on your public profile.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Country preference */}
+      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
+        <SectionHeader
+          title="Country"
+          description="Used to show the matching certification rating (MPAA, ESRB, etc.) on media pages."
+        />
+        <div className="mt-4 max-w-xs">
+          <DkDropdown
+            options={COUNTRY_OPTIONS}
+            value={country}
+            onChange={setCountry}
+            placeholder="Select country"
+          />
         </div>
       </div>
 

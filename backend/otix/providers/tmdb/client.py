@@ -118,7 +118,7 @@ class TMDBProvider(BaseProvider):
             f"/tv/{tmdb_id}",
             params={
                 "language": language,
-                "append_to_response": "credits,external_ids,images,videos,keywords,seasons",
+                "append_to_response": "credits,external_ids,images,videos,keywords,seasons,content_ratings",
             },
         )
         return response.json()
@@ -128,6 +128,10 @@ class TMDBProvider(BaseProvider):
             "/tv/changes",
             params={"start_date": start_date, "end_date": end_date, "page": page},
         )
+        return response.json()
+
+    async def get_show_content_ratings(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/tv/{tmdb_id}/content_ratings")
         return response.json()
 
     async def get_season(self, show_tmdb_id: int, season_number: int, language: str = "en-US") -> dict[str, JSONValue]:

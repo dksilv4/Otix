@@ -42,6 +42,7 @@ class InvolvedCompany(Base):
     publisher: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     porting: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     supporting: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    production: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     media_item: Mapped[MediaItem] = relationship(
         "MediaItem", back_populates="involved_companies"

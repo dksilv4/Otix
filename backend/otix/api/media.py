@@ -87,7 +87,9 @@ async def list_media(
     language: str | None = Query(None, description="Language code (e.g. 'ja', 'ko')"),
     is_anime: bool | None = Query(None, description="Filter to anime (movie/show only)"),
     has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
-    sort_by: str | None = Query(None, description="popularity, rating, release_date, or title"),
+    sort_by: str | None = Query(None, description="popularity, rating, release_date, title, revenue, budget, or profit"),
+    sort_dir: str | None = Query(None, description="Sort direction: asc or desc (default desc)"),
+    certification: str | None = Query(None, description="Filter by certification in the user's country (e.g. 'PG-13', 'R', 'TV-MA')"),
     cursor: str | None = Query(None, description="Pagination cursor (media item id) — cursor mode only"),
     page: int = Query(1, ge=1, description="Page number — sort mode only"),
     limit: int = Query(50, ge=1, le=100),
@@ -99,6 +101,8 @@ async def list_media(
         language = language.split("-")[0]
 
     exclude_adult = should_exclude_adult(current_user)
+    country_code = (current_user.country or "us").lower() if current_user else "us"
+
     service = MediaService(db)
     items, has_more, total = await service.list_media(
         media_type=media_type,
@@ -107,16 +111,27 @@ async def list_media(
         is_anime=is_anime,
         has_artwork=has_artwork,
         sort_by=sort_by,
+        sort_dir=sort_dir or "desc",
         cursor=cursor,
         page=page,
         limit=limit,
         include_total=True,
         exclude_adult=exclude_adult,
+        certification=certification,
+        country_code=country_code,
     )
 
     next_cursor = items[-1].id if has_more and items else None
 
     summaries = [MediaItemSummary.model_validate(item) for item in items]
+
+    # Carry movie financials onto summaries only when sorting by financial fields
+    if sort_by in ("revenue", "budget", "profit"):
+        for i, summary in enumerate(summaries):
+            movie = items[i].movie if items[i].movie else None
+            if movie:
+                summary.revenue = movie.revenue
+                summary.budget = movie.budget
 
     if current_user is not None and summaries:
         interaction_service = InteractionService(db)
@@ -155,6 +170,31 @@ async def list_genres(
         )
     result = await db.scalars(query)
     return [GenreOut.model_validate(g) for g in result]
+
+
+@media_router.get("/certifications", response_model=list[str])
+async def list_certifications(
+    media_type: str | None = Query(None, description="Filter certifications to a specific media type"),
+    country_code: str = Query("us", description="Country code for certification ratings (e.g. 'us', 'gb')"),
+    db: AsyncSession = Depends(get_db),
+) -> list[str]:
+    from otix.domain.asset import MediaRelease
+
+    query = (
+        select(MediaRelease.certification)
+        .distinct()
+        .join(MediaItem, MediaItem.id == MediaRelease.media_item_id)
+        .where(
+            MediaRelease.country_code == country_code.lower(),
+            MediaRelease.certification.isnot(None),
+            MediaRelease.certification != "",
+        )
+        .order_by(MediaRelease.certification)
+    )
+    if media_type:
+        query = query.where(MediaItem.media_type == media_type)
+    result = await db.scalars(query)
+    return list(result)
 
 
 @media_router.get("/search", response_model=MediaItemListResponse)

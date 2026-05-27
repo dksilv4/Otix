@@ -60,6 +60,8 @@ class MediaService:
         language: str | None = None,
         is_anime: bool | None = None,
         exclude_adult: bool = False,
+        certification: str | None = None,
+        country_code: str = "us",
     ) -> tuple[list[MediaItem], bool, int | None]:
         _sort_fields = {
             "popularity": MediaItem.popularity,
@@ -67,21 +69,36 @@ class MediaService:
             "release_date": MediaItem.release_date,
             "title": MediaItem.title,
         }
-        sort_field = _sort_fields.get(sort_by or "")
+        # Financial sorts require a JOIN to the movies table
+        _financial_sorts = {
+            "revenue": Movie.revenue,
+            "budget": Movie.budget,
+            "profit": Movie.revenue - Movie.budget,
+        }
+        sort_field = _sort_fields.get(sort_by or "") or _financial_sorts.get(sort_by or "")
+        is_financial_sort = sort_by in _financial_sorts
+
         if sort_field is not None:
             order = sort_field.desc().nullslast() if sort_dir == "desc" else sort_field.asc().nullsfirst()
         else:
             order = None
 
-        if order is not None:
-            # Offset pagination when a sort is explicitly requested
-            query = select(MediaItem).order_by(order, MediaItem.id)
+        if order is not None or is_financial_sort:
+            query = select(MediaItem)
+            if is_financial_sort:
+                query = query.join(MediaItem.movie).options(joinedload(MediaItem.movie))
         else:
             # Cursor pagination with default popularity sort
-            query = (
-                select(MediaItem)
-                .order_by(MediaItem.popularity.desc(), MediaItem.id)
-            )
+            query = select(MediaItem)
+
+        if order is not None:
+            query = query.order_by(order, MediaItem.id)
+        else:
+            query = query.order_by(MediaItem.popularity.desc(), MediaItem.id)
+
+        # Financial sorts only make sense for movies
+        if is_financial_sort and not media_type:
+            media_type = "movie"
 
         if media_type:
             query = query.where(MediaItem.media_type == media_type)
@@ -126,6 +143,17 @@ class MediaService:
                     )
                 )
 
+        if certification:
+            from otix.domain.asset import MediaRelease
+            query = query.where(
+                MediaItem.id.in_(
+                    select(MediaRelease.media_item_id).where(
+                        MediaRelease.country_code == country_code,
+                        MediaRelease.certification == certification,
+                    )
+                )
+            )
+
         if exclude_adult:
             query = query.where(MediaItem.is_adult == False)
 
@@ -151,6 +179,16 @@ class MediaService:
                 )
             if language:
                 count_query = count_query.where(MediaItem.original_language == language)
+            if certification:
+                from otix.domain.asset import MediaRelease
+                count_query = count_query.where(
+                    MediaItem.id.in_(
+                        select(MediaRelease.media_item_id).where(
+                            MediaRelease.country_code == country_code,
+                            MediaRelease.certification == certification,
+                        )
+                    )
+                )
             if is_anime is not None:
                 if is_anime:
                     movie_cond = Movie.is_anime == True
@@ -221,6 +259,7 @@ class MediaService:
                 selectinload(MediaItem.external_ratings),
                 selectinload(MediaItem.credits).joinedload(MediaCredit.person),
                 selectinload(MediaItem.involved_companies).joinedload(InvolvedCompany.company),
+                selectinload(MediaItem.releases),
                 selectinload(MediaItem.platforms).joinedload(MediaPlatform.platform),
                 selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
                 # Type-specific: use selectinload for collections to avoid cartesian blowup
