@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Pin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSpotifyPlayer } from './spotify-player-provider'
-import { SpotifyPlayerContent } from './spotify-player-bar'
+import { usePlayer } from './use-player'
+import { PlayerBarContent } from './player-bar-content'
 import { PlexSessionList } from './plex-now-playing'
 import type { PlexSession } from './plex-now-playing'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
@@ -43,7 +43,7 @@ function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
 }
 
 export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPin?: () => void }) {
-  const { isReady, isPlaying, currentTrack } = useSpotifyPlayer()
+  const { spotifyIsReady, source, isPlaying, currentTrack } = usePlayer()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -83,18 +83,18 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
     }
   }, [open, handleClickOutside])
 
-  const hasSpotify = isReady && currentTrack
+  const hasLocalPlayback = source !== 'none' && currentTrack !== null
   const plexCount = plexSessions.length
   const hasPlex = plexCount > 0
 
-  if (!hasSpotify && !hasPlex) return null
+  if (!hasLocalPlayback && !hasPlex) return null
 
   const handleClick = () => {
     if (isPinned) return
     setOpen(!open)
   }
 
-  const showSpotifyInPopover = hasSpotify
+  const showLocalInPopover = hasLocalPlayback
   const showPlexInPopover = hasPlex
 
   return (
@@ -107,11 +107,11 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
           pillBase,
           'p-1.5 relative gap-1',
           !isPinned && 'cursor-pointer',
-          !hasSpotify && hasPlex && 'ring-1 ring-[#e5a00d]/40',
+          !hasLocalPlayback && hasPlex && 'ring-1 ring-[#e5a00d]/40',
         )}
         aria-label="Now playing"
       >
-        {hasSpotify ? (
+        {hasLocalPlayback ? (
           currentTrack.albumArt ? (
             <img
               src={currentTrack.albumArt}
@@ -128,7 +128,7 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
         ) : (
           <PlexIcon className={cn('h-5 w-5', hasPlex ? 'text-[#e5a00d]' : 'text-muted-foreground')} />
         )}
-        {hasPlex && !hasSpotify && (
+        {hasPlex && !hasLocalPlayback && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e5a00d] px-1 text-[10px] font-bold text-black leading-none">
             {plexCount > 9 ? '9+' : plexCount}
           </span>
@@ -160,11 +160,11 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
                 </button>
               )}
             </div>
-            {showSpotifyInPopover && (
-              <SpotifyPlayerContent onDismiss={() => setOpen(false)} />
+            {showLocalInPopover && (
+              <PlayerBarContent onDismiss={() => setOpen(false)} />
             )}
             {showPlexInPopover && (
-              <div className={cn(showSpotifyInPopover && 'mt-3 pt-3 border-t border-white/[0.06]')}>
+              <div className={cn(showLocalInPopover && 'mt-3 pt-3 border-t border-white/[0.06]')}>
                 <div className="flex items-center gap-2 px-2 mb-3">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#e5a00d]" />
                   <span className="text-xs font-semibold text-muted-foreground">

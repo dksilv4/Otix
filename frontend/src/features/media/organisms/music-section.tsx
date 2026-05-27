@@ -3,8 +3,7 @@ import type { AlbumDetail, TrackOut } from '../media-queries'
 import { useRateTrack } from '../media-queries'
 import { cn } from '@/lib/utils'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
-import { useSpotifyPlayer } from '@/features/spotify/spotify-player-provider'
-import { usePlexPlayer } from '@/features/spotify/plex-audio-provider'
+import { usePlayer } from '@/features/spotify/use-player'
 import type { PlexTrackInfo } from '@/features/spotify/plex-audio-provider'
 import { TrackInlineActions } from '../molecules/track-inline-actions'
 import { useSaveSpotifyTrack, usePlexAlbumTracks } from '@/features/library/library-queries'
@@ -256,8 +255,7 @@ function TrackRow({
 export function MusicSection({ album, mediaItemId, className }: MusicSectionProps) {
   const tracks = album.tracks ?? EMPTY_TRACKS
   const multiDisc = tracks.some((t) => t.discNumber > 1)
-  const { playWithQueue, currentTrack, isReady, togglePlay } = useSpotifyPlayer()
-  const { playAlbum: playPlexAlbum, playTrack: playPlexTrack, currentTrack: plexCurrentTrack, error: plexError } = usePlexPlayer()
+  const { playSpotifyQueue, currentTrack, spotifyIsReady, togglePlay, playPlexAlbum, playPlexTrack, source, error } = usePlayer()
   const { data: plexData } = usePlexAlbumTracks(mediaItemId)
   const plexTracks = plexData?.tracks
 
@@ -265,6 +263,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
   const plexBaseUrl = plexData?.baseUrl
   const plexToken = plexData?.token
   const plexReady = !!plexBaseUrl && !!plexToken
+  const plexAlbumArt = plexData?.albumThumbUrl || album.posterUrl || null
 
   // Helper: build a PlexTrackInfo for a single track (just credentials, no pre-built URL).
   // The provider resolves the Part key from Plex metadata at play time.
@@ -274,7 +273,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
     title,
     artist,
     albumName: album.title || "",
-    albumArt: album.posterUrl || null,
+    albumArt: plexAlbumArt,
     durationMs: durMs || 0,
     plexBaseUrl: plexBaseUrl ?? null,
     plexToken: plexToken ?? null,
@@ -372,12 +371,12 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
         </dl>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {album.spotifyId && isReady && (
+          {album.spotifyId && spotifyIsReady && (
             <button
               type="button"
               onClick={() => {
                 const uris = tracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
-                if (uris.length > 0) playWithQueue(uris)
+                if (uris.length > 0) playSpotifyQueue(uris)
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954] px-3 py-1.5 text-xs font-medium text-black hover:bg-[#1DB954]/90 transition-colors"
             >
@@ -455,9 +454,9 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
         </div>
       </div>
 
-      {plexError && (
+      {error && (
         <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-          Plex playback error: {plexError}
+          Playback error: {error}
         </div>
       )}
 
@@ -499,15 +498,15 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                       .map((tr) => `spotify:track:${tr.spotifyId}` as string)
 
                     const plexRatingKey = plexLookup.get(`${t.discNumber}:${t.trackNumber}`)
-                    const isPlexPlaying = !!plexRatingKey && plexCurrentTrack?.ratingKey === plexRatingKey
+                    const isPlexPlaying = !!plexRatingKey && currentTrack?.id === plexRatingKey && source === 'plex'
 
                     return (
                       <TrackRow
                         key={t.id}
                         track={t}
                         showDisc={multiDisc}
-                        isReady={isReady}
-                        isPlaying={currentTrack?.id === t.spotifyId}
+                        isReady={spotifyIsReady}
+                        isPlaying={currentTrack?.id === t.spotifyId && source === 'spotify'}
                         spotifyLiked={Boolean(t.spotifyId && likedSpotifyIds.has(t.spotifyId))}
                         savingSpotify={savingSpotifyId === t.spotifyId}
                         rating={ratingsByTrack[t.id] ?? {
@@ -516,7 +515,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                           ratingCount: t.ratingCount ?? 0,
                         }}
                         ratingPending={ratingTrackId === t.id}
-                        onPlay={(uris) => playWithQueue(uris.length > 1 ? uris : subsequentUris)}
+                        onPlay={(uris) => playSpotifyQueue(uris.length > 1 ? uris : subsequentUris)}
                         onToggle={togglePlay}
                         onSaveSpotify={handleSaveSpotify}
                         onRate={handleRateTrack}

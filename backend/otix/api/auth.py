@@ -1397,11 +1397,20 @@ async def plex_connect_info(
             base_urls.append(url)
 
     token = server.access_token or current_user.plex_auth_token
+
+    album_thumb_url = None
+    if base_urls and token and plex_item.rating_key:
+        album_thumb_url = (
+            f"{base_urls[0]}/library/metadata/{plex_item.rating_key}/thumb"
+            f"?X-Plex-Token={token}"
+        )
+
     return {
         "base_url": base_urls[0] if base_urls else None,
         "base_urls": base_urls,
         "token": token,
         "rating_key": plex_item.rating_key,
+        "album_thumb_url": album_thumb_url,
     }
 
 
@@ -1442,13 +1451,23 @@ async def plex_album_tracks(
         raise HTTPException(status_code=502, detail="Could not fetch Plex album tracks")
 
     tracks, working_base_url = result
+    effective_base_url = working_base_url or base_urls[0]
+    token = server.access_token or current_user.plex_auth_token
+
+    album_thumb_url = None
+    if effective_base_url and token and plex_item.rating_key:
+        album_thumb_url = (
+            f"{effective_base_url}/library/metadata/{plex_item.rating_key}/thumb"
+            f"?X-Plex-Token={token}"
+        )
 
     return {
         "tracks": tracks,
-        "base_url": working_base_url or base_urls[0],
+        "base_url": effective_base_url,
         "base_urls": base_urls,
-        "token": server.access_token or current_user.plex_auth_token,
+        "token": token,
         "rating_key": plex_item.rating_key,
+        "album_thumb_url": album_thumb_url,
     }
 
 

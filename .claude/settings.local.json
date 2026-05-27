@@ -271,7 +271,19 @@
       "Bash(alembic history *)",
       "Bash(.venv/bin/pip install *)",
       "Bash(alembic stamp *)",
-      "Bash(npx --yes tsc --noEmit)"
+      "Bash(npx --yes tsc --noEmit)",
+      "Bash(system_profiler SPBluetoothDataType)",
+      "Bash(system_profiler SPUSBDataType)",
+      "Bash(networksetup *)",
+      "Bash(arp -a)",
+      "Bash(docker start *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(lsof -i :5433 -sTCP:LISTEN)",
+      "Bash(nslookup 192-168-1-58.24660e01e76040158c18dbbf9b1aa950.plex.direct)",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -I{} lsof -p {})",
+      "Bash(/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python *)",
+      "Bash(pnpm ls *)"
     ]
   },
   "outputStyle": "default"

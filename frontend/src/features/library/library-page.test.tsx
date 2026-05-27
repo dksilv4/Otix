@@ -117,12 +117,14 @@ vi.mock("@/features/list/list-queries", () => ({
   useCreateList: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
-vi.mock("@/features/spotify/spotify-player-provider", () => ({
-  useSpotifyPlayer: vi.fn(() => ({
-    playWithQueue: vi.fn(),
-    setQueueMetadata: vi.fn(),
+vi.mock("@/features/spotify/use-player", () => ({
+  usePlayer: vi.fn(() => ({
+    source: 'spotify',
+    playSpotifyQueue: vi.fn(),
+    setSpotifyQueueMetadata: vi.fn(),
     currentTrack: null,
     isPlaying: false,
+    spotifyIsReady: true,
     togglePlay: vi.fn(),
   })),
 }))

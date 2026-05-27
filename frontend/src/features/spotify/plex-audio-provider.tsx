@@ -35,6 +35,20 @@ interface PlexPlayerContextValue {
 const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
 
 const VOLUME_KEY = "plex-player-volume"
+const CLIENT_ID_KEY = "plex-client-id"
+
+function getClientId(): string {
+  let id = localStorage.getItem(CLIENT_ID_KEY)
+  if (!id) {
+    id = crypto.randomUUID()
+    localStorage.setItem(CLIENT_ID_KEY, id)
+  }
+  return id
+}
+
+function generateSessionId(): string {
+  return crypto.randomUUID()
+}
 
 export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -50,7 +64,18 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const queueRef = useRef<PlexTrackInfo[]>([])
   const currentIndexRef = useRef(-1)
-  const currentBlobUrlRef = useRef<string | null>(null)
+
+  // Plex session identifiers for timeline reporting
+  const clientIdRef = useRef(getClientId())
+  const sessionIdRef = useRef("")
+  const commandIdRef = useRef(0)
+  const timelineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Ref holders for state consumed by stable callbacks.
+  const durationRef = useRef(duration)
+  durationRef.current = duration
+  const isPlayingRef = useRef(isPlaying)
+  isPlayingRef.current = isPlaying
 
   // Resolve a Plex track's Part key (direct file URL) from its metadata.
   const resolvePartUrl = useCallback(async (track: PlexTrackInfo): Promise<string> => {
@@ -79,19 +104,70 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     return `${baseUrl}${part.key}?X-Plex-Token=${encodeURIComponent(token)}`
   }, [])
 
-  // Fetch Plex audio as a blob and create a same-origin blob URL.
-  const fetchAsBlobUrl = useCallback(async (track: PlexTrackInfo): Promise<string> => {
-    const url = await resolvePartUrl(track)
-    const resp = await fetch(url)
-    if (!resp.ok) {
-      const text = await resp.text().catch(() => "(no body)")
-      throw new Error(`Plex returned ${resp.status}: ${text.slice(0, 200)}`)
-    }
-    const blob = await resp.blob()
-    if (blob.size === 0) throw new Error("Plex returned empty response")
-    return URL.createObjectURL(blob)
-  }, [resolvePartUrl])
+  // Stable refs for callbacks used by the audio event handlers.
+  const loadAndPlayIndexRef = useRef<(index: number) => Promise<void>>(async () => {})
+  const reportTimelineRef = useRef<(state: "playing" | "paused" | "stopped" | "buffering") => void>(() => {})
+  const startTimelineReportingRef = useRef<() => void>(() => {})
+  const stopTimelineReportingRef = useRef<() => void>(() => {})
 
+  // Report playback state to Plex so it appears on the dashboard.
+  // Defined as a stable callback using only refs (no state dependencies).
+  const reportTimeline = useCallback((state: "playing" | "paused" | "stopped" | "buffering") => {
+    const track = queueRef.current[currentIndexRef.current]
+    if (!track?.plexBaseUrl || !track?.plexToken) return
+
+    const audio = audioRef.current
+    const currentTime = audio ? Math.round(audio.currentTime * 1000) : 0
+    const dur = track.durationMs || durationRef.current
+    const cmdId = ++commandIdRef.current
+
+    const params = new URLSearchParams()
+    params.set("ratingKey", track.ratingKey)
+    params.set("key", `/library/metadata/${track.ratingKey}`)
+    params.set("state", state)
+    params.set("time", String(currentTime))
+    params.set("duration", String(dur))
+    params.set("type", "music")
+    params.set("commandID", String(cmdId))
+
+    const url = `${track.plexBaseUrl}/:/timeline?${params.toString()}`
+
+    fetch(url, {
+      headers: {
+        "X-Plex-Token": track.plexToken,
+        "X-Plex-Client-Identifier": clientIdRef.current,
+        "X-Plex-Product": "Otix",
+        "X-Plex-Version": "1.0.0",
+        "X-Plex-Platform": "Web",
+        "X-Plex-Device": "Browser",
+        "X-Plex-Session-Identifier": sessionIdRef.current,
+        "X-Plex-Playback-Session-Id": sessionIdRef.current,
+      },
+    }).catch(() => {})
+  }, [])
+  reportTimelineRef.current = reportTimeline
+
+  // Start periodic timeline reporting while playing.
+  const startTimelineReporting = useCallback(() => {
+    stopTimelineReportingRef.current()
+    reportTimelineRef.current("buffering")
+    setTimeout(() => reportTimelineRef.current("playing"), 500)
+    timelineIntervalRef.current = setInterval(() => {
+      reportTimelineRef.current("playing")
+    }, 5000)
+  }, [])
+  startTimelineReportingRef.current = startTimelineReporting
+
+  const stopTimelineReporting = useCallback(() => {
+    if (timelineIntervalRef.current) {
+      clearInterval(timelineIntervalRef.current)
+      timelineIntervalRef.current = null
+    }
+    reportTimelineRef.current("stopped")
+  }, [])
+  stopTimelineReportingRef.current = stopTimelineReporting
+
+  // Load and play a track by queue index. Streams directly from Plex — no blob download.
   const loadAndPlayIndex = useCallback(async (index: number) => {
     const audio = audioRef.current
     if (!audio) return
@@ -104,21 +180,23 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
-      const blobUrl = await fetchAsBlobUrl(track)
+      const streamUrl = await resolvePartUrl(track)
+      sessionIdRef.current = generateSessionId()
+      commandIdRef.current = 0
 
-      if (currentBlobUrlRef.current) URL.revokeObjectURL(currentBlobUrlRef.current)
-      currentBlobUrlRef.current = blobUrl
-
-      audio.src = blobUrl
+      audio.src = streamUrl
       await audio.play()
     } catch (e: any) {
       const msg = e?.message || String(e)
+      // Ignore AbortError from rapid track changes — the next play will supersede.
+      if (e instanceof DOMException && e.name === "AbortError") return
       console.error("[PlexAudio] play() failed:", msg)
       setError(msg)
     }
-  }, [fetchAsBlobUrl])
+  }, [resolvePartUrl])
+  loadAndPlayIndexRef.current = loadAndPlayIndex
 
-  // Create audio element on mount
+  // Create audio element once on mount. All handlers read latest callbacks via refs.
   useEffect(() => {
     const audio = new Audio()
     audio.preload = "auto"
@@ -128,12 +206,19 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     const onDurationChange = () => {
       if (isFinite(audio.duration)) setDuration(audio.duration * 1000)
     }
-    const onPlay = () => setIsPlaying(true)
-    const onPause = () => setIsPlaying(false)
+    const onPlay = () => {
+      setIsPlaying(true)
+      startTimelineReportingRef.current()
+    }
+    const onPause = () => {
+      setIsPlaying(false)
+      reportTimelineRef.current("paused")
+    }
     const onEnded = () => {
+      stopTimelineReportingRef.current()
       const nextIdx = currentIndexRef.current + 1
       if (nextIdx < queueRef.current.length) {
-        loadAndPlayIndex(nextIdx)
+        loadAndPlayIndexRef.current(nextIdx)
       } else {
         setIsPlaying(false)
         setCurrentTrack(null)
@@ -144,9 +229,10 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       const msg = audio.error ? `Audio error: ${audio.error.message}` : "Unknown audio error"
       console.error("[PlexAudio] audio element error:", msg, audio.error)
       setError(msg)
+      stopTimelineReportingRef.current()
       const nextIdx = currentIndexRef.current + 1
       if (nextIdx < queueRef.current.length) {
-        loadAndPlayIndex(nextIdx)
+        loadAndPlayIndexRef.current(nextIdx)
       } else {
         setIsPlaying(false)
         setCurrentTrack(null)
@@ -167,14 +253,20 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener("pause", onPause)
       audio.removeEventListener("ended", onEnded)
       audio.removeEventListener("error", onError)
+      stopTimelineReportingRef.current()
       audio.pause()
       audio.src = ""
-      if (currentBlobUrlRef.current) {
-        URL.revokeObjectURL(currentBlobUrlRef.current)
-        currentBlobUrlRef.current = null
+    }
+  }, [])
+
+  // Clean up timeline reporting on unmount.
+  useEffect(() => {
+    return () => {
+      if (timelineIntervalRef.current) {
+        clearInterval(timelineIntervalRef.current)
       }
     }
-  }, [loadAndPlayIndex])
+  }, [])
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
@@ -183,32 +275,17 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   const playTrack = useCallback(async (track: PlexTrackInfo) => {
     queueRef.current = [track]
     setQueue([track])
-    currentIndexRef.current = 0
-    setCurrentTrack(track)
     setError(null)
-    const audio = audioRef.current
-    if (!audio) return
-    try {
-      const blobUrl = await fetchAsBlobUrl(track)
-
-      if (currentBlobUrlRef.current) URL.revokeObjectURL(currentBlobUrlRef.current)
-      currentBlobUrlRef.current = blobUrl
-
-      audio.src = blobUrl
-      await audio.play()
-    } catch (e: any) {
-      console.error("[PlexAudio] playTrack failed:", e?.message || String(e))
-      setError(e?.message || String(e))
-    }
-  }, [fetchAsBlobUrl])
+    await loadAndPlayIndexRef.current(0)
+  }, [])
 
   const playAlbum = useCallback(async (tracks: PlexTrackInfo[], startIndex = 0) => {
     if (tracks.length === 0) return
     queueRef.current = tracks
     setQueue(tracks)
     setError(null)
-    await loadAndPlayIndex(startIndex)
-  }, [loadAndPlayIndex])
+    await loadAndPlayIndexRef.current(startIndex)
+  }, [])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -239,19 +316,22 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const skipNext = useCallback(async () => {
-    await loadAndPlayIndex(currentIndexRef.current + 1)
-  }, [loadAndPlayIndex])
+    stopTimelineReportingRef.current()
+    await loadAndPlayIndexRef.current(currentIndexRef.current + 1)
+  }, [])
 
   const skipPrevious = useCallback(async () => {
+    stopTimelineReportingRef.current()
     const prevIdx = currentIndexRef.current - 1
     if (prevIdx >= 0) {
-      await loadAndPlayIndex(prevIdx)
+      await loadAndPlayIndexRef.current(prevIdx)
     } else if (audioRef.current) {
       audioRef.current.currentTime = 0
     }
-  }, [loadAndPlayIndex])
+  }, [])
 
   const stop = useCallback(() => {
+    stopTimelineReportingRef.current()
     const audio = audioRef.current
     if (audio) {
       audio.pause()
@@ -265,10 +345,6 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     setQueue([])
     setError(null)
     currentIndexRef.current = -1
-    if (currentBlobUrlRef.current) {
-      URL.revokeObjectURL(currentBlobUrlRef.current)
-      currentBlobUrlRef.current = null
-    }
   }, [])
 
   return (

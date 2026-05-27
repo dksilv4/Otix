@@ -500,6 +500,8 @@ function HomeExperience() {
                 ref={inputRef}
                 value={isMoodNoteMode ? moodNote : query}
                 onChange={isMoodNoteMode ? setMoodNote : setQuery}
+                onTypeChange={isMoodNoteMode ? undefined : (t) => setActiveType(t || 'all')}
+                activeType={isMoodNoteMode ? undefined : activeType === 'all' ? null : activeType}
                 onSubmit={isMoodNoteMode ? handleMoodNoteSubmit : undefined}
                 onFocus={isMoodNoteMode ? undefined : handleSearchFocus}
                 placeholder={

@@ -13,7 +13,7 @@ import {
   useSaveSpotifyTrack,
   type SpotifyTrack,
 } from "../library-queries"
-import { useSpotifyPlayer } from "@/features/spotify/spotify-player-provider"
+import { usePlayer } from '@/features/spotify/use-player'
 import { TrackInlineActions } from "@/features/media/molecules/track-inline-actions"
 import { useRateTrack } from "@/features/media/media-queries"
 import { useToast } from "@/features/dk-ui/molecules/toast"
@@ -83,7 +83,7 @@ function SpotifyEmptyState({ onScan, isScanning, scanResult, scanError }: Platfo
 // ── Track List ──
 
 function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
-  const { playWithQueue, setQueueMetadata, currentTrack, isPlaying, isReady, togglePlay } = useSpotifyPlayer()
+  const { playSpotifyQueue, setSpotifyQueueMetadata, currentTrack, isPlaying, spotifyIsReady, togglePlay } = usePlayer()
   const saveSpotifyTrack = useSaveSpotifyTrack()
   const rateTrack = useRateTrack()
   const { toast } = useToast()
@@ -160,24 +160,24 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
             role="button"
             tabIndex={0}
             onClick={() => {
-              if (t.uri && isReady) {
+              if (t.uri && spotifyIsReady) {
                 if (isCurrent) {
                   togglePlay()
                 } else {
-                  setQueueMetadata(subsequentMeta)
-                  playWithQueue(subsequentUris)
+                  setSpotifyQueueMetadata(subsequentMeta)
+                  playSpotifyQueue(subsequentUris)
                 }
               }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                if (t.uri && isReady) {
+                if (t.uri && spotifyIsReady) {
                   if (isCurrent) {
                     togglePlay()
                   } else {
-                    setQueueMetadata(subsequentMeta)
-                    playWithQueue(subsequentUris)
+                    setSpotifyQueueMetadata(subsequentMeta)
+                    playSpotifyQueue(subsequentUris)
                   }
                 }
               }

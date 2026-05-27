@@ -1,0 +1,153 @@
+import { createContext, useCallback, useContext, useMemo } from 'react'
+import { useSpotifyPlayer, type QueueTrack } from './spotify-player-provider'
+import { usePlexPlayer, type PlexTrackInfo } from './plex-audio-provider'
+import type { PlayerContextValue, PlayerSource, PlayerTrackInfo } from './types'
+
+const PlayerContext = createContext<PlayerContextValue | null>(null)
+
+function mapSpotifyTrack(track: {
+  id: string
+  uri: string
+  name: string
+  artist: string
+  artists: Array<{ name: string; uri: string }>
+  albumName: string
+  albumArt: string | null
+  durationMs: number
+}): PlayerTrackInfo {
+  return {
+    id: track.id,
+    uri: track.uri,
+    title: track.name,
+    artist: track.artist,
+    artists: track.artists,
+    albumName: track.albumName,
+    albumArt: track.albumArt,
+    durationMs: track.durationMs,
+    source: 'spotify',
+  }
+}
+
+function mapPlexTrack(track: PlexTrackInfo): PlayerTrackInfo {
+  return {
+    id: track.ratingKey,
+    title: track.title,
+    artist: track.artist,
+    artists: track.artist
+      ? [{ name: track.artist, uri: '' }]
+      : [],
+    albumName: track.albumName,
+    albumArt: track.albumArt,
+    durationMs: track.durationMs,
+    source: 'plex',
+  }
+}
+
+export function PlayerProvider({ children }: { children: React.ReactNode }) {
+  const spotify = useSpotifyPlayer()
+  const plex = usePlexPlayer()
+
+  const source: PlayerSource = useMemo(() => {
+    if (spotify.isReady && spotify.isPlaying && spotify.currentTrack) return 'spotify'
+    if (plex.isPlaying && plex.currentTrack) return 'plex'
+    if (spotify.isReady && spotify.currentTrack) return 'spotify'
+    return 'none'
+  }, [spotify.isPlaying, spotify.currentTrack, spotify.isReady, plex.isPlaying, plex.currentTrack])
+
+  const currentTrack: PlayerTrackInfo | null = useMemo(() => {
+    if (source === 'spotify' && spotify.currentTrack) {
+      return mapSpotifyTrack(spotify.currentTrack)
+    }
+    if (source === 'plex' && plex.currentTrack) {
+      return mapPlexTrack(plex.currentTrack)
+    }
+    return null
+  }, [source, spotify.currentTrack, plex.currentTrack])
+
+  const togglePlay = useCallback(async () => {
+    if (source === 'spotify') await spotify.togglePlay()
+    else if (source === 'plex') plex.togglePlay()
+  }, [source, spotify.togglePlay, plex.togglePlay])
+
+  const skipNext = useCallback(async () => {
+    if (source === 'spotify') await spotify.skipNext()
+    else if (source === 'plex') await plex.skipNext()
+  }, [source, spotify.skipNext, plex.skipNext])
+
+  const skipPrevious = useCallback(async () => {
+    if (source === 'spotify') await spotify.skipPrevious()
+    else if (source === 'plex') await plex.skipPrevious()
+  }, [source, spotify.skipPrevious, plex.skipPrevious])
+
+  const seek = useCallback(async (ms: number) => {
+    if (source === 'spotify') await spotify.seek(ms)
+    else if (source === 'plex') plex.seek(ms)
+  }, [source, spotify.seek, plex.seek])
+
+  const setVolume = useCallback((vol: number) => {
+    if (source === 'spotify') spotify.setVolume(vol)
+    else if (source === 'plex') plex.setVolume(vol)
+  }, [source, spotify.setVolume, plex.setVolume])
+
+  const stop = useCallback(() => {
+    if (source === 'spotify') spotify.togglePlay()
+    else if (source === 'plex') plex.stop()
+  }, [source, spotify.togglePlay, plex.stop])
+
+  const value: PlayerContextValue = {
+    source,
+    isPlaying: source === 'spotify' ? spotify.isPlaying : source === 'plex' ? plex.isPlaying : false,
+    currentTrack,
+    position: source === 'spotify' ? spotify.position : source === 'plex' ? plex.position : 0,
+    duration: source === 'spotify' ? spotify.duration : source === 'plex' ? plex.duration : 0,
+    volume: source === 'spotify' ? spotify.volume : source === 'plex' ? plex.volume : 0.5,
+    error: source === 'spotify' ? spotify.error : source === 'plex' ? plex.error : null,
+    togglePlay,
+    skipNext,
+    skipPrevious,
+    seek,
+    setVolume,
+    stop,
+    dismissError: spotify.dismissError,
+    playSpotify: spotify.play,
+    playSpotifyQueue: spotify.playWithQueue,
+    setSpotifyQueueMetadata: spotify.setQueueMetadata,
+    playPlexTrack: plex.playTrack,
+    playPlexAlbum: plex.playAlbum,
+    spotifyNextTracks: spotify.nextTracks,
+    spotifyIsReady: spotify.isReady,
+    plexQueue: plex.queue,
+  }
+
+  return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+}
+
+const defaultContextValue: PlayerContextValue = {
+  source: 'none',
+  isPlaying: false,
+  currentTrack: null,
+  position: 0,
+  duration: 0,
+  volume: 0.5,
+  error: null,
+  togglePlay: async () => {},
+  skipNext: async () => {},
+  skipPrevious: async () => {},
+  seek: async () => {},
+  setVolume: () => {},
+  stop: () => {},
+  dismissError: () => {},
+  playSpotify: async () => {},
+  playSpotifyQueue: async () => {},
+  setSpotifyQueueMetadata: () => {},
+  playPlexTrack: async () => {},
+  playPlexAlbum: async () => {},
+  spotifyNextTracks: [],
+  spotifyIsReady: false,
+  plexQueue: [],
+}
+
+export function usePlayer(): PlayerContextValue {
+  const ctx = useContext(PlayerContext)
+  return ctx ?? defaultContextValue
+}

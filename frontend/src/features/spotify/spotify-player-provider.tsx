@@ -208,6 +208,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   const lastToastRef = useRef<{ message: string; timestamp: number } | null>(null)
   const pendingPlaybackRef = useRef<{ uri: string; expiresAt: number } | null>(null)
   const queuedTracksRef = useRef<QueueTrack[]>([])
+  const tickCounterRef = useRef(0)
 
   const hasSpotify = isAuthenticated && !!user?.spotifyId
 
@@ -243,12 +244,17 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   }, [])
 
   const playbackStarted = useCallback(async (expectedUri?: string | null) => {
-    await sleep(1200)
+    const deadline = Date.now() + 3000
+    while (Date.now() < deadline) {
+      await sleep(200)
+      const state = await playerRef.current?.getCurrentState()
+      if (!state || state.paused) continue
+      const currentUri = state.track_window.current_track?.uri
+      if (!expectedUri) return Boolean(currentUri)
+      if (currentUri === expectedUri) return true
+    }
     const state = await playerRef.current?.getCurrentState()
-    if (!state || state.paused) return false
-    const currentUri = state.track_window.current_track?.uri
-    if (!expectedUri) return Boolean(currentUri)
-    return currentUri === expectedUri
+    return !!(state && !state.paused)
   }, [])
 
   // Save playback state to localStorage for resume-on-reload
@@ -258,11 +264,18 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     }
   }, [currentTrack?.uri, position, isPlaying, duration])
 
-  // Update position while playing
+  // Update position while playing, re-syncing with SDK every 10s to correct drift
   useEffect(() => {
     if (isPlaying && duration > 0) {
+      tickCounterRef.current = 0
       positionTimerRef.current = setInterval(() => {
+        tickCounterRef.current++
         setPosition((prev) => Math.min(prev + 1000, duration))
+        if (tickCounterRef.current % 10 === 0) {
+          playerRef.current?.getCurrentState().then((state) => {
+            if (state) setPosition(state.position)
+          })
+        }
       }, 1000)
     } else {
       if (positionTimerRef.current) {

@@ -26,16 +26,24 @@ export function SearchPage() {
 
   const isSearching = q.length > 0
 
-  // Update URL with replace so filter changes don't pollute history
+  // Ref to avoid stale closures when both onChange and onTypeChange fire
+  const searchRef = useRef({ q, type, sort })
+  searchRef.current = { q, type, sort }
+
+  // Update URL with replace so filter changes don't pollute history.
+  // Mutates the ref immediately to prevent stale closures when both onChange
+  // and onTypeChange fire synchronously in the same debounce callback.
   const updateSearch = useCallback(
     (updates: Partial<SearchRouteParams>) => {
+      const next = { ...searchRef.current, ...updates }
+      searchRef.current = next
       navigate({
         to: '/search',
-        search: { q, type, sort, ...updates },
+        search: next,
         replace: true,
       })
     },
-    [navigate, q, type, sort],
+    [navigate],
   )
 
   // Focus input on mount
@@ -77,6 +85,8 @@ export function SearchPage() {
               ref={inputRef}
               value={q}
               onChange={(val) => updateSearch({ q: val })}
+              onTypeChange={(t) => updateSearch({ type: t || 'all' })}
+              activeType={type === 'all' ? null : type}
               placeholder={placeholder}
               debounceMs={150}
             />
