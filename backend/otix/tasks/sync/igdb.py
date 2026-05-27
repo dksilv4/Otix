@@ -39,7 +39,8 @@ GAME_FIELDS = (
     "videos.video_id,videos.name,"
     "involved_companies.company.name,involved_companies.company.slug,"
     "involved_companies.developer,involved_companies.publisher,"
-    "involved_companies.porting,involved_companies.supporting"
+    "involved_companies.porting,involved_companies.supporting,"
+    "age_ratings"
 )
 
 
@@ -371,3 +372,60 @@ async def _sync_igdb_game_changes(lookback_hours: int) -> dict:
 
     logger.info("igdb change sync completed", lookback_hours=lookback_hours, changed_ids=len(all_ids), tasks_enqueued=enqueued)
     return {"changed_ids": len(all_ids), "tasks_enqueued": enqueued}
+
+
+# ── Age ratings hydration ──────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.igdb.hydrate_age_ratings",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    autoretry_for=(Exception,),
+)
+def sync_igdb_hydrate_age_ratings_task(self, media_item_id: str) -> dict | None:
+    """Hydrate age ratings (ESRB, PEGI) for a single game."""
+    return run_async(_hydrate_game_age_ratings(media_item_id))
+
+
+async def _hydrate_game_age_ratings(media_item_id: str) -> dict | None:
+    async with async_session() as session:
+        ext_id = await session.scalar(
+            select(ExternalID).where(
+                ExternalID.media_item_id == media_item_id,
+                ExternalID.provider == "igdb",
+            )
+        )
+        if ext_id is None:
+            return None
+
+        item = await session.get(MediaItem, media_item_id)
+        if item is None or item.media_type != "game":
+            return None
+
+        redis = await get_redis()
+        provider = IGDBProvider(redis)
+        hydrator = IGDBHydrator(provider, session)
+
+        try:
+            raw = await provider.get_game(int(ext_id.external_id))
+        except Exception:
+            logger.exception("failed to fetch igdb game for age ratings", media_item_id=media_item_id)
+            raise
+
+        if raw is None:
+            return None
+
+        await hydrator.hydrate_age_ratings(item, raw)
+        await session.commit()
+
+        from otix.infrastructure.redis import get_redis as _get_redis
+        _redis = await _get_redis()
+        cache_pattern = f"media:detail:{media_item_id}:*"
+        keys = [key async for key in _redis.scan_iter(match=cache_pattern, count=100)]
+        if keys:
+            await _redis.delete(*keys)
+
+        logger.info("game age ratings hydrated", media_item_id=media_item_id, title=item.title)
+        return {"media_item_id": media_item_id, "title": item.title}

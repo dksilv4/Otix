@@ -1,7 +1,8 @@
+import { Link } from '@tanstack/react-router'
 import { Badge } from '@ui/atoms/badge'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
-import { Calendar, Clock, ExternalLink } from 'lucide-react'
+import { Calendar, Clock, ExternalLink, Languages } from 'lucide-react'
 
 interface Genre {
   id: string
@@ -25,8 +26,10 @@ interface MediaHeroProps {
   runtime?: number | null
   albumDurationMs?: number | null
   status?: string | null
+  originalLanguage?: string | null
   isAnime?: boolean
   isAdult?: boolean
+  certification?: string | null
   className?: string
   youtubeVideoId?: string | null
 }
@@ -68,6 +71,14 @@ function mediaTypeLabel(type: string): string {
   return 'Game'
 }
 
+function languageName(code: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase()
+  } catch {
+    return code.toUpperCase()
+  }
+}
+
 export function MediaHero({
   mediaType,
   title,
@@ -82,8 +93,10 @@ export function MediaHero({
   runtime,
   albumDurationMs,
   status,
+  originalLanguage,
   isAnime,
   isAdult,
+  certification,
   className,
   youtubeVideoId,
 }: MediaHeroProps) {
@@ -98,6 +111,8 @@ export function MediaHero({
   const youtubeUrl = youtubeVideoId
     ? `https://www.youtube.com/watch?v=${youtubeVideoId}`
     : null
+
+  const languageDisplay = originalLanguage ? languageName(originalLanguage) : null
 
   return (
     <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden lg:min-h-[75vh] rounded-3xl shadow-[var(--dk-shadow-glass)]', className)}>
@@ -158,6 +173,20 @@ export function MediaHero({
 
             {/* Meta tags row */}
             <div className="flex flex-wrap gap-2">
+              {certification && (
+                <Link
+                  to="/browse/$type"
+                  params={{ type: mediaType }}
+                  search={{ certification }}
+                >
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-bold tracking-wide text-white/80 backdrop-blur hover:bg-white/10 transition-colors"
+                  >
+                    {certification}
+                  </Badge>
+                </Link>
+              )}
               {isAdult && (
                 <Badge
                   variant="destructive"
@@ -204,6 +233,12 @@ export function MediaHero({
                   {status.replace(/_/g, ' ')}
                 </Badge>
               )}
+              {languageDisplay && (
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
+                  <Languages className="h-3.5 w-3.5" />
+                  {languageDisplay}
+                </Badge>
+              )}
             </div>
 
             {/* Overview */}
@@ -217,9 +252,16 @@ export function MediaHero({
             <div className="flex flex-wrap items-center gap-1.5">
               {genres && genres.length > 0 &&
                 genres.map((g) => (
-                  <Badge key={g.id} variant="secondary" className="border-white/10 bg-white/5">
-                    {g.name}
-                  </Badge>
+                  <Link
+                    key={g.id}
+                    to="/browse/$type"
+                    params={{ type: mediaType }}
+                    search={{ genre: g.slug }}
+                  >
+                    <Badge variant="secondary" className="border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                      {g.name}
+                    </Badge>
+                  </Link>
                 ))}
               {youtubeUrl && (
                 <a

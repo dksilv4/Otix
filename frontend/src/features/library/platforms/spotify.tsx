@@ -83,7 +83,7 @@ function SpotifyEmptyState({ onScan, isScanning, scanResult, scanError }: Platfo
 // ── Track List ──
 
 function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
-  const { playWithQueue, setQueueMetadata, currentTrack, isPlaying, togglePlay } = useSpotifyPlayer()
+  const { playWithQueue, setQueueMetadata, currentTrack, isPlaying, isReady, togglePlay } = useSpotifyPlayer()
   const saveSpotifyTrack = useSaveSpotifyTrack()
   const rateTrack = useRateTrack()
   const { toast } = useToast()
@@ -160,7 +160,7 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
             role="button"
             tabIndex={0}
             onClick={() => {
-              if (t.uri) {
+              if (t.uri && isReady) {
                 if (isCurrent) {
                   togglePlay()
                 } else {
@@ -172,7 +172,7 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                if (t.uri) {
+                if (t.uri && isReady) {
                   if (isCurrent) {
                     togglePlay()
                   } else {

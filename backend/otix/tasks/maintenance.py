@@ -484,6 +484,139 @@ async def _enrich_omdb() -> dict:
     return {"enqueued": enqueued}
 
 
+@app.task(name="maintenance.enrich_production_companies")
+def enrich_production_companies() -> dict:
+    """Scan movies/shows for missing production company data and enqueue hydration.
+
+    Runs every 5 min. Finds items with a TMDB ID that have no production=True
+    involved companies and enqueues a focused TMDB hydration task per item.
+    Batch size of 200/cycle = ~2,400/hr, well under TMDB's 50 rps limit.
+    """
+    return run_async(_enrich_production_companies())
+
+
+async def _enrich_production_companies() -> dict:
+    from otix.domain.company import InvolvedCompany
+
+    async with async_session() as session:
+        enriched = (
+            select(InvolvedCompany.media_item_id)
+            .where(InvolvedCompany.production == True)  # noqa: E712
+            .distinct()
+        ).subquery()
+
+        query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type.in_(["movie", "show"]),
+                ExternalID.provider == "tmdb",
+                MediaItem.id.not_in(select(enriched.c.media_item_id)),
+            )
+            .limit(200)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for (media_item_id,) in rows:
+        app.send_task("sync.tmdb.hydrate_production_companies", args=[media_item_id], queue="control")
+        enqueued += 1
+
+    if enqueued:
+        logger.info("production companies enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.enrich_content_ratings")
+def enrich_content_ratings() -> dict:
+    """Scan shows for missing TV content ratings and enqueue hydration.
+
+    Runs every 5 min. Finds shows with a TMDB ID that have no MediaRelease
+    rows and enqueues a focused content_ratings hydration task per item.
+    Batch size of 200/cycle = ~2,400/hr.
+    """
+    return run_async(_enrich_content_ratings())
+
+
+async def _enrich_content_ratings() -> dict:
+    from otix.domain.asset import MediaRelease
+
+    async with async_session() as session:
+        rated = (
+            select(MediaRelease.media_item_id)
+            .distinct()
+        ).subquery()
+
+        query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type == "show",
+                ExternalID.provider == "tmdb",
+                MediaItem.id.not_in(select(rated.c.media_item_id)),
+            )
+            .limit(200)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for (media_item_id,) in rows:
+        app.send_task("sync.tmdb.hydrate_content_ratings", args=[media_item_id], queue="fast")
+        enqueued += 1
+
+    if enqueued:
+        logger.info("content ratings enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.enrich_game_age_ratings")
+def enrich_game_age_ratings() -> dict:
+    """Scan games for missing age ratings (ESRB, PEGI) and enqueue hydration.
+
+    Runs every 5 min. Finds games with an IGDB ID that have no MediaRelease
+    rows and enqueues a focused age_ratings hydration task per item.
+    Batch size of 200/cycle.
+    """
+    return run_async(_enrich_game_age_ratings())
+
+
+async def _enrich_game_age_ratings() -> dict:
+    from otix.domain.asset import MediaRelease
+
+    async with async_session() as session:
+        rated = (
+            select(MediaRelease.media_item_id)
+            .distinct()
+        ).subquery()
+
+        query = (
+            select(MediaItem.id)
+            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
+            .where(
+                MediaItem.media_type == "game",
+                ExternalID.provider == "igdb",
+                MediaItem.id.not_in(select(rated.c.media_item_id)),
+            )
+            .limit(200)
+        )
+        result = await session.execute(query)
+        rows = result.all()
+
+    enqueued = 0
+    for (media_item_id,) in rows:
+        app.send_task("sync.igdb.hydrate_age_ratings", args=[media_item_id], queue="igdb")
+        enqueued += 1
+
+    if enqueued:
+        logger.info("game age ratings enrichment enqueued", count=enqueued)
+
+    return {"enqueued": enqueued}
+
+
 @app.task(name="maintenance.enrich_steam")
 def enrich_steam() -> dict:
     """Scan recently-synced games for Steam app IDs and enqueue updates.

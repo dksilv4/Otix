@@ -171,13 +171,19 @@ async def get_user_reviews(
     cursor: str | None = Query(None),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> list[ReviewWithUserOut]:
     user = await db.scalar(select(User).where(User.username == username))
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     service = ReviewService(db)
-    items, _ = await service.get_reviews_by_user(user.id, cursor=cursor, limit=limit)
+    items, _ = await service.get_reviews_by_user(
+        user.id,
+        cursor=cursor,
+        limit=limit,
+        current_user_id=current_user.id if current_user else None,
+    )
     return [ReviewWithUserOut.model_validate(item) for item in items]
 
 

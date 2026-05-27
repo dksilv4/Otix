@@ -109,6 +109,10 @@ class MediaItemSummary(BaseModel):
     steam_rtime_last_played: int | None = None
     plex_view_count: int | None = None
     plex_last_viewed_at: datetime | None = None
+    album_artist_name: str | None = None
+    album_track_count: int | None = None
+    revenue: int | None = None
+    budget: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -243,6 +247,15 @@ class InvolvedCompanyOut(BaseModel):
     publisher: bool
     porting: bool
     supporting: bool
+    production: bool
+
+    model_config = {"from_attributes": True}
+
+
+class MediaReleaseOut(BaseModel):
+    country_code: str
+    release_date: date | None = None
+    certification: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -375,6 +388,7 @@ class MediaItemDetail(BaseModel):
     external_ratings: list[ExternalRatingOut] = []
     credits: list[MediaCreditOut] = []
     involved_companies: list[InvolvedCompanyOut] = []
+    releases: list[MediaReleaseOut] = []
     platforms: list[MediaPlatformOut] = []
     game_modes: list[MediaGameModeOut] = []
 

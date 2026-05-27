@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, otix_fk
@@ -26,6 +28,7 @@ class Review(Base, TimestampMixin):
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_spoiler: Mapped[bool] = mapped_column(Boolean, default=False)
     is_private: Mapped[bool] = mapped_column(Boolean, default=False)
+    cooldown_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship("User", back_populates="reviews")
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="reviews")

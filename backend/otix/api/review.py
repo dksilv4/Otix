@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.review import (
     ReviewCreate,
     ReviewOut,
@@ -59,9 +61,15 @@ async def update_review(
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
+    now = datetime.now(timezone.utc)
+    in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
+
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(existing, field, value)
+        if field == "score":
+            setattr(existing, field, value)
+        elif in_cooldown:
+            setattr(existing, field, value)
 
     await db.flush()
     if "score" in update_data:
@@ -87,12 +95,14 @@ async def list_reviews(
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> list[ReviewWithUserOut]:
     service = ReviewService(db)
     items, _ = await service.get_reviews_for_media(
         media_item_id=media_id,
         cursor=cursor,
         limit=limit,
+        current_user_id=current_user.id if current_user else None,
     )
     return [ReviewWithUserOut.model_validate(r) for r in items]
 

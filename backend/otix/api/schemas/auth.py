@@ -70,6 +70,7 @@ class UserResponse(BaseModel):
     discover_emphases: list[str] = []
     date_of_birth: date | None = None
     show_adult_content: bool = False
+    country: str | None = None
 
 
 class UserUpdateRequest(BaseModel):
@@ -89,6 +90,7 @@ class UserUpdateRequest(BaseModel):
     preferred_languages: list[str] | None = None
     discover_emphases: list[str] | None = None
     show_adult_content: bool | None = None
+    country: str | None = None
 
 
 # ── Email verification ──────────────────────────────────────────

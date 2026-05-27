@@ -20,6 +20,8 @@ interface ButtonDef {
   activeGlow: string
   Icon: typeof Heart
   showFor: 'all' | 'movie_show' | 'game' | 'music'
+  /** Icons with inner detail (checkmarks, etc.) look wrong when filled — skip fill-current for those */
+  supportsFill: boolean
 }
 
 const XP_VALUES: Record<InteractionType, number> = {
@@ -39,6 +41,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-red-500/15',
     Icon: Heart,
     showFor: 'all',
+    supportsFill: true,
   },
   {
     type: 'watchlisted',
@@ -47,6 +50,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-sky-500/15',
     Icon: Bookmark,
     showFor: 'movie_show',
+    supportsFill: true,
   },
   {
     type: 'watchlisted',
@@ -55,6 +59,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-sky-500/15',
     Icon: Bookmark,
     showFor: 'game',
+    supportsFill: true,
   },
   {
     type: 'watched',
@@ -63,6 +68,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-emerald-500/15',
     Icon: CheckCircle2,
     showFor: 'movie_show',
+    supportsFill: false,
   },
   {
     type: 'started',
@@ -71,6 +77,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-violet-500/15',
     Icon: Play,
     showFor: 'game',
+    supportsFill: false,
   },
   {
     type: 'played',
@@ -79,6 +86,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-emerald-500/15',
     Icon: Gamepad2,
     showFor: 'game',
+    supportsFill: false,
   },
   {
     type: 'watchlisted',
@@ -87,6 +95,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-sky-500/15',
     Icon: Bookmark,
     showFor: 'music',
+    supportsFill: true,
   },
   {
     type: 'listened',
@@ -95,6 +104,7 @@ const BUTTONS: ButtonDef[] = [
     activeGlow: 'from-amber-500/15',
     Icon: CheckCircle2,
     showFor: 'music',
+    supportsFill: false,
   },
 ]
 
@@ -106,6 +116,7 @@ function InteractionButton({
   activeColor,
   activeGlow,
   Icon,
+  supportsFill,
   active,
   mediaId,
   onClick,
@@ -160,7 +171,7 @@ function InteractionButton({
         className={cn(
           'relative h-5 w-5 transition-all duration-200',
           isActive
-            ? cn(activeColor, 'fill-current scale-110')
+            ? cn(activeColor, supportsFill && 'fill-current', 'scale-110')
             : 'text-muted-foreground scale-100',
         )}
       />

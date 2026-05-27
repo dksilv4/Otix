@@ -12,6 +12,7 @@ export interface ReviewOut {
   isPrivate: boolean
   createdAt: string
   updatedAt: string
+  cooldownUntil: string | null
 }
 
 export interface ReviewWithUserOut extends ReviewOut {

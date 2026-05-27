@@ -75,6 +75,152 @@ def route_task(name: str, *args, **kwargs) -> str | None:
 
 
 app = Celery("otix")
+
+_beat_schedule: dict = {
+    # Discovery feeds (daily at 3am)
+    "refresh-discover-feed": {
+        "task": "maintenance.refresh_discover_feed",
+        "schedule": crontab(hour="3", minute="17"),
+    },
+    # Provider health check (every 5 min)
+    "provider-health-check": {
+        "task": "maintenance.provider_health_check",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Cleanup expired refresh tokens (daily at 3am)
+    "cleanup-expired-tokens": {
+        "task": "maintenance.cleanup_expired_tokens",
+        "schedule": crontab(hour="3", minute="23"),
+    },
+    # Fanart enrichment scan (every 15 min as safety net; inline enqueue from
+    # TMDB sync is the primary Fanart trigger now)
+    "enrich-fanart": {
+        "task": "maintenance.enrich_fanart",
+        "schedule": crontab(minute="7,22,37,52"),
+    },
+    # Embedding backfill (every 3 min until all items have embeddings)
+    "backfill-embeddings": {
+        "task": "maintenance.backfill_embeddings",
+        "schedule": crontab(minute="*/3"),
+    },
+    # OMDb enrichment scan (every 30 min at off-peak minutes)
+    "enrich-omdb": {
+        "task": "maintenance.enrich_omdb",
+        "schedule": crontab(minute="13,43"),
+    },
+    # Production companies enrichment (every 5 min)
+    "enrich-production-companies": {
+        "task": "maintenance.enrich_production_companies",
+        "schedule": crontab(minute="*/5"),
+    },
+    # TV content ratings enrichment (every 5 min)
+    "enrich-content-ratings": {
+        "task": "maintenance.enrich_content_ratings",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Game age ratings enrichment (every 5 min)
+    "enrich-game-age-ratings": {
+        "task": "maintenance.enrich_game_age_ratings",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Game feed refresh (daily at 3am)
+    "refresh-game-feed": {
+        "task": "maintenance.refresh_game_feed",
+        "schedule": crontab(hour="3", minute="53"),
+    },
+    # Catalog hydration — continuous background re-sync of stale items (every 30 min)
+    "catalog-hydration": {
+        "task": "maintenance.catalog_hydration",
+        "schedule": crontab(minute="17,47"),
+    },
+    "seed-steam": {
+        "task": "seed.steam_cycle",
+        "schedule": crontab(minute="*/5"),
+    },
+    "seed-igdb": {
+        "task": "seed.igdb_cycle",
+        "schedule": crontab(minute="*/5"),
+    },
+    "seed-musicbrainz": {
+        "task": "seed.musicbrainz_cycle",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Steam enrichment scan (every 15 min at off-peak minute)
+    "enrich-steam": {
+        "task": "maintenance.enrich_steam",
+        "schedule": crontab(minute="3,18,33,48"),
+    },
+    # Steam name matching scan (every 30 min at off-peak minutes)
+    "steam-name-match": {
+        "task": "maintenance.steam_name_match",
+        "schedule": crontab(minute="23,53"),
+    },
+    # SteamGridDB enrichment scan (every 30 min at off-peak minutes)
+    "enrich-steamgrid": {
+        "task": "maintenance.enrich_steamgrid",
+        "schedule": crontab(minute="27,57"),
+    },
+    # Steam CCU batch update (every 5 min)
+    "steam-ccu-batch": {
+        "task": "maintenance.steam_ccu_batch",
+        "schedule": crontab(minute="*/5"),
+    },
+    "sync-plex-accounts": {
+        "task": "maintenance.sync_plex_accounts",
+        "schedule": crontab(minute="11,41"),
+    },
+    # Spotify recently played sync (every 7 min, off-peak minute)
+    "sync-spotify-recently-played": {
+        "task": "maintenance.sync_spotify_recently_played",
+        "schedule": crontab(minute="4,11,18,25,32,39,46,53"),
+    },
+    # YouTube watch history sync (every 15 min at off-peak minutes)
+    "sync-youtube-watch-history": {
+        "task": "maintenance.sync_youtube_watch_history",
+        "schedule": crontab(minute="8,23,38,53"),
+    },
+    # Spotify enrichment scan (every 30 min)
+    "enrich-spotify": {
+        "task": "maintenance.enrich_spotify",
+        "schedule": crontab(minute="19,49"),
+    },
+    # Spotify artist graph crawl (every 5 min — fans out to related_artists)
+    "crawl-spotify-related": {
+        "task": "sync.spotify.crawl_related",
+        "schedule": crontab(minute="2,7,12,17,22,27,32,37,42,47,52,57"),
+    },
+    # Last.fm enrichment scan (every 30 min)
+    "enrich-lastfm": {
+        "task": "maintenance.enrich_lastfm",
+        "schedule": crontab(minute="29,59"),
+    },
+    # Progress summary log (every 60s at off-peak second)
+    "progress-summary": {
+        "task": "maintenance.progress_summary",
+        "schedule": crontab(minute="*"),
+    },
+}
+
+# TMDB catalog seeding — disabled in local dev
+if settings.app_env != "local":
+    _beat_schedule.update({
+        # People cascade to movies/shows via combined_credits filmography
+        "seed-people": {
+            "task": "seed.people_cycle",
+            "schedule": crontab(minute="*/5"),
+        },
+        # TMDB daily import (download all exports, insert stubs, detect deletions)
+        "seed-tmdb-daily-import": {
+            "task": "seed.tmdb_daily_import",
+            "schedule": crontab(hour="3", minute="7"),
+        },
+        # TMDB backlog drain (every 1 min — 500 stubs/min)
+        "seed-tmdb-backlog": {
+            "task": "seed.tmdb_backlog_cycle",
+            "schedule": crontab(minute="*"),
+        },
+    })
+
 app.config_from_object(
     {
         "broker_url": settings.celery_broker,
@@ -103,131 +249,7 @@ app.config_from_object(
         ],
         "task_routes": (route_task,),
         "task_create_missing_queues": True,
-        "beat_schedule": {
-            # Discovery feeds (daily at 3am)
-            "refresh-discover-feed": {
-                "task": "maintenance.refresh_discover_feed",
-                "schedule": crontab(hour="3", minute="17"),
-            },
-            # Provider health check (every 5 min)
-            "provider-health-check": {
-                "task": "maintenance.provider_health_check",
-                "schedule": crontab(minute="*/5"),
-            },
-            # Cleanup expired refresh tokens (daily at 3am)
-            "cleanup-expired-tokens": {
-                "task": "maintenance.cleanup_expired_tokens",
-                "schedule": crontab(hour="3", minute="23"),
-            },
-            # Fanart enrichment scan (every 15 min as safety net; inline enqueue from
-            # TMDB sync is the primary Fanart trigger now)
-            "enrich-fanart": {
-                "task": "maintenance.enrich_fanart",
-                "schedule": crontab(minute="7,22,37,52"),
-            },
-            # Embedding backfill (every 3 min until all items have embeddings)
-            "backfill-embeddings": {
-                "task": "maintenance.backfill_embeddings",
-                "schedule": crontab(minute="*/3"),
-            },
-            # OMDb enrichment scan (every 30 min at off-peak minutes)
-            "enrich-omdb": {
-                "task": "maintenance.enrich_omdb",
-                "schedule": crontab(minute="13,43"),
-            },
-            # Game feed refresh (daily at 3am)
-            "refresh-game-feed": {
-                "task": "maintenance.refresh_game_feed",
-                "schedule": crontab(hour="3", minute="53"),
-            },
-            # Catalog hydration — continuous background re-sync of stale items (every 30 min)
-            "catalog-hydration": {
-                "task": "maintenance.catalog_hydration",
-                "schedule": crontab(minute="17,47"),
-            },
-            # Catalog seeding — three independent seeders run concurrently.
-            # People cascade to movies/shows via combined_credits filmography.
-            "seed-people": {
-                "task": "seed.people_cycle",
-                "schedule": crontab(minute="*/5"),
-            },
-            "seed-steam": {
-                "task": "seed.steam_cycle",
-                "schedule": crontab(minute="*/5"),
-            },
-            "seed-igdb": {
-                "task": "seed.igdb_cycle",
-                "schedule": crontab(minute="*/5"),
-            },
-            "seed-musicbrainz": {
-                "task": "seed.musicbrainz_cycle",
-                "schedule": crontab(minute="*/5"),
-            },
-            # TMDB daily import (download all exports, insert stubs, detect deletions)
-            "seed-tmdb-daily-import": {
-                "task": "seed.tmdb_daily_import",
-                "schedule": crontab(hour="3", minute="7"),
-            },
-            # TMDB backlog drain (every 1 min — 500 stubs/min)
-            "seed-tmdb-backlog": {
-                "task": "seed.tmdb_backlog_cycle",
-                "schedule": crontab(minute="*"),
-            },
-            # Steam enrichment scan (every 15 min at off-peak minute)
-            "enrich-steam": {
-                "task": "maintenance.enrich_steam",
-                "schedule": crontab(minute="3,18,33,48"),
-            },
-            # Steam name matching scan (every 30 min at off-peak minutes)
-            "steam-name-match": {
-                "task": "maintenance.steam_name_match",
-                "schedule": crontab(minute="23,53"),
-            },
-            # SteamGridDB enrichment scan (every 30 min at off-peak minutes)
-            "enrich-steamgrid": {
-                "task": "maintenance.enrich_steamgrid",
-                "schedule": crontab(minute="27,57"),
-            },
-            # Steam CCU batch update (every 5 min)
-            "steam-ccu-batch": {
-                "task": "maintenance.steam_ccu_batch",
-                "schedule": crontab(minute="*/5"),
-            },
-            "sync-plex-accounts": {
-                "task": "maintenance.sync_plex_accounts",
-                "schedule": crontab(minute="11,41"),
-            },
-            # Spotify recently played sync (every 7 min, off-peak minute)
-            "sync-spotify-recently-played": {
-                "task": "maintenance.sync_spotify_recently_played",
-                "schedule": crontab(minute="4,11,18,25,32,39,46,53"),
-            },
-            # YouTube watch history sync (every 15 min at off-peak minutes)
-            "sync-youtube-watch-history": {
-                "task": "maintenance.sync_youtube_watch_history",
-                "schedule": crontab(minute="8,23,38,53"),
-            },
-            # Spotify enrichment scan (every 30 min)
-            "enrich-spotify": {
-                "task": "maintenance.enrich_spotify",
-                "schedule": crontab(minute="19,49"),
-            },
-            # Spotify artist graph crawl (every 5 min — fans out to related_artists)
-            "crawl-spotify-related": {
-                "task": "sync.spotify.crawl_related",
-                "schedule": crontab(minute="2,7,12,17,22,27,32,37,42,47,52,57"),
-            },
-            # Last.fm enrichment scan (every 30 min)
-            "enrich-lastfm": {
-                "task": "maintenance.enrich_lastfm",
-                "schedule": crontab(minute="29,59"),
-            },
-            # Progress summary log (every 60s at off-peak second)
-            "progress-summary": {
-                "task": "maintenance.progress_summary",
-                "schedule": crontab(minute="*"),
-            },
-        },
+        "beat_schedule": _beat_schedule,
     }
 )
 

@@ -271,6 +271,19 @@ class IGDBProvider(BaseProvider):
             return response.json()
         raise IGDBError(f"IGDB involved_companies query failed: {response.status_code}")
 
+    # ── Age ratings ───────────────────────────────────────────────────
+
+    async def get_age_ratings(self, rating_ids: list[int]) -> list[dict[str, JSONValue]]:
+        """Fetch age ratings by ID. Returns organization, rating_category, etc."""
+        if not rating_ids:
+            return []
+        id_list = ",".join(str(i) for i in rating_ids)
+        body = f"fields organization,rating_category; where id = ({id_list}); limit 500;"
+        response = await self._post("/age_ratings", content=body)
+        if response.status_code == 200:
+            return response.json()
+        raise IGDBError(f"IGDB age_ratings query failed: {response.status_code}")
+
     # ── External game mapping ──────────────────────────────────────────
 
     async def lookup_steam_app_ids(self, app_ids: list[int]) -> dict[int, int]:

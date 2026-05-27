@@ -379,7 +379,7 @@ function HomeExperience() {
         <div
           className={cn(
             'flex flex-col items-center w-full gap-6',
-            activeMode !== 'workout' && 'min-h-[75vh] justify-center',
+            activeMode !== 'workout' && 'min-h-[45vh] justify-end',
           )}
         >
           <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center">

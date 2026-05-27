@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.collection import Collection
-from otix.domain.company import Company
+from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre, Keyword, MediaGenre
 from otix.domain.media import ExternalID, MediaItem, Movie
 from otix.domain.people import MediaCredit, Person, PersonAsset
@@ -335,6 +335,10 @@ class TMDBHydrator:
         if not results:
             return
 
+        await self.session.execute(
+            delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id)
+        )
+
         for country in results:
             country_code = country.get("iso_3166_1", "")
             if not country_code:
@@ -361,6 +365,34 @@ class TMDBHydrator:
                     country_code=country_code.lower(),
                     release_date=release_date,
                     certification=entry.get("certification")[:20] if entry.get("certification") else None,
+                )
+            )
+
+    # ── Content Ratings (TV) ─────────────────────────────────────
+
+    async def hydrate_content_ratings(self, media_item: MediaItem, raw: dict) -> None:
+        """Store TV content ratings by country (e.g., TV-G, TV-14)."""
+        content_ratings = raw.get("content_ratings", {})
+        results = content_ratings.get("results", [])
+        if not results:
+            return
+
+        await self.session.execute(
+            delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id)
+        )
+
+        for entry in results:
+            country_code = entry.get("iso_3166_1", "")
+            certification = entry.get("rating", "")
+            if not country_code or not certification:
+                continue
+
+            self.session.add(
+                MediaRelease(
+                    media_item_id=media_item.id,
+                    country_code=country_code.lower(),
+                    release_date=None,
+                    certification=certification[:20],
                 )
             )
 
@@ -492,6 +524,51 @@ class TMDBHydrator:
         if logo:
             company.logo_url = _tmdb_image(logo)
         company.origin_country = raw.get("origin_country")
+
+    # ── Involved companies (production companies / networks) ──────
+
+    async def hydrate_involved_companies(self, media_item: MediaItem, raw: dict) -> None:
+        """Create InvolvedCompany links for production companies (movies) and networks + production companies (shows)."""
+        entries: list[dict] = list(raw.get("production_companies", []) or [])
+
+        if media_item.media_type == "show":
+            networks = raw.get("networks", []) or []
+            for nw in networks:
+                if not any(e.get("id") == nw.get("id") for e in entries):
+                    entries.append(nw)
+
+        if not entries:
+            return
+
+        # Delete existing production links for this media item
+        await self.session.execute(
+            delete(InvolvedCompany).where(
+                InvolvedCompany.media_item_id == media_item.id,
+                InvolvedCompany.production == True,  # noqa: E712
+            )
+        )
+
+        for entry in entries:
+            tmdb_id = entry.get("id")
+            if not tmdb_id:
+                continue
+
+            # Upsert Company
+            company = await self.session.scalar(
+                select(Company).where(Company.tmdb_id == tmdb_id)
+            )
+            if company is None:
+                company = Company(tmdb_id=tmdb_id)
+                self.session.add(company)
+            await self.hydrate_company(company, entry)
+            await self.session.flush()
+
+            # Create InvolvedCompany link
+            self.session.add(InvolvedCompany(
+                media_item_id=media_item.id,
+                company_id=company.id,
+                production=True,
+            ))
 
     # ── Keyword ────────────────────────────────────────────────────
 

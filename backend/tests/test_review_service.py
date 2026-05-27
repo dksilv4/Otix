@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from otix.domain.media import MediaItem
 from otix.domain.review import Review
@@ -31,6 +31,7 @@ def _make_review(user_id: str, media_item_id: str, score: int, content: str | No
         content=content,
         is_spoiler=False,
         is_private=False,
+        cooldown_until=datetime.now(timezone.utc) + timedelta(minutes=30),
     )
     r.created_at = datetime.now(timezone.utc)
     return r
@@ -114,6 +115,36 @@ class TestReviewUpsert:
         assert review.is_spoiler is True
         assert review.is_private is True
         mock_db_session.add.assert_not_called()
+
+    async def test_upsert_locked_after_cooldown(self, service: ReviewService, mock_db_session: AsyncMock):
+        """After cooldown expires, only score can change — text fields are locked."""
+        existing = _make_review("user-123", "oti_med01", 8, "Original")
+        existing.cooldown_until = datetime.now(timezone.utc) - timedelta(minutes=1)
+        mock_db_session.scalar.return_value = existing
+
+        mock_row = MagicMock()
+        mock_row.avg = 8.5
+        mock_row.cnt = 10
+        mock_execute_result = MagicMock()
+        mock_execute_result.one_or_none.return_value = mock_row
+        mock_db_session.execute.return_value = mock_execute_result
+
+        review = await service.upsert_review(
+            user_id="user-123",
+            media_item_id="oti_med01",
+            score=9,
+            title="New Title",
+            content="New Content",
+            is_spoiler=True,
+            is_private=True,
+        )
+
+        assert review.score == 9
+        # Text fields remain unchanged after cooldown
+        assert review.content == "Original"
+        assert review.title == "Review Title"
+        assert review.is_spoiler is False
+        assert review.is_private is False
 
 
 class TestReviewGetQueries:

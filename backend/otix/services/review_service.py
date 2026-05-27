@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -8,6 +10,8 @@ from otix.domain.media import MediaItem
 from otix.domain.review import Review
 from otix.infrastructure.celery import app
 from otix.lib.xp import REVIEW_SCORE_ONLY, REVIEW_WITH_CONTENT
+
+REVIEW_COOLDOWN_MINUTES = 15
 
 
 class ReviewService:
@@ -52,13 +56,18 @@ class ReviewService:
         )
 
         is_new = existing is None
+        now = datetime.now(timezone.utc)
+        cooldown_until = now + timedelta(minutes=REVIEW_COOLDOWN_MINUTES)
 
         if existing:
+            in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
             existing.score = score
-            existing.title = title
-            existing.content = content
-            existing.is_spoiler = is_spoiler
-            existing.is_private = is_private
+            if in_cooldown:
+                existing.title = title
+                existing.content = content
+                existing.is_spoiler = is_spoiler
+                existing.is_private = is_private
+                existing.cooldown_until = cooldown_until
         else:
             existing = Review(
                 user_id=user_id,
@@ -68,6 +77,7 @@ class ReviewService:
                 content=content,
                 is_spoiler=is_spoiler,
                 is_private=is_private,
+                cooldown_until=cooldown_until,
             )
             self.session.add(existing)
 
@@ -97,7 +107,9 @@ class ReviewService:
         media_item_id: str,
         cursor: str | None = None,
         limit: int = 20,
+        current_user_id: str | None = None,
     ) -> tuple[list[Review], bool]:
+        now = datetime.now(timezone.utc)
         query = (
             select(Review)
             .options(joinedload(Review.user))
@@ -108,6 +120,13 @@ class ReviewService:
             )
             .order_by(Review.created_at.desc(), Review.user_id)
         )
+        # Hide reviews still in cooldown from other users
+        if current_user_id is not None:
+            query = query.where(
+                (Review.cooldown_until <= now) | (Review.user_id == current_user_id)
+            )
+        else:
+            query = query.where(Review.cooldown_until <= now)
 
         if cursor:
             parts = cursor.split("__", 1)
@@ -136,7 +155,9 @@ class ReviewService:
         user_id: str,
         cursor: str | None = None,
         limit: int = 20,
+        current_user_id: str | None = None,
     ) -> tuple[list[Review], bool]:
+        now = datetime.now(timezone.utc)
         query = (
             select(Review)
             .options(joinedload(Review.user))
@@ -147,6 +168,11 @@ class ReviewService:
             )
             .order_by(Review.created_at.desc())
         )
+        # Hide reviews still in cooldown from other users
+        if current_user_id is not None and current_user_id == user_id:
+            pass  # viewing own profile — show all
+        else:
+            query = query.where(Review.cooldown_until <= now)
 
         if cursor:
             query = query.where(Review.created_at < cursor)
