@@ -304,3 +304,34 @@ export function useSteamWishlistScan() {
     },
   })
 }
+
+export interface PlexAlbumTrack {
+  ratingKey: string
+  title: string
+  trackNumber: number
+  discNumber: number
+  durationMs: number | null
+  streamUrl: string | null
+}
+
+export interface PlexAlbumTracksResult {
+  tracks: PlexAlbumTrack[]
+  baseUrl: string
+  baseUrls: string[]
+  token: string
+  ratingKey: string
+}
+
+export function usePlexAlbumTracks(mediaItemId: string | undefined) {
+  return useQuery({
+    queryKey: ["plex", "album-tracks", "v2", mediaItemId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PlexAlbumTracksResult>(
+        `/auth/integrations/plex/album-tracks/${mediaItemId}`,
+      )
+      return data
+    },
+    enabled: !!mediaItemId,
+    staleTime: 1000 * 60 * 2,
+  })
+}
