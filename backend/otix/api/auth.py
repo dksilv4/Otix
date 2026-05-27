@@ -1149,6 +1149,7 @@ async def spotify_recently_played_sync_stream(
 @auth_router.get("/integrations/spotify/token")
 async def spotify_get_token(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Return a valid Spotify access token for the Web Playback SDK."""
     from otix.services.spotify_auth_service import get_user_access_token
