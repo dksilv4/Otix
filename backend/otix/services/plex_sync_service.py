@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import re
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from collections.abc import Callable, Coroutine
 from typing import Any
+from uuid import uuid4
 
 import httpx
 import structlog
@@ -12,9 +13,12 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.domain.company import Company, InvolvedCompany
 from otix.domain.episode_interaction import UserEpisodeInteraction
+from otix.domain.genre import Genre, MediaGenre
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import Album, Episode, ExternalID, MediaItem, Movie, Season, Show, UserPlexItem, UserPlexLibrary, UserPlexServer
+from otix.domain.media import Album, Episode, ExternalID, MediaItem, Movie, Season, Show, Track, UserPlexItem, UserPlexLibrary, UserPlexServer
+from otix.domain.people import MediaCredit, Person
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.lib.slug import slugify
@@ -115,7 +119,7 @@ def _dt_from_plex(value: Any) -> datetime | None:
         return None
 
 
-async def _get_json(url: str, token: str) -> dict:
+async def _get_json(url: str, token: str, timeout: float = 30.0) -> dict:
     """Make a GET request to a Plex server or plex.tv, passing the token as a URL param.
 
     Some Plex server / relay configurations only accept the token as a query parameter
@@ -132,7 +136,7 @@ async def _get_json(url: str, token: str) -> dict:
         "X-Plex-Product": settings.plex_product,
         "X-Plex-Version": settings.plex_version,
     }
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(url_with_token, headers=headers)
         resp.raise_for_status()
         try:
@@ -227,7 +231,34 @@ async def discover_plex_libraries(
     return libraries
 
 
-async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, guids: dict[str, str]) -> str:
+def _parse_date(value: Any) -> date | None:
+    """Parse a Plex date string (YYYY-MM-DD) into a Python date."""
+    if value is None:
+        return None
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (ValueError, TypeError):
+        return None
+
+
+def _resolve_plex_thumb(raw: str | None, base_url: str | None) -> str | None:
+    """Convert a Plex-relative thumb path to an absolute URL (no token)."""
+    if not raw or not base_url:
+        return raw
+    if raw.startswith("/"):
+        return f"{base_url}{raw}"
+    return raw
+
+
+async def _find_or_seed_media(
+    db: AsyncSession,
+    item: dict,
+    media_type: str,
+    guids: dict[str, str],
+    *,
+    release_date_str: str | None = None,
+    child_count: int | None = None,
+) -> str:
     # Return existing resolved media if any GUID already matches
     for provider, external_id in guids.items():
         existing = await db.scalar(
@@ -240,13 +271,13 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
     title = str(item.get("title") or "Untitled")
     year = item.get("year")
     slug = slugify(f"{title}-{year}") if year else slugify(title)
+    release_date = _parse_date(release_date_str or item.get("originallyAvailableAt"))
     media = MediaItem(
         media_type=media_type,
         title=title,
         slug=slug,
         overview=item.get("summary"),
-        poster_url=item.get("thumb"),
-        release_date=None,
+        release_date=release_date,
         completeness_score=0.15,
         next_sync_at=datetime.now(timezone.utc),
     )
@@ -256,7 +287,11 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
         db.add(Movie(media_item_id=media.id))
     elif media_type == "music":
         mbid = guids.get("musicbrainz")
-        db.add(Album(media_item_id=media.id, musicbrainz_id=mbid))
+        db.add(Album(
+            media_item_id=media.id,
+            musicbrainz_id=mbid,
+            track_count=child_count or 0,
+        ))
     else:
         db.add(Show(media_item_id=media.id))
 
@@ -272,6 +307,224 @@ async def _find_or_seed_media(db: AsyncSession, item: dict, media_type: str, gui
     await db.flush()
 
     return media.id
+
+
+def _tag_list(item: dict, key: str) -> list[str]:
+    """Extract Plex tag objects like Genre, Mood, Style into a list of tag names."""
+    tags = _as_list(item.get(key))
+    return [t["tag"] for t in tags if isinstance(t, dict) and t.get("tag")]
+
+
+def _make_oti_id() -> str:
+    return f"oti_{uuid4().hex[:12]}"
+
+
+async def _get_or_create_person_by_name(db: AsyncSession, name: str) -> Person:
+    """Find or create a Person by name only (no external ID). Used for Plex-sourced artists."""
+    person = await db.scalar(select(Person).where(Person.name == name))
+    if person is not None:
+        return person
+    person = Person(id=_make_oti_id(), name=name)
+    db.add(person)
+    await db.flush()
+    return person
+
+
+async def _get_or_create_genre_by_name(db: AsyncSession, name: str) -> Genre:
+    """Get or create a Genre, safe for concurrent Plex syncs."""
+    genre_slug = slugify(name)
+    genre = await db.scalar(select(Genre).where(Genre.slug == genre_slug))
+    if genre is not None:
+        return genre
+    await db.execute(
+        pg_insert(Genre).values(id=_make_oti_id(), name=name, slug=genre_slug)
+        .on_conflict_do_nothing(constraint="genres_slug_key")
+    )
+    return await db.scalar(select(Genre).where(Genre.slug == genre_slug))
+
+
+async def _get_or_create_label(db: AsyncSession, name: str) -> Company:
+    """Get or create a Company (label), safe for concurrent Plex syncs."""
+    label_slug = slugify(name)
+    company = await db.scalar(select(Company).where(Company.slug == label_slug))
+    if company is not None:
+        return company
+    await db.execute(
+        pg_insert(Company).values(id=_make_oti_id(), name=name, slug=label_slug)
+        .on_conflict_do_nothing(constraint="companies_slug_key")
+    )
+    return await db.scalar(select(Company).where(Company.slug == label_slug))
+
+
+async def _hydrate_album_from_plex(
+    db: AsyncSession,
+    media_item_id: str,
+    item: dict,
+) -> None:
+    """Extract and persist all available music metadata from a Plex album item.
+
+    Covers: artist (parentTitle), genres/moods/styles, studio/label, duration.
+    Uses check-then-insert so concurrent syncs won't duplicate data.
+    """
+    # ── Artist ──────────────────────────────────────────────────────
+    parent_title = item.get("parentTitle")
+    if parent_title and isinstance(parent_title, str) and parent_title.strip():
+        person = await _get_or_create_person_by_name(db, parent_title.strip())
+        exists = await db.scalar(
+            select(MediaCredit).where(
+                MediaCredit.media_item_id == media_item_id,
+                MediaCredit.person_id == person.id,
+                MediaCredit.role == "primary",
+            )
+        )
+        if not exists:
+            db.add(MediaCredit(
+                id=_make_oti_id(),
+                media_item_id=media_item_id,
+                person_id=person.id,
+                role="primary",
+            ))
+
+    # ── Genres / Moods / Styles ─────────────────────────────────────
+    all_tags: list[str] = []
+    for tag_key in ("Genre", "Mood", "Style"):
+        all_tags.extend(_tag_list(item, tag_key))
+
+    seen_slugs: set[str] = set()
+    for tag_name in all_tags:
+        gen_slug = slugify(tag_name)
+        if gen_slug in seen_slugs:
+            continue
+        seen_slugs.add(gen_slug)
+        genre = await _get_or_create_genre_by_name(db, tag_name)
+        exists = await db.scalar(
+            select(MediaGenre).where(
+                MediaGenre.media_item_id == media_item_id,
+                MediaGenre.genre_id == genre.id,
+            )
+        )
+        if not exists:
+            db.add(MediaGenre(media_item_id=media_item_id, genre_id=genre.id))
+
+    # ── Studio / Label ──────────────────────────────────────────────
+    studio = item.get("studio")
+    if studio and isinstance(studio, str) and studio.strip():
+        company = await _get_or_create_label(db, studio.strip())
+        exists = await db.scalar(
+            select(InvolvedCompany).where(
+                InvolvedCompany.media_item_id == media_item_id,
+                InvolvedCompany.company_id == company.id,
+            )
+        )
+        if not exists:
+            db.add(InvolvedCompany(
+                id=_make_oti_id(),
+                media_item_id=media_item_id,
+                company_id=company.id,
+                production=True,
+            ))
+
+    # ── Album duration ──────────────────────────────────────────────
+    duration = item.get("duration")
+    if duration is not None:
+        try:
+            duration_ms = int(duration)
+            if duration_ms > 0:
+                album = await db.get(Album, media_item_id)
+                if album and not album.duration_ms:
+                    album.duration_ms = duration_ms
+        except (TypeError, ValueError):
+            pass
+
+    # ── Bump completeness score ─────────────────────────────────────
+    media = await db.get(MediaItem, media_item_id)
+    if media and media.completeness_score < 0.5:
+        media.completeness_score = 0.5
+
+    await db.flush()
+
+
+async def _hydrate_album_tracks_from_plex(
+    db: AsyncSession,
+    user: User,
+    server: UserPlexServer,
+    media_item_id: str,
+) -> int:
+    """Fetch track children from Plex and create Track records.
+
+    Returns the number of tracks created.
+    """
+    token = server.access_token or user.plex_auth_token
+    if not token or not server.base_url:
+        return 0
+
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == user.id,
+            UserPlexItem.media_item_id == media_item_id,
+            UserPlexItem.media_type == "music",
+        )
+    )
+    if plex_item is None:
+        return 0
+
+    try:
+        data = await _get_json(
+            f"{server.base_url}/library/metadata/{plex_item.rating_key}/children",
+            token,
+        )
+    except Exception:
+        logger.warning("failed to fetch plex album children", rating_key=plex_item.rating_key, exc_info=True)
+        return 0
+
+    created = 0
+    for child in _container_items(data):
+        track_number = child.get("index")
+        if track_number is None:
+            continue
+        try:
+            track_number = int(track_number)
+        except (TypeError, ValueError):
+            continue
+
+        title = str(child.get("title") or f"Track {track_number}")
+        disc_number = int(child.get("parentIndex") or 1)
+        duration = child.get("duration")
+
+        # Check if a Track already exists for this album + disc + track number
+        existing = await db.scalar(
+            select(Track).where(
+                Track.album_id == media_item_id,
+                Track.disc_number == disc_number,
+                Track.track_number == track_number,
+            )
+        )
+        if existing is not None:
+            if not existing.duration_ms and duration:
+                existing.duration_ms = int(duration)
+            continue
+
+        db.add(Track(
+            id=_make_oti_id(),
+            album_id=media_item_id,
+            track_number=track_number,
+            disc_number=disc_number,
+            title=title,
+            duration_ms=int(duration) if duration else None,
+        ))
+        created += 1
+
+    if created:
+        await db.flush()
+        # Update album track count
+        album = await db.get(Album, media_item_id)
+        if album:
+            result = await db.execute(
+                select(Track).where(Track.album_id == media_item_id)
+            )
+            album.track_count = len(list(result.scalars().all()))
+
+    return created
 
 
 async def _upsert_interaction(db: AsyncSession, user_id: str, media_item_id: str, interaction_type: str, extra_data: dict) -> None:
@@ -445,7 +698,14 @@ async def sync_plex_library(
             ExternalID.provider.in_(list(guids.keys()) or ["__none__"]),
             ExternalID.external_id.in_(list(guids.values()) or ["__none__"]),
         ))
-        media_item_id = await _find_or_seed_media(db, item, media_type, guids)
+        child_count = int(item.get("childCount")) if item.get("childCount") else None
+        # Don't pass Plex thumb URL as poster_url — Plex URLs require auth
+        # tokens that browser <img> tags cannot send. The hydration pipeline
+        # (TMDB / Fanart / MusicBrainz) will provide publicly-accessible URLs.
+        media_item_id = await _find_or_seed_media(
+            db, item, media_type, guids,
+            child_count=child_count,
+        )
         if before:
             matched += 1
         else:
@@ -489,15 +749,38 @@ async def sync_plex_library(
         await db.execute(stmt)
         if media_item_id:
             if media_type == "music":
+                parent_title = item.get("parentTitle")
                 last_listened = item.get("lastViewedAt")
+                added_at = _dt_from_plex(item.get("addedAt"))
                 listened = view_count > 0 or last_listened is not None
                 if listened:
-                    extra = {"source": "plex", "view_count": view_count}
+                    extra = {
+                        "source": "plex",
+                        "view_count": view_count,
+                    }
                     if last_listened:
                         dt = _dt_from_plex(last_listened)
                         if dt:
                             extra["last_played_at"] = dt.isoformat()
+                    if added_at:
+                        extra["added_to_library_at"] = added_at.isoformat()
+                    if parent_title:
+                        extra["artist_name"] = parent_title
                     await _upsert_interaction(db, user.id, media_item_id, "listened", extra)
+
+                user_rating = item.get("userRating")
+                if user_rating is not None:
+                    try:
+                        rating_val = float(user_rating)
+                        await _upsert_interaction(db, user.id, media_item_id, "rated", {
+                            "source": "plex",
+                            "score": rating_val,
+                        })
+                    except (TypeError, ValueError):
+                        pass
+
+                # Hydrate album metadata from Plex (artist, genres, label, duration)
+                await _hydrate_album_from_plex(db, media_item_id, item)
             else:
                 if viewed:
                     await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})
@@ -700,3 +983,224 @@ async def get_plex_sessions(
             })
 
     return all_sessions
+
+
+async def _get_alternative_plex_urls(
+    server: UserPlexServer,
+    user: User,
+) -> list[str]:
+    """Return alternative base URLs for a Plex server, fetched from plex.tv resources."""
+    if not user.plex_auth_token:
+        return []
+    try:
+        data = await _get_json(
+            f"{PLEX_TV_BASE}/api/v2/resources?includeHttps=1&includeRelay=1",
+            user.plex_auth_token,
+        )
+    except Exception:
+        return []
+
+    machine_id = server.machine_identifier
+    for resource in _as_list(data):
+        if str(resource.get("clientIdentifier") or resource.get("machineIdentifier") or "") != machine_id:
+            continue
+        urls: list[str] = []
+        for conn in _connections(resource):
+            uri = conn.get("uri")
+            if uri and str(uri).rstrip("/") not in urls:
+                urls.append(str(uri).rstrip("/"))
+        return urls
+    return []
+
+
+async def _plex_server_get(
+    server: UserPlexServer,
+    user: User,
+    path: str,
+) -> tuple[dict, str] | None:
+    """Make a GET request to a Plex server path, trying alternative base URLs on failure.
+
+    Returns (data, working_base_url) or None if all connections fail.
+    """
+    token = server.access_token or user.plex_auth_token
+    if not token:
+        return None
+
+    primary_url = server.base_url
+    urls_to_try: list[str] = []
+    if primary_url:
+        urls_to_try.append(primary_url)
+    alt_urls = await _get_alternative_plex_urls(server, user)
+    for alt in alt_urls:
+        if alt not in urls_to_try:
+            urls_to_try.append(alt)
+
+    for base_url in urls_to_try:
+        try:
+            data = await _get_json(f"{base_url}{path}", token, timeout=8.0)
+            return data, base_url
+        except Exception:
+            continue
+
+    return None
+
+
+async def _resolve_stream_url_for_server_with_base(
+    base_url: str,
+    token: str,
+    rating_key: str,
+) -> str | None:
+    """Resolve a stream URL using a specific base URL (fast path, no discovery)."""
+    try:
+        data = await _get_json(f"{base_url}/library/metadata/{rating_key}", token, timeout=8.0)
+    except Exception:
+        return None
+
+    container = data.get("MediaContainer", data)
+    items = _as_list(container.get("Metadata"))
+    if not items:
+        return None
+
+    media_parts = _as_list(items[0].get("Media"))
+    if not media_parts:
+        return None
+
+    parts = _as_list(media_parts[0].get("Part"))
+    if not parts:
+        return None
+
+    part_key = parts[0].get("key")
+    if not part_key:
+        return None
+
+    url = f"{base_url}{part_key}"
+    url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={token}"
+    return url
+
+
+async def _resolve_stream_url_for_server(
+    server: UserPlexServer,
+    user: User,
+    rating_key: str,
+) -> str | None:
+    """Try to resolve a stream URL through a specific Plex server."""
+    token = server.access_token or user.plex_auth_token
+    if not token:
+        return None
+
+    result = await _plex_server_get(server, user, f"/library/metadata/{rating_key}")
+    if result is None:
+        return None
+
+    data, working_base_url = result
+
+    container = data.get("MediaContainer", data)
+    items = _as_list(container.get("Metadata"))
+    if not items:
+        return None
+
+    media_parts = _as_list(items[0].get("Media"))
+    if not media_parts:
+        return None
+
+    parts = _as_list(media_parts[0].get("Part"))
+    if not parts:
+        return None
+
+    part_key = parts[0].get("key")
+    if not part_key:
+        return None
+
+    url = f"{working_base_url}{part_key}"
+    url = f"{url}{'&' if '?' in url else '?'}X-Plex-Token={token}"
+    return url
+
+
+async def get_plex_stream_url(
+    db: AsyncSession,
+    user: User,
+    rating_key: str,
+) -> str | None:
+    """Resolve a Plex rating_key to a signed stream URL.
+
+    Returns a URL the browser can stream directly from the Plex server,
+    or None if the item/server/token is unavailable.
+    """
+    # First try to find the server through UserPlexItem (for synced items)
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == user.id,
+            UserPlexItem.rating_key == rating_key,
+        )
+    )
+    if plex_item is not None:
+        server = await db.get(UserPlexServer, plex_item.server_id)
+        if server is not None:
+            url = await _resolve_stream_url_for_server(server, user, rating_key)
+            if url is not None:
+                return url
+
+    # Fall back to trying all the user's Plex servers
+    servers_result = await db.execute(
+        select(UserPlexServer).where(UserPlexServer.user_id == user.id)
+    )
+    for server in servers_result.scalars().all():
+        url = await _resolve_stream_url_for_server(server, user, rating_key)
+        if url is not None:
+            return url
+
+    logger.warning("failed to resolve plex stream url", rating_key=rating_key)
+    return None
+
+
+async def get_plex_album_tracks(
+    db: AsyncSession,
+    user: User,
+    media_item_id: str,
+) -> tuple[list[dict], str | None] | None:
+    """Return (tracks, working_base_url) for a Plex music album, or None on failure."""
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == user.id,
+            UserPlexItem.media_item_id == media_item_id,
+            UserPlexItem.media_type == "music",
+        )
+    )
+    if plex_item is None:
+        logger.warning("no plex item found for album tracks", media_item_id=media_item_id, user_id=user.id)
+        return None
+
+    server = await db.get(UserPlexServer, plex_item.server_id)
+    if server is None:
+        logger.warning("no plex server for album tracks", server_id=plex_item.server_id)
+        return None
+
+    token = server.access_token or user.plex_auth_token
+    if not token:
+        logger.warning("no plex token for album tracks", server_id=server.id)
+        return None
+
+    result = await _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+    if result is None:
+        logger.warning("failed to fetch plex album children", rating_key=plex_item.rating_key)
+        return None
+
+    data, working_base_url = result
+
+    items = _container_items(data)
+    if not items:
+        return [], working_base_url
+
+    # Build track list. Stream URLs are resolved client-side now
+    # (browser fetches Part keys from Plex metadata).
+    tracks: list[dict] = []
+    for item in items:
+        tracks.append({
+            "rating_key": str(item.get("ratingKey", "")),
+            "title": item.get("title", ""),
+            "track_number": item.get("index", 0),
+            "disc_number": item.get("parentIndex", 1),
+            "duration_ms": item.get("duration"),
+        })
+
+    return tracks, working_base_url

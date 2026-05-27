@@ -1,6 +1,6 @@
-import { useRef, useMemo, useEffect } from "react"
+import { useRef, useMemo, useEffect, useState } from "react"
 import { useInView } from "framer-motion"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
@@ -10,6 +10,7 @@ import {
   usePlexLibraryScan,
   usePlexStatus,
 } from "../library-queries"
+import { DkDropdown } from "@/features/dk-ui/atoms/dropdown"
 import { PlexIcon } from "@/features/dk-ui/atoms/plex-icon"
 import { registerPlatform } from "./registry"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
@@ -78,9 +79,24 @@ function PlexEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformE
 function PlexTabContent() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
+  const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as { mediaType?: string }
+  const [mediaType, setMediaType] = useState(search.mediaType || "")
+
+  const handleMediaTypeChange = (value: string) => {
+    setMediaType(value)
+    navigate({
+      to: "/library/$tab",
+      params: { tab: "plex" },
+      search: value ? { mediaType: value } : {},
+      replace: true,
+    })
+  }
+
+  const extraParams = mediaType ? { media_type: mediaType } : undefined
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useLibraryTab("plex")
+    useLibraryTab("plex", extraParams)
 
   const { data: status } = usePlexStatus()
   const scan = usePlexLibraryScan()
@@ -119,11 +135,25 @@ function PlexTabContent() {
     <>
       {status && status.itemCount > 0 && (
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-muted-foreground">
-            {status.lastScannedAt
-              ? `Last synced ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
-              : `${status.itemCount} items in library`}
-          </p>
+          <div className="flex items-center gap-3">
+            <DkDropdown
+              variant="filter"
+              label="Type"
+              options={[
+                { value: "", label: "All" },
+                { value: "movie", label: "Movies" },
+                { value: "show", label: "Shows" },
+                { value: "music", label: "Music" },
+              ]}
+              value={mediaType}
+              onChange={handleMediaTypeChange}
+            />
+            <p className="text-xs text-muted-foreground">
+              {status.lastScannedAt
+                ? `Last synced ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
+                : `${status.itemCount} items in library`}
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => scan.mutate()}
@@ -145,7 +175,7 @@ function PlexTabContent() {
           <div key={item.id} className="relative">
             <MediaCard
               id={item.id}
-              mediaType={item.mediaType as "movie" | "show" | "game"}
+              mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
               title={item.title}
               posterUrl={item.posterUrl}
               textlessPosterUrl={item.textlessPosterUrl}
@@ -153,26 +183,42 @@ function PlexTabContent() {
               releaseDate={item.releaseDate}
               isAdult={item.isAdult}
             />
-            {item.plexViewCount != null && item.plexViewCount > 0 && (
-              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                <PlexIcon className="h-3 w-3 opacity-50 shrink-0" />
-                <span className="text-[11px] text-muted-foreground tabular-nums">
-                  Viewed {item.plexViewCount} times
-                </span>
-                {item.plexLastViewedAt != null && (() => {
-                  const ts = Math.floor(new Date(item.plexLastViewedAt).getTime() / 1000)
-                  const daysAgo = Math.floor((Date.now() / 1000 - ts) / 86400)
-                  if (daysAgo <= 14) {
-                    return <span className="text-[10px] text-green-500 font-medium">Recently viewed</span>
-                  }
-                  const ago = formatDaysAgo(ts)
-                  if (ago) {
-                    return <span className="text-[10px] text-muted-foreground">Last viewed {ago}</span>
-                  }
-                  return null
-                })()}
-              </div>
+            {item.mediaType === "music" && item.albumArtistName && (
+              <p className="mt-1 text-[11px] text-muted-foreground leading-tight truncate">
+                {item.albumArtistName}
+              </p>
             )}
+            {item.mediaType === "music" && item.albumTrackCount != null && item.albumTrackCount > 0 && (
+              <p className="text-[10px] text-muted-foreground/60 leading-tight">
+                {item.albumTrackCount} track{item.albumTrackCount !== 1 ? "s" : ""}
+              </p>
+            )}
+            {item.plexViewCount != null && item.plexViewCount > 0 && (() => {
+              const isMusic = item.mediaType === "music"
+              const verb = isMusic ? "Played" : "Viewed"
+              const recentLabel = isMusic ? "Recently played" : "Recently viewed"
+              const lastLabel = isMusic ? "Last played" : "Last viewed"
+              return (
+                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                  <PlexIcon className="h-3 w-3 opacity-50 shrink-0" />
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {verb} {item.plexViewCount} times
+                  </span>
+                  {item.plexLastViewedAt != null && (() => {
+                    const ts = Math.floor(new Date(item.plexLastViewedAt).getTime() / 1000)
+                    const daysAgo = Math.floor((Date.now() / 1000 - ts) / 86400)
+                    if (daysAgo <= 14) {
+                      return <span className="text-[10px] text-green-500 font-medium">{recentLabel}</span>
+                    }
+                    const ago = formatDaysAgo(ts)
+                    if (ago) {
+                      return <span className="text-[10px] text-muted-foreground">{lastLabel} {ago}</span>
+                    }
+                    return null
+                  })()}
+                </div>
+              )
+            })()}
           </div>
         ))}
       </MediaGrid>
@@ -219,7 +265,7 @@ function PlexDashboardSection() {
           <div key={item.id} className="relative">
             <MediaCard
               id={item.id}
-              mediaType={item.mediaType as "movie" | "show" | "game"}
+              mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
               title={item.title}
               posterUrl={item.posterUrl}
               textlessPosterUrl={item.textlessPosterUrl}
@@ -227,10 +273,15 @@ function PlexDashboardSection() {
               releaseDate={item.releaseDate}
               isAdult={item.isAdult}
             />
+            {item.mediaType === "music" && item.albumArtistName && (
+              <p className="mt-1 text-[11px] text-muted-foreground leading-tight truncate">
+                {item.albumArtistName}
+              </p>
+            )}
             {item.plexViewCount != null && item.plexViewCount > 0 && (
               <div className="mt-1.5">
                 <span className="text-[11px] text-muted-foreground tabular-nums">
-                  Viewed {item.plexViewCount} times
+                  {item.mediaType === "music" ? "Played" : "Viewed"} {item.plexViewCount} times
                 </span>
               </div>
             )}

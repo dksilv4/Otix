@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/features/auth'
 import { PageMetaProvider } from '@/lib/page-context'
 import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provider'
+import { PlexAudioProvider } from '@/features/spotify/plex-audio-provider'
 import { DkToastProvider } from '@/features/dk-ui/molecules/toast'
 import './index.css'
 
@@ -27,9 +28,11 @@ createRoot(document.getElementById('root')!).render(
               <AuthProvider>
                 <DkToastProvider>
                   <SpotifyPlayerProvider>
-                    <PageMetaProvider>
-                      <RouterProvider router={router} context={{ queryClient }} />
-                    </PageMetaProvider>
+                    <PlexAudioProvider>
+                      <PageMetaProvider>
+                        <RouterProvider router={router} context={{ queryClient }} />
+                      </PageMetaProvider>
+                    </PlexAudioProvider>
                   </SpotifyPlayerProvider>
                 </DkToastProvider>
               </AuthProvider>

@@ -1367,6 +1367,132 @@ async def plex_sessions(
     return PlexSessionsResponse(sessions=[PlexSessionResponse(**s) for s in sessions])
 
 
+@auth_router.get("/integrations/plex/connect-info/{media_item_id}")
+async def plex_connect_info(
+    media_item_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return Plex connection info for a media item, including all reachable base URLs."""
+    from otix.services.plex_sync_service import _get_alternative_plex_urls
+    from otix.domain.media import UserPlexItem, UserPlexServer
+
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == current_user.id,
+            UserPlexItem.media_item_id == media_item_id,
+        )
+    )
+    if plex_item is None:
+        raise HTTPException(status_code=404, detail="Media item not found in your Plex library")
+
+    server = await db.get(UserPlexServer, plex_item.server_id)
+    if server is None:
+        raise HTTPException(status_code=404, detail="Plex server not found")
+
+    alt_urls = await _get_alternative_plex_urls(server, current_user)
+    base_urls = [server.base_url] if server.base_url else []
+    for url in alt_urls:
+        if url not in base_urls:
+            base_urls.append(url)
+
+    token = server.access_token or current_user.plex_auth_token
+    return {
+        "base_url": base_urls[0] if base_urls else None,
+        "base_urls": base_urls,
+        "token": token,
+        "rating_key": plex_item.rating_key,
+    }
+
+
+@auth_router.get("/integrations/plex/album-tracks/{media_item_id}")
+async def plex_album_tracks(
+    media_item_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Return Plex album tracks and connection info for a media item."""
+    from otix.services.plex_sync_service import (
+        _get_alternative_plex_urls,
+        get_plex_album_tracks,
+    )
+    from otix.domain.media import UserPlexItem, UserPlexServer
+
+    plex_item = await db.scalar(
+        select(UserPlexItem).where(
+            UserPlexItem.user_id == current_user.id,
+            UserPlexItem.media_item_id == media_item_id,
+        )
+    )
+    if plex_item is None:
+        raise HTTPException(status_code=404, detail="Media item not found in your Plex library")
+
+    server = await db.get(UserPlexServer, plex_item.server_id)
+    if server is None:
+        raise HTTPException(status_code=404, detail="Plex server not found")
+
+    alt_urls = await _get_alternative_plex_urls(server, current_user)
+    base_urls = [server.base_url] if server.base_url else []
+    for url in alt_urls:
+        if url not in base_urls:
+            base_urls.append(url)
+
+    result = await get_plex_album_tracks(db, current_user, media_item_id)
+    if result is None:
+        raise HTTPException(status_code=502, detail="Could not fetch Plex album tracks")
+
+    tracks, working_base_url = result
+
+    return {
+        "tracks": tracks,
+        "base_url": working_base_url or base_urls[0],
+        "base_urls": base_urls,
+        "token": server.access_token or current_user.plex_auth_token,
+        "rating_key": plex_item.rating_key,
+    }
+
+
+@auth_router.get("/integrations/plex/stream/{rating_key}")
+async def plex_stream(
+    rating_key: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RedirectResponse:
+    """Redirect to a Plex stream URL for the given rating key.
+
+    Pass ?base_url=... to skip server discovery and use a known-working URL.
+    """
+    from otix.services.plex_sync_service import get_plex_stream_url, _resolve_stream_url_for_server_with_base
+    from otix.domain.media import UserPlexServer
+
+    base_url_hint = request.query_params.get("base_url")
+
+    if base_url_hint:
+        # Fast path: use the provided base URL directly
+        token = current_user.plex_auth_token
+        # Also try server access tokens
+        servers_result = await db.execute(
+            select(UserPlexServer).where(UserPlexServer.user_id == current_user.id)
+        )
+        for server in servers_result.scalars().all():
+            if server.access_token:
+                token = server.access_token
+                break
+
+        if token:
+            url = await _resolve_stream_url_for_server_with_base(base_url_hint, token, rating_key)
+            if url:
+                return RedirectResponse(url, status_code=302)
+
+    # Slow path: full server discovery
+    url = await get_plex_stream_url(db, current_user, rating_key)
+    if url is None:
+        raise HTTPException(status_code=404, detail="Stream URL not available")
+
+    return RedirectResponse(url, status_code=302)
+
+
 @auth_router.post("/integrations/steam/scan")
 async def steam_scan_library(
     db: AsyncSession = Depends(get_db),

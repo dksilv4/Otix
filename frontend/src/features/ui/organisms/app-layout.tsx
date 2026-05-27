@@ -9,6 +9,7 @@ import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { SpotifyPlayerBar } from '@/features/spotify/spotify-player-bar'
+import { PlexPlayerBar } from '@/features/spotify/plex-player-bar'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
@@ -113,6 +114,7 @@ function AppShell({ children }: { children: ReactNode }) {
 
       <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
       {isPinned && <SpotifyPlayerBar onUnpin={handleUnpin} />}
+      <PlexPlayerBar />
       <XPToastContainer />
     </div>
   )

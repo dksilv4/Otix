@@ -19,12 +19,21 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    token = _extract_token_from_request(request)
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+    return await _resolve_user_from_token(token, db)
 
-    token = auth_header.removeprefix("Bearer ")
 
+def _extract_token_from_request(request: Request) -> str | None:
+    """Extract Bearer token from Authorization header or ?token= query param."""
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.removeprefix("Bearer ")
+    return request.query_params.get("token")
+
+
+async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
     try:
         payload = decode_token(token)
     except JWTError:
