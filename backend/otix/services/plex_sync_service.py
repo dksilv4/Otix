@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import urllib.parse
 from datetime import date, datetime, timezone
@@ -58,6 +59,12 @@ def _connections(resource: dict) -> list[dict]:
 
 def _best_connection(resource: dict) -> str | None:
     connections = _connections(resource)
+    # Prefer non-local (public/relay) HTTPS connections — Docker containers often
+    # cannot reach local-network IPs embedded in .plex.direct hostnames.
+    for conn in connections:
+        uri = conn.get("uri")
+        if uri and str(uri).startswith("https://") and not conn.get("local"):
+            return str(uri).rstrip("/")
     for conn in connections:
         uri = conn.get("uri")
         if uri and str(uri).startswith("https://"):
@@ -454,6 +461,13 @@ async def _hydrate_album_tracks_from_plex(
 
     Returns the number of tracks created.
     """
+    # Skip if album already has tracks populated.
+    existing_track = await db.scalar(
+        select(Track).where(Track.album_id == media_item_id).limit(1)
+    )
+    if existing_track is not None:
+        return 0
+
     token = server.access_token or user.plex_auth_token
     if not token or not server.base_url:
         return 0
@@ -469,19 +483,26 @@ async def _hydrate_album_tracks_from_plex(
         return 0
 
     try:
-        data = await _get_json(
-            f"{server.base_url}/library/metadata/{plex_item.rating_key}/children",
-            token,
+        data = await asyncio.wait_for(
+            _get_json(
+                f"{server.base_url}/library/metadata/{plex_item.rating_key}/children",
+                token,
+            ),
+            timeout=15.0,
         )
+    except asyncio.TimeoutError:
+        logger.warning("timed out fetching plex album children", rating_key=plex_item.rating_key)
+        return 0
     except Exception:
         logger.warning("failed to fetch plex album children", rating_key=plex_item.rating_key, exc_info=True)
         return 0
 
     created = 0
-    for child in _container_items(data):
+    for idx, child in enumerate(_container_items(data)):
         track_number = child.get("index")
         if track_number is None:
-            continue
+            # Some Plex tracks have no index; fall back to list position (1-based)
+            track_number = idx + 1
         try:
             track_number = int(track_number)
         except (TypeError, ValueError):
@@ -781,6 +802,8 @@ async def sync_plex_library(
 
                 # Hydrate album metadata from Plex (artist, genres, label, duration)
                 await _hydrate_album_from_plex(db, media_item_id, item)
+                # Fetch track listing from Plex for albums with no tracks
+                await _hydrate_album_tracks_from_plex(db, user, server, media_item_id)
             else:
                 if viewed:
                     await _upsert_interaction(db, user.id, media_item_id, "watched", {"source": "plex", "view_count": view_count})

@@ -12,6 +12,7 @@ import { MovieSection } from './movie-section'
 import { ShowSection } from './show-section'
 import { GameSection } from './game-section'
 import { MusicSection } from './music-section'
+import { usePlexAlbumTracks } from '@/features/library/library-queries'
 import { CastCrewList } from './cast-crew-list'
 import { CollectionSection } from './collection-section'
 import { DeferredSection } from '@ui/molecules/deferred-section'
@@ -215,6 +216,7 @@ export function MediaDetail() {
   const mediaId = params.mediaId || ''
 
   const { data, isLoading, isError } = useMediaDetail(mediaId)
+  const isMusicType = data?.mediaType === 'music'
   const isShowDetail = data?.mediaType === 'show'
   const episodeInteractions = useEpisodeInteractions(mediaId, { enabled: isShowDetail })
   const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
@@ -226,6 +228,7 @@ export function MediaDetail() {
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading')
 
   const { user } = useAuth()
+  const { data: plexData } = usePlexAlbumTracks(isMusicType ? mediaId : undefined)
 
   useEffect(() => {
     if (isLoading) {
@@ -316,7 +319,7 @@ export function MediaDetail() {
           mediaType={displayType}
           title={detail.title}
           backdropUrl={detail.backdropUrl}
-          posterUrl={detail.posterUrl}
+          posterUrl={detail.posterUrl || plexData?.albumThumbUrl || null}
           logoUrl={detail.logoUrl}
           textlessPosterUrl={detail.textlessPosterUrl}
           releaseDate={detail.releaseDate}

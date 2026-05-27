@@ -320,6 +320,7 @@ export interface PlexAlbumTracksResult {
   baseUrls: string[]
   token: string
   ratingKey: string
+  albumThumbUrl: string | null
 }
 
 export function usePlexAlbumTracks(mediaItemId: string | undefined) {

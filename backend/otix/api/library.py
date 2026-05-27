@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import asc, func, nulls_last, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db
@@ -14,7 +14,7 @@ from otix.api.schemas.media import (
     SteamWishlistItemSummary,
     SteamWishlistListResponse,
 )
-from otix.domain.media import Track, UserSteamGame
+from otix.domain.media import Track, UserPlexItem, UserPlexServer, UserSteamGame
 from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 from otix.services.steam_library_service import (
@@ -160,11 +160,20 @@ async def get_steam_wishlist_tab(
     )
 
 
+SORT_OPTIONS = {
+    "recent": ("Recently added/played", "default"),
+    "artist": ("Artist A-Z", "artist"),
+    "title": ("Title A-Z", "title"),
+    "year": ("Release year", "year"),
+}
+
+
 @library_router.get("/plex", response_model=MediaItemListResponse)
 async def get_plex_library_tab(
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(48, ge=1, le=100),
     media_type: str | None = Query(None, description="Filter by media type: movie, show, music"),
+    sort_by: str | None = Query(None, description="Sort order: recent, artist, title, year"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MediaItemListResponse:
@@ -174,12 +183,12 @@ async def get_plex_library_tab(
             detail="Plex library is only available when Plex is connected",
         )
 
-    from otix.domain.media import MediaItem, UserPlexItem
-    from otix.domain.people import MediaCredit
+    from otix.domain.media import MediaItem, UserPlexItem, UserPlexServer
+    from otix.domain.people import MediaCredit, Person
     from sqlalchemy.orm import joinedload, selectinload
 
     query = (
-        select(MediaItem, UserPlexItem.view_count, UserPlexItem.last_viewed_at)
+        select(MediaItem, UserPlexItem)
         .join(UserPlexItem, UserPlexItem.media_item_id == MediaItem.id)
         .options(
             joinedload(MediaItem.movie),
@@ -192,11 +201,37 @@ async def get_plex_library_tab(
             UserPlexItem.user_id == current_user.id,
             UserPlexItem.media_item_id.isnot(None),
         )
-        .order_by(
+    )
+
+    if sort_by == "artist":
+        artist_subq = (
+            select(Person.name)
+            .join(MediaCredit, MediaCredit.person_id == Person.id)
+            .where(
+                MediaCredit.media_item_id == MediaItem.id,
+                MediaCredit.role.in_(["artist", "primary"]),
+            )
+            .order_by(Person.name)
+            .limit(1)
+            .correlate(MediaItem)
+        )
+        query = query.order_by(nulls_last(asc(artist_subq)), MediaItem.title.asc())
+    elif sort_by == "title":
+        query = query.order_by(MediaItem.title.asc(), UserPlexItem.id)
+    elif sort_by == "year":
+        query = query.order_by(MediaItem.release_date.desc().nulls_last(), UserPlexItem.id)
+    else:
+        query = query.order_by(
             UserPlexItem.last_viewed_at.desc().nulls_last(),
             UserPlexItem.id
         )
+
+    # Fetch Plex servers to construct thumb URLs for items missing poster_url.
+    plex_servers_result = await db.execute(
+        select(UserPlexServer).where(UserPlexServer.user_id == current_user.id)
     )
+    plex_servers = {s.id: s for s in plex_servers_result.scalars().all()}
+    plex_token = current_user.plex_auth_token
 
     if media_type:
         query = query.where(MediaItem.media_type == media_type)
@@ -221,10 +256,23 @@ async def get_plex_library_tab(
     next_cursor = str(offset + limit) if has_more else None
             
     summaries = []
-    for media_item, view_count, last_viewed_at in rows:
+    seen_ids = set()
+    for media_item, plex_item in rows:
+        if media_item.id in seen_ids:
+            continue
+        seen_ids.add(media_item.id)
+
         summary = MediaItemSummary.model_validate(media_item)
-        summary.plex_view_count = view_count
-        summary.plex_last_viewed_at = last_viewed_at
+        summary.plex_view_count = plex_item.view_count
+        summary.plex_last_viewed_at = plex_item.last_viewed_at
+
+        # If poster_url is missing, construct a Plex thumb URL so covers show in the library.
+        if not summary.poster_url and plex_item.thumb_url and plex_item.server_id in plex_servers:
+            server = plex_servers[plex_item.server_id]
+            token = server.access_token or plex_token
+            if token and server.base_url:
+                summary.poster_url = f"{server.base_url}{plex_item.thumb_url}?X-Plex-Token={token}"
+
         if media_item.media_type == "music" and media_item.album:
             summary.album_track_count = media_item.album.track_count
             if media_item.credits:
@@ -514,6 +562,34 @@ async def get_library_tab(
     )
 
     summaries = [MediaItemSummary.model_validate(item) for item in items]
+
+    # Add Plex thumb fallback for music items missing poster_url
+    music_ids_without_poster = [
+        s.id for s in summaries
+        if not s.poster_url and s.media_type == "music"
+    ]
+    if music_ids_without_poster and current_user.plex_auth_token:
+        plex_items_result = await db.execute(
+            select(UserPlexItem).where(
+                UserPlexItem.user_id == current_user.id,
+                UserPlexItem.media_item_id.in_(music_ids_without_poster),
+                UserPlexItem.thumb_url.isnot(None),
+            )
+        )
+        plex_items = {pi.media_item_id: pi for pi in plex_items_result.scalars().all()}
+        if plex_items:
+            server_ids = {pi.server_id for pi in plex_items.values()}
+            servers_result = await db.execute(
+                select(UserPlexServer).where(UserPlexServer.id.in_(server_ids))
+            )
+            servers = {s.id: s for s in servers_result.scalars().all()}
+            for summary in summaries:
+                if summary.id in plex_items:
+                    pi = plex_items[summary.id]
+                    server = servers.get(pi.server_id)
+                    if server and server.base_url:
+                        token = server.access_token or current_user.plex_auth_token
+                        summary.poster_url = f"{server.base_url}{pi.thumb_url}?X-Plex-Token={token}"
 
     # All items in this tab have this interaction_type active
     auto_state = {t: t == interaction_type for t in ("liked", "watchlisted", "watched", "played", "started", "listened")}

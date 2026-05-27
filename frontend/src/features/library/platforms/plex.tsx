@@ -80,20 +80,40 @@ function PlexTabContent() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
   const navigate = useNavigate()
-  const search = useSearch({ strict: false }) as { mediaType?: string }
+  const search = useSearch({ strict: false }) as { mediaType?: string; sortBy?: string }
   const [mediaType, setMediaType] = useState(search.mediaType || "")
+  const [sortBy, setSortBy] = useState(search.sortBy || "")
 
   const handleMediaTypeChange = (value: string) => {
     setMediaType(value)
+    const s: Record<string, string> = {}
+    if (value) s.mediaType = value
+    if (sortBy) s.sortBy = sortBy
     navigate({
       to: "/library/$tab",
       params: { tab: "plex" },
-      search: value ? { mediaType: value } : {},
+      search: s,
       replace: true,
     })
   }
 
-  const extraParams = mediaType ? { media_type: mediaType } : undefined
+  const handleSortChange = (value: string) => {
+    setSortBy(value)
+    const s: Record<string, string> = {}
+    if (mediaType) s.mediaType = mediaType
+    if (value) s.sortBy = value
+    navigate({
+      to: "/library/$tab",
+      params: { tab: "plex" },
+      search: s,
+      replace: true,
+    })
+  }
+
+  const extraParams: Record<string, string> | undefined =
+    mediaType || sortBy
+      ? { ...(mediaType ? { media_type: mediaType } : {}), ...(sortBy ? { sort_by: sortBy } : {}) }
+      : undefined
 
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useLibraryTab("plex", extraParams)
@@ -147,6 +167,18 @@ function PlexTabContent() {
               ]}
               value={mediaType}
               onChange={handleMediaTypeChange}
+            />
+            <DkDropdown
+              variant="filter"
+              label="Sort"
+              options={[
+                { value: "", label: "Recent" },
+                { value: "artist", label: "Artist" },
+                { value: "title", label: "Title" },
+                { value: "year", label: "Year" },
+              ]}
+              value={sortBy}
+              onChange={handleSortChange}
             />
             <p className="text-xs text-muted-foreground">
               {status.lastScannedAt

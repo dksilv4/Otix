@@ -32,7 +32,7 @@ from otix.api.schemas.media import (
 from otix.domain.asset import MediaAsset
 from otix.domain.genre import Genre
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import MediaItem, UserSteamGame
+from otix.domain.media import MediaItem, UserPlexItem, UserPlexServer, UserSteamGame
 from otix.domain.user import User
 from otix.services.admin_edit_service import AdminEditService
 from otix.infrastructure.celery import app
@@ -654,6 +654,21 @@ async def get_media_item(
                         result.logo_url = override_url
                     elif image_type == "textless_poster":
                         result.textless_poster_url = override_url
+
+        # Fall back to Plex thumb if no poster_url and this is a music album from Plex
+        if not result.poster_url and current_user.plex_auth_token:
+            plex_item = await db.scalar(
+                select(UserPlexItem).where(
+                    UserPlexItem.user_id == current_user.id,
+                    UserPlexItem.media_item_id == media_id,
+                    UserPlexItem.thumb_url.isnot(None),
+                )
+            )
+            if plex_item is not None:
+                server = await db.get(UserPlexServer, plex_item.server_id)
+                if server is not None and server.base_url:
+                    token = server.access_token or current_user.plex_auth_token
+                    result.poster_url = f"{server.base_url}{plex_item.thumb_url}?X-Plex-Token={token}"
 
     response_data = result.model_dump(mode="json")
     await redis.set(cache_key, json.dumps(response_data), ex=_MEDIA_DETAIL_TTL)
