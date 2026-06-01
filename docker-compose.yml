@@ -1,6 +1,7 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    shm_size: 512mb
     environment:
       POSTGRES_DB: otix_dev
       POSTGRES_USER: otix
@@ -26,6 +27,11 @@ services:
       -c shared_preload_libraries=pg_stat_statements
       -c pg_stat_statements.track=all
       -c jit=off
+      -c autovacuum_vacuum_scale_factor=0.05
+      -c autovacuum_analyze_scale_factor=0.025
+      -c autovacuum_vacuum_cost_limit=2000
+      -c autovacuum_max_workers=3
+      -c autovacuum_naptime=30s
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
       interval: 2s
@@ -71,32 +77,14 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
+      DB_POOL_SIZE: "20"
+      DB_MAX_OVERFLOW: "10"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     command: uvicorn entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload
-
-  worker-fast:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./backend:/app
-    env_file: ./backend/.env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
-      REDIS_URL: redis://redis:6379/1
-      CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: fast
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q fast -c 6 -n otix-fast@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -106,7 +94,9 @@ services:
           cpus: "0.5"
           memory: 512M
 
-  worker-provider:
+  # ── Purpose-based workers (per-provider queue isolation, consolidated by purpose) ──
+
+  worker-ingest:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -118,15 +108,25 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: provider
+      DB_POOL_SIZE: "6"
+      DB_MAX_OVERFLOW: "4"
+      OTIX_WORKER_TYPE: ingest
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q igdb,fanart,omdb,steamgrid,musicbrainz,lastfm -c 3 -n otix-provider@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery.app worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 4 -n otix-ingest@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+          memory: 2G
+        reservations:
+          cpus: "1"
+          memory: 512M
 
-  worker-user:
+  worker-enrich:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -138,15 +138,25 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: user
+      DB_POOL_SIZE: "4"
+      DB_MAX_OVERFLOW: "3"
+      OTIX_WORKER_TYPE: enrich
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q user -c 2 -n otix-user@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery.app worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 2 -n otix-enrich@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
 
-  worker-control:
+  worker-reactive:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -158,15 +168,25 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: control
+      DB_POOL_SIZE: "4"
+      DB_MAX_OVERFLOW: "3"
+      OTIX_WORKER_TYPE: reactive
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q control -c 4 -n otix-control@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery.app worker -Q reactive-fast,reactive-user -c 2 -n otix-reactive@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
-  worker-ccu:
+  worker-maintain:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -178,14 +198,53 @@ services:
       DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      OTIX_WORKER_TYPE: ccu
+      DB_POOL_SIZE: "4"
+      DB_MAX_OVERFLOW: "3"
+      OTIX_WORKER_TYPE: maintain
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q ccu -c 1 -n otix-ccu@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery.app worker -Q maintain -c 1 -n otix-maintain@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 256M
 
+  worker-embedding:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend:/app
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      DB_POOL_SIZE: "8"
+      DB_MAX_OVERFLOW: "4"
+      OTIX_WORKER_TYPE: embedding
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: celery -A otix.infrastructure.celery.app worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+          memory: 10G
+        reservations:
+          cpus: "1"
+          memory: 2G
   beat:
     build:
       context: ./backend
@@ -204,6 +263,44 @@ services:
       redis:
         condition: service_healthy
     command: celery -A otix.infrastructure.celery.app beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+
+  bots:
+    build:
+      context: .
+      dockerfile: bots/Dockerfile
+    environment:
+      BOT_API_BASE_URL: http://api:8000/api
+      BOT_COUNT: "0"
+      BOT_ACTIVE_POOL: "30"
+      BOT_ACTION_BURST: "3"
+      BOT_COOLDOWN_MIN: "30"
+      BOT_COOLDOWN_MAX: "60"
+      BOT_DELAY_MIN: "3"
+      BOT_DELAY_MAX: "15"
+      BOT_STARTUP_STAGGER: "120"
+      BOT_API_TIMEOUT: "45"
+      BOT_HTTP_POOL_LIMIT: "300"
+      BOT_HTTP_POOL_PER_HOST: "200"
+      BOT_LOG_DIR: /app/logs
+    volumes:
+      - bot_logs:/app/logs
+    depends_on:
+      api:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
 
 volumes:
   pgdata:
+  bot_logs:
