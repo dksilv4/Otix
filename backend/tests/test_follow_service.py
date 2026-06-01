@@ -76,10 +76,10 @@ class TestUnfollow:
 class TestGetFollowers:
     async def test_get_followers_basic(self, service: FollowService, mock_db_session: AsyncMock):
         followers = [
-            _make_user("user-2", "user2"),
-            _make_user("user-3", "user3"),
+            (_make_user("user-2", "user2"), datetime(2026, 5, 24, 12, 0, 0)),
+            (_make_user("user-3", "user3"), datetime(2026, 5, 23, 12, 0, 0)),
         ]
-        mock_db_session.scalars.return_value = iter(followers)
+        mock_db_session.execute.return_value = followers
 
         result, next_cursor = await service.get_followers("user-1", limit=10)
 
@@ -89,9 +89,9 @@ class TestGetFollowers:
 
     async def test_get_followers_with_cursor(self, service: FollowService, mock_db_session: AsyncMock):
         followers = [
-            _make_user("user-2", "user2"),
+            (_make_user("user-2", "user2"), datetime(2026, 5, 24, 12, 0, 0)),
         ]
-        mock_db_session.scalars.return_value = iter(followers)
+        mock_db_session.execute.return_value = followers
 
         result, next_cursor = await service.get_followers("user-1", cursor="2026-05-24T12:00:00", limit=10)
 
@@ -99,54 +99,45 @@ class TestGetFollowers:
         assert next_cursor is None
 
     async def test_get_followers_has_more(self, service: FollowService, mock_db_session: AsyncMock):
+        dt1 = datetime(2026, 5, 24, 12, 0, 0)
+        dt2 = datetime(2026, 5, 23, 12, 0, 0)
+        dt3 = datetime(2026, 5, 22, 12, 0, 0)
         followers = [
-            _make_user("user-2", "user2"),
-            _make_user("user-3", "user3"),
-            _make_user("user-4", "user4"),
+            (_make_user("user-2", "user2"), dt1),
+            (_make_user("user-3", "user3"), dt2),
+            (_make_user("user-4", "user4"), dt3),
         ]
-        
-        # We need the third user to have follower relationship populated or mock the scalar fallback
-        popped = followers[2]
-        follow_record = Follow(follower_id="user-4", followed_id="user-1")
-        follow_record.created_at = datetime(2026, 5, 24, 12, 0, 0)
-        popped.followers = [follow_record]
-        
-        mock_db_session.scalars.return_value = iter(followers)
+        mock_db_session.execute.return_value = followers
 
         result, next_cursor = await service.get_followers("user-1", limit=2)
 
         assert len(result) == 2
-        assert next_cursor == "2026-05-24T12:00:00"
+        assert next_cursor == "2026-05-23T12:00:00"
 
     async def test_get_followers_has_more_fallback(self, service: FollowService, mock_db_session: AsyncMock):
+        dt1 = datetime(2026, 5, 24, 12, 0, 0)
+        dt2 = datetime(2026, 5, 23, 12, 0, 0)
+        dt3 = datetime(2026, 5, 22, 12, 0, 0)
         followers = [
-            _make_user("user-2", "user2"),
-            _make_user("user-3", "user3"),
-            _make_user("user-4", "user4"),
+            (_make_user("user-2", "user2"), dt1),
+            (_make_user("user-3", "user3"), dt2),
+            (_make_user("user-4", "user4"), dt3),
         ]
-        
-        popped = followers[2]
-        popped.followers = []  # Empty so it hits the fallback query
-        
-        follow_record = Follow(follower_id="user-4", followed_id="user-1")
-        follow_record.created_at = datetime(2026, 5, 24, 12, 0, 0)
-        
-        mock_db_session.scalars.return_value = iter(followers)
-        mock_db_session.scalar.return_value = follow_record
+        mock_db_session.execute.return_value = followers
 
         result, next_cursor = await service.get_followers("user-1", limit=2)
 
         assert len(result) == 2
-        assert next_cursor == "2026-05-24T12:00:00"
+        assert next_cursor == "2026-05-23T12:00:00"
 
 
 class TestGetFollowing:
     async def test_get_following_basic(self, service: FollowService, mock_db_session: AsyncMock):
         following = [
-            _make_user("user-2", "user2"),
-            _make_user("user-3", "user3"),
+            (_make_user("user-2", "user2"), datetime(2026, 5, 24, 12, 0, 0)),
+            (_make_user("user-3", "user3"), datetime(2026, 5, 23, 12, 0, 0)),
         ]
-        mock_db_session.scalars.return_value = iter(following)
+        mock_db_session.execute.return_value = following
 
         result, next_cursor = await service.get_following("user-1", limit=10)
 
@@ -154,17 +145,20 @@ class TestGetFollowing:
         assert next_cursor is None
 
     async def test_get_following_has_more(self, service: FollowService, mock_db_session: AsyncMock):
+        dt1 = datetime(2026, 5, 24, 12, 0, 0)
+        dt2 = datetime(2026, 5, 23, 12, 0, 0)
+        dt3 = datetime(2026, 5, 22, 12, 0, 0)
         following = [
-            _make_user("user-2", "user2"),
-            _make_user("user-3", "user3"),
-            _make_user("user-4", "user4"),
+            (_make_user("user-2", "user2"), dt1),
+            (_make_user("user-3", "user3"), dt2),
+            (_make_user("user-4", "user4"), dt3),
         ]
-        mock_db_session.scalars.return_value = iter(following)
+        mock_db_session.execute.return_value = following
 
         result, next_cursor = await service.get_following("user-1", limit=2)
 
         assert len(result) == 2
-        assert next_cursor is None
+        assert next_cursor == "2026-05-23T12:00:00"
 
 
 class TestGetCounts:

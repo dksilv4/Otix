@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -109,6 +110,68 @@ class InteractionService:
 
         return existing
 
+    async def set_interactions_batch(
+        self,
+        user_id: str,
+        interactions: list[tuple[str, str, dict | None]],
+    ) -> int:
+        """Batch upsert interactions for a single user. Returns count of NEW interactions.
+
+        Each tuple is (media_item_id, interaction_type, extra_data).
+        Uses INSERT ... ON CONFLICT DO UPDATE to avoid SELECT-before-write.
+        """
+        if not interactions:
+            return 0
+
+        # Build rows for batch upsert
+        now = datetime.utcnow()
+        rows = [
+            {
+                "user_id": user_id,
+                "media_item_id": mid,
+                "interaction_type": itype,
+                "metadata": extra or {},
+                "created_at": now,
+                "updated_at": now,
+            }
+            for mid, itype, extra in interactions
+        ]
+
+        await self.session.execute(
+            pg_insert(UserMediaInteraction.__table__)
+            .values(rows)
+            .on_conflict_do_update(
+                index_elements=["user_id", "media_item_id", "interaction_type"],
+                set_={"metadata": pg_insert.excluded.metadata, "updated_at": now},
+            )
+        )
+
+        # Recalculate counts for each unique (media_item_id, interaction_type) pair
+        seen: set[tuple[str, str]] = set()
+        for mid, itype, _ in interactions:
+            key = (mid, itype)
+            if key not in seen:
+                seen.add(key)
+                col_name = _TYPE_TO_COLUMN.get(itype)
+                if col_name:
+                    await self.session.execute(
+                        update(MediaItem)
+                        .where(MediaItem.id == mid)
+                        .values(
+                            **{
+                                col_name: select(func.count())
+                                .select_from(UserMediaInteraction)
+                                .where(
+                                    UserMediaInteraction.media_item_id == mid,
+                                    UserMediaInteraction.interaction_type == itype,
+                                )
+                                .scalar_subquery()
+                            }
+                        )
+                    )
+
+        return len(interactions)
+
     async def remove_interaction(
         self, user_id: str, media_item_id: str, interaction_type: str
     ) -> bool:
@@ -146,7 +209,7 @@ class InteractionService:
         limit: int = 50,
     ) -> tuple[list[MediaItem], bool, str | None]:
         query = (
-            select(MediaItem)
+            select(MediaItem, UserMediaInteraction.created_at)
             .join(
                 UserMediaInteraction,
                 UserMediaInteraction.media_item_id == MediaItem.id,
@@ -183,25 +246,19 @@ class InteractionService:
                     pass
 
         query = query.limit(limit + 1)
-        result = await self.session.scalars(query)
-        items = list(result.unique())
+        result = await self.session.execute(query)
+        rows = list(result.unique())
 
-        has_more = len(items) > limit
+        has_more = len(rows) > limit
         if has_more:
-            items = items[:limit]
+            rows = rows[:limit]
+
+        items = [row[0] for row in rows]
 
         next_cursor = None
-        if has_more and items:
-            last_item = items[-1]
-            last_interaction = await self.session.scalar(
-                select(UserMediaInteraction).where(
-                    UserMediaInteraction.user_id == user_id,
-                    UserMediaInteraction.media_item_id == last_item.id,
-                    UserMediaInteraction.interaction_type == interaction_type,
-                )
-            )
-            if last_interaction:
-                next_cursor = f"{last_interaction.created_at.isoformat()}__{last_item.id}"
+        if has_more and rows:
+            last_item, last_created_at = rows[-1]
+            next_cursor = f"{last_created_at.isoformat()}__{last_item.id}"
 
         return items, has_more, next_cursor
 
@@ -210,16 +267,19 @@ class InteractionService:
         if col_name is None:
             return
 
-        count_result = await self.session.scalar(
-            select(func.count()).select_from(UserMediaInteraction).where(
-                UserMediaInteraction.media_item_id == media_item_id,
-                UserMediaInteraction.interaction_type == interaction_type,
-            )
-        )
-        count = count_result if count_result is not None else 0
-
+        # Single round-trip: UPDATE with a scalar subquery for the COUNT
         await self.session.execute(
             update(MediaItem)
             .where(MediaItem.id == media_item_id)
-            .values(**{col_name: count})
+            .values(
+                **{
+                    col_name: select(func.count())
+                    .select_from(UserMediaInteraction)
+                    .where(
+                        UserMediaInteraction.media_item_id == media_item_id,
+                        UserMediaInteraction.interaction_type == interaction_type,
+                    )
+                    .scalar_subquery()
+                }
+            )
         )

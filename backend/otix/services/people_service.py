@@ -86,7 +86,59 @@ class PeopleService:
             except Exception:
                 person.is_followed = False
 
+        # Rating info
+        person.avg_rating = None
+        person.user_rating = None
+        try:
+            from otix.domain.people import PersonRating
+            avg = await self.session.scalar(
+                select(func.avg(PersonRating.score)).where(
+                    PersonRating.person_id == person_id
+                )
+            )
+            if avg is not None:
+                person.avg_rating = round(float(avg), 1)
+
+            if user_id:
+                user_score = await self.session.scalar(
+                    select(PersonRating.score).where(
+                        PersonRating.user_id == user_id,
+                        PersonRating.person_id == person_id,
+                    )
+                )
+                person.user_rating = user_score
+        except Exception:
+            pass
+
         return person
+
+    async def rate_person(self, user_id: str, person_id: str, score: int) -> None:
+        from otix.domain.people import PersonRating
+        rating = await self.session.scalar(
+            select(PersonRating).where(
+                PersonRating.user_id == user_id,
+                PersonRating.person_id == person_id,
+            )
+        )
+        if rating:
+            rating.score = score
+        else:
+            self.session.add(PersonRating(user_id=user_id, person_id=person_id, score=score))
+        await self.session.flush()
+
+    async def unrate_person(self, user_id: str, person_id: str) -> bool:
+        from otix.domain.people import PersonRating
+        rating = await self.session.scalar(
+            select(PersonRating).where(
+                PersonRating.user_id == user_id,
+                PersonRating.person_id == person_id,
+            )
+        )
+        if not rating:
+            return False
+        await self.session.delete(rating)
+        await self.session.flush()
+        return True
 
     async def search_people(
         self,

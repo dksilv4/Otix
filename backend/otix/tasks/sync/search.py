@@ -38,7 +38,7 @@ async def _mark_backfill_provider_done(redis: aioredis.Redis, query_hash: str, p
     bind=True,
     max_retries=1,
     default_retry_delay=60,
-    queue="fast",
+    queue="reactive-fast",
 )
 def search_backfill_task(self, query: str, media_type: str | None = None) -> dict:
     """Search external providers for missing media and enqueue sync tasks."""

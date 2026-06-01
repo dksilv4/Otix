@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.api.deps import get_current_user, get_db, get_optional_user
+from otix.domain.admin_edit import MediaEditProposal
+from otix.infrastructure.database import async_session
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
-from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut
+from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut, UserSearchListResponse, UserSearchResult
 from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
 from otix.api.schemas.user_badge import BadgeOut
@@ -36,6 +38,42 @@ from otix.services.steam_auth_service import get_steam_user_info
 from otix.services.user_rating_service import UserRatingService
 
 user_router = APIRouter(prefix="/users", tags=["users"])
+
+
+@user_router.get("/search", response_model=UserSearchListResponse)
+async def search_users(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> UserSearchListResponse:
+    stmt = (
+        select(User)
+        .where(User.username.ilike(f"%{q}%"), User.is_active == True)  # noqa: E712
+        .order_by(User.username)
+        .limit(limit)
+    )
+    result = await db.scalars(stmt)
+    users = list(result)
+
+    items: list[UserSearchResult] = []
+    for user in users:
+        gamification = compute_level_info(user.total_xp)
+        items.append(
+            UserSearchResult(
+                id=user.id,
+                username=user.username,
+                avatar_url=user.avatar_url,
+                bio=user.bio,
+                level=gamification["level"],
+                level_title=gamification["level_title"],
+                is_admin=user.is_admin,
+            )
+        )
+
+    return UserSearchListResponse(
+        items=items,
+        has_more=False,
+    )
 
 
 def _visibility_allows(visibility: dict, provider: str, is_friend: bool) -> bool:
@@ -66,19 +104,30 @@ async def get_user_profile(
     if user.steam_id:
         steam_task = asyncio.create_task(get_steam_user_info(user.steam_id))
 
-    # DB queries — now fast (~1-2ms each with connection pooling)
-    review_count = await db.scalar(
-        select(func.count()).select_from(Review).where(
-            Review.user_id == user.id,
-            Review.content.isnot(None),
-            Review.is_private == False,  # noqa: E712
+    # Fetch review_count, xp_rank, total_users, proposal stats, and streak in a single round-trip
+    counts = await db.execute(
+        select(
+            select(func.count()).select_from(Review).where(
+                Review.user_id == user.id,
+                Review.content.isnot(None),
+                Review.is_private == False,  # noqa: E712
+            ).scalar_subquery(),
+            select(func.count()).select_from(User).where(
+                User.total_xp > user.total_xp
+            ).scalar_subquery(),
+            select(func.count()).select_from(User).scalar_subquery(),
+            select(UserStreak).where(UserStreak.user_id == user.id).scalar_subquery(),
+            select(func.count()).select_from(MediaEditProposal).where(
+                MediaEditProposal.proposer_user_id == user.id
+            ).scalar_subquery(),
+            select(func.count()).select_from(MediaEditProposal).where(
+                MediaEditProposal.proposer_user_id == user.id,
+                MediaEditProposal.status == "approved",
+            ).scalar_subquery(),
         )
     )
-    xp_rank_result = await db.execute(
-        select(func.count()).select_from(User).where(User.total_xp > user.total_xp)
-    )
-    total_users = await db.scalar(select(func.count()).select_from(User))
-    streak = await db.scalar(select(UserStreak).where(UserStreak.user_id == user.id))
+    review_count, higher_count, total_users_count, streak, proposal_count, approved_count = counts.one()
+
     rating_service = UserRatingService(db)
     reputation = await rating_service.compute_composite_score(user.id)
     follow_service = FollowService(db)
@@ -126,10 +175,13 @@ async def get_user_profile(
         tmdb_username = user.tmdb_username
 
     gamification = compute_level_info(user.total_xp)
-    higher_count = xp_rank_result.scalar() or 0
+    higher_count = higher_count or 0
     xp_rank = higher_count + 1
-    total_users_count = total_users or 0
+    total_users_count = total_users_count or 0
     xp_percentile = round((total_users_count - higher_count) / total_users_count * 100, 1) if total_users_count > 0 else 100.0
+    proposal_count = proposal_count or 0
+    approved_count = approved_count or 0
+    proposal_approval_rate = round(approved_count / proposal_count * 100, 1) if proposal_count > 0 else None
 
     return UserProfileOut(
         id=user.id,
@@ -151,13 +203,15 @@ async def get_user_profile(
         tmdb_username=tmdb_username,
         friendship_status=friendship_status,
         is_following=is_following or False,
+        is_private=user.is_private,
         follower_count=follow_counts["followers"],
         following_count=follow_counts["following"],
         level=gamification["level"],
         level_title=gamification["level_title"],
         xp_rank=xp_rank,
         xp_percentile=xp_percentile,
-        karma=user.karma,
+        proposal_count=proposal_count,
+        proposal_approval_rate=proposal_approval_rate,
         current_login_streak=streak.current_login_streak if streak else 0,
         longest_login_streak=streak.longest_login_streak if streak else 0,
         current_review_streak=streak.current_review_streak if streak else 0,
@@ -199,8 +253,9 @@ async def get_my_user_rating(
     user = await db.scalar(select(User).where(User.username == username))
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    # Self-check only applies to modifying ratings, not viewing them.
     if user.id == current_user.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot rate yourself")
+        return None
 
     service = UserRatingService(db)
     rating = await service.get_my_rating(current_user.id, user.id)
@@ -284,8 +339,6 @@ async def get_user_reputation(
         avg_user_rating=user.avg_user_rating,
         user_rating_count=user.user_rating_count,
         composite_score=result.get("composite_score"),
-        activity_score=result.get("activity_score"),
-        direct_rating=result.get("direct_rating"),
         components=result.get("components", {}),
     )
 
@@ -307,6 +360,50 @@ async def get_user_badges(
     return [BadgeOut(**b) for b in badges]
 
 
+@user_router.post("/me/badges/{badge_key}/claim")
+async def claim_badge(
+    badge_key: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from otix.domain.user_badge import UserBadge
+    from otix.infrastructure.celery import app
+    from otix.lib.badges import BADGES
+
+    badge_def = BADGES.get(badge_key)
+    if not badge_def:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Badge definition not found"
+        )
+
+    # Check if user earned this badge
+    user_badge = await db.scalar(
+        select(UserBadge).where(
+            UserBadge.user_id == current_user.id,
+            UserBadge.badge_key == badge_key,
+        )
+    )
+    if not user_badge:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Badge not earned yet"
+        )
+
+    if user_badge.claimed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Badge reward already claimed"
+        )
+
+    # Set claimed
+    user_badge.claimed = True
+
+    # Award XP
+    app.send_task("xp.award", args=[current_user.id, badge_def.xp_reward])
+
+    await db.commit()
+    return {"status": "ok", "xp_awarded": badge_def.xp_reward}
+
+
+
 # ── Profile Sections Data ──
 
 
@@ -319,27 +416,48 @@ async def get_user_stats(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    review_count = await db.scalar(
-        select(func.count()).select_from(Review).where(
-            Review.user_id == user.id,
-            Review.content.isnot(None),
-            Review.is_private == False,  # noqa: E712
+    # Single query with scalar subqueries instead of 4 round-trips
+    counts = (await db.execute(
+        select(
+            func.coalesce(
+                select(func.count())
+                .select_from(Review)
+                .where(
+                    Review.user_id == user.id,
+                    Review.content.isnot(None),
+                    Review.is_private == False,  # noqa: E712
+                )
+                .scalar_subquery(),
+                0,
+            ).label("review_count"),
+            func.coalesce(
+                select(func.count())
+                .select_from(UserMediaInteraction)
+                .where(UserMediaInteraction.user_id == user.id)
+                .scalar_subquery(),
+                0,
+            ).label("interaction_count"),
+            func.coalesce(
+                select(func.count())
+                .select_from(Workout)
+                .where(Workout.user_id == user.id)
+                .scalar_subquery(),
+                0,
+            ).label("workout_count"),
+            func.coalesce(
+                select(func.count())
+                .select_from(UserList)
+                .where(UserList.user_id == user.id)
+                .scalar_subquery(),
+                0,
+            ).label("list_count"),
         )
-    ) or 0
+    )).one()
 
-    interaction_count = await db.scalar(
-        select(func.count()).select_from(UserMediaInteraction).where(
-            UserMediaInteraction.user_id == user.id,
-        )
-    ) or 0
-
-    workout_count = await db.scalar(
-        select(func.count()).select_from(Workout).where(Workout.user_id == user.id)
-    ) or 0
-
-    list_count = await db.scalar(
-        select(func.count()).select_from(UserList).where(UserList.user_id == user.id)
-    ) or 0
+    review_count = counts.review_count
+    interaction_count = counts.interaction_count
+    workout_count = counts.workout_count
+    list_count = counts.list_count
 
     return {
         "review_count": review_count,
@@ -398,41 +516,52 @@ async def get_user_activity(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # Fetch recent reviews (public, with content)
-    reviews = await db.execute(
-        select(Review, MediaItem)
-        .join(MediaItem, Review.media_item_id == MediaItem.id)
-        .where(
-            Review.user_id == user.id,
-            Review.content.isnot(None),
-            Review.is_private == False,  # noqa: E712
-        )
-        .order_by(Review.created_at.desc())
-        .limit(limit)
-    )
-    review_rows = reviews.all()
+    user_id = user.id
 
-    # Fetch recent interactions
-    interactions = await db.execute(
-        select(UserMediaInteraction, MediaItem)
-        .join(MediaItem, UserMediaInteraction.media_item_id == MediaItem.id)
-        .where(UserMediaInteraction.user_id == user.id)
-        .order_by(UserMediaInteraction.created_at.desc())
-        .limit(limit)
-    )
-    interaction_rows = interactions.all()
+    async def _fetch_reviews():
+        async with async_session() as s:
+            result = await s.execute(
+                select(Review, MediaItem)
+                .join(MediaItem, Review.media_item_id == MediaItem.id)
+                .where(
+                    Review.user_id == user_id,
+                    Review.content.isnot(None),
+                    Review.is_private == False,  # noqa: E712
+                )
+                .order_by(Review.created_at.desc())
+                .limit(limit)
+            )
+            return result.all()
 
-    # Fetch recent episode interactions
-    episode_interactions = await db.execute(
-        select(UserEpisodeInteraction, Episode, Season, MediaItem)
-        .join(Episode, Episode.id == UserEpisodeInteraction.episode_id)
-        .join(Season, Season.id == Episode.season_id)
-        .join(MediaItem, MediaItem.id == Season.show_id)
-        .where(UserEpisodeInteraction.user_id == user.id)
-        .order_by(UserEpisodeInteraction.created_at.desc())
-        .limit(limit)
+    async def _fetch_interactions():
+        async with async_session() as s:
+            result = await s.execute(
+                select(UserMediaInteraction, MediaItem)
+                .join(MediaItem, UserMediaInteraction.media_item_id == MediaItem.id)
+                .where(UserMediaInteraction.user_id == user_id)
+                .order_by(UserMediaInteraction.created_at.desc())
+                .limit(limit)
+            )
+            return result.all()
+
+    async def _fetch_episode_interactions():
+        async with async_session() as s:
+            result = await s.execute(
+                select(UserEpisodeInteraction, Episode, Season, MediaItem)
+                .join(Episode, Episode.id == UserEpisodeInteraction.episode_id)
+                .join(Season, Season.id == Episode.season_id)
+                .join(MediaItem, MediaItem.id == Season.show_id)
+                .where(UserEpisodeInteraction.user_id == user_id)
+                .order_by(UserEpisodeInteraction.created_at.desc())
+                .limit(limit)
+            )
+            return result.all()
+
+    review_rows, interaction_rows, episode_rows = await asyncio.gather(
+        _fetch_reviews(),
+        _fetch_interactions(),
+        _fetch_episode_interactions(),
     )
-    episode_rows = episode_interactions.all()
 
     # Build unified timeline
     events: list[dict] = []
@@ -587,61 +716,52 @@ async def get_user_library_stats(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # Count interactions by media type
+    # Count interactions by media type + compute completion counts in one pass
     type_result = await db.execute(
-        select(MediaItem.media_type, func.count())
+        select(
+            MediaItem.media_type,
+            UserMediaInteraction.interaction_type,
+            func.count(),
+        )
         .join(UserMediaInteraction, UserMediaInteraction.media_item_id == MediaItem.id)
         .where(UserMediaInteraction.user_id == user.id)
-        .group_by(MediaItem.media_type)
+        .group_by(MediaItem.media_type, UserMediaInteraction.interaction_type)
     )
     by_media_type: dict[str, int] = {}
     total = 0
-    for media_type, cnt in type_result:
-        by_media_type[media_type] = cnt
+    watched_played = 0
+    started = 0
+    for media_type, interaction_type, cnt in type_result:
+        by_media_type[media_type] = by_media_type.get(media_type, 0) + cnt
         total += cnt
-
-    # Completion rate: watched+played+listened / (watched+played+listened+started)
-    watched_played = await db.scalar(
-        select(func.count())
-        .select_from(UserMediaInteraction)
-        .where(
-            UserMediaInteraction.user_id == user.id,
-            UserMediaInteraction.interaction_type.in_(["watched", "played", "listened"]),
-        )
-    ) or 0
-    started = await db.scalar(
-        select(func.count())
-        .select_from(UserMediaInteraction)
-        .where(
-            UserMediaInteraction.user_id == user.id,
-            UserMediaInteraction.interaction_type == "started",
-        )
-    ) or 0
+        if interaction_type in ("watched", "played", "listened"):
+            watched_played += cnt
+        elif interaction_type == "started":
+            started += cnt
     completed_total = watched_played + started
     completion_rate = watched_played / completed_total if completed_total > 0 else 0.0
 
-    # Most active day of week
+    # Most active day + hour in a single round-trip
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    day_result = await db.execute(
-        select(func.extract("dow", UserMediaInteraction.created_at), func.count())
-        .where(UserMediaInteraction.user_id == user.id)
-        .group_by(func.extract("dow", UserMediaInteraction.created_at))
-        .order_by(func.count().desc())
-        .limit(1)
+    day_hour = await db.execute(
+        select(
+            select(func.extract("dow", UserMediaInteraction.created_at))
+            .where(UserMediaInteraction.user_id == user.id)
+            .group_by(func.extract("dow", UserMediaInteraction.created_at))
+            .order_by(func.count().desc())
+            .limit(1)
+            .scalar_subquery(),
+            select(func.extract("hour", UserMediaInteraction.created_at))
+            .where(UserMediaInteraction.user_id == user.id)
+            .group_by(func.extract("hour", UserMediaInteraction.created_at))
+            .order_by(func.count().desc())
+            .limit(1)
+            .scalar_subquery(),
+        )
     )
-    day_row = day_result.one_or_none()
-    most_active_day = day_names[int(day_row[0])] if day_row and day_row[0] is not None else None
-
-    # Most active hour
-    hour_result = await db.execute(
-        select(func.extract("hour", UserMediaInteraction.created_at), func.count())
-        .where(UserMediaInteraction.user_id == user.id)
-        .group_by(func.extract("hour", UserMediaInteraction.created_at))
-        .order_by(func.count().desc())
-        .limit(1)
-    )
-    hour_row = hour_result.one_or_none()
-    most_active_hour = int(hour_row[0]) if hour_row and hour_row[0] is not None else None
+    day_val, hour_val = day_hour.one()
+    most_active_day = day_names[int(day_val)] if day_val is not None else None
+    most_active_hour = int(hour_val) if hour_val is not None else None
 
     episode_service = EpisodeInteractionService(db)
     total_watch_time_minutes = await episode_service.get_user_watch_time_minutes(user.id)

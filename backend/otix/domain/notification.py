@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, JSON, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, JSON, String, Text, event, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, otix_fk, otix_pk
@@ -33,3 +35,33 @@ class Notification(Base):
         Index("ix_notifications_user_unread", "user_id", "is_read"),
         Index("ix_notifications_user_created", "user_id", "created_at"),
     )
+
+
+async def _publish_notification(notification: Notification) -> None:
+    from otix.infrastructure.redis import get_redis
+
+    try:
+        redis = await get_redis()
+        payload = json.dumps(
+            {
+                "id": notification.id,
+                "type": notification.type,
+                "title": notification.title,
+                "body": notification.body,
+                "is_read": notification.is_read,
+                "created_at": notification.created_at.isoformat(),
+            },
+            default=str,
+        )
+        await redis.publish(f"user:{notification.user_id}:notifications", payload)
+    except Exception:
+        pass
+
+
+@event.listens_for(Notification, "after_insert")
+def _on_notification_insert(_mapper, _connection, target: Notification) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    loop.create_task(_publish_notification(target))

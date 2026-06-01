@@ -108,6 +108,18 @@ _PROVIDER_PATTERNS: list[tuple[str, str]] = [
     ("soundcloud", r"soundcloud\.com/([^/]+/sets/[^/?]+)"),
     # Bandcamp — {name}.bandcamp.com/album/{name}
     ("bandcamp", r"([\w-]+\.bandcamp\.com/album/[^/?]+)"),
+    # Wikidata — wikidata.org/wiki/Q{id} or wikidata.org/entity/Q{id}
+    ("wikidata", r"wikidata\.org/(?:wiki|entity)/(Q\d+)"),
+    # Genius — genius.com/albums/{artist}/{id}
+    ("genius", r"genius\.com/albums/[^/]+/(\d+)"),
+    # RateYourMusic — rateyourmusic.com/release/album/{artist}/{name}/
+    ("rateyourmusic", r"rateyourmusic\.com/release/album/[^/]+/([^/]+)"),
+    # Qobuz — qobuz.com/{country}/album/{name}/{id}
+    ("qobuz", r"qobuz\.com/\w+/album/[^/]+/(\w+)"),
+    # Napster — napster.com/artist/{artist}/album/{name}/{id}
+    ("napster", r"napster\.com/artist/[^/]+/album/[^/]+/(\w+)"),
+    # AllMusic — allmusic.com/album/{slug}/mw{id}
+    ("allmusic", r"allmusic\.com/album/[^/]+/(mw\d+)"),
 ]
 
 
@@ -151,14 +163,19 @@ def to_album(raw: dict[str, JSONValue]) -> Album:
         release_type=_release_group_type(raw),
         track_count=len(tracks),
         disc_count=raw.get("disc-count") or 0 if isinstance(raw.get("disc-count"), int) else 0,
-        musicbrainz_id=str(raw.get("id", "")),
-        musicbrainz_release_group_id=rg_id,
-        spotify_id=spotify_id,
         tracks=tracks,
         media_item=media,
     )
-    # Non-persisted attribute carrying all external IDs for the sync task
-    album._external_ids = external_ids  # type: ignore[attr-defined]
+    album.musicbrainz_id = str(raw.get("id", "")) if raw.get("id") else None
+    album.musicbrainz_release_group_id = rg_id
+    album.spotify_id = spotify_id
+    # Non-persisted attributes carrying extra data for the sync task
+    album._url_external_ids = external_ids  # type: ignore[attr-defined]
+    album._barcode = str(raw["barcode"]) if raw.get("barcode") else None  # type: ignore[attr-defined]
+    # Collect all ISRCs across all tracks for cross-platform matching
+    album._all_isrcs = [  # type: ignore[attr-defined]
+        isrc for t in tracks for isrc in getattr(t, "_all_isrcs", [])
+    ]
     return album
 
 
@@ -178,22 +195,45 @@ def to_track(raw: dict[str, JSONValue]) -> Track:
     dur = raw.get("length")
     isrcs = raw.get("isrcs")
     first_isrc: str | None = None
+    all_isrcs: list[str] = []
     if isinstance(isrcs, list) and isrcs:
         first_isrc = str(isrcs[0]) if isrcs[0] else None
-    return Track(
+        all_isrcs = [str(i) for i in isrcs if i]
+    track = Track(
         track_number=raw.get("position", 0) if isinstance(raw.get("position"), int) else 0,
         disc_number=1,
         title=str(raw.get("title", "Unknown Track")),
         duration_ms=int(dur) if dur else None,
-        musicbrainz_recording_id=str(raw.get("id", "")) if raw.get("id") else None,
-        isrc=first_isrc,
     )
+    track.musicbrainz_recording_id = str(raw.get("id", "")) if raw.get("id") else None
+    track.isrc = first_isrc
+    track._all_isrcs = all_isrcs
+    return track
+
+
+def extract_wikidata_id(relations: list[dict] | None) -> str | None:
+    """Extract Wikidata Q-ID from MusicBrainz url-rels."""
+    for rel in relations or []:
+        if not isinstance(rel, dict):
+            continue
+        url_obj = rel.get("url")
+        url = str(url_obj.get("resource", "")) if isinstance(url_obj, dict) else None
+        if url and "wikidata.org" in url:
+            m = re.search(r"wikidata\.org/(?:wiki|entity)/(Q\d+)", url)
+            if m:
+                return m.group(1)
+    return None
 
 
 def to_artist(raw: dict[str, JSONValue]) -> Person:
-    return Person(
+    relations = raw.get("relations")
+    wikidata_id = extract_wikidata_id(relations if isinstance(relations, list) else None)
+
+    person = Person(
         name=str(raw.get("name", "Unknown Artist")),
-        musicbrainz_artist_id=str(raw.get("id", "")) if raw.get("id") else None,
         biography=raw.get("disambiguation") if isinstance(raw.get("disambiguation"), str) else None,
         birthday=_extract_date(raw) if raw.get("type") == "Person" else None,
     )
+    person.musicbrainz_artist_id = str(raw.get("id", "")) if raw.get("id") else None
+    person.wikidata_id = wikidata_id
+    return person

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import and_, select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.api.schemas.people import (
@@ -9,6 +12,7 @@ from otix.api.schemas.people import (
     PersonListResponse,
     PersonSummary,
 )
+from otix.domain.media import ExternalID
 from otix.domain.people import Person, UserPersonFollow
 from otix.domain.user import User
 from otix.services.people_service import PeopleService
@@ -119,15 +123,50 @@ async def unfollow_person(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to unfollow person")
 
 
+class PersonRatingBody(BaseModel):
+    score: int = Field(..., ge=1, le=5)
+
+
+@people_router.put("/{person_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+async def rate_person(
+    person_id: str,
+    body: PersonRatingBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    person = await db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
+    service = PeopleService(db)
+    await service.rate_person(current_user.id, person_id, body.score)
+    await db.commit()
+
+
+@people_router.delete("/{person_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+async def unrate_person(
+    person_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    person = await db.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
+    service = PeopleService(db)
+    await service.unrate_person(current_user.id, person_id)
+    await db.commit()
+
+
 @people_router.get("/{person_id}/related")
 async def get_related_artists(
     person_id: str,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Return related artists for a person with a Spotify artist ID."""
-    from otix.domain.people import Person
 
-    person = await db.get(Person, person_id)
+    # Load person with _external_ids so descriptor reads (spotify_artist_id) work
+    person = await db.scalar(
+        sa_select(Person).options(joinedload(Person._external_ids)).where(Person.id == person_id)
+    )
     if not person:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
     if not person.spotify_artist_id:
@@ -144,15 +183,21 @@ async def get_related_artists(
     except Exception:
         return {"artists": []}
 
-    # Get existing Person records for these artists
+    # Get existing Person records for these artists via ExternalID table
     spotify_ids = [a.get("id") for a in related[:20] if a.get("id")]
     existing: dict[str, dict] = {}
     if spotify_ids:
-        from sqlalchemy import select as sa_select
         result = await db.execute(
-            sa_select(Person).where(Person.spotify_artist_id.in_(spotify_ids))
+            sa_select(Person)
+            .options(joinedload(Person._external_ids))
+            .join(ExternalID, and_(
+                ExternalID.entity_id == Person.id,
+                ExternalID.entity_type == "person",
+                ExternalID.provider == "spotify",
+            ))
+            .where(ExternalID.external_id.in_(spotify_ids))
         )
-        for p in result.scalars().all():
+        for p in result.unique().scalars().all():
             if p.spotify_artist_id:
                 existing[p.spotify_artist_id] = {
                     "id": p.id,

@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy import select
 
 from otix.domain.media import ExternalID, Game, MediaItem
+from otix.services.external_id_service import ExternalIDService
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
@@ -18,7 +19,7 @@ from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
-from otix.providers.igdb.transformer import to_game
+from otix.providers.igdb.transformer import _extract_steam_app_id, _extract_store_ids, extract_franchise, to_game
 
 from ._common import compute_content_hash, enqueue_list_items
 
@@ -38,9 +39,11 @@ GAME_FIELDS = (
     "websites.url,websites.type,"
     "videos.video_id,videos.name,"
     "involved_companies.company.name,involved_companies.company.slug,"
+    "involved_companies.company.logo.image_id,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
-    "age_ratings"
+    "age_ratings,"
+    "franchise.name,franchise.id"
 )
 
 
@@ -108,11 +111,13 @@ async def _update_media_item_from(
     existing.original_language = incoming.original_language
 
 
-def _update_game_from(existing: Game, incoming: Game) -> None:
+async def _update_game_from(session, existing: Game, incoming: Game, store_ids: dict | None = None) -> None:
     existing.release_status = incoming.release_status
     existing.website = incoming.website or existing.website
-    if incoming.store_ids:
-        existing.store_ids = {**(existing.store_ids or {}), **incoming.store_ids}
+    if store_ids:
+        eid_svc = ExternalIDService(session)
+        for platform, pid in store_ids.items():
+            await eid_svc.upsert(platform, str(pid), "media_item", existing.media_item_id)
     if incoming.is_free is not None:
         existing.is_free = incoming.is_free
     if incoming.has_multiplayer:
@@ -159,7 +164,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         )
 
         if ext_id is not None and not force:
-            media_item = await session.get(MediaItem, ext_id.media_item_id)
+            media_item = await session.get(MediaItem, ext_id.entity_id or ext_id.media_item_id)
             if media_item is not None and media_item.next_sync_at is not None:
                 if media_item.next_sync_at > datetime.now(timezone.utc):
                     logger.debug("skipping game not due for sync", igdb_id=igdb_id)
@@ -177,7 +182,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
         if ext_id is not None and not force and ext_id.content_hash == content_hash:
             ext_id.hash_match_count += 1
-            media_item = await session.get(MediaItem, ext_id.media_item_id)
+            media_item = await session.get(MediaItem, ext_id.entity_id or ext_id.media_item_id)
             if media_item is not None:
                 media_item.next_sync_at = _compute_game_next_sync_at(raw, ext_id.hash_match_count)
             await session.commit()
@@ -187,40 +192,55 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         game = to_game(raw)
         item = game.media_item
 
+        # Extract store-platform IDs from raw IGDB data (no longer on Game model)
+        websites_raw = raw.get("websites", []) or []
+        steam_app_id_from_raw = _extract_steam_app_id(websites_raw)
+        store_ids_from_raw = _extract_store_ids(websites_raw)
+
         merged_into_existing = False
-        if game.steam_app_id and (
-            ext_id is None or not await session.scalar(
-                select(Game).where(Game.media_item_id == ext_id.media_item_id, Game.steam_app_id == game.steam_app_id)
+        eid_svc = ExternalIDService(session)
+        if steam_app_id_from_raw:
+            str_steam = str(steam_app_id_from_raw)
+            steam_ext = await eid_svc.get_by_provider_ext_id("steam", str_steam)
+            # Skip conflict check if steam_app_id is already assigned to this game
+            already_assigned = (
+                ext_id is not None
+                and steam_ext is not None
+                and steam_ext.entity_id == (ext_id.entity_id or ext_id.media_item_id)
             )
-        ):
-            if item.id is not None:
-                conflict = await session.scalar(
-                    select(Game).where(Game.steam_app_id == game.steam_app_id, Game.media_item_id != item.id)
-                )
-            else:
-                conflict = await session.scalar(select(Game).where(Game.steam_app_id == game.steam_app_id))
-            if conflict is not None:
-                logger.info("merging igdb entry into existing steam game",
-                    igdb_id=igdb_id, steam_app_id=game.steam_app_id,
-                    existing_game_id=conflict.media_item_id, incoming_title=item.title,
-                )
-                existing_item = await session.get(MediaItem, conflict.media_item_id)
-                existing_game = conflict
-                await _update_media_item_from(session, existing_item, item)
-                _update_game_from(existing_game, game)
-                item = existing_item
-                game = existing_game
-                if ext_id is None:
-                    ext_id = ExternalID(provider="igdb", external_id=igdb_id_str, media_item_id=conflict.media_item_id)
-                    session.add(ext_id)
-                elif ext_id.media_item_id != conflict.media_item_id:
-                    ext_id.media_item_id = conflict.media_item_id
-                merged_into_existing = True
+            if not already_assigned:
+                if steam_ext is not None:
+                    conflict = await session.get(Game, steam_ext.entity_id)
+                else:
+                    conflict = None
+                # Avoid matching ourselves when the persisted item already has this steam ID
+                if conflict is not None and item.id is not None and conflict.media_item_id == item.id:
+                    conflict = None
+                if conflict is not None:
+                    logger.info("merging igdb entry into existing steam game",
+                        igdb_id=igdb_id, steam_app_id=steam_app_id_from_raw,
+                        existing_game_id=conflict.media_item_id, incoming_title=item.title,
+                    )
+                    existing_item = await session.get(MediaItem, conflict.media_item_id)
+                    existing_game = conflict
+                    await _update_media_item_from(session, existing_item, item)
+                    await _update_game_from(session, existing_game, game, store_ids_from_raw)
+                    item = existing_item
+                    game = existing_game
+                    if ext_id is None:
+                        ext_id = await eid_svc.upsert("igdb", igdb_id_str, "media_item", conflict.media_item_id)
+                    elif ext_id.entity_id != conflict.media_item_id:
+                        ext_id.entity_id = conflict.media_item_id
+                    merged_into_existing = True
 
         if not merged_into_existing:
             if ext_id is not None:
-                existing = await session.get(MediaItem, ext_id.media_item_id)
+                existing = await session.get(MediaItem, ext_id.entity_id or ext_id.media_item_id)
                 if existing is not None:
+                    from otix.services.embedding_service import is_embedding_stale
+
+                    old_overview = existing.overview
+
                     # Snapshot protected fields before merge so we can restore them.
                     from otix.services.admin_edit_service import AdminEditService
                     protected = await AdminEditService.get_protected_image_types(session, existing.id)
@@ -250,15 +270,17 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                             await svc.create_system_proposal_for_image(
                                 item.id, img_type, post_val
                             )
+
+                    if is_embedding_stale(old_overview, item.overview):
+                        item.embedding = None
                 else:
                     session.add(item)
                     await session.flush()
-                    ext_id.media_item_id = item.id
+                    ext_id.entity_id = item.id
             else:
                 session.add(item)
                 await session.flush()
-                ext_id = ExternalID(provider="igdb", external_id=igdb_id_str, media_item_id=item.id)
-                session.add(ext_id)
+                ext_id = await eid_svc.upsert("igdb", igdb_id_str, "media_item", item.id)
 
             game.media_item_id = item.id
             existing_game = await session.get(Game, item.id)
@@ -268,7 +290,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 session.add(game)
 
         hydrator = IGDBHydrator(provider, session)
-        await hydrator.hydrate_all(item, raw)
+        await hydrator.hydrate_all(game, item, raw)
 
         ext_id.content_hash = content_hash
         ext_id.hash_match_count = 0
@@ -279,16 +301,28 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         steam_enqueued = False
         steamgrid_enqueued = False
 
-        if game.steam_app_id:
-            app.send_task("sync.steam.update_app", args=[game.steam_app_id])
-            app.send_task("sync.steamgrid.game", args=[game.steam_app_id])
-            steam_enqueued = True
-            steamgrid_enqueued = True
-        if game.store_ids:
-            for platform, pid in game.store_ids.items():
-                if platform != "steam":
-                    app.send_task("sync.steamgrid.game_by_platform", args=[platform, pid])
-                    steamgrid_enqueued = True
+        store_providers = {"steam", "epic", "gog", "origin", "uplay", "bnet", "eshop",
+                           "xbox", "playstation", "nintendo", "itchio", "stadia"}
+        item_store_eids = await session.scalars(
+            select(ExternalID).where(
+                ExternalID.entity_id == item.id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider.in_(list(store_providers)),
+            )
+        )
+        for store_eid in item_store_eids:
+            if store_eid.provider == "steam":
+                app.send_task("sync.steam.update_app", args=[int(store_eid.external_id)])
+                app.send_task("sync.steamgrid.game", args=[int(store_eid.external_id)])
+                steam_enqueued = True
+                steamgrid_enqueued = True
+            else:
+                app.send_task("sync.steamgrid.game_by_platform", args=[store_eid.provider, store_eid.external_id])
+                steamgrid_enqueued = True
+
+        # Name-based SGDB lookup for games without any store-platform IDs
+        if not steamgrid_enqueued:
+            app.send_task("sync.steamgrid.game_by_name", args=[item.id])
 
         logger.info("igdb game synced",
             title=item.title, media_type="game", otix_id=item.id, igdb_id=igdb_id,
@@ -308,8 +342,6 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         if steamgrid_enqueued:
             await _progress_incr("steamgrid_enqueued")
 
-        app.send_task("embedding.generate", args=[item.id])
-        await _progress_incr("embedding_enqueued")
         return {"otix_id": item.id, "title": item.title, "igdb_id": igdb_id}
 
 
@@ -393,7 +425,8 @@ async def _hydrate_game_age_ratings(media_item_id: str) -> dict | None:
     async with async_session() as session:
         ext_id = await session.scalar(
             select(ExternalID).where(
-                ExternalID.media_item_id == media_item_id,
+                ExternalID.entity_id == media_item_id,
+                ExternalID.entity_type == "media_item",
                 ExternalID.provider == "igdb",
             )
         )

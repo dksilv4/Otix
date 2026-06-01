@@ -5,9 +5,11 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from otix.domain.base import Base, TimestampMixin, gen_otix_id, otix_fk, otix_pk
+from pgvector.sqlalchemy import Vector
+
+from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, TimestampMixin, gen_otix_id, otix_fk, otix_pk
 from otix.domain.genre import MediaGenre, MediaKeyword
 from otix.domain.asset import MediaAsset, MediaVideo, MediaRelease, ExternalRating
 from otix.domain.interaction import UserMediaInteraction
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
     from otix.domain.collection import CollectionItem
     from otix.domain.company import InvolvedCompany
     from otix.domain.episode_interaction import UserEpisodeInteraction
+    from otix.domain.franchise import Franchise, FranchiseItem
     from otix.domain.people import MediaCredit
     from otix.domain.review import Review
     from otix.domain.user import User
@@ -40,6 +43,7 @@ class MediaItem(Base, TimestampMixin):
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0)
     like_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -48,6 +52,7 @@ class MediaItem(Base, TimestampMixin):
     played_count: Mapped[int] = mapped_column(Integer, default=0)
     started_count: Mapped[int] = mapped_column(Integer, default=0)
     listened_count: Mapped[int] = mapped_column(Integer, default=0)
+    view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (
@@ -73,9 +78,17 @@ class MediaItem(Base, TimestampMixin):
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="media_item")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="media_item")
     collection_items: Mapped[list[CollectionItem]] = relationship("CollectionItem", back_populates="media_item")
-    external_ids: Mapped[list[ExternalID]] = relationship("ExternalID", back_populates="media_item")
+    franchise_items: Mapped[list[FranchiseItem]] = relationship("FranchiseItem", back_populates="media_item")
+    external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        back_populates="media_item",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == MediaItem.id, ExternalID.entity_type == 'media_item')",
+    )
     platforms: Mapped[list[MediaPlatform]] = relationship("MediaPlatform", back_populates="media_item")
     game_modes: Mapped[list[MediaGameMode]] = relationship("MediaGameMode", back_populates="media_item")
+    watch_providers: Mapped[list["MediaWatchProvider"]] = relationship(
+        "MediaWatchProvider", back_populates="media_item"
+    )
 
 
 class Movie(Base):
@@ -139,26 +152,50 @@ class Episode(Base):
     episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="episode")
 
 
-class Game(Base):
+class Game(Base, HasExternalIDs):
     __tablename__ = "games"
+    __external_id_entity_type__ = "media_item"
 
     media_item_id: Mapped[otix_pk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
     release_status: Mapped[str | None] = mapped_column(String(50))
     website: Mapped[str | None] = mapped_column(String(2000))
-    steam_app_id: Mapped[int | None] = mapped_column(Integer, unique=True)
-    store_ids: Mapped[dict | None] = mapped_column(JSONB)
+
+    steam_app_id = ExternalIDDescriptor("steam", cast_type=int, entity_id_attr="media_item_id")
+
     current_players: Mapped[int | None] = mapped_column(Integer)
     price_json: Mapped[dict | None] = mapped_column(JSONB)
     recommendations: Mapped[int | None] = mapped_column(Integer)
     review_summary: Mapped[str | None] = mapped_column(String(200))
     is_free: Mapped[bool] = mapped_column(default=False)
     has_multiplayer: Mapped[bool] = mapped_column(default=False)
+    franchise_id: Mapped[str | None] = mapped_column(ForeignKey("franchises.id", ondelete="SET NULL"), nullable=True)
+
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Game.media_item_id, "
+                    "ExternalID.entity_type == 'media_item')",
+        lazy="raise",
+        viewonly=True,
+    )
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game")
+    franchise: Mapped["Franchise | None"] = relationship("Franchise", back_populates="games")
+
+    @property
+    def store_ids(self) -> dict | None:
+        """Reconstruct store IDs from ExternalID entries for non-steam store providers."""
+        store_providers = {"steam", "epic", "gog", "origin", "uplay", "bnet", "eshop",
+                          "xbox", "playstation", "nintendo", "itchio", "stadia"}
+        result: dict[str, str] = {}
+        for eid in self._external_ids:
+            if eid.provider in store_providers:
+                result[eid.provider] = eid.external_id
+        return result or None
 
 
-class Album(Base):
+class Album(Base, HasExternalIDs):
     __tablename__ = "albums"
+    __external_id_entity_type__ = "media_item"
 
     media_item_id: Mapped[otix_pk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
     release_type: Mapped[str] = mapped_column(String(20), default="album")
@@ -168,20 +205,31 @@ class Album(Base):
     track_count: Mapped[int] = mapped_column(Integer, default=0)
     disc_count: Mapped[int] = mapped_column(Integer, default=0)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
-    spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
-    musicbrainz_id: Mapped[str | None] = mapped_column(String(36), unique=True)
-    musicbrainz_release_group_id: Mapped[str | None] = mapped_column(String(36))
+
+    spotify_id = ExternalIDDescriptor("spotify", cast_type=str, entity_id_attr="media_item_id")
+    musicbrainz_id = ExternalIDDescriptor("musicbrainz", cast_type=str, entity_id_attr="media_item_id")
+    musicbrainz_release_group_id = ExternalIDDescriptor("musicbrainz_release_group", cast_type=str, entity_id_attr="media_item_id")
+
     spotify_url: Mapped[str | None] = mapped_column(String(500))
     spotify_popularity: Mapped[int | None] = mapped_column(Integer)
     preview_url: Mapped[str | None] = mapped_column(String(500))
     audio_features: Mapped[dict | None] = mapped_column(JSONB)
 
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Album.media_item_id, "
+                    "ExternalID.entity_type == 'media_item')",
+        lazy="raise",
+        viewonly=True,
+    )
+
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="album")
     tracks: Mapped[list[Track]] = relationship("Track", back_populates="album")
 
 
-class Track(Base, TimestampMixin):
+class Track(Base, TimestampMixin, HasExternalIDs):
     __tablename__ = "tracks"
+    __external_id_entity_type__ = "track"
 
     id: Mapped[otix_pk]
     album_id: Mapped[otix_fk] = mapped_column(ForeignKey("albums.media_item_id", ondelete="CASCADE"), nullable=False)
@@ -190,12 +238,23 @@ class Track(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     preview_url: Mapped[str | None] = mapped_column(String(500))
-    spotify_id: Mapped[str | None] = mapped_column(String(50), unique=True)
-    musicbrainz_recording_id: Mapped[str | None] = mapped_column(String(36), unique=True)
-    isrc: Mapped[str | None] = mapped_column(String(20), unique=True)
+
+    spotify_id = ExternalIDDescriptor("spotify", cast_type=str)
+    musicbrainz_recording_id = ExternalIDDescriptor("musicbrainz_recording", cast_type=str)
+    isrc = ExternalIDDescriptor("isrc", cast_type=str)
+
     audio_features: Mapped[dict | None] = mapped_column(JSONB)
+    lyrics: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Track.id, "
+                    "ExternalID.entity_type == 'track')",
+        lazy="raise",
+        viewonly=True,
+    )
 
     album: Mapped[Album] = relationship("Album", back_populates="tracks")
     ratings: Mapped[list[TrackRating]] = relationship("TrackRating", back_populates="track")
@@ -220,8 +279,10 @@ class ExternalID(Base):
     __tablename__ = "external_ids"
 
     id: Mapped[otix_pk]
-    provider: Mapped[str] = mapped_column(String(20), nullable=False)
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)
     external_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(16), nullable=True)
     media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=True)
     media_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -229,11 +290,17 @@ class ExternalID(Base):
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    media_item: Mapped[MediaItem | None] = relationship("MediaItem", back_populates="external_ids")
+    media_item: Mapped[MediaItem | None] = relationship(
+        "MediaItem",
+        back_populates="external_ids",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == MediaItem.id, ExternalID.entity_type == 'media_item')",
+        viewonly=True,
+    )
 
     __table_args__ = (
-        UniqueConstraint("provider", "external_id", name="uq_external_id_provider_ext"),
+        UniqueConstraint("provider", "external_id", "entity_type", name="uq_external_id_provider_ext"),
         Index("ix_external_ids_stubs", "provider", "media_item_id", "is_adult", "created_at"),
+        Index("ix_external_id_entity", "entity_type", "entity_id"),
     )
 
 
@@ -254,14 +321,25 @@ class TMDBDeletedID(Base):
     )
 
 
-class Platform(Base):
+class Platform(Base, HasExternalIDs):
     __tablename__ = "platforms"
+    __external_id_entity_type__ = "platform"
 
     id: Mapped[otix_pk]
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     slug: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
-    igdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+
+    igdb_id = ExternalIDDescriptor("igdb", cast_type=int)
+
     logo_image_id: Mapped[str | None] = mapped_column(String(100))
+
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Platform.id, "
+                    "ExternalID.entity_type == 'platform')",
+        lazy="raise",
+        viewonly=True,
+    )
 
 
 class MediaPlatform(Base):

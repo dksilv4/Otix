@@ -7,10 +7,11 @@ Also links verified YouTube channels to Person (artist) entities.
 from __future__ import annotations
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import and_, exists as sa_exists, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
-from otix.domain.media import Album, MediaItem
+from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.domain.user import User
 from otix.lib.youtube_title_parser import parse_music_title
@@ -268,8 +269,14 @@ async def _link_channel_to_person(
     Returns True if a link was made.
     """
     # Already linked?
+    has_channel = sa_exists().where(
+        ExternalID.provider == "youtube_channel",
+        ExternalID.entity_type == "person",
+        ExternalID.entity_id == Person.id,
+        ExternalID.external_id == channel_id,
+    )
     existing = await session.scalar(
-        select(Person).where(Person.youtube_channel_id == channel_id)
+        select(Person).where(has_channel)
     )
     if existing:
         return False
@@ -280,10 +287,15 @@ async def _link_channel_to_person(
         artist_name = artist_name[: -len(" - Topic")].strip()
 
     # Find matching Person by name
+    has_no_channel = ~sa_exists().where(
+        ExternalID.provider == "youtube_channel",
+        ExternalID.entity_type == "person",
+        ExternalID.entity_id == Person.id,
+    )
     person = await session.scalar(
-        select(Person).where(
+        select(Person).options(joinedload(Person._external_ids)).where(
             Person.name.ilike(artist_name),
-            Person.youtube_channel_id.is_(None),
+            has_no_channel,
         )
     )
 

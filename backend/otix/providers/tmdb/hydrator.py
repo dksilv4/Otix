@@ -10,20 +10,25 @@ import hashlib
 import json
 
 import structlog
-from sqlalchemy import delete, select
+from sqlalchemy import delete, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
-from otix.domain.collection import Collection
+from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
-from otix.domain.genre import Genre, Keyword, MediaGenre
+from otix.domain.franchise import Franchise, FranchiseItem
+from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.media import ExternalID, MediaItem, Movie
 from otix.domain.people import MediaCredit, Person, PersonAsset
+from otix.domain.watch_provider import MediaWatchProvider, WatchProvider
+from otix.lib.collection_matcher import normalize_franchise_name
 from otix.lib.genres import normalize_genre_names
 from otix.lib.slug import slugify
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.transformer import _parse_date
+from otix.services.external_id_service import ExternalIDService
 
 logger = structlog.get_logger()
 
@@ -91,19 +96,33 @@ class TMDBHydrator:
     async def _batch_get_or_create_persons(self, entries: list[dict]) -> dict[int, Person]:
         """Resolve all persons in one batch: existing from DB, new ones inserted.
 
-        Two-phase lookup:
+        Three-phase lookup:
           1. Resolve by tmdb_id (fast, most common path).
-          2. For unmatched names, check if a Person exists without tmdb_id.
-             If so, backfill the tmdb_id instead of creating a duplicate.
+          2. For unmatched, check wikidata_id for cross-provider matches.
+          3. For still unmatched, check by name with no tmdb_id and backfill.
         """
         tmdb_ids = {e["id"] for e in entries if e.get("id") and e.get("name")}
         if not tmdb_ids:
             return {}
 
+        eid_subq = (
+            select(ExternalID.entity_id)
+            .where(
+                ExternalID.provider == "tmdb",
+                ExternalID.entity_type == "person",
+                ExternalID.external_id.in_([str(x) for x in tmdb_ids]),
+            )
+        ).subquery()
         existing = await self.session.scalars(
-            select(Person).where(Person.tmdb_id.in_(tmdb_ids))
+            select(Person)
+            .where(Person.id.in_(select(eid_subq)))
+            .options(selectinload(Person._external_ids))
         )
-        persons_by_tmdb: dict[int, Person] = {p.tmdb_id: p for p in existing}
+        persons_by_tmdb: dict[int, Person] = {}
+        for p in existing:
+            tid = p.tmdb_id
+            if tid is not None:
+                persons_by_tmdb[int(tid)] = p
 
         # Collect unmatched entries — keep tmdb_id → entry (not name → entry,
         # since different people can share the same name).
@@ -118,18 +137,60 @@ class TMDBHydrator:
                 unmatched_by_tmdb[tmdb_id] = entry
 
         if unmatched_by_tmdb:
-            # Phase 2: check for existing persons by name with no tmdb_id
+            # Phase 2: check wikidata_id for cross-provider matches
+            wiki_ids = {
+                e.get("wikidata_id") for e in unmatched_by_tmdb.values()
+                if e.get("wikidata_id")
+            }
+            wiki_matches: dict[str, Person] = {}
+            if wiki_ids:
+                wiki_subq = (
+                    select(ExternalID.entity_id)
+                    .where(
+                        ExternalID.provider == "wikidata",
+                        ExternalID.entity_type == "person",
+                        ExternalID.external_id.in_(wiki_ids),
+                    )
+                ).subquery()
+                existing_wiki = await self.session.scalars(
+                    select(Person)
+                    .where(Person.id.in_(select(wiki_subq)))
+                    .options(selectinload(Person._external_ids))
+                )
+                for p in existing_wiki:
+                    wid = p.wikidata_id
+                    if wid is not None:
+                        wiki_matches[str(wid)] = p
+
+            for tmdb_id, entry in list(unmatched_by_tmdb.items()):
+                wiki_id = entry.get("wikidata_id")
+                if wiki_id and wiki_id in wiki_matches:
+                    matched = wiki_matches[wiki_id]
+                    matched.tmdb_id = tmdb_id
+                    matched.photo_url = matched.photo_url or _tmdb_image(entry.get("profile_path"))
+                    persons_by_tmdb[tmdb_id] = matched
+                    del unmatched_by_tmdb[tmdb_id]
+
+            # Phase 3: check for existing persons by name with no tmdb_id
             names = list({e["name"] for e in unmatched_by_tmdb.values()})
+            has_tmdb = (
+                select(ExternalID.entity_id)
+                .where(
+                    ExternalID.provider == "tmdb",
+                    ExternalID.entity_type == "person",
+                    ExternalID.entity_id == Person.id,
+                )
+            ).exists()
             name_matches = await self.session.scalars(
-                select(Person).where(Person.name.in_(names), Person.tmdb_id.is_(None))
+                select(Person)
+                .where(Person.name.in_(names), not_(has_tmdb))
+                .options(selectinload(Person._external_ids))
             )
-            # Build a name → Person lookup for backfilling
             names_to_persons: dict[str, Person] = {}
             for person in name_matches:
                 if person.name not in names_to_persons:
                     names_to_persons[person.name] = person
 
-            # Backfill tmdb_id on existing name-matched persons
             for tmdb_id, entry in list(unmatched_by_tmdb.items()):
                 matched = names_to_persons.get(entry["name"])
                 if matched is None:
@@ -147,6 +208,7 @@ class TMDBHydrator:
                         id=gen_otix_id(),
                         name=entry["name"],
                         tmdb_id=entry["id"],
+                        wikidata_id=entry.get("wikidata_id"),
                         photo_url=_tmdb_image(entry.get("profile_path")),
                     )
                     new_people.append(person)
@@ -222,19 +284,11 @@ class TMDBHydrator:
             ("tvdb", str(ids.get("tvdb_id")) if ids.get("tvdb_id") else None),
         ]
 
+        eid_svc = ExternalIDService(self.session)
         for provider, ext_id in mappings:
             if not ext_id:
                 continue
-            exists = await self.session.scalar(
-                select(ExternalID).where(
-                    ExternalID.provider == provider,
-                    ExternalID.external_id == ext_id,
-                )
-            )
-            if not exists:
-                self.session.add(
-                    ExternalID(provider=provider, external_id=ext_id, media_item_id=media_item.id)
-                )
+            await eid_svc.upsert(provider, ext_id, "media_item", media_item.id)
 
     # ── Images ───────────────────────────────────────────────────
 
@@ -434,9 +488,9 @@ class TMDBHydrator:
         if not tmdb_id:
             return
 
-        collection = await self.session.scalar(
-            select(Collection).where(Collection.tmdb_id == tmdb_id)
-        )
+        eid_svc = ExternalIDService(self.session)
+        entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "collection")
+        collection = await self.session.get(Collection, entity_id) if entity_id else None
 
         try:
             coll_raw = await self.provider.get_collection(tmdb_id)
@@ -459,8 +513,11 @@ class TMDBHydrator:
             return
 
         if collection is None:
-            collection = Collection(tmdb_id=tmdb_id)
+            collection = Collection()
+            collection.name = coll_data.get("name") or "Unknown Collection"
             self.session.add(collection)
+            await self.session.flush()
+            collection.tmdb_id = tmdb_id
 
         collection.name = coll_raw.get("name", coll_data.get("name", ""))
         collection.overview = coll_raw.get("overview")
@@ -470,6 +527,31 @@ class TMDBHydrator:
 
         await self.session.flush()
         movie.collection_id = collection.id
+
+        # Link TMDB collection to a Franchise via name matching
+        if collection.franchise_id is None:
+            normalized = normalize_franchise_name(collection.name)
+            all_franchises = (await self.session.scalars(select(Franchise))).all()
+            for fr in all_franchises:
+                if normalize_franchise_name(fr.name) == normalized:
+                    collection.franchise_id = fr.id
+                    break
+
+        # Create FranchiseItem link for this movie if collection has a franchise
+        if collection.franchise_id:
+            exists = await self.session.scalar(
+                select(FranchiseItem).where(
+                    FranchiseItem.franchise_id == collection.franchise_id,
+                    FranchiseItem.media_item_id == movie.media_item_id,
+                )
+            )
+            if not exists:
+                self.session.add(
+                    FranchiseItem(
+                        franchise_id=collection.franchise_id,
+                        media_item_id=movie.media_item_id,
+                    )
+                )
 
     # ── Person images ──────────────────────────────────────────────
 
@@ -519,7 +601,6 @@ class TMDBHydrator:
 
     async def hydrate_company(self, company: Company, raw: dict) -> None:
         company.name = raw.get("name", company.name)
-        company.slug = slugify(company.name)
         logo = raw.get("logo_path")
         if logo:
             company.logo_url = _tmdb_image(logo)
@@ -554,12 +635,22 @@ class TMDBHydrator:
                 continue
 
             # Upsert Company
-            company = await self.session.scalar(
-                select(Company).where(Company.tmdb_id == tmdb_id)
-            )
+            eid_svc = ExternalIDService(self.session)
+            entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "company")
+            company = await self.session.get(Company, entity_id) if entity_id else None
             if company is None:
-                company = Company(tmdb_id=tmdb_id)
-                self.session.add(company)
+                computed_slug = f"{slugify(entry.get('name') or 'unknown-company')}-{tmdb_id}"
+                company = await self.session.scalar(
+                    select(Company).where(Company.slug == computed_slug)
+                )
+                if company is None:
+                    company = Company(
+                        name=entry.get("name") or "Unknown Company",
+                        slug=computed_slug,
+                    )
+                    self.session.add(company)
+                    await self.session.flush()
+                company.tmdb_id = tmdb_id
             await self.hydrate_company(company, entry)
             await self.session.flush()
 
@@ -570,10 +661,147 @@ class TMDBHydrator:
                 production=True,
             ))
 
-    # ── Keyword ────────────────────────────────────────────────────
+    # ── Watch Providers ───────────────────────────────────────────
+
+    async def hydrate_watch_providers(self, media_item: MediaItem, raw_watch: dict) -> None:
+        """Store watch provider availability from TMDB's JustWatch aggregation."""
+        results = raw_watch.get("results", {})
+        if not results:
+            return
+
+        await self.session.execute(
+            delete(MediaWatchProvider).where(
+                MediaWatchProvider.media_item_id == media_item.id
+            )
+        )
+
+        for country_code, country_data in results.items():
+            if not isinstance(country_data, dict):
+                continue
+            cc = country_code.lower()
+            link = country_data.get("link", "")
+
+            for offering_type in ("flatrate", "rent", "buy", "free", "ads"):
+                providers = country_data.get(offering_type, [])
+                if not providers:
+                    continue
+
+                for entry in providers:
+                    tmdb_pid = entry.get("provider_id")
+                    if not tmdb_pid:
+                        continue
+
+                    wp = await self._get_or_create_watch_provider(
+                        tmdb_pid,
+                        entry.get("provider_name", ""),
+                        entry.get("logo_path", ""),
+                        entry.get("display_priority", 0),
+                    )
+
+                    self.session.add(
+                        MediaWatchProvider(
+                            media_item_id=media_item.id,
+                            watch_provider_id=wp.id,
+                            country_code=cc,
+                            offering_type=offering_type,
+                            url=link[:2000] if link else None,
+                            display_priority=entry.get("display_priority", 0),
+                        )
+                    )
+
+        await self.session.flush()
+
+    async def _get_or_create_watch_provider(
+        self,
+        tmdb_provider_id: int,
+        name: str,
+        logo_path: str,
+        priority: int,
+    ) -> WatchProvider:
+        eid_svc = ExternalIDService(self.session)
+        entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_provider_id), "watch_provider")
+        wp = await self.session.get(WatchProvider, entity_id) if entity_id else None
+        if wp is not None:
+            wp.name = name
+            wp.display_priority = priority
+            if logo_path:
+                wp.logo_url = _tmdb_image(logo_path, "w92")
+            return wp
+
+        wp = WatchProvider(
+            name=name,
+            slug=f"{slugify(name)}-{tmdb_provider_id}",
+            logo_url=_tmdb_image(logo_path, "w92") if logo_path else None,
+            display_priority=priority,
+            tmdb_provider_id=tmdb_provider_id,
+        )
+        self.session.add(wp)
+        await self.session.flush()
+        return wp
+
+    # ── Keywords ───────────────────────────────────────────────────
+
+    async def hydrate_keywords(self, media_item: MediaItem, raw: dict) -> None:
+        """Create MediaKeyword links from TMDB keyword data.
+
+        TMDB returns keywords as ``{"keywords": {"keywords": [...]}}`` for movies
+        and ``{"keywords": {"results": [...]}}`` for shows.
+        """
+        keywords_data = raw.get("keywords", {})
+        if not isinstance(keywords_data, dict):
+            return
+
+        keyword_list = keywords_data.get("keywords") or keywords_data.get("results", [])
+        if not isinstance(keyword_list, list) or not keyword_list:
+            return
+
+        await self.session.execute(
+            delete(MediaKeyword).where(MediaKeyword.media_item_id == media_item.id)
+        )
+
+        for kw in keyword_list:
+            if not isinstance(kw, dict):
+                continue
+            name = str(kw.get("name", ""))
+            if not name:
+                continue
+
+            keyword = await self._get_or_create_keyword(name)
+            if keyword is None:
+                continue
+
+            tmdb_id = kw.get("id")
+            if tmdb_id and not keyword.tmdb_id:
+                keyword.tmdb_id = int(tmdb_id)
+
+            self.session.add(MediaKeyword(
+                media_item_id=media_item.id,
+                keyword_id=keyword.id,
+            ))
 
     async def hydrate_keyword(self, keyword: Keyword, raw: dict) -> None:
         keyword.name = raw.get("name", keyword.name)
+
+    async def _get_or_create_keyword(self, name: str) -> Keyword | None:
+        from uuid import uuid4
+
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        keyword = await self.session.scalar(
+            select(Keyword).options(selectinload(Keyword._external_ids)).where(Keyword.name == name)
+        )
+        if keyword is not None:
+            return keyword
+
+        keyword_id = f"oti_{uuid4().hex[:12]}"
+        await self.session.execute(
+            pg_insert(Keyword)
+            .values(id=keyword_id, name=name)
+            .on_conflict_do_nothing(constraint="keywords_name_key")
+        )
+        return await self.session.scalar(
+            select(Keyword).options(selectinload(Keyword._external_ids)).where(Keyword.name == name)
+        )
 
 
 # ── Helpers ─────────────────────────────────────────────────────────

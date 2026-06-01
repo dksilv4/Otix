@@ -112,6 +112,8 @@ class PersonDetail(BaseModel):
     synced_at: datetime | None = None
     follower_count: int = 0
     is_followed: bool | None = None
+    avg_rating: float | None = None
+    user_rating: int | None = None
 
     credits: list[PersonCreditOut] = []
 

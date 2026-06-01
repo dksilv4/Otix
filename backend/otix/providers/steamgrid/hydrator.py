@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import MediaAsset
-from otix.domain.media import Game, MediaItem
+from otix.domain.media import ExternalID, Game, MediaItem
 from otix.lib.types import JSONValue
 from otix.providers.steamgrid.client import SteamGridDBProvider
 
@@ -50,39 +50,54 @@ class SteamGridDBHydrator:
         self, game: Game,
         platform: str | None = None,
         platform_id: str | int | None = None,
+        title: str | None = None,
     ) -> int:
         """Run all hydration steps. Returns number of new assets added.
 
         When platform+platform_id are explicit, uses that pair directly.
         Otherwise tries all platforms the game has IDs for (steam_app_id
         first, then store_ids), stopping at the first successful SGDB match.
+        Falls back to name-based search when title is provided.
         """
         if platform is not None and platform_id is not None:
             return await self._hydrate_one(game, platform, platform_id)
 
+        # Fast path: SGDB internal ID from a previous name-based lookup.
+        sgdb_eid = await self._get_platform_id(game, "steamgrid")
+        if sgdb_eid is not None:
+            try:
+                return await self._hydrate_assets(game, int(sgdb_eid))
+            except (ValueError, TypeError):
+                pass
+
         # Auto-detect: try platforms in priority order
         for plat in _SGDB_PLATFORMS:
-            pid = self._get_platform_id(game, plat)
+            pid = await self._get_platform_id(game, plat)
             if pid is not None:
                 added = await self._hydrate_one(game, plat, pid)
                 if added > 0:
                     return added
+
+        # Name-based fallback for games without any store IDs
+        if title:
+            return await self._hydrate_by_name(game, title)
+
         return 0
 
-    @staticmethod
-    def _get_platform_id(game: Game, platform: str) -> str | int | None:
-        """Get the platform-specific ID from a Game's stored IDs."""
-        if platform == "steam" and game.steam_app_id:
-            return game.steam_app_id
-        if game.store_ids and platform in game.store_ids:
-            return game.store_ids[platform]
-        return None
+    async def _get_platform_id(self, game: Game, platform: str) -> str | int | None:
+        """Get the platform-specific ID from ExternalID table."""
+        ext_id = await self.session.scalar(
+            select(ExternalID.external_id).where(
+                ExternalID.provider == platform,
+                ExternalID.entity_id == game.media_item_id,
+                ExternalID.entity_type == "media_item",
+            )
+        )
+        return ext_id
 
     async def _hydrate_one(
         self, game: Game, platform: str, platform_id: str | int,
     ) -> int:
-
-        # Look up the game on SteamGridDB
         sgdb_game = await self.provider.get_game_by_platform_id(platform, platform_id)
         if sgdb_game is None:
             return 0
@@ -91,6 +106,68 @@ class SteamGridDBHydrator:
         if not isinstance(sgdb_game_id, int) or sgdb_game_id == 0:
             return 0
 
+        return await self._hydrate_assets(game, sgdb_game_id)
+
+    async def _hydrate_by_name(self, game: Game, title: str) -> int:
+        """Search SteamGridDB by game name and hydrate from the best match.
+
+        Also backfills platform-store ExternalIDs from the SGDB match so
+        future syncs can use direct platform-ID lookups instead of name search.
+        """
+        results = await self.provider.search_games(title)
+        if not results:
+            return 0
+
+        best = self._pick_best_match(results, title)
+        if best is None:
+            return 0
+
+        sgdb_game_id = best.get("id")
+        if not isinstance(sgdb_game_id, int) or sgdb_game_id == 0:
+            return 0
+
+        # Fetch full game object for platform IDs, then backfill ExternalIDs.
+        full = await self.provider.get_game_by_id(sgdb_game_id)
+        if full is not None:
+            await self._backfill_store_ids(game, full)
+
+        return await self._hydrate_assets(game, sgdb_game_id)
+
+    async def _backfill_store_ids(self, game: Game, sgdb_game: dict[str, JSONValue]) -> None:
+        """Store the SGDB internal game ID as an ExternalID for future fast-path lookups.
+
+        The SGDB get_game_by_id endpoint doesn't expose platform-specific
+        IDs, but storing the SGDB ID lets us skip the name search next time.
+        """
+        sgdb_id = sgdb_game.get("id")
+        if not isinstance(sgdb_id, int) or sgdb_id == 0:
+            return
+
+        from otix.services.external_id_service import ExternalIDService
+        eid_svc = ExternalIDService(self.session)
+        await eid_svc.upsert("steamgrid", str(sgdb_id), "media_item", game.media_item_id)
+
+    @staticmethod
+    def _pick_best_match(
+        results: list[dict[str, JSONValue]], title: str,
+    ) -> dict[str, JSONValue] | None:
+        """Pick the best match from SGDB search results.
+
+        Prefers exact name match, then case-insensitive match, then
+        the first result as a fallback.
+        """
+        if not results:
+            return None
+
+        title_lower = title.lower().strip()
+        for r in results:
+            name = r.get("name")
+            if isinstance(name, str) and name.lower().strip() == title_lower:
+                return r
+
+        return results[0]
+
+    async def _hydrate_assets(self, game: Game, sgdb_game_id: int) -> int:
         media_item = await self.session.get(MediaItem, game.media_item_id)
         if media_item is None:
             return 0
@@ -142,14 +219,29 @@ class SteamGridDBHydrator:
         list[dict[str, JSONValue]],
         list[dict[str, JSONValue]],
     ]:
-        """Fetch grids, heroes, logos, and icons in parallel."""
-        grids, heroes, logos, icons = await asyncio.gather(
+        """Fetch grids, heroes, logos, and icons in parallel.
+
+        Uses return_exceptions so one failing asset type doesn't block the others.
+        """
+        results = await asyncio.gather(
             self.provider.get_grids(sgdb_game_id),
             self.provider.get_heroes(sgdb_game_id),
             self.provider.get_logos(sgdb_game_id),
             self.provider.get_icons(sgdb_game_id),
+            return_exceptions=True,
         )
-        return grids, heroes, logos, icons
+
+        def _unwrap(result: object) -> list[dict[str, JSONValue]]:
+            if isinstance(result, Exception):
+                return []
+            return result if isinstance(result, list) else []
+
+        return (
+            _unwrap(results[0]),
+            _unwrap(results[1]),
+            _unwrap(results[2]),
+            _unwrap(results[3]),
+        )
 
     @staticmethod
     def _grid_asset_type(entry: dict[str, JSONValue]) -> str:
@@ -240,37 +332,43 @@ class SteamGridDBHydrator:
         entries: list[dict[str, JSONValue]],
         asset_type: str | Callable[[dict[str, JSONValue]], str],
     ) -> int:
-        added = 0
+        if not entries:
+            return 0
+
+        # Resolve asset types and collect valid URLs
+        resolved: list[tuple[str, str, dict[str, JSONValue]]] = []
         for entry in entries:
-            resolved_type = asset_type(entry) if callable(asset_type) else asset_type
-            if await self._store_asset(media_item, entry, resolved_type):
-                added += 1
-        return added
+            url = entry.get("url")
+            if not isinstance(url, str) or not url:
+                continue
+            at = asset_type(entry) if callable(asset_type) else asset_type
+            resolved.append((url, at, entry))
 
-    async def _store_asset(
-        self, media_item: MediaItem, entry: dict[str, JSONValue], asset_type: str
-    ) -> bool:
-        url = entry.get("url")
-        if not isinstance(url, str) or not url:
-            return False
+        if not resolved:
+            return 0
 
-        # Skip if URL already exists
-        exists = await self.session.scalar(
-            select(MediaAsset.url).where(MediaAsset.url == url)
+        # Batch-check existing URLs
+        urls = [r[0] for r in resolved]
+        existing = await self.session.scalars(
+            select(MediaAsset.url).where(MediaAsset.url.in_(urls))
         )
-        if exists:
-            return False
+        existing_urls = set(existing.all())
 
-        self.session.add(
-            MediaAsset(
-                media_item_id=media_item.id,
-                asset_type=asset_type,
-                url=url,
-                width=entry.get("width"),
-                height=entry.get("height"),
-                style=entry.get("style"),
-                score=entry.get("score"),
-                provider="steamgrid",
+        added = 0
+        for url, at, entry in resolved:
+            if url in existing_urls:
+                continue
+            self.session.add(
+                MediaAsset(
+                    media_item_id=media_item.id,
+                    asset_type=at,
+                    url=url,
+                    width=entry.get("width"),
+                    height=entry.get("height"),
+                    style=entry.get("style"),
+                    score=entry.get("score"),
+                    provider="steamgrid",
+                )
             )
-        )
-        return True
+            added += 1
+        return added

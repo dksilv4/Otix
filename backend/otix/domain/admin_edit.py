@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, String, Text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,9 @@ class MediaEditProposal(Base, TimestampMixin):
     changes: Mapped[dict] = mapped_column(JSONB, nullable=False)
     image_overrides: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_values: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    upvote_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    downvote_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="ck_edit_proposal_status"),
@@ -32,6 +35,7 @@ class MediaEditProposal(Base, TimestampMixin):
     media_item: Mapped[MediaItem] = relationship("MediaItem")
     proposer: Mapped[User | None] = relationship("User", foreign_keys=[proposer_user_id])
     approver: Mapped[User | None] = relationship("User", foreign_keys=[approver_user_id])
+    votes: Mapped[list[ProposalVote]] = relationship("ProposalVote", back_populates="proposal")
 
 
 class MediaImageOverride(Base, TimestampMixin):
@@ -56,3 +60,22 @@ class MediaImageOverride(Base, TimestampMixin):
 
     media_item: Mapped[MediaItem] = relationship("MediaItem")
     created_by: Mapped[User] = relationship("User")
+
+
+class ProposalVote(Base, TimestampMixin):
+    __tablename__ = "proposal_votes"
+
+    user_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    proposal_id: Mapped[otix_fk] = mapped_column(
+        ForeignKey("media_edit_proposals.id", ondelete="CASCADE"), primary_key=True
+    )
+    vote_type: Mapped[str] = mapped_column(nullable=False)
+
+    voter: Mapped[User] = relationship("User")
+    proposal: Mapped[MediaEditProposal] = relationship("MediaEditProposal", back_populates="votes")
+
+    __table_args__ = (
+        CheckConstraint("vote_type IN ('up', 'down')", name="ck_proposal_vote_type"),
+    )

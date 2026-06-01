@@ -1,17 +1,16 @@
 """Celery application with queue routing and beat schedule.
 
-Queue design (9 queues, per-provider isolation):
+Queue design — per-provider isolation (prevents starvation), 4 purpose-based workers:
 
-  fast       — tmdb, steam, spotify catalog (6 workers)
-  igdb       — IGDB provider, 4 rps (shared provider worker)
-  fanart     — Fanart provider, 1 rps (shared provider worker)
-  omdb       — OMDb provider, 5 rps (shared provider worker)
-  steamgrid  — SteamGridDB provider, 2 rps (shared provider worker)
-  musicbrainz — MusicBrainz provider, 1 rps (shared provider worker)
-  lastfm     — Last.fm provider, 5 rps (shared provider worker)
-  user       — user-initiated syncs, XP, seed cycles (2 workers)
-  control    — maintenance, embedding, catch-all (4 workers)
-  ccu        — Steam CCU (1 worker)
+  ingest-tmdb, ingest-steam, ingest-igdb, ingest-musicbrainz, ingest-deezer
+      → worker-ingest (c=4): primary data sync/seed
+  enrich-fanart, enrich-omdb, enrich-steamgrid, enrich-lastfm, enrich-theaudiodb, enrich-lrclib
+      → worker-enrich (c=2): secondary enrichment
+  reactive-fast, reactive-user
+      → worker-reactive (c=2): user-initiated, search, low-latency
+  maintain
+      → worker-embedding (c=3): ONNX embedding generation
+      → worker-maintain (c=2): background maintenance, CCU, catch-all
 
 Rate limiting is handled in-app by BaseProvider's Redis token bucket.
 """
@@ -20,58 +19,64 @@ from __future__ import annotations
 
 from celery import Celery
 from celery.schedules import crontab
-from kombu import Queue
+from kombu import Exchange, Queue
 
 from otix.infrastructure.config import settings
 
 
 def route_task(name: str, *args, **kwargs) -> str | None:
-    """Route tasks to provider-isolated queues based on name prefix."""
+    """Route tasks to purpose-based queues with per-provider isolation."""
     if name.startswith("steam.ccu."):
-        return "ccu"
+        return "maintain"
     if name.startswith("seed."):
-        return "user"
+        return "reactive-user"
     if name.startswith("maintenance."):
         if "steam_ccu" in name:
-            return "ccu"
+            return "maintain"
         if "plex_sync_user" in name or "sync_plex_accounts" in name:
-            return "user"
-        return "control"
+            return "reactive-user"
+        return "maintain"
     if name == "sync.media.rehydrate":
-        return "user"
-    if name.startswith("sync.tmdb.") or name.startswith("sync.steam."):
-        return "fast"
+        return "reactive-user"
+    if name.startswith("sync.tmdb."):
+        return "ingest-tmdb"
+    if name.startswith("sync.steam."):
+        return "ingest-steam"
     if name.startswith("sync.spotify."):
-        if "user_library" in name or "seed_album" in name:
-            return "user"
-        return "fast"  # match_album, enrich_album
+        return "reactive-user"
+    if name.startswith("sync.deezer."):
+        return "ingest-deezer"
+    if name.startswith("sync.theaudiodb."):
+        return "enrich-theaudiodb"
     if name.startswith("sync.youtube."):
-        return "user"
+        return "reactive-user"
     if name.startswith("sync.igdb."):
-        return "igdb"
+        return "ingest-igdb"
     if name.startswith("sync.fanart."):
-        return "fanart"
+        return "enrich-fanart"
     if name.startswith("sync.omdb."):
-        return "omdb"
+        return "enrich-omdb"
     if name.startswith("sync.steamgrid."):
-        return "steamgrid"
+        return "enrich-steamgrid"
     if name.startswith("sync.musicbrainz."):
-        return "musicbrainz"
+        return "ingest-musicbrainz"
+    if name.startswith("sync.lrclib."):
+        return "enrich-lrclib"
     if name.startswith("sync.lastfm."):
-        return "lastfm"
+        return "enrich-lastfm"
     if name.startswith("search."):
-        return "fast"
+        return "reactive-fast"
     if name.startswith("embedding."):
-        return "control"
+        return "embedding"
     if name.startswith("xp."):
-        return "user"
+        return "reactive-user"
     if name.startswith("streak."):
-        return "user"
+        return "reactive-user"
     if name.startswith("gamification."):
-        return "user"
+        return "reactive-user"
     if name.startswith("karma."):
-        return "user"
-    return "control"
+        return "reactive-user"
+    return "maintain"
 
 
 app = Celery("otix")
@@ -98,30 +103,30 @@ _beat_schedule: dict = {
         "task": "maintenance.enrich_fanart",
         "schedule": crontab(minute="7,22,37,52"),
     },
-    # Embedding backfill (every 3 min until all items have embeddings)
+    # Embedding backfill (every 5 min until all items have embeddings)
     "backfill-embeddings": {
         "task": "maintenance.backfill_embeddings",
-        "schedule": crontab(minute="*/3"),
+        "schedule": crontab(minute="*/5"),
     },
     # OMDb enrichment scan (every 30 min at off-peak minutes)
     "enrich-omdb": {
         "task": "maintenance.enrich_omdb",
         "schedule": crontab(minute="13,43"),
     },
-    # Production companies enrichment (every 5 min)
+    # Production companies enrichment (every 15 min at off-peak minutes)
     "enrich-production-companies": {
         "task": "maintenance.enrich_production_companies",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="7,22,37,52"),
     },
-    # TV content ratings enrichment (every 5 min)
+    # TV content ratings enrichment (every 15 min at off-peak minutes)
     "enrich-content-ratings": {
         "task": "maintenance.enrich_content_ratings",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="13,28,43,58"),
     },
-    # Game age ratings enrichment (every 5 min)
+    # Game age ratings enrichment (every 15 min at off-peak minutes)
     "enrich-game-age-ratings": {
         "task": "maintenance.enrich_game_age_ratings",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="3,18,33,48"),
     },
     # Game feed refresh (daily at 3am)
     "refresh-game-feed": {
@@ -135,15 +140,15 @@ _beat_schedule: dict = {
     },
     "seed-steam": {
         "task": "seed.steam_cycle",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="23,53"),
     },
     "seed-igdb": {
         "task": "seed.igdb_cycle",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="7,37"),
     },
     "seed-musicbrainz": {
         "task": "seed.musicbrainz_cycle",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(minute="17,47"),
     },
     # Steam enrichment scan (every 15 min at off-peak minute)
     "enrich-steam": {
@@ -179,25 +184,40 @@ _beat_schedule: dict = {
         "task": "maintenance.sync_youtube_watch_history",
         "schedule": crontab(minute="8,23,38,53"),
     },
-    # Spotify enrichment scan (every 30 min)
-    "enrich-spotify": {
-        "task": "maintenance.enrich_spotify",
-        "schedule": crontab(minute="19,49"),
-    },
-    # Spotify artist graph crawl (every 5 min — fans out to related_artists)
-    "crawl-spotify-related": {
-        "task": "sync.spotify.crawl_related",
-        "schedule": crontab(minute="2,7,12,17,22,27,32,37,42,47,52,57"),
+    # Deezer chart discovery (every 30 min at off-peak minutes)
+    "seed-deezer-cycle": {
+        "task": "seed.deezer_cycle",
+        "schedule": crontab(minute="14,44"),
     },
     # Last.fm enrichment scan (every 30 min)
     "enrich-lastfm": {
         "task": "maintenance.enrich_lastfm",
         "schedule": crontab(minute="29,59"),
     },
-    # Progress summary log (every 60s at off-peak second)
+    # Progress summary log (every 5 min)
     "progress-summary": {
         "task": "maintenance.progress_summary",
-        "schedule": crontab(minute="*"),
+        "schedule": crontab(minute="*/5"),
+    },
+    # Search gap report (every 6h at :19 past)
+    "search-gap-report": {
+        "task": "maintenance.search_gap_report",
+        "schedule": crontab(hour="*/6", minute="19"),
+    },
+    # Vacuum high-churn tables (hourly at :43 past)
+    "vacuum-high-churn": {
+        "task": "maintenance.vacuum_high_churn_tables",
+        "schedule": crontab(minute="43"),
+    },
+    # Person wikidata_id backfill (every 15 min — batch of 150/cycle)
+    "backfill-person-wikidata": {
+        "task": "maintenance.backfill_person_wikidata",
+        "schedule": crontab(minute="3,18,33,48"),
+    },
+    # Person deduplication (daily at 4:13am)
+    "dedupe-people": {
+        "task": "maintenance.dedupe_people",
+        "schedule": crontab(hour="4", minute="13"),
     },
 }
 
@@ -207,17 +227,17 @@ if settings.app_env != "local":
         # People cascade to movies/shows via combined_credits filmography
         "seed-people": {
             "task": "seed.people_cycle",
-            "schedule": crontab(minute="*/5"),
+            "schedule": crontab(minute="13,43"),
         },
         # TMDB daily import (download all exports, insert stubs, detect deletions)
         "seed-tmdb-daily-import": {
             "task": "seed.tmdb_daily_import",
             "schedule": crontab(hour="3", minute="7"),
         },
-        # TMDB backlog drain (every 1 min — 500 stubs/min)
+        # TMDB backlog drain (every 5 min — 200 stubs/batch)
         "seed-tmdb-backlog": {
             "task": "seed.tmdb_backlog_cycle",
-            "schedule": crontab(minute="*"),
+            "schedule": crontab(minute="*/5"),
         },
     })
 
@@ -233,19 +253,23 @@ app.config_from_object(
         "task_reject_on_worker_lost": True,
         "worker_hijack_root_logger": False,
         "worker_prefetch_multiplier": settings.celery_worker_prefetch_multiplier,
-        "task_default_queue": "control",
+        "task_default_queue": "maintain",
         "beat_max_loop_interval": 30,  # wake at least every 30s for minutely tasks
         "task_queues": [
-            Queue("fast", queue_arguments={"x-max-priority": 10}),
-            Queue("igdb", queue_arguments={"x-max-priority": 10}),
-            Queue("fanart", queue_arguments={"x-max-priority": 10}),
-            Queue("omdb", queue_arguments={"x-max-priority": 10}),
-            Queue("steamgrid", queue_arguments={"x-max-priority": 10}),
-            Queue("musicbrainz", queue_arguments={"x-max-priority": 10}),
-            Queue("lastfm", queue_arguments={"x-max-priority": 10}),
-            Queue("user", queue_arguments={"x-max-priority": 10}),
-            Queue("control", queue_arguments={"x-max-priority": 10}),
-            Queue("ccu", queue_arguments={"x-max-priority": 10}),
+            Queue("ingest-tmdb", Exchange("ingest-tmdb", type="direct"), routing_key="ingest-tmdb", queue_arguments={"x-max-priority": 10}),
+            Queue("ingest-steam", Exchange("ingest-steam", type="direct"), routing_key="ingest-steam", queue_arguments={"x-max-priority": 10}),
+            Queue("ingest-igdb", Exchange("ingest-igdb", type="direct"), routing_key="ingest-igdb", queue_arguments={"x-max-priority": 10}),
+            Queue("ingest-musicbrainz", Exchange("ingest-musicbrainz", type="direct"), routing_key="ingest-musicbrainz", queue_arguments={"x-max-priority": 10}),
+            Queue("ingest-deezer", Exchange("ingest-deezer", type="direct"), routing_key="ingest-deezer", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-fanart", Exchange("enrich-fanart", type="direct"), routing_key="enrich-fanart", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-omdb", Exchange("enrich-omdb", type="direct"), routing_key="enrich-omdb", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-steamgrid", Exchange("enrich-steamgrid", type="direct"), routing_key="enrich-steamgrid", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-lastfm", Exchange("enrich-lastfm", type="direct"), routing_key="enrich-lastfm", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-theaudiodb", Exchange("enrich-theaudiodb", type="direct"), routing_key="enrich-theaudiodb", queue_arguments={"x-max-priority": 10}),
+            Queue("enrich-lrclib", Exchange("enrich-lrclib", type="direct"), routing_key="enrich-lrclib", queue_arguments={"x-max-priority": 10}),
+            Queue("reactive-fast", Exchange("reactive-fast", type="direct"), routing_key="reactive-fast", queue_arguments={"x-max-priority": 10}),
+            Queue("reactive-user", Exchange("reactive-user", type="direct"), routing_key="reactive-user", queue_arguments={"x-max-priority": 10}),
+            Queue("maintain", Exchange("maintain", type="direct"), routing_key="maintain", queue_arguments={"x-max-priority": 10}),
         ],
         "task_routes": (route_task,),
         "task_create_missing_queues": True,
@@ -274,6 +298,9 @@ import otix.tasks.sync.omdb  # noqa: E402
 import otix.tasks.sync.lastfm  # noqa: E402
 import otix.tasks.sync.musicbrainz  # noqa: E402
 import otix.tasks.sync.spotify  # noqa: E402
+import otix.tasks.sync.deezer  # noqa: E402
+import otix.tasks.sync.theaudiodb  # noqa: E402
+import otix.tasks.sync.lrclib  # noqa: E402
 import otix.tasks.sync.youtube  # noqa: E402
 import otix.tasks.sync.search  # noqa: E402
 import otix.tasks.sync.embedding  # noqa: E402

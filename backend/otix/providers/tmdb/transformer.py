@@ -106,8 +106,6 @@ def _to_episode(raw: dict[str, JSONValue]) -> Episode:
 def to_person(raw: dict[str, JSONValue]) -> Person:
     return Person(
         name=raw.get("name", ""),
-        tmdb_id=raw.get("id"),
-        imdb_id=raw.get("imdb_id") or None,
         photo_url=_image_url(raw.get("profile_path")),
         biography=raw.get("biography"),
         birthday=_parse_date(raw.get("birthday")),

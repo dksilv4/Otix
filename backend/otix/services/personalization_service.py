@@ -291,6 +291,7 @@ class PersonalizationService:
             JOIN media_genres mg ON mg.media_item_id = mi.id
             JOIN genres g ON g.id = mg.genre_id
             WHERE umi.user_id = :user_id
+              AND umi.created_at >= NOW() - INTERVAL '90 days'
             GROUP BY mi.media_type, g.slug
             ORDER BY mi.media_type, score DESC
         """)
@@ -428,8 +429,9 @@ class PersonalizationService:
         my_genres = set(user.preferred_genres or [])
         my_langs = set(user.preferred_languages or [])
 
-        # Fetch all other users with their preferences
-        from sqlalchemy import select
+        from sqlalchemy import cast, select
+        from sqlalchemy.dialects.postgresql import ARRAY
+        from sqlalchemy import String
         from otix.domain.user import User as UserModel
 
         query = select(
@@ -438,6 +440,16 @@ class PersonalizationService:
             UserModel.preferred_genres,
             UserModel.preferred_languages,
         ).where(UserModel.id != user.id)
+
+        # Pre-filter: only consider users who share at least one preferred genre or media type
+        if my_genres:
+            query = query.where(UserModel.preferred_genres.op('?|')(cast(list(my_genres), ARRAY(String))))
+        elif my_types:
+            query = query.where(UserModel.preferred_media_types.op('?|')(cast(list(my_types), ARRAY(String))))
+
+        # Safety cap: never load more than 2000 users into memory
+        query = query.limit(2000)
+
         result = await self.session.execute(query)
         rows = result.fetchall()
 
@@ -485,6 +497,85 @@ class PersonalizationService:
             "user_id": user_id,
             "limit": limit,
         })
+        return [row[0] for row in result.fetchall()]
+
+    async def get_semantic_recommendations(
+        self,
+        user_id: str,
+        media_type: str,
+        limit: int = 20,
+        exclude_adult: bool = True,
+        exclude_media_id: str | None = None,
+    ) -> list[str]:
+        """Get items near the centroid of the user's top-rated content embeddings.
+
+        Picks up to 10 highly-rated items, computes their embedding centroid,
+        then finds nearest neighbors the user hasn't seen.
+        """
+        import re
+
+        seed_query = text("""
+            SELECT mi.embedding::text
+            FROM user_media_interactions umi
+            JOIN media_items mi ON mi.id = umi.media_item_id
+            WHERE umi.user_id = :user_id
+              AND mi.media_type = :media_type
+              AND mi.embedding IS NOT NULL
+              AND umi.interaction_type IN ('liked', 'rated', 'watched', 'played', 'listened')
+            ORDER BY
+              CASE WHEN umi.interaction_type = 'rated' THEN umi.score ELSE 5 END DESC,
+              umi.created_at DESC
+            LIMIT 10
+        """)
+        result = await self.session.execute(seed_query, {
+            "user_id": user_id,
+            "media_type": media_type,
+        })
+        embeddings = []
+        for row in result.fetchall():
+            raw = row[0]
+            if isinstance(raw, str):
+                embeddings.append([float(x) for x in raw.strip("[]").split(",")])
+            elif isinstance(raw, list):
+                embeddings.append(list(raw))
+
+        if not embeddings:
+            return []
+
+        # Compute centroid
+        dim = len(embeddings[0])
+        centroid = [sum(e[i] for e in embeddings) / len(embeddings) for i in range(dim)]
+
+        # Find nearest neighbors the user hasn't interacted with.
+        # pgvector accepts a text-format vector literal: '[0.1, 0.2, ...]'
+        centroid_str = "[" + ",".join(f"{x:.6f}" for x in centroid) + "]"
+
+        adult_filter = "AND mi.is_adult = FALSE" if exclude_adult else ""
+        exclude_filter = "AND mi.id != :exclude_media_id" if exclude_media_id else ""
+
+        knn_query = text(f"""
+            SELECT mi.id
+            FROM media_items mi
+            WHERE mi.media_type = :media_type
+              AND mi.embedding IS NOT NULL
+              {adult_filter}
+              {exclude_filter}
+              AND mi.id NOT IN (
+                  SELECT media_item_id FROM user_media_interactions WHERE user_id = :user_id
+              )
+            ORDER BY mi.embedding <=> :centroid::vector
+            LIMIT :limit
+        """)
+        params: dict = {
+            "media_type": media_type,
+            "user_id": user_id,
+            "centroid": centroid_str,
+            "limit": limit * 3,
+        }
+        if exclude_media_id:
+            params["exclude_media_id"] = exclude_media_id
+
+        result = await self.session.execute(knn_query, params)
         return [row[0] for row in result.fetchall()]
 
     def generate_sections(self, profile: PreferenceProfile, user: User | None = None) -> list:

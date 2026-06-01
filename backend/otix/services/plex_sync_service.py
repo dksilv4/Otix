@@ -257,6 +257,93 @@ def _resolve_plex_thumb(raw: str | None, base_url: str | None) -> str | None:
     return raw
 
 
+async def _fuzzy_match_album(
+    db: AsyncSession,
+    title: str,
+    artist_name: str | None,
+    guids: dict[str, str],
+) -> str | None:
+    """Try to find an existing music album by title + artist similarity.
+
+    Uses pg_trgm similarity on title and MediaCredit role='primary' for the
+    artist match. Returns the media_item_id if a confident match is found,
+    or None if no match exceeds the threshold.
+    """
+    from sqlalchemy import func, or_
+
+    # Don't match based on very short or generic titles
+    if len(title) < 3:
+        return None
+
+    # If we have a musicbrainz GUID, trust it directly (should've been caught
+    # by the GUID check above, but double-check here for safety)
+    mbid = guids.get("musicbrainz")
+    if mbid:
+        existing = await db.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == "musicbrainz",
+                ExternalID.external_id == mbid,
+            )
+        )
+        if existing and existing.media_item_id is not None:
+            return existing.media_item_id
+
+    # Build candidate query: music items with similar titles
+    similarity_threshold = 0.35
+    candidates_query = (
+        select(MediaItem.id, MediaItem.title, Person.name, func.similarity(MediaItem.title, title).label("sim"))
+        .join(Album, Album.media_item_id == MediaItem.id)
+        .outerjoin(MediaCredit, (MediaCredit.media_item_id == MediaItem.id) & (MediaCredit.role == "primary"))
+        .outerjoin(Person, Person.id == MediaCredit.person_id)
+        .where(
+            MediaItem.media_type == "music",
+            func.similarity(MediaItem.title, title) >= similarity_threshold,
+        )
+        .order_by(func.similarity(MediaItem.title, title).desc())
+        .limit(10)
+    )
+
+    result = await db.execute(candidates_query)
+    rows = result.all()
+
+    if not rows:
+        return None
+
+    best_id: str | None = None
+    best_score: float = 0.0
+
+    for row in rows:
+        candidate_id, candidate_title, candidate_artist, sim = row
+
+        # Score: title similarity weighted + artist match bonus
+        score = sim
+
+        if artist_name and candidate_artist:
+            # Case-insensitive artist comparison
+            if artist_name.lower() == candidate_artist.lower():
+                score += 0.4  # exact artist match
+            elif artist_name.lower() in candidate_artist.lower() or candidate_artist.lower() in artist_name.lower():
+                score += 0.2  # partial artist match
+
+        if score > best_score:
+            best_score = score
+            best_id = candidate_id
+
+    # Require a high combined score for auto-match
+    # 0.75 = near-exact title match + exact artist, or very close title + partial artist
+    if best_id and best_score >= 0.70:
+        logger.info(
+            "plex fuzzy matched album",
+            plex_title=title,
+            plex_artist=artist_name,
+            matched_id=best_id,
+            score=round(best_score, 3),
+        )
+        return best_id
+
+    return None
+
+
 async def _find_or_seed_media(
     db: AsyncSession,
     item: dict,
@@ -265,7 +352,17 @@ async def _find_or_seed_media(
     *,
     release_date_str: str | None = None,
     child_count: int | None = None,
+    plex_guid: str | None = None,
+    artist_name: str | None = None,
 ) -> str:
+    # Check Plex GUID first — fast path for re-syncs
+    if plex_guid:
+        existing = await db.scalar(
+            select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
+        )
+        if existing and existing.media_item_id is not None:
+            return existing.media_item_id
+
     # Return existing resolved media if any GUID already matches
     for provider, external_id in guids.items():
         existing = await db.scalar(
@@ -274,8 +371,34 @@ async def _find_or_seed_media(
         if existing and existing.media_item_id is not None:
             return existing.media_item_id
 
-    # Create a stub MediaItem — the catalog hydration cycle will backfill details
+    # For music: try fuzzy title+artist match against existing catalog before
+    # creating a stub. This prevents duplicates when Plex provides no GUIDs.
     title = str(item.get("title") or "Untitled")
+    if media_type == "music" and title != "Untitled":
+        match_id = await _fuzzy_match_album(db, title, artist_name, guids)
+        if match_id is not None:
+            # Link this Plex item to the existing catalog entry
+            if plex_guid:
+                ext = await db.scalar(
+                    select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
+                )
+                if ext is not None:
+                    ext.media_item_id = match_id
+                else:
+                    db.add(ExternalID(provider="plex", external_id=plex_guid, media_item_id=match_id))
+            # Also link any GUIDs we didn't already have
+            for provider, external_id in guids.items():
+                ext = await db.scalar(
+                    select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
+                )
+                if ext is not None and ext.media_item_id is None:
+                    ext.media_item_id = match_id
+                elif ext is None:
+                    db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=match_id))
+            await db.flush()
+            return match_id
+
+    # Create a stub MediaItem — the catalog hydration cycle will backfill details
     year = item.get("year")
     slug = slugify(f"{title}-{year}") if year else slugify(title)
     release_date = _parse_date(release_date_str or item.get("originallyAvailableAt"))
@@ -311,6 +434,18 @@ async def _find_or_seed_media(
             ext.media_item_id = media.id
         else:
             db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=media.id))
+
+    # Stamp a Plex ExternalID so this item is discoverable via the standard
+    # external_ids table (enables cross-platform overlap queries, etc.)
+    if plex_guid:
+        ext = await db.scalar(
+            select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
+        )
+        if ext is not None:
+            ext.media_item_id = media.id
+        else:
+            db.add(ExternalID(provider="plex", external_id=plex_guid, media_item_id=media.id))
+
     await db.flush()
 
     return media.id
@@ -327,8 +462,12 @@ def _make_oti_id() -> str:
 
 
 async def _get_or_create_person_by_name(db: AsyncSession, name: str) -> Person:
-    """Find or create a Person by name only (no external ID). Used for Plex-sourced artists."""
-    person = await db.scalar(select(Person).where(Person.name == name))
+    """Find or create a Person by name (case-insensitive). Used for Plex-sourced artists."""
+    from sqlalchemy import func as sa_func
+
+    person = await db.scalar(
+        select(Person).where(sa_func.lower(Person.name) == name.lower())
+    )
     if person is not None:
         return person
     person = Person(id=_make_oti_id(), name=name)
@@ -497,11 +636,16 @@ async def _hydrate_album_tracks_from_plex(
         logger.warning("failed to fetch plex album children", rating_key=plex_item.rating_key, exc_info=True)
         return 0
 
+    # Batch-load existing tracks for this album to avoid N+1 per-track queries
+    existing_tracks = (await db.scalars(
+        select(Track).where(Track.album_id == media_item_id)
+    )).all()
+    existing_by_key = {(t.disc_number, t.track_number): t for t in existing_tracks}
+
     created = 0
     for idx, child in enumerate(_container_items(data)):
         track_number = child.get("index")
         if track_number is None:
-            # Some Plex tracks have no index; fall back to list position (1-based)
             track_number = idx + 1
         try:
             track_number = int(track_number)
@@ -512,27 +656,23 @@ async def _hydrate_album_tracks_from_plex(
         disc_number = int(child.get("parentIndex") or 1)
         duration = child.get("duration")
 
-        # Check if a Track already exists for this album + disc + track number
-        existing = await db.scalar(
-            select(Track).where(
-                Track.album_id == media_item_id,
-                Track.disc_number == disc_number,
-                Track.track_number == track_number,
-            )
-        )
+        key = (disc_number, track_number)
+        existing = existing_by_key.get(key)
         if existing is not None:
             if not existing.duration_ms and duration:
                 existing.duration_ms = int(duration)
             continue
 
-        db.add(Track(
+        track = Track(
             id=_make_oti_id(),
             album_id=media_item_id,
             track_number=track_number,
             disc_number=disc_number,
             title=title,
             duration_ms=int(duration) if duration else None,
-        ))
+        )
+        db.add(track)
+        existing_by_key[key] = track
         created += 1
 
     if created:
@@ -726,6 +866,8 @@ async def sync_plex_library(
         media_item_id = await _find_or_seed_media(
             db, item, media_type, guids,
             child_count=child_count,
+            plex_guid=item.get("guid"),
+            artist_name=item.get("parentTitle") if media_type == "music" else None,
         )
         if before:
             matched += 1
@@ -849,7 +991,7 @@ async def sync_plex_watchlist(
             ExternalID.provider.in_(list(guids.keys()) or ["__none__"]),
             ExternalID.external_id.in_(list(guids.values()) or ["__none__"]),
         ))
-        media_item_id = await _find_or_seed_media(db, item, media_type, guids)
+        media_item_id = await _find_or_seed_media(db, item, media_type, guids, plex_guid=item.get("guid"))
         if before:
             matched += 1
         else:
@@ -1221,6 +1363,7 @@ async def get_plex_album_tracks(
         tracks.append({
             "rating_key": str(item.get("ratingKey", "")),
             "title": item.get("title", ""),
+            "artist": item.get("grandparentTitle", "") or item.get("originalTitle", ""),
             "track_number": item.get("index", 0),
             "disc_number": item.get("parentIndex", 1),
             "duration_ms": item.get("duration"),

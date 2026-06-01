@@ -45,9 +45,10 @@ from otix.tasks.seed import (
 
 logger = structlog.get_logger()
 
-BATCH_ENTRIES = 500
+BATCH_ENTRIES = 200
 IGDB_LIMIT = 50
 IGDB_PAGES_PER_CYCLE = 3
+IGDB_MAX_RETRIES = 3
 MUSICBRAINZ_LIMIT = 100
 MUSICBRAINZ_PAGES_PER_CYCLE = 3
 LOCK_TTL = 300
@@ -465,10 +466,25 @@ async def _process_igdb_batch(state: dict) -> dict:
         redis = await _get_redis()
         provider = IGDBProvider(redis)
 
-        try:
-            results = await provider.get_games_offset(offset=offset, limit=IGDB_LIMIT, fields="id")
-        except Exception:
-            logger.warning("seed igdb offset failed", offset=offset, exc_info=True)
+        results = None
+        for attempt in range(IGDB_MAX_RETRIES):
+            try:
+                results = await provider.get_games_offset(offset=offset, limit=IGDB_LIMIT, fields="id")
+                break
+            except Exception:
+                if attempt < IGDB_MAX_RETRIES - 1:
+                    delay = 2 ** attempt
+                    logger.warning(
+                        "seed igdb offset failed, retrying",
+                        offset=offset,
+                        attempt=attempt + 1,
+                        retry_in=delay,
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    logger.warning("seed igdb offset failed after retries", offset=offset, exc_info=True)
+
+        if results is None:
             break
 
         if not results:

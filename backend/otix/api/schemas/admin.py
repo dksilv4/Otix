@@ -67,3 +67,50 @@ class TMDBDeletedIDListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MediaHydrationItem(BaseModel):
+    id: str
+    title: str
+    media_type: str
+    slug: str
+
+    has_overview: bool
+    has_poster: bool
+    has_backdrop: bool
+    has_logo: bool
+    has_textless_poster: bool
+    has_release_date: bool
+    has_embedding: bool
+    has_original_language: bool
+
+    has_genres: bool
+    has_credits: bool
+    has_external_ids: bool
+    has_external_ratings: bool
+    has_videos: bool
+    has_assets: bool
+    has_releases: bool
+    has_keywords: bool
+    has_companies: bool
+    has_watch_providers: bool
+
+    has_runtime: bool | None = None
+    has_collection: bool | None = None
+    has_budget: bool | None = None
+    has_show_status: bool | None = None
+    has_episodes: bool | None = None
+    has_platforms: bool | None = None
+    has_game_modes: bool | None = None
+    has_age_ratings: bool | None = None
+
+    completeness_score: float
+    synced_at: datetime | None
+    next_sync_at: datetime | None
+
+
+class MediaHydrationResponse(BaseModel):
+    items: list[MediaHydrationItem]
+    total: int
+    page: int
+    per_page: int

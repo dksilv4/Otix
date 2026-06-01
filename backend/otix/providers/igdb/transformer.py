@@ -154,6 +154,14 @@ _STORE_PATTERNS: list[tuple[str, str, type]] = [
     (r"nintendo\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?store/products/([^/?&#]+)", "eshop", str),
     (r"nintendo\.com/games/detail/([^/?&#]+)", "eshop", str),
     (r"battle\.net.*/([^/?&#]+)", "bnet", str),
+    (r"gog\.com/(?:[a-z]{2}/)?game/([^/?&#]+)", "gog", str),
+    (r"gog\.com/game/([^/?&#]+)", "gog", str),
+    (r"store\.playstation\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?product/([^/?&#]+)", "playstation", str),
+    (r"playstation\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?games/[^/]+/([^/?&#]+)", "playstation", str),
+    (r"xbox\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?games/store/[^/]+/([^/?&#]+)", "xbox", str),
+    (r"microsoft\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?store/p/[^/]+/([^/?&#]+)", "xbox", str),
+    (r"itch\.io/s/(\d+)", "itchio", int),
+    (r"itch\.io.*/([^/?&#]+)", "itchio", str),
 ]
 
 
@@ -186,8 +194,8 @@ def _extract_store_ids(websites: list[JSONValue]) -> dict[str, str | int] | None
 def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
     """Extract involved companies from IGDB response.
 
-    Returns a list of {company_name, company_slug, igdb_id, developer,
-    publisher, porting, supporting}.
+    Returns a list of {company_name, company_slug, igdb_id, logo_image_id,
+    developer, publisher, porting, supporting}.
     """
     involved = raw.get("involved_companies", [])
     if not isinstance(involved, list):
@@ -203,10 +211,20 @@ def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
         name = company.get("name")
         if not isinstance(name, str) or not name:
             continue
+
+        # Extract logo image_id if present
+        logo_image_id = None
+        logo = company.get("logo")
+        if isinstance(logo, dict):
+            lid = logo.get("image_id")
+            if isinstance(lid, str) and lid:
+                logo_image_id = lid
+
         result.append({
             "company_name": name,
             "company_slug": company.get("slug") or _slugify(name),
             "igdb_id": company.get("id"),
+            "logo_image_id": logo_image_id,
             "developer": bool(ic.get("developer")),
             "publisher": bool(ic.get("publisher")),
             "porting": bool(ic.get("porting")),
@@ -242,6 +260,20 @@ def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
     )
 
 
+def extract_franchise(raw: dict[str, JSONValue]) -> dict[str, int | str] | None:
+    """Extract IGDB franchise data from a game response.
+
+    Returns ``{"id": int, "name": str}`` or None.
+    """
+    franchise = raw.get("franchise")
+    if isinstance(franchise, dict):
+        fid = franchise.get("id")
+        fname = franchise.get("name")
+        if isinstance(fid, (int, float)) and isinstance(fname, str) and fname:
+            return {"id": int(fid), "name": fname}
+    return None
+
+
 def to_game(raw: dict[str, JSONValue]) -> Game:
     """Convert IGDB game JSON to a Game with its MediaItem.
 
@@ -250,7 +282,8 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
       - websites → website (single URL, prefers official)
 
     Platforms, game modes, and companies are hydrated separately via
-    IGDBHydrator.
+    IGDBHydrator. steam_app_id and store_ids are extracted separately
+    via _extract_steam_app_id / _extract_store_ids helpers.
     """
     websites = raw.get("websites", [])
     modes = raw.get("game_modes", [])
@@ -265,8 +298,6 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
     game = Game(
         release_status=_STATUS_MAP.get(raw.get("status")),
         website=_extract_website(website_list),
-        steam_app_id=_extract_steam_app_id(website_list),
-        store_ids=_extract_store_ids(website_list),
         has_multiplayer=has_multiplayer,
         is_free=False,  # explicit default; Steam enrichment updates later
     )

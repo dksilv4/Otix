@@ -7,9 +7,10 @@ RULES:
 - This package is the leaf — it depends on nothing internal.
 """
 
-from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride
+from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, ProposalVote
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
+from otix.domain.franchise import Franchise, FranchiseItem
 from otix.domain.company import Company, InvolvedCompany
 
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
@@ -40,14 +41,16 @@ from otix.domain.media import (
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.people import MediaCredit, Person, UserPersonFollow
 from otix.domain.sync import ProviderState, SyncJob
-from otix.domain.follow import Follow
+from otix.domain.follow import Follow, FollowRequest, FollowRequestStatus
 from otix.domain.friend import FriendRequest
 from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.notification import Notification
 from otix.domain.review_vote import ReviewVote
+from otix.domain.search_log import SearchLog
 from otix.domain.user import AuthActionToken, RefreshToken, User, UserRating, UserSession
 from otix.domain.user_badge import UserBadge
 from otix.domain.user_streak import UserStreak
+from otix.domain.watch_provider import MediaWatchProvider, WatchProvider
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
 
 __all__ = [
@@ -60,7 +63,11 @@ __all__ = [
     "Exercise",
     "ExternalID",
     "ExternalRating",
+    "Franchise",
+    "FranchiseItem",
     "Follow",
+    "FollowRequest",
+    "FollowRequestStatus",
     "FriendRequest",
     "Game",
     "GameMode",
@@ -75,6 +82,7 @@ __all__ = [
     "MediaCredit",
     "MediaEditProposal",
     "MediaImageOverride",
+    "ProposalVote",
     "MediaGameMode",
     "MediaGenre",
     "MediaItem",
@@ -82,6 +90,7 @@ __all__ = [
     "MediaPlatform",
     "MediaRelease",
     "MediaVideo",
+    "MediaWatchProvider",
     "Movie",
     "Notification",
     "Person",
@@ -90,6 +99,7 @@ __all__ = [
     "RefreshToken",
     "Review",
     "ReviewVote",
+    "SearchLog",
     "Season",
     "Show",
     "SyncJob",
@@ -110,6 +120,7 @@ __all__ = [
     "UserPlexServer",
     "UserSteamGame",
     "UserStreak",
+    "WatchProvider",
     "Workout",
     "WorkoutExercise",
 ]

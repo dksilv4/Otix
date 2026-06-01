@@ -71,6 +71,8 @@ class UserResponse(BaseModel):
     date_of_birth: date | None = None
     show_adult_content: bool = False
     country: str | None = None
+    is_bot: bool | None = None
+    notification_preferences: dict[str, bool] | None = None
 
 
 class UserUpdateRequest(BaseModel):
@@ -91,6 +93,9 @@ class UserUpdateRequest(BaseModel):
     discover_emphases: list[str] | None = None
     show_adult_content: bool | None = None
     country: str | None = None
+    is_private: bool | None = None
+    is_bot: bool | None = None
+    notification_preferences: dict[str, bool] | None = None
 
 
 # ── Email verification ──────────────────────────────────────────

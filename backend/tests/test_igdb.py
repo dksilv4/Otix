@@ -383,11 +383,19 @@ class TestToGame:
         game = to_game(igdb_game_raw)
         assert game.release_status == "released"
         assert game.website == "https://thewitcher.com"
-        assert game.steam_app_id == 292030
-        assert game.store_ids == {"steam": 292030}
         assert game.has_multiplayer is False
         assert game.media_item is not None
         assert game.media_item.title == "The Witcher 3: Wild Hunt"
+
+    def test_extract_steam_app_id(self, igdb_game_raw):
+        from otix.providers.igdb.transformer import _extract_steam_app_id
+        steam_id = _extract_steam_app_id(igdb_game_raw.get("websites", []))
+        assert steam_id == 292030
+
+    def test_extract_store_ids(self, igdb_game_raw):
+        from otix.providers.igdb.transformer import _extract_store_ids
+        store_ids = _extract_store_ids(igdb_game_raw.get("websites", []))
+        assert store_ids == {"steam": 292030}
 
     def test_status_mapping(self, igdb_game_raw):
         statuses = {0: "released", 2: "alpha", 3: "beta", 4: "early_access", 5: "offline", 6: "cancelled"}
@@ -509,9 +517,9 @@ class TestHydrateImages:
             if isinstance(c[0][0], MediaAsset)
         ]
         types = {a.asset_type for a in assets_added}
-        assert "cover" in types
+        assert "poster" in types
         assert "screenshot" in types
-        assert "artwork" in types
+        assert "backdrop" in types
 
     async def test_skips_existing_urls(self, igdb_hydrator, mock_db_session, igdb_game_raw):
         existing_url = "https://images.igdb.com/igdb/image/upload/t_cover_big/co1tj2.jpg"
@@ -607,9 +615,10 @@ class TestHydrateAll:
     async def test_runs_all_steps(self, igdb_hydrator, mock_db_session, igdb_game_raw):
         mock_db_session.scalars.return_value = []
         mock_db_session.scalar.return_value = None
-        item = to_media_item(igdb_game_raw)
+        game = to_game(igdb_game_raw)
+        item = game.media_item
 
-        await igdb_hydrator.hydrate_all(item, igdb_game_raw)
+        await igdb_hydrator.hydrate_all(game, item, igdb_game_raw)
 
         # Collect added types from both add() and add_all() calls
         added_types = {

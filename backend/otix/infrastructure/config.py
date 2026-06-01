@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     database_url_sync: str = "postgresql://otium:password@localhost:5432/otium_prod_v1"
     db_conn_max_age: int = 0
     db_connect_timeout: int = 5
-    db_pool_size: int = 1
-    db_max_overflow: int = 2
+    db_pool_size: int = 20
+    db_max_overflow: int = 15
     run_migrations: bool = True
 
     # Redis
@@ -103,13 +103,32 @@ class Settings(BaseSettings):
     lastfm_request_timeout_seconds: int = 15
     lastfm_global_rps_limit: int = 5
 
-    # Embeddings (FastEmbed local model)
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    embedding_dimension: int = 384
+    # Deezer
+    deezer_request_timeout_seconds: int = 15
+    deezer_global_rps_limit: int = 10
+
+    # TheAudioDB
+    theaudiodb_api_key: str = "2"
+    theaudiodb_request_timeout_seconds: int = 15
+    theaudiodb_global_rps_limit: int = 5
+
+    # LRCLIB — free lyrics API, no auth
+    lrclib_request_timeout_seconds: int = 10
+    lrclib_global_rps_limit: int = 5
+
+    # Embeddings
+    # Default CPU model via FastEmbed. Set OTIX_EMBEDDING_API_URL to use a GPU
+    # embedding server instead (e.g. Ollama, TEI).
+    embedding_model: str = "BAAI/bge-large-en-v1.5"
+    embedding_dimension: int = 1024
+    embedding_api_url: str = ""
 
     # Email
     resend_api_key: str = ""
     email_from: str = "admin@diogodasilva.com"
+
+    # Proposals
+    proposal_min_xp: int = Field(default=500, description="Minimum XP required to submit proposals")
 
     # Rate limiting
     auth_login_rate_limit_max_attempts: int = 20

@@ -14,7 +14,7 @@ from redis.asyncio import Redis
 
 from otix.infrastructure.config import settings
 from otix.lib.types import JSONValue
-from otix.providers.base import BaseProvider
+from otix.providers.base import BaseProvider, ProviderError
 
 
 _steamgrid_client: httpx.AsyncClient | None = None
@@ -104,6 +104,39 @@ class SteamGridDBProvider(BaseProvider):
         """Look up a SteamGridDB game by Steam App ID."""
         return await self.get_game_by_platform_id("steam", steam_app_id)
 
+    async def get_game_by_id(self, sgdb_game_id: int) -> dict[str, JSONValue] | None:
+        """Look up a SteamGridDB game by its own internal ID."""
+        try:
+            response = await self._get(f"/games/id/{sgdb_game_id}")
+            if response.status_code != 200:
+                return None
+            body = response.json()
+            if not body.get("success", False):
+                return None
+            data = body.get("data")
+            if isinstance(data, dict):
+                return data
+            return None
+        except SteamGridDBError:
+            return None
+
+    async def search_games(self, query: str) -> list[dict[str, JSONValue]]:
+        """Search for games by name via the autocomplete endpoint.
+
+        Returns a list of matching game objects, each with at least 'id', 'name',
+        and 'types' (list of platform strings the game supports).
+        """
+        try:
+            response = await self._get(f"/search/autocomplete/{query}")
+            if response.status_code != 200:
+                return []
+            body = response.json()
+            if not body.get("success", False):
+                return []
+            return body.get("data", [])
+        except SteamGridDBError:
+            return []
+
     # ── Asset endpoints ──────────────────────────────────────────────
 
     async def get_grids(
@@ -118,7 +151,7 @@ class SteamGridDBProvider(BaseProvider):
         try:
             response = await self._get(f"/grids/game/{game_id}", params=params)
             return self._resolve_success(response)
-        except SteamGridDBError:
+        except (SteamGridDBError, ProviderError):
             return []
 
     async def get_heroes(
@@ -131,7 +164,7 @@ class SteamGridDBProvider(BaseProvider):
         try:
             response = await self._get(f"/heroes/game/{game_id}", params=params)
             return self._resolve_success(response)
-        except SteamGridDBError:
+        except (SteamGridDBError, ProviderError):
             return []
 
     async def get_logos(self, game_id: int, styles: str | None = None) -> list[dict[str, JSONValue]]:
@@ -142,7 +175,7 @@ class SteamGridDBProvider(BaseProvider):
         try:
             response = await self._get(f"/logos/game/{game_id}", params=params)
             return self._resolve_success(response)
-        except SteamGridDBError:
+        except (SteamGridDBError, ProviderError):
             return []
 
     async def get_icons(self, game_id: int) -> list[dict[str, JSONValue]]:

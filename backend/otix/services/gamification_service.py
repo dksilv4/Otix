@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.user import User
@@ -194,64 +194,91 @@ class GamificationService:
 
     # ── Badges ──
 
-    async def check_and_award_badges(self, user_id: str) -> list[str]:
-        """Check all badge conditions and award any newly unlocked ones."""
+    async def _get_badge_context(self, user_id: str) -> BadgeContext | None:
+        """Gathers stats from database to construct BadgeContext."""
         user = await self.session.scalar(select(User).where(User.id == user_id))
         if not user:
-            return []
+            return None
 
-        # Gather stats for badge context
         from otix.domain.interaction import UserMediaInteraction
         from otix.domain.list import UserList
         from otix.domain.review import Review
         from otix.domain.friend import FriendRequest
         from otix.domain.workout import Workout
-        from sqlalchemy import or_, func
-
-        review_count = await self.session.scalar(
-            select(func.count()).select_from(Review).where(
-                Review.user_id == user_id,
-                Review.is_private == False,  # noqa: E712
-            )
-        ) or 0
-        interaction_count = await self.session.scalar(
-            select(func.count()).select_from(UserMediaInteraction).where(
-                UserMediaInteraction.user_id == user_id,
-            )
-        ) or 0
-        list_count = await self.session.scalar(
-            select(func.count()).select_from(UserList).where(UserList.user_id == user_id)
-        ) or 0
-        workout_count = await self.session.scalar(
-            select(func.count()).select_from(Workout).where(Workout.user_id == user_id)
-        ) or 0
-        friend_count = await self.session.scalar(
-            select(func.count()).select_from(FriendRequest).where(
-                FriendRequest.status == "accepted",
-                or_(
-                    FriendRequest.sender_id == user_id,
-                    FriendRequest.receiver_id == user_id,
-                ),
-            )
-        ) or 0
+        from otix.domain.media import MediaItem
+        from otix.domain.review_vote import ReviewVote
+        from sqlalchemy import or_
 
         streak = await self.session.scalar(
             select(UserStreak).where(UserStreak.user_id == user_id)
         )
 
-        ctx = BadgeContext(
-            review_count=review_count,
-            interaction_count=interaction_count,
-            list_count=list_count,
-            workout_count=workout_count,
+        # Fetch all counts in a single round-trip via scalar subqueries
+        counts = await self.session.execute(
+            select(
+                select(func.count()).select_from(Review).where(
+                    Review.user_id == user_id,
+                    Review.is_private == False,  # noqa: E712
+                ).scalar_subquery(),
+                select(func.count()).select_from(UserMediaInteraction).where(
+                    UserMediaInteraction.user_id == user_id,
+                ).scalar_subquery(),
+                select(func.count()).select_from(UserList).where(
+                    UserList.user_id == user_id,
+                ).scalar_subquery(),
+                select(func.count()).select_from(Workout).where(
+                    Workout.user_id == user_id,
+                ).scalar_subquery(),
+                select(func.count()).select_from(FriendRequest).where(
+                    FriendRequest.status == "accepted",
+                    or_(
+                        FriendRequest.sender_id == user_id,
+                        FriendRequest.receiver_id == user_id,
+                    ),
+                ).scalar_subquery(),
+                select(func.count(func.distinct(MediaItem.media_type)))
+                .select_from(UserMediaInteraction)
+                .join(MediaItem, UserMediaInteraction.media_item_id == MediaItem.id)
+                .where(UserMediaInteraction.user_id == user_id)
+                .scalar_subquery(),
+                select(func.count()).select_from(ReviewVote).where(
+                    ReviewVote.review_user_id == user_id,
+                    ReviewVote.vote_type == "up",
+                ).scalar_subquery(),
+            )
+        )
+        (
+            review_count,
+            interaction_count,
+            list_count,
+            workout_count,
+            friend_count,
+            distinct_media_types,
+            upvotes_received,
+        ) = counts.one()
+
+        return BadgeContext(
+            review_count=review_count or 0,
+            interaction_count=interaction_count or 0,
+            list_count=list_count or 0,
+            workout_count=workout_count or 0,
             total_xp=user.total_xp,
             level=(user.total_xp // 300) + 1,
             login_streak=streak.current_login_streak if streak else 0,
             review_streak=streak.current_review_streak if streak else 0,
+            workout_streak=streak.current_workout_streak if streak else 0,
+            distinct_media_types=distinct_media_types or 0,
+            review_upvotes_received=upvotes_received or 0,
             user_rating_count=user.user_rating_count,
             avg_user_rating=user.avg_user_rating,
-            friend_count=friend_count,
+            friend_count=friend_count or 0,
         )
+
+    async def check_and_award_badges(self, user_id: str) -> list[str]:
+        """Check all badge conditions and award any newly unlocked ones."""
+        ctx = await self._get_badge_context(user_id)
+        if not ctx:
+            return []
 
         # Get already earned badges
         earned = await self.session.scalars(
@@ -278,6 +305,10 @@ class GamificationService:
         return new_badges
 
     async def get_user_badges(self, user_id: str) -> list[dict]:
+        ctx = await self._get_badge_context(user_id)
+        if not ctx:
+            return []
+
         earned = await self.session.scalars(
             select(UserBadge).where(UserBadge.user_id == user_id)
         )
@@ -285,6 +316,10 @@ class GamificationService:
 
         result = []
         for key, badge_def in BADGES.items():
+            current_val = badge_def.metric_fn(ctx)
+            # Cap progress current_val at target
+            current_val = min(current_val, badge_def.target)
+
             entry = {
                 "badge_key": key,
                 "label": badge_def.label,
@@ -293,7 +328,12 @@ class GamificationService:
                 "tier": badge_def.tier,
                 "earned": key in earned_keys,
                 "earned_at": earned_keys[key].created_at if key in earned_keys else None,
+                "current_value": float(current_val),
+                "target_value": float(badge_def.target),
+                "claimed": earned_keys[key].claimed if key in earned_keys else False,
+                "xp_reward": badge_def.xp_reward,
             }
+
             result.append(entry)
 
         return result

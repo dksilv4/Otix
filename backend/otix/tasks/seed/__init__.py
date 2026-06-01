@@ -66,36 +66,13 @@ async def save_state(key: str, state: dict) -> None:
 # ── Queue backlog safety ──────────────────────────────────────────────────
 
 
-async def check_fast_queue_backlog(caller: str = "") -> tuple[int, bool]:
-    """Check the fast queue backlog against the configured threshold.
+async def check_fast_queue_backlog(caller: str = "", queue: str = "ingest-tmdb") -> tuple[int, bool]:
+    """Check a queue backlog against the configured threshold.
 
-    Returns (length, throttled) — throttled is True when the queue is over the limit.
+    Delegates to the shared implementation in _common which caches the Redis connection.
     """
-    broker_url = settings.celery_broker
-    parsed = urlparse(broker_url)
-    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
-
-    r: aioredis.Redis | None = None
-    try:
-        r = aioredis.from_url(broker_redis_url, decode_responses=True)
-        length = await r.llen("fast") or 0
-    except Exception:
-        logger.warning("failed to check fast queue backlog", exc_info=True)
-        return 0, False
-    finally:
-        if r is not None:
-            await r.aclose()
-
-    threshold = settings.celery_fast_queue_max_backlog
-    throttled = length > threshold
-    if throttled:
-        context = f" ({caller})" if caller else ""
-        logger.info(
-            f"fast queue backlog throttle active{context}",
-            queue_length=length,
-            threshold=threshold,
-        )
-    return length, throttled
+    from otix.tasks.sync._common import check_fast_queue_backlog as _impl
+    return await _impl(queue)
 
 
 # ── TMDB export download ─────────────────────────────────────────────────

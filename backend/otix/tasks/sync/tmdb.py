@@ -26,6 +26,8 @@ from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.hydrator import TMDBHydrator
 from otix.providers.tmdb.transformer import _image_url, _parse_date, to_movie, to_person, to_show
 
+from otix.services.external_id_service import ExternalIDService
+
 from ._common import (
     check_fast_queue_backlog,
     compute_content_hash,
@@ -150,15 +152,35 @@ def sync_tmdb_keyword_task(self, tmdb_id: int) -> dict | None:
 
 
 async def _resolve_external_id(session, tmdb_id: str) -> tuple[MediaItem | None, ExternalID | None]:
+    """Look up media_item by TMDB ID, filtering strictly by entity_type.
+
+    TMDB reuses numeric IDs across entity types (movie 350, person 350,
+    company 350 are all different things). Without the entity_type filter,
+    we'd resolve a movie to a person's ExternalID row and create a duplicate.
+    """
     ext_id = await session.scalar(
         select(ExternalID).where(
             ExternalID.provider == "tmdb",
             ExternalID.external_id == tmdb_id,
+            ExternalID.entity_type == "media_item",
         )
     )
     if ext_id is None:
+        # Backward compat: check legacy rows with NULL entity_type
+        # (created before entity_type was always set).
+        ext_id = await session.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == "tmdb",
+                ExternalID.external_id == tmdb_id,
+                ExternalID.entity_type.is_(None),
+            )
+        )
+    if ext_id is None:
         return None, None
-    media_item = await session.get(MediaItem, ext_id.media_item_id)
+    entity_id = ext_id.entity_id or ext_id.media_item_id
+    if entity_id is None:
+        return None, ext_id
+    media_item = await session.get(MediaItem, entity_id)
     return media_item, ext_id
 
 
@@ -253,9 +275,15 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     session.add(item)
                     await session.flush()
                     if ext_id is not None:
+                        ext_id.entity_type = "media_item"
+                        ext_id.entity_id = item.id
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id, is_adult=raw.get("adult", False))
+                        ext_id = ExternalID(
+                            provider="tmdb", external_id=tmdb_id_str,
+                            entity_type="media_item", entity_id=item.id,
+                            media_item_id=item.id, is_adult=raw.get("adult", False),
+                        )
                         session.add(ext_id)
                     session.add(movie)
             else:
@@ -264,10 +292,15 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
 
                 if media_item is not None:
                     from otix.services.admin_edit_service import AdminEditService
+                    from otix.services.embedding_service import is_embedding_stale
+
                     protected = await AdminEditService.get_protected_image_types(session, media_item.id)
 
+                    old_overview = media_item.overview
                     media_item.title = item.title
                     media_item.overview = item.overview
+                    if is_embedding_stale(old_overview, media_item.overview):
+                        media_item.embedding = None
                     media_item.slug = item.slug
                     # Guard poster_url / backdrop_url against admin overrides.
                     for img_type, field in [("poster", "poster_url"), ("backdrop", "backdrop_url")]:
@@ -319,9 +352,15 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     session.add(item)
                     await session.flush()
                     if ext_id is not None:
+                        ext_id.entity_type = "media_item"
+                        ext_id.entity_id = item.id
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(provider="tmdb", external_id=tmdb_id_str, media_item_id=item.id, is_adult=raw.get("adult", False))
+                        ext_id = ExternalID(
+                            provider="tmdb", external_id=tmdb_id_str,
+                            entity_type="media_item", entity_id=item.id,
+                            media_item_id=item.id, is_adult=raw.get("adult", False),
+                        )
                         session.add(ext_id)
                     _seasons = list(show.seasons)
                     session.add(show)
@@ -336,6 +375,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
 
             # ── Common hydration ────────────────────────────────────
             await hydrator.hydrate_genres(item, raw)
+            await hydrator.hydrate_keywords(item, raw)
             await hydrator.hydrate_credits(item, raw)
             await hydrator.hydrate_images(item, raw)
             await hydrator.hydrate_videos(item, raw)
@@ -350,13 +390,21 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             if media_type == "movie":
                 await hydrator.hydrate_collection(movie, raw)
             else:
-                episode_votes: list[tuple[Episode, float, int | None]] = []
-                for season in new_seasons:
+                # Fetch all seasons' episodes in parallel, then process sequentially
+                async def _fetch_season(season):
                     try:
-                        season_raw = await provider.get_season(tmdb_id, season.season_number)
+                        raw = await provider.get_season(tmdb_id, season.season_number)
+                        return (season, raw)
                     except Exception:
                         logger.warning("failed to fetch season episodes",
                             tmdb_id=tmdb_id, season_number=season.season_number, exc_info=True)
+                        return (season, None)
+
+                season_results = await asyncio.gather(*[_fetch_season(s) for s in new_seasons])
+
+                episode_votes: list[tuple[Episode, float, int | None]] = []
+                for season, season_raw in season_results:
+                    if season_raw is None:
                         continue
                     for ep_data in season_raw.get("episodes", []):
                         ep = Episode(
@@ -392,6 +440,17 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                             score=vote_avg, max_score=10.0, vote_count=vote_cnt,
                         ))
 
+            # ── Watch providers (JustWatch via TMDB) ────────────────
+            try:
+                if media_type == "movie":
+                    watch_raw = await provider.get_movie_watch_providers(tmdb_id)
+                else:
+                    watch_raw = await provider.get_show_watch_providers(tmdb_id)
+                await hydrator.hydrate_watch_providers(item, watch_raw)
+            except Exception:
+                logger.warning("failed to fetch watch providers",
+                    tmdb_id=tmdb_id, media_type=media_type, exc_info=True)
+
             # ── Finalize ────────────────────────────────────────────
             ext_id.content_hash = content_hash
             ext_id.hash_match_count = 0
@@ -404,8 +463,6 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             )
             SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type=media_type, status="success")
             await _progress_incr(f"{media_type}_synced")
-            app.send_task("embedding.generate", args=[item.id])
-            await _progress_incr("embedding_enqueued")
             app.send_task("sync.fanart.enrich", args=[media_type, item.id])
             app.send_task("sync.omdb.ratings", args=[item.id])
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
@@ -414,7 +471,9 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
 async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
     with track_entity_duration("tmdb", "person"):
         async with async_session() as session:
-            existing = await session.scalar(select(Person).where(Person.tmdb_id == tmdb_id))
+            eid_svc = ExternalIDService(session)
+            entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "person")
+            existing = await session.get(Person, entity_id) if entity_id else None
 
             if not force and existing is not None and existing.next_sync_at is not None:
                 if existing.next_sync_at > datetime.now(timezone.utc):
@@ -435,21 +494,66 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
                 logger.debug("hash matched, skipping person processing", tmdb_id=tmdb_id, match_count=existing.hash_match_count)
                 return None
 
+            # Extract external ID values from raw before creating Person
+            raw_imdb_id = raw.get("imdb_id") or None
+            raw_wikidata_raw = raw.get("external_ids")
+            raw_wikidata_id = raw_wikidata_raw.get("wikidata_id") if isinstance(raw_wikidata_raw, dict) else None
+
             person = to_person(raw)
             now = datetime.now(timezone.utc)
 
             if existing is not None:
                 person.id = existing.id
-                if person.imdb_id:
-                    dup = await session.scalar(
-                        select(Person).where(Person.imdb_id == person.imdb_id, Person.id != existing.id)
-                    )
-                    if dup is not None:
-                        person.imdb_id = None
                 person = await session.merge(person)
-            else:
-                session.add(person)
                 await session.flush()
+                # Set external IDs via service on the merged record
+                if raw_imdb_id:
+                    dup_entity_id = await eid_svc.find_entity_id_by_type("imdb", raw_imdb_id, "person")
+                    if dup_entity_id is None or dup_entity_id == str(existing.id):
+                        await eid_svc.upsert("imdb", raw_imdb_id, "person", existing.id)
+                if raw_wikidata_id:
+                    await eid_svc.upsert("wikidata", raw_wikidata_id, "person", existing.id)
+            else:
+                # Check for cross-provider match via wikidata_id
+                if raw_wikidata_id:
+                    wiki_entity_id = await eid_svc.find_entity_id_by_type("wikidata", raw_wikidata_id, "person")
+                    if wiki_entity_id is not None:
+                        wiki_match = await session.get(Person, wiki_entity_id)
+                        if wiki_match is not None:
+                            # Merge into existing record from another provider
+                            wiki_match.photo_url = wiki_match.photo_url or person.photo_url
+                            wiki_match.biography = wiki_match.biography or person.biography
+                            wiki_match.birthday = wiki_match.birthday or person.birthday
+                            wiki_match.deathday = wiki_match.deathday or person.deathday
+                            wiki_match.place_of_birth = wiki_match.place_of_birth or person.place_of_birth
+                            await eid_svc.upsert("tmdb", str(tmdb_id), "person", wiki_match.id)
+                            if raw_imdb_id:
+                                dup_entity_id = await eid_svc.find_entity_id_by_type("imdb", raw_imdb_id, "person")
+                                if dup_entity_id is None or dup_entity_id == wiki_match.id:
+                                    await eid_svc.upsert("imdb", raw_imdb_id, "person", wiki_match.id)
+                            person = wiki_match
+                        else:
+                            session.add(person)
+                            await session.flush()
+                            await eid_svc.upsert("tmdb", str(tmdb_id), "person", person.id)
+                            if raw_imdb_id:
+                                await eid_svc.upsert("imdb", raw_imdb_id, "person", person.id)
+                            if raw_wikidata_id:
+                                await eid_svc.upsert("wikidata", raw_wikidata_id, "person", person.id)
+                    else:
+                        session.add(person)
+                        await session.flush()
+                        await eid_svc.upsert("tmdb", str(tmdb_id), "person", person.id)
+                        if raw_imdb_id:
+                            await eid_svc.upsert("imdb", raw_imdb_id, "person", person.id)
+                        if raw_wikidata_id:
+                            await eid_svc.upsert("wikidata", raw_wikidata_id, "person", person.id)
+                else:
+                    session.add(person)
+                    await session.flush()
+                    await eid_svc.upsert("tmdb", str(tmdb_id), "person", person.id)
+                    if raw_imdb_id:
+                        await eid_svc.upsert("imdb", raw_imdb_id, "person", person.id)
 
             await hydrator.hydrate_person_images(person, raw)
 
@@ -632,17 +736,19 @@ async def _sync_tmdb_collection(tmdb_id: int) -> dict | None:
             json.dumps(raw, sort_keys=True, default=str).encode()
         ).hexdigest()
 
-        collection = await session.scalar(
-            select(Collection).where(Collection.tmdb_id == tmdb_id)
-        )
+        eid_svc = ExternalIDService(session)
+        entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "collection")
+        collection = await session.get(Collection, entity_id) if entity_id else None
 
         if collection is not None and collection.content_hash == coll_hash:
             logger.debug("collection hash matched, skipping", tmdb_id=tmdb_id)
             return None
 
         if collection is None:
-            collection = Collection(tmdb_id=tmdb_id)
+            collection = Collection()
             session.add(collection)
+            await session.flush()
+            collection.tmdb_id = tmdb_id
 
         collection.name = raw.get("name", "")
         collection.overview = raw.get("overview")
@@ -673,13 +779,15 @@ async def _sync_tmdb_company(tmdb_id: int, entity_type: str = "company") -> dict
             logger.warning("failed to fetch company/network", tmdb_id=tmdb_id, entity_type=entity_type, exc_info=True)
             return None
 
-        company = await session.scalar(
-            select(Company).where(Company.tmdb_id == tmdb_id)
-        )
+        eid_svc = ExternalIDService(session)
+        entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "company")
+        company = await session.get(Company, entity_id) if entity_id else None
 
         if company is None:
-            company = Company(tmdb_id=tmdb_id)
+            company = Company()
             session.add(company)
+            await session.flush()
+            company.tmdb_id = tmdb_id
 
         await hydrator.hydrate_company(company, raw)
         await session.commit()
@@ -702,13 +810,15 @@ async def _sync_tmdb_keyword(tmdb_id: int) -> dict | None:
             logger.warning("failed to fetch keyword", tmdb_id=tmdb_id, exc_info=True)
             return None
 
-        keyword = await session.scalar(
-            select(Keyword).where(Keyword.tmdb_id == tmdb_id)
-        )
+        eid_svc = ExternalIDService(session)
+        entity_id = await eid_svc.find_entity_id_by_type("tmdb", str(tmdb_id), "keyword")
+        keyword = await session.get(Keyword, entity_id) if entity_id else None
 
         if keyword is None:
-            keyword = Keyword(tmdb_id=tmdb_id)
+            keyword = Keyword()
             session.add(keyword)
+            await session.flush()
+            keyword.tmdb_id = tmdb_id
 
         await hydrator.hydrate_keyword(keyword, raw)
         await session.commit()

@@ -3,27 +3,31 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from otix.domain.base import Base, otix_fk, otix_pk
+from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
 
 if TYPE_CHECKING:
-    from otix.domain.media import MediaItem
+    from otix.domain.media import ExternalID, MediaItem
     from otix.domain.user import User
 
 
-class Person(Base):
+class Person(Base, HasExternalIDs):
     __tablename__ = "people"
+    __external_id_entity_type__ = "person"
 
     id: Mapped[otix_pk]
     name: Mapped[str] = mapped_column(String(500), nullable=False)
-    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
-    imdb_id: Mapped[str | None] = mapped_column(String(20), unique=True)
-    musicbrainz_artist_id: Mapped[str | None] = mapped_column(String(36), unique=True)
-    spotify_artist_id: Mapped[str | None] = mapped_column(String(50), unique=True)
-    youtube_channel_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+
+    tmdb_id = ExternalIDDescriptor("tmdb", cast_type=int)
+    imdb_id = ExternalIDDescriptor("imdb", cast_type=str)
+    musicbrainz_artist_id = ExternalIDDescriptor("musicbrainz_artist", cast_type=str)
+    spotify_artist_id = ExternalIDDescriptor("spotify", cast_type=str)
+    wikidata_id = ExternalIDDescriptor("wikidata", cast_type=str)
+    youtube_channel_id = ExternalIDDescriptor("youtube_channel", cast_type=str)
+
     youtube_channel_title: Mapped[str | None] = mapped_column(String(500))
     spotify_follower_count: Mapped[int | None] = mapped_column(Integer)
     spotify_popularity: Mapped[int | None] = mapped_column(Integer)
@@ -41,9 +45,18 @@ class Person(Base):
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Person.id, "
+                    "ExternalID.entity_type == 'person')",
+        lazy="raise",
+        viewonly=True,
+    )
+
     credits: Mapped[list[MediaCredit]] = relationship("MediaCredit", back_populates="person")
     assets: Mapped[list[PersonAsset]] = relationship("PersonAsset", back_populates="person")
     followers: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="person")
+    ratings: Mapped[list[PersonRating]] = relationship("PersonRating", back_populates="person")
 
 
 class PersonAsset(Base):
@@ -82,3 +95,18 @@ class UserPersonFollow(Base):
 
     user: Mapped[User] = relationship("User", back_populates="person_follows")
     person: Mapped[Person] = relationship("Person", back_populates="followers")
+
+
+class PersonRating(Base):
+    __tablename__ = "person_ratings"
+
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    person_id: Mapped[otix_fk] = mapped_column(ForeignKey("people.id", ondelete="CASCADE"), primary_key=True)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    person: Mapped[Person] = relationship("Person", back_populates="ratings")
+    user: Mapped[User] = relationship("User")
+
+    __table_args__ = (
+        CheckConstraint("score >= 1 AND score <= 10", name="ck_person_rating_score_range"),
+    )

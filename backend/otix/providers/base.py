@@ -103,7 +103,8 @@ class BaseProvider(ABC):
             except Exception as exc:
                 self.circuit_breaker.record_failure()
                 self._update_cb_gauge()
-                raise ProviderError(f"{self.name} request failed: {exc}") from exc
+                msg = f"{self.name} request failed: {exc}" if str(exc) else f"{self.name} request failed: {type(exc).__name__}"
+                raise ProviderError(msg) from exc
 
         if response.status_code in self._rate_limit_statuses:
             retry_after = await self._handle_rate_limit(response)
