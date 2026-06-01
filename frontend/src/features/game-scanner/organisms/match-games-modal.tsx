@@ -64,9 +64,15 @@ export function MatchGamesModal({
   const [searchQuery, setSearchQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Batch match all unmatched games on open
+  // Batch match all unmatched games — ONCE on open, not on every confirm
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (!open || unmatched.length === 0) return;
+    if (!open) {
+      hasLoadedRef.current = false;
+      return;
+    }
+    if (!open || unmatched.length === 0 || hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
 
     setBatchLoading(true);
     setBatchSuggestions(new Map());
@@ -97,7 +103,7 @@ export function MatchGamesModal({
       })
       .catch(() => {})
       .finally(() => setBatchLoading(false));
-  }, [open, unmatched]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-search when tab changes
   useEffect(() => {
