@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, RefreshCw, Disc } from "lucide-react";
+import { Search, RefreshCw, Disc, Link2 } from "lucide-react";
 import { GameGrid } from "../molecules/game-grid";
 import { DirectoryManager } from "../molecules/directory-manager";
 import { ScanProgress } from "../molecules/scan-progress";
@@ -7,6 +7,7 @@ import { PlatformFilter } from "../molecules/platform-filter";
 import { EmptyState } from "../molecules/empty-state";
 import { IsoInstallerModal } from "./iso-installer-modal";
 import { IsoOrganizerModal } from "./iso-organizer-modal";
+import { MatchGamesModal } from "./match-games-modal";
 import { useMatchLocalGames } from "../queries";
 import {
   getScanPaths,
@@ -39,6 +40,7 @@ export function GameScannerTab() {
   // Modals
   const [installerOpen, setInstallerOpen] = useState(false);
   const [organizerOpen, setOrganizerOpen] = useState(false);
+  const [matchModalOpen, setMatchModalOpen] = useState(false);
 
   // Mutations
   const matchMutation = useMatchLocalGames();
@@ -270,6 +272,20 @@ export function GameScannerTab() {
     setPlatformFilter("all");
   }, []);
 
+  // Match modal link handler
+  const handleLinkGame = useCallback(
+    (gameId: string, mediaId: string, title: string, slug: string) => {
+      setGames((prev) =>
+        prev.map((g) =>
+          g.id === gameId
+            ? { ...g, otixMediaId: mediaId, otixMediaTitle: title, otixMediaSlug: slug, otixConfidence: 1, otixPosterUrl: g.otixPosterUrl, otixTextlessPosterUrl: g.otixTextlessPosterUrl, otixLogoUrl: g.otixLogoUrl, otixMatchSuggestion: undefined }
+            : g,
+        ),
+      );
+    },
+    [],
+  );
+
   // Determine what to render
   const hasDirs = gamePaths.length > 0 || isoPaths.length > 0;
   const hasGames = games.length > 0;
@@ -335,6 +351,13 @@ export function GameScannerTab() {
                 className={`h-4 w-4 ${scanningLaunchers ? "animate-spin" : ""}`}
               />
               Scan Launchers
+            </button>
+            <button
+              onClick={() => setMatchModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-glass)] px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.97]"
+            >
+              <Link2 className="h-4 w-4" />
+              Match Games
             </button>
             <button
               onClick={() => setInstallerOpen(true)}
@@ -458,6 +481,13 @@ export function GameScannerTab() {
       )}
 
       {/* Modals — imported from sibling files that will exist */}
+      <MatchGamesModal
+        open={matchModalOpen}
+        onClose={() => setMatchModalOpen(false)}
+        games={games}
+        onLinkGame={handleLinkGame}
+      />
+
       <IsoInstallerModal
         open={installerOpen}
         onClose={() => setInstallerOpen(false)}
