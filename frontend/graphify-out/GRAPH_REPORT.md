@@ -1,16 +1,16 @@
-# Graph Report - frontend  (2026-05-24)
+# Graph Report - frontend  (2026-05-30)
 
 ## Corpus Check
-- 198 files · ~494,999 words
+- 234 files · ~530,829 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1463 nodes · 2064 edges · 125 communities (109 shown, 16 thin omitted)
-- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 147 edges (avg confidence: 0.8)
+- 1808 nodes · 2589 edges · 149 communities (133 shown, 16 thin omitted)
+- Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 188 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `25e000e5`
+- Built from commit: `60a30b25`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -125,32 +125,55 @@
 - [[_COMMUNITY_Community 110|Community 110]]
 - [[_COMMUNITY_Community 111|Community 111]]
 - [[_COMMUNITY_Community 119|Community 119]]
+- [[_COMMUNITY_Community 125|Community 125]]
+- [[_COMMUNITY_Community 126|Community 126]]
+- [[_COMMUNITY_Community 127|Community 127]]
+- [[_COMMUNITY_Community 128|Community 128]]
+- [[_COMMUNITY_Community 129|Community 129]]
+- [[_COMMUNITY_Community 130|Community 130]]
+- [[_COMMUNITY_Community 131|Community 131]]
+- [[_COMMUNITY_Community 132|Community 132]]
+- [[_COMMUNITY_Community 133|Community 133]]
+- [[_COMMUNITY_Community 134|Community 134]]
+- [[_COMMUNITY_Community 135|Community 135]]
+- [[_COMMUNITY_Community 136|Community 136]]
+- [[_COMMUNITY_Community 137|Community 137]]
+- [[_COMMUNITY_Community 138|Community 138]]
+- [[_COMMUNITY_Community 139|Community 139]]
+- [[_COMMUNITY_Community 140|Community 140]]
+- [[_COMMUNITY_Community 141|Community 141]]
+- [[_COMMUNITY_Community 143|Community 143]]
+- [[_COMMUNITY_Community 144|Community 144]]
+- [[_COMMUNITY_Community 145|Community 145]]
+- [[_COMMUNITY_Community 146|Community 146]]
+- [[_COMMUNITY_Community 147|Community 147]]
+- [[_COMMUNITY_Community 148|Community 148]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 82 edges
-2. `useAuth()` - 45 edges
+1. `cn()` - 99 edges
+2. `useAuth()` - 54 edges
 3. `Otium → Otix Feature Gap Analysis` - 26 edges
 4. `compilerOptions` - 18 edges
-5. `compilerOptions` - 16 edges
-6. `MediaDetail()` - 15 edges
-7. `useToast()` - 13 edges
-8. `useLibraryTab()` - 12 edges
-9. `paths` - 11 edges
-10. `ListDetail()` - 9 edges
+5. `MediaDetail()` - 17 edges
+6. `compilerOptions` - 16 edges
+7. `useToast()` - 15 edges
+8. `useLibraryTab()` - 14 edges
+9. `paths` - 13 edges
+10. `usePlayer()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `cn()` --calls--> `clsx`  [INFERRED]
   src/lib/utils.ts → package.json
-- `MediaGrid()` --calls--> `cn()`  [INFERRED]
-  src/features/ui/molecules/media-grid.tsx → src/lib/utils.ts
-- `SearchField()` --calls--> `cn()`  [INFERRED]
-  src/features/ui/molecules/search-field.tsx → src/lib/utils.ts
 - `InfinitySpinner()` --calls--> `cn()`  [INFERRED]
   src/features/ui/atoms/infinity-spinner.tsx → src/lib/utils.ts
-- `HomeExperience()` --calls--> `useAuth()`  [INFERRED]
-  src/features/discover/organisms/home-page.tsx → src/features/auth/auth-provider.tsx
+- `AdminDashboardPage()` --calls--> `useAuth()`  [INFERRED]
+  src/features/admin/organisms/admin-dashboard-page.tsx → src/features/auth/auth-provider.tsx
+- `OnboardingPage()` --calls--> `useAuth()`  [INFERRED]
+  src/features/onboarding/organisms/onboarding-page.tsx → src/features/auth/auth-provider.tsx
+- `AdminEditButton()` --calls--> `useAuth()`  [INFERRED]
+  src/features/admin/molecules/admin-edit-button.tsx → src/features/auth/auth-provider.tsx
 
-## Communities (125 total, 16 thin omitted)
+## Communities (149 total, 16 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.06
@@ -161,32 +184,32 @@ Cohesion: 0.06
 Nodes (49): LibraryPage(), ListsPreviewSection(), ListsTabContent(), listKeys, CollaboratorOut, getExportUrl(), ListLikeStatus, RankHistoryOut (+41 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.06
-Nodes (42): WorkoutInput(), WorkoutInputProps, EXERCISE_CATALOG, ExerciseEntry, getFuse(), matchAll(), matchExercise(), MatchResult (+34 more)
+Cohesion: 0.12
+Nodes (13): ExerciseSetRow(), ExerciseSetRowProps, formatWeight(), workoutKeys, ExerciseOut, PaginatedWorkouts, SetData, WorkoutCreatePayload (+5 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.03
-Nodes (57): AdminPage, AdminProposalsPage, adminProposalsRoute, adminRoute, authLoginRoute, AuthPage, authRegisterRoute, BrowsePage (+49 more)
+Nodes (71): AboutPage, aboutRoute, AdminBlogPostPage, adminBlogPostRoute, AdminDashboardPage, adminDashboardRoute, AdminExperimentsPage, adminExperimentsRoute (+63 more)
 
 ### Community 4 - "Community 4"
 Cohesion: 0.06
-Nodes (40): InteractiveStar(), InteractiveStarProps, sizeMap, SwipeState, useSwipe(), UseSwipeOptions, ReviewActionButton(), ReviewActionButtonProps (+32 more)
+Nodes (44): InteractiveStar(), InteractiveStarProps, sizeMap, SwipeState, useSwipe(), UseSwipeOptions, ReviewActionButton(), ReviewActionButtonProps (+36 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.07
-Nodes (38): adminEditKeys, ADMIN_XP, ImageOverrideItem, MediaAsset, MediaAssetList, MediaEditProposal, MediaEditProposalList, ProposerUser (+30 more)
+Cohesion: 0.06
+Nodes (48): adminEditKeys, ADMIN_XP, ImageOverrideItem, MediaAsset, MediaAssetList, MediaEditProposal, MediaEditProposalList, ProposerUser (+40 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.05
-Nodes (24): ACCENTS, BRAND_BG, BRAND_COLORS, decoder, frames, GenreOption, LANGUAGES, MEDIA_TYPES (+16 more)
+Nodes (26): ACCENTS, BRAND_BG, BRAND_COLORS, COUNTRY_OPTIONS, decoder, frames, GenreOption, LANGUAGES (+18 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.09
-Nodes (25): formatDate(), getStats(), PersonDetail(), EpisodeRef, expandCredits(), MEDIA_TYPE_OPTIONS, PersonTimelineFilters(), PersonTimelineFiltersProps (+17 more)
+Cohesion: 0.08
+Nodes (27): formatDate(), getStats(), PersonDetail(), EpisodeRef, expandCredits(), MEDIA_TYPE_OPTIONS, PersonTimelineFilters(), PersonTimelineFiltersProps (+19 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.07
-Nodes (29): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection, moduleResolution (+21 more)
+Cohesion: 0.06
+Nodes (31): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection, moduleResolution (+23 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.10
@@ -205,32 +228,32 @@ Cohesion: 0.08
 Nodes (23): 14.1 Unified Calendar, 14. CALENDAR, 15.1 Achievement System, 15. ACHIEVEMENTS, 16.1 Dedicated Genre Discovery Page, 16.2 Genre-Relevance Scoring, 16. GENRE, 17.1 Game Scanner (NAS Paths) (+15 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.12
-Nodes (17): libraryKeys, getSpotifyLikedTracksNextPageParam(), LibraryResponse, SpotifyLikedTracks, nextPage, UnmatchedGame, UnmatchedListResponse, useSteamLibraryScan() (+9 more)
+Cohesion: 0.23
+Nodes (9): UnmatchedGame, useSteamLibraryScan(), useSteamStatus(), useUnmatchedSteamGames(), formatDaysAgo(), SteamEmptyState(), steamPlatform, SteamTabContent() (+1 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.11
-Nodes (13): PageMeta, PageMetaContext, usePageMeta(), AppShell(), floatingPill, MenuToggle(), iconBg, MenuDropdown() (+5 more)
+Cohesion: 0.08
+Nodes (17): PageMeta, PageMetaContext, usePageMeta(), NavSearch(), NotificationEvent, RECONNECT_DELAYS, useNotificationToasts(), AppShell() (+9 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.10
-Nodes (21): dependencies, axios, class-variance-authority, clsx, compromise, date-fns, framer-motion, fuse.js (+13 more)
+Cohesion: 0.09
+Nodes (22): dependencies, axios, class-variance-authority, clsx, compromise, date-fns, framer-motion, fuse.js (+14 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.10
-Nodes (21): devDependencies, eslint, @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, jsdom, tailwindcss (+13 more)
+Cohesion: 0.09
+Nodes (22): devDependencies, eslint, @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, jsdom, playwright (+14 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.12
-Nodes (18): FollowButton(), FollowButtonProps, ActivityEvent, FollowCounts, FollowUser, FriendshipStatus, HallOfFameItem, LibraryStats (+10 more)
+Cohesion: 0.11
+Nodes (20): FollowButton(), FollowButtonProps, ActivityEvent, FollowCounts, FollowUser, FriendshipStatus, HallOfFameItem, LibraryStats (+12 more)
 
 ### Community 18 - "Community 18"
 Cohesion: 0.11
-Nodes (14): CurrentTrackInfo, defaultContextValue, PlaybackState, QueueTrack, SavedPlaybackState, sleep(), SpotifyPlayerContext, SpotifyPlayerContextValue (+6 more)
+Nodes (13): CurrentTrackInfo, defaultContextValue, PlaybackState, SavedPlaybackState, sleep(), SpotifyPlayerContext, SpotifyPlayerContextValue, SpotifyPlayerInstance (+5 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.15
-Nodes (15): useSaveSpotifyTrack(), AlbumDetail, TrackOut, useRateTrack(), TrackInlineActions(), TrackInlineActionsProps, ALBUM_AUDIO_FEATURE_ORDER, EMPTY_TRACKS (+7 more)
+Cohesion: 0.17
+Nodes (12): usePlexAlbumTracks(), AlbumDetail, TrackOut, useRateTrack(), ALBUM_AUDIO_FEATURE_ORDER, EMPTY_TRACKS, formatMs(), MusicSection() (+4 more)
 
 ### Community 20 - "Community 20"
 Cohesion: 0.13
@@ -241,19 +264,19 @@ Cohesion: 0.11
 Nodes (11): GenreOption, GenreWithSource, HUE_BG, HUE_RING, HUE_TEXT, LANGUAGES, MEDIA_TYPES, OnboardingPage() (+3 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.15
-Nodes (11): SearchSortBar(), SearchSortBarProps, SORT_OPTIONS, SortValue, onSortChange, onTypeChange, TYPE_OPTIONS, TypeValue (+3 more)
+Cohesion: 0.22
+Nodes (10): SearchSortBar(), SearchSortBarProps, SORT_OPTIONS, SortValue, onSortChange, onTypeChange, TYPE_OPTIONS, TypeValue (+2 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.12
-Nodes (16): DailyMoodCheckIn(), DailyMoodCheckInProps, feelingOptions, FeelingValue, MoodCheckInOut, moodOptions, moodQueryKey, MoodStatus (+8 more)
+Cohesion: 0.17
+Nodes (11): DailyMoodCheckIn(), DailyMoodCheckInProps, feelingOptions, FeelingValue, MoodCheckInOut, moodOptions, moodQueryKey, MoodStatus (+3 more)
 
 ### Community 24 - "Community 24"
 Cohesion: 0.15
 Nodes (16): interactionKeys, COUNT_KEY, InteractionCounts, InteractionOut, InteractionToggleResponse, InteractionType, UserInteractionState, useToggleInteraction() (+8 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (13): useMediaDetail(), CollectionMovie, CollectionSection(), CollectionSectionProps, formatMusicCreditsLine(), formatYear(), isGame(), isMovie() (+5 more)
 
 ### Community 26 - "Community 26"
@@ -265,56 +288,56 @@ Cohesion: 0.12
 Nodes (16): aliases, components, hooks, lib, ui, utils, rsc, $schema (+8 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.15
-Nodes (9): SeasonOut, ShowDetail, EpisodeModal(), EpisodeModalProps, flipTransition, formatDate(), formatRuntime(), ShowSection() (+1 more)
+Cohesion: 0.13
+Nodes (11): EpisodeOut, ExternalRatingOut, SeasonOut, ShowDetail, EpisodeModal(), EpisodeModalProps, flipTransition, formatDate() (+3 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.16
-Nodes (6): DkButton, DkButtonProps, DkCheckbox, DkCheckboxProps, DkSpinner(), buttonVariants
+Cohesion: 0.14
+Nodes (8): DkCheckbox, DkCheckboxProps, DkSpinner(), DkCard, DkCardProps, elevationMap, DkDialog(), DkDialogProps
 
 ### Community 30 - "Community 30"
-Cohesion: 0.17
-Nodes (13): onChange, onChecked, onOpenChange, onRemove, onSwitch, { rerender }, DkTab(), DkTabList() (+5 more)
+Cohesion: 0.25
+Nodes (7): DkTab(), DkTabList(), DkTabPanel(), DkTabs(), DkTabsProps, TabsContext, TabsContextValue
 
 ### Community 31 - "Community 31"
 Cohesion: 0.18
 Nodes (11): SpotifyTrack, useSpotifyLibraryScan(), useSpotifyLikedTracks(), useSpotifyStatus(), LibrarySearchParams, parseSpotifyView(), SpotifyDashboardSection(), SpotifyEmptyState() (+3 more)
 
 ### Community 32 - "Community 32"
-Cohesion: 0.15
-Nodes (11): Image(), ImageProps, Skeleton(), StarRating(), StarRatingProps, cn(), AssetEditor(), IntegrationAction() (+3 more)
+Cohesion: 0.12
+Nodes (13): StarRating(), StarRatingProps, cn(), MediaGrid(), MediaGridProps, SearchField(), SearchFieldProps, AssetEditor() (+5 more)
 
 ### Community 33 - "Community 33"
-Cohesion: 0.21
-Nodes (9): discoverKeys, DiscoverListResponse, discoverQueries, PersonalizedSection, DiscoverFeed(), sections, IN_VIEW_OPTIONS, MediaSection (+1 more)
+Cohesion: 0.40
+Nodes (4): discoverKeys, DiscoverListResponse, discoverQueries, PersonalizedSection
 
 ### Community 34 - "Community 34"
 Cohesion: 0.16
 Nodes (9): apiClient, convertKeysToCamelCase(), convertKeysToSnakeCase(), data, isObject(), originalRequest, refreshQueue, skipRefresh (+1 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.19
-Nodes (10): ListParams, mediaKeys, SearchParams, EpisodeOut, ExternalRatingOut, MediaItemDetail, MediaItemSummary, MediaListResponse (+2 more)
+Cohesion: 0.15
+Nodes (14): ListParams, mediaKeys, SearchParams, MediaItemDetail, MediaItemSummary, MediaListResponse, MediaWatchProvider, MovieDetail (+6 more)
 
 ### Community 36 - "Community 36"
-Cohesion: 0.17
-Nodes (11): useAdminStats(), AdminContent(), AdminHeader(), CHART_TYPES, DeltaBadge(), ENRICHMENT_PROVIDERS, EnrichmentCard(), MEDIA_LABELS (+3 more)
+Cohesion: 0.13
+Nodes (14): useAdminStats(), AdminContent(), AdminHeader(), AdminContent(), AdminHeader(), AdminPage(), CHART_TYPES, DeltaBadge() (+6 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.18
-Nodes (10): episodeInteractionKeys, BulkMarkResponse, EpisodeInteractionsOut, EpisodeInteractionState, EpisodeToggleResponse, ShowProgressOut, useEpisodeInteractions(), useMarkSeasonWatched() (+2 more)
+Cohesion: 0.07
+Nodes (29): ADMIN_BLOG_POSTS, AdminBlogPost, CriterionStatus, CrossIntegration, ExperimentAdminMeta, EXPERIMENTS_ADMIN, getReadinessStats(), IntegrationStatus (+21 more)
 
 ### Community 38 - "Community 38"
 Cohesion: 0.23
 Nodes (9): useAnimatedScore(), UserRatingContent(), UserRatingSection(), UserRatingSectionProps, useRateUser(), userRatingKeys, UserRatingOut, userRatingQueries (+1 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.17
-Nodes (11): ToastTrigger(), ToastDemo(), DkToastProvider(), Toast, ToastContext, ToastContextValue, ToastItem(), ToastVariant (+3 more)
+Cohesion: 0.22
+Nodes (8): DkToastProvider(), Toast, toastAnimation, ToastContext, ToastContextValue, ToastItem(), ToastVariant, variantConfig
 
 ### Community 40 - "Community 40"
-Cohesion: 0.21
-Nodes (9): CORE_TABS, TabBarProps, WishlistEmptyState(), WishlistTabContent(), LIBRARY_TABS, LibraryTab, TAB_LABELS, useSteamWishlist() (+1 more)
+Cohesion: 0.09
+Nodes (23): libraryKeys, CORE_TABS, TabBarProps, WishlistEmptyState(), WishlistTabContent(), getSpotifyLikedTracksNextPageParam(), LIBRARY_TABS, LibraryResponse (+15 more)
 
 ### Community 41 - "Community 41"
 Cohesion: 0.24
@@ -325,8 +348,8 @@ Cohesion: 0.22
 Nodes (8): ProfileSectionRenderer(), ProfileSectionRendererProps, SECTION_COMPONENTS, MILESTONES_LOGIN, MILESTONES_REVIEW, nextMilestone(), StreakShowcaseProps, StreakShowcaseSection()
 
 ### Community 43 - "Community 43"
-Cohesion: 0.20
-Nodes (9): ChatSearchInput, ChatSearchInputProps, MODES, { container }, input, onChange, onSubmit, sendButton (+1 more)
+Cohesion: 0.12
+Nodes (14): ChatSearchInput, ChatSearchInputProps, MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, ModeDef, MODES, { container }, input (+6 more)
 
 ### Community 44 - "Community 44"
 Cohesion: 0.33
@@ -353,8 +376,8 @@ Cohesion: 0.22
 Nodes (9): 6.1 Collaborators, 6.2 List Likes / Follows, 6.3 Drag-and-Drop Reorder UI, 6.4 System Lists, 6.5 List Export / Share, 6.6 List Recommendations, 6.7 Rank Change History, 6.8 Advanced List Options (+1 more)
 
 ### Community 50 - "Community 50"
-Cohesion: 0.36
-Nodes (8): backdropSrc(), formatAlbumDuration(), formatRuntime(), formatYear(), Genre, MediaHero(), MediaHeroProps, mediaTypeLabel()
+Cohesion: 0.20
+Nodes (14): backdropSrc(), formatAlbumDuration(), formatRuntime(), formatYear(), Genre, languageName(), MediaHero(), MediaHeroProps (+6 more)
 
 ### Community 51 - "Community 51"
 Cohesion: 0.22
@@ -397,12 +420,12 @@ Cohesion: 0.29
 Nodes (7): CONTENT_FADE, DiscoverHero(), heroImage(), KEN_BURNS, MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, SLIDE_FADE
 
 ### Community 61 - "Community 61"
-Cohesion: 0.29
-Nodes (6): DiscoverMediaCard, DiscoverMediaCardProps, MediaCarousel, MediaCarouselProps, SKELETON_CONTAINER_STYLE, SKELETON_ITEM_STYLE
+Cohesion: 0.16
+Nodes (7): DiscoverMediaCard, DiscoverMediaCardProps, MediaCarousel, MediaCarouselProps, SKELETON_CONTAINER_STYLE, SKELETON_ITEM_STYLE, SearchResults()
 
 ### Community 62 - "Community 62"
-Cohesion: 0.25
-Nodes (7): AdminMetrics, AdminRecentUser, AdminStats, EnrichmentCounts, MetricPoint, useAdminMetrics(), MetricChart()
+Cohesion: 0.12
+Nodes (15): AdminMetrics, AdminRecentUser, AdminStats, EnrichmentCounts, MediaHydrationItem, MediaHydrationResponse, MetricPoint, useAdminHydration() (+7 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.33
@@ -413,8 +436,8 @@ Cohesion: 0.33
 Nodes (5): CARD_ACCENTS, formatHour(), LibraryBreakdownSection(), MEDIA_TYPE_COLORS, MEDIA_TYPE_LABELS
 
 ### Community 65 - "Community 65"
-Cohesion: 0.29
-Nodes (5): NowPlayingButton(), pillBase, PlexSessionsResponse, PlexSession, PlexSessionList()
+Cohesion: 0.40
+Nodes (4): NowPlayingButton(), pillBase, PlexSessionsResponse, useSpotifyPlayer()
 
 ### Community 66 - "Community 66"
 Cohesion: 0.29
@@ -441,8 +464,8 @@ Cohesion: 0.33
 Nodes (4): MOOD_COLORS, MOOD_LABELS, MoodTimelineSection(), userQueries
 
 ### Community 73 - "Community 73"
-Cohesion: 0.33
-Nodes (4): BROWSE_SORT_OPTIONS, BROWSE_TYPES, BrowsePage(), GenreOption
+Cohesion: 0.25
+Nodes (7): BROWSE_SORT_OPTIONS, BROWSE_TYPES, BrowsePage(), FINANCIAL_SORTS, formatFinancial(), GenreOption, getFinancialSubtitle()
 
 ### Community 74 - "Community 74"
 Cohesion: 0.40
@@ -465,16 +488,16 @@ Cohesion: 0.40
 Nodes (5): SUMMARY: CRITICAL GAPS, Tier 1 — Core User Experience, Tier 2 — Social & Engagement, Tier 3 — Platform Integrations, Tier 4 — Enhanced Experiences
 
 ### Community 79 - "Community 79"
-Cohesion: 0.50
-Nodes (4): adapter(), form, jsonResponse(), seenConfigs
+Cohesion: 0.47
+Nodes (5): adapter(), form, jsonResponse(), seenConfigs, testAdapter()
 
 ### Community 80 - "Community 80"
 Cohesion: 0.40
 Nodes (4): MediaCard, MediaCardProps, mediaTypeColor, mediaTypeLabel
 
 ### Community 81 - "Community 81"
-Cohesion: 0.50
-Nodes (4): MovieDetail, formatCurrency(), MovieSection(), MovieSectionProps
+Cohesion: 0.16
+Nodes (13): ExperimentsContext, ExperimentsState, useExperiment(), useExperiments(), ExperimentDefinition, EXPERIMENTS, Maturity, MATURITY_BADGE_VARIANT (+5 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.40
@@ -489,8 +512,8 @@ Cohesion: 0.40
 Nodes (4): Friend, friendQueries, FriendRequest, FriendshipStatus
 
 ### Community 86 - "Community 86"
-Cohesion: 0.40
-Nodes (3): likedTab, mockNavigate, pulseDivs
+Cohesion: 0.16
+Nodes (13): getClientId(), PlexAudioProvider(), PlexPlayerContext, PlexPlayerContextValue, PlexTrackInfo, usePlexPlayer(), QueueTrack, PlayerContextValue (+5 more)
 
 ### Community 87 - "Community 87"
 Cohesion: 0.50
@@ -501,20 +524,20 @@ Cohesion: 0.50
 Nodes (4): 4.1 Dedicated Discover API Endpoints, 4.2 Continue Watching, 4.3 Discover Cache Warming, 4. DISCOVER
 
 ### Community 89 - "Community 89"
-Cohesion: 0.50
-Nodes (3): DkDropdown(), DkDropdownOption, DkDropdownProps
+Cohesion: 0.13
+Nodes (14): DkDropdown(), DkDropdownOption, DkDropdownProps, DkInput, DkInputProps, onChange, onChecked, onOpenChange (+6 more)
 
 ### Community 90 - "Community 90"
-Cohesion: 0.50
-Nodes (3): DkCard, DkCardProps, elevationMap
+Cohesion: 0.12
+Nodes (15): mockMutate, mockNavigate, mockPlayWithQueue, mockRateTrackMutate, mockRefetch, mockScan, mockSearch, mockSetQueueMetadata (+7 more)
 
 ### Community 91 - "Community 91"
 Cohesion: 0.67
 Nodes (3): DkBadge(), DkBadgeProps, badgeVariants
 
 ### Community 92 - "Community 92"
-Cohesion: 0.50
-Nodes (3): allPathsHtml, allPathsMaskHtml, InfinitySpinner()
+Cohesion: 0.20
+Nodes (16): formatTime(), NowPlayingView(), NowPlayingViewProps, PersonListResponse, PlexSessionsResponse, formatTime(), PersonListResponse, PlayerBarContent() (+8 more)
 
 ### Community 93 - "Community 93"
 Cohesion: 0.67
@@ -528,25 +551,117 @@ Nodes (3): Badge(), BadgeProps, badgeVariants
 Cohesion: 0.50
 Nodes (3): Button, ButtonProps, buttonVariants
 
+### Community 102 - "Community 102"
+Cohesion: 0.14
+Nodes (12): useAdminMetrics(), AdminDashboardPage(), CHART_TYPES, DeltaBadge(), ENRICHMENT_PROVIDERS, EnrichmentCard(), MEDIA_LABELS, MetricChart() (+4 more)
+
+### Community 103 - "Community 103"
+Cohesion: 0.19
+Nodes (9): WorkoutInput(), WorkoutInputProps, DayGroup, formatVolume(), groupWorkoutsByDay(), formatDate(), WorkoutCard(), WorkoutCardProps (+1 more)
+
+### Community 106 - "Community 106"
+Cohesion: 0.21
+Nodes (11): MatchResult, extractWeight(), mergeExercises(), ParsedExercise, ParsedSet, ParseResult, parseSegment(), parseWorkoutInput() (+3 more)
+
+### Community 107 - "Community 107"
+Cohesion: 0.18
+Nodes (9): BadgeRenderer(), BadgeRendererProps, ICON_MAP, TIER_COLORS, ProfileAchievementsSection(), SERIES_DEFINITIONS, StackedSeries, BadgeDef (+1 more)
+
+### Community 125 - "Community 125"
+Cohesion: 0.17
+Nodes (7): mediaQueries, ArtistAlbumsSection(), ArtistAlbumsSectionProps, RecommendationsSection(), RecommendationsSectionProps, SimilarSection(), SimilarSectionProps
+
+### Community 126 - "Community 126"
+Cohesion: 0.18
+Nodes (8): AnimatedShaderBackground, HomePage(), PLACEHOLDERS, TYPE_TABS, WorkoutHomeContentProps, IN_VIEW_OPTIONS, MediaSection, MediaSectionProps
+
+### Community 127 - "Community 127"
+Cohesion: 0.35
+Nodes (8): CompanyDetail, companyQueries, useFollowCompany(), useRateCompany(), useUnfollowCompany(), useUnrateCompany(), BROWSE_TYPES, CompanyDetail()
+
+### Community 128 - "Community 128"
+Cohesion: 0.27
+Nodes (7): EXERCISE_CATALOG, ExerciseEntry, getFuse(), matchAll(), matchExercise(), groups, result
+
+### Community 129 - "Community 129"
+Cohesion: 0.24
+Nodes (7): Image(), ImageProps, { container }, img, mockOnError, skeleton, Skeleton()
+
+### Community 130 - "Community 130"
+Cohesion: 0.22
+Nodes (8): { container }, hitAreas, mockRate, mockSave, ratingContainer, saveBtn, TrackInlineActions(), TrackInlineActionsProps
+
+### Community 131 - "Community 131"
+Cohesion: 0.18
+Nodes (10): episodeInteractionKeys, BulkMarkResponse, EpisodeInteractionsOut, EpisodeInteractionState, EpisodeToggleResponse, ShowProgressOut, useEpisodeInteractions(), useMarkSeasonWatched() (+2 more)
+
+### Community 132 - "Community 132"
+Cohesion: 0.22
+Nodes (5): DragState, PlayerBar(), PlayerPosition, positionToStyle(), SNAP_POINTS
+
+### Community 133 - "Community 133"
+Cohesion: 0.29
+Nodes (8): DEFAULT_PALETTE, ExtractedPalette, extractPalette(), hslToRgb(), isHotRedHue(), relativeLuminance(), Rgb, rgbToHsl()
+
+### Community 134 - "Community 134"
+Cohesion: 0.29
+Nodes (4): likedTab, mockNavigate, pulseDivs, queryClient
+
+### Community 135 - "Community 135"
+Cohesion: 0.25
+Nodes (4): WorkoutHeatmap(), WorkoutHeatmapProps, HeatmapDateEntry, useHeatmap()
+
+### Community 136 - "Community 136"
+Cohesion: 0.22
+Nodes (7): ACHIEVEMENT_GROUPS, BadgeInfo, FaqItem(), FAQS, LEVEL_TITLES, REPUTATION_TIERS, TIER_COLORS
+
+### Community 137 - "Community 137"
+Cohesion: 0.25
+Nodes (7): AdminExperimentsPage(), experimentKeys, INTEGRATION_ICON, STATUS_ICON, STATUS_LABEL, Tab, TABS
+
+### Community 138 - "Community 138"
+Cohesion: 0.29
+Nodes (8): HomeExperience(), WorkoutPageInner(), useCheckIn(), useCreateWorkout(), useDeleteWorkout(), useTodayWorkout(), useUndoCheckIn(), useWorkouts()
+
+### Community 139 - "Community 139"
+Cohesion: 0.29
+Nodes (3): Props, QueryErrorBoundary, State
+
+### Community 140 - "Community 140"
+Cohesion: 0.40
+Nodes (5): TestComponent(), ToastTrigger(), ToastDemo(), useToast(), SpotifyPlayerProvider()
+
+### Community 141 - "Community 141"
+Cohesion: 0.50
+Nodes (3): DkButton, DkButtonProps, buttonVariants
+
+### Community 147 - "Community 147"
+Cohesion: 0.40
+Nodes (5): groupBySection(), ProviderRow(), SECTION_CONFIG, WhereToWatchSection(), WhereToWatchSectionProps
+
+### Community 148 - "Community 148"
+Cohesion: 0.50
+Nodes (3): allPathsHtml, allPathsMaskHtml, InfinitySpinner()
+
 ## Knowledge Gaps
-- **681 isolated node(s):** `tsBuildInfoFile`, `target`, `lib`, `module`, `types` (+676 more)
+- **839 isolated node(s):** `tsBuildInfoFile`, `target`, `lib`, `module`, `types` (+834 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `Community 32` to `Community 0`, `Community 1`, `Community 2`, `Community 4`, `Community 5`, `Community 9`, `Community 13`, `Community 14`, `Community 15`, `Community 19`, `Community 22`, `Community 24`, `Community 25`, `Community 28`, `Community 29`, `Community 30`, `Community 31`, `Community 36`, `Community 39`, `Community 40`, `Community 41`, `Community 44`, `Community 46`, `Community 50`, `Community 51`, `Community 56`, `Community 57`, `Community 60`, `Community 63`, `Community 65`, `Community 73`, `Community 81`, `Community 89`, `Community 91`, `Community 92`, `Community 93`, `Community 94`, `Community 103`, `Community 104`, `Community 106`, `Community 107`?**
-  _High betweenness centrality (0.327) - this node is a cross-community bridge._
-- **Why does `useAuth()` connect `Community 0` to `Community 65`, `Community 1`, `Community 4`, `Community 5`, `Community 38`, `Community 7`, `Community 39`, `Community 11`, `Community 44`, `Community 14`, `Community 17`, `Community 51`, `Community 20`, `Community 21`, `Community 23`, `Community 24`, `Community 58`?**
-  _High betweenness centrality (0.202) - this node is a cross-community bridge._
-- **Why does `clsx` connect `Community 15` to `Community 32`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
-- **Are the 81 inferred relationships involving `cn()` (e.g. with `MediaGrid()` and `SearchField()`) actually correct?**
-  _`cn()` has 81 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 35 inferred relationships involving `useAuth()` (e.g. with `SettingsPage()` and `PreferencesSection()`) actually correct?**
-  _`useAuth()` has 35 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `cn()` connect `Community 32` to `Community 0`, `Community 129`, `Community 1`, `Community 130`, `Community 4`, `Community 5`, `Community 135`, `Community 136`, `Community 137`, `Community 138`, `Community 9`, `Community 13`, `Community 14`, `Community 15`, `Community 19`, `Community 148`, `Community 147`, `Community 22`, `Community 24`, `Community 25`, `Community 28`, `Community 29`, `Community 30`, `Community 31`, `Community 35`, `Community 36`, `Community 39`, `Community 40`, `Community 41`, `Community 44`, `Community 46`, `Community 50`, `Community 51`, `Community 56`, `Community 57`, `Community 60`, `Community 63`, `Community 65`, `Community 73`, `Community 89`, `Community 91`, `Community 92`, `Community 93`, `Community 94`, `Community 102`, `Community 103`, `Community 104`, `Community 125`?**
+  _High betweenness centrality (0.321) - this node is a cross-community bridge._
+- **Why does `useAuth()` connect `Community 0` to `Community 1`, `Community 4`, `Community 5`, `Community 7`, `Community 138`, `Community 11`, `Community 140`, `Community 14`, `Community 17`, `Community 20`, `Community 21`, `Community 23`, `Community 24`, `Community 25`, `Community 32`, `Community 36`, `Community 38`, `Community 44`, `Community 51`, `Community 58`, `Community 62`, `Community 65`, `Community 73`, `Community 92`, `Community 102`, `Community 107`, `Community 127`?**
+  _High betweenness centrality (0.206) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `Community 15` to `Community 82`?**
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
+- **Are the 98 inferred relationships involving `cn()` (e.g. with `MediaGrid()` and `SearchField()`) actually correct?**
+  _`cn()` has 98 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 44 inferred relationships involving `useAuth()` (e.g. with `SettingsPage()` and `PreferencesSection()`) actually correct?**
+  _`useAuth()` has 44 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `tsBuildInfoFile`, `target`, `lib` to the rest of the system?**
-  _681 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _839 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.05552617662612375 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05605499735589635 - nodes in this community are weakly interconnected._

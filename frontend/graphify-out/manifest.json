@@ -5,13 +5,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/tsconfig.app.json": {
-    "mtime": 1779550838.435564,
-    "ast_hash": "1c69b8d5ad07e930cc9a2312f7663acc",
+    "mtime": 1780103175.3077095,
+    "ast_hash": "804db19f193f544887ce8849c51699f5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/package.json": {
-    "mtime": 1779631882.6497314,
-    "ast_hash": "7e054e14028805ef930671b3f3e4c163",
+    "mtime": 1779636285.294129,
+    "ast_hash": "39594d27c16c92a484edee645f383d0f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/components.json": {
@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/vite.config.ts": {
-    "mtime": 1779632535.6119397,
-    "ast_hash": "aa51033d72796c2300a195376dd623ea",
+    "mtime": 1780103173.3159285,
+    "ast_hash": "aa53e4171a03775a64852bf226b30592",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/postcss.config.js": {
@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/main.tsx": {
-    "mtime": 1778779851.9457896,
-    "ast_hash": "735e8ab0621a10eb93993bb2377b7f84",
+    "mtime": 1780070661.8419814,
+    "ast_hash": "f217ceaa4c47abd7de391ea577cdab34",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/test-setup.ts": {
@@ -55,8 +55,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/ui/molecules/media-card.tsx": {
-    "mtime": 1779632339.1238687,
-    "ast_hash": "1e80a50c9192b299ce9d7209bb838178",
+    "mtime": 1780124023.9891512,
+    "ast_hash": "49ad45891e80cc7038623e5c2e930795",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/ui/molecules/search-field.tsx": {
@@ -80,8 +80,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/ui/atoms/logo.tsx": {
-    "mtime": 1777837700.5988927,
-    "ast_hash": "a54d92fb36f8b08a20025d5edd37c337",
+    "mtime": 1780070661.8360722,
+    "ast_hash": "3458d14fff43ac2fe63880163194fc6e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/ui/atoms/badge.tsx": {
@@ -115,8 +115,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/ui/organisms/app-layout.tsx": {
-    "mtime": 1779227607.7606845,
-    "ast_hash": "1d7b3e280b27178e4990760b2fde89f2",
+    "mtime": 1780070661.8379934,
+    "ast_hash": "abfee1074748596f69e0145bbc29527a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/settings/molecules/crop-modal.tsx": {
@@ -125,13 +125,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/settings/organisms/settings-page.tsx": {
-    "mtime": 1779550130.5858748,
-    "ast_hash": "b07a0f00145cabe4f1cf9ef40d92a4c1",
+    "mtime": 1780070661.830358,
+    "ast_hash": "adcf84cbdbc2c374fb278d6e7bbe43b6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/discover-queries.ts": {
-    "mtime": 1779358537.9373267,
-    "ast_hash": "fd7f8fde3472d5c461c11734dd6a804f",
+    "mtime": 1780070661.8102083,
+    "ast_hash": "58765df82dacfc6f51f4276f1bd03cc4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/discover-keys.ts": {
@@ -145,8 +145,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/discover-media-card.tsx": {
-    "mtime": 1779632322.7245944,
-    "ast_hash": "f8bb8537a779eb7e133413d4497c8720",
+    "mtime": 1780070661.8126893,
+    "ast_hash": "e1c646557cea27db0b782410f798d699",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/search-sort-bar.test.tsx": {
@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/chat-search-input.tsx": {
-    "mtime": 1779216347.976541,
-    "ast_hash": "6f062b0492ef15233184aded7380e5d4",
+    "mtime": 1780070661.8115468,
+    "ast_hash": "13f2073e08073ea0e56192d922c815e9",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/chat-search-input.test.tsx": {
@@ -170,8 +170,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/search-sort-bar.tsx": {
-    "mtime": 1779545622.2392635,
-    "ast_hash": "267b1b1cd78366d808a10c2f1eac1055",
+    "mtime": 1780070661.8139575,
+    "ast_hash": "ea5126d2fcdf92ef470ca8659105fd2b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/molecules/daily-mood-check-in.tsx": {
@@ -180,13 +180,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/organisms/search-page.tsx": {
-    "mtime": 1779545599.524365,
-    "ast_hash": "1a36e36a9a625cc8f25072eba1a777b1",
+    "mtime": 1779903745.6842706,
+    "ast_hash": "35aead63491ecda29cda52948ebbae78",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/organisms/home-page.tsx": {
-    "mtime": 1779632494.2472286,
-    "ast_hash": "de30e9dbe13ada4779b26183c0d4e5d3",
+    "mtime": 1780104873.7764592,
+    "ast_hash": "0f6db92dbd4732b6ae133455e7d5bf2b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/organisms/media-section.tsx": {
@@ -200,8 +200,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/organisms/search-results.tsx": {
-    "mtime": 1779355142.1087694,
-    "ast_hash": "a7a874cb8cf0f0df7e71d0acdd37b63f",
+    "mtime": 1780070661.8153806,
+    "ast_hash": "85796d14679096809f8a10eb4534b6b4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/discover/organisms/discover-hero.tsx": {
@@ -220,8 +220,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/types.ts": {
-    "mtime": 1779550084.2683058,
-    "ast_hash": "3b7cad546f23504a0de0e41f550ded8d",
+    "mtime": 1780125763.7862494,
+    "ast_hash": "734d50fbaf7330226cdadb12628574da",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/session-queries.ts": {
@@ -230,8 +230,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/auth-provider.tsx": {
-    "mtime": 1778975494.308197,
-    "ast_hash": "c321c62ea7509f0015828bb342db9ad9",
+    "mtime": 1779637514.9618826,
+    "ast_hash": "ae0448b485b80c69c5a694047723d5df",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/index.ts": {
@@ -240,8 +240,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/molecules/user-menu.tsx": {
-    "mtime": 1779227587.433887,
-    "ast_hash": "243cf71f15967ea9324066647d779522",
+    "mtime": 1780070661.8055546,
+    "ast_hash": "34eccb41019d5e38d6c5da25cc0332f9",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/molecules/auth-header.tsx": {
@@ -255,8 +255,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/organisms/auth-page.tsx": {
-    "mtime": 1778971864.6567357,
-    "ast_hash": "8fcc67581d9a0b761741cf5cb3363970",
+    "mtime": 1779637554.6431584,
+    "ast_hash": "a9b82450c184b88a883761538bd65673",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/auth/organisms/plex-connect-callback-page.tsx": {
@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/person/person-queries.ts": {
-    "mtime": 1779561390.4660506,
-    "ast_hash": "beb98861310887ce76e9dddb1a400d60",
+    "mtime": 1780103486.6823194,
+    "ast_hash": "186092a0462ce5b6af703da581cfb021",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/person/molecules/person-card.tsx": {
@@ -310,13 +310,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/person/organisms/person-detail.tsx": {
-    "mtime": 1779553163.4489927,
-    "ast_hash": "ef130b3044a5f946358b26a11618b476",
+    "mtime": 1780104844.215665,
+    "ast_hash": "701ab2830f73b4646acebd89c8fc6cee",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/spotify/now-playing-button.tsx": {
-    "mtime": 1778975660.465204,
-    "ast_hash": "f5a6a65965b39dd55cf7b61ca19889c2",
+    "mtime": 1780070661.8309274,
+    "ast_hash": "0161c26990fdad6ec59f177e156e41b7",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/spotify/plex-now-playing.tsx": {
@@ -324,14 +324,9 @@
     "ast_hash": "68f00e0a122c51e52cadcadbbc8a3eae",
     "semantic_hash": ""
   },
-  "/Users/dk/dev/Otix/frontend/src/features/spotify/spotify-player-bar.tsx": {
-    "mtime": 1779051151.817824,
-    "ast_hash": "876ab36b20afd671c46e012aa33e889a",
-    "semantic_hash": ""
-  },
   "/Users/dk/dev/Otix/frontend/src/features/spotify/spotify-player-provider.tsx": {
-    "mtime": 1779551030.5537796,
-    "ast_hash": "ec5f5a58542de9d31fbb5d1c8693609e",
+    "mtime": 1780070661.8339174,
+    "ast_hash": "0f8393b4e1208290c23e3de8f0d1f63d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/admin-edit-keys.ts": {
@@ -340,23 +335,18 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/admin-queries.ts": {
-    "mtime": 1779581615.3917544,
-    "ast_hash": "6b35ab0d1febf48388c0ec7f934f7d05",
+    "mtime": 1780079432.3886878,
+    "ast_hash": "2ea5d7fb92d7815744002426b7933c0a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/admin-edit-queries.ts": {
-    "mtime": 1779412797.2842548,
-    "ast_hash": "7497ad5c0ca0041ae3b5642f61d1e8b7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/frontend/src/features/admin/molecules/admin-edit-button.tsx": {
-    "mtime": 1779405238.2883592,
-    "ast_hash": "5bec20d9d2622995d402be982eca90c1",
+    "mtime": 1780125730.910938,
+    "ast_hash": "26d842efd5e6625ceec5e1932817809c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/molecules/admin-actions-menu.tsx": {
-    "mtime": 1779413987.1865,
-    "ast_hash": "7dbeb6a584cb219a4042a08c7d5d3f67",
+    "mtime": 1779658412.8195438,
+    "ast_hash": "9e7616669b1f5f6bccd36da3f123a228",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/molecules/line-chart.tsx": {
@@ -364,29 +354,19 @@
     "ast_hash": "939b29eec4ab81816b0ee4884a5f173a",
     "semantic_hash": ""
   },
-  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-page.tsx": {
-    "mtime": 1779581719.144617,
-    "ast_hash": "16c1cec1b9db922da4853639ea08f9b8",
-    "semantic_hash": ""
-  },
   "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-proposals-page.tsx": {
-    "mtime": 1779412943.2931612,
-    "ast_hash": "69e5980793054b02fac7173c6ed06ef4",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-proposals-list.tsx": {
-    "mtime": 1779411810.813861,
-    "ast_hash": "cb6005084100bcf08227e3ddc01fd129",
+    "mtime": 1780125739.4975693,
+    "ast_hash": "39226e471ddb6bde88ad25bdbfc9f003",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-edit-modal.tsx": {
-    "mtime": 1779412992.54355,
-    "ast_hash": "49fd6b542dd343279c3b82e9c72aff0c",
+    "mtime": 1780125789.606743,
+    "ast_hash": "4029cc3fab4db722c3cfe75ba7ef3338",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/navigation/index.ts": {
-    "mtime": 1777836619.3104656,
-    "ast_hash": "acf61d5820477149b129eb1617909cc0",
+    "mtime": 1779635843.7809095,
+    "ast_hash": "9223df73caaf0f2b5e790704e7d66a2a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/navigation/providers/navigation-provider.tsx": {
@@ -395,48 +375,48 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/navigation/organisms/sidebar.tsx": {
-    "mtime": 1779413069.4276326,
-    "ast_hash": "6ee6624195c2f142a1cf5e603dd5dacd",
+    "mtime": 1780070661.826729,
+    "ast_hash": "d32ce64075ea5fc901e40fb7d66b0a7f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/library-keys.ts": {
-    "mtime": 1778085153.5160434,
-    "ast_hash": "89221f9f3531af58a8cbefa900fd95b5",
+    "mtime": 1779869642.0704603,
+    "ast_hash": "46d7cf8d2e8c91f32018a44e5cbc1505",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/library-queries.ts": {
-    "mtime": 1779052337.4158123,
-    "ast_hash": "b37927dd88faa2e5e4edf85f07559ad1",
+    "mtime": 1780070661.8204732,
+    "ast_hash": "6332da5daa84138f04bb3f3acb0c2c68",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/library-page.test.tsx": {
-    "mtime": 1779052616.5812702,
-    "ast_hash": "2a4a05c2eadee4ae5ca9e3b452ac7bbb",
+    "mtime": 1779898109.8576293,
+    "ast_hash": "757586cf55de0f55d474c69fc6a8e511",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/library-queries.test.ts": {
-    "mtime": 1778793447.7964993,
-    "ast_hash": "67679e4283c715f29e534e0b74988920",
+    "mtime": 1779633056.181671,
+    "ast_hash": "6ff0f2fcf78b25d5c9b761d061df34b6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/library-page.tsx": {
-    "mtime": 1778983458.2305498,
-    "ast_hash": "0a78e535498312d0d7636617f156c315",
+    "mtime": 1780070661.8189433,
+    "ast_hash": "c6d728af60952f834baa79a11d92473d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/platforms/spotify.tsx": {
-    "mtime": 1779052587.5769272,
-    "ast_hash": "57e48cf8288a3cc3e0a2a57583d5e021",
+    "mtime": 1780070661.8212087,
+    "ast_hash": "8e6b67eb33b07d40d70ed2b0b7101e95",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/platforms/steam.tsx": {
-    "mtime": 1778854070.5975769,
-    "ast_hash": "8a549197f7b244e06e543e251754e2a2",
+    "mtime": 1779637147.8520854,
+    "ast_hash": "b2a78660cec50e70938c15df9f46bcb2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/platforms/plex.tsx": {
-    "mtime": 1778854133.7083957,
-    "ast_hash": "c4dd1305f5ae0e288f5474da51fdedf4",
+    "mtime": 1779903398.1783454,
+    "ast_hash": "b989724409e37cea597ee6975b627c72",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/platforms/types.ts": {
@@ -445,7 +425,7 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/library/platforms/registry.test.ts": {
-    "mtime": 1778854702.5036333,
+    "mtime": 1779634076.9634848,
     "ast_hash": "34289963f174dc6b05d000e896a38eaa",
     "semantic_hash": ""
   },
@@ -465,18 +445,18 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/user-queries.ts": {
-    "mtime": 1779231759.259947,
-    "ast_hash": "94834131d16b51222db38efa73cbc8c7",
+    "mtime": 1780125802.0487196,
+    "ast_hash": "5577282ec694744f95fc5e60b921e818",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/molecules/badge-showcase.tsx": {
-    "mtime": 1778984756.3383887,
-    "ast_hash": "26c3cef3493f1a7a8361536a94c794c3",
+    "mtime": 1780070661.8385699,
+    "ast_hash": "1c3eb0eefe4d1e60d38f888f1585aec8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/molecules/user-rating-section.tsx": {
-    "mtime": 1779501615.671669,
-    "ast_hash": "559ae3540243a8277db4f17cc1c00406",
+    "mtime": 1780070661.8394353,
+    "ast_hash": "f10bbeea98f36b763a52888a1373b28a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/molecules/streak-display.tsx": {
@@ -495,8 +475,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/organisms/profile-section-renderer.tsx": {
-    "mtime": 1779502361.470831,
-    "ast_hash": "54cfbd553a751bbda772171907c444a0",
+    "mtime": 1780070661.839892,
+    "ast_hash": "190b612acaf8647ae1137f2292b991f5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/organisms/profile-mood-timeline-section.tsx": {
@@ -505,8 +485,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/organisms/user-profile-page.tsx": {
-    "mtime": 1779502369.0135736,
-    "ast_hash": "dcaa053f7d290806c261a8fa0c6d88b2",
+    "mtime": 1780125821.2973435,
+    "ast_hash": "ed823b562fbc4f13f5cf0e749d0410a0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/user/organisms/profile-library-breakdown-section.tsx": {
@@ -530,8 +510,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/review-queries.ts": {
-    "mtime": 1778984145.181507,
-    "ast_hash": "2244efd5f5076db0acb61b3fa0b3608e",
+    "mtime": 1779799699.9498239,
+    "ast_hash": "a77cdabf0c2f7480410366e0e0d838e8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/review-interactions.test.tsx": {
@@ -540,8 +520,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/molecules/review-composer.tsx": {
-    "mtime": 1778383035.655771,
-    "ast_hash": "73de4973c061bba9da59ea076c8392d6",
+    "mtime": 1779802301.720496,
+    "ast_hash": "6885c711ed3ca79b1edf28195da3d0a3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/molecules/star-input.tsx": {
@@ -550,8 +530,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/molecules/review-card.tsx": {
-    "mtime": 1778985120.5057366,
-    "ast_hash": "5a39e5d772455aec0a27394a9d0e9b71",
+    "mtime": 1779802782.4551568,
+    "ast_hash": "edbcd0bf4b066c456d2ae120a8b70325",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/molecules/review-action-button.tsx": {
@@ -575,8 +555,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/organisms/review-section.tsx": {
-    "mtime": 1778017092.9529757,
-    "ast_hash": "370837e8f6c6f440fa727cf6dd9c504d",
+    "mtime": 1780070661.828152,
+    "ast_hash": "bfc2f3cfc3256fe6396e5d7c5cbb5718",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/review/organisms/ratings-section.tsx": {
@@ -590,8 +570,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/list/list-queries.ts": {
-    "mtime": 1778856505.0791428,
-    "ast_hash": "d581fe4f2fb1dd3a740991cd47cc5b16",
+    "mtime": 1780070661.8216205,
+    "ast_hash": "927d3e5c19794d1076c86871c7f99d48",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/list/list-keys.test.ts": {
@@ -630,13 +610,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/list/organisms/list-detail.tsx": {
-    "mtime": 1779411986.1791964,
-    "ast_hash": "d72f4efe782c355f376287d3f32a4e45",
+    "mtime": 1780070661.8223984,
+    "ast_hash": "9d79887775b664cb24de5579630d8c19",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/browse/organisms/browse-page.tsx": {
-    "mtime": 1779545602.8678389,
-    "ast_hash": "c9247e7a4d09580686214c190f9a8c89",
+    "mtime": 1780104813.349593,
+    "ast_hash": "4082552168eef1d434389993eaba6a9e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/friends/friend-queries.ts": {
@@ -645,13 +625,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/workout/workout-keys.ts": {
-    "mtime": 1778294097.6182404,
-    "ast_hash": "6bdc4a26ac0221a20e29c11b11841139",
+    "mtime": 1779641720.5187354,
+    "ast_hash": "f2563a85cd86d9cac0d8bfaf35e5680c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/workout/workout-queries.ts": {
-    "mtime": 1778325913.9241743,
-    "ast_hash": "b4002bc3f7819372cb864f99d0515f17",
+    "mtime": 1779645199.6999118,
+    "ast_hash": "da6598640bc0d8ced88debd27296f5a4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/workout/molecules/workout-card.tsx": {
@@ -725,13 +705,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/interaction/molecules/interaction-buttons.tsx": {
-    "mtime": 1779578356.9354987,
-    "ast_hash": "c966b1663451df060dbc2f966419f7ad",
+    "mtime": 1780070661.8180904,
+    "ast_hash": "58c3d871e96b76be724903b8e470834a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/dk-ui/dk-ui.test.tsx": {
-    "mtime": 1779545649.0687578,
-    "ast_hash": "ddfc2e4131fe37d21cde238c9277975a",
+    "mtime": 1779633644.4961524,
+    "ast_hash": "cef7bce3af45657b964912561dde1a57",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/dk-ui/showcase.tsx": {
@@ -755,8 +735,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/dk-ui/molecules/toast.tsx": {
-    "mtime": 1777754794.3409164,
-    "ast_hash": "017a9ef00e587ad82a5b95859b9ff420",
+    "mtime": 1780070661.816118,
+    "ast_hash": "ec79dc70e6ff1b7187f1a9864f8ea46e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/dk-ui/atoms/otix-icon.tsx": {
@@ -855,8 +835,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/notifications/organisms/notifications-page.tsx": {
-    "mtime": 1779412759.3498366,
-    "ast_hash": "0c42b9e56ae22c1e6a03699ba267526f",
+    "mtime": 1780070661.8276577,
+    "ast_hash": "088049f7e13cb66d9e1f4141c93544c5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/onboarding/organisms/onboarding-page.tsx": {
@@ -865,13 +845,13 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/media-keys.ts": {
-    "mtime": 1778774509.2835875,
-    "ast_hash": "1ae54a5c187da2601de7bad2b5c1b01c",
+    "mtime": 1780100323.7117014,
+    "ast_hash": "441969606e1eb3ecdc7f49e9a87ccf4b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/media-queries.ts": {
-    "mtime": 1779404064.108336,
-    "ast_hash": "92df3c28c905d7ce8f79b043b8c5618d",
+    "mtime": 1780101781.2952614,
+    "ast_hash": "ea6dc22054ce76f99e95ce231e2f5bce",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/molecules/track-inline-actions.tsx": {
@@ -885,8 +865,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/music-section.tsx": {
-    "mtime": 1778779851.9416227,
-    "ast_hash": "9507cb06dbc4e2aadee9b89f34a9f55f",
+    "mtime": 1780070661.8260872,
+    "ast_hash": "70528d6d0ac2029ec710b433a1dc54e3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/show-section.tsx": {
@@ -895,23 +875,23 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/media-detail.tsx": {
-    "mtime": 1779549887.7170703,
-    "ast_hash": "340122263f2ca0f2ae018762aae54f9f",
+    "mtime": 1780126254.0940506,
+    "ast_hash": "3ae91b90599d50a667c94430ff887222",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/media-hero.tsx": {
-    "mtime": 1779498449.0151486,
-    "ast_hash": "ac908f8b908fc1e5bf4de5a9ec6eb019",
+    "mtime": 1780126209.4192955,
+    "ast_hash": "645aba877df077ad2d098a4baa8a4c01",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/movie-section.tsx": {
-    "mtime": 1779503872.541395,
-    "ast_hash": "eeb59390c9d46eee4fd9a2018f7598f2",
+    "mtime": 1779802972.9167051,
+    "ast_hash": "263bf24492853b53e6441c1eb7a3dbeb",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/collection-section.tsx": {
-    "mtime": 1777968532.0811708,
-    "ast_hash": "23e196bb8aba453ab63289fa8b82d7ae",
+    "mtime": 1779646322.699282,
+    "ast_hash": "9aabe0f75f0d9356c472fd0acabffb3d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/features/media/organisms/cast-crew-list.tsx": {
@@ -930,8 +910,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/api-client.test.ts": {
-    "mtime": 1778347862.7187428,
-    "ast_hash": "86750b598a6f30df492208d4dd23d9ea",
+    "mtime": 1779633591.8562994,
+    "ast_hash": "207f4438cfd6cfeb36193b8c3909166c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/api-client.ts": {
@@ -940,8 +920,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/query-client.ts": {
-    "mtime": 1777752136.021651,
-    "ast_hash": "bc64b815c798fce33c5906464fbc3301",
+    "mtime": 1779634635.820592,
+    "ast_hash": "ed671cd3effc243d82f81a013987843f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/crop-image.ts": {
@@ -965,8 +945,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/router.tsx": {
-    "mtime": 1779413032.4739091,
-    "ast_hash": "18d374345c0bba9b040c41c050badeb6",
+    "mtime": 1780104855.6052,
+    "ast_hash": "59fc9df55da3ff7f709f5cbd7e184d49",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/frontend/src/lib/shader-quality.tsx": {
@@ -1067,6 +1047,206 @@
   "/Users/dk/dev/Otix/frontend/src/assets/provider-logos/tmdb.svg": {
     "mtime": 1778352656.8008215,
     "ast_hash": "faa352fc5551f0d96af95cd016fbdc89",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/ui/atoms/image.test.tsx": {
+    "mtime": 1779646339.0949328,
+    "ast_hash": "b4e64583ca4200a7bfe4cdbd4731d633",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/settings/molecules/position-modal.tsx": {
+    "mtime": 1780123960.0035133,
+    "ast_hash": "2f2fc45c89df620f41fd0734b0aafa2c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/experiments/experiments-provider.tsx": {
+    "mtime": 1779997338.5201392,
+    "ast_hash": "a16941fbef94fccfb64ef245344e073f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/experiments/experiments.types.ts": {
+    "mtime": 1780125385.7851894,
+    "ast_hash": "f541eacdcebd9bb5ba05c04c1271859d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/experiments/experiments-admin.types.ts": {
+    "mtime": 1780047059.3544614,
+    "ast_hash": "17df803eade1e8f13de89f843199fe70",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/experiments/molecules/experiment-guard.tsx": {
+    "mtime": 1779997345.2495797,
+    "ast_hash": "4474a2aacd106879c8b1a189cebeb509",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/experiments/organisms/experiments-section.tsx": {
+    "mtime": 1779997368.074987,
+    "ast_hash": "550959028c2d0972bbb1f5eb9d7fa975",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/use-palette.ts": {
+    "mtime": 1779962022.675144,
+    "ast_hash": "49cec84aa2b68a7fb09e95061ffdcbbd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/player-bar.tsx": {
+    "mtime": 1779929344.8876855,
+    "ast_hash": "7f647ba2f18769ba2ce7379b36d251af",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/use-player.tsx": {
+    "mtime": 1780070661.8354979,
+    "ast_hash": "2ac9473be251202d4335dff838dfbe75",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/now-playing-view.tsx": {
+    "mtime": 1779963064.7578235,
+    "ast_hash": "dd08cc22cddb94c940d49c1c8234317d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/types.ts": {
+    "mtime": 1780070661.8344507,
+    "ast_hash": "5f0045ffd44a670a8d6221b410b93628",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/plex-audio-provider.tsx": {
+    "mtime": 1780070661.83277,
+    "ast_hash": "a80c8a5a664e5c0ffc029f4190475ee1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/spotify/player-bar-content.tsx": {
+    "mtime": 1780070661.8319867,
+    "ast_hash": "688b46f6700754a3e99d6dd65f14863b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/admin-blog.types.ts": {
+    "mtime": 1780076076.8770516,
+    "ast_hash": "407932e2cdeb8b5d48c57cb7dfb441b6",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/molecules/proposal-card.tsx": {
+    "mtime": 1780125676.5776885,
+    "ast_hash": "11ccfcae7796981443c9ad4bd0fe1f8d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/molecules/pipeline-flow-diagram.tsx": {
+    "mtime": 1780045731.5820923,
+    "ast_hash": "07881925b72f06c245014ec9e88da349",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-blog-post-page.tsx": {
+    "mtime": 1780045895.5848567,
+    "ast_hash": "03a2658580c24caf8faf1f9fab9ab64f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-experiments-page.tsx": {
+    "mtime": 1780045754.0054538,
+    "ast_hash": "71145fad42773042ecd1d05e4c831729",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-home-page.tsx": {
+    "mtime": 1780078687.8463264,
+    "ast_hash": "b8bff3642474f876cd3011ba9db1e36c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-dashboard-page.tsx": {
+    "mtime": 1779998171.3062816,
+    "ast_hash": "b94827c8163cd825090da6c17bb04e8a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/admin/organisms/admin-hydration-page.tsx": {
+    "mtime": 1780100065.2975497,
+    "ast_hash": "91c64019599d7f80ddb547ae74340a23",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/navigation/molecules/nav-search.tsx": {
+    "mtime": 1779636728.4139843,
+    "ast_hash": "aad81289531384f06ad4531c2d86d07d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/library/platforms/platforms.test.tsx": {
+    "mtime": 1779898186.6741564,
+    "ast_hash": "91c339d11375fb995f473114db8a6acd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/user/molecules/badge-renderer.tsx": {
+    "mtime": 1779987807.5917356,
+    "ast_hash": "1893ea643755f7c70aa86af5c4e8d621",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/user/organisms/profile-achievements-section.tsx": {
+    "mtime": 1779987936.9277263,
+    "ast_hash": "020b0caa6c3686ea3b75ce3895598c1a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/about/organisms/about-page.tsx": {
+    "mtime": 1779984596.222982,
+    "ast_hash": "b0c3cfa37ce77c048815bf16b61c95fe",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/workout/molecules/workout-heatmap.tsx": {
+    "mtime": 1779644301.111316,
+    "ast_hash": "3202ea95da8bfa66d6849b858221bfa3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/dk-ui/atoms/select.tsx": {
+    "mtime": 1779657688.3219182,
+    "ast_hash": "a8937d31990aff844db9d0614ed03b1a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/dk-ui/atoms/textarea.tsx": {
+    "mtime": 1779657680.2323585,
+    "ast_hash": "e3ddf286989d65e3a53e851ec366e57b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/notifications/use-notification-toasts.ts": {
+    "mtime": 1779967091.3161993,
+    "ast_hash": "45a333660413c5995f99499f96e17994",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/company/company-queries.ts": {
+    "mtime": 1780104110.1589062,
+    "ast_hash": "097d841c6292aa42ff0b6e2597bca288",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/company/organisms/company-detail.tsx": {
+    "mtime": 1780104831.1279306,
+    "ast_hash": "880b15dfa556e4f49f12493aaf803fec",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/media/molecules/track-inline-actions.test.tsx": {
+    "mtime": 1779646338.0169177,
+    "ast_hash": "4414a40508910008f87e9cd7b2d2672a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/media/organisms/artist-albums-section.tsx": {
+    "mtime": 1780048685.6573236,
+    "ast_hash": "4e7ffc8066481be960a6312d33906860",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/media/organisms/similar-section.tsx": {
+    "mtime": 1780048688.1354864,
+    "ast_hash": "a53340561880b3b0803e7fd27a692e95",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/media/organisms/recommendations-section.tsx": {
+    "mtime": 1780048690.4603026,
+    "ast_hash": "1f374dc4c473c6a4eb1ba878f8c34c9f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/components/query-error-boundary.tsx": {
+    "mtime": 1779632947.3978004,
+    "ast_hash": "d136d6e3116b826f82437a6af92c1a0a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/lib/image-position.ts": {
+    "mtime": 1780123945.6458015,
+    "ast_hash": "1972b7d296da44f66094889a50e1b24f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/frontend/src/features/media/organisms/where-to-watch-section.tsx": {
+    "mtime": 1780126243.577925,
+    "ast_hash": "fad91a8be51c3f0c4954317651ceb75e",
     "semantic_hash": ""
   }
 }
