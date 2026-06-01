@@ -1,5 +1,5 @@
 // frontend/src/features/game-scanner/organisms/match-games-modal.tsx
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   X,
   Search,
@@ -40,7 +40,10 @@ export function MatchGamesModal({
   games,
   onLinkGame,
 }: MatchGamesModalProps) {
-  const unmatched = games.filter((g) => !g.otixMediaId);
+  const unmatched = useMemo(
+    () => games.filter((g) => !g.otixMediaId),
+    [games],
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<OtixGame[]>([]);
@@ -55,7 +58,7 @@ export function MatchGamesModal({
   // Auto-search when selecting a game
   useEffect(() => {
     if (selectedId) {
-      const game = unmatched.find((g) => g.id === selectedId);
+      const game = games.find((g) => g.id === selectedId);
       if (game) {
         setQuery(game.title);
         // Trigger search immediately with game title
@@ -88,7 +91,7 @@ export function MatchGamesModal({
           .finally(() => setLoading(false));
       }
     }
-  }, [selectedId, unmatched]);
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced search
   const handleSearch = useCallback(
