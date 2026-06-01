@@ -37,7 +37,7 @@ function parseUpdateVersion(filename: string): {
     const from = rangeMatch[1];
     const to = rangeMatch[2];
     const matchIdx = name.indexOf(rangeMatch[0]);
-    let clean = name
+    const clean = name
       .substring(0, matchIdx)
       .trim()
       .replace(/[-_\s]+$/, "")
@@ -51,7 +51,7 @@ function parseUpdateVersion(filename: string): {
   if (singleMatch) {
     const to = singleMatch[1];
     const matchIdx = name.indexOf(singleMatch[0]);
-    let clean = name
+    const clean = name
       .substring(0, matchIdx)
       .trim()
       .replace(/[-_\s]+$/, "")
