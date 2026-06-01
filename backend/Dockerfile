@@ -32,7 +32,11 @@ COPY --from=builder /app /app
 
 # Pre-download the ONNX embedding model so it doesn't fail at runtime
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
-RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5')"
+
+# TODO GPU: Set OTIX_EMBEDDING_API_URL to a GPU embedding server (Ollama/TEI)
+# to use Qwen3-Embedding-8B instead of the CPU ONNX model.
+# Example: OTIX_EMBEDDING_API_URL=http://ollama:11434/api/embed
 
 EXPOSE 8000
 
