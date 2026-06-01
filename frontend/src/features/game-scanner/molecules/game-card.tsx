@@ -42,6 +42,10 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const hasBackground = backgroundUrl && !posterError;
   const hasLogo = game.otixLogoUrl && !logoError;
   const isMatched = !!game.otixMediaId;
+  const mediaId = game.otixMediaId || game.otixMatchSuggestion?.mediaId;
+  const linkTo = mediaId
+    ? { to: "/media/$mediaType/$mediaId" as const, params: { mediaType: "game" as const, mediaId } }
+    : null;
 
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,8 +74,8 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
           <img
             src={backgroundUrl!}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out"
-            style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out scale-110"
+            style={{ transform: isHovered ? "scale(1)" : undefined }}
             onError={() => setPosterError(true)}
           />
           {/* Dark overlay for contrast against logo */}
@@ -141,11 +145,11 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
 
       {/* Floating game logo — the premium visual centrepiece */}
       {hasLogo ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center p-6 transition-all duration-300 group-hover:scale-105">
+        <div className="absolute inset-0 z-10 flex items-center justify-center p-6">
           <img
             src={game.otixLogoUrl!}
             alt={game.title}
-            className="max-h-[60%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)]"
+            className="max-h-[60%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-110"
             onError={() => setLogoError(true)}
           />
         </div>
@@ -226,17 +230,14 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
     </motion.div>
   );
 
-  if (isMatched) {
-    return (
-      <Link
-        to="/media/$mediaType/$mediaId"
-        params={{ mediaType: "game", mediaId: game.otixMediaId! }}
-        className="block"
-      >
-        {cardContent}
-      </Link>
-    );
-  }
+  const Wrapper = linkTo ? Link : "div";
+  const wrapperProps = linkTo
+    ? { to: linkTo.to, params: linkTo.params, className: "block" }
+    : {};
 
-  return cardContent;
+  return (
+    <Wrapper {...(wrapperProps as any)}>
+      {cardContent}
+    </Wrapper>
+  );
 }
