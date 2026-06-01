@@ -94,7 +94,40 @@ export function GameScannerTab() {
     }
   }, [isoPaths]);
 
-  // Scan
+  // Scan launcher libraries (Epic, GOG, Battle.net, etc.)
+  const [scanningLaunchers, setScanningLaunchers] = useState(false);
+  const handleScanLaunchers = useCallback(async () => {
+    if (!hasElectronAPI()) return;
+
+    setScanningLaunchers(true);
+    try {
+      const api = (window as any).electronAPI;
+      const results = await api.scanLaunchers();
+      const launcherGames: DetectedGame[] = [];
+      for (const result of results) {
+        launcherGames.push(...result.games);
+      }
+
+      if (launcherGames.length === 0) return;
+
+      // Merge with existing games: keep directory-scanned games, add launcher games
+      const existingIds = new Set(games.map((g) => g.id));
+      const newGames = launcherGames.filter((g) => !existingIds.has(g.id));
+      const merged = [...games, ...newGames];
+
+      // Match against Otix catalog
+      if (merged.length > 0) {
+        const matched = await matchMutation.mutateAsync(merged);
+        setGames(matched);
+      }
+    } catch (err) {
+      console.error('Launcher scan failed:', err);
+    } finally {
+      setScanningLaunchers(false);
+    }
+  }, [games, matchMutation]);
+
+  // Scan directories for games
   const handleScan = useCallback(async () => {
     if (gamePaths.length === 0 && isoPaths.length === 0) return;
 
@@ -163,6 +196,14 @@ export function GameScannerTab() {
       steam: 0,
       pc: 0,
       iso: 0,
+      epic: 0,
+      gog: 0,
+      battlenet: 0,
+      ubisoft: 0,
+      ea: 0,
+      riot: 0,
+      xbox: 0,
+      itch: 0,
     };
     for (const g of games) {
       if (counts[g.platform] !== undefined) {
@@ -171,6 +212,37 @@ export function GameScannerTab() {
     }
     return counts;
   }, [games]);
+
+  // Accept/reject match suggestions
+  const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
+    setGames((prev) =>
+      prev.map((g) =>
+        g.id === game.id && game.otixMatchSuggestion
+          ? {
+              ...g,
+              otixMediaId: game.otixMatchSuggestion.mediaId,
+              otixMediaTitle: game.otixMatchSuggestion.title,
+              otixMediaSlug: game.otixMatchSuggestion.slug,
+              otixMatchSuggestion: undefined,
+            }
+          : g,
+      ),
+    );
+  }, []);
+
+  const handleRejectSuggestion = useCallback((game: DetectedGame) => {
+    setGames((prev) =>
+      prev.map((g) =>
+        g.id === game.id
+          ? {
+              ...g,
+              otixConfidence: undefined,
+              otixMatchSuggestion: undefined,
+            }
+          : g,
+      ),
+    );
+  }, []);
 
   // Clear filters
   const handleClearFilters = useCallback(() => {
@@ -203,6 +275,16 @@ export function GameScannerTab() {
                 Matched
               </p>
             </div>
+            {games.filter((g) => g.otixMatchSuggestion).length > 0 && (
+              <div className="text-center">
+                <p className="text-lg font-bold tabular-nums text-blue-400">
+                  {games.filter((g) => g.otixMatchSuggestion).length}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Suggested
+                </p>
+              </div>
+            )}
             <div className="text-center">
               <p className="text-lg font-bold tabular-nums">
                 {new Set(games.map((g) => g.platform)).size}
@@ -223,6 +305,16 @@ export function GameScannerTab() {
                 className={`h-4 w-4 ${matchMutation.isPending ? "animate-spin" : ""}`}
               />
               Scan Now
+            </button>
+            <button
+              onClick={handleScanLaunchers}
+              disabled={scanningLaunchers || matchMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-glass)] px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.97] disabled:opacity-40"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${scanningLaunchers ? "animate-spin" : ""}`}
+              />
+              Scan Launchers
             </button>
             <button
               onClick={() => setInstallerOpen(true)}
@@ -261,26 +353,48 @@ export function GameScannerTab() {
 
       {/* No dirs yet */}
       {!scanning && !hasDirs && (
-        <EmptyState
-          variant="no-dirs"
-          onAddGameDir={handleAddGameDir}
-          onAddIsoDir={handleAddIsoDir}
-        />
+        <>
+          <EmptyState
+            variant="no-dirs"
+            onAddGameDir={handleAddGameDir}
+            onAddIsoDir={handleAddIsoDir}
+          />
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleScanLaunchers}
+              disabled={scanningLaunchers || matchMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-40"
+            >
+              <RefreshCw className={`h-4 w-4 ${scanningLaunchers ? "animate-spin" : ""}`} />
+              Scan Installed Launchers
+            </button>
+          </div>
+        </>
       )}
 
       {/* Has dirs but no games, show scan prompt */}
       {!scanning && hasDirs && !hasGames && (
         <div className="space-y-4">
-          <button
-            onClick={handleScan}
-            disabled={matchMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-40"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${matchMutation.isPending ? "animate-spin" : ""}`}
-            />
-            Scan for Games
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleScan}
+              disabled={matchMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] transition-all hover:bg-primary/90 active:scale-[0.97] disabled:opacity-40"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${matchMutation.isPending ? "animate-spin" : ""}`}
+              />
+              Scan for Games
+            </button>
+            <button
+              onClick={handleScanLaunchers}
+              disabled={scanningLaunchers || matchMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-glass)] px-5 py-3 text-sm font-semibold text-foreground backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.97] disabled:opacity-40"
+            >
+              <RefreshCw className={`h-4 w-4 ${scanningLaunchers ? "animate-spin" : ""}`} />
+              Scan Launchers
+            </button>
+          </div>
           <EmptyState variant="no-games" />
         </div>
       )}
@@ -309,7 +423,11 @@ export function GameScannerTab() {
 
           {/* Game grid or no-results */}
           {hasFilteredGames ? (
-            <GameGrid games={filteredGames} />
+            <GameGrid
+              games={filteredGames}
+              onAcceptSuggestion={handleAcceptSuggestion}
+              onRejectSuggestion={handleRejectSuggestion}
+            />
           ) : (
             <EmptyState
               variant="no-results"
