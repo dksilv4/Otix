@@ -268,11 +268,11 @@ export function PersonDetail() {
       <section>
         <h2 className="mb-4 text-lg font-semibold">Credits</h2>
         <PersonTimelineFilters
-          mediaTypeFilter={search.mediaType}
+          mediaTypeFilter={search.mediaType || 'all'}
           onMediaTypeChange={(value) => {
             updateSearch({ mediaType: value || 'all', role: 'all' })
           }}
-          roleFilter={search.role}
+          roleFilter={search.role || 'all'}
           onRoleChange={(value) => {
             updateSearch({ role: value || 'all', mediaType: 'all' })
           }}
@@ -280,8 +280,8 @@ export function PersonDetail() {
         <div className="mt-6">
           <PersonTimeline
             credits={person.credits}
-            mediaTypeFilter={search.mediaType}
-            roleFilter={search.role}
+            mediaTypeFilter={search.mediaType || 'all'}
+            roleFilter={search.role || 'all'}
           />
         </div>
       </section>

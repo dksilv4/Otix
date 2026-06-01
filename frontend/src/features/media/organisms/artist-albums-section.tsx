@@ -36,7 +36,7 @@ export function ArtistAlbumsSection({
       }
       acc.items.push(item)
       return acc
-    }, { items: [] as typeof data.items, seen: new Set<string>() }).items
+    }, { items: [] as NonNullable<typeof data>['items'], seen: new Set<string>() }).items
 
   if (isLoading || albums.length === 0) return null
 

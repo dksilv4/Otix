@@ -142,7 +142,7 @@ export function PlayerBarContent({
     const person = data.items.find((item) => item.name.toLowerCase() === artistName.toLowerCase())
       ?? data.items[0]
     if (person) {
-      navigate({ to: '/person/$personId', params: { personId: person.id } })
+      navigate({ to: '/person/$personId', params: { personId: person.id }, search: {} })
     }
   }
 

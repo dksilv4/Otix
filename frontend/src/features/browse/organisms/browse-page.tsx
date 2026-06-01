@@ -10,8 +10,8 @@ import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth'
-import { MediaCard } from '@/features/ui/molecules/media-card'
-import { MediaGrid } from '@/features/ui/molecules/media-grid'
+import { MediaCard } from '@ui/molecules/media-card'
+import { MediaGrid } from '@ui/molecules/media-grid'
 import { Skeleton } from '@ui/atoms/skeleton'
 
 const BROWSE_TYPES = [
@@ -279,7 +279,7 @@ export function BrowsePage() {
         <>
           <MediaGrid>
             {items.map((item: MediaItemSummary) => {
-              const finSub = getFinancialSubtitle(item, search.sort)
+              const finSub = getFinancialSubtitle(item, search.sort || '')
               return (
                 <MediaCard
                   key={item.id}

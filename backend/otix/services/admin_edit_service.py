@@ -18,9 +18,17 @@ from otix.lib.xp import (
 )
 
 _ALLOWED_FIELDS = {
-    "title", "overview", "poster_url", "textless_poster_url",
-    "backdrop_url", "logo_url", "original_language", "release_date",
-    "tagline", "status", "runtime",
+    "title",
+    "overview",
+    "poster_url",
+    "textless_poster_url",
+    "backdrop_url",
+    "logo_url",
+    "original_language",
+    "release_date",
+    "tagline",
+    "status",
+    "runtime",
 }
 
 
@@ -36,9 +44,7 @@ class AdminEditService:
         image_overrides: list[dict] | None = None,
     ) -> MediaEditProposal:
         # Snapshot original values for fields being changed so undo can restore them
-        media_item = await self.session.scalar(
-            select(MediaItem).where(MediaItem.id == media_item_id)
-        )
+        media_item = await self.session.scalar(select(MediaItem).where(MediaItem.id == media_item_id))
         if media_item is None:
             raise ValueError("Media item not found")
 
@@ -46,6 +52,79 @@ class AdminEditService:
         for field in _ALLOWED_FIELDS:
             if field in (changes or {}) and hasattr(media_item, field):
                 original_values[field] = getattr(media_item, field)
+
+        # Auto-approve if proposer is an admin
+        proposer = None
+        if proposer_user_id:
+            proposer = await self.session.scalar(select(User).where(User.id == proposer_user_id))
+
+        if proposer and proposer.is_admin:
+            # Apply changes directly to media item
+            for field, value in (changes or {}).items():
+                if field in _ALLOWED_FIELDS and hasattr(media_item, field):
+                    setattr(media_item, field, value)
+
+            # Upsert image overrides
+            if image_overrides:
+                for override in image_overrides:
+                    image_type = override.get("image_type")
+                    language_code = override.get("language_code")
+                    url = override.get("url")
+                    if not image_type or not language_code or not url:
+                        continue
+                    existing = await self.session.scalar(
+                        select(MediaImageOverride).where(
+                            MediaImageOverride.media_item_id == media_item_id,
+                            MediaImageOverride.image_type == image_type,
+                            MediaImageOverride.language_code == language_code,
+                        )
+                    )
+                    if existing:
+                        existing.url = url
+                        existing.is_active = True
+                    else:
+                        new_override = MediaImageOverride(
+                            media_item_id=media_item_id,
+                            image_type=image_type,
+                            language_code=language_code,
+                            url=url,
+                            created_by_user_id=proposer_user_id,
+                        )
+                        self.session.add(new_override)
+
+            proposal = MediaEditProposal(
+                media_item_id=media_item_id,
+                proposer_user_id=proposer_user_id,
+                approver_user_id=proposer_user_id,
+                changes=changes,
+                image_overrides=image_overrides,
+                original_values=original_values or None,
+                status="approved",
+            )
+            self.session.add(proposal)
+            await self.session.flush()
+
+            # Invalidate cached media detail
+            redis = await get_redis()
+            cache_pattern = f"media:detail:{media_item_id}:*"
+            keys = [key async for key in redis.scan_iter(match=cache_pattern, count=100)]
+            if keys:
+                await redis.delete(*keys)
+
+            proposal = await self.session.scalar(
+                select(MediaEditProposal)
+                .options(
+                    joinedload(MediaEditProposal.proposer),
+                    joinedload(MediaEditProposal.approver),
+                )
+                .where(MediaEditProposal.id == proposal.id)
+            )
+
+            app.send_task("xp.award", args=[proposer_user_id, EDIT_PROPOSAL_CREATE])
+            app.send_task("streak.update", args=[proposer_user_id])
+            app.send_task("gamification.check_badges", args=[proposer_user_id])
+
+            return proposal
 
         proposal = MediaEditProposal(
             media_item_id=media_item_id,
@@ -92,9 +171,7 @@ class AdminEditService:
         # Apply field changes to the media item
         media_item = proposal.media_item
         if media_item is None:
-            media_item = await self.session.scalar(
-                select(MediaItem).where(MediaItem.id == proposal.media_item_id)
-            )
+            media_item = await self.session.scalar(select(MediaItem).where(MediaItem.id == proposal.media_item_id))
         if media_item is None:
             raise ValueError("Media item not found")
 
@@ -200,9 +277,7 @@ class AdminEditService:
         if proposal.original_values:
             media_item = proposal.media_item
             if media_item is None:
-                media_item = await self.session.scalar(
-                    select(MediaItem).where(MediaItem.id == proposal.media_item_id)
-                )
+                media_item = await self.session.scalar(select(MediaItem).where(MediaItem.id == proposal.media_item_id))
             if media_item:
                 for field, value in proposal.original_values.items():
                     if hasattr(media_item, field):
@@ -278,13 +353,9 @@ class AdminEditService:
 
         return proposal
 
-    async def vote(
-        self, proposal_id: str, user_id: str, vote_type: str
-    ) -> str | None:
+    async def vote(self, proposal_id: str, user_id: str, vote_type: str) -> str | None:
         """Cast or toggle a vote. Returns the resulting vote_type or None if toggled off."""
-        proposal = await self.session.scalar(
-            select(MediaEditProposal).where(MediaEditProposal.id == proposal_id)
-        )
+        proposal = await self.session.scalar(select(MediaEditProposal).where(MediaEditProposal.id == proposal_id))
         if proposal is None:
             raise ValueError("Proposal not found")
         if proposal.status != "pending":
@@ -324,7 +395,9 @@ class AdminEditService:
                 return vote_type
         else:
             vote = ProposalVote(
-                user_id=user_id, proposal_id=proposal_id, vote_type=vote_type,
+                user_id=user_id,
+                proposal_id=proposal_id,
+                vote_type=vote_type,
             )
             self.session.add(vote)
             if vote_type == "up":
@@ -345,9 +418,7 @@ class AdminEditService:
         if not existing:
             return False
 
-        proposal = await self.session.scalar(
-            select(MediaEditProposal).where(MediaEditProposal.id == proposal_id)
-        )
+        proposal = await self.session.scalar(select(MediaEditProposal).where(MediaEditProposal.id == proposal_id))
         if existing.vote_type == "up":
             proposal.upvote_count = max(0, proposal.upvote_count - 1)
         else:
@@ -358,7 +429,10 @@ class AdminEditService:
         return True
 
     async def get_all_proposals(
-        self, status: str | None = None, limit: int = 50, offset: int = 0,
+        self,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
     ) -> tuple[list[MediaEditProposal], int]:
         query = (
             select(MediaEditProposal)
@@ -404,9 +478,7 @@ class AdminEditService:
             .where(MediaEditProposal.id == proposal_id)
         )
 
-    async def get_user_votes_for_proposals(
-        self, user_id: str, proposal_ids: list[str]
-    ) -> dict[str, str]:
+    async def get_user_votes_for_proposals(self, user_id: str, proposal_ids: list[str]) -> dict[str, str]:
         """Return {proposal_id: vote_type} for a user across a batch of proposals."""
         votes = await self.session.scalars(
             select(ProposalVote).where(
@@ -416,9 +488,7 @@ class AdminEditService:
         )
         return {v.proposal_id: v.vote_type for v in votes}
 
-    async def get_image_overrides_for_media(
-        self, media_item_id: str
-    ) -> dict[str, dict[str, str]]:
+    async def get_image_overrides_for_media(self, media_item_id: str) -> dict[str, dict[str, str]]:
         """Return {image_type: {language_code: url}} for active overrides."""
         overrides = await self.session.scalars(
             select(MediaImageOverride).where(
@@ -432,9 +502,7 @@ class AdminEditService:
         return result
 
     @staticmethod
-    async def get_protected_image_types(
-        session: AsyncSession, media_item_id: str
-    ) -> set[str]:
+    async def get_protected_image_types(session: AsyncSession, media_item_id: str) -> set[str]:
         """Return image types that have an active '*' override (protected from syncs)."""
         overrides = await session.scalars(
             select(MediaImageOverride.image_type).where(
@@ -470,7 +538,12 @@ class AdminEditService:
         )
 
     async def _notify_proposer(
-        self, user_id: str, type_: str, title: str, media_title: str, proposal_id: str,
+        self,
+        user_id: str,
+        type_: str,
+        title: str,
+        media_title: str,
+        proposal_id: str,
     ) -> None:
         from otix.services.notification_service import NotificationService
 

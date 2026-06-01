@@ -272,6 +272,7 @@ export const mediaQueries = {
     genre?: string
     company?: string
     language?: string
+    certification?: string
     isAnime?: boolean | null
     hasArtwork?: boolean
     sortBy?: string
@@ -312,6 +313,7 @@ export const mediaQueries = {
     genre?: string
     company?: string
     language?: string
+    certification?: string
     isAnime?: boolean | null
     hasArtwork?: boolean
     sortBy?: string

@@ -16,6 +16,8 @@ const badgeVariants = cva(
         movie: 'text-white shadow-sm',
         show: 'text-white shadow-sm',
         game: 'text-white shadow-sm',
+        music: 'text-white shadow-sm',
+        outline: 'border border-input text-foreground',
       },
       size: {
         sm: 'px-2 py-0 text-[0.625rem] rounded-md',
@@ -42,6 +44,7 @@ function DkBadge({ className, variant, size, removable, onRemove, children, ...p
     movie: 'var(--media-movie)',
     show: 'var(--media-show)',
     game: 'var(--media-game)',
+    music: 'var(--media-music)',
   }
 
   return (
@@ -65,4 +68,4 @@ function DkBadge({ className, variant, size, removable, onRemove, children, ...p
   )
 }
 
-export { DkBadge, badgeVariants }
+export { DkBadge, DkBadge as Badge, badgeVariants }

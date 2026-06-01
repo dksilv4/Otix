@@ -267,8 +267,8 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
                     transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                   >
                     <Link
-                      to="/m/$slug"
-                      params={{ slug: track.albumSlug }}
+                      to="/media/$mediaType/$mediaId"
+                      params={{ mediaType: 'music', mediaId: track.albumId }}
                       className="group relative flex h-20 w-72 shrink-0 items-center gap-3 overflow-hidden rounded-lg bg-[var(--dk-surface-glass)] p-2 transition-[transform,box-shadow] duration-300 ease-out hover:scale-[1.02] hover:shadow-[0_8px_24px_rgb(0_0_0/0.25)] active:scale-[1.01] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">

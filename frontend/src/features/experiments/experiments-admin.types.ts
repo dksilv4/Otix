@@ -329,7 +329,7 @@ export const EXPERIMENTS_ADMIN: Record<string, ExperimentAdminMeta> = {
       { label: 'Dedicated friends page', status: 'missing', note: 'No /friends route or FriendsPage component exists' },
       { label: 'Activity feed UI', status: 'missing', note: 'No social feed showing friend activity' },
       { label: 'Follow/unfollow on profiles', status: 'done' },
-      { label: 'SSE real-time friend activity', status: 'planned' },
+      { label: 'SSE real-time friend activity', status: 'missing' },
     ],
     integrations: [
       { targetFeature: 'sse_notifications', status: 'integrated', note: 'Friend request notifications delivered via existing notification system' },

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react'
-import { useSpotifyPlayer, type QueueTrack } from './spotify-player-provider'
+import { useSpotifyPlayer } from './spotify-player-provider'
 import { usePlexPlayer, type PlexTrackInfo } from './plex-audio-provider'
 import type { PlayerContextValue, PlayerSource, PlayerTrackInfo } from './types'
 
