@@ -385,8 +385,8 @@ export function AdminHydrationPage() {
                     >
                       <td className="sticky left-0 z-10 bg-[var(--dk-surface-glass)] backdrop-blur-xl group-hover/row:bg-white/[0.04] transition-colors pl-4 pr-2 py-2 max-w-[200px]">
                         <Link
-                          to="/media/$slug"
-                          params={{ slug: item.slug }}
+                          to="/media/$mediaType/$mediaId"
+                          params={{ mediaType: item.mediaType as any, mediaId: String(item.id) }}
                           className="text-xs font-medium text-foreground hover:text-primary truncate block"
                         >
                           {item.title}

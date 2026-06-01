@@ -18,8 +18,8 @@ const PLATFORM_BADGES: Record<
   gog: { variant: "secondary", label: "GOG" },
   battlenet: { variant: "default", label: "Battle.net" },
   ubisoft: { variant: "muted", label: "Ubisoft" },
-  ea: { variant: "destructive", label: "EA" },
-  riot: { variant: "destructive", label: "Riot" },
+  ea: { variant: "secondary", label: "EA" },
+  riot: { variant: "default", label: "Riot" },
   xbox: { variant: "success", label: "Xbox" },
   itch: { variant: "muted", label: "Itch" },
 };
@@ -27,8 +27,8 @@ const PLATFORM_BADGES: Record<
 interface GameCardProps {
   game: DetectedGame;
   index: number;
-  onAcceptSuggestion: (game: DetectedGame) => void;
-  onRejectSuggestion: (game: DetectedGame) => void;
+  onAcceptSuggestion?: (game: DetectedGame) => void;
+  onRejectSuggestion?: (game: DetectedGame) => void;
 }
 
 export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }: GameCardProps) {
@@ -147,29 +147,29 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
         )}
       </div>
 
-      {/* Floating game logo — the premium visual centrepiece */}
-      {hasLogo ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center p-6">
+      {/* Logo — decorative, top portion */}
+      {hasLogo && (
+        <div className="absolute top-[8%] left-0 right-0 z-10 flex items-center justify-center px-6">
           <img
             src={game.otixLogoUrl!}
             alt={game.title}
-            className="max-h-[60%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-110"
+            className="max-h-[45%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-105"
             onError={() => setLogoError(true)}
           />
         </div>
-      ) : (
-        /* Fallback title bar at bottom when no logo */
-        <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/90 to-transparent p-3 pt-8">
-          <h3 className="text-sm font-bold text-white leading-tight truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-            {game.title}
-          </h3>
-          <p className="mt-0.5 text-[11px] text-white/50 truncate">
-            {isMatched && game.otixMediaTitle !== game.title
-              ? game.otixMediaTitle
-              : game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
-          </p>
-        </div>
       )}
+
+      {/* Title bar — always visible at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-10">
+        <h3 className="text-sm font-bold text-white leading-tight truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+          {game.title}
+        </h3>
+        <p className="mt-0.5 text-[11px] text-white/50 truncate">
+          {isMatched && game.otixMediaTitle && game.otixMediaTitle !== game.title
+            ? game.otixMediaTitle
+            : game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
+        </p>
+      </div>
 
       {/* Hover: play button or match suggestion */}
       {game.otixMatchSuggestion && !isMatched ? (
@@ -189,7 +189,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onAcceptSuggestion(game);
+                  onAcceptSuggestion?.(game);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-blue-400 hover:scale-105 active:scale-95"
               >
@@ -200,7 +200,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onRejectSuggestion(game);
+                  onRejectSuggestion?.(game);
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
               >

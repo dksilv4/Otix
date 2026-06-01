@@ -112,6 +112,7 @@ interface IsoInstallerModalProps {
   open: boolean;
   onClose: () => void;
   games: DetectedGame[];
+  initialIsoPath?: string;
 }
 
 const STEP_LABELS: { step: InstallerStep; label: string }[] = [
@@ -125,6 +126,7 @@ export function IsoInstallerModal({
   open,
   onClose,
   games,
+  initialIsoPath,
 }: IsoInstallerModalProps) {
   const [step, setStep] = useState<InstallerStep>(1);
   const [isoPath, setIsoPath] = useState("");
@@ -138,7 +140,7 @@ export function IsoInstallerModal({
   const [completedUpdates, setCompletedUpdates] = useState<
     Record<string, boolean>
   >({});
-  const [installQueue, setInstallQueue] = useState<string[]>([]);
+  const [installQueue] = useState<string[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -148,14 +150,14 @@ export function IsoInstallerModal({
   useEffect(() => {
     if (open) {
       setStep(1);
-      setIsoPath("");
+      setIsoPath(initialIsoPath || "");
       setTargetDir("");
       setMountResult(null);
       setError(null);
       setCurrentUpdates([]);
       setCompletedUpdates({});
     }
-  }, [open]);
+  }, [open, initialIsoPath]);
 
   // Load updates when ISO is selected
   useEffect(() => {
@@ -215,10 +217,12 @@ export function IsoInstallerModal({
   const handleRunSetup = useCallback(async () => {
     if (!mountResult?.setupPath) return;
     setRunningSetup(true);
+    setError(null);
     try {
       await (window as any).electronAPI.launchSetup(mountResult.setupPath);
-    } catch {
-      setError("Failed to launch setup");
+      setStep(3);
+    } catch (err: any) {
+      setError("Installer closed or failed to complete: " + (err.message || String(err)));
     } finally {
       setRunningSetup(false);
     }
@@ -299,10 +303,10 @@ export function IsoInstallerModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl ring-1 ring-white/[0.04]"
+          className="relative max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl ring-1 ring-white/[0.04] flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4">
+          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4 flex-none">
             <div className="flex items-center gap-3">
               <Disc className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">
@@ -323,7 +327,7 @@ export function IsoInstallerModal({
           </div>
 
           {/* Step indicators */}
-          <div className="flex items-center gap-1 px-6 py-4">
+          <div className="flex items-center gap-1 px-6 py-4 flex-none border-b border-white/[0.02]">
             {STEP_LABELS.map((s, i) => (
               <div key={s.step} className="flex items-center gap-1">
                 <div
@@ -354,7 +358,7 @@ export function IsoInstallerModal({
           </div>
 
           {/* Step content */}
-          <div className="max-h-[50vh] overflow-y-auto px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
             {/* Error */}
             {error && (
               <div className="mb-4 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -418,15 +422,6 @@ export function IsoInstallerModal({
                     </div>
                   </div>
                 )}
-
-                <DkButton
-                  onClick={handleMount}
-                  disabled={!isoPath || mounting}
-                  isLoading={mounting}
-                  className="w-full"
-                >
-                  Mount ISO Image
-                </DkButton>
               </div>
             )}
 
@@ -451,20 +446,6 @@ export function IsoInstallerModal({
                         "Not found"}
                     </p>
                   </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <DkButton
-                    onClick={handleRunSetup}
-                    disabled={!mountResult.setupPath || runningSetup}
-                    isLoading={runningSetup}
-                  >
-                    <Play className="h-4 w-4" />
-                    Run Setup
-                  </DkButton>
-                  <DkButton variant="ghost" onClick={() => setStep(3)}>
-                    Next Step
-                  </DkButton>
                 </div>
               </div>
             )}
@@ -504,25 +485,12 @@ export function IsoInstallerModal({
                       </div>
                       <FolderOpen className="h-5 w-5 text-muted-foreground" />
                     </button>
-
-                    <DkButton
-                      onClick={handleApplyCrack}
-                      disabled={!targetDir || copyingCrack}
-                      isLoading={copyingCrack}
-                      className="w-full"
-                    >
-                      Apply Crack
-                    </DkButton>
                   </>
                 ) : (
                   <div className="space-y-4 text-center">
                     <p className="text-sm text-muted-foreground">
                       No crack directory detected on this ISO.
                     </p>
-                    <DkButton variant="ghost" onClick={() => setStep(4)}>
-                      <SkipForward className="h-4 w-4" />
-                      Skip to Finish
-                    </DkButton>
                   </div>
                 )}
               </div>
@@ -630,17 +598,76 @@ export function IsoInstallerModal({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
 
+          {/* Action Footer */}
+          <div className="flex-none border-t border-white/[0.04] bg-[var(--dk-surface-overlay)]/60 backdrop-blur-md px-6 py-4 flex items-center justify-end">
+            {step === 1 && (
+              <DkButton
+                onClick={handleMount}
+                disabled={!isoPath || mounting}
+                loading={mounting}
+                className="w-full"
+              >
+                Mount ISO Image
+              </DkButton>
+            )}
+
+            {step === 2 && (
+              <div className="flex w-full gap-3">
                 <DkButton
-                  onClick={handleDismount}
-                  isLoading={dismounting}
-                  className="w-full"
-                  variant="glass"
+                  onClick={handleRunSetup}
+                  disabled={!mountResult?.setupPath || runningSetup}
+                  loading={runningSetup}
+                  className="flex-1"
                 >
-                  <Disc className="h-4 w-4" />
-                  Dismount ISO & Finish
+                  {runningSetup ? (
+                    "Installing (Check Windows Window)..."
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4" />
+                      Run Setup
+                    </>
+                  )}
+                </DkButton>
+                <DkButton variant="ghost" onClick={() => setStep(3)}>
+                  Next Step
                 </DkButton>
               </div>
+            )}
+
+            {step === 3 && (
+              <div className="w-full">
+                {mountResult?.crackPath ? (
+                  <DkButton
+                    onClick={handleApplyCrack}
+                    disabled={!targetDir || copyingCrack}
+                    loading={copyingCrack}
+                    className="w-full"
+                  >
+                    Apply Crack
+                  </DkButton>
+                ) : (
+                  <DkButton variant="ghost" onClick={() => setStep(4)} className="w-full">
+                    <SkipForward className="h-4 w-4" />
+                    Skip to Finish
+                  </DkButton>
+                )}
+              </div>
+            )}
+
+            {step === 4 && (
+              <DkButton
+                onClick={handleDismount}
+                loading={dismounting}
+                className="w-full"
+                variant="glass"
+              >
+                <Disc className="h-4 w-4" />
+                Dismount ISO & Finish
+              </DkButton>
             )}
           </div>
         </motion.div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Search, RefreshCw, Disc, Link2 } from "lucide-react";
 import { GameGrid } from "../molecules/game-grid";
 import { DirectoryManager } from "../molecules/directory-manager";
@@ -16,59 +16,11 @@ import {
   setIsoPaths,
   getScannedGames,
   setScannedGames,
+  setLocalGamesMapEntry,
   hasElectronAPI,
+  mergeDuplicateGames,
 } from "../storage";
 import type { DetectedGame, Platform } from "../types";
-
-// ── Dedup: merge games with the same title from different sources ──
-
-function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[™®©]/g, "")
-    .replace(/[-.\s](goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors)\s*edition/gi, "")
-    .replace(/[^a-z0-9]/g, "")
-    .trim();
-}
-
-function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
-  const groups = new Map<string, DetectedGame[]>();
-  for (const g of games) {
-    const key = normalizeTitle(g.title);
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(g);
-    } else {
-      groups.set(key, [g]);
-    }
-  }
-
-  const merged: DetectedGame[] = [];
-  for (const group of groups.values()) {
-    if (group.length === 1) {
-      merged.push(group[0]);
-      continue;
-    }
-
-    // Keep the one with the most data (matched > has icon > first)
-    const best =
-      group.find((g) => g.otixMediaId) ??
-      group.find((g) => g.iconUrl) ??
-      group[0];
-
-    const sources = [...new Set(group.map((g) => g.platform))];
-
-    merged.push({
-      ...best,
-      sources: sources.length > 1 ? sources : undefined,
-      // Keep the best exe path (prefer steam)
-      exePath: group.find((g) => g.platform === "steam")?.exePath ?? best.exePath,
-      installDir: best.installDir,
-    });
-  }
-
-  return merged;
-}
 
 export function GameScannerTab() {
   // Directories
@@ -107,6 +59,12 @@ export function GameScannerTab() {
   // Persist games to localStorage and sync to electron game detector
   useEffect(() => {
     setScannedGames(games);
+    // Populate local games map so media detail pages can find linked ISOs
+    for (const game of games) {
+      if (game.otixMediaId) {
+        setLocalGamesMapEntry(game.otixMediaId, game);
+      }
+    }
     if (hasElectronAPI() && games.length > 0) {
       (window as any).electronAPI.setLibrary(games);
     }
@@ -199,6 +157,10 @@ export function GameScannerTab() {
     }
   }, [games, matchMutation]);
 
+  // Ref to access latest games inside callbacks without stale closure
+  const gamesRef = useRef(games);
+  gamesRef.current = games;
+
   // Scan directories for games
   const handleScan = useCallback(async () => {
     if (gamePaths.length === 0 && isoPaths.length === 0) return;
@@ -226,11 +188,37 @@ export function GameScannerTab() {
         unsub();
       }
 
-      // Match against Otix catalog
       if (scannedGames.length > 0) {
+        // Carry over otix data from previous scan for games the API can't match
+        // (e.g. manually linked via SteamGridDB/IGDB — not in Otix catalog)
+        const prevOtixMap = new Map<string, DetectedGame>();
+        for (const g of gamesRef.current) {
+          if (g.otixMediaId || g.otixMatchSuggestion) {
+            prevOtixMap.set(g.id, g);
+          }
+        }
+
         const deduped = mergeDuplicateGames(scannedGames);
         const matched = await matchMutation.mutateAsync(deduped);
-        setGames(matched);
+
+        const restored = matched.map((g) => {
+          if (g.otixMediaId || g.otixMatchSuggestion) return g;
+          const prev = prevOtixMap.get(g.id);
+          if (!prev) return g;
+          return {
+            ...g,
+            otixMediaId: prev.otixMediaId,
+            otixMediaTitle: prev.otixMediaTitle,
+            otixMediaSlug: prev.otixMediaSlug,
+            otixConfidence: prev.otixConfidence,
+            otixPosterUrl: prev.otixPosterUrl,
+            otixTextlessPosterUrl: prev.otixTextlessPosterUrl,
+            otixLogoUrl: prev.otixLogoUrl,
+            otixMatchSuggestion: prev.otixMatchSuggestion,
+          };
+        });
+
+        setGames(restored);
       } else {
         setGames([]);
       }
@@ -330,6 +318,29 @@ export function GameScannerTab() {
         prev.map((g) =>
           g.id === gameId
             ? { ...g, otixMediaId: mediaId, otixMediaTitle: title, otixMediaSlug: slug, otixConfidence: 1, otixPosterUrl: g.otixPosterUrl, otixTextlessPosterUrl: g.otixTextlessPosterUrl, otixLogoUrl: g.otixLogoUrl, otixMatchSuggestion: undefined }
+            : g,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleUnlinkGame = useCallback(
+    (gameId: string) => {
+      setGames((prev) =>
+        prev.map((g) =>
+          g.id === gameId
+            ? {
+                ...g,
+                otixMediaId: undefined,
+                otixMediaTitle: undefined,
+                otixMediaSlug: undefined,
+                otixConfidence: undefined,
+                otixPosterUrl: undefined,
+                otixTextlessPosterUrl: undefined,
+                otixLogoUrl: undefined,
+                otixMatchSuggestion: undefined,
+              }
             : g,
         ),
       );
@@ -537,6 +548,7 @@ export function GameScannerTab() {
         onClose={() => setMatchModalOpen(false)}
         games={games}
         onLinkGame={handleLinkGame}
+        onUnlinkGame={handleUnlinkGame}
       />
 
       <IsoInstallerModal

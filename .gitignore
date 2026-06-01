@@ -13,3 +13,4 @@
 /package-lock.json
 /.claude
 /.agents
+/backend/.fastembed_cache/

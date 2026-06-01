@@ -15,6 +15,7 @@ import { Gamepad2 } from "lucide-react"
 import { GameScannerTab } from "@/features/game-scanner"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
 import type { DetectedGame } from "@/features/game-scanner/types"
+import { getScannedGames } from "@/features/game-scanner/storage"
 
 // ── Tab definitions ──
 
@@ -335,23 +336,12 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
 
 function LocalGamesOverviewSection() {
   const navigate = useNavigate()
-  const [games, setGames] = useState<DetectedGame[]>(() => {
-    if (typeof window === "undefined") return []
-    try {
-      const raw = localStorage.getItem("otix_scanned_games")
-      return raw ? JSON.parse(raw) : []
-    } catch {
-      return []
-    }
-  })
+  const [games, setGames] = useState<DetectedGame[]>(getScannedGames)
 
-  // Re-read from localStorage on focus/mount
+  // Re-read from cache on focus/mount
   useEffect(() => {
     const handleFocus = () => {
-      try {
-        const raw = localStorage.getItem("otix_scanned_games")
-        setGames(raw ? JSON.parse(raw) : [])
-      } catch {}
+      setGames(getScannedGames())
     }
     window.addEventListener("focus", handleFocus)
     return () => window.removeEventListener("focus", handleFocus)

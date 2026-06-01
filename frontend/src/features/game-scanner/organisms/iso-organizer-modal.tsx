@@ -298,7 +298,7 @@ export function IsoOrganizerModal({
               variant="ghost"
               onClick={handlePreview}
               disabled={!directory || previewLoading}
-              isLoading={previewLoading}
+              loading={previewLoading}
             >
               Preview Changes
             </DkButton>
@@ -309,7 +309,7 @@ export function IsoOrganizerModal({
               <DkButton
                 onClick={handleExecute}
                 disabled={previewItems.length === 0 || executing}
-                isLoading={executing}
+                loading={executing}
               >
                 <Play className="h-4 w-4" />
                 Run Organization

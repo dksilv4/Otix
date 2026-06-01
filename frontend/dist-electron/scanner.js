@@ -1,0 +1,571 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.cleanGameTitle = cleanGameTitle;
+exports.findUpdateFilesForIso = findUpdateFilesForIso;
+exports.scanPaths = scanPaths;
+const electron_1 = require("electron");
+const fs = __importStar(require("fs/promises"));
+const path = __importStar(require("path"));
+const steamgrid_1 = require("./steamgrid");
+// Simple ACF parser for Steam manifest files
+function parseAcf(content) {
+    const result = {};
+    const matches = content.matchAll(/"([^"]+)"\s+"([^"]+)"/g);
+    for (const match of matches) {
+        result[match[1]] = match[2];
+    }
+    return result;
+}
+// Generate a unique, deterministic ID for non-steam games based on file path
+function generateId(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return 'pc_' + Math.abs(hash).toString(36);
+}
+function cleanGameTitle(filename) {
+    let name = filename.replace(/\.iso$/i, '');
+    // Replace dots, underscores, dashes with spaces
+    name = name.replace(/[\._\-]/g, ' ');
+    // Remove common scene tags and release descriptors (case-insensitive)
+    const tags = [
+        /\[repack\]/gi, /\brepack\b/gi, /\belamigos\b/gi, /\bfitgirl\b/gi, /\bdodi\b/gi,
+        /\bcodex\b/gi, /\bflt\b/gi, /\bplaza\b/gi, /\bskidrow\b/gi, /\brune\b/gi, /\btenoke\b/gi,
+        /\bgoldberg\b/gi, /\brazor1911\b/gi, /\bfairlight\b/gi, /\bhoodlum\b/gi,
+        /\bmulti\d+\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bbuild\s*\d+\b/gi, /\bupdate\s*\d*\b/gi,
+        /\bhbg\b/gi, /\bdlc\b/gi, /\bgog\b/gi, /\bcrack\b/gi
+    ];
+    for (const tag of tags) {
+        name = name.replace(tag, '');
+    }
+    // Clean double spaces and trim
+    return name.replace(/\s+/g, ' ').trim();
+}
+const IGNORED_DIRS = new Set([
+    'node_modules', 'bower_components', '.git', '.github', '.svn', '.hg',
+    'system32', 'syswow64', 'windows', 'microsoft.net', 'appdata',
+    'obj', 'bin', '__pycache__', '.venv', 'venv', 'env', 'windowsapps'
+]);
+// Find all ISO files in a folder recursively up to a depth limit
+async function findIsos(dir, maxDepth = 3, onWalk) {
+    const isos = [];
+    console.log(`[findIsos] Starting scan in directory: "${dir}" with maxDepth: ${maxDepth}`);
+    async function traverse(currentDir, depth) {
+        if (depth > maxDepth) {
+            console.log(`[findIsos] Reached max depth ${maxDepth} at: "${currentDir}"`);
+            return;
+        }
+        onWalk?.(currentDir);
+        try {
+            console.log(`[findIsos] Reading directory: "${currentDir}" (depth: ${depth})`);
+            const entries = await fs.readdir(currentDir, { withFileTypes: true });
+            console.log(`[findIsos] Found ${entries.length} entries in: "${currentDir}"`);
+            for (const entry of entries) {
+                const fullPath = path.join(currentDir, entry.name);
+                const isDir = entry.isDirectory();
+                const isFile = entry.isFile();
+                const isSymlink = entry.isSymbolicLink();
+                console.log(`  - Entry: "${entry.name}" | isDir: ${isDir} | isFile: ${isFile} | isSymlink: ${isSymlink}`);
+                if (isDir) {
+                    const nameLower = entry.name.toLowerCase();
+                    if (nameLower.startsWith('$') || IGNORED_DIRS.has(nameLower)) {
+                        console.log(`    [findIsos] Skipping ignored directory: "${entry.name}"`);
+                        continue;
+                    }
+                    await traverse(fullPath, depth + 1);
+                }
+                else if (isFile || isSymlink) {
+                    if (entry.name.toLowerCase().endsWith('.iso')) {
+                        console.log(`    [findIsos] MATCHED ISO: "${fullPath}"`);
+                        isos.push(fullPath);
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error(`[findIsos] Error reading directory: "${currentDir}"`, err);
+        }
+    }
+    await traverse(dir, 1);
+    console.log(`[findIsos] Scan complete for: "${dir}". Found ${isos.length} ISO(s):`, isos);
+    return isos;
+}
+// Find all update files for a given ISO in its parent/sibling/child folders
+async function findUpdateFilesForIso(isoPath) {
+    const updates = [];
+    const visited = new Set();
+    // Helper to scan a folder recursively (up to depth 2) for setup/update exes
+    async function scanFolder(folderPath, depth) {
+        if (depth > 2)
+            return;
+        try {
+            const entries = await fs.readdir(folderPath, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(folderPath, entry.name);
+                if (entry.isDirectory()) {
+                    const nameLower = entry.name.toLowerCase();
+                    if (nameLower.startsWith('$') || IGNORED_DIRS.has(nameLower))
+                        continue;
+                    await scanFolder(fullPath, depth + 1);
+                }
+                else if (entry.isFile() || entry.isSymbolicLink()) {
+                    const nameLower = entry.name.toLowerCase();
+                    if (nameLower.endsWith('.exe') && (nameLower.includes('update') || nameLower.includes('patch'))) {
+                        // Filter out files that are obviously setup.exe or uninstalls or crash tools
+                        if (nameLower.includes('setup') ||
+                            nameLower.includes('uninst') ||
+                            nameLower.includes('crash') ||
+                            nameLower.includes('helper')) {
+                            continue;
+                        }
+                        if (!visited.has(fullPath)) {
+                            visited.add(fullPath);
+                            updates.push({
+                                name: entry.name,
+                                path: fullPath
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        catch {
+            // ignore errors
+        }
+    }
+    const isoDir = path.dirname(isoPath);
+    const isoParentDir = path.dirname(isoDir);
+    const foldersToScan = new Set();
+    // 1. Sibling folders of the ISO's directory (e.g. check standard Updates folder next to the ISO's folder)
+    try {
+        const parentEntries = await fs.readdir(isoParentDir, { withFileTypes: true });
+        for (const ent of parentEntries) {
+            if (ent.isDirectory()) {
+                const nameLower = ent.name.toLowerCase();
+                if (nameLower.includes('update') || nameLower.includes('patch')) {
+                    foldersToScan.add(path.join(isoParentDir, ent.name));
+                }
+            }
+        }
+    }
+    catch { }
+    // 2. Sibling folders of the ISO's parent folder (grandparent sibling folders)
+    const grandParentDir = path.dirname(isoParentDir);
+    try {
+        const grandParentEntries = await fs.readdir(grandParentDir, { withFileTypes: true });
+        for (const ent of grandParentEntries) {
+            if (ent.isDirectory()) {
+                const nameLower = ent.name.toLowerCase();
+                if (nameLower.includes('update') || nameLower.includes('patch')) {
+                    foldersToScan.add(path.join(grandParentDir, ent.name));
+                }
+            }
+        }
+    }
+    catch { }
+    // 3. The ISO's directory itself and any subfolder inside it containing "update" or "patch"
+    foldersToScan.add(isoDir);
+    try {
+        const subEntries = await fs.readdir(isoDir, { withFileTypes: true });
+        for (const ent of subEntries) {
+            if (ent.isDirectory()) {
+                const nameLower = ent.name.toLowerCase();
+                if (nameLower.includes('update') || nameLower.includes('patch')) {
+                    foldersToScan.add(path.join(isoDir, ent.name));
+                }
+            }
+        }
+    }
+    catch { }
+    // Scan all unique candidate folders
+    for (const folder of foldersToScan) {
+        await scanFolder(folder, 1);
+    }
+    // Sort updates by name numerically so that version order is correct (e.g. update 1.12 before 1.13)
+    updates.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    return updates;
+}
+// Find all executable files in a folder recursively up to a depth limit
+async function findExecutables(dir, maxDepth = 5, onWalk) {
+    const exes = [];
+    async function traverse(currentDir, depth) {
+        if (depth > maxDepth)
+            return;
+        onWalk?.(currentDir);
+        try {
+            const entries = await fs.readdir(currentDir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(currentDir, entry.name);
+                if (entry.isDirectory()) {
+                    const nameLower = entry.name.toLowerCase();
+                    if (nameLower.startsWith('$') || IGNORED_DIRS.has(nameLower))
+                        continue;
+                    await traverse(fullPath, depth + 1);
+                }
+                else if (entry.isFile()) {
+                    if (entry.name.toLowerCase().endsWith('.exe')) {
+                        exes.push(fullPath);
+                    }
+                }
+            }
+        }
+        catch (err) {
+            // Ignore reading / permission errors silently
+        }
+    }
+    await traverse(dir, 1);
+    return exes;
+}
+// Pick the best executable among candidates using heuristics (size, install directory matching)
+async function pickBestExe(exes, installDirName) {
+    if (exes.length === 0)
+        return null;
+    if (exes.length === 1)
+        return exes[0];
+    const cleanInstallDir = installDirName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let bestExe = null;
+    let bestScore = -1;
+    for (const exe of exes) {
+        const exeName = path.basename(exe, '.exe').toLowerCase();
+        // Ignore obvious utility and dependency files
+        if (exeName.includes('crash') ||
+            exeName.includes('uninst') ||
+            exeName.includes('setup') ||
+            exeName.includes('redist') ||
+            exeName.includes('config') ||
+            exeName.includes('tool') ||
+            exeName.includes('cef') ||
+            exeName.includes('helper') ||
+            exeName.includes('register') ||
+            exeName.includes('patch')) {
+            continue;
+        }
+        let score = 0;
+        // Exact or close match to folder name
+        if (exeName === cleanInstallDir || exeName === installDirName.toLowerCase()) {
+            score += 100;
+        }
+        else if (exeName.includes(cleanInstallDir) || cleanInstallDir.includes(exeName)) {
+            score += 50;
+        }
+        // Size check: larger files are likely the main game executable
+        try {
+            const stats = await fs.stat(exe);
+            const sizeMb = stats.size / (1024 * 1024);
+            score += Math.min(30, Math.floor(sizeMb));
+        }
+        catch {
+            // Ignore stat error
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            bestExe = exe;
+        }
+    }
+    return bestExe || exes[0];
+}
+// Get icon for a game — native Electron file icon with SteamGridDB fallback
+async function getIconDataUrl(exePath, title) {
+    // 1. Native file icon
+    try {
+        const icon = await electron_1.app.getFileIcon(exePath, { size: 'large' });
+        return icon.toDataURL();
+    }
+    catch {
+        // Native icon failed — try SteamGridDB if we have a title
+    }
+    // 2. SteamGridDB fallback
+    if (title) {
+        try {
+            const url = await (0, steamgrid_1.getBestIconUrl)(title);
+            if (url)
+                return url;
+        }
+        catch (err) {
+            console.error('SteamGridDB icon lookup failed for', title, err);
+        }
+    }
+    return undefined;
+}
+// Resolve the parent game folder, skipping subdirectories like 'bin', 'x64', 'engine', etc.
+function getGameFolder(exePath, searchRoot) {
+    let current = path.dirname(exePath);
+    const rootLower = searchRoot.toLowerCase();
+    const SUB_FOLDERS_TO_SKIP = new Set([
+        'bin', 'x64', 'win64', 'x86', 'win32', 'release', 'build', 'dist',
+        'engine', 'win-unpacked', 'launcher', 'subsystem'
+    ]);
+    while (current.toLowerCase() !== rootLower) {
+        const parent = path.dirname(current);
+        const folderName = path.basename(current).toLowerCase();
+        if (SUB_FOLDERS_TO_SKIP.has(folderName)) {
+            current = parent;
+        }
+        else {
+            break;
+        }
+    }
+    return current;
+}
+// Scans directories for Steam library manifests and/or PC game executables
+async function scanPaths(scanDirectories, isoDirectories, onProgress) {
+    const games = [];
+    const totalPaths = scanDirectories.length + isoDirectories.length;
+    let currentPathIndex = 0;
+    // 1. Scan Installed Games (Steam & PC folders)
+    for (const dir of scanDirectories) {
+        currentPathIndex++;
+        const baseProgress = Math.round(((currentPathIndex - 1) / totalPaths) * 100);
+        const nextProgress = Math.round((currentPathIndex / totalPaths) * 100);
+        onProgress?.({
+            currentDir: dir,
+            progress: baseProgress,
+        });
+        try {
+            const stat = await fs.stat(dir);
+            if (!stat.isDirectory())
+                continue;
+            let steamappsPath = null;
+            const filesInDir = await fs.readdir(dir);
+            if (filesInDir.includes('steamapps')) {
+                steamappsPath = path.join(dir, 'steamapps');
+            }
+            else if (dir.toLowerCase().endsWith('steamapps')) {
+                steamappsPath = dir;
+            }
+            if (steamappsPath) {
+                // Steam games search
+                onProgress?.({
+                    currentDir: `${steamappsPath} (reading manifests)`,
+                    progress: baseProgress + Math.round((nextProgress - baseProgress) * 0.2),
+                });
+                const manifestFiles = await fs.readdir(steamappsPath);
+                let manifestIdx = 0;
+                for (const file of manifestFiles) {
+                    manifestIdx++;
+                    if (file.startsWith('appmanifest_') && file.endsWith('.acf')) {
+                        try {
+                            const fullManifestPath = path.join(steamappsPath, file);
+                            const content = await fs.readFile(fullManifestPath, 'utf-8');
+                            const data = parseAcf(content);
+                            const appid = data['appid'];
+                            const name = data['name'];
+                            const installDirName = data['installdir'];
+                            if (appid && name && installDirName) {
+                                const commonDir = path.join(steamappsPath, 'common', installDirName);
+                                onProgress?.({
+                                    currentDir: `Steam: ${name}`,
+                                    progress: baseProgress + Math.round((nextProgress - baseProgress) * (0.2 + (0.8 * manifestIdx / manifestFiles.length))),
+                                });
+                                let localExePath;
+                                try {
+                                    const exes = await findExecutables(commonDir, 3);
+                                    const bestExe = await pickBestExe(exes, installDirName);
+                                    if (bestExe) {
+                                        localExePath = bestExe;
+                                    }
+                                }
+                                catch {
+                                    // common directory might not exist yet
+                                }
+                                let iconUrl;
+                                if (localExePath) {
+                                    iconUrl = await getIconDataUrl(localExePath, name);
+                                }
+                                games.push({
+                                    id: appid,
+                                    title: name,
+                                    exePath: `steam://rungameid/${appid}`,
+                                    localExePath,
+                                    installDir: commonDir,
+                                    platform: 'steam',
+                                    iconUrl,
+                                });
+                            }
+                        }
+                        catch (err) {
+                            console.error('Error processing manifest', file, err);
+                        }
+                    }
+                }
+            }
+            else {
+                // Detect if dir itself has game executables within depth 2 (single game folder)
+                const selfExes = await findExecutables(dir, 2);
+                const hasSelfGame = selfExes.some(exe => {
+                    const nameLower = path.basename(exe).toLowerCase();
+                    return !nameLower.includes('unins') && !nameLower.includes('setup') && !nameLower.includes('helper') && !nameLower.includes('crash');
+                });
+                if (hasSelfGame) {
+                    const bestExe = await pickBestExe(selfExes, path.basename(dir));
+                    if (bestExe) {
+                        const iconUrl = await getIconDataUrl(bestExe, path.basename(dir));
+                        const cleanTitle = cleanGameTitle(path.basename(dir));
+                        games.push({
+                            id: generateId(bestExe),
+                            title: cleanTitle,
+                            exePath: bestExe,
+                            installDir: dir,
+                            platform: 'pc',
+                            iconUrl,
+                        });
+                    }
+                }
+                else {
+                    // Treat dir as a library directory, scan each subdirectory down to depth 3
+                    const subdirs = await fs.readdir(dir, { withFileTypes: true });
+                    let subIdx = 0;
+                    for (const entry of subdirs) {
+                        subIdx++;
+                        if (!entry.isDirectory())
+                            continue;
+                        const subName = entry.name;
+                        const nameLower = subName.toLowerCase();
+                        if (nameLower.startsWith('$') || IGNORED_DIRS.has(nameLower))
+                            continue;
+                        const gameFolder = path.join(dir, subName);
+                        onProgress?.({
+                            currentDir: `Scanning: ${subName}`,
+                            progress: baseProgress + Math.round((nextProgress - baseProgress) * (subIdx / subdirs.length)),
+                        });
+                        const subExes = await findExecutables(gameFolder, 3);
+                        if (subExes.length > 0) {
+                            const bestExe = await pickBestExe(subExes, subName);
+                            if (bestExe) {
+                                const iconUrl = await getIconDataUrl(bestExe, subName);
+                                const cleanTitle = cleanGameTitle(subName);
+                                games.push({
+                                    id: generateId(bestExe),
+                                    title: cleanTitle,
+                                    exePath: bestExe,
+                                    installDir: gameFolder,
+                                    platform: 'pc',
+                                    iconUrl,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error('Error scanning PC path', dir, err);
+        }
+    }
+    // 2. Scan ISO Installer Games (ISO folders only)
+    for (const dir of isoDirectories) {
+        currentPathIndex++;
+        const baseProgress = Math.round(((currentPathIndex - 1) / totalPaths) * 100);
+        const nextProgress = Math.round((currentPathIndex / totalPaths) * 100);
+        onProgress?.({
+            currentDir: dir,
+            progress: baseProgress,
+        });
+        try {
+            const stat = await fs.stat(dir);
+            if (!stat.isDirectory())
+                continue;
+            // Scan for ISO files (max depth 3 is plenty for ISO directories)
+            const isos = await findIsos(dir, 3, (subDir) => {
+                onProgress?.({
+                    currentDir: subDir,
+                    progress: baseProgress + Math.round((nextProgress - baseProgress) * 0.5),
+                });
+            });
+            for (const iso of isos) {
+                const filename = path.basename(iso, '.iso');
+                const cleanTitle = cleanGameTitle(filename);
+                const updateFiles = await findUpdateFilesForIso(iso);
+                games.push({
+                    id: generateId(iso),
+                    title: cleanTitle,
+                    exePath: iso,
+                    installDir: path.dirname(iso),
+                    platform: 'iso',
+                    updateFiles,
+                });
+            }
+        }
+        catch (err) {
+            console.error('Error scanning ISO path', dir, err);
+        }
+    }
+    // Final 100% notification
+    onProgress?.({
+        currentDir: 'Finished scanning',
+        progress: 100,
+    });
+    // Deduplicate games by ID, exePath, and non-ISO installation directories
+    const uniqueGames = [];
+    const seenIds = new Set();
+    const seenExes = new Set();
+    const seenInstallDirs = new Set();
+    const normPath = (p) => {
+        try {
+            return path.resolve(p).toLowerCase();
+        }
+        catch {
+            return p.toLowerCase();
+        }
+    };
+    for (const g of games) {
+        const id = g.id.toLowerCase();
+        const exe = g.exePath.startsWith('steam://') ? g.exePath.toLowerCase() : normPath(g.exePath);
+        const localExe = g.localExePath ? normPath(g.localExePath) : null;
+        const installDir = normPath(g.installDir);
+        if (seenIds.has(id))
+            continue;
+        if (seenExes.has(exe))
+            continue;
+        if (localExe && seenExes.has(localExe))
+            continue;
+        if (g.platform !== 'iso' && seenInstallDirs.has(installDir))
+            continue;
+        seenIds.add(id);
+        seenExes.add(exe);
+        if (localExe) {
+            seenExes.add(localExe);
+        }
+        if (g.platform !== 'iso') {
+            seenInstallDirs.add(installDir);
+        }
+        uniqueGames.push(g);
+    }
+    return uniqueGames;
+}

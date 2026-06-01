@@ -21,6 +21,8 @@ const buttonVariants = cva(
           'backdrop-blur-md shadow-[var(--dk-shadow-glass)] hover:bg-[var(--dk-surface-glass-hover)]',
         outline:
           'ring-1 ring-inset ring-[var(--dk-separator)] hover:bg-[var(--dk-surface-ghost-hover)]',
+        link:
+          'text-primary underline-offset-4 hover:underline',
       },
       size: {
         xs: 'h-7 rounded-lg px-2.5 text-xs gap-1.5',
@@ -63,4 +65,5 @@ const DkButton = forwardRef<HTMLButtonElement, DkButtonProps>(
 )
 DkButton.displayName = 'DkButton'
 
-export { DkButton, buttonVariants }
+export { DkButton, DkButton as Button, buttonVariants }
+export type { DkButtonProps as ButtonProps }

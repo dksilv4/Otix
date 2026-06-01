@@ -8,11 +8,14 @@ import {
   ShieldCheckIcon,
   UserCircleIcon,
   InformationCircleIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/solid"
 import { useAuth } from "@/features/auth/auth-provider"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigation } from "@navigation/providers/navigation-provider"
 import { cn } from "@/lib/utils"
+
+const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI
 
 const iconBg = cn(
   "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
@@ -60,6 +63,9 @@ export function MenuDropdown() {
     ] : []),
     ...(user?.isAdmin ? [
       { to: "/admin" as string, icon: <ShieldCheckIcon className="h-[18px] w-[18px]" />, label: "Admin", params: undefined as any },
+    ] : []),
+    ...(user?.isAdmin && isElectron ? [
+      { to: "/downloads" as string, icon: <ArrowDownTrayIcon className="h-[18px] w-[18px]" />, label: "Downloads", params: undefined as any },
     ] : []),
     { to: "/about", icon: <InformationCircleIcon className="h-[18px] w-[18px]" />, label: "About", params: undefined },
     { to: "/settings", icon: <Cog6ToothIcon className="h-[18px] w-[18px]" />, label: "Settings", params: undefined },

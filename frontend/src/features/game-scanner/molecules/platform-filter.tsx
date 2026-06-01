@@ -5,6 +5,14 @@ import type { Platform } from "../types";
 const FILTERS: { value: Platform; label: string }[] = [
   { value: "all", label: "All" },
   { value: "steam", label: "Steam" },
+  { value: "epic", label: "Epic" },
+  { value: "gog", label: "GOG" },
+  { value: "battlenet", label: "Battle.net" },
+  { value: "ubisoft", label: "Ubisoft" },
+  { value: "ea", label: "EA" },
+  { value: "riot", label: "Riot" },
+  { value: "xbox", label: "Xbox" },
+  { value: "itch", label: "Itch" },
   { value: "pc", label: "PC" },
   { value: "iso", label: "ISO" },
 ];

@@ -59,4 +59,5 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
 )
 DkInput.displayName = 'DkInput'
 
-export { DkInput }
+export { DkInput, DkInput as Input }
+export type { DkInputProps }

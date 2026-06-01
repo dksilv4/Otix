@@ -8,7 +8,6 @@ import {
   Circle,
   CircleDot,
   CircleDashed,
-  BarChart3,
 } from 'lucide-react'
 import { DkBadge } from '@/features/dk-ui/atoms/badge'
 import { EXPERIMENTS, MATURITY_LABELS, MATURITY_BADGE_VARIANT } from '@/features/experiments/experiments.types'
@@ -33,11 +32,7 @@ const STATUS_ICON: Record<CriterionStatus, { icon: typeof CheckCircle; className
   missing: { icon: XCircle, className: 'text-red-400' },
 }
 
-const STATUS_LABEL: Record<CriterionStatus, string> = {
-  done: 'Done',
-  partial: 'Partial',
-  missing: 'Missing',
-}
+
 
 const INTEGRATION_ICON: Record<IntegrationStatus, { icon: typeof Circle; className: string; label: string }> = {
   integrated: { icon: CircleDot, className: 'text-green-500', label: 'Integrated' },

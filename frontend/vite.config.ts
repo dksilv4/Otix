@@ -4,11 +4,12 @@ import react from '@vitejs/plugin-react'
 import path from 'node:path'
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@ui': path.resolve(__dirname, 'src/features/ui'),
+      '@ui': path.resolve(__dirname, 'src/features/dk-ui'),
       '@auth': path.resolve(__dirname, 'src/features/auth'),
       '@media': path.resolve(__dirname, 'src/features/media'),
       '@discover': path.resolve(__dirname, 'src/features/discover'),

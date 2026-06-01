@@ -12,6 +12,9 @@ import { useToast } from '@/features/dk-ui/molecules/toast'
 interface MusicSectionProps {
   album: AlbumDetail
   mediaItemId: string
+  title: string
+  posterUrl: string | null
+  artistName: string | null
   className?: string
 }
 
@@ -280,7 +283,7 @@ function TrackRow({
   )
 }
 
-export function MusicSection({ album, mediaItemId, className }: MusicSectionProps) {
+export function MusicSection({ album, mediaItemId, title, posterUrl, artistName, className }: MusicSectionProps) {
   const tracks = album.tracks ?? EMPTY_TRACKS
   const { playSpotifyQueue, currentTrack, spotifyIsReady, togglePlay, playPlexAlbum, playPlexTrack, source, error } = usePlayer()
   const { data: plexData } = usePlexAlbumTracks(mediaItemId)
@@ -329,16 +332,16 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
   const plexBaseUrl = plexData?.baseUrl
   const plexToken = plexData?.token
   const plexReady = !!plexBaseUrl && !!plexToken
-  const plexAlbumArt = plexData?.albumThumbUrl || album.posterUrl || null
+  const plexAlbumArt = plexData?.albumThumbUrl || posterUrl || null
 
   // Helper: build a PlexTrackInfo for a single track (just credentials, no pre-built URL).
   // The provider resolves the Part key from Plex metadata at play time.
-  const plexTrackInfo = (ratingKey: string, title: string, artist: string, durMs: number): PlexTrackInfo => ({
+  const plexTrackInfo = (ratingKey: string, trackTitle: string, artist: string, durMs: number): PlexTrackInfo => ({
     id: ratingKey,
     ratingKey,
-    title,
+    title: trackTitle,
     artist,
-    albumName: album.title || "",
+    albumName: title || "",
     albumArt: plexAlbumArt,
     durationMs: durMs || 0,
     plexBaseUrl: plexBaseUrl ?? null,
@@ -496,7 +499,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                   return
                 }
                 const info: PlexTrackInfo[] = plexTracks.map(pt =>
-                  plexTrackInfo(pt.ratingKey, pt.title, pt.artist || album.artistName || "", pt.durationMs || 0),
+                  plexTrackInfo(pt.ratingKey, pt.title, pt.artist || artistName || "", pt.durationMs || 0),
                 )
                 if (info.length > 0) playPlexAlbum(info)
               }}
@@ -637,7 +640,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                                   .map((tt) => {
                                     const pm = plexByTrack.get(`${tt.discNumber}:${tt.trackNumber}`)
                                     if (!pm) return null
-                                    return plexTrackInfo(pm.ratingKey, tt.title, pm.artist || album.artistName || "", tt.durationMs || 0)
+                                    return plexTrackInfo(pm.ratingKey, tt.title, pm.artist || artistName || "", tt.durationMs || 0)
                                   })
                                   .filter(Boolean) as PlexTrackInfo[]
 
@@ -645,7 +648,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                                   const startIdx = allPlexInfos.findIndex(p => p.ratingKey === plexRatingKey)
                                   playPlexAlbum(allPlexInfos, startIdx >= 0 ? startIdx : 0)
                                 } else {
-                                  playPlexTrack(plexTrackInfo(plexRatingKey, t.title, album.artistName || "", t.durationMs || 0))
+                                  playPlexTrack(plexTrackInfo(plexRatingKey, t.title, artistName || "", t.durationMs || 0))
                                 }
                               }
                             : undefined

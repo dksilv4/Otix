@@ -11,7 +11,6 @@ import {
   Volume2,
   VolumeX,
   ChevronLeft,
-  ChevronRight,
   Clock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -193,7 +192,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
         (item) => item.name.toLowerCase() === artistName.toLowerCase(),
       ) ?? data.items[0]
       if (person) {
-        navigate({ to: '/person/$personId', params: { personId: person.id } })
+        navigate({ to: '/person/$personId', params: { personId: person.id }, search: {} })
       }
     } catch { /* ignore */ }
   }
@@ -485,7 +484,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                               <div className="h-7 w-7 rounded bg-white/[0.04] shrink-0" />
                             )}
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium truncate text-white/60">{item.name}</p>
+                              <p className="text-xs font-medium truncate text-white/60">{'name' in item ? item.name : item.title}</p>
                               {'artist' in item && item.artist && (
                                 <p className="text-[10px] text-white/30 truncate">{item.artist}</p>
                               )}
@@ -512,7 +511,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate text-white/80">{item.name}</p>
+                          <p className="text-sm font-medium truncate text-white/80">{'name' in item ? item.name : item.title}</p>
                           {'artist' in item && item.artist && (
                             <p className="text-[11px] text-white/35 truncate">{item.artist}</p>
                           )}
@@ -620,7 +619,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                           <div className="h-7 w-7 rounded bg-white/[0.04] shrink-0" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium truncate text-white/60">{item.name}</p>
+                          <p className="text-xs font-medium truncate text-white/60">{'name' in item ? item.name : item.title}</p>
                           {'artist' in item && item.artist && (
                             <p className="text-[10px] text-white/30 truncate">{item.artist}</p>
                           )}
@@ -663,7 +662,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate text-white/80">{item.name}</p>
+                          <p className="text-sm font-medium truncate text-white/80">{'name' in item ? item.name : item.title}</p>
                           {'artist' in item && item.artist && (
                             <p className="text-[11px] text-white/35 truncate">{item.artist}</p>
                           )}

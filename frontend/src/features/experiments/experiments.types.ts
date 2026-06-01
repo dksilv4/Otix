@@ -76,6 +76,14 @@ export const EXPERIMENTS: ExperimentDefinition[] = [
     maturity: 'beta',
     defaultEnabled: false,
   },
+  {
+    key: 'download_integration',
+    name: 'SABnzbd + NZBPlanet Download Integration',
+    description:
+      'Configure SABnzbd and NZBPlanet to search for and download game ISOs directly from the desktop app. Admin-only. Local SQLite storage, no server-side traces.',
+    maturity: 'alpha',
+    defaultEnabled: true,
+  },
 
   // ── Production ──
   {

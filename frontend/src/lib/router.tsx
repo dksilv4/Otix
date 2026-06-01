@@ -37,20 +37,13 @@ const AdminHydrationPage = lazy(() => import("@/features/admin/organisms/admin-h
 const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboarding-page").then(m => ({ default: m.OnboardingPage })))
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
+const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
 
 // ── Root — chooses layout based on route ──
 
 function RootComponent() {
   const location = useLocation()
-  const navigate = useNavigate()
   const isAuthRoute = location.pathname.startsWith("/auth")
-
-  useEffect(() => {
-    // TODO: Remove this auto-open redirect once the scanner/installer feature is fully stabilized
-    if (typeof window !== "undefined" && !!(window as any).electronAPI && location.pathname === "/") {
-      navigate({ to: "/library/$tab", params: { tab: "local-games" }, replace: true })
-    }
-  }, [location.pathname, navigate])
 
   if (isAuthRoute || location.pathname === "/loading") {
     return <Outlet />
@@ -75,7 +68,7 @@ const homeRoute = createRoute({
   component: HomePage,
   validateSearch: (search: Record<string, unknown>) => ({
     type: (search.type as string) || 'all',
-  }),
+  } as { type?: string }),
 })
 
 const mediaDetailRoute = createRoute({
@@ -91,7 +84,7 @@ const personDetailRoute = createRoute({
   validateSearch: (search: Record<string, unknown>) => ({
     mediaType: (search.mediaType as string) || 'all',
     role: (search.role as string) || 'all',
-  }),
+  } as { mediaType?: string; role?: string }),
 })
 
 const companyDetailRoute = createRoute({
@@ -138,7 +131,7 @@ const authLoginRoute = createRoute({
   component: AuthPage,
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: (search.redirect as string) || '/',
-  }),
+  } as { redirect?: string }),
 })
 
 const authRegisterRoute = createRoute({
@@ -247,6 +240,14 @@ const browseRoute = createRoute({
     language: (search.language as string) || '',
     isAnime: (search.isAnime as string) || '',
     dir: (search.dir as string) || 'desc',
+  } as {
+    sort?: string;
+    genre?: string;
+    certification?: string;
+    company?: string;
+    language?: string;
+    isAnime?: string;
+    dir?: string;
   }),
 })
 
@@ -310,6 +311,12 @@ const aboutRoute = createRoute({
   component: AboutPage,
 })
 
+const downloadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/downloads",
+  component: DownloadQueuePage,
+})
+
 const searchRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/search",
@@ -318,6 +325,10 @@ const searchRoute = createRoute({
     q: (search.q as string) || '',
     type: (search.type as string) || 'all',
     sort: (search.sort as string) || '',
+  } as {
+    q?: string;
+    type?: string;
+    sort?: string;
   }),
 })
 
@@ -375,6 +386,7 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
   aboutRoute,
   desktopScannerRoute,
+  downloadsRoute,
 ])
 
 export interface RouterContext {

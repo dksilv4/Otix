@@ -116,7 +116,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 4 -n otix-ingest@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 4 -n otix-ingest@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -146,7 +146,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 2 -n otix-enrich@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 2 -n otix-enrich@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -176,7 +176,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q reactive-fast,reactive-user -c 2 -n otix-reactive@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q reactive-fast,reactive-user -c 2 -n otix-reactive@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -206,7 +206,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q maintain -c 1 -n otix-maintain@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q maintain -c 1 -n otix-maintain@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -236,7 +236,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
     deploy:
       resources:
         limits:
@@ -262,7 +262,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery.app beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
+    command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
     deploy:
       resources:
         limits:
