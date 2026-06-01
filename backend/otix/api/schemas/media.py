@@ -145,6 +145,54 @@ class MediaItemListResponse(PaginatedResponse):
     backfill_pending: bool = False
 
 
+class ExternalGameResult(BaseModel):
+    """A game found via external API (IGDB/SteamGridDB) — not in the Otix database.
+
+    If the game was previously imported, otix_media_id and otix_slug are populated
+    so the frontend can link directly without re-importing.
+    """
+
+    title: str
+    release_date: date | None = None
+    poster_url: str | None = None
+    publisher: str | None = None
+    source: str  # "igdb" or "steamgrid"
+    source_id: str  # provider-specific ID
+    otix_media_id: str | None = None
+    otix_slug: str | None = None
+
+
+class ExternalGameSearchResponse(BaseModel):
+    items: list[ExternalGameResult]
+
+
+class ImportGameResponse(BaseModel):
+    """Response after importing a game from an external source into Otix."""
+
+    media_id: str
+    title: str
+    slug: str
+
+
+class SteamGridSearchRequest(BaseModel):
+    query: str
+
+
+class SteamGridGame(BaseModel):
+    """A game found on SteamGridDB."""
+
+    sgdb_id: int
+    name: str
+    grid_url: str | None = None
+    logo_url: str | None = None
+    hero_url: str | None = None
+    icon_url: str | None = None
+
+
+class SteamGridSearchResponse(BaseModel):
+    items: list[SteamGridGame]
+
+
 class SteamUnmatchedGameSummary(BaseModel):
     id: str
     steam_app_id: int
@@ -195,6 +243,25 @@ class SteamWishlistItemSummary(BaseModel):
 class SteamWishlistListResponse(PaginatedResponse):
     items: list[SteamWishlistItemSummary]
     total: int | None = None
+
+
+# ── Local game matching ───────────────────────────────────────────
+
+
+class LocalGameMatchRequest(BaseModel):
+    titles: list[str]
+
+
+class LocalGameMatch(BaseModel):
+    query_title: str
+    matched_media: MediaItemSummary | None = None
+    confidence: float = 0.0  # trigram similarity 0–1
+
+    model_config = {"from_attributes": True}
+
+
+class LocalGameMatchResponse(BaseModel):
+    matches: list[LocalGameMatch]
 
 
 # ── Media detail (full) ──────────────────────────────────────────

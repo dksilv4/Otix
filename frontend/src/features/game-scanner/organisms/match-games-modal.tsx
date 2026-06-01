@@ -15,12 +15,13 @@ import { DkButton } from "@/features/dk-ui/atoms/button";
 import { cn } from "@/lib/utils";
 import type { DetectedGame } from "../types";
 
-interface OtixGame {
-  id: string;
-  title: string;
-  slug: string;
-  posterUrl?: string;
-  releaseDate?: string;
+interface SteamGridResult {
+  sgdbId: number;
+  name: string;
+  gridUrl?: string | null;
+  logoUrl?: string | null;
+  heroUrl?: string | null;
+  iconUrl?: string | null;
 }
 
 interface MatchSuggestion {
@@ -59,7 +60,7 @@ export function MatchGamesModal({
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
 
   // Per-tab search state
-  const [searchResults, setSearchResults] = useState<OtixGame[]>([]);
+  const [searchResults, setSearchResults] = useState<SteamGridResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -105,7 +106,7 @@ export function MatchGamesModal({
       .finally(() => setBatchLoading(false));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-search when tab changes
+  // Auto-search SteamGridDB when tab changes
   useEffect(() => {
     if (!activeTab) {
       setSearchResults([]);
@@ -118,30 +119,16 @@ export function MatchGamesModal({
 
     const query = game.title;
     setSearchQuery(query);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
 
     setSearchLoading(true);
     apiClient
-      .get<{ items: Array<{ id: string; title: string; slug: string; posterUrl: string | null; releaseDate: string | null }> }>(
-        "/media/search",
-        { params: { q: query, media_type: "game", sort_by: "popularity", limit: 6 } },
-      )
-      .then(({ data }) =>
-        setSearchResults(
-          data.items.map((item) => ({
-            id: item.id,
-            title: item.title,
-            slug: item.slug,
-            posterUrl: item.posterUrl ?? undefined,
-            releaseDate: item.releaseDate ?? undefined,
-          })),
-        ),
-      )
+      .post<{ items: SteamGridResult[] }>("/media/search-steamgrid", { query })
+      .then(({ data }) => setSearchResults(data.items))
       .catch(() => setSearchResults([]))
       .finally(() => setSearchLoading(false));
   }, [activeTab, unmatched]);
 
-  // Manual search handler
+  // Manual search handler — also SteamGridDB
   const handleSearch = useCallback((q: string) => {
     setSearchQuery(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -154,20 +141,11 @@ export function MatchGamesModal({
     debounceRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const { data } = await apiClient.get<{
-          items: Array<{ id: string; title: string; slug: string; posterUrl: string | null; releaseDate: string | null }>;
-        }>("/media/search", {
-          params: { q, media_type: "game", sort_by: "popularity", limit: 6 },
-        });
-        setSearchResults(
-          data.items.map((item) => ({
-            id: item.id,
-            title: item.title,
-            slug: item.slug,
-            posterUrl: item.posterUrl ?? undefined,
-            releaseDate: item.releaseDate ?? undefined,
-          })),
+        const { data } = await apiClient.post<{ items: SteamGridResult[] }>(
+          "/media/search-steamgrid",
+          { query: q },
         );
+        setSearchResults(data.items);
       } catch {
         setSearchResults([]);
       } finally {
@@ -183,8 +161,14 @@ export function MatchGamesModal({
   }, []);
 
   const handleLink = useCallback(
-    (gameId: string, otixGame: OtixGame) => {
-      onLinkGame(gameId, otixGame.id, otixGame.title, otixGame.slug);
+    (gameId: string, sgResult: SteamGridResult) => {
+      // Prefer Otix match from batch suggestion, fall back to SteamGrid ID
+      const suggestion = batchSuggestions.get(gameId);
+      const mediaId = suggestion?.matchedMedia?.id ?? `sgdb:${sgResult.sgdbId}`;
+      const title = suggestion?.matchedMedia?.title ?? sgResult.name;
+      const slug = suggestion?.matchedMedia?.slug ?? sgResult.name.toLowerCase().replace(/\s+/g, "-");
+
+      onLinkGame(gameId, mediaId, title, slug);
       setConfirmed((prev) => new Set(prev).add(gameId));
       // Auto-advance to next unconfirmed tab
       const remaining = unmatched.filter(
@@ -192,23 +176,24 @@ export function MatchGamesModal({
       );
       setActiveTab(remaining[0]?.id ?? null);
     },
-    [onLinkGame, unmatched, confirmed],
+    [onLinkGame, unmatched, confirmed, batchSuggestions],
   );
 
   const handleConfirmAll = useCallback(() => {
     for (const [gameId, suggestion] of batchSuggestions) {
-      if (suggestion.matchedMedia && !confirmed.has(gameId)) {
+      if (!confirmed.has(gameId)) {
+        const media = suggestion.matchedMedia;
         onLinkGame(
           gameId,
-          suggestion.matchedMedia.id,
-          suggestion.matchedMedia.title,
-          suggestion.matchedMedia.slug,
+          media?.id ?? `unmatched:${gameId}`,
+          media?.title ?? unmatched.find((g) => g.id === gameId)?.title ?? "Unknown",
+          media?.slug ?? "",
         );
         setConfirmed((prev) => new Set(prev).add(gameId));
       }
     }
     setActiveTab(null);
-  }, [batchSuggestions, confirmed, onLinkGame]);
+  }, [batchSuggestions, confirmed, onLinkGame, unmatched]);
 
   const activeGame = unmatched.find((g) => g.id === activeTab);
   const batchSuggestion = activeTab ? batchSuggestions.get(activeTab) : undefined;
@@ -393,60 +378,48 @@ export function MatchGamesModal({
                         <p className="text-sm text-muted-foreground">Searching...</p>
                       </div>
                     ) : searchResults.length > 0 ? (
-                      <div className="space-y-1">
-                        {searchResults.map((otixGame) => {
-                          const isBatchMatch =
-                            batchSuggestion?.matchedMedia?.id === otixGame.id;
-
-                          return (
-                            <button
-                              key={otixGame.id}
-                              onClick={() => handleLink(activeGame.id, otixGame)}
-                              className={cn(
-                                "flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-all",
-                                isBatchMatch
-                                  ? "bg-green-500/5 ring-1 ring-green-500/10"
-                                  : "hover:bg-primary/5",
-                              )}
-                            >
-                              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--dk-surface-base)] ring-1 ring-white/[0.04]">
-                                {otixGame.posterUrl ? (
-                                  <img
-                                    src={otixGame.posterUrl}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-sm font-semibold truncate">
-                                    {otixGame.title}
-                                  </p>
-                                  {isBatchMatch && (
-                                    <span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
-                                      Best match
-                                    </span>
-                                  )}
+                      <div className="space-y-2">
+                        {searchResults.map((sg) => (
+                          <button
+                            key={sg.sgdbId}
+                            onClick={() => handleLink(activeGame.id, sg)}
+                            className="flex w-full items-center gap-4 rounded-xl p-3 text-left transition-all hover:bg-primary/5 active:scale-[0.99]"
+                          >
+                            {/* Grid image */}
+                            <div className="h-[43px] w-[92px] flex-shrink-0 overflow-hidden rounded-lg bg-[var(--dk-surface-base)] ring-1 ring-white/[0.04]">
+                              {sg.gridUrl ? (
+                                <img
+                                  src={sg.gridUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center">
+                                  <Gamepad2 className="h-5 w-5 text-muted-foreground/30" />
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {otixGame.releaseDate
-                                    ? new Date(otixGame.releaseDate).getFullYear()
-                                    : "Otix Library"}
-                                </p>
-                              </div>
+                              )}
+                            </div>
 
-                              <div className="flex-shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                                Link
-                              </div>
-                            </button>
-                          );
-                        })}
+                            {/* Logo + name */}
+                            <div className="min-w-0 flex-1">
+                              {sg.logoUrl ? (
+                                <img
+                                  src={sg.logoUrl}
+                                  alt={sg.name}
+                                  className="h-6 max-w-[160px] object-contain object-left"
+                                />
+                              ) : (
+                                <p className="text-sm font-semibold truncate">
+                                  {sg.name}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex-shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                              Link
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 py-8 text-center">
