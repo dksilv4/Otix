@@ -11,13 +11,21 @@ export interface DetectedGame {
   exePath: string;
   localExePath?: string;
   installDir: string;
-  platform: "steam" | "pc" | "iso";
+  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
   iconUrl?: string;
   updateFiles?: UpdateFile[];
   otixMediaId?: string;
   otixMediaTitle?: string;
   otixMediaSlug?: string;
   otixConfidence?: number;
+  otixPosterUrl?: string | null;
+  otixTextlessPosterUrl?: string | null;
+  otixLogoUrl?: string | null;
+  otixMatchSuggestion?: {
+    mediaId: string;
+    title: string;
+    slug: string;
+  };
 }
 
 export interface MountResult {
@@ -53,7 +61,7 @@ export interface AnalyzedUpdate {
   gapVersion?: string;
 }
 
-export type Platform = "all" | "steam" | "pc" | "iso";
+export type Platform = "all" | "steam" | "pc" | "iso" | "epic" | "gog" | "battlenet" | "ubisoft" | "ea" | "riot" | "xbox" | "itch";
 
 export type InstallerStep = 1 | 2 | 3 | 4;
 
