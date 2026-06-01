@@ -393,9 +393,8 @@ class MediaService:
         # Vector similarity via cosine distance (pgvector). Falls back to 0 when
         # no embedding for the item or no query embedding was provided.
         if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
-            from pgvector.sqlalchemy import Vector
             vector_sim = func.coalesce(
-                1 - MediaItem.embedding.op('<=>')(type_coerce(query_embedding, Vector(1024))),
+                1 - MediaItem.embedding.cosine_distance(query_embedding),
                 0,
             )
         else:
@@ -518,3 +517,72 @@ class MediaService:
         id_order = {id_: idx for idx, id_ in enumerate(ids)}
         items.sort(key=lambda item: id_order.get(item.id, 999))
         return items
+
+    async def match_local_games(
+        self,
+        titles: list[str],
+        threshold: float = 0.3,
+    ) -> list[tuple[str, MediaItem | None, float]]:
+        """Fuzzy-match local game titles to Otix media items via trigram similarity.
+
+        Each title is normalized (version strings, group tags, dots/underscores
+        stripped) and compared against the ``MediaItem.title`` column using
+        PostgreSQL ``similarity()``. Returns the best match per input title if
+        the similarity exceeds *threshold*.
+        """
+        import re
+
+        if not titles:
+            return []
+
+        results: list[tuple[str, MediaItem | None, float]] = []
+
+        for raw_title in titles:
+            # Normalize: strip version numbers, group tags, dots/underscores
+            clean = raw_title
+            # Remove common group/crack tags: -RUNE, -CODEX, -FLT, -PLAZA, -HOODLUM, etc.
+            clean = re.sub(
+                r"[-.\s](RUNE|CODEX|FLT|PLAZA|HOODLUM|SKIDROW|TENOKE|DODI|ElAmigos|Razor1911|FAIRLIGHT|GOLDBERG|P2P|EMPRESS|FCKDRM|STEAMPUNKS|CPY|RELOADED|PROPHET|TiNYiSO|BAT|ALI213|3DM|GOG|FCK)",
+                "",
+                clean,
+                flags=re.IGNORECASE,
+            )
+            # Remove version-like patterns: v1.0, v1.2.3, (v1.0), [v1.0]
+            clean = re.sub(r"[\[\(]?\s*v?\d+(?:\.\d+)+(?:\w\d*)?\s*[\]\)]?", "", clean)
+            # Dots and underscores → spaces
+            clean = clean.replace(".", " ").replace("_", " ")
+            # Collapse whitespace
+            clean = re.sub(r"\s+", " ", clean).strip()
+
+            if not clean:
+                results.append((raw_title, None, 0.0))
+                continue
+
+            # Trigram similarity search — find best matching game.
+            # Order by similarity then title-length proximity so DLCs/expansions
+            # (which include the base-game name + extra text) don't outrank the
+            # original title just because they share more trigrams.
+            q = (
+                select(MediaItem, func.similarity(MediaItem.title, clean).label("sim"))
+                .where(MediaItem.media_type == "game")
+                .where(MediaItem.title.op("%")(clean))  # GiST index filter
+                .order_by(
+                    func.similarity(MediaItem.title, clean).desc(),
+                    func.abs(func.length(MediaItem.title) - len(clean)).asc(),
+                )
+                .limit(3)
+            )
+            rows = (await self.session.execute(q)).all()
+
+            if not rows:
+                results.append((raw_title, None, 0.0))
+                continue
+
+            best_item, best_sim = rows[0]
+
+            if best_sim >= threshold:
+                results.append((raw_title, best_item, best_sim))
+            else:
+                results.append((raw_title, None, best_sim))
+
+        return results
