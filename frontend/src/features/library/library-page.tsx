@@ -13,6 +13,8 @@ import { useAuth } from "@/features/auth/auth-provider"
 import { getPlatformTabs, getPlatform } from "./platforms"
 import { Gamepad2 } from "lucide-react"
 import { GameScannerTab } from "@/features/game-scanner"
+import { GameCard } from "@/features/game-scanner/molecules/game-card"
+import type { DetectedGame } from "@/features/game-scanner/types"
 
 // ── Tab definitions ──
 
@@ -331,6 +333,78 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
 
 // ── Overview Tab Content ──
 
+function LocalGamesOverviewSection() {
+  const navigate = useNavigate()
+  const [games, setGames] = useState<DetectedGame[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const raw = localStorage.getItem("otix_scanned_games")
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Re-read from localStorage on focus/mount
+  useEffect(() => {
+    const handleFocus = () => {
+      try {
+        const raw = localStorage.getItem("otix_scanned_games")
+        setGames(raw ? JSON.parse(raw) : [])
+      } catch {}
+    }
+    window.addEventListener("focus", handleFocus)
+    return () => window.removeEventListener("focus", handleFocus)
+  }, [])
+
+  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI
+  if (!isElectron || games.length === 0) return null
+
+  const preview = games.slice(0, 5)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Your Games
+        </h2>
+        <button
+          onClick={() =>
+            navigate({
+              to: "/library/$tab",
+              params: { tab: "local-games" },
+            })
+          }
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          View all
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {preview.map((game, i) => (
+          <GameCard key={game.id} game={game} index={i} />
+        ))}
+        {games.length > 5 && (
+          <button
+            type="button"
+            onClick={() =>
+              navigate({
+                to: "/library/$tab",
+                params: { tab: "local-games" },
+              })
+            }
+            className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
+          >
+            <span className="text-sm text-muted-foreground">
+              +{games.length - 5} more
+            </span>
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ListsPreviewSection() {
   const navigate = useNavigate()
   const { data: lists, isLoading } = useUserLists()
@@ -378,6 +452,7 @@ function OverviewTabContent() {
 
   return (
     <div className="space-y-8">
+      <LocalGamesOverviewSection />
       <ListsPreviewSection />
 
       {platforms.map((platform) => {

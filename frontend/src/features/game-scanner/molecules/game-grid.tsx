@@ -12,7 +12,11 @@ export function GameGrid({ games }: GameGridProps) {
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <AnimatePresence mode="popLayout">
         {games.map((game, i) => (
-          <GameCard key={game.id} game={game} index={i} />
+          <GameCard
+            key={game.id}
+            game={game}
+            index={i}
+          />
         ))}
       </AnimatePresence>
     </div>

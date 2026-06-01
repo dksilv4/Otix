@@ -9,6 +9,9 @@ interface MatchResult {
     id: string;
     title: string;
     slug: string;
+    poster_url?: string | null;
+    textless_poster_url?: string | null;
+    logo_url?: string | null;
   } | null;
   confidence: number;
 }
@@ -33,15 +36,36 @@ export function useMatchLocalGames() {
         data.matches.map((m) => [m.queryTitle, m]),
       );
 
+      const AUTO_ACCEPT_THRESHOLD = 0.7;
+
       return games.map((game) => {
         const match = matchMap.get(game.title);
         if (match && match.matchedMedia) {
+          const media = match.matchedMedia;
+          if (match.confidence >= AUTO_ACCEPT_THRESHOLD) {
+            return {
+              ...game,
+              otixMediaId: media.id,
+              otixMediaTitle: media.title,
+              otixMediaSlug: media.slug,
+              otixConfidence: match.confidence,
+              otixPosterUrl: media.poster_url,
+              otixTextlessPosterUrl: media.textless_poster_url,
+              otixLogoUrl: media.logo_url,
+            };
+          }
+          // Medium confidence — show as recommendation, needs user confirmation
           return {
             ...game,
-            otixMediaId: match.matchedMedia.id,
-            otixMediaTitle: match.matchedMedia.title,
-            otixMediaSlug: match.matchedMedia.slug,
             otixConfidence: match.confidence,
+            otixPosterUrl: media.poster_url,
+            otixTextlessPosterUrl: media.textless_poster_url,
+            otixLogoUrl: media.logo_url,
+            otixMatchSuggestion: {
+              mediaId: media.id,
+              title: media.title,
+              slug: media.slug,
+            },
           };
         }
         return game;
