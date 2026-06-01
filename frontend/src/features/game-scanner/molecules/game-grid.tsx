@@ -5,9 +5,11 @@ import type { DetectedGame } from "../types";
 
 interface GameGridProps {
   games: DetectedGame[];
+  onAcceptSuggestion: (game: DetectedGame) => void;
+  onRejectSuggestion: (game: DetectedGame) => void;
 }
 
-export function GameGrid({ games }: GameGridProps) {
+export function GameGrid({ games, onAcceptSuggestion, onRejectSuggestion }: GameGridProps) {
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
       <AnimatePresence mode="popLayout">
@@ -16,6 +18,8 @@ export function GameGrid({ games }: GameGridProps) {
             key={game.id}
             game={game}
             index={i}
+            onAcceptSuggestion={onAcceptSuggestion}
+            onRejectSuggestion={onRejectSuggestion}
           />
         ))}
       </AnimatePresence>
