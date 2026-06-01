@@ -42,7 +42,15 @@ const AboutPage = lazy(() => import("@/features/about/organisms/about-page").the
 
 function RootComponent() {
   const location = useLocation()
+  const navigate = useNavigate()
   const isAuthRoute = location.pathname.startsWith("/auth")
+
+  useEffect(() => {
+    // TODO: Remove this auto-open redirect once the scanner/installer feature is fully stabilized
+    if (typeof window !== "undefined" && !!(window as any).electronAPI && location.pathname === "/") {
+      navigate({ to: "/library/$tab", params: { tab: "local-games" }, replace: true })
+    }
+  }, [location.pathname, navigate])
 
   if (isAuthRoute || location.pathname === "/loading") {
     return <Outlet />
@@ -313,6 +321,22 @@ const searchRoute = createRoute({
   }),
 })
 
+// ── Desktop Scanner redirect (moved to /library/local-games) ──
+
+function DesktopScannerRedirect() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    navigate({ to: "/library/$tab", params: { tab: "local-games" }, replace: true })
+  }, [navigate])
+  return <LoadingPage />
+}
+
+const desktopScannerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/desktop",
+  component: DesktopScannerRedirect,
+})
+
 // ── Assemble ──
 
 const routeTree = rootRoute.addChildren([
@@ -350,6 +374,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   searchRoute,
   aboutRoute,
+  desktopScannerRoute,
 ])
 
 export interface RouterContext {
