@@ -126,10 +126,11 @@ export function MatchGamesModal({
       .catch(() => {})
       .finally(() => setBatchLoading(false));
 
-    // Load first N games immediately, rest on scroll
-    const firstBatch = unmatched.slice(0, 4);
-    for (const game of firstBatch) {
-      searchForGame(game);
+    // Search all games sequentially (respect rate limits)
+    let delay = 0;
+    for (const game of unmatched) {
+      setTimeout(() => searchForGame(game), delay);
+      delay += 400; // 400ms between each to stay under SteamGridDB rate limit
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -211,19 +212,6 @@ export function MatchGamesModal({
     }
   }, [batchSuggestions, confirmed, onLinkGame]);
 
-  // ── Lazy-load remaining rows on scroll ──
-  const listRef = useRef<HTMLDivElement>(null);
-  const handleScroll = useCallback(() => {
-    const remaining = unmatched.filter(
-      (g) => !confirmed.has(g.id) && !rowStatesRef.current[g.id]?.loaded && !rowStatesRef.current[g.id]?.loading,
-    );
-    if (remaining.length === 0) return;
-    // Load next 3
-    for (const game of remaining.slice(0, 3)) {
-      searchForGame(game);
-    }
-  }, [unmatched, confirmed, searchForGame]);
-
   const matchableCount = [...batchSuggestions.values()].filter((s) => s.matchedMedia).length;
   const visibleUnmatched = unmatched.filter((g) => !confirmed.has(g.id));
 
@@ -273,11 +261,7 @@ export function MatchGamesModal({
           </div>
 
           {/* Content */}
-          <div
-            ref={listRef}
-            onScroll={handleScroll}
-            className="flex-1 overflow-y-auto px-6 py-4"
-          >
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             {/* Batch loading */}
             {batchLoading && (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
