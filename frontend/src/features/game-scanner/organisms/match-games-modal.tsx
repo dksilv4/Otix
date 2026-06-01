@@ -52,14 +52,43 @@ export function MatchGamesModal({
 
   const selectedGame = unmatched.find((g) => g.id === selectedId);
 
-  // Focus search when selecting a game
+  // Auto-search when selecting a game
   useEffect(() => {
-    if (selectedId && inputRef.current) {
-      setQuery("");
-      setResults([]);
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (selectedId) {
+      const game = unmatched.find((g) => g.id === selectedId);
+      if (game) {
+        setQuery(game.title);
+        // Trigger search immediately with game title
+        setLoading(true);
+        apiClient
+          .get<{
+            items: Array<{
+              id: string;
+              title: string;
+              slug: string;
+              posterUrl: string | null;
+              releaseDate: string | null;
+            }>;
+          }>("/media/search", {
+            params: { q: game.title, media_type: "game", sort_by: "popularity", limit: 6 },
+          })
+          .then(({ data }) => {
+            setResults(
+              data.items.map((item) => ({
+                id: item.id,
+                title: item.title,
+                slug: item.slug,
+                posterUrl: item.posterUrl ?? undefined,
+                releaseDate: item.releaseDate ?? undefined,
+                source: "otix",
+              })),
+            );
+          })
+          .catch(() => setResults([]))
+          .finally(() => setLoading(false));
+      }
     }
-  }, [selectedId]);
+  }, [selectedId, unmatched]);
 
   // Debounced search
   const handleSearch = useCallback(
@@ -125,13 +154,30 @@ export function MatchGamesModal({
     try {
       onLinkGame(game.id, otixGame.id, otixGame.title, otixGame.slug);
       setLinked((prev) => new Set(prev).add(game.id));
-      setSelectedId(null);
-      setResults([]);
-      setQuery("");
+      // Auto-advance to next unmatched game
+      const remaining = unmatched.filter(
+        (g) => g.id !== game.id && !linked.has(g.id),
+      );
+      if (remaining.length > 0) {
+        setSelectedId(remaining[0].id);
+      } else {
+        setSelectedId(null);
+      }
     } catch {
       // parent handles state
     } finally {
       setLinking(null);
+    }
+  };
+
+  const handleSkip = () => {
+    const remaining = unmatched.filter(
+      (g) => g.id !== selectedId && !linked.has(g.id),
+    );
+    if (remaining.length > 0) {
+      setSelectedId(remaining[0].id);
+    } else {
+      setSelectedId(null);
     }
   };
 
@@ -237,17 +283,22 @@ export function MatchGamesModal({
               <>
                 {/* Search bar */}
                 <div className="px-6 pt-4 pb-3">
-                  <div className="relative">
+                  <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
                     <input
                       ref={inputRef}
                       type="text"
                       value={query}
                       onChange={(e) => handleSearch(e.target.value)}
-                      placeholder={`Search Otix for "${selectedGame.title}"...`}
+                      placeholder="Refine search..."
                       className="h-12 w-full rounded-xl bg-[var(--dk-surface-glass)] pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1"
                     />
                   </div>
+                  <DkButton variant="ghost" size="sm" onClick={handleSkip}>
+                    Skip
+                  </DkButton>
+                </div>
 
                   {/* Selected game info */}
                   <div className="mt-3 flex items-center gap-3 rounded-xl bg-[var(--dk-surface-glass)] px-3 py-2">
