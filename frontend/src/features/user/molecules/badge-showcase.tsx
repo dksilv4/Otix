@@ -8,6 +8,9 @@ import {
   UserPlus,
   Flame,
   Award,
+  Compass,
+  Layers,
+  ThumbsUp,
 } from 'lucide-react'
 
 export interface BadgeDef {
@@ -38,6 +41,9 @@ const ICON_MAP: Record<string, React.FC<{ className?: string; style?: React.CSSP
   UserPlus,
   Flame,
   Award,
+  Compass,
+  Layers,
+  ThumbsUp,
 }
 
 function BadgeIcon({ icon, className, style }: { icon: string; className?: string; style?: React.CSSProperties }) {

@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { UserRoundPlus, UserRoundCheck } from 'lucide-react'
+import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@/features/auth'
-import { personQueries, useFollowPerson, useUnfollowPerson } from '../person-queries'
+import { personQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '../person-queries'
 import type { PersonDetail as PersonDetailData } from '../person-queries'
 import { PersonTimeline } from './person-timeline'
 import { PersonTimelineFilters } from './person-timeline-filters'
+import { cn } from '@/lib/utils'
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return ''
@@ -50,8 +51,45 @@ function StatBox({ label, value }: { label: string; value: string | number }) {
   )
 }
 
+function StarRating({ value, onChange, readonly }: { value: number | null; onChange?: (score: number) => void; readonly?: boolean }) {
+  const [hover, setHover] = useState(0)
+  const active = hover || value || 0
+
+  return (
+    <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(0)}>
+      {Array.from({ length: 5 }).map((_, i) => {
+        const score = i + 1
+        const filled = score <= active
+        return (
+          <button
+            key={score}
+            type="button"
+            disabled={readonly}
+            className={cn(
+              'p-0.5 transition-colors',
+              readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110',
+            )}
+            onClick={() => onChange?.(score)}
+            onMouseEnter={() => !readonly && setHover(score)}
+          >
+            <Star
+              className={cn(
+                'h-4 w-4',
+                filled ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30',
+              )}
+            />
+          </button>
+        )
+      })}
+      {value != null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
+    </div>
+  )
+}
+
 export function PersonDetail() {
-  const params = useParams({ strict: false }) as { personId?: string }
+  const params = useParams({ from: '/person/$personId' })
+  const search = useSearch({ from: '/person/$personId' })
+  const navigate = useNavigate()
   const personId = params.personId || ''
   const { isAuthenticated } = useAuth()
 
@@ -59,10 +97,14 @@ export function PersonDetail() {
   const { data: relatedArtists } = useQuery(personQueries.related(personId))
   const follow = useFollowPerson(personId)
   const unfollow = useUnfollowPerson(personId)
+  const rate = useRatePerson(personId)
+  const unrate = useUnratePerson(personId)
 
   const [bioExpanded, setBioExpanded] = useState(false)
-  const [mediaTypeFilter, setMediaTypeFilter] = useState('all')
-  const [roleFilter, setRoleFilter] = useState('all')
+
+  const updateSearch = (updates: Partial<typeof search>) => {
+    navigate({ to: '/person/$personId', params: { personId }, search: { ...search, ...updates }, replace: true })
+  }
 
   const handleFollowToggle = () => {
     if (!person) return
@@ -128,6 +170,12 @@ export function PersonDetail() {
         <div className="min-w-0 text-center sm:text-left">
           <div className="flex items-center justify-center gap-3 sm:justify-start">
             <h1 className="text-2xl font-bold sm:text-3xl">{person.name}</h1>
+            {person.avgRating != null && (
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                {person.avgRating}
+              </span>
+            )}
             {isAuthenticated && (
               <button
                 type="button"
@@ -160,6 +208,24 @@ export function PersonDetail() {
             )}
           </div>
 
+          {/* Rating */}
+          {isAuthenticated && (
+            <div className="mt-2 flex items-center gap-2">
+              <StarRating
+                value={person.userRating ?? null}
+                onChange={(score) => rate.mutate(score)}
+              />
+              {(person.userRating ?? null) != null && (
+                <button
+                  onClick={() => unrate.mutate()}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground sm:justify-start">
             {person.birthday && <span>{formatDate(person.birthday)}</span>}
             {person.deathday && <span>– {formatDate(person.deathday)}</span>}
@@ -190,6 +256,7 @@ export function PersonDetail() {
       {/* ── Stats bar ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
         <StatBox label="Total Credits" value={stats.total} />
+        {person.avgRating != null && <StatBox label="Rating" value={`${person.avgRating}/5`} />}
         {stats.yearsActive && <StatBox label="Years Active" value={stats.yearsActive} />}
         {stats.byType.movie && <StatBox label="Movies" value={stats.byType.movie} />}
         {stats.byType.show && <StatBox label="Shows" value={stats.byType.show} />}
@@ -201,22 +268,20 @@ export function PersonDetail() {
       <section>
         <h2 className="mb-4 text-lg font-semibold">Credits</h2>
         <PersonTimelineFilters
-          mediaTypeFilter={mediaTypeFilter}
+          mediaTypeFilter={search.mediaType}
           onMediaTypeChange={(value) => {
-            setMediaTypeFilter(value)
-            setRoleFilter('all')
+            updateSearch({ mediaType: value || 'all', role: 'all' })
           }}
-          roleFilter={roleFilter}
+          roleFilter={search.role}
           onRoleChange={(value) => {
-            setRoleFilter(value)
-            setMediaTypeFilter('all')
+            updateSearch({ role: value || 'all', mediaType: 'all' })
           }}
         />
         <div className="mt-6">
           <PersonTimeline
             credits={person.credits}
-            mediaTypeFilter={mediaTypeFilter}
-            roleFilter={roleFilter}
+            mediaTypeFilter={search.mediaType}
+            roleFilter={search.role}
           />
         </div>
       </section>

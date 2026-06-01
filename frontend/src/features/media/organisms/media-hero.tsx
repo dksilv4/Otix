@@ -181,7 +181,7 @@ export function MediaHero({
                 >
                   <Badge
                     variant="secondary"
-                    className="gap-1.5 border border-white/20 bg-white/5 px-2.5 py-1 text-xs font-bold tracking-wide text-white/80 backdrop-blur hover:bg-white/10 transition-colors"
+                    className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur hover:bg-white/20 transition-colors"
                   >
                     {certification}
                   </Badge>
@@ -275,6 +275,7 @@ export function MediaHero({
                 </a>
               )}
             </div>
+
           </div>
         </div>
       </div>

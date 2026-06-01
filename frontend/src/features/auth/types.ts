@@ -3,6 +3,7 @@ export interface User {
   email: string
   username: string
   isAdmin?: boolean
+  totalXp?: number
   isVerified: boolean
   twoFactorEnabled: boolean
   steamId?: string | null
@@ -34,6 +35,7 @@ export interface User {
   dateOfBirth?: string | null
   showAdultContent?: boolean
   country?: string | null
+  notificationPreferences?: Record<string, boolean> | null
 }
 
 export interface TokenResponse {

@@ -3,6 +3,7 @@ import { HallOfFameSection } from './profile-hall-of-fame-section'
 import { LibraryBreakdownSection } from './profile-library-breakdown-section'
 import { MoodTimelineSection } from './profile-mood-timeline-section'
 import { StreakShowcaseSection } from './profile-streak-showcase-section'
+import { ProfileAchievementsSection } from './profile-achievements-section'
 
 interface ProfileSectionRendererProps {
   username: string
@@ -22,6 +23,7 @@ const SECTION_COMPONENTS: Record<string, React.FC<{ username: string }>> = {
   hof_music: (props) => <HallOfFameSection {...props} mediaType="music" />,
   library_breakdown: LibraryBreakdownSection,
   mood_timeline: MoodTimelineSection,
+  achievements: ProfileAchievementsSection,
 }
 
 export function ProfileSectionRenderer({

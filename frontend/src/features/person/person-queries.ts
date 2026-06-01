@@ -41,6 +41,8 @@ export interface PersonDetail {
   placeOfBirth: string | null
   followerCount: number
   isFollowed: boolean | null
+  avgRating: number | null
+  userRating: number | null
   credits: PersonCredit[]
 }
 
@@ -158,6 +160,64 @@ export function useUnfollowPerson(personId: string) {
     onError: (_err, _vars, context) => {
       if (context?.prev) {
         queryClient.setQueryData(['person', personId], context.prev)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['person', personId] })
+    },
+  })
+}
+
+export function useRatePerson(personId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (score: number) => {
+      await apiClient.put(`/person/${personId}/rating`, { score })
+    },
+    onMutate: async (score) => {
+      await queryClient.cancelQueries({ queryKey: ['person', personId] })
+      const prev = queryClient.getQueryData<PersonDetail>(['person', personId])
+      if (prev) {
+        queryClient.setQueryData<PersonDetail>(['person', personId], {
+          ...prev,
+          userRating: score,
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(['person', personId], ctx.prev)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['person', personId] })
+    },
+  })
+}
+
+export function useUnratePerson(personId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/person/${personId}/rating`)
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['person', personId] })
+      const prev = queryClient.getQueryData<PersonDetail>(['person', personId])
+      if (prev) {
+        queryClient.setQueryData<PersonDetail>(['person', personId], {
+          ...prev,
+          userRating: null,
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(['person', personId], ctx.prev)
       }
     },
     onSettled: () => {

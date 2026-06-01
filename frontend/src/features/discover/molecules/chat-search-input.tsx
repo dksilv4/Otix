@@ -21,6 +21,8 @@ const MEDIA_TYPE_LABEL: Record<string, string> = {
   show: 'TV Show',
   game: 'Game',
   music: 'Music',
+  people: 'Artist',
+  users: 'User',
 }
 
 const MEDIA_TYPE_COLOR: Record<string, string> = {
@@ -28,6 +30,8 @@ const MEDIA_TYPE_COLOR: Record<string, string> = {
   show: 'text-violet-400 bg-violet-400/10 border-violet-400/20 hover:bg-violet-400/20',
   game: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20 hover:bg-emerald-400/20',
   music: 'text-amber-400 bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/20',
+  people: 'text-blue-400 bg-blue-400/10 border-blue-400/20 hover:bg-blue-400/20',
+  users: 'text-teal-400 bg-teal-400/10 border-teal-400/20 hover:bg-teal-400/20',
 }
 
 interface ChatSearchInputProps {

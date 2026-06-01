@@ -56,6 +56,7 @@ export interface UserListDetailOut extends UserListOut {
       played: boolean
     } | null
     isAdult?: boolean
+    albumArtistName?: string | null
   }>
   collaborators: CollaboratorOut[]
 }

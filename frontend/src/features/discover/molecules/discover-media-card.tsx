@@ -21,6 +21,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({ item, classNa
       ratingCount={item.ratingCount}
       isAdult={item.isAdult}
       className={className}
+      artistName={item.albumArtistName}
     />
   )
 })

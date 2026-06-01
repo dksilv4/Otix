@@ -5,6 +5,7 @@ import { Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
+import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/image-position'
 
 interface MediaCardProps {
   id: string
@@ -23,6 +24,7 @@ interface MediaCardProps {
   /** Optional subtitle shown below the year — e.g. financial data like "+$42M" */
   subtitle?: string | null
   subtitleColor?: string
+  artistName?: string | null
 }
 
 const mediaTypeColor: Record<string, string> = {
@@ -55,6 +57,7 @@ export const MediaCard = memo(function MediaCard({
   className,
   subtitle,
   subtitleColor,
+  artistName,
 }: MediaCardProps) {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -62,6 +65,10 @@ export const MediaCard = memo(function MediaCard({
   const handlePrefetch = useCallback(() => {
     queryClient.prefetchQuery(mediaQueries.detail(id))
   }, [queryClient, id])
+
+  const imageUrl = textlessPosterUrl || posterUrl || undefined
+  const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
+  const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
 
   return (
     <Link
@@ -76,12 +83,13 @@ export const MediaCard = memo(function MediaCard({
     >
       {/* Textless poster — zooms out on hover (110% → 100%) */}
       <Image
-        src={textlessPosterUrl || posterUrl || undefined}
+        src={cleanSrc}
         alt={title}
         className={cn(
           'h-full w-full object-cover transition-transform duration-700 ease-out',
           zoomed && 'scale-110 group-hover:scale-100',
         )}
+        style={position ? { objectPosition: `${position.x}% ${position.y}%` } : undefined}
         fallback={title[0]}
       />
 
@@ -155,6 +163,11 @@ export const MediaCard = memo(function MediaCard({
         <p className="text-sm font-semibold text-white text-center leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           {title}
         </p>
+        {artistName && (
+          <p className="text-xs font-semibold text-white/80 text-center mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate">
+            {artistName}
+          </p>
+        )}
         {year && (
           <p className="text-[11px] font-medium text-white/60 text-center mt-0.5">
             {year}

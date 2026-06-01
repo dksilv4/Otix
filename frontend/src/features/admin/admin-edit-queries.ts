@@ -47,6 +47,9 @@ export interface MediaEditProposal {
   mediaTitle: string | null
   mediaType: string | null
   mediaPosterUrl: string | null
+  myVote: string | null
+  upvoteCount: number
+  downvoteCount: number
 }
 
 export interface MediaEditProposalList {
@@ -109,7 +112,8 @@ export function useApproveProposal(mediaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
       queryClient.invalidateQueries({ queryKey: adminEditKeys.pending() })
-      queryClient.invalidateQueries({ queryKey: ["media", "detail", mediaId] })
+      queryClient.removeQueries({ queryKey: ["media"] })
+      queryClient.removeQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -126,7 +130,8 @@ export function useUndoApproval(mediaId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.forMedia(mediaId) })
       queryClient.invalidateQueries({ queryKey: adminEditKeys.pending() })
-      queryClient.invalidateQueries({ queryKey: ["media", "detail", mediaId] })
+      queryClient.removeQueries({ queryKey: ["media"] })
+      queryClient.removeQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -154,6 +159,14 @@ export const ADMIN_XP = {
   PROPOSAL_APPROVE: 100,
   PROPOSAL_REJECT: 30,
 } as const
+
+export const PROPOSAL_MIN_XP = 500
+
+export interface VoteResponse {
+  myVote: string | null
+  upvoteCount: number
+  downvoteCount: number
+}
 
 // ── Global admin proposals hooks (not scoped to a single media item) ──
 
@@ -190,6 +203,8 @@ export function useApproveAnyProposal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })
+      queryClient.removeQueries({ queryKey: ["media"] })
+      queryClient.removeQueries({ queryKey: ["discover"] })
     },
   })
 }
@@ -226,6 +241,54 @@ export function useUndoAnyProposal() {
         `/media/${mediaId}/edit-proposals/${proposalId}/undo`,
       )
       return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })
+      queryClient.removeQueries({ queryKey: ["media"] })
+      queryClient.removeQueries({ queryKey: ["discover"] })
+    },
+  })
+}
+
+// ── Proposal voting hooks ──
+
+export function useProposalVote() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      mediaId,
+      proposalId,
+      voteType,
+    }: {
+      mediaId: string
+      proposalId: string
+      voteType: 'up' | 'down'
+    }) => {
+      const { data } = await apiClient.post<VoteResponse>(
+        `/media/${mediaId}/edit-proposals/${proposalId}/vote`,
+        { vote_type: voteType },
+      )
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })
+    },
+  })
+}
+
+export function useRemoveProposalVote() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      mediaId,
+      proposalId,
+    }: {
+      mediaId: string
+      proposalId: string
+    }) => {
+      await apiClient.delete(
+        `/media/${mediaId}/edit-proposals/${proposalId}/vote`,
+      )
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminEditKeys.all() })

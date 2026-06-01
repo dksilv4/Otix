@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { AlbumDetail, TrackOut } from '../media-queries'
 import { useRateTrack } from '../media-queries'
 import { cn } from '@/lib/utils'
@@ -6,7 +6,7 @@ import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/features/spotify/use-player'
 import type { PlexTrackInfo } from '@/features/spotify/plex-audio-provider'
 import { TrackInlineActions } from '../molecules/track-inline-actions'
-import { useSaveSpotifyTrack, usePlexAlbumTracks } from '@/features/library/library-queries'
+import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/features/library/library-queries'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 
 interface MusicSectionProps {
@@ -121,6 +121,7 @@ function TrackRow({
   plexRatingKey,
   isPlexPlaying,
   onPlexPlay,
+  playbackPlatform,
 }: {
   track: TrackOut
   showDisc: boolean
@@ -137,6 +138,7 @@ function TrackRow({
   plexRatingKey?: string | null
   isPlexPlaying?: boolean
   onPlexPlay?: () => void
+  playbackPlatform?: 'spotify' | 'plex'
 }) {
   const feats = track.audioFeatures
   const mini =
@@ -152,7 +154,9 @@ function TrackRow({
 
   const canPlaySpotify = !!track.spotifyId && isReady
   const canPlayPlex = !!plexRatingKey
+  const preferPlex = playbackPlatform === 'plex' && canPlayPlex
   const handleRowClick = () => {
+    if (preferPlex) return
     if (!canPlaySpotify) return
     if (isPlaying) {
       onToggle()
@@ -170,7 +174,7 @@ function TrackRow({
       onClick={handleRowClick}
       className={cn(
         'group transition-colors',
-        canPlaySpotify && 'cursor-pointer',
+        (canPlaySpotify && !preferPlex) && 'cursor-pointer',
       )}
     >
       <td className={cn(cellClass, 'w-10 rounded-l-xl pr-2 text-right font-mono text-xs text-muted-foreground')}>
@@ -197,7 +201,31 @@ function TrackRow({
         />
       </td>
       <td className={cn(cellClass, 'w-10 rounded-r-xl text-center')}>
-        {track.spotifyId ? (
+        {preferPlex ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onPlexPlay?.()
+            }}
+            className={cn(
+              'inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors',
+              isPlexPlaying
+                ? 'bg-amber-500 text-black'
+                : 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25',
+            )}
+          >
+            {isPlexPlaying ? (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
+              </svg>
+            )}
+          </button>
+        ) : track.spotifyId ? (
           <div
             className={cn(
               'inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors pointer-events-none',
@@ -254,10 +282,48 @@ function TrackRow({
 
 export function MusicSection({ album, mediaItemId, className }: MusicSectionProps) {
   const tracks = album.tracks ?? EMPTY_TRACKS
-  const multiDisc = tracks.some((t) => t.discNumber > 1)
   const { playSpotifyQueue, currentTrack, spotifyIsReady, togglePlay, playPlexAlbum, playPlexTrack, source, error } = usePlayer()
   const { data: plexData } = usePlexAlbumTracks(mediaItemId)
   const plexTracks = plexData?.tracks
+
+  // Merge Plex-only tracks into the display list so the player queue doesn't
+  // include tracks the user can't see. Without this, "Play on Plex" queues all
+  // Plex tracks but only DB-synced tracks appear in the table.
+  const allTracks = useMemo(() => {
+    if (!plexTracks || plexTracks.length === 0) return tracks
+    const existingKeys = new Set(tracks.map((t) => `${t.discNumber}:${t.trackNumber}`))
+    const extra: TrackOut[] = []
+    for (const pt of plexTracks) {
+      if (!existingKeys.has(`${pt.discNumber}:${pt.trackNumber}`)) {
+        extra.push({
+          id: `plex-${pt.ratingKey}`,
+          trackNumber: pt.trackNumber,
+          discNumber: pt.discNumber,
+          title: pt.title,
+          durationMs: pt.durationMs,
+          previewUrl: null,
+          spotifyId: null,
+          musicbrainzRecordingId: null,
+          audioFeatures: null,
+          avgRating: null,
+          ratingCount: 0,
+        } satisfies TrackOut)
+      }
+    }
+    if (extra.length === 0) return tracks
+    return [...tracks, ...extra].sort((a, b) => a.discNumber - b.discNumber || a.trackNumber - b.trackNumber)
+  }, [tracks, plexTracks])
+
+  const multiDisc = allTracks.some((t) => t.discNumber > 1)
+
+  // Platform picker: when both Spotify and Plex are available, let the user choose.
+  // Default to Spotify when both are present, Plex if only Plex is available.
+  const hasSpotify = !!(album.spotifyId && spotifyIsReady)
+  const hasPlex = !!(plexTracks && plexTracks.length > 0 && plexData)
+  const hasBothPlatforms = hasSpotify && hasPlex
+  const [playbackPlatform, setPlaybackPlatform] = useState<'spotify' | 'plex'>(
+    hasSpotify ? 'spotify' : 'plex',
+  )
 
   // Plex credentials for client-side stream URL resolution
   const plexBaseUrl = plexData?.baseUrl
@@ -347,7 +413,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
           <div>
             <dt className="text-xs text-muted-foreground">Tracks</dt>
             <dd className="text-sm font-medium">
-              {tracks.length || album.trackCount}
+              {allTracks.length || album.trackCount}
               {album.discCount > 1 ? ` · ${album.discCount} discs` : ''}
             </dd>
           </div>
@@ -356,8 +422,8 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
             <dd className="text-sm font-medium">
               {formatMs(
                 album.durationMs ??
-                  (tracks.length > 0
-                    ? tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0)
+                  (allTracks.length > 0
+                    ? allTracks.reduce((sum, t) => sum + (t.durationMs || 0), 0)
                     : null),
               )}
             </dd>
@@ -370,12 +436,48 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
           )}
         </dl>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {album.spotifyId && spotifyIsReady && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {/* Platform picker — shown when album is on both Spotify and Plex */}
+          {hasBothPlatforms && (
+            <div className="flex items-center rounded-lg bg-white/[0.04] ring-1 ring-white/[0.06] p-0.5 mr-1">
+              <button
+                type="button"
+                onClick={() => setPlaybackPlatform('spotify')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  playbackPlatform === 'spotify'
+                    ? 'bg-[#1DB954] text-black shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                </svg>
+                Spotify
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlaybackPlatform('plex')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  playbackPlatform === 'plex'
+                    ? 'bg-amber-500 text-black shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.54 4.92.42-3.73 3.23L16.23 18z" />
+                </svg>
+                Plex
+              </button>
+            </div>
+          )}
+          {/* Spotify Play Album */}
+          {hasSpotify && (!hasBothPlatforms || playbackPlatform === 'spotify') && (
             <button
               type="button"
               onClick={() => {
-                const uris = tracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
+                const uris = allTracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
                 if (uris.length > 0) playSpotifyQueue(uris)
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954] px-3 py-1.5 text-xs font-medium text-black hover:bg-[#1DB954]/90 transition-colors"
@@ -384,7 +486,8 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
               Play Album
             </button>
           )}
-          {plexTracks && plexTracks.length > 0 && plexData && (
+          {/* Plex Play Album */}
+          {hasPlex && (!hasBothPlatforms || playbackPlatform === 'plex') && (
             <button
               type="button"
               onClick={() => {
@@ -393,7 +496,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                   return
                 }
                 const info: PlexTrackInfo[] = plexTracks.map(pt =>
-                  plexTrackInfo(pt.ratingKey, pt.title, "", pt.durationMs || 0),
+                  plexTrackInfo(pt.ratingKey, pt.title, pt.artist || album.artistName || "", pt.durationMs || 0),
                 )
                 if (info.length > 0) playPlexAlbum(info)
               }}
@@ -403,7 +506,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
               Play on Plex
             </button>
           )}
-          {plexTracks && plexTracks.length > 0 && plexData && !plexReady && (
+          {hasPlex && !plexReady && (
             <span className="text-[11px] text-amber-400/60">
               Plex connection unavailable — re-sync in Settings
             </span>
@@ -465,9 +568,9 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
       {/* Track list */}
       <div className="space-y-3">
         <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Tracks ({tracks.length || album.trackCount})
+          Tracks ({allTracks.length || album.trackCount})
         </h3>
-        {tracks.length === 0 ? (
+        {allTracks.length === 0 ? (
           <p className="text-sm text-muted-foreground">No track listing synced yet.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -483,21 +586,22 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
               </thead>
               <tbody>
                 {(() => {
-                  // Build a lookup from (disc, track) to Plex rating_key
-                  const plexLookup = new Map<string, string>()
+                  // Build a lookup from (disc, track) to PlexAlbumTrack
+                  const plexByTrack = new Map<string, PlexAlbumTrack>()
                   if (plexTracks) {
                     for (const pt of plexTracks) {
-                      plexLookup.set(`${pt.discNumber}:${pt.trackNumber}`, pt.ratingKey)
+                      plexByTrack.set(`${pt.discNumber}:${pt.trackNumber}`, pt)
                     }
                   }
 
-                  return tracks.map((t, i) => {
-                    const subsequentUris = tracks
+                  return allTracks.map((t, i) => {
+                    const subsequentUris = allTracks
                       .slice(i)
                       .filter((tr) => tr.spotifyId)
                       .map((tr) => `spotify:track:${tr.spotifyId}` as string)
 
-                    const plexRatingKey = plexLookup.get(`${t.discNumber}:${t.trackNumber}`)
+                    const plexMatch = plexByTrack.get(`${t.discNumber}:${t.trackNumber}`)
+                    const plexRatingKey = plexMatch?.ratingKey
                     const isPlexPlaying = !!plexRatingKey && currentTrack?.id === plexRatingKey && source === 'plex'
 
                     return (
@@ -521,6 +625,7 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                         onRate={handleRateTrack}
                         plexRatingKey={plexRatingKey}
                         isPlexPlaying={isPlexPlaying}
+                        playbackPlatform={playbackPlatform}
                         onPlexPlay={
                           plexRatingKey
                             ? () => {
@@ -528,11 +633,11 @@ export function MusicSection({ album, mediaItemId, className }: MusicSectionProp
                                   console.warn("Plex connection info not available — try re-syncing Plex in Settings")
                                   return
                                 }
-                                const allPlexInfos: PlexTrackInfo[] = tracks
+                                const allPlexInfos: PlexTrackInfo[] = allTracks
                                   .map((tt) => {
-                                    const rk = plexLookup.get(`${tt.discNumber}:${tt.trackNumber}`)
-                                    if (!rk) return null
-                                    return plexTrackInfo(rk, tt.title, album.artistName || "", tt.durationMs || 0)
+                                    const pm = plexByTrack.get(`${tt.discNumber}:${tt.trackNumber}`)
+                                    if (!pm) return null
+                                    return plexTrackInfo(pm.ratingKey, tt.title, pm.artist || album.artistName || "", tt.durationMs || 0)
                                   })
                                   .filter(Boolean) as PlexTrackInfo[]
 

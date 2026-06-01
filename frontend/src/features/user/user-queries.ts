@@ -45,8 +45,9 @@ export interface UserProfile {
   levelTitle?: string
   xpRank?: number | null
   xpPercentile?: number | null
-  // Aura
-  karma?: number
+  // Proposals
+  proposalCount?: number
+  proposalApprovalRate?: number | null
   // Admin
   isAdmin?: boolean
   // Streaks
@@ -54,6 +55,20 @@ export interface UserProfile {
   longestLoginStreak?: number
   currentReviewStreak?: number
   longestReviewStreak?: number
+}
+
+export interface BadgeDef {
+  badgeKey: string
+  label: string
+  description: string
+  icon: string
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'special'
+  earned: boolean
+  earnedAt: string | null
+  currentValue: number
+  targetValue: number
+  claimed: boolean
+  xpReward: number
 }
 
 export interface FollowCounts {
@@ -144,6 +159,19 @@ export function computeReviewStats(reviews: { score: number | null }[]): ReviewS
 }
 
 export const userQueries = {
+  search: (query: string, limit = 20) =>
+    queryOptions({
+      queryKey: ['user', 'search', query, limit],
+      queryFn: async () => {
+        const { data } = await apiClient.get<UserSearchListResponse>('/users/search', {
+          params: { q: query, limit },
+        })
+        return data
+      },
+      enabled: query.length > 0,
+      staleTime: 1000 * 60 * 5,
+    }),
+
   profile: (username: string) =>
     queryOptions({
       queryKey: ['user', username],
@@ -235,6 +263,16 @@ export const userQueries = {
       },
       staleTime: 1000 * 60 * 5,
     }),
+
+  badges: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'badges'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<BadgeDef[]>(`/users/${username}/badges`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
 }
 
 export interface MoodCheckin {
@@ -242,6 +280,22 @@ export interface MoodCheckin {
   mood: string
   feeling: string | null
   note: string | null
+}
+
+export interface UserSearchResult {
+  id: string
+  username: string
+  avatarUrl: string | null
+  bio: string | null
+  level: number
+  levelTitle: string
+  isAdmin: boolean
+}
+
+export interface UserSearchListResponse {
+  items: UserSearchResult[]
+  hasMore: boolean
+  total: number | null
 }
 
 export interface LibraryStats {
@@ -301,3 +355,17 @@ export function useUpdateHallOfFame(username: string) {
     },
   })
 }
+
+export function useClaimBadge(username: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (badgeKey: string) => {
+      await apiClient.post(`/users/me/badges/${badgeKey}/claim`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', username, 'badges'] })
+      queryClient.invalidateQueries({ queryKey: ['user', username] })
+    },
+  })
+}
+

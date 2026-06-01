@@ -39,14 +39,21 @@ export function UserMenu({ bare }: { bare?: boolean }) {
     }
   }, [open, handleKeyDown, handleClickOutside])
 
-  if (isLoading) return null
-
   const pillBase = cn(
     'flex items-center rounded-[2rem]',
     'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
     'backdrop-blur-lg',
     'shadow-[var(--dk-shadow-glass)]',
   )
+
+  // Show placeholder while loading so layout never jumps
+  if (isLoading) {
+    return (
+      <div className={cn(!bare && pillBase, !bare && 'p-1.5')}>
+        <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return (

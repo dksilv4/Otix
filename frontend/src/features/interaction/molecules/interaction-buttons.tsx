@@ -1,5 +1,6 @@
 import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
 import { type ReactNode, useState, useEffect, useRef } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
@@ -207,6 +208,7 @@ function InteractionSection({
   showEpisodeInfo,
 }: InteractionSectionProps) {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmAction, setConfirmAction] = useState<boolean>(false)
 
@@ -222,9 +224,9 @@ function InteractionSection({
       <section className={cn(className)}>
         <div className="rounded-3xl border border-white/[0.06] bg-[var(--dk-surface-base)] p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <a href="/auth/login" className="font-medium text-primary hover:underline">
+            <Link to="/auth/login" search={{ redirect: location.href }} className="font-medium text-primary hover:underline">
               Sign in
-            </a>{' '}
+            </Link>{' '}
             to like, {listLabel}, and track this title.
           </p>
         </div>

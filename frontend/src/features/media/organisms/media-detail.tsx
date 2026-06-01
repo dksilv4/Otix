@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 
 import { useMediaDetail } from '../hooks/use-media-detail'
@@ -12,6 +12,9 @@ import { MovieSection } from './movie-section'
 import { ShowSection } from './show-section'
 import { GameSection } from './game-section'
 import { MusicSection } from './music-section'
+import { ArtistAlbumsSection } from './artist-albums-section'
+import { SimilarSection } from './similar-section'
+import { RecommendationsSection } from './recommendations-section'
 import { usePlexAlbumTracks } from '@/features/library/library-queries'
 import { CastCrewList } from './cast-crew-list'
 import { CollectionSection } from './collection-section'
@@ -23,6 +26,8 @@ import { ReviewsListSection } from '@/features/review/organisms/reviews-list-sec
 import { RatingsSection } from '@/features/review/organisms/ratings-section'
 import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
+import { WhereToWatchSection } from './where-to-watch-section'
+
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched, useMarkShowWatched } from '@/features/interaction/episode-interaction-queries'
 import type { MediaItemDetail } from '../media-queries'
 
@@ -406,10 +411,31 @@ export function MediaDetail() {
           </p>
         )}
 
+        {/* Other albums by same artist */}
+        {detail.mediaType === 'music' && (() => {
+          const primaryArtist = detail.credits.find((c) => c.role === 'primary')
+          if (primaryArtist) {
+            return (
+              <ArtistAlbumsSection
+                artistPersonId={primaryArtist.person.id}
+                artistName={primaryArtist.person.name}
+                currentMediaId={detail.id}
+              />
+            )
+          }
+          return null
+        })()}
+
         {/* Collection (movies only) */}
         {detail.collection && (
           <CollectionSection collection={detail.collection} currentMediaId={detail.id} />
         )}
+
+        {/* Similar items (content-based, always shown) */}
+        <SimilarSection mediaId={detail.id} mediaType={displayType} />
+
+        {/* Recommendations (personalized via embedding centroid) */}
+        <RecommendationsSection mediaId={detail.id} />
 
         {/* Companies */}
         {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
@@ -424,14 +450,20 @@ export function MediaDetail() {
                 if (ic.porting) roles.push('Port')
                 if (ic.supporting) roles.push('Support')
                 return (
-                  <Badge key={ic.id} variant="secondary" className="gap-1.5">
-                    {ic.company.name}
-                    {roles.length > 0 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {roles.join('/')}
-                      </span>
-                    )}
-                  </Badge>
+                  <Link
+                    key={ic.id}
+                    to="/company/$companyId"
+                    params={{ companyId: ic.company.id }}
+                  >
+                    <Badge variant="secondary" className="gap-1.5 border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                      {ic.company.name}
+                      {roles.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {roles.join('/')}
+                        </span>
+                      )}
+                    </Badge>
+                  </Link>
                 )
               })}
             </div>
@@ -447,6 +479,12 @@ export function MediaDetail() {
             <CastCrewList credits={detail.credits} />
           </DeferredSection>
         )}
+
+        {/* Where to Watch */}
+        <WhereToWatchSection
+          watchProviders={detail.watchProviders}
+          mediaType={displayType}
+        />
 
         {/* User reviews — Your Rating */}
         <DeferredSection

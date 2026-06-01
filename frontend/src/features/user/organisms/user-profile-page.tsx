@@ -2,15 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
-import { CalendarDays, Star, UserPlus, UserCheck, Clock, Shield, Plus, Crown, Activity, BarChart3 } from 'lucide-react'
+import { CalendarDays, Star, UserPlus, UserCheck, Clock, Shield, Plus, Crown, Activity, BarChart3, Sparkles, Trophy } from 'lucide-react'
 
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
-import { DiamondIcon } from '@/features/dk-ui/atoms/diamond-icon'
-import { OtixIcon } from '@/features/dk-ui/atoms/otix-icon'
+
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
@@ -179,9 +178,10 @@ const ALL_SECTIONS = [
   { id: 'hof_music', label: 'Hall of Fame · Music', icon: Crown },
   { id: 'library_breakdown', label: 'Library Breakdown', icon: BarChart3 },
   { id: 'mood_timeline', label: 'Mood Timeline', icon: Activity },
+  { id: 'achievements', label: 'Achievements', icon: Trophy },
 ] as const
 
-const DEFAULT_SECTIONS = ['hof_movie', 'hof_show', 'hof_game', 'hof_music', 'library_breakdown', 'mood_timeline']
+const DEFAULT_SECTIONS = ['hof_movie', 'hof_show', 'hof_game', 'hof_music', 'library_breakdown', 'mood_timeline', 'achievements']
 
 export function UserProfilePage() {
   const params = useParams({ strict: false }) as { username?: string }
@@ -309,8 +309,8 @@ export function UserProfilePage() {
                 })()}
                 <span aria-hidden className="text-white/15">·</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <DiamondIcon className="h-3.5 w-3.5 text-amber-400/80" />
-                  {profile.compositeScore ?? 0}
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400/80" />
+                  {profile.compositeScore ?? 0} aura
                 </span>
                 {stats?.averageRating != null && (
                   <>
@@ -321,11 +321,6 @@ export function UserProfilePage() {
                     </span>
                   </>
                 )}
-                <span aria-hidden className="text-white/15">·</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <OtixIcon className="h-4 w-4 text-amber-400/80" />
-                  {profile.karma?.toLocaleString() ?? 0} aura
-                </span>
               </div>
 
               {profile.bio && (
@@ -404,11 +399,28 @@ export function UserProfilePage() {
                   <span className="text-xs text-white/30 ml-1">
                     {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
                   </span>
+                  {/* Proposal stats */}
+                  {(profile.proposalCount ?? 0) > 0 && (
+                    <span className="text-xs text-white/30 ml-1">
+                      · {profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
+                      {profile.proposalApprovalRate != null
+                        ? ` · ${Math.round(profile.proposalApprovalRate)}% approved`
+                        : ''}
+                    </span>
+                  )}
                 </div>
               )}
               {currentUser && currentUser.username === username && (
                 <div className="mt-3 animate-hero-slide-up text-xs text-white/30" style={{ animationDelay: '250ms' }}>
                   {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
+                  {(profile.proposalCount ?? 0) > 0 && (
+                    <span>
+                      {' · '}{profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
+                      {profile.proposalApprovalRate != null
+                        ? ` · ${Math.round(profile.proposalApprovalRate)}% approved`
+                        : ''}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

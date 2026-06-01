@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch, useLocation } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { Moon, Sun, User, Palette, Shield, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Heart, Film, Tv, Gamepad2, Music } from 'lucide-react'
+import { Moon, Sun, User, Palette, Shield, Bell, Pencil, Plus, X, Link2, Upload, Image, Check, ShieldAlert, Loader2, Monitor, Unlink, RefreshCw, Download, GripVertical, ChevronDown, Heart, Film, Tv, Gamepad2, Music, FlaskConical } from 'lucide-react'
 import { CropModal } from '@/features/settings/molecules/crop-modal'
+import { ExperimentsSection } from '@/features/experiments/organisms/experiments-section'
 import { SHADER_QUALITY_OPTIONS, useShaderQuality } from '@/lib/shader-quality'
 import { MOTION_OPTIONS, useMotionPreference } from '@/lib/motion-preference'
 import { useTheme, type ThemeSetting } from '@/lib/theme'
@@ -26,14 +27,16 @@ import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 
 const BIO_MAX_LENGTH = 250
 
-type Section = 'profile' | 'preferences' | 'appearance' | 'account' | 'integrations'
+type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments'
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'preferences', label: 'Preferences', icon: Heart },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'account', label: 'Account', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'experiments', label: 'Experiments', icon: FlaskConical },
 ]
 
 function isSettingsSection(value: unknown): value is Section {
@@ -173,11 +176,17 @@ export function SettingsPage() {
           {activeSection === 'appearance' && (
             <AppearanceSection theme={theme} onSetTheme={setTheme} />
           )}
+          {activeSection === 'notifications' && (
+            <NotificationsSection />
+          )}
           {activeSection === 'account' && (
             <AccountSection user={user} isAuthenticated={isAuthenticated} />
           )}
           {activeSection === 'integrations' && (
             <IntegrationsSection />
+          )}
+          {activeSection === 'experiments' && (
+            <ExperimentsSection />
           )}
         </main>
       </div>
@@ -483,6 +492,7 @@ function ProfileSection({
   isAuthenticated: boolean
 }) {
   const { refreshUser } = useAuth()
+  const location = useLocation()
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
   const [backgroundUrl, setBackgroundUrl] = useState(user?.backgroundUrl ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
@@ -529,6 +539,7 @@ function ProfileSection({
         </div>
         <Link
           to="/auth/login"
+          search={{ redirect: location.href }}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-primary/90"
         >
           Sign In
@@ -2304,6 +2315,7 @@ function IntegrationStats({ items }: { items: { label: string; value: string | n
 
 function IntegrationsSection() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -2952,6 +2964,7 @@ function IntegrationsSection() {
         </div>
         <Link
           to="/auth/login"
+          search={{ redirect: location.href }}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-primary/90"
         >
           Sign In
@@ -3255,6 +3268,108 @@ function IntegrationsSection() {
   )
 }
 
+// ── Notification categories ──
+
+const NOTIFICATION_CATEGORIES = [
+  {
+    id: 'social',
+    label: 'Social',
+    description: 'Friend requests, accepts, and removals',
+    types: [
+      { key: 'friend_request', label: 'Friend requests' },
+      { key: 'friend_accepted', label: 'Friend requests accepted' },
+      { key: 'friend_rejected', label: 'Friend requests declined' },
+      { key: 'friend_removed', label: 'Friends removed' },
+    ],
+  },
+  {
+    id: 'follows',
+    label: 'Follows',
+    description: 'Follow and follow request activity',
+    types: [
+      { key: 'follow', label: 'New followers' },
+      { key: 'follow_request', label: 'Follow requests' },
+      { key: 'follow_request_accepted', label: 'Follow requests accepted' },
+    ],
+  },
+  {
+    id: 'lists',
+    label: 'Lists',
+    description: 'List collaboration invitations and responses',
+    types: [
+      { key: 'list_invitation', label: 'List invitations' },
+      { key: 'list_invitation_accepted', label: 'Invitations accepted' },
+      { key: 'list_invitation_declined', label: 'Invitations declined' },
+    ],
+  },
+  {
+    id: 'ratings',
+    label: 'Ratings',
+    description: 'User rating notifications',
+    types: [
+      { key: 'user_rating', label: 'New ratings' },
+    ],
+  },
+]
+
+function NotificationsSection() {
+  const { user, refreshUser } = useAuth()
+  const [preferences, setPreferences] = useState<Record<string, boolean>>(
+    user?.notificationPreferences ?? {},
+  )
+
+  useEffect(() => {
+    if (user?.notificationPreferences) {
+      setPreferences(user.notificationPreferences)
+    }
+  }, [user?.notificationPreferences])
+
+  const handleToggle = async (type: string, checked: boolean) => {
+    setPreferences((prev) => ({ ...prev, [type]: checked }))
+    const newPrefs = { ...preferences, [type]: checked }
+    try {
+      await apiClient.patch('/auth/me', { notification_preferences: newPrefs })
+      await refreshUser()
+    } catch {
+      setPreferences(preferences)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold tracking-[-0.01em]">Notification Preferences</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Choose which notifications trigger a toast popup. Notifications still appear in your inbox regardless of these settings.
+        </p>
+      </div>
+
+      {NOTIFICATION_CATEGORIES.map((category) => (
+        <div
+          key={category.id}
+          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]"
+        >
+          <SectionHeader title={category.label} description={category.description} />
+          <div className="space-y-4 mt-4">
+            {category.types.map(({ key, label }) => (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-4"
+              >
+                <span className="text-sm font-medium">{label}</span>
+                <DkSwitch
+                  checked={preferences[key] !== false}
+                  onCheckedChange={(checked) => handleToggle(key, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function AccountSection({
   user,
   isAuthenticated,
@@ -3274,6 +3389,7 @@ function AccountSection({
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [verificationState, setVerificationState] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const location = useLocation()
 
   useEffect(() => {
     if (!user) return
@@ -3292,6 +3408,7 @@ function AccountSection({
         </div>
         <Link
           to="/auth/login"
+          search={{ redirect: location.href }}
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-primary/90"
         >
           Sign In

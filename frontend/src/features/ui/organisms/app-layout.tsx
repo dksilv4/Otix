@@ -7,9 +7,11 @@ import { NavigationProvider, MenuDropdown, useNavigation, NavSearch } from '@nav
 import { usePageMeta } from '@/lib/page-context'
 import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
+import { useNotificationToasts } from '@/features/notifications/use-notification-toasts'
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { PlayerBar } from '@/features/spotify/player-bar'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
+import { NowPlayingView } from '@/features/spotify/now-playing-view'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -57,6 +59,7 @@ function MenuToggle() {
 function AppShell({ children }: { children: ReactNode }) {
   const { navLogo } = usePageMeta()
   const [isPinned, setIsPinned] = useState(() => loadPinState())
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   const handlePin = useCallback(() => {
     setIsPinned(true)
@@ -67,6 +70,16 @@ function AppShell({ children }: { children: ReactNode }) {
     setIsPinned(false)
     savePinState(false)
   }, [])
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev)
+  }, [])
+
+  const handleCloseSidebar = useCallback(() => {
+    setIsSidebarOpen(false)
+  }, [])
+
+  useNotificationToasts()
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,7 +107,12 @@ function AppShell({ children }: { children: ReactNode }) {
 
       <MenuDropdown />
       <div className="fixed top-4 right-4 z-[9998] flex items-center gap-2">
-        <NowPlayingButton isPinned={isPinned} onPin={handlePin} />
+        <NowPlayingButton
+          isPinned={isPinned}
+          isSidebarOpen={isSidebarOpen}
+          onPin={handlePin}
+          onToggleSidebar={handleToggleSidebar}
+        />
         <NavSearch />
         <div
           className={cn(
@@ -106,13 +124,20 @@ function AppShell({ children }: { children: ReactNode }) {
           )}
         >
           <NotificationBell bare />
-          <div className="w-px h-5 bg-white/[0.08]" />
           <UserMenu bare />
         </div>
       </div>
 
-      <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
-      <PlayerBar isPinned={isPinned} onPin={handlePin} onUnpin={handleUnpin} />
+      <div className="flex min-h-screen">
+        <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
+        <NowPlayingView open={isSidebarOpen} onClose={handleCloseSidebar} />
+      </div>
+
+      <PlayerBar
+        isPinned={isPinned}
+        onPin={handlePin}
+        onUnpin={handleUnpin}
+      />
       <XPToastContainer />
     </div>
   )

@@ -8,6 +8,7 @@ export interface SearchParams {
 export interface ListParams {
   type?: string
   genre?: string
+  company?: string
   certification?: string
   sortBy?: string
   page?: number
@@ -23,4 +24,6 @@ export const mediaKeys = {
     [...mediaKeys.all(), 'infiniteList', type ?? 'all', opts] as const,
   search: (params: Omit<SearchParams, 'page'>) => [...mediaKeys.all(), 'search', params] as const,
   searchPoll: (params: Omit<SearchParams, 'page'> & { knownIds: string }) => [...mediaKeys.all(), 'searchPoll', params] as const,
+  similar: (id: string, mediaType?: string) => [...mediaKeys.all(), 'similar', id, mediaType ?? 'all'] as const,
+  recommendations: (id: string) => [...mediaKeys.all(), 'recommendations', id] as const,
 }

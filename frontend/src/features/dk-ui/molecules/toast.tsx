@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, createContext, useContext, type ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 type ToastVariant = 'default' | 'success' | 'error' | 'warning' | 'info'
@@ -32,6 +33,12 @@ const variantConfig: Record<ToastVariant, { icon: typeof CheckCircle; ring: stri
   default: { icon: Info, ring: 'ring-[var(--dk-ring-color)]' },
 }
 
+const toastAnimation = {
+  initial: { opacity: 0, y: 24, scale: 0.95 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -12, scale: 0.96 },
+}
+
 function DkToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -48,11 +55,12 @@ function DkToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
 
-      {/* Toast container */}
       <div className="fixed bottom-6 right-6 z-[var(--dk-z-toast)] flex flex-col-reverse gap-3 pointer-events-none">
-        {toasts.map((t) => (
-          <ToastItem key={t.id} toast={t} onRemove={removeToast} />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {toasts.map((t) => (
+            <ToastItem key={t.id} toast={t} onRemove={removeToast} />
+          ))}
+        </AnimatePresence>
       </div>
     </ToastContext.Provider>
   )
@@ -68,13 +76,15 @@ function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
   }, [t.id, t.duration, onRemove])
 
   return (
-    <div
+    <motion.div
+      {...toastAnimation}
+      transition={{ type: 'spring', damping: 24, stiffness: 320 }}
+      layout
       role="alert"
       className={cn(
         'pointer-events-auto flex items-start gap-3 rounded-2xl p-4',
         'bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-lg)] ring-1 ring-inset',
         config.ring,
-        'animate-[authFormFadeIn_0.2s_cubic-bezier(0.16,1,0.3,1)]',
         'max-w-sm',
       )}
     >
@@ -93,7 +103,7 @@ function ToastItem({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
       >
         <X className="h-3.5 w-3.5" />
       </button>
-    </div>
+    </motion.div>
   )
 }
 

@@ -19,6 +19,7 @@ interface PlexPlayerContextValue {
   duration: number
   volume: number
   queue: PlexTrackInfo[]
+  previousTracks: PlexTrackInfo[]
   error: string | null
   playTrack: (track: PlexTrackInfo) => Promise<void>
   playAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
@@ -29,6 +30,7 @@ interface PlexPlayerContextValue {
   setVolume: (vol: number) => void
   skipNext: () => void
   skipPrevious: () => void
+  skipToIndex: (index: number) => void
   stop: () => void
 }
 
@@ -105,7 +107,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Stable refs for callbacks used by the audio event handlers.
-  const loadAndPlayIndexRef = useRef<(index: number) => Promise<void>>(async () => {})
+  const loadAndPlayIndexRef = useRef<(index: number, startNewSession?: boolean) => Promise<void>>(async () => {})
   const reportTimelineRef = useRef<(state: "playing" | "paused" | "stopped" | "buffering") => void>(() => {})
   const startTimelineReportingRef = useRef<() => void>(() => {})
   const stopTimelineReportingRef = useRef<() => void>(() => {})
@@ -168,7 +170,9 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
   stopTimelineReportingRef.current = stopTimelineReporting
 
   // Load and play a track by queue index. Streams directly from Plex — no blob download.
-  const loadAndPlayIndex = useCallback(async (index: number) => {
+  // Set startNewSession=true when the user explicitly starts a new playback context
+  // (playTrack/playAlbum), so Plex sees track changes within a queue as one session.
+  const loadAndPlayIndex = useCallback(async (index: number, startNewSession = false) => {
     const audio = audioRef.current
     if (!audio) return
     const q = queueRef.current
@@ -181,8 +185,11 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const streamUrl = await resolvePartUrl(track)
-      sessionIdRef.current = generateSessionId()
-      commandIdRef.current = 0
+
+      if (startNewSession) {
+        sessionIdRef.current = generateSessionId()
+        commandIdRef.current = 0
+      }
 
       audio.src = streamUrl
       await audio.play()
@@ -276,7 +283,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     queueRef.current = [track]
     setQueue([track])
     setError(null)
-    await loadAndPlayIndexRef.current(0)
+    await loadAndPlayIndexRef.current(0, true)
   }, [])
 
   const playAlbum = useCallback(async (tracks: PlexTrackInfo[], startIndex = 0) => {
@@ -284,7 +291,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     queueRef.current = tracks
     setQueue(tracks)
     setError(null)
-    await loadAndPlayIndexRef.current(startIndex)
+    await loadAndPlayIndexRef.current(startIndex, true)
   }, [])
 
   const togglePlay = useCallback(() => {
@@ -330,6 +337,11 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const skipToIndex = useCallback((index: number) => {
+    stopTimelineReportingRef.current()
+    loadAndPlayIndexRef.current(index)
+  }, [])
+
   const stop = useCallback(() => {
     stopTimelineReportingRef.current()
     const audio = audioRef.current
@@ -347,6 +359,8 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
     currentIndexRef.current = -1
   }, [])
 
+  const previousTracks = queue.slice(0, Math.max(0, currentIndexRef.current))
+
   return (
     <PlexPlayerContext.Provider
       value={{
@@ -356,6 +370,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
         duration,
         volume,
         queue,
+        previousTracks,
         error,
         playTrack,
         playAlbum,
@@ -366,6 +381,7 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
         setVolume,
         skipNext,
         skipPrevious,
+        skipToIndex,
         stop,
       }}
     >
