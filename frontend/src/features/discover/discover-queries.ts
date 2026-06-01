@@ -3,6 +3,8 @@ import { apiClient } from '@/lib/api-client'
 import { discoverKeys } from './discover-keys'
 import type { MediaItemSummary } from '@media/media-queries'
 
+const gcTime = import.meta.env.DEV ? 0 : 1000 * 60 * 60 * 24
+
 export interface DiscoverListResponse {
   items: MediaItemSummary[]
   nextCursor: string | null
@@ -40,8 +42,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '' as string,
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 5,
+      staleTime: 1000 * 60 * 30,
+      gcTime,
     }),
 
   hero: () =>
@@ -55,8 +57,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '' as string,
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
+      staleTime: 1000 * 60 * 60,
+      gcTime,
     }),
 
   sections: () =>
@@ -66,7 +68,7 @@ export const discoverQueries = {
         const { data } = await apiClient.get<{ sections: PersonalizedSection[] }>('/discover/sections')
         return data.sections
       },
-      staleTime: 1000 * 60 * 10,
-      gcTime: 1000 * 60 * 30,
+      staleTime: 1000 * 60 * 60,
+      gcTime,
     }),
 }

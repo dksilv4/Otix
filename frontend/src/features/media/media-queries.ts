@@ -21,10 +21,29 @@ export interface MediaItemSummary {
   playedCount: number
   startedCount?: number
   listenedCount?: number
+  viewCount: number
   isAdult?: boolean
   userInteractions?: UserInteractionState | null
   revenue?: number | null
   budget?: number | null
+  albumMusicbrainzReleaseGroupId?: string | null
+  albumArtistName?: string | null
+}
+
+export interface WatchProvider {
+  id: string
+  name: string
+  slug: string
+  logoUrl: string | null
+}
+
+export interface MediaWatchProvider {
+  id: string
+  watchProvider: WatchProvider
+  countryCode: string
+  offeringType: string
+  url: string | null
+  displayPriority: number
 }
 
 export interface MediaItemDetail {
@@ -49,6 +68,7 @@ export interface MediaItemDetail {
   playedCount: number
   startedCount?: number
   listenedCount?: number
+  viewCount: number
   isAdult?: boolean
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
@@ -68,7 +88,7 @@ export interface MediaItemDetail {
   }>
   involvedCompanies: Array<{
     id: string
-    company: { id: string; name: string; slug: string }
+    company: { id: string; name: string; slug: string; logoUrl: string | null }
     developer: boolean
     publisher: boolean
     porting: boolean
@@ -82,6 +102,7 @@ export interface MediaItemDetail {
   }>
   platforms: Array<{ id: string; platform: { id: string; name: string; slug: string; logoImageId?: string } }>
   gameModes: Array<{ id: string; gameMode: { id: string; name: string; slug: string } }>
+  watchProviders: MediaWatchProvider[]
   collection?: {
     id: string
     name: string
@@ -208,8 +229,26 @@ export interface AlbumDetail {
   tracks: TrackOut[]
 }
 
+export interface TrackSearchResult {
+  id: string
+  title: string
+  trackNumber: number
+  discNumber: number
+  durationMs: number | null
+  previewUrl: string | null
+  spotifyId: string | null
+  avgRating: number | null
+  ratingCount: number
+  albumId: string
+  albumTitle: string
+  albumPosterUrl: string | null
+  albumArtistName: string | null
+  albumSlug: string
+}
+
 export interface MediaListResponse {
   items: MediaItemSummary[]
+  tracks: TrackSearchResult[]
   nextCursor: string | null
   hasMore: boolean
   total?: number | null
@@ -231,6 +270,7 @@ export const mediaQueries = {
   list: (opts?: {
     type?: string
     genre?: string
+    company?: string
     language?: string
     isAnime?: boolean | null
     hasArtwork?: boolean
@@ -238,6 +278,8 @@ export const mediaQueries = {
     sortDir?: string
     page?: number
     limit?: number
+    personId?: string
+    creditRole?: string
   }) =>
     queryOptions({
       queryKey: mediaKeys.list(opts?.type, opts),
@@ -245,6 +287,7 @@ export const mediaQueries = {
         const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 50 }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
+        if (opts?.company) params.company = opts.company
         if (opts?.certification) params.certification = opts.certification
         if (opts?.language) params.language = opts.language
         if (opts?.isAnime != null) params.is_anime = opts.isAnime
@@ -253,6 +296,10 @@ export const mediaQueries = {
           params.sort_by = opts.sortBy
           if (opts?.sortDir) params.sort_dir = opts.sortDir
           if (opts?.page) params.page = opts.page
+        }
+        if (opts?.personId) {
+          params.person_id = opts.personId
+          if (opts?.creditRole) params.credit_role = opts.creditRole
         }
         const { data } = await apiClient.get<MediaListResponse>('/media', { params })
         return data
@@ -263,6 +310,7 @@ export const mediaQueries = {
   infiniteList: (opts?: {
     type?: string
     genre?: string
+    company?: string
     language?: string
     isAnime?: boolean | null
     hasArtwork?: boolean
@@ -276,6 +324,7 @@ export const mediaQueries = {
         const params: Record<string, string | number | boolean> = { limit: opts?.limit ?? 48 }
         if (opts?.type) params.media_type = opts.type
         if (opts?.genre) params.genre = opts.genre
+        if (opts?.company) params.company = opts.company
         if (opts?.certification) params.certification = opts.certification
         if (opts?.language) params.language = opts.language
         if (opts?.isAnime != null) params.is_anime = opts.isAnime
@@ -328,6 +377,31 @@ export const mediaQueries = {
       },
       staleTime: 2000,
       enabled: params.query.length > 0,
+    }),
+
+  similar: (id: string, opts?: { mediaType?: string; limit?: number }) =>
+    queryOptions({
+      queryKey: mediaKeys.similar(id, opts?.mediaType),
+      queryFn: async () => {
+        const params: Record<string, string | number> = { limit: opts?.limit ?? 20 }
+        if (opts?.mediaType) params.media_type = opts.mediaType
+        const { data } = await apiClient.get<MediaListResponse>(`/media/${id}/similar`, { params })
+        return data
+      },
+      staleTime: 1000 * 60 * 60 * 24, // 1 day — embeddings are deterministic
+      gcTime: 1000 * 60 * 60 * 24 * 7, // keep in cache for 7 days
+    }),
+
+  recommendations: (id: string, opts?: { limit?: number }) =>
+    queryOptions({
+      queryKey: mediaKeys.recommendations(id),
+      queryFn: async () => {
+        const params: Record<string, number> = { limit: opts?.limit ?? 20 }
+        const { data } = await apiClient.get<MediaListResponse>(`/media/${id}/recommendations`, { params })
+        return data
+      },
+      staleTime: 1000 * 60 * 60 * 24, // 1 day — embeddings are deterministic
+      gcTime: 1000 * 60 * 60 * 24 * 7,
     }),
 }
 

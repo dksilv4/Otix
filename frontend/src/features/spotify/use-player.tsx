@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef } from 'react'
 import { useSpotifyPlayer, type QueueTrack } from './spotify-player-provider'
 import { usePlexPlayer, type PlexTrackInfo } from './plex-audio-provider'
 import type { PlayerContextValue, PlayerSource, PlayerTrackInfo } from './types'
@@ -46,11 +46,20 @@ function mapPlexTrack(track: PlexTrackInfo): PlayerTrackInfo {
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const spotify = useSpotifyPlayer()
   const plex = usePlexPlayer()
+  const lastActivatedRef = useRef<PlayerSource>('none')
 
   const source: PlayerSource = useMemo(() => {
+    // When the user explicitly activated Plex, check it first — Spotify SDK
+    // may still report a "playing" state from a previous session.
+    if (lastActivatedRef.current === 'plex') {
+      if (plex.currentTrack) return 'plex'
+      if (spotify.isReady && spotify.isPlaying && spotify.currentTrack) return 'spotify'
+    }
     if (spotify.isReady && spotify.isPlaying && spotify.currentTrack) return 'spotify'
     if (plex.isPlaying && plex.currentTrack) return 'plex'
-    if (spotify.isReady && spotify.currentTrack) return 'spotify'
+    // Only fall back to a non-playing source if it was the last one explicitly activated
+    if (lastActivatedRef.current === 'spotify' && spotify.isReady && spotify.currentTrack) return 'spotify'
+    if (lastActivatedRef.current === 'plex' && plex.currentTrack) return 'plex'
     return 'none'
   }, [spotify.isPlaying, spotify.currentTrack, spotify.isReady, plex.isPlaying, plex.currentTrack])
 
@@ -90,9 +99,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [source, spotify.setVolume, plex.setVolume])
 
   const stop = useCallback(() => {
+    lastActivatedRef.current = 'none'
     if (source === 'spotify') spotify.togglePlay()
     else if (source === 'plex') plex.stop()
   }, [source, spotify.togglePlay, plex.stop])
+
+  const playSpotify = useCallback(async (spotifyUri: string) => {
+    lastActivatedRef.current = 'spotify'
+    return spotify.play(spotifyUri)
+  }, [spotify.play])
+
+  const playSpotifyQueue = useCallback(async (uris: string[]) => {
+    lastActivatedRef.current = 'spotify'
+    return spotify.playWithQueue(uris)
+  }, [spotify.playWithQueue])
+
+  const playPlexTrack = useCallback(async (track: PlexTrackInfo) => {
+    lastActivatedRef.current = 'plex'
+    return plex.playTrack(track)
+  }, [plex.playTrack])
+
+  const playPlexAlbum = useCallback(async (tracks: PlexTrackInfo[], startIndex?: number) => {
+    lastActivatedRef.current = 'plex'
+    return plex.playAlbum(tracks, startIndex)
+  }, [plex.playAlbum])
 
   const value: PlayerContextValue = {
     source,
@@ -109,14 +139,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setVolume,
     stop,
     dismissError: spotify.dismissError,
-    playSpotify: spotify.play,
-    playSpotifyQueue: spotify.playWithQueue,
+    playSpotify,
+    playSpotifyQueue,
     setSpotifyQueueMetadata: spotify.setQueueMetadata,
-    playPlexTrack: plex.playTrack,
-    playPlexAlbum: plex.playAlbum,
+    playPlexTrack,
+    playPlexAlbum,
+    skipPlexToIndex: plex.skipToIndex,
     spotifyNextTracks: spotify.nextTracks,
+    spotifyPreviousTracks: spotify.previousTracks,
     spotifyIsReady: spotify.isReady,
     plexQueue: plex.queue,
+    plexPreviousTracks: plex.previousTracks,
   }
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
@@ -142,9 +175,12 @@ const defaultContextValue: PlayerContextValue = {
   setSpotifyQueueMetadata: () => {},
   playPlexTrack: async () => {},
   playPlexAlbum: async () => {},
+  skipPlexToIndex: () => {},
   spotifyNextTracks: [],
+  spotifyPreviousTracks: [],
   spotifyIsReady: false,
   plexQueue: [],
+  plexPreviousTracks: [],
 }
 
 export function usePlayer(): PlayerContextValue {

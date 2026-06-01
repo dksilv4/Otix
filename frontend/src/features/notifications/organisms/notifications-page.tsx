@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { Bell, CheckCheck, UserPlus, UserCheck, UserX, UserMinus, Heart, MessageSquareText, Users } from 'lucide-react'
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
@@ -16,6 +17,23 @@ const TYPE_ICONS: Record<string, typeof Heart> = {
   like: Heart,
   comment: MessageSquareText,
   list_invitation: Users,
+  follow: UserPlus,
+  follow_request: UserPlus,
+  follow_request_accepted: UserCheck,
+}
+
+function getNotificationLink(notification: Notification): string | null {
+  const meta = notification.metadataJson ?? {}
+  switch (notification.type) {
+    case 'follow':
+      return meta.follower_username ? `/u/${meta.follower_username}` : null
+    case 'follow_request':
+      return meta.requester_username ? `/u/${meta.requester_username}` : null
+    case 'follow_request_accepted':
+      return meta.target_username ? `/u/${meta.target_username}` : null
+    default:
+      return null
+  }
 }
 
 function formatTimeAgo(dateStr: string): string {
@@ -63,10 +81,12 @@ function NotificationRow({
   notification: Notification
   onMarkRead: (id: string) => void
 }) {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const Icon = TYPE_ICONS[notification.type] ?? Bell
   const isFriendRequest = notification.type === 'friend_request'
   const isListInvitation = notification.type === 'list_invitation'
+  const linkUrl = getNotificationLink(notification)
 
   const handleAction = async (action: 'accept' | 'reject') => {
     const requestId = notification.metadataJson?.requestId as string | undefined
@@ -92,20 +112,36 @@ function NotificationRow({
     }
   }
 
+  const handleRowClick = () => {
+    if (linkUrl) {
+      navigate({ to: linkUrl })
+    }
+  }
+
   return (
     <div
       className={cn(
         'group relative flex items-start gap-4 p-4 rounded-2xl transition-colors',
         'hover:bg-[var(--dk-surface-glass)]',
         !notification.isRead && 'bg-primary/[0.03]',
+        linkUrl && 'cursor-pointer',
       )}
+      onClick={handleRowClick}
+      onKeyDown={(e) => {
+        if (linkUrl && e.key === 'Enter') handleRowClick()
+      }}
+      role={linkUrl ? 'button' : undefined}
+      tabIndex={linkUrl ? 0 : undefined}
     >
       {/* Unread dot */}
       {!notification.isRead && (
         <button
           type="button"
           className="absolute left-1.5 top-1/2 -translate-y-1/2"
-          onClick={() => onMarkRead(notification.id)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMarkRead(notification.id)
+          }}
           aria-label="Mark as read"
         >
           <span className="block h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]" />
@@ -141,14 +177,20 @@ function NotificationRow({
             <button
               type="button"
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-              onClick={() => handleAction('accept')}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAction('accept')
+              }}
             >
               Accept
             </button>
             <button
               type="button"
               className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
-              onClick={() => handleAction('reject')}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAction('reject')
+              }}
             >
               Decline
             </button>
@@ -159,14 +201,20 @@ function NotificationRow({
             <button
               type="button"
               className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-              onClick={() => handleListAction('accept')}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleListAction('accept')
+              }}
             >
               Accept
             </button>
             <button
               type="button"
               className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
-              onClick={() => handleListAction('decline')}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleListAction('decline')
+              }}
             >
               Decline
             </button>
@@ -197,6 +245,7 @@ function NotificationsSkeleton() {
 
 export function NotificationsPage() {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
   const markRead = useMarkRead()
   const markAllRead = useMarkAllRead()
 
@@ -239,9 +288,9 @@ export function NotificationsPage() {
         <div className="text-center space-y-3">
           <Bell className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <h2 className="text-lg font-semibold">Sign in to view notifications</h2>
-          <a href="/auth/login" className="text-sm text-primary hover:underline">
+          <Link to="/auth/login" search={{ redirect: location.href }} className="text-sm text-primary hover:underline">
             Sign in
-          </a>
+          </Link>
         </div>
       </div>
     )

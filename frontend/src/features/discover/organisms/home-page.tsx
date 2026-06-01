@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
 import { ChatSearchInput } from '../molecules/chat-search-input'
 import { DailyMoodCheckIn, type RecordedMoodContext } from '../molecules/daily-mood-check-in'
@@ -14,6 +14,7 @@ import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
 import { groupWorkoutsByDay, formatVolume, type DayGroup } from '@/features/workout/lib/workout-stats'
 import { WorkoutCard } from '@/features/workout/molecules/workout-card'
 import { WorkoutHeatmap } from '@/features/workout/molecules/workout-heatmap'
+import { Logo } from '@ui/atoms/logo'
 import { Dumbbell, Flame, RotateCcw, CheckCircle2, Weight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -173,9 +174,13 @@ export function HomePage() {
 function HomeExperience() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const searchParams = useSearch({ from: '/' })
 
   const [query, setQuery] = useState('')
-  const [activeType, setActiveType] = useState<string>('all')
+  const activeType = searchParams.type
+  const setActiveType = (type: string) => {
+    navigate({ to: '/', search: { type }, replace: true })
+  }
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [greeting] = useState(() => getGreeting())
   const [isMoodPromptVisible, setIsMoodPromptVisible] = useState(false)
@@ -376,10 +381,17 @@ function HomeExperience() {
       </Suspense>
 
       <div className="relative z-10 flex flex-col items-center px-4 pb-16 w-full">
+        {/* Logo hero — 50vh */}
+        <div className="h-[50vh] flex items-center justify-center w-full">
+          <Logo
+            className="h-32 md:h-48 lg:h-56"
+            color="rgba(255,255,255,0.5)"
+          />
+        </div>
+
         <div
           className={cn(
             'flex flex-col items-center w-full gap-6',
-            activeMode !== 'workout' && 'min-h-[45vh] justify-end',
           )}
         >
           <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center">

@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Pin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from './use-player'
-import { PlayerBarContent } from './player-bar-content'
 import { PlexSessionList } from './plex-now-playing'
 import type { PlexSession } from './plex-now-playing'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
@@ -42,9 +41,19 @@ function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
   )
 }
 
-export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPin?: () => void }) {
-  const { spotifyIsReady, source, isPlaying, currentTrack } = usePlayer()
-  const [open, setOpen] = useState(false)
+export function NowPlayingButton({
+  isPinned,
+  isSidebarOpen,
+  onPin,
+  onToggleSidebar,
+}: {
+  isPinned?: boolean
+  isSidebarOpen?: boolean
+  onPin?: () => void
+  onToggleSidebar?: () => void
+}) {
+  const { source, isPlaying, currentTrack } = usePlayer()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { user: currentUser } = useAuth()
@@ -66,22 +75,22 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
       const target = e.target as HTMLElement
       if (target.closest('[data-now-playing-trigger]')) return
       if (containerRef.current && !containerRef.current.contains(target)) {
-        setOpen(false)
+        setDropdownOpen(false)
       }
     },
     [],
   )
 
   useEffect(() => {
-    if (!open) return
+    if (!dropdownOpen) return
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') setDropdownOpen(false)
     })
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [open, handleClickOutside])
+  }, [dropdownOpen, handleClickOutside])
 
   const hasLocalPlayback = source !== 'none' && currentTrack !== null
   const plexCount = plexSessions.length
@@ -91,11 +100,13 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
 
   const handleClick = () => {
     if (isPinned) return
-    setOpen(!open)
+    // Open the sidebar for local playback; keep dropdown for Plex-only
+    if (hasLocalPlayback && onToggleSidebar) {
+      onToggleSidebar()
+    } else {
+      setDropdownOpen(!dropdownOpen)
+    }
   }
-
-  const showLocalInPopover = hasLocalPlayback
-  const showPlexInPopover = hasPlex
 
   return (
     <>
@@ -105,8 +116,9 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
         onClick={handleClick}
         className={cn(
           pillBase,
-          'p-1.5 relative gap-1',
+          'p-1.5 relative gap-1 transition-all',
           !isPinned && 'cursor-pointer',
+          isSidebarOpen && 'ring-1 ring-purple-400/50 bg-purple-400/[0.06]',
           !hasLocalPlayback && hasPlex && 'ring-1 ring-[#e5a00d]/40',
         )}
         aria-label="Now playing"
@@ -136,7 +148,7 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
       </button>
 
       <AnimatePresence>
-        {open && !isPinned && (
+        {dropdownOpen && !isPinned && !hasLocalPlayback && (
           <motion.div
             ref={containerRef}
             initial={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -150,7 +162,7 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
                 <button
                   type="button"
                   onClick={() => {
-                    setOpen(false)
+                    setDropdownOpen(false)
                     onPin()
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-glass)] px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all"
@@ -160,11 +172,8 @@ export function NowPlayingButton({ isPinned, onPin }: { isPinned?: boolean; onPi
                 </button>
               )}
             </div>
-            {showLocalInPopover && (
-              <PlayerBarContent onDismiss={() => setOpen(false)} />
-            )}
-            {showPlexInPopover && (
-              <div className={cn(showLocalInPopover && 'mt-3 pt-3 border-t border-white/[0.06]')}>
+            {hasPlex && (
+              <div>
                 <div className="flex items-center gap-2 px-2 mb-3">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#e5a00d]" />
                   <span className="text-xs font-semibold text-muted-foreground">

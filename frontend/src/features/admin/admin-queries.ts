@@ -70,3 +70,63 @@ export function useAdminMetrics(metric: string, hours: number) {
     refetchInterval: REFETCH_INTERVAL,
   })
 }
+
+export interface MediaHydrationItem {
+  id: string
+  title: string
+  mediaType: string
+  slug: string
+
+  hasOverview: boolean
+  hasPoster: boolean
+  hasBackdrop: boolean
+  hasLogo: boolean
+  hasTextlessPoster: boolean
+  hasReleaseDate: boolean
+  hasEmbedding: boolean
+  hasOriginalLanguage: boolean
+
+  hasGenres: boolean
+  hasCredits: boolean
+  hasExternalIds: boolean
+  hasExternalRatings: boolean
+  hasVideos: boolean
+  hasAssets: boolean
+  hasReleases: boolean
+  hasKeywords: boolean
+  hasCompanies: boolean
+  hasWatchProviders: boolean
+
+  hasRuntime: boolean | null
+  hasCollection: boolean | null
+  hasBudget: boolean | null
+  hasShowStatus: boolean | null
+  hasEpisodes: boolean | null
+  hasPlatforms: boolean | null
+  hasGameModes: boolean | null
+  hasAgeRatings: boolean | null
+
+  completenessScore: number
+  syncedAt: string | null
+  nextSyncAt: string | null
+}
+
+export interface MediaHydrationResponse {
+  items: MediaHydrationItem[]
+  total: number
+  page: number
+  perPage: number
+}
+
+export function useAdminHydration(params: Record<string, string | number>, queryKey: unknown[]) {
+  return useQuery({
+    queryKey,
+    queryFn: async () => {
+      const { data } = await apiClient.get<MediaHydrationResponse>("/admin/hydration", {
+        params,
+      })
+      return data
+    },
+    staleTime: 10_000,
+  })
+}

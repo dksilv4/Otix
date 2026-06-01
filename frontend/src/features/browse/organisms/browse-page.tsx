@@ -1,5 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
-import { useParams, useSearch, Link } from '@tanstack/react-router'
+import { useMemo, useRef, useEffect } from 'react'
+import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { Film, Tv, Gamepad2, Music } from 'lucide-react'
@@ -69,22 +69,20 @@ function BrowseSkeleton() {
 }
 
 export function BrowsePage() {
-  const params = useParams({ strict: false }) as { type?: string }
-  const search = useSearch({ strict: false }) as { genre?: string; language?: string; isAnime?: string; sort?: string; dir?: string; certification?: string }
+  const params = useParams({ from: '/browse/$type' })
+  const search = useSearch({ from: '/browse/$type' })
+  const navigate = useNavigate()
   const mediaType = params.type || 'movie'
   const { user } = useAuth()
   const countryCode = (user?.country || 'us').toLowerCase()
 
-  const initialGenre = search.genre || ''
+  const initialCompany = search.company || ''
   const initialLanguage = search.language || undefined
   const initialIsAnime = search.isAnime === 'true' ? true : search.isAnime === 'false' ? false : undefined
-  const initialSort = search.sort || 'popularity'
-  const initialSortDir = search.dir || 'desc'
-  const initialCertification = search.certification || ''
 
-  const [sortBy, setSortBy] = useState(initialSort)
-  const [selectedGenre, setSelectedGenre] = useState(initialGenre)
-  const [selectedCertification, setSelectedCertification] = useState(initialCertification)
+  const updateSearch = (updates: Partial<typeof search>) => {
+    navigate({ to: '/browse/$type', params: { type: mediaType }, search: { ...search, ...updates }, replace: true })
+  }
 
   // Fetch genres for this media type
   const { data: genres } = useQuery({
@@ -120,6 +118,17 @@ export function BrowsePage() {
     ...(certifications ?? []).map((c) => ({ value: c, label: c })),
   ]
 
+  // Fetch company info when filtering by company
+  const { data: companyInfo } = useQuery({
+    queryKey: ['company', initialCompany],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ id: string; name: string; slug: string; logoUrl: string | null }>(`/company/${initialCompany}`)
+      return data
+    },
+    enabled: !!initialCompany,
+    staleTime: 1000 * 60 * 30,
+  })
+
   // Fetch media — infinite scroll
   const {
     data,
@@ -130,13 +139,14 @@ export function BrowsePage() {
   } = useInfiniteQuery({
     ...mediaQueries.infiniteList({
       type: mediaType,
-      genre: selectedGenre || undefined,
-      certification: selectedCertification || undefined,
+      genre: search.genre || undefined,
+      company: initialCompany || undefined,
+      certification: search.certification || undefined,
       language: initialLanguage,
       isAnime: initialIsAnime,
-      hasArtwork: !initialLanguage && initialIsAnime == null && !selectedCertification,
-      sortBy,
-      sortDir: initialSortDir,
+      hasArtwork: !initialLanguage && initialIsAnime == null && !search.certification,
+      sortBy: search.sort,
+      sortDir: search.dir,
       limit: 48,
     }),
   })
@@ -155,15 +165,15 @@ export function BrowsePage() {
   }, [isSentinelInView, hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const handleSortChange = (value: string) => {
-    setSortBy(value)
+    updateSearch({ sort: value })
   }
 
   const handleGenreChange = (value: string) => {
-    setSelectedGenre(value)
+    updateSearch({ genre: value })
   }
 
   const handleCertificationChange = (value: string) => {
-    setSelectedCertification(value)
+    updateSearch({ certification: value })
   }
 
   const typeLabel = BROWSE_TYPES.find((t) => t.value === mediaType)?.label ?? 'Movies'
@@ -182,11 +192,25 @@ export function BrowsePage() {
   return (
     <div className="pb-16">
       <Helmet>
-        <title>{`Browse ${typeLabel} - Otix`}</title>
+        <title>{companyInfo ? `${companyInfo.name} ${typeLabel} - Otix` : `Browse ${typeLabel} - Otix`}</title>
       </Helmet>
 
       {/* Header */}
       <div className="mb-8 space-y-6">
+        {/* Company logo header */}
+        {companyInfo && (
+          <div className="flex items-center gap-4">
+            {companyInfo.logoUrl && (
+              <img
+                src={companyInfo.logoUrl}
+                alt={companyInfo.name}
+                className="h-12 max-w-[200px] object-contain"
+              />
+            )}
+            <h1 className="text-2xl font-bold">{companyInfo.name}</h1>
+          </div>
+        )}
+
         {/* Type tabs */}
         <div className="flex items-center gap-2">
           {BROWSE_TYPES.map(({ value, label, Icon }) => (
@@ -214,7 +238,7 @@ export function BrowsePage() {
               variant="filter"
               label="Sort"
               options={browseSortOptions}
-              value={sortBy}
+              value={search.sort}
               onChange={handleSortChange}
             />
             {genres && genres.length > 0 && (
@@ -222,7 +246,7 @@ export function BrowsePage() {
                 variant="filter"
                 label="Genre"
                 options={genreOptions}
-                value={selectedGenre}
+                value={search.genre}
                 onChange={handleGenreChange}
               />
             )}
@@ -231,7 +255,7 @@ export function BrowsePage() {
                 variant="filter"
                 label="Rating"
                 options={certificationOptions}
-                value={selectedCertification}
+                value={search.certification}
                 onChange={handleCertificationChange}
               />
             )}
@@ -248,14 +272,14 @@ export function BrowsePage() {
       ) : items.length === 0 ? (
         <div className="flex min-h-[40vh] items-center justify-center">
           <p className="text-sm text-muted-foreground">
-            No {typeLabel.toLowerCase()} found{selectedGenre ? ' for this genre' : ''}.
+            No {typeLabel.toLowerCase()} found{search.genre ? ' for this genre' : ''}{initialCompany ? ' for this company' : ''}.
           </p>
         </div>
       ) : (
         <>
           <MediaGrid>
             {items.map((item: MediaItemSummary) => {
-              const finSub = getFinancialSubtitle(item, sortBy)
+              const finSub = getFinancialSubtitle(item, search.sort)
               return (
                 <MediaCard
                   key={item.id}
@@ -270,6 +294,7 @@ export function BrowsePage() {
                   isAdult={item.isAdult}
                   subtitle={finSub?.label}
                   subtitleColor={finSub?.color}
+                  artistName={item.albumArtistName}
                 />
               )
             })}

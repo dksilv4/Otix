@@ -43,9 +43,12 @@ export interface PlayerContextValue {
 
   playPlexTrack: (track: PlexTrackInfo) => Promise<void>
   playPlexAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
+  skipPlexToIndex: (index: number) => void
 
   // Provider-specific state exposed for specialized UI
   spotifyNextTracks: QueueTrack[]
+  spotifyPreviousTracks: QueueTrack[]
   spotifyIsReady: boolean
   plexQueue: PlexTrackInfo[]
+  plexPreviousTracks: PlexTrackInfo[]
 }

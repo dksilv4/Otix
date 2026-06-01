@@ -88,6 +88,7 @@ interface SpotifyPlayerContextValue {
   duration: number
   volume: number
   nextTracks: QueueTrack[]
+  previousTracks: QueueTrack[]
   play: (spotifyUri: string) => Promise<void>
   togglePlay: () => Promise<void>
   skipNext: () => Promise<void>
@@ -198,6 +199,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   const [duration, setDuration] = useState(0)
   const [volume, setVolumeState] = useState(0.5)
   const [nextTracks, setNextTracks] = useState<QueueTrack[]>([])
+  const [previousTracks, setPreviousTracks] = useState<QueueTrack[]>([])
   const [error, setError] = useState<string | null>(null)
   const playerRef = useRef<SpotifyPlayerInstance | null>(null)
   const deviceIdRef = useRef<string | null>(null)
@@ -472,6 +474,14 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         const storedQueue = queuedTracksRef.current
         const currentIdx = storedQueue.findIndex((q) => q.uri === track.uri)
         if (currentIdx >= 0) {
+          // Push tracks before current to previous, and slice upcoming
+          setPreviousTracks((prev) => {
+            const newPrev = storedQueue.slice(0, currentIdx)
+            // Deduplicate: only add tracks not already in the previous list
+            const existingUris = new Set(prev.map((p) => p.uri))
+            const toAdd = newPrev.filter((t) => !existingUris.has(t.uri))
+            return [...prev, ...toAdd]
+          })
           const upcoming = storedQueue.slice(currentIdx + 1)
           setNextTracks(upcoming.length > 0 ? upcoming : state.track_window.next_tracks.map(trackToQueueTrack))
         } else {
@@ -610,13 +620,36 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       const path = `/me/player/play?device_id=${deviceId}`
       try {
         return await callSpotifyApi('PUT', path, body)
-      } catch {
+      } catch (e) {
+        // If the device_id is stale (404), retry without it so Spotify
+        // uses the currently active device instead.
+        if (e instanceof Error && e.message.includes('404')) {
+          return callSpotifyApi('PUT', '/me/player/play', body)
+        }
         await sleep(600)
         return callSpotifyApi('PUT', path, body)
       }
     },
     [callSpotifyApi],
   )
+
+  const verifyAndResume = useCallback(async (expectedUri: string) => {
+    // The Spotify play API can return 204 while the SDK loads the track
+    // but stays paused. Poll quickly (every 250ms) and use togglePlay
+    // to kickstart audio — the same call the user's manual second click
+    // makes. Exits early as soon as the track is confirmed playing.
+    for (let i = 0; i < 6; i++) {
+      await sleep(250)
+      const state = await playerRef.current?.getCurrentState()
+      if (!state) continue
+      const currentUri = state.track_window.current_track?.uri
+      if (currentUri === expectedUri) {
+        if (!state.paused) return
+        try { await playerRef.current?.togglePlay() } catch { /* best effort */ }
+        return
+      }
+    }
+  }, [])
 
   const play = useCallback(
     async (spotifyUri: string) => {
@@ -627,18 +660,21 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       }
 
       setError(null)
+      setPreviousTracks([])
       markPendingPlayback(spotifyUri)
       try {
         await startPlayback(deviceId, {
           uris: [spotifyUri],
         })
+        // Fire-and-forget: verify playback started, resume if paused
+        void verifyAndResume(spotifyUri)
       } catch (e) {
         console.error('Play error:', e)
         if (await playbackStarted(spotifyUri)) return
         notifyError('Could not start playback')
       }
     },
-    [markPendingPlayback, notifyError, playbackStarted, startPlayback],
+    [markPendingPlayback, notifyError, playbackStarted, startPlayback, verifyAndResume],
   )
 
   const togglePlay = useCallback(async () => {
@@ -728,6 +764,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
       if (uris.length === 0) return
 
       setError(null)
+      setPreviousTracks([])
       markPendingPlayback(uris[0])
       try {
         // Send up to 100 URIs in the play request so Spotify creates an
@@ -744,13 +781,15 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
             // continue queueing remaining tracks rather than failing entirely.
           }
         }
+        // Fire-and-forget: verify playback started, resume if paused
+        void verifyAndResume(uris[0])
       } catch (e) {
         console.error('Play error:', e)
         if (await playbackStarted(uris[0])) return
         notifyError('Could not start playback')
       }
     },
-    [callSpotifyApi, markPendingPlayback, notifyError, playbackStarted, startPlayback],
+    [callSpotifyApi, markPendingPlayback, notifyError, playbackStarted, startPlayback, verifyAndResume],
   )
 
   const dismissError = useCallback(() => setError(null), [])
@@ -764,6 +803,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     duration,
     volume,
     nextTracks,
+    previousTracks,
     play,
     togglePlay,
     skipNext,
@@ -792,6 +832,7 @@ const defaultContextValue: SpotifyPlayerContextValue = {
   duration: 0,
   volume: 0.5,
   nextTracks: [],
+  previousTracks: [],
   play: async () => {},
   togglePlay: async () => {},
   skipNext: async () => {},

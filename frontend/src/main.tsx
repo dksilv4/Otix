@@ -9,6 +9,7 @@ import { ShaderQualityProvider } from '@/lib/shader-quality'
 import { MotionPreferenceProvider } from '@/lib/motion-preference'
 import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/features/auth'
+import { ExperimentsProvider } from '@/features/experiments/experiments-provider'
 import { PageMetaProvider } from '@/lib/page-context'
 import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provider'
 import { PlexAudioProvider } from '@/features/spotify/plex-audio-provider'
@@ -27,17 +28,19 @@ createRoot(document.getElementById('root')!).render(
           <MotionPreferenceProvider>
             <ThemeProvider>
               <AuthProvider>
-                <DkToastProvider>
-                  <SpotifyPlayerProvider>
-                    <PlexAudioProvider>
-                      <PlayerProvider>
-                        <PageMetaProvider>
-                          <RouterProvider router={router} context={{ queryClient }} />
-                        </PageMetaProvider>
-                      </PlayerProvider>
-                    </PlexAudioProvider>
-                  </SpotifyPlayerProvider>
-                </DkToastProvider>
+                <ExperimentsProvider>
+                  <DkToastProvider>
+                    <SpotifyPlayerProvider>
+                      <PlexAudioProvider>
+                        <PlayerProvider>
+                          <PageMetaProvider>
+                            <RouterProvider router={router} context={{ queryClient }} />
+                          </PageMetaProvider>
+                        </PlayerProvider>
+                      </PlexAudioProvider>
+                    </SpotifyPlayerProvider>
+                  </DkToastProvider>
+                </ExperimentsProvider>
               </AuthProvider>
             </ThemeProvider>
           </MotionPreferenceProvider>

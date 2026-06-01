@@ -359,6 +359,7 @@ function SpotifyTabContent() {
                   logoUrl={item.logoUrl}
                   releaseDate={item.releaseDate}
                   isAdult={item.isAdult}
+                  artistName={item.albumArtistName}
                 />
               ))}
             </MediaGrid>

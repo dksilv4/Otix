@@ -308,6 +308,7 @@ export function useSteamWishlistScan() {
 export interface PlexAlbumTrack {
   ratingKey: string
   title: string
+  artist: string
   trackNumber: number
   discNumber: number
   durationMs: number | null

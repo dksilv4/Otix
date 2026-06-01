@@ -118,13 +118,14 @@ function MediaTabContent({ tab }: { tab: LibraryTab }) {
           <MediaCard
             key={item.id}
             id={item.id}
-            mediaType={item.mediaType as "movie" | "show" | "game"}
+            mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
             title={item.title}
             posterUrl={item.posterUrl}
             textlessPosterUrl={item.textlessPosterUrl}
             logoUrl={item.logoUrl}
             releaseDate={item.releaseDate}
             isAdult={item.isAdult}
+            artistName={item.albumArtistName}
           />
         ))}
       </MediaGrid>

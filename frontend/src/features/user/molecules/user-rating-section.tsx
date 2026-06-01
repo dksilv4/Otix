@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Star } from 'lucide-react'
 import { StarInput } from '@/features/review/molecules/star-input'
@@ -12,12 +13,13 @@ interface UserRatingSectionProps {
 
 export function UserRatingSection({ username }: UserRatingSectionProps) {
   const { user: currentUser } = useAuth()
+  const location = useLocation()
 
   if (!currentUser) {
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
         <Star className="h-3.5 w-3.5 text-primary" />
-        <a href="/auth/login" className="text-primary hover:underline">Sign in</a> to rate
+        <Link to="/auth/login" search={{ redirect: location.href }} className="text-primary hover:underline">Sign in</Link> to rate
       </span>
     )
   }

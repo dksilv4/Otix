@@ -8,11 +8,11 @@ import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@/features/dk-ui/molecules
 import { useToast } from '@/features/dk-ui/molecules/toast'
 import { useCreateProposal, useMediaAssets, ADMIN_XP, type ImageOverrideItem, type MediaAsset } from '../admin-edit-queries'
 import type { MediaItemDetail } from '@/features/media/media-queries'
-import { CropModal } from '@/features/settings/molecules/crop-modal'
+import { PositionModal } from '@/features/settings/molecules/position-modal'
+import { encodePositionInUrl } from '@/lib/image-position'
 
-import { apiClient } from '@/lib/api-client'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
-import { Crop, Trash2, Check, Image, Loader2 } from 'lucide-react'
+import { Move, Trash2, Check, Image, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LANGUAGES: { code: string; label: string }[] = [
@@ -73,6 +73,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
   const [showStatus, setShowStatus] = useState(media.show?.status ?? '')
   const [releaseDate, setReleaseDate] = useState(media.releaseDate?.slice(0, 10) ?? '')
   const [originalLanguage, setOriginalLanguage] = useState(media.originalLanguage ?? '')
+  const [runtime, setRuntime] = useState(media.movie?.runtime?.toString() ?? '')
 
   // Image browser state
   const [browseType, setBrowseType] = useState('poster')
@@ -83,38 +84,26 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
     { imageType: string; languageCode: string; url: string; assetId?: string }[]
   >([])
 
-  // Crop state — for cropping backdrops into textless posters
-  const [cropAsset, setCropAsset] = useState<MediaAsset | null>(null)
-  const [, setCropUploading] = useState(false)
+  // Position state — for positioning backdrops as textless posters
+  const [positionAsset, setPositionAsset] = useState<MediaAsset | null>(null)
 
-  const needsCrop = (asset: MediaAsset) =>
+  const needsPosition = (asset: MediaAsset) =>
     browseType === 'textless_poster' && asset.assetType === 'backdrop'
 
-  const handleCropComplete = useCallback(
-    async (blob: Blob) => {
-      if (!cropAsset) return
-      setCropUploading(true)
-      try {
-        const form = new FormData()
-        form.append('file', blob, 'cropped-poster.webp')
-        const { data } = await apiClient.post<{ url: string }>('/upload', form, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        setImageOverrides((prev) => [
-          ...prev.filter(
-            (o) => !(o.imageType === browseType && o.languageCode === browseLang),
-          ),
-          { imageType: browseType, languageCode: browseLang, url: data.url },
-        ])
-        toast({ title: 'Cropped poster uploaded', variant: 'success' })
-      } catch {
-        toast({ title: 'Upload failed', variant: 'error' })
-      } finally {
-        setCropUploading(false)
-        setCropAsset(null)
-      }
+  const handlePositionComplete = useCallback(
+    ({ positionX, positionY }: { positionX: number; positionY: number }) => {
+      if (!positionAsset) return
+      const positionedUrl = encodePositionInUrl(positionAsset.url, positionX, positionY)
+      setImageOverrides((prev) => [
+        ...prev.filter(
+          (o) => !(o.imageType === browseType && o.languageCode === browseLang),
+        ),
+        { imageType: browseType, languageCode: browseLang, url: positionedUrl },
+      ])
+      toast({ title: 'Backdrop position saved', variant: 'success' })
+      setPositionAsset(null)
     },
-    [cropAsset, browseType, browseLang, toast],
+    [positionAsset, browseType, browseLang, toast],
   )
 
   // Filter assets by selected type
@@ -133,8 +122,8 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
   const selectAsset = (asset: MediaAsset) => {
     if (isAssetSelected(asset)) return
-    if (needsCrop(asset)) {
-      setCropAsset(asset)
+    if (needsPosition(asset)) {
+      setPositionAsset(asset)
       return
     }
     setImageOverrides((prev) => [
@@ -165,8 +154,10 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
       c.release_date = releaseDate || null
     if (originalLanguage !== (media.originalLanguage ?? ''))
       c.original_language = originalLanguage || null
+    if (media.mediaType === 'movie' && runtime !== (media.movie?.runtime?.toString() ?? ''))
+      c.runtime = runtime || null
     return c
-  }, [title, overview, tagline, showStatus, releaseDate, originalLanguage, media])
+  }, [title, overview, tagline, showStatus, releaseDate, originalLanguage, runtime, media])
 
   const hasChanges = Object.keys(changes).length > 0 || imageOverrides.length > 0
 
@@ -200,6 +191,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
       setShowStatus(media.show?.status ?? '')
       setReleaseDate(media.releaseDate?.slice(0, 10) ?? '')
       setOriginalLanguage(media.originalLanguage ?? '')
+      setRuntime(media.movie?.runtime?.toString() ?? '')
       setImageOverrides([])
       setBrowseType('poster')
       setBrowseLang('*')
@@ -249,6 +241,14 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                   label="Tagline"
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
+                />
+              )}
+              {media.mediaType === 'movie' && (
+                <DkInput
+                  label="Runtime (minutes)"
+                  type="number"
+                  value={runtime}
+                  onChange={(e) => setRuntime(e.target.value)}
                 />
               )}
               {media.mediaType === 'show' && (
@@ -362,13 +362,13 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                             <Check className="h-6 w-6 text-white drop-shadow-lg" />
                           </div>
                         )}
-                        {needsCrop(asset) && (
+                        {needsPosition(asset) && (
                           <span className="absolute top-1 left-1 flex items-center gap-0.5 rounded-md bg-primary/80 px-1.5 py-0.5 text-[9px] font-medium text-white">
-                            <Crop className="h-2.5 w-2.5" />
-                            Crop
+                            <Move className="h-2.5 w-2.5" />
+                            Position
                           </span>
                         )}
-                        {!needsCrop(asset) && asset.lang && (
+                        {!needsPosition(asset) && asset.lang && (
                           <span className="absolute top-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
                             {asset.lang.toUpperCase()}
                           </span>
@@ -497,16 +497,14 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
         </div>
       </div>
 
-      {/* Crop overlay — backdrop → textless poster */}
-      {cropAsset && (
+      {/* Position overlay — backdrop → textless poster */}
+      {positionAsset && (
         <div className="fixed inset-0 z-[calc(var(--dk-z-modal)+1)] flex items-center justify-center bg-black/60">
-          <CropModal
-            imageUrl={cropAsset.url}
-            shape="rect"
+          <PositionModal
+            imageUrl={positionAsset.url}
             aspect={2 / 3}
-            outputSize={{ width: 600, height: 900 }}
-            onComplete={handleCropComplete}
-            onCancel={() => setCropAsset(null)}
+            onComplete={handlePositionComplete}
+            onCancel={() => setPositionAsset(null)}
           />
         </div>
       )}

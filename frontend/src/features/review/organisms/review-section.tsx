@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Link, useLocation } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Star, Pencil } from "lucide-react"
 import { useAuth } from "@/features/auth"
@@ -47,6 +48,7 @@ function StarRow({ count, filled, size = "md" }: { count: number; filled: number
 
 function ReviewSection({ mediaId, className }: ReviewSectionProps) {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
   const [composerOpen, setComposerOpen] = useState(false)
   const { data: myReview, isLoading, isError, refetch } = useQuery(reviewQueries.myReview(mediaId))
 
@@ -56,9 +58,9 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
         <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
         <div className="rounded-3xl border border-white/[0.06] bg-[var(--dk-surface-base)] p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <a href="/auth/login" className="font-medium text-primary hover:underline">
+            <Link to="/auth/login" search={{ redirect: location.href }} className="font-medium text-primary hover:underline">
               Sign in
-            </a>
+            </Link>
             {" "}to rate and review this title.
           </p>
         </div>

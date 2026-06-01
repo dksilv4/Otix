@@ -11,6 +11,7 @@ const MediaDetail = lazy(() => import("@media/organisms/media-detail").then(m =>
 const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({ default: m.DkUiShowcase })))
 const HomePage = lazy(() => import("@discover/organisms/home-page").then(m => ({ default: m.HomePage })))
 const PersonDetail = lazy(() => import("@person/organisms/person-detail").then(m => ({ default: m.PersonDetail })))
+const CompanyDetail = lazy(() => import("@company/organisms/company-detail").then(m => ({ default: m.CompanyDetail })))
 const LibraryPage = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryPage })))
 const ListDetail = lazy(() => import("@/features/list/organisms/list-detail").then(m => ({ default: m.ListDetail })))
 const SettingsPage = lazy(() => import("@/features/settings/organisms/settings-page").then(m => ({ default: m.SettingsPage })))
@@ -27,10 +28,15 @@ const PlexConnectCallbackPage = lazy(() => import("@auth/organisms/plex-connect-
 const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-connect-callback-page").then(m => ({ default: m.SpotifyConnectCallbackPage })))
 const GoogleConnectCallbackPage = lazy(() => import("@auth/organisms/google-connect-callback-page").then(m => ({ default: m.GoogleConnectCallbackPage })))
 const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
-const AdminPage = lazy(() => import("@/features/admin/organisms/admin-page").then(m => ({ default: m.AdminPage })))
+const AdminHomePage = lazy(() => import("@/features/admin/organisms/admin-home-page").then(m => ({ default: m.AdminHomePage })))
+const AdminDashboardPage = lazy(() => import("@/features/admin/organisms/admin-dashboard-page").then(m => ({ default: m.AdminDashboardPage })))
 const AdminProposalsPage = lazy(() => import("@/features/admin/organisms/admin-proposals-page").then(m => ({ default: m.AdminProposalsPage })))
+const AdminExperimentsPage = lazy(() => import("@/features/admin/organisms/admin-experiments-page").then(m => ({ default: m.AdminExperimentsPage })))
+const AdminBlogPostPage = lazy(() => import("@/features/admin/organisms/admin-blog-post-page").then(m => ({ default: m.AdminBlogPostPage })))
+const AdminHydrationPage = lazy(() => import("@/features/admin/organisms/admin-hydration-page").then(m => ({ default: m.AdminHydrationPage })))
 const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboarding-page").then(m => ({ default: m.OnboardingPage })))
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
+const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -59,6 +65,9 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomePage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: (search.type as string) || 'all',
+  }),
 })
 
 const mediaDetailRoute = createRoute({
@@ -71,6 +80,16 @@ const personDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/person/$personId",
   component: PersonDetail,
+  validateSearch: (search: Record<string, unknown>) => ({
+    mediaType: (search.mediaType as string) || 'all',
+    role: (search.role as string) || 'all',
+  }),
+})
+
+const companyDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/company/$companyId",
+  component: CompanyDetail,
 })
 
 // ── Library ──
@@ -109,6 +128,9 @@ const authLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/login",
   component: AuthPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: (search.redirect as string) || '/',
+  }),
 })
 
 const authRegisterRoute = createRoute({
@@ -209,6 +231,15 @@ const browseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/browse/$type",
   component: BrowsePage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    sort: (search.sort as string) || 'popularity',
+    genre: (search.genre as string) || '',
+    certification: (search.certification as string) || '',
+    company: (search.company as string) || '',
+    language: (search.language as string) || '',
+    isAnime: (search.isAnime as string) || '',
+    dir: (search.dir as string) || 'desc',
+  }),
 })
 
 const notificationsRoute = createRoute({
@@ -226,7 +257,13 @@ const dkUiRoute = createRoute({
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
-  component: AdminPage,
+  component: AdminHomePage,
+})
+
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/dashboard",
+  component: AdminDashboardPage,
 })
 
 const adminProposalsRoute = createRoute({
@@ -235,10 +272,34 @@ const adminProposalsRoute = createRoute({
   component: AdminProposalsPage,
 })
 
+const adminExperimentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/experiments",
+  component: AdminExperimentsPage,
+})
+
+const adminBlogPostRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/blog/$slug",
+  component: AdminBlogPostPage,
+})
+
+const adminHydrationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/hydration",
+  component: AdminHydrationPage,
+})
+
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/onboarding",
   component: OnboardingPage,
+})
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about",
+  component: AboutPage,
 })
 
 const searchRoute = createRoute({
@@ -258,6 +319,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   mediaDetailRoute,
   personDetailRoute,
+  companyDetailRoute,
   libraryIndexRoute,
   libraryRoute,
   listDetailRoute,
@@ -280,9 +342,14 @@ const routeTree = rootRoute.addChildren([
   notificationsRoute,
   dkUiRoute,
   adminRoute,
+  adminDashboardRoute,
   adminProposalsRoute,
+  adminExperimentsRoute,
+  adminBlogPostRoute,
+  adminHydrationRoute,
   onboardingRoute,
   searchRoute,
+  aboutRoute,
 ])
 
 export interface RouterContext {
