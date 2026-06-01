@@ -36,7 +36,11 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const [logoError, setLogoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  const badge = PLATFORM_BADGES[game.platform] ?? PLATFORM_BADGES.pc;
+  const hasMultipleSources = game.sources && game.sources.length > 1;
+  const primaryBadge = PLATFORM_BADGES[game.platform] ?? PLATFORM_BADGES.pc;
+  const badge = hasMultipleSources
+    ? { variant: "default" as const, label: game.sources!.map((s) => PLATFORM_BADGES[s]?.label ?? s).join(" + ") }
+    : primaryBadge;
   // Prefer textless poster so the floating logo pops clean
   const backgroundUrl = game.otixTextlessPosterUrl || game.otixPosterUrl;
   const hasBackground = backgroundUrl && !posterError;

@@ -12,6 +12,7 @@ export interface DetectedGame {
   localExePath?: string;
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
+  sources?: string[];
   iconUrl?: string;
   updateFiles?: UpdateFile[];
   otixMediaId?: string;

@@ -305,7 +305,10 @@ export function MatchGamesModal({
                 const isLoaded = row?.loaded ?? false;
                 const query = row?.query ?? game.title;
                 const suggestion = batchSuggestions.get(game.id);
-                const platform = PLATFORM_LABELS[game.platform] ?? "PC";
+                const platform =
+                  game.sources && game.sources.length > 1
+                    ? game.sources.map((s) => PLATFORM_LABELS[s] ?? s).join(" + ")
+                    : PLATFORM_LABELS[game.platform] ?? "PC";
 
                 return (
                   <div
