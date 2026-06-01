@@ -1,19 +1,16 @@
 // frontend/src/features/game-scanner/organisms/match-games-modal.tsx
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   X,
-  Search,
   Gamepad2,
   Link2,
   CheckCircle2,
-  ChevronRight,
   Loader2,
-  ExternalLink,
-  Globe,
+  AlertTriangle,
+  Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiClient } from "@/lib/api-client";
-import { DkBadge } from "@/features/dk-ui/atoms/badge";
 import { DkButton } from "@/features/dk-ui/atoms/button";
 import { cn } from "@/lib/utils";
 import type { DetectedGame } from "../types";
@@ -24,7 +21,16 @@ interface OtixGame {
   slug: string;
   posterUrl?: string;
   releaseDate?: string;
-  source?: string;
+}
+
+interface MatchSuggestion {
+  matchedMedia: {
+    id: string;
+    title: string;
+    slug: string;
+    posterUrl?: string | null;
+  } | null;
+  confidence: number;
 }
 
 interface MatchGamesModalProps {
@@ -44,145 +50,164 @@ export function MatchGamesModal({
     () => games.filter((g) => !g.otixMediaId),
     [games],
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<OtixGame[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [linking, setLinking] = useState<string | null>(null);
-  const [linked, setLinked] = useState<Set<string>>(new Set());
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [batchSuggestions, setBatchSuggestions] = useState<
+    Map<string, MatchSuggestion>
+  >(new Map());
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
+
+  // Per-tab search state
+  const [searchResults, setSearchResults] = useState<OtixGame[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const selectedGame = unmatched.find((g) => g.id === selectedId);
-
-  // Auto-search when selecting a game
+  // Batch match all unmatched games on open
   useEffect(() => {
-    if (selectedId) {
-      const game = games.find((g) => g.id === selectedId);
-      if (game) {
-        setQuery(game.title);
-        // Trigger search immediately with game title
-        setLoading(true);
-        apiClient
-          .get<{
-            items: Array<{
-              id: string;
-              title: string;
-              slug: string;
-              posterUrl: string | null;
-              releaseDate: string | null;
-            }>;
-          }>("/media/search", {
-            params: { q: game.title, media_type: "game", sort_by: "popularity", limit: 6 },
-          })
-          .then(({ data }) => {
-            setResults(
-              data.items.map((item) => ({
-                id: item.id,
-                title: item.title,
-                slug: item.slug,
-                posterUrl: item.posterUrl ?? undefined,
-                releaseDate: item.releaseDate ?? undefined,
-                source: "otix",
-              })),
-            );
-          })
-          .catch(() => setResults([]))
-          .finally(() => setLoading(false));
-      }
-    }
-  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!open || unmatched.length === 0) return;
 
-  // Debounced search
-  const handleSearch = useCallback(
-    (q: string) => {
-      setQuery(q);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+    setBatchLoading(true);
+    setBatchSuggestions(new Map());
+    setConfirmed(new Set());
+    setActiveTab(unmatched[0]?.id ?? null);
 
-      if (q.length < 2) {
-        setResults([]);
-        return;
-      }
-
-      debounceRef.current = setTimeout(async () => {
-        setLoading(true);
-        try {
-          const { data } = await apiClient.get<{
-            items: Array<{
-              id: string;
-              title: string;
-              slug: string;
-              posterUrl: string | null;
-              releaseDate: string | null;
-            }>;
-          }>("/media/search", {
-            params: { q, media_type: "game", sort_by: "popularity", limit: 6 },
-          });
-          setResults(
-            data.items.map((item) => ({
-              id: item.id,
-              title: item.title,
-              slug: item.slug,
-              posterUrl: item.posterUrl ?? undefined,
-              releaseDate: item.releaseDate ?? undefined,
-              source: "otix",
-            })),
-          );
-        } catch {
-          setResults([]);
-        } finally {
-          setLoading(false);
+    const titles = unmatched.map((g) => g.title);
+    apiClient
+      .post<{
+        matches: Array<{
+          queryTitle: string;
+          matchedMedia: MatchSuggestion["matchedMedia"];
+          confidence: number;
+        }>;
+      }>("/media/match-local-games", { titles })
+      .then(({ data }) => {
+        const map = new Map<string, MatchSuggestion>();
+        for (const m of data.matches) {
+          const game = unmatched.find((g) => g.title === m.queryTitle);
+          if (game) {
+            map.set(game.id, {
+              matchedMedia: m.matchedMedia,
+              confidence: m.confidence,
+            });
+          }
         }
-      }, 250);
-    },
-    [],
-  );
+        setBatchSuggestions(map);
+      })
+      .catch(() => {})
+      .finally(() => setBatchLoading(false));
+  }, [open, unmatched]);
 
-  // Cleanup
+  // Auto-search when tab changes
+  useEffect(() => {
+    if (!activeTab) {
+      setSearchResults([]);
+      setSearchQuery("");
+      return;
+    }
+
+    const game = unmatched.find((g) => g.id === activeTab);
+    if (!game) return;
+
+    const query = game.title;
+    setSearchQuery(query);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    setSearchLoading(true);
+    apiClient
+      .get<{ items: Array<{ id: string; title: string; slug: string; posterUrl: string | null; releaseDate: string | null }> }>(
+        "/media/search",
+        { params: { q: query, media_type: "game", sort_by: "popularity", limit: 6 } },
+      )
+      .then(({ data }) =>
+        setSearchResults(
+          data.items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            posterUrl: item.posterUrl ?? undefined,
+            releaseDate: item.releaseDate ?? undefined,
+          })),
+        ),
+      )
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearchLoading(false));
+  }, [activeTab, unmatched]);
+
+  // Manual search handler
+  const handleSearch = useCallback((q: string) => {
+    setSearchQuery(q);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const { data } = await apiClient.get<{
+          items: Array<{ id: string; title: string; slug: string; posterUrl: string | null; releaseDate: string | null }>;
+        }>("/media/search", {
+          params: { q, media_type: "game", sort_by: "popularity", limit: 6 },
+        });
+        setSearchResults(
+          data.items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            slug: item.slug,
+            posterUrl: item.posterUrl ?? undefined,
+            releaseDate: item.releaseDate ?? undefined,
+          })),
+        );
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 250);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
 
-  // Auto-select first unmatched game
-  useEffect(() => {
-    if (open && unmatched.length > 0 && !selectedId) {
-      setSelectedId(unmatched[0].id);
-    }
-  }, [open, unmatched, selectedId]);
-
-  const handleLink = async (game: DetectedGame, otixGame: OtixGame) => {
-    setLinking(game.id);
-    try {
-      onLinkGame(game.id, otixGame.id, otixGame.title, otixGame.slug);
-      setLinked((prev) => new Set(prev).add(game.id));
-      // Auto-advance to next unmatched game
+  const handleLink = useCallback(
+    (gameId: string, otixGame: OtixGame) => {
+      onLinkGame(gameId, otixGame.id, otixGame.title, otixGame.slug);
+      setConfirmed((prev) => new Set(prev).add(gameId));
+      // Auto-advance to next unconfirmed tab
       const remaining = unmatched.filter(
-        (g) => g.id !== game.id && !linked.has(g.id),
+        (g) => g.id !== gameId && !confirmed.has(g.id),
       );
-      if (remaining.length > 0) {
-        setSelectedId(remaining[0].id);
-      } else {
-        setSelectedId(null);
-      }
-    } catch {
-      // parent handles state
-    } finally {
-      setLinking(null);
-    }
-  };
+      setActiveTab(remaining[0]?.id ?? null);
+    },
+    [onLinkGame, unmatched, confirmed],
+  );
 
-  const handleSkip = () => {
-    const remaining = unmatched.filter(
-      (g) => g.id !== selectedId && !linked.has(g.id),
-    );
-    if (remaining.length > 0) {
-      setSelectedId(remaining[0].id);
-    } else {
-      setSelectedId(null);
+  const handleConfirmAll = useCallback(() => {
+    for (const [gameId, suggestion] of batchSuggestions) {
+      if (suggestion.matchedMedia && !confirmed.has(gameId)) {
+        onLinkGame(
+          gameId,
+          suggestion.matchedMedia.id,
+          suggestion.matchedMedia.title,
+          suggestion.matchedMedia.slug,
+        );
+        setConfirmed((prev) => new Set(prev).add(gameId));
+      }
     }
-  };
+    setActiveTab(null);
+  }, [batchSuggestions, confirmed, onLinkGame]);
+
+  const activeGame = unmatched.find((g) => g.id === activeTab);
+  const batchSuggestion = activeTab ? batchSuggestions.get(activeTab) : undefined;
+  const matchableCount = [...batchSuggestions.values()].filter((s) => s.matchedMedia).length;
+  const visibleUnmatched = unmatched.filter((g) => !confirmed.has(g.id));
 
   if (!open) return null;
 
@@ -201,242 +226,235 @@ export function MatchGamesModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative flex max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl ring-1 ring-white/[0.04]"
+          className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl ring-1 ring-white/[0.04]"
         >
-          {/* Left: unmatched games list */}
-          <div className="flex w-72 flex-shrink-0 flex-col border-r border-white/[0.04]">
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-5 w-5 text-primary" />
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4">
+            <div className="flex items-center gap-3">
+              <Link2 className="h-5 w-5 text-primary" />
+              <div>
                 <h2 className="text-base font-semibold text-foreground">
                   Match Games
                 </h2>
+                <p className="text-xs text-muted-foreground">
+                  {unmatched.length} unmatched · {matchableCount} suggestions
+                </p>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {matchableCount > 0 && !batchLoading && (
+                <DkButton size="sm" variant="ghost" onClick={handleConfirmAll}>
+                  Confirm All
+                </DkButton>
+              )}
               <button
                 onClick={onClose}
                 className="rounded-xl p-1.5 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground active:scale-90"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
+          </div>
 
-            <div className="px-4 pb-2">
-              <p className="text-xs text-muted-foreground">
-                {unmatched.length - linked.size} unmatched ·{" "}
-                {linked.size} linked
+          {/* Loading batch match */}
+          {batchLoading && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Matching {unmatched.length} games against Otix catalog...
               </p>
             </div>
+          )}
 
-            <div className="flex-1 overflow-y-auto px-2 pb-2">
-              {unmatched.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-12 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-green-400/60" />
-                  <p className="text-sm text-muted-foreground">
-                    All games matched
-                  </p>
-                </div>
-              )}
-
-              {unmatched.map((game) => {
-                const isSelected = selectedId === game.id;
-                const isLinked = linked.has(game.id);
-
-                if (isLinked) return null;
-
-                return (
-                  <button
-                    key={game.id}
-                    onClick={() => setSelectedId(game.id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all",
-                      isSelected
-                        ? "bg-primary/10 ring-1 ring-primary/20"
-                        : "hover:bg-[var(--dk-surface-glass)]",
-                    )}
-                  >
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)]">
-                      {game.iconUrl ? (
-                        <img
-                          src={game.iconUrl}
-                          alt=""
-                          className="h-6 w-6 object-contain"
-                        />
-                      ) : (
-                        <Gamepad2 className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {game.title}
-                      </p>
-                      <p className="truncate text-[11px] text-muted-foreground capitalize">
-                        {game.platform}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground/40" />
-                  </button>
-                );
-              })}
+          {/* No unmatched */}
+          {!batchLoading && unmatched.length === 0 && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <CheckCircle2 className="h-10 w-10 text-green-400/60" />
+              <p className="text-sm font-semibold text-foreground">
+                All games matched
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Right: search + results */}
-          <div className="flex flex-1 flex-col min-w-0">
-            {selectedGame ? (
-              <>
-                {/* Search bar */}
-                <div className="px-6 pt-4 pb-3">
-                  <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={query}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      placeholder="Refine search..."
-                      className="h-12 w-full rounded-xl bg-[var(--dk-surface-glass)] pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1"
-                    />
-                  </div>
-                  <DkButton variant="ghost" size="sm" onClick={handleSkip}>
-                    Skip
-                  </DkButton>
-                </div>
+          {/* Game tabs + content */}
+          {!batchLoading && visibleUnmatched.length > 0 && (
+            <>
+              {/* Tab bar */}
+              <div className="flex gap-1 overflow-x-auto border-b border-white/[0.04] px-3 py-2">
+                {visibleUnmatched.map((game) => {
+                  const suggestion = batchSuggestions.get(game.id);
+                  const hasMatch = suggestion?.matchedMedia;
+                  const isActive = activeTab === game.id;
 
-                  {/* Selected game info */}
-                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-[var(--dk-surface-glass)] px-3 py-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--dk-surface-base)]">
-                      {selectedGame.iconUrl ? (
-                        <img
-                          src={selectedGame.iconUrl}
-                          alt=""
-                          className="h-5 w-5 object-contain"
-                        />
-                      ) : (
-                        <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+                  return (
+                    <button
+                      key={game.id}
+                      onClick={() => setActiveTab(game.id)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0",
+                        isActive
+                          ? "bg-primary/15 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]",
+                        hasMatch && !isActive && "text-green-400/80",
                       )}
+                    >
+                      {game.iconUrl ? (
+                        <img src={game.iconUrl} alt="" className="h-4 w-4 object-contain" />
+                      ) : (
+                        <Gamepad2 className="h-3.5 w-3.5" />
+                      )}
+                      <span className="max-w-[100px] truncate">{game.title}</span>
+                      {hasMatch && (
+                        <span className="text-[10px] opacity-60">
+                          {Math.round(suggestion!.confidence * 100)}%
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active tab content */}
+              {activeGame && (
+                <div className="flex-1 overflow-y-auto">
+                  {/* Batch suggestion header */}
+                  {batchSuggestion?.matchedMedia && (
+                    <div className="mx-6 mt-4 flex items-center gap-4 rounded-xl bg-green-500/5 ring-1 ring-green-500/10 p-4">
+                      <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--dk-surface-base)] ring-1 ring-white/[0.04]">
+                        {batchSuggestion.matchedMedia.posterUrl ? (
+                          <img
+                            src={batchSuggestion.matchedMedia.posterUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-green-400">
+                          Suggested Match · {Math.round(batchSuggestion.confidence * 100)}%
+                        </p>
+                        <p className="text-sm font-semibold truncate mt-0.5">
+                          {batchSuggestion.matchedMedia.title}
+                        </p>
+                      </div>
+                      <DkButton
+                        size="sm"
+                        onClick={() =>
+                          handleLink(activeGame.id, {
+                            id: batchSuggestion.matchedMedia!.id,
+                            title: batchSuggestion.matchedMedia!.title,
+                            slug: batchSuggestion.matchedMedia!.slug,
+                            posterUrl: batchSuggestion.matchedMedia!.posterUrl ?? undefined,
+                          })
+                        }
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Confirm
+                      </DkButton>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {selectedGame.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground font-mono truncate max-w-[300px]">
-                        {selectedGame.installDir}
-                      </p>
+                  )}
+
+                  {!batchSuggestion?.matchedMedia && (
+                    <div className="mx-6 mt-4 flex items-center gap-2 rounded-xl bg-amber-500/5 ring-1 ring-amber-500/10 p-3 text-xs text-muted-foreground">
+                      <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
+                      No automatic match found. Search below.
+                    </div>
+                  )}
+
+                  {/* Search bar */}
+                  <div className="px-6 pt-4 pb-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        placeholder="Refine search..."
+                        className="h-12 w-full rounded-xl bg-[var(--dk-surface-glass)] pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1"
+                      />
                     </div>
                   </div>
-                </div>
 
-                {/* Results */}
-                <div className="flex-1 overflow-y-auto px-6 pb-4">
-                  {loading && (
-                    <div className="flex items-center justify-center gap-2 py-12">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      <p className="text-sm text-muted-foreground">
-                        Searching...
-                      </p>
-                    </div>
-                  )}
+                  {/* Search results */}
+                  <div className="px-6 pb-6">
+                    {searchLoading ? (
+                      <div className="flex items-center justify-center gap-2 py-8">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Searching...</p>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="space-y-1">
+                        {searchResults.map((otixGame) => {
+                          const isBatchMatch =
+                            batchSuggestion?.matchedMedia?.id === otixGame.id;
 
-                  {!loading && query.length >= 2 && results.length === 0 && (
-                    <div className="flex flex-col items-center gap-2 py-12 text-center">
-                      <Gamepad2 className="h-8 w-8 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">
-                        No games found
-                      </p>
-                      <p className="text-xs text-muted-foreground/50">
-                        Try a different search term
-                      </p>
-                    </div>
-                  )}
-
-                  {!loading && query.length < 2 && (
-                    <div className="flex flex-col items-center gap-2 py-12 text-center">
-                      <Search className="h-8 w-8 text-muted-foreground/20" />
-                      <p className="text-sm text-muted-foreground">
-                        Search for a game to link
-                      </p>
-                      <p className="text-xs text-muted-foreground/50">
-                        Type at least 2 characters
-                      </p>
-                    </div>
-                  )}
-
-                  {!loading && results.length > 0 && (
-                    <div className="space-y-1">
-                      {results.map((otixGame) => {
-                        const isCurrentLinking =
-                          linking === selectedGame.id;
-                        const year = otixGame.releaseDate
-                          ? new Date(otixGame.releaseDate).getFullYear()
-                          : null;
-
-                        return (
-                          <button
-                            key={otixGame.id}
-                            onClick={() =>
-                              handleLink(selectedGame, otixGame)
-                            }
-                            disabled={isCurrentLinking}
-                            className={cn(
-                              "flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-all",
-                              "hover:bg-primary/5 active:scale-[0.99]",
-                              "disabled:opacity-40",
-                            )}
-                          >
-                            <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--dk-surface-base)] ring-1 ring-white/[0.04]">
-                              {otixGame.posterUrl ? (
-                                <img
-                                  src={otixGame.posterUrl}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                  <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
-                                </div>
+                          return (
+                            <button
+                              key={otixGame.id}
+                              onClick={() => handleLink(activeGame.id, otixGame)}
+                              className={cn(
+                                "flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-all",
+                                isBatchMatch
+                                  ? "bg-green-500/5 ring-1 ring-green-500/10"
+                                  : "hover:bg-primary/5",
                               )}
-                            </div>
+                            >
+                              <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--dk-surface-base)] ring-1 ring-white/[0.04]">
+                                {otixGame.posterUrl ? (
+                                  <img
+                                    src={otixGame.posterUrl}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <Gamepad2 className="h-6 w-6 text-muted-foreground/30" />
+                                  </div>
+                                )}
+                              </div>
 
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold truncate">
-                                {otixGame.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {[year?.toString()]
-                                  .filter(Boolean)
-                                  .join(" · ") || "Otix Library"}
-                              </p>
-                            </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-semibold truncate">
+                                    {otixGame.title}
+                                  </p>
+                                  {isBatchMatch && (
+                                    <span className="rounded-full bg-green-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-green-400 flex-shrink-0">
+                                      Best match
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {otixGame.releaseDate
+                                    ? new Date(otixGame.releaseDate).getFullYear()
+                                    : "Otix Library"}
+                                </p>
+                              </div>
 
-                            {isCurrentLinking ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-primary flex-shrink-0" />
-                            ) : (
-                              <div className="flex-shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
+                              <div className="flex-shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
                                 Link
                               </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 py-8 text-center">
+                        <Search className="h-6 w-6 text-muted-foreground/20" />
+                        <p className="text-xs text-muted-foreground">
+                          No results — try different search
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <CheckCircle2 className="h-10 w-10 text-green-400/60" />
-                  <p className="text-sm font-semibold text-foreground">
-                    All games matched
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Every local game is linked to an Otix entry
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>
