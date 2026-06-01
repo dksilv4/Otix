@@ -20,6 +20,56 @@ import {
 } from "../storage";
 import type { DetectedGame, Platform } from "../types";
 
+// ── Dedup: merge games with the same title from different sources ──
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[™®©]/g, "")
+    .replace(/[-.\s](goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors)\s*edition/gi, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
+function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
+  const groups = new Map<string, DetectedGame[]>();
+  for (const g of games) {
+    const key = normalizeTitle(g.title);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(g);
+    } else {
+      groups.set(key, [g]);
+    }
+  }
+
+  const merged: DetectedGame[] = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) {
+      merged.push(group[0]);
+      continue;
+    }
+
+    // Keep the one with the most data (matched > has icon > first)
+    const best =
+      group.find((g) => g.otixMediaId) ??
+      group.find((g) => g.iconUrl) ??
+      group[0];
+
+    const sources = [...new Set(group.map((g) => g.platform))];
+
+    merged.push({
+      ...best,
+      sources: sources.length > 1 ? sources : undefined,
+      // Keep the best exe path (prefer steam)
+      exePath: group.find((g) => g.platform === "steam")?.exePath ?? best.exePath,
+      installDir: best.installDir,
+    });
+  }
+
+  return merged;
+}
+
 export function GameScannerTab() {
   // Directories
   const [gamePaths, setGamePaths] = useState<string[]>(getScanPaths);
@@ -135,7 +185,7 @@ export function GameScannerTab() {
       // Merge with existing games: keep directory-scanned games, add launcher games
       const existingIds = new Set(games.map((g) => g.id));
       const newGames = launcherGames.filter((g) => !existingIds.has(g.id));
-      const merged = [...games, ...newGames];
+      const merged = mergeDuplicateGames([...games, ...newGames]);
 
       // Match against Otix catalog
       if (merged.length > 0) {
@@ -178,7 +228,8 @@ export function GameScannerTab() {
 
       // Match against Otix catalog
       if (scannedGames.length > 0) {
-        const matched = await matchMutation.mutateAsync(scannedGames);
+        const deduped = mergeDuplicateGames(scannedGames);
+        const matched = await matchMutation.mutateAsync(deduped);
         setGames(matched);
       } else {
         setGames([]);
