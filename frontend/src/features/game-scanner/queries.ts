@@ -9,9 +9,9 @@ interface MatchResult {
     id: string;
     title: string;
     slug: string;
-    poster_url?: string | null;
-    textless_poster_url?: string | null;
-    logo_url?: string | null;
+    posterUrl?: string | null;
+    textlessPosterUrl?: string | null;
+    logoUrl?: string | null;
   } | null;
   confidence: number;
 }
@@ -49,18 +49,18 @@ export function useMatchLocalGames() {
               otixMediaTitle: media.title,
               otixMediaSlug: media.slug,
               otixConfidence: match.confidence,
-              otixPosterUrl: media.poster_url,
-              otixTextlessPosterUrl: media.textless_poster_url,
-              otixLogoUrl: media.logo_url,
+              otixPosterUrl: media.posterUrl,
+              otixTextlessPosterUrl: media.textlessPosterUrl,
+              otixLogoUrl: media.logoUrl,
             };
           }
           // Medium confidence — show as recommendation, needs user confirmation
           return {
             ...game,
             otixConfidence: match.confidence,
-            otixPosterUrl: media.poster_url,
-            otixTextlessPosterUrl: media.textless_poster_url,
-            otixLogoUrl: media.logo_url,
+            otixPosterUrl: media.posterUrl,
+            otixTextlessPosterUrl: media.textlessPosterUrl,
+            otixLogoUrl: media.logoUrl,
             otixMatchSuggestion: {
               mediaId: media.id,
               title: media.title,
