@@ -78,21 +78,48 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
           <div className="absolute inset-0 bg-black/35 transition-all duration-300 group-hover:bg-black/25" />
         </>
       ) : (
-        /* Unmatched fallback */
-        <div className="absolute inset-0 bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-base)]">
-          <div className="absolute inset-0 flex items-center justify-center">
-            {game.iconUrl && !posterError ? (
-              <img
-                src={game.iconUrl}
-                alt=""
-                className="h-14 w-14 object-contain opacity-25 transition-all duration-300 group-hover:opacity-40 group-hover:scale-110"
-                onError={() => setPosterError(true)}
-              />
-            ) : (
-              <Gamepad2 className="h-12 w-12 text-muted-foreground/20 transition-all duration-300 group-hover:text-muted-foreground/35 group-hover:scale-110" />
-            )}
-          </div>
-        </div>
+        /* Unmatched — title-hash colour gradient + icon */
+        (() => {
+          // Deterministic hue from game title — same game always same colour
+          let hash = 0;
+          for (let i = 0; i < game.title.length; i++) {
+            hash = game.title.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          const hue = Math.abs(hash) % 360;
+          const gradient = `oklch(0.25 0.08 ${hue})`;
+          const gradient2 = `oklch(0.18 0.06 ${(hue + 40) % 360})`;
+
+          return (
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${gradient}, ${gradient2})`,
+              }}
+            >
+              {/* Large centred icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                {game.iconUrl ? (
+                  <img
+                    src={game.iconUrl}
+                    alt=""
+                    className="h-24 w-24 object-contain opacity-20 transition-all duration-300 group-hover:opacity-35 group-hover:scale-110"
+                  />
+                ) : (
+                  <Gamepad2 className="h-20 w-20 text-white/10 transition-all duration-300 group-hover:text-white/20 group-hover:scale-110" />
+                )}
+              </div>
+              {/* Title at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10">
+                <h3 className="text-sm font-bold text-white leading-tight truncate">
+                  {game.title}
+                </h3>
+                <p className="mt-0.5 text-[11px] text-white/40 truncate">
+                  {game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
+                </p>
+              </div>
+            </div>
+          );
+        })()
       )}
 
       {/* Top badges */}
@@ -136,20 +163,59 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
         </div>
       )}
 
-      {/* Hover: play button */}
-      <div
-        className={`absolute inset-0 z-20 flex items-center justify-center bg-black/25 transition-all duration-300 ${
-          isHovered ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <button
-          onClick={handlePlay}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-2xl shadow-emerald-500/40 transition-all duration-200 hover:bg-emerald-400 hover:scale-105 active:scale-95"
+      {/* Hover: play button or match suggestion */}
+      {game.otixMatchSuggestion && !isMatched ? (
+        <div
+          className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
         >
-          <Play className="h-4 w-4 fill-current" />
-          Play
-        </button>
-      </div>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-xl" />
+          <div className="relative z-10 flex flex-col items-center gap-3 px-4">
+            <p className="text-sm font-semibold text-white text-center leading-tight">
+              Match with{" "}
+              <span className="text-blue-400">{game.otixMatchSuggestion.title}</span>?
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAcceptSuggestion(game);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-blue-400 hover:scale-105 active:scale-95"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Yes, match
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRejectSuggestion(game);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`absolute inset-0 z-20 flex items-center justify-center bg-black/25 transition-all duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <button
+            onClick={handlePlay}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-2xl shadow-emerald-500/40 transition-all duration-200 hover:bg-emerald-400 hover:scale-105 active:scale-95"
+          >
+            <Play className="h-4 w-4 fill-current" />
+            Play
+          </button>
+        </div>
+      )}
 
       {/* Ring on hover */}
       <div

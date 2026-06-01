@@ -67,6 +67,21 @@ export function GameScannerTab() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-match games that are matched but missing poster/logo art (from old scans)
+  useEffect(() => {
+    const needsArt = games.filter(
+      (g) => g.otixMediaId && !g.otixPosterUrl && !g.otixLogoUrl,
+    );
+    if (needsArt.length === 0) return;
+
+    matchMutation.mutateAsync(needsArt).then((updated) => {
+      setGames((prev) => {
+        const map = new Map(updated.map((g) => [g.id, g]));
+        return prev.map((g) => map.get(g.id) ?? g);
+      });
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Directory pickers
   const handleAddGameDir = useCallback(async () => {
     if (hasElectronAPI()) {
