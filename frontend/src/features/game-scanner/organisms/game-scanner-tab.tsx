@@ -74,7 +74,12 @@ export function GameScannerTab() {
     );
     if (needsArt.length === 0) return;
 
-    matchMutation.mutateAsync(needsArt).then((updated) => {
+    // Temporarily clear otixMediaId so the mutation sends them to the API
+    const stripped = needsArt.map((g) => ({
+      ...g,
+      otixMediaId: undefined as string | undefined,
+    }));
+    matchMutation.mutateAsync(stripped).then((updated) => {
       setGames((prev) => {
         const map = new Map(updated.map((g) => [g.id, g]));
         return prev.map((g) => map.get(g.id) ?? g);
