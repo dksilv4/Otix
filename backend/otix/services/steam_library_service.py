@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.domain.media import Game, MediaItem, UserSteamGame, UserSteamWishlist
+from otix.domain.media import ExternalID, Game, MediaItem, UserSteamGame, UserSteamWishlist
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 
@@ -66,16 +66,19 @@ async def scan_steam_library(
 
     steam_app_ids = [g["appid"] for g in games]
 
-    # Batch-lookup matching Game records by steam_app_id
+    # Batch-lookup matching Game records by steam_app_id via ExternalID table
+    steam_app_id_strs = [str(a) for a in steam_app_ids]
     result = await db.execute(
-        select(Game.media_item_id, Game.steam_app_id).where(
-            Game.steam_app_id.in_(steam_app_ids)
+        select(ExternalID.external_id, ExternalID.entity_id).where(
+            ExternalID.provider == "steam",
+            ExternalID.entity_type == "media_item",
+            ExternalID.external_id.in_(steam_app_id_strs),
         )
     )
     appid_to_media: dict[int, str] = {}
     for row in result:
-        if row.steam_app_id is not None:
-            appid_to_media[row.steam_app_id] = row.media_item_id
+        if row.external_id is not None:
+            appid_to_media[int(row.external_id)] = row.entity_id
 
     # Upsert into user_steam_games
     matched = 0
@@ -330,15 +333,18 @@ async def scan_steam_wishlist(
 
     steam_app_ids = [i["appid"] for i in items]
 
+    steam_app_id_strs = [str(a) for a in steam_app_ids]
     result = await db.execute(
-        select(Game.media_item_id, Game.steam_app_id).where(
-            Game.steam_app_id.in_(steam_app_ids)
+        select(ExternalID.external_id, ExternalID.entity_id).where(
+            ExternalID.provider == "steam",
+            ExternalID.entity_type == "media_item",
+            ExternalID.external_id.in_(steam_app_id_strs),
         )
     )
     appid_to_media: dict[int, str] = {}
     for row in result:
-        if row.steam_app_id is not None:
-            appid_to_media[row.steam_app_id] = row.media_item_id
+        if row.external_id is not None:
+            appid_to_media[int(row.external_id)] = row.entity_id
 
     matched = 0
     for item in items:

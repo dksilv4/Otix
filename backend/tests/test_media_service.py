@@ -88,6 +88,35 @@ class TestMediaSearch:
         assert total == 1
         assert has_more is False
 
+    async def test_search_media_with_embedding(self, service: MediaService, mock_db_session: AsyncMock):
+        items = [_make_media("m-1", "movie", "Movie Search Result")]
+
+        mock_total_check = MagicMock()
+        mock_total_check.scalar_one.return_value = 1  # total count
+
+        mock_db_session.execute.return_value = mock_total_check
+        mock_db_session.scalars.return_value = items
+
+        embedding = [0.1] * 1024
+        res, total, has_more = await service.search_media("Movie", query_embedding=embedding)
+        assert res == items
+        assert total == 1
+        assert has_more is False
+
+    async def test_search_media_without_embedding(self, service: MediaService, mock_db_session: AsyncMock):
+        items = [_make_media("m-1", "movie", "Movie Search Result")]
+
+        mock_total_check = MagicMock()
+        mock_total_check.scalar_one.return_value = 1
+
+        mock_db_session.execute.return_value = mock_total_check
+        mock_db_session.scalars.return_value = items
+
+        res, total, has_more = await service.search_media("Movie")
+        assert res == items
+        assert total == 1
+        assert has_more is False
+
 
 class TestGetByIds:
     async def test_get_media_items_by_ids(self, service: MediaService, mock_db_session: AsyncMock):

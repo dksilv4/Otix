@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db
 from otix.api.schemas.notification import NotificationOut, NotificationListResponse, UnreadCountOut
 from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.services.notification_service import NotificationService
 
 notification_router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -63,3 +67,42 @@ async def mark_all_read(
     await service.mark_all_read(current_user.id)
     await db.commit()
     return {"message": "All notifications marked as read"}
+
+
+@notification_router.get("/stream")
+async def notification_stream(
+    current_user: User = Depends(get_current_user),
+):
+    """SSE endpoint that streams new notifications to the authenticated user via Redis pub/sub."""
+    channel = f"user:{current_user.id}:notifications"
+
+    async def event_generator():
+        redis = await get_redis()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
+        try:
+            deadline = time.monotonic() + 300.0
+            while True:
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                if message is None:
+                    if time.monotonic() > deadline:
+                        break
+                    yield ":keepalive\n\n"
+                    continue
+
+                data = message["data"]
+                yield f"data: {data}\n\n"
+                deadline = time.monotonic() + 300.0
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

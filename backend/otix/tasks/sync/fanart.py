@@ -19,7 +19,6 @@ logger = structlog.get_logger()
 _FANART_HYDRATE_METHODS = {
     "movie": "hydrate_movie_images",
     "show": "hydrate_show_images",
-    "game": "hydrate_game_images",
     "music": "hydrate_music_images",
 }
 

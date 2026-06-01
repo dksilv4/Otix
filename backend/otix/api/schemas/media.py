@@ -102,6 +102,7 @@ class MediaItemSummary(BaseModel):
     played_count: int = 0
     started_count: int = 0
     listened_count: int = 0
+    view_count: int = 0
     is_adult: bool = False
     user_interactions: UserInteractionState | None = None
     steam_playtime_forever: int | None = None
@@ -111,14 +112,35 @@ class MediaItemSummary(BaseModel):
     plex_last_viewed_at: datetime | None = None
     album_artist_name: str | None = None
     album_track_count: int | None = None
+    album_musicbrainz_release_group_id: str | None = None
     revenue: int | None = None
     budget: int | None = None
 
     model_config = {"from_attributes": True}
 
 
+class TrackSearchResult(BaseModel):
+    id: str
+    title: str
+    track_number: int
+    disc_number: int = 1
+    duration_ms: int | None = None
+    preview_url: str | None = None
+    spotify_id: str | None = None
+    avg_rating: float | None = None
+    rating_count: int = 0
+    album_id: str
+    album_title: str
+    album_poster_url: str | None = None
+    album_artist_name: str | None = None
+    album_slug: str
+
+    model_config = {"from_attributes": True}
+
+
 class MediaItemListResponse(PaginatedResponse):
     items: list[MediaItemSummary]
+    tracks: list[TrackSearchResult] = Field(default_factory=list)
     total: int | None = None
     backfill_pending: bool = False
 
@@ -236,6 +258,12 @@ class CompanyOut(BaseModel):
     id: str
     name: str
     slug: str
+    logo_url: str | None = None
+    origin_country: str | None = None
+    follower_count: int = 0
+    is_followed: bool | None = None
+    avg_rating: float | None = None
+    user_rating: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -287,6 +315,26 @@ class MediaPlatformOut(BaseModel):
 class MediaGameModeOut(BaseModel):
     id: str
     game_mode: GameModeOut
+
+    model_config = {"from_attributes": True}
+
+
+class WatchProviderOut(BaseModel):
+    id: str
+    name: str
+    slug: str
+    logo_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class MediaWatchProviderOut(BaseModel):
+    id: str
+    watch_provider: WatchProviderOut
+    country_code: str
+    offering_type: str
+    url: str | None = None
+    display_priority: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -372,9 +420,9 @@ class MediaItemDetail(BaseModel):
     played_count: int = 0
     started_count: int = 0
     listened_count: int = 0
+    view_count: int = 0
     is_adult: bool = False
     user_interactions: UserInteractionState | None = None
-
     # Steam playtime (populated for authenticated users who own the game)
     steam_playtime_forever: int | None = None
     steam_playtime_2weeks: int | None = None
@@ -391,6 +439,7 @@ class MediaItemDetail(BaseModel):
     releases: list[MediaReleaseOut] = []
     platforms: list[MediaPlatformOut] = []
     game_modes: list[MediaGameModeOut] = []
+    watch_providers: list[MediaWatchProviderOut] = []
 
     movie: MovieDetail | None = None
     show: ShowDetail | None = None

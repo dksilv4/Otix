@@ -81,7 +81,7 @@ class MusicBrainzProvider(BaseProvider):
 
     # ── Artist ───────────────────────────────────────────────────────────
 
-    async def get_artist(self, mbid: str, inc: str = "tags+genres") -> dict:
+    async def get_artist(self, mbid: str, inc: str = "tags+genres+url-rels") -> dict:
         return await self._get(f"artist/{mbid}", {"inc": inc})
 
     async def search_artist(self, query: str, limit: int = 10) -> list[dict]:

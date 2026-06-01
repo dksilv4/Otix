@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
-from otix.domain.media import Game
+from otix.domain.media import ExternalID, Game
 from otix.lib.slug import slugify
 from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.transformer import (
@@ -35,7 +35,14 @@ class SteamHydrator:
 
     async def hydrate(self, game: Game) -> None:
         """Fetch all Steam data for a game and persist to domain models."""
-        app_id = game.steam_app_id
+        ext_id = await self.session.scalar(
+            select(ExternalID.external_id).where(
+                ExternalID.provider == "steam",
+                ExternalID.entity_id == game.media_item_id,
+                ExternalID.entity_type == "media_item",
+            )
+        )
+        app_id = int(ext_id) if ext_id else None
         if not app_id:
             return
 
@@ -78,8 +85,15 @@ class SteamHydrator:
             return
 
         if store:
-            # Update steam_app_id if missing
-            if not game.steam_app_id:
+            # Update steam_app_id if missing (check ExternalID table directly)
+            existing_steam_eid = await self.session.scalar(
+                select(ExternalID.external_id).where(
+                    ExternalID.provider == "steam",
+                    ExternalID.entity_id == game.media_item_id,
+                    ExternalID.entity_type == "media_item",
+                )
+            )
+            if not existing_steam_eid:
                 steam_id = store.get("steam_appid")
                 if isinstance(steam_id, int):
                     game.steam_app_id = steam_id

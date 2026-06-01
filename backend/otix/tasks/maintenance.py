@@ -9,7 +9,9 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import structlog
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, not_, or_, select, text
+from sqlalchemy import exists as sa_exists
+from sqlalchemy.orm import joinedload
 
 from otix.domain.asset import ExternalRating, MediaAsset
 from otix.domain.media import Album, ExternalID, Game, MediaItem
@@ -90,7 +92,9 @@ async def _sync_plex_accounts() -> dict:
     synced = 0
     failed = 0
     async with async_session() as session:
-        users = list((await session.scalars(select(User).where(User.plex_auth_token.isnot(None)))).all())
+        users = list((await session.scalars(
+            select(User).where(User.plex_auth_token.isnot(None)).limit(500)
+        )).all())
         for user in users:
             try:
                 await sync_plex(session, user)
@@ -112,7 +116,9 @@ async def _sync_spotify_recently_played() -> dict:
     synced = 0
     failed = 0
     async with async_session() as session:
-        users = list((await session.scalars(select(User).where(User.spotify_refresh_token.isnot(None)))).all())
+        users = list((await session.scalars(
+            select(User).where(User.spotify_refresh_token.isnot(None)).limit(200)
+        )).all())
         for user in users:
             try:
                 celery_app.send_task("sync.spotify.recently_played", args=[user.id])
@@ -134,7 +140,9 @@ async def _sync_youtube_watch_history() -> dict:
     synced = 0
     failed = 0
     async with async_session() as session:
-        users = list((await session.scalars(select(User).where(User.google_refresh_token.isnot(None)))).all())
+        users = list((await session.scalars(
+            select(User).where(User.google_refresh_token.isnot(None)).limit(200)
+        )).all())
         for user in users:
             try:
                 celery_app.send_task("sync.youtube.watch_history", args=[user.id])
@@ -265,22 +273,12 @@ async def _enrich_fanart() -> dict:
         show_result = await session.execute(show_query)
         show_rows = show_result.all()
 
-        # Games: have Fanart ID, synced recently, no Fanart assets yet
-        game_query = (
-            select(MediaItem.id, ExternalID.external_id)
-            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
-            .where(
-                MediaItem.media_type == "game",
-                MediaItem.synced_at >= cutoff,
-                ExternalID.provider == "fanart",
-                MediaItem.id.not_in(select(enriched.c.media_item_id)),
-            )
-            .limit(200)
-        )
-        game_result = await session.execute(game_query)
-        game_rows = game_result.all()
-
         # Music: have primary artist with MBID, synced recently, no Fanart assets yet
+        has_mb = sa_exists().where(
+            ExternalID.provider == "musicbrainz",
+            ExternalID.entity_type == "person",
+            ExternalID.entity_id == Person.id,
+        )
         music_query = (
             select(MediaItem.id)
             .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
@@ -289,7 +287,7 @@ async def _enrich_fanart() -> dict:
                 MediaItem.media_type == "music",
                 MediaItem.synced_at >= cutoff,
                 MediaCredit.role == "primary",
-                Person.musicbrainz_artist_id.isnot(None),
+                has_mb,
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
             .limit(200)
@@ -316,6 +314,7 @@ async def _enrich_fanart() -> dict:
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
+            .limit(200)
         )
         wl_movie_result = await session.execute(wl_movie_query)
         wl_movie_ids = [row[0] for row in wl_movie_result.all()]
@@ -331,24 +330,10 @@ async def _enrich_fanart() -> dict:
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
+            .limit(200)
         )
         wl_show_result = await session.execute(wl_show_query)
         wl_show_ids = [row[0] for row in wl_show_result.all()]
-
-        # Watchlisted games without textless poster
-        wl_game_query = (
-            select(MediaItem.id)
-            .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
-            .where(
-                MediaItem.media_type == "game",
-                MediaItem.textless_poster_url.is_(None),
-                ExternalID.provider == "fanart",
-                MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
-                MediaItem.id.not_in(select(enriched.c.media_item_id)),
-            )
-        )
-        wl_game_result = await session.execute(wl_game_query)
-        wl_game_ids = [row[0] for row in wl_game_result.all()]
 
         # Watchlisted music without poster
         wl_music_query = (
@@ -359,17 +344,17 @@ async def _enrich_fanart() -> dict:
                 MediaItem.media_type == "music",
                 MediaItem.poster_url.is_(None),
                 MediaCredit.role == "primary",
-                Person.musicbrainz_artist_id.isnot(None),
+                has_mb,
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
             )
+            .limit(200)
         )
         wl_music_result = await session.execute(wl_music_query)
         wl_music_ids = [row[0] for row in wl_music_result.all()]
 
     movies_enqueued = 0
     shows_enqueued = 0
-    games_enqueued = 0
     music_enqueued = 0
 
     # Enqueue watchlist items first, then the rest
@@ -381,10 +366,6 @@ async def _enrich_fanart() -> dict:
         app.send_task("sync.fanart.enrich", args=["show",mid])
         shows_enqueued += 1
 
-    for mid in wl_game_ids:
-        app.send_task("sync.fanart.enrich", args=["game",mid])
-        games_enqueued += 1
-
     for mid in wl_music_ids:
         app.send_task("sync.fanart.enrich", args=["music",mid])
         music_enqueued += 1
@@ -393,7 +374,6 @@ async def _enrich_fanart() -> dict:
     wl_seen_by_type = {
         "movie": set(wl_movie_ids),
         "show": set(wl_show_ids),
-        "game": set(wl_game_ids),
         "music": set(wl_music_ids),
     }
 
@@ -407,24 +387,18 @@ async def _enrich_fanart() -> dict:
             app.send_task("sync.fanart.enrich", args=["show",media_item_id])
             shows_enqueued += 1
 
-    for media_item_id, _ in game_rows:
-        if media_item_id not in wl_seen_by_type["game"]:
-            app.send_task("sync.fanart.enrich", args=["game",media_item_id])
-            games_enqueued += 1
-
     for (media_item_id,) in music_rows:
         if media_item_id not in wl_seen_by_type["music"]:
             app.send_task("sync.fanart.enrich", args=["music",media_item_id])
             music_enqueued += 1
 
-    wl_total = len(wl_movie_ids) + len(wl_show_ids) + len(wl_game_ids) + len(wl_music_ids)
-    total = movies_enqueued + shows_enqueued + games_enqueued + music_enqueued
+    wl_total = len(wl_movie_ids) + len(wl_show_ids) + len(wl_music_ids)
+    total = movies_enqueued + shows_enqueued + music_enqueued
     if total:
         logger.info(
             "fanart enrichment enqueued",
             movies=movies_enqueued,
             shows=shows_enqueued,
-            games=games_enqueued,
             music=music_enqueued,
             watchlist_priority=wl_total,
         )
@@ -432,7 +406,6 @@ async def _enrich_fanart() -> dict:
     return {
         "movies_enqueued": movies_enqueued,
         "shows_enqueued": shows_enqueued,
-        "games_enqueued": games_enqueued,
         "music_enqueued": music_enqueued,
     }
 
@@ -520,7 +493,7 @@ async def _enrich_production_companies() -> dict:
 
     enqueued = 0
     for (media_item_id,) in rows:
-        app.send_task("sync.tmdb.hydrate_production_companies", args=[media_item_id], queue="control")
+        app.send_task("sync.tmdb.hydrate_production_companies", args=[media_item_id], queue="maintain")
         enqueued += 1
 
     if enqueued:
@@ -564,7 +537,7 @@ async def _enrich_content_ratings() -> dict:
 
     enqueued = 0
     for (media_item_id,) in rows:
-        app.send_task("sync.tmdb.hydrate_content_ratings", args=[media_item_id], queue="fast")
+        app.send_task("sync.tmdb.hydrate_content_ratings", args=[media_item_id], queue="reactive-fast")
         enqueued += 1
 
     if enqueued:
@@ -608,7 +581,7 @@ async def _enrich_game_age_ratings() -> dict:
 
     enqueued = 0
     for (media_item_id,) in rows:
-        app.send_task("sync.igdb.hydrate_age_ratings", args=[media_item_id], queue="igdb")
+        app.send_task("sync.igdb.hydrate_age_ratings", args=[media_item_id], queue="ingest-igdb")
         enqueued += 1
 
     if enqueued:
@@ -633,12 +606,16 @@ async def _enrich_steam() -> dict:
 
         # Games with steam_app_id, synced recently, not enriched in last hour
         query = (
-            select(Game.media_item_id, Game.steam_app_id)
+            select(Game.media_item_id, ExternalID.external_id)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .join(ExternalID, and_(
+                ExternalID.entity_id == Game.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider == "steam",
+            ))
             .where(
                 MediaItem.media_type == "game",
                 MediaItem.synced_at >= cutoff,
-                Game.steam_app_id.isnot(None),
             )
             .limit(50)
         )
@@ -647,7 +624,7 @@ async def _enrich_steam() -> dict:
 
     enqueued = 0
     for _, steam_app_id in rows:
-        app.send_task("sync.steam.update_app", args=[steam_app_id])
+        app.send_task("sync.steam.update_app", args=[int(steam_app_id)])
         enqueued += 1
 
     if enqueued:
@@ -677,39 +654,72 @@ async def _enrich_steamgrid() -> dict:
     async with async_session() as session:
         # Steam games (dedicated column, fast query)
         steam_result = await session.execute(
-            select(Game.media_item_id, Game.steam_app_id)
+            select(Game.media_item_id, ExternalID.external_id)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .join(ExternalID, and_(
+                ExternalID.entity_id == Game.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider == "steam",
+            ))
             .where(
                 MediaItem.media_type == "game",
-                Game.steam_app_id.isnot(None),
                 missing,
             )
             .limit(30)
         )
         steam_rows = steam_result.all()
 
-        # Non-Steam games (store_ids JSONB)
+        # Non-Steam games (store IDs via ExternalID)
+        store_providers = {"epic", "gog", "origin", "uplay", "bnet", "eshop",
+                          "xbox", "playstation", "nintendo", "itchio", "stadia"}
         other_result = await session.execute(
-            select(Game.media_item_id, Game.store_ids)
+            select(Game.media_item_id, ExternalID.provider, ExternalID.external_id)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .join(ExternalID, and_(
+                ExternalID.entity_id == Game.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider.in_(store_providers),
+            ))
             .where(
                 MediaItem.media_type == "game",
-                Game.store_ids.isnot(None),
                 missing,
             )
             .limit(30)
         )
-        other_rows = other_result.all()
+        other_rows_raw = other_result.all()
+
+        # Games without any store IDs — use name-based SGDB lookup
+        no_store_result = await session.execute(
+            select(Game.media_item_id)
+            .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .outerjoin(ExternalID, and_(
+                ExternalID.entity_id == Game.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider.in_(list(store_providers | {"steam"})),
+            ))
+            .where(
+                MediaItem.media_type == "game",
+                missing,
+                ExternalID.id.is_(None),
+            )
+            .limit(30)
+        )
+        no_store_ids = [mid for (mid,) in no_store_result.all()]
+
+    # Group store IDs by media_item_id
+    other_rows: dict[str, dict[str, str]] = {}
+    for mid, provider, ext_id in other_rows_raw:
+        if mid not in other_rows:
+            other_rows[mid] = {}
+        other_rows[mid][provider] = ext_id
 
     enqueued = 0
     for _, steam_app_id in steam_rows:
-        app.send_task("sync.steamgrid.game", args=[steam_app_id])
+        app.send_task("sync.steamgrid.game", args=[int(steam_app_id)])
         enqueued += 1
 
     seen: set[str] = set()
-    for _media_item_id, store_ids in other_rows:
-        if not store_ids:
-            continue
+    for _media_item_id, store_ids in other_rows.items():
         for platform, pid in store_ids.items():
             if platform == "steam":
                 continue
@@ -720,117 +730,14 @@ async def _enrich_steamgrid() -> dict:
             app.send_task("sync.steamgrid.game_by_platform", args=[platform, pid])
             enqueued += 1
 
+    for mid in no_store_ids:
+        app.send_task("sync.steamgrid.game_by_name", args=[mid])
+        enqueued += 1
+
     if enqueued:
         logger.info("steamgrid enrichment enqueued", count=enqueued)
 
     return {"enqueued": enqueued}
-
-
-@app.task(name="maintenance.enrich_spotify")
-def enrich_spotify() -> dict:
-    """Scan recently-synced albums for Spotify IDs and enqueue enrichment.
-
-    Runs every 30 min. Finds albums with a spotify_id that were synced
-    recently and enqueues individual Spotify enrichment tasks.
-    """
-    return run_async(_enrich_spotify())
-
-
-async def _enrich_spotify() -> dict:
-    async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
-
-        query = (
-            select(Album.media_item_id, Album.spotify_id)
-            .join(MediaItem, MediaItem.id == Album.media_item_id)
-            .where(
-                MediaItem.media_type == "music",
-                MediaItem.synced_at >= cutoff,
-                Album.spotify_id.isnot(None),
-            )
-            .limit(50)
-        )
-        result = await session.execute(query)
-        rows = result.all()
-
-    enqueued = 0
-    for otix_id, spotify_id in rows:
-        app.send_task("sync.spotify.enrich_album", args=[otix_id, spotify_id])
-        enqueued += 1
-
-    if enqueued:
-        logger.info("spotify enrichment enqueued", count=enqueued)
-
-    return {"enqueued": enqueued}
-
-
-@app.task(name="maintenance.match_spotify")
-def match_spotify() -> dict:
-    """Scan recently-synced albums without a Spotify ID and enqueue matching.
-
-    Complements enrich_spotify (which handles albums that already have an ID).
-    Runs every hour. Finds albums without spotify_id that were synced recently
-    and enqueues Spotify search+matching.
-    """
-    return run_async(_match_spotify())
-
-
-async def _match_spotify() -> dict:
-    async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
-
-        # Also include watchlisted items regardless of recency (prioritize them)
-        watchlist_sub = (
-            select(UserListItem.media_item_id)
-            .join(UserList, UserList.id == UserListItem.list_id)
-            .where(UserList.user_id.isnot(None))
-            .distinct()
-        ).subquery()
-
-        # Recent albums without spotify_id
-        recent_query = (
-            select(Album.media_item_id)
-            .join(MediaItem, MediaItem.id == Album.media_item_id)
-            .where(
-                MediaItem.media_type == "music",
-                MediaItem.synced_at >= cutoff,
-                Album.spotify_id.is_(None),
-            )
-            .limit(100)
-        )
-        recent_result = await session.execute(recent_query)
-        recent_ids = [row[0] for row in recent_result.all()]
-
-        # Watchlisted albums without spotify_id (priority regardless of recency)
-        watchlist_query = (
-            select(Album.media_item_id)
-            .join(MediaItem, MediaItem.id == Album.media_item_id)
-            .where(
-                MediaItem.media_type == "music",
-                Album.spotify_id.is_(None),
-                Album.media_item_id.in_(select(watchlist_sub.c.media_item_id)),
-            )
-            .limit(100)
-        )
-        watchlist_result = await session.execute(watchlist_query)
-        watchlist_ids = [row[0] for row in watchlist_result.all()]
-
-    # Dedupe: watchlist items first, then recent
-    seen = set(watchlist_ids)
-    ordered_ids = watchlist_ids + [mid for mid in recent_ids if mid not in seen]
-
-    enqueued = 0
-    for otix_id in ordered_ids:
-        app.send_task("sync.spotify.match_album", args=[otix_id])
-        enqueued += 1
-
-    if enqueued:
-        logger.info("spotify matching enqueued",
-            count=enqueued,
-            watchlist=len(watchlist_ids),
-        )
-
-    return {"enqueued": enqueued, "watchlist": len(watchlist_ids)}
 
 
 @app.task(name="maintenance.enrich_lastfm")
@@ -880,16 +787,23 @@ def steam_name_match() -> dict:
 
 
 async def _steam_name_match() -> dict:
+    import asyncio
+
     async with async_session() as session:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
 
+        has_steam = sa_exists().where(
+            ExternalID.provider == "steam",
+            ExternalID.entity_type == "media_item",
+            ExternalID.entity_id == Game.media_item_id,
+        )
         result = await session.execute(
             select(Game.media_item_id, MediaItem.title)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
             .where(
                 MediaItem.media_type == "game",
                 MediaItem.synced_at >= cutoff,
-                Game.steam_app_id.is_(None),
+                not_(has_steam),
             )
             .limit(25)
         )
@@ -900,19 +814,26 @@ async def _steam_name_match() -> dict:
 
     redis = await get_redis()
     provider = SteamProvider(redis)
+    sem = asyncio.Semaphore(5)
+
+    async def _search_one(media_item_id: str, title: str) -> tuple[str, str, list | None]:
+        async with sem:
+            try:
+                items = await provider.search_apps(title)
+                return media_item_id, title, items
+            except Exception:
+                return media_item_id, title, None
+
+    search_results = await asyncio.gather(
+        *[_search_one(mid, title) for mid, title in rows]
+    )
 
     matched = 0
     async with async_session() as session:
-        for media_item_id, title in rows:
-            try:
-                items = await provider.search_apps(title)
-            except Exception:
-                continue
-
+        for media_item_id, title, items in search_results:
             if not items:
                 continue
 
-            # Match by case-insensitive name, prefer exact match
             title_lower = title.strip().lower()
             best = None
             for item in items:
@@ -928,12 +849,21 @@ async def _steam_name_match() -> dict:
             if not isinstance(app_id, int):
                 continue
 
-            game = await session.get(Game, media_item_id)
+            game = await session.scalar(
+                select(Game)
+                .where(Game.media_item_id == media_item_id)
+                .options(joinedload(Game._external_ids))
+            )
             if game is not None and game.steam_app_id is None:
-                # Check the app_id isn't already claimed by a different game
                 conflict = await session.scalar(
-                    select(Game).where(
-                        Game.steam_app_id == app_id,
+                    select(Game)
+                    .join(ExternalID, and_(
+                        ExternalID.entity_id == Game.media_item_id,
+                        ExternalID.entity_type == "media_item",
+                        ExternalID.provider == "steam",
+                    ))
+                    .where(
+                        ExternalID.external_id == str(app_id),
                         Game.media_item_id != media_item_id,
                     )
                 )
@@ -957,7 +887,7 @@ async def _steam_name_match() -> dict:
     return {"searched": len(rows), "matched": matched}
 
 
-@app.task(name="maintenance.steam_ccu_batch", queue="ccu")
+@app.task(name="maintenance.steam_ccu_batch", queue="maintain")
 def steam_ccu_batch() -> dict:
     """Batch update current player counts for games with a Steam app ID.
 
@@ -969,20 +899,27 @@ def steam_ccu_batch() -> dict:
 
 
 async def _steam_ccu_batch() -> dict:
+    import asyncio
+
     async with async_session() as session:
         from sqlalchemy import select
 
         result = await session.execute(
-            select(Game.steam_app_id)
+            select(ExternalID.external_id)
+            .select_from(Game)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
+            .join(ExternalID, and_(
+                ExternalID.entity_id == Game.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider == "steam",
+            ))
             .where(
                 MediaItem.media_type == "game",
-                Game.steam_app_id.isnot(None),
             )
             .order_by(Game.current_players.desc().nulls_first())
             .limit(250)
         )
-        app_ids = [row[0] for row in result.all()]
+        app_ids = [int(row[0]) for row in result.all()]
 
     if not app_ids:
         return {"apps_checked": 0, "updated": 0}
@@ -990,24 +927,43 @@ async def _steam_ccu_batch() -> dict:
     redis = await get_redis()
     provider = SteamProvider(redis)
 
+    sem = asyncio.Semaphore(10)
+
+    async def _fetch_one(app_id: int) -> tuple[int, dict | None]:
+        async with sem:
+            try:
+                data = await provider.get_current_players(app_id)
+                return app_id, data
+            except Exception:
+                return app_id, None
+
+    results = await asyncio.gather(*[_fetch_one(aid) for aid in app_ids])
+
     async with async_session() as session:
         from sqlalchemy import select
 
+        subq = (
+            select(ExternalID.entity_id)
+            .where(
+                ExternalID.provider == "steam",
+                ExternalID.entity_type == "media_item",
+                ExternalID.external_id.in_([str(x) for x in app_ids]),
+            )
+        ).subquery()
         games = await session.scalars(
-            select(Game).where(Game.steam_app_id.in_(app_ids))
+            select(Game)
+            .options(joinedload(Game._external_ids))
+            .where(Game.media_item_id.in_(select(subq)))
         )
-        games_by_app = {g.steam_app_id: g for g in games}
+        games_by_app = {}
+        for g in games:
+            if g.steam_app_id is not None:
+                games_by_app[g.steam_app_id] = g
 
         updated = 0
         cleared = 0
-        for app_id in app_ids:
-            try:
-                data = await provider.get_current_players(app_id)
-            except Exception:
-                continue
-
+        for app_id, data in results:
             if data is None:
-                # 404 — app ID doesn't exist on Steam, clear it permanently
                 game = games_by_app.get(app_id)
                 if game is not None:
                     game.steam_app_id = None
@@ -1145,9 +1101,9 @@ async def _progress_summary() -> dict:
     import redis.asyncio as aioredis
     r = aioredis.from_url(broker_redis_url, decode_responses=True)
     try:
-        fast_depth = await r.llen("fast") or 0
-        user_depth = await r.llen("user") or 0
-        control_depth = await r.llen("control") or 0
+        fast_depth = await r.llen("reactive-fast") or 0
+        user_depth = await r.llen("reactive-user") or 0
+        control_depth = await r.llen("maintain") or 0
     finally:
         await r.aclose()
 
@@ -1199,35 +1155,326 @@ async def _progress_summary() -> dict:
 
 @app.task(name="maintenance.backfill_embeddings")
 def backfill_embeddings() -> dict:
-    """Enqueue embedding generation for items that lack one.
+    """Enqueue batch embedding generation for items that lack one.
 
     Runs periodically as a safety net until all items have embeddings.
+    Items are grouped into batches for efficient inference.
     """
     return run_async(_backfill_embeddings())
 
 
+_BACKFILL_BATCH_SIZE = 10
+
+
 async def _backfill_embeddings() -> dict:
-    from sqlalchemy import text as _text
+    from sqlalchemy import select
+
+    from otix.domain.media import MediaItem
 
     async with async_session() as session:
-        col_exists = await session.scalar(
-            _text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
-        )
-        if not col_exists:
-            logger.info("backfill_embeddings: embedding column not yet available, skipping")
-            return {"enqueued": 0, "reason": "column_missing"}
-
         result = await session.execute(
-            _text("SELECT id FROM media_items WHERE embedding IS NULL LIMIT 500")
+            select(MediaItem.id)
+            .where(MediaItem.embedding.is_(None))
+            .limit(1000)
         )
         rows = result.all()
 
+        all_ids = [row[0] for row in rows]
         enqueued = 0
-        for (item_id,) in rows:
-            app.send_task("embedding.generate", args=[item_id])
-            enqueued += 1
+        for i in range(0, len(all_ids), _BACKFILL_BATCH_SIZE):
+            batch = all_ids[i:i + _BACKFILL_BATCH_SIZE]
+            app.send_task("embedding.generate_batch", args=[batch])
+            enqueued += len(batch)
 
         if enqueued:
-            logger.info("backfill_embeddings: enqueued embedding tasks", count=enqueued)
+            logger.info("backfill_embeddings: enqueued batch tasks", count=enqueued, batches=len(all_ids) // _BACKFILL_BATCH_SIZE + 1)
 
     return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.dedupe_people")
+def dedupe_people() -> dict:
+    """Merge duplicate Person records (same case-insensitive name).
+
+    Runs safe dedup (at least one record has zero external IDs) followed by
+    cross-provider dedup (wikidata_id, name+birthday, non-overlapping providers).
+    Can be triggered manually or scheduled via Celery beat.
+    """
+    return run_async(_dedupe_people())
+
+
+async def _dedupe_people() -> dict:
+    from otix.services.person_service import dedupe_all_people, find_all_cross_provider_duplicates, merge_person
+
+    async with async_session() as session:
+        # Phase 1: Safe dedup (name-based, at least one has no external IDs)
+        safe_result = await dedupe_all_people(session, cross_provider=False)
+
+        # Phase 2: Cross-provider dedup (wikidata, name+birthday, non-overlapping)
+        cross_result = await dedupe_all_people(session, cross_provider=True)
+
+    return {
+        "safe": safe_result,
+        "cross_provider": cross_result,
+        "total_merged": safe_result["people_merged"] + cross_result["people_merged"],
+        "total_credits": safe_result["credits_reassigned"] + cross_result["credits_reassigned"],
+    }
+
+
+@app.task(name="maintenance.backfill_person_wikidata")
+def backfill_person_wikidata() -> dict:
+    """Backfill wikidata_id on Person records that have TMDB or MusicBrainz IDs.
+
+    Fetches person/artist details from TMDB and MusicBrainz APIs, extracts
+    wikidata_id, and stores it on the Person record. After backfill, the
+    cross-provider dedup can merge records that now share a wikidata_id.
+    """
+    return run_async(_backfill_person_wikidata())
+
+
+async def _backfill_person_wikidata() -> dict:
+    from otix.providers.tmdb.client import TMDBProvider
+    from otix.providers.tmdb.transformer import to_person
+    from otix.providers.musicbrainz.client import MusicBrainzProvider
+    from otix.providers.musicbrainz.transformer import extract_wikidata_id
+
+    redis = await get_redis()
+    tmdb = TMDBProvider(redis)
+    mb = MusicBrainzProvider(redis)
+
+    async with async_session() as session:
+        # Backfill TMDB people (with tmdb_id but no wikidata_id)
+        has_tmdb = sa_exists().where(
+            ExternalID.provider == "tmdb",
+            ExternalID.entity_type == "person",
+            ExternalID.entity_id == Person.id,
+        )
+        no_wikidata = sa_exists().where(
+            ExternalID.provider == "wikidata",
+            ExternalID.entity_type == "person",
+            ExternalID.entity_id == Person.id,
+        )
+        tmdb_people = list((await session.scalars(
+            select(Person)
+            .options(joinedload(Person._external_ids))
+            .where(
+                has_tmdb,
+                not_(no_wikidata),
+            )
+            .limit(100)
+        )).unique().all())
+
+        tmdb_filled = 0
+        for person in tmdb_people:
+            try:
+                raw = await tmdb.get_person(person.tmdb_id)
+                wiki_id = (
+                    raw.get("external_ids", {}).get("wikidata_id")
+                    if isinstance(raw.get("external_ids"), dict)
+                    else None
+                )
+                if wiki_id:
+                    # Check for conflict
+                    conflict = await session.scalar(
+                        select(Person)
+                        .join(ExternalID, and_(
+                            ExternalID.entity_id == Person.id,
+                            ExternalID.entity_type == "person",
+                            ExternalID.provider == "wikidata",
+                            ExternalID.external_id == str(wiki_id),
+                        ))
+                        .where(
+                            Person.id != person.id,
+                        )
+                    )
+                    if conflict is not None:
+                        logger.info(
+                            "wikidata_backfill_conflict",
+                            person_id=person.id,
+                            person_name=person.name,
+                            wikidata_id=wiki_id,
+                            conflict_id=conflict.id,
+                            conflict_name=conflict.name,
+                        )
+                        continue
+                    person.wikidata_id = wiki_id
+                    tmdb_filled += 1
+            except Exception:
+                logger.debug("wikidata_backfill_tmdb_failed", tmdb_id=person.tmdb_id)
+
+        if tmdb_filled:
+            await session.commit()
+            logger.info("wikidata_backfill_tmdb_complete", filled=tmdb_filled)
+
+        # Backfill MusicBrainz artists (with MBID but no wikidata_id)
+        has_mb = sa_exists().where(
+            ExternalID.provider == "musicbrainz",
+            ExternalID.entity_type == "person",
+            ExternalID.entity_id == Person.id,
+        )
+        mb_people = list((await session.scalars(
+            select(Person)
+            .options(joinedload(Person._external_ids))
+            .where(
+                has_mb,
+                not_(no_wikidata),
+            )
+            .limit(50)
+        )).unique().all())
+
+        mb_filled = 0
+        for person in mb_people:
+            try:
+                raw = await mb.get_artist(person.musicbrainz_artist_id)
+                relations = raw.get("relations")
+                wiki_id = extract_wikidata_id(relations if isinstance(relations, list) else None)
+                if wiki_id:
+                    conflict = await session.scalar(
+                        select(Person)
+                        .join(ExternalID, and_(
+                            ExternalID.entity_id == Person.id,
+                            ExternalID.entity_type == "person",
+                            ExternalID.provider == "wikidata",
+                            ExternalID.external_id == str(wiki_id),
+                        ))
+                        .where(
+                            Person.id != person.id,
+                        )
+                    )
+                    if conflict is not None:
+                        logger.info(
+                            "wikidata_backfill_mb_conflict",
+                            person_id=person.id,
+                            person_name=person.name,
+                            wikidata_id=wiki_id,
+                            conflict_id=conflict.id,
+                            conflict_name=conflict.name,
+                        )
+                        continue
+                    person.wikidata_id = wiki_id
+                    mb_filled += 1
+            except Exception:
+                logger.debug("wikidata_backfill_mb_failed", mbid=person.musicbrainz_artist_id)
+
+        if mb_filled:
+            await session.commit()
+            logger.info("wikidata_backfill_mb_complete", filled=mb_filled)
+
+    return {"tmdb_filled": tmdb_filled, "mb_filled": mb_filled}
+
+
+@app.task(name="maintenance.search_gap_report")
+def search_gap_report() -> dict:
+    """Analyze search_logs for zero/low-result queries from the last 24h."""
+    return run_async(_search_gap_report())
+
+
+async def _search_gap_report() -> dict:
+    from sqlalchemy import func, select, text
+
+    from otix.domain.search_log import SearchLog
+    from otix.infrastructure.database import async_session
+
+    cutoff = func.now() - text("INTERVAL '24 hours'")
+
+    async with async_session() as session:
+        # Top 20 zero-result queries (bot searches only)
+        zero_q = (
+            select(
+                SearchLog.query,
+                SearchLog.media_type,
+                func.count().label("search_count"),
+            )
+            .where(
+                SearchLog.result_count == 0,
+                SearchLog.created_at >= cutoff,
+                SearchLog.is_bot.is_(True),
+            )
+            .group_by(SearchLog.query, SearchLog.media_type)
+            .order_by(func.count().desc())
+            .limit(20)
+        )
+        zero_result = (await session.execute(zero_q)).all()
+
+        # Top 20 popular queries (all users)
+        popular_q = (
+            select(
+                SearchLog.query,
+                SearchLog.media_type,
+                func.count().label("search_count"),
+                func.avg(SearchLog.result_count).label("avg_results"),
+            )
+            .where(SearchLog.created_at >= cutoff)
+            .group_by(SearchLog.query, SearchLog.media_type)
+            .order_by(func.count().desc())
+            .limit(20)
+        )
+        popular = (await session.execute(popular_q)).all()
+
+        # Aggregate counts
+        total_searches = await session.scalar(
+            select(func.count()).select_from(SearchLog).where(
+                SearchLog.created_at >= cutoff
+            )
+        )
+        zero_total = await session.scalar(
+            select(func.count()).select_from(SearchLog).where(
+                SearchLog.result_count == 0,
+                SearchLog.created_at >= cutoff,
+            )
+        )
+        backfill_total = await session.scalar(
+            select(func.count()).select_from(SearchLog).where(
+                SearchLog.backfill_triggered.is_(True),
+                SearchLog.created_at >= cutoff,
+            )
+        )
+
+    report = {
+        "window_hours": 24,
+        "total_searches": total_searches or 0,
+        "zero_result_searches": zero_total or 0,
+        "backfill_triggers": backfill_total or 0,
+        "zero_result_queries": [dict(r._mapping) for r in zero_result[:10]],
+        "popular_queries": [dict(r._mapping) for r in popular[:10]],
+    }
+
+    logger.info("search_gap_report", **report)
+    return report
+
+
+# ── Periodic VACUUM ──────────────────────────────────────────────────────
+
+
+@app.task(name="maintenance.vacuum_high_churn_tables")
+def vacuum_high_churn_tables() -> dict:
+    """Vacuum tables that experience heavy DELETE+INSERT churn from sync tasks.
+
+    Runs every hour to keep dead tuple ratios low. Uses VACUUM (not FULL)
+    so the tables remain available for reads/writes.
+    """
+    import asyncio
+
+    from otix.infrastructure.database import async_session
+
+    HIGH_CHURN_TABLES = [
+        "media_credits",
+        "external_ids",
+        "external_ratings",
+        "media_genres",
+        "media_releases",
+        "media_videos",
+        "media_platforms",
+    ]
+
+    async def _vacuum():
+        async with async_session() as session:
+            for table in HIGH_CHURN_TABLES:
+                await session.execute(text(f"VACUUM ANALYZE {table}"))
+            await session.commit()
+        return {"vacuumed": HIGH_CHURN_TABLES}
+
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(_vacuum())
+    logger.info("periodic_vacuum_complete", tables=HIGH_CHURN_TABLES)
+    return result

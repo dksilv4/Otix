@@ -4,16 +4,18 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select, text
+from sqlalchemy import column, exists as sa_exists, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_admin_user, get_db
+from otix.api.deps import get_current_admin_user, get_db, get_trusted_or_admin_user
 from otix.api.schemas.admin import (
     AdminMetricPoint,
     AdminMetricsResponse,
     AdminRecentUser,
     AdminStatsResponse,
     EnrichmentCounts,
+    MediaHydrationItem,
+    MediaHydrationResponse,
     TMDBDeletedIDItem,
     TMDBDeletedIDListResponse,
 )
@@ -65,99 +67,148 @@ async def get_admin_stats(
         for row in recent_users_result
     ]
 
-    # ── Enrichment counts per media type ──
+    # ── Enrichment counts — all grouped queries, no per-type loop ──
     enrichment: dict[str, EnrichmentCounts] = {}
 
-    _ENRICH_SQL = {
-        "fanart": "SELECT COUNT(DISTINCT ma.media_item_id) FROM media_assets ma JOIN media_items mi ON mi.id = ma.media_item_id WHERE ma.provider = 'fanart' AND mi.media_type = :mt",
-        "omdb": "SELECT COUNT(DISTINCT er.media_item_id) FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id WHERE er.provider = 'imdb' AND mi.media_type = :mt",
-        "embedding": "SELECT COUNT(*) FROM media_items WHERE media_type = :mt AND embedding IS NOT NULL",
-        "external_ids": "SELECT COUNT(DISTINCT ei.media_item_id) FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id WHERE ei.provider = :provider AND mi.media_type = :mt",
-        "media_assets": "SELECT COUNT(DISTINCT ma.media_item_id) FROM media_assets ma JOIN media_items mi ON mi.id = ma.media_item_id WHERE ma.provider = :provider AND mi.media_type = :mt",
-        "external_ratings": "SELECT COUNT(DISTINCT er.media_item_id) FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id WHERE er.provider = :provider AND mi.media_type = :mt",
-    }
+    # Init all 5 types with their media_counts total
+    for mt in (*VALID_MEDIA_TYPES, "person"):
+        enrichment[mt] = EnrichmentCounts(total=media_counts.get(mt, 0) if mt != "person" else (people_count or 0))
 
+    # Embedding counts grouped by media_type (1 query)
     try:
-        _has_embedding = await db.scalar(
-            text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
+        emb_rows = await db.execute(
+            select(MediaItem.media_type, func.count(MediaItem.id))
+            .where(MediaItem.embedding.isnot(None))
+            .group_by(MediaItem.media_type)
         )
-    except Exception:
-        _has_embedding = False
-
-    for mt in ("movie", "show", "music", "game"):
-        ec = EnrichmentCounts(total=media_counts.get(mt, 0))
-        params = {"mt": mt}
-
-        try:
-            if _has_embedding:
-                ec.embedding = await db.scalar(text(_ENRICH_SQL["embedding"]), params) or 0
-        except Exception:
-            pass
-
-        try:
-            ec.fanart = await db.scalar(text(_ENRICH_SQL["fanart"]), params) or 0
-        except Exception:
-            pass
-
-        if mt in ("movie", "show"):
-            try:
-                ec.omdb = await db.scalar(text(_ENRICH_SQL["omdb"]), params) or 0
-            except Exception:
-                pass
-        elif mt == "game":
-            _game_providers = [
-                ("igdb", "external_ids"),
-                ("steam", "media_assets"),
-                ("steamgrid", "media_assets"),
-            ]
-            for provider, sql_key in _game_providers:
-                try:
-                    val = await db.scalar(text(_ENRICH_SQL[sql_key]), {**params, "provider": provider}) or 0
-                    setattr(ec, provider, val)
-                except Exception:
-                    pass
-        elif mt == "music":
-            _music_providers = [
-                ("musicbrainz", "external_ids"),
-                ("lastfm", "external_ratings"),
-                ("spotify", "external_ids"),
-            ]
-            for provider, sql_key in _music_providers:
-                try:
-                    val = await db.scalar(text(_ENRICH_SQL[sql_key]), {**params, "provider": provider}) or 0
-                    setattr(ec, provider, val)
-                except Exception:
-                    pass
-
-        enrichment[mt] = ec
-
-    # ── People enrichment ──
-    pe = EnrichmentCounts(total=people_count or 0)
-    try:
-        pe.fanart = await db.scalar(
-            select(func.count(PersonAsset.id)).where(PersonAsset.provider == "fanart")
-        ) or 0
+        for mt, cnt in emb_rows:
+            if mt in enrichment:
+                enrichment[mt].embedding = cnt
     except Exception:
         pass
+
+    # Fanart counts grouped by media_type (1 query)
     try:
-        pe.spotify = await db.scalar(
-            select(func.count(Person.id)).where(Person.spotify_artist_id.isnot(None))
-        ) or 0
+        from otix.domain.media import MediaAsset
+        fa_rows = await db.execute(
+            select(MediaItem.media_type, func.count(func.distinct(MediaAsset.media_item_id)))
+            .select_from(MediaAsset)
+            .join(MediaItem, MediaItem.id == MediaAsset.media_item_id)
+            .where(MediaAsset.provider == "fanart")
+            .group_by(MediaItem.media_type)
+        )
+        for mt, cnt in fa_rows:
+            if mt in enrichment:
+                enrichment[mt].fanart = cnt
     except Exception:
         pass
+
+    # OMDb counts — movie/show only (1 query)
     try:
-        pe.musicbrainz = await db.scalar(
-            select(func.count(Person.id)).where(Person.musicbrainz_artist_id.isnot(None))
-        ) or 0
+        from otix.domain.media import ExternalRating
+        omdb_rows = await db.execute(
+            select(MediaItem.media_type, func.count(func.distinct(ExternalRating.media_item_id)))
+            .select_from(ExternalRating)
+            .join(MediaItem, MediaItem.id == ExternalRating.media_item_id)
+            .where(ExternalRating.provider == "imdb")
+            .where(MediaItem.media_type.in_(["movie", "show"]))
+            .group_by(MediaItem.media_type)
+        )
+        for mt, cnt in omdb_rows:
+            if mt in enrichment:
+                enrichment[mt].omdb = cnt
     except Exception:
         pass
+
+    # Game providers: igdb (external_ids), steam + steamgrid (media_assets) (1 query via UNION ALL)
     try:
-        pe.imdb = await db.scalar(
-            select(func.count(Person.id)).where(Person.imdb_id.isnot(None))
-        ) or 0
+        from otix.domain.media import ExternalID as ExtIDGame, MediaAsset as MAGame
+        game_rows = await db.execute(
+            select(
+                text("media_type"),
+                text("provider"),
+                text("cnt"),
+            ).select_from(
+                text("""
+                    (SELECT mi.media_type, 'igdb' AS provider, COUNT(DISTINCT ei.media_item_id) AS cnt
+                     FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id
+                     WHERE ei.provider = 'igdb' AND mi.media_type = 'game'
+                     GROUP BY mi.media_type)
+                    UNION ALL
+                    (SELECT mi.media_type, ma.provider, COUNT(DISTINCT ma.media_item_id) AS cnt
+                     FROM media_assets ma JOIN media_items mi ON mi.id = ma.media_item_id
+                     WHERE ma.provider IN ('steam', 'steamgrid') AND mi.media_type = 'game'
+                     GROUP BY mi.media_type, ma.provider)
+                """)
+            )
+        )
+        for mt, provider, cnt in game_rows:
+            if mt in enrichment and hasattr(enrichment[mt], provider):
+                setattr(enrichment[mt], provider, cnt)
     except Exception:
         pass
-    enrichment["person"] = pe
+
+    # Music providers: musicbrainz + spotify (external_ids), lastfm (external_ratings) (1 query via UNION ALL)
+    try:
+        music_rows = await db.execute(
+            select(
+                text("media_type"),
+                text("provider"),
+                text("cnt"),
+            ).select_from(
+                text("""
+                    (SELECT mi.media_type, ei.provider, COUNT(DISTINCT ei.media_item_id) AS cnt
+                     FROM external_ids ei JOIN media_items mi ON mi.id = ei.media_item_id
+                     WHERE ei.provider IN ('musicbrainz', 'spotify') AND mi.media_type = 'music'
+                     GROUP BY mi.media_type, ei.provider)
+                    UNION ALL
+                    (SELECT mi.media_type, er.provider, COUNT(DISTINCT er.media_item_id) AS cnt
+                     FROM external_ratings er JOIN media_items mi ON mi.id = er.media_item_id
+                     WHERE er.provider = 'lastfm' AND mi.media_type = 'music'
+                     GROUP BY mi.media_type, er.provider)
+                """)
+            )
+        )
+        for mt, provider, cnt in music_rows:
+            if mt in enrichment and hasattr(enrichment[mt], provider):
+                setattr(enrichment[mt], provider, cnt)
+    except Exception:
+        pass
+
+    # People enrichment — all 4 counts in 1 query
+    # Use exists() subqueries on the ExternalID table (descriptors can't be used in SQL)
+    spotify_exists = sa_exists().where(
+        ExternalID.provider == "spotify",
+        ExternalID.entity_type == "person",
+        ExternalID.entity_id == Person.id,
+    )
+    musicbrainz_exists = sa_exists().where(
+        ExternalID.provider == "musicbrainz_artist",
+        ExternalID.entity_type == "person",
+        ExternalID.entity_id == Person.id,
+    )
+    imdb_exists = sa_exists().where(
+        ExternalID.provider == "imdb",
+        ExternalID.entity_type == "person",
+        ExternalID.entity_id == Person.id,
+    )
+
+    try:
+        people_row = await db.execute(
+            select(
+                func.count(func.distinct(PersonAsset.id)).filter(PersonAsset.provider == "fanart").label("fanart"),
+                func.count(Person.id).filter(spotify_exists).label("spotify"),
+                func.count(Person.id).filter(musicbrainz_exists).label("musicbrainz"),
+                func.count(Person.id).filter(imdb_exists).label("imdb"),
+            ).select_from(Person).outerjoin(PersonAsset, PersonAsset.person_id == Person.id)
+        )
+        row = people_row.one()
+        enrichment["person"].fanart = row.fanart or 0
+        enrichment["person"].spotify = row.spotify or 0
+        enrichment["person"].musicbrainz = row.musicbrainz or 0
+        enrichment["person"].imdb = row.imdb or 0
+    except Exception:
+        pass
 
     # ── Deltas (compare to previous snapshot in Redis) ──
     deltas: dict[str, EnrichmentCounts] = {}
@@ -335,16 +386,294 @@ async def get_edit_proposals(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_trusted_or_admin_user),
 ) -> MediaEditProposalList:
     service = AdminEditService(db)
     proposals, total = await service.get_all_proposals(status=status, limit=limit, offset=offset)
+    vote_map = await service.get_user_votes_for_proposals(
+        current_user.id, [p.id for p in proposals]
+    ) if proposals else {}
     items = []
     for p in proposals:
         out = MediaEditProposalOut.model_validate(p)
+        out.my_vote = vote_map.get(p.id)
         if p.media_item:
             out.media_title = p.media_item.title
             out.media_type = p.media_item.media_type
             out.media_poster_url = p.media_item.poster_url
         items.append(out)
     return MediaEditProposalList(items=items, total=total)
+
+
+VALID_HYDRATION_SORTS = {
+    "completeness_score",
+    "synced_at",
+    "title",
+    "has_overview",
+    "has_poster",
+    "has_backdrop",
+    "has_logo",
+    "has_textless_poster",
+    "has_release_date",
+    "has_embedding",
+    "has_original_language",
+    "has_genres",
+    "has_credits",
+    "has_external_ids",
+    "has_external_ratings",
+    "has_videos",
+    "has_assets",
+    "has_releases",
+    "has_keywords",
+    "has_companies",
+    "has_watch_providers",
+    "has_runtime",
+    "has_collection",
+    "has_budget",
+    "has_show_status",
+    "has_episodes",
+    "has_platforms",
+    "has_game_modes",
+    "has_age_ratings",
+}
+
+
+@admin_router.get("/hydration", response_model=MediaHydrationResponse)
+async def get_media_hydration(
+    media_type: str | None = Query(None, description="Filter by media type: movie, show, game, music"),
+    search: str | None = Query(None, description="Search by title substring"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    sort_by: str = Query("completeness_score", description="Sort column: completeness_score, synced_at, title"),
+    sort_dir: str = Query("asc", description="Sort direction: asc or desc"),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin_user),
+) -> MediaHydrationResponse:
+    from sqlalchemy import case as sa_case
+
+    from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
+    from otix.domain.company import InvolvedCompany
+    from otix.domain.genre import MediaGenre, MediaKeyword
+    from otix.domain.media import (
+        Game,
+        MediaGameMode,
+        MediaPlatform,
+        Movie,
+        Show,
+    )
+    from otix.domain.people import MediaCredit
+    from otix.domain.watch_provider import MediaWatchProvider
+
+    # ── Column expressions ──────────────────────────────────────────
+
+    has_genres_expr = sa_exists().where(MediaGenre.media_item_id == MediaItem.id).label("has_genres")
+    has_credits_expr = sa_exists().where(MediaCredit.media_item_id == MediaItem.id).label("has_credits")
+    has_external_ids_expr = sa_exists().where(
+        ExternalID.entity_type == "media_item",
+        ExternalID.entity_id == MediaItem.id,
+    ).label("has_external_ids")
+    has_external_ratings_expr = sa_exists().where(
+        ExternalRating.media_item_id == MediaItem.id
+    ).label("has_external_ratings")
+    has_videos_expr = sa_exists().where(MediaVideo.media_item_id == MediaItem.id).label("has_videos")
+    has_assets_expr = sa_exists().where(MediaAsset.media_item_id == MediaItem.id).label("has_assets")
+    has_releases_expr = sa_exists().where(MediaRelease.media_item_id == MediaItem.id).label("has_releases")
+    has_keywords_expr = sa_exists().where(MediaKeyword.media_item_id == MediaItem.id).label("has_keywords")
+    has_companies_expr = sa_exists().where(
+        InvolvedCompany.media_item_id == MediaItem.id
+    ).label("has_companies")
+    has_watch_providers_expr = sa_exists().where(
+        MediaWatchProvider.media_item_id == MediaItem.id
+    ).label("has_watch_providers")
+
+    has_runtime_expr = sa_case(
+        (MediaItem.media_type == "movie", Movie.runtime.is_not(None)),
+        else_=None,
+    ).label("has_runtime")
+    has_collection_expr = sa_case(
+        (MediaItem.media_type == "movie", Movie.collection_id.is_not(None)),
+        else_=None,
+    ).label("has_collection")
+    has_budget_expr = sa_case(
+        (MediaItem.media_type == "movie", Movie.budget.is_not(None)),
+        else_=None,
+    ).label("has_budget")
+    has_show_status_expr = sa_case(
+        (MediaItem.media_type == "show", Show.status.is_not(None)),
+        else_=None,
+    ).label("has_show_status")
+    has_episodes_expr = sa_case(
+        (MediaItem.media_type == "show", Show.number_of_episodes.is_not(None)),
+        else_=None,
+    ).label("has_episodes")
+    has_platforms_expr = sa_case(
+        (MediaItem.media_type == "game", sa_exists().where(
+            MediaPlatform.media_item_id == MediaItem.id,
+        )),
+        else_=None,
+    ).label("has_platforms")
+    has_game_modes_expr = sa_case(
+        (MediaItem.media_type == "game", sa_exists().where(
+            MediaGameMode.media_item_id == MediaItem.id,
+        )),
+        else_=None,
+    ).label("has_game_modes")
+    has_age_ratings_expr = sa_case(
+        (MediaItem.media_type == "game", sa_exists().where(
+            MediaRelease.media_item_id == MediaItem.id,
+            MediaRelease.certification.is_not(None),
+        )),
+        else_=None,
+    ).label("has_age_ratings")
+
+    # ── Base query ──────────────────────────────────────────────────
+
+    cols = [
+        MediaItem.id,
+        MediaItem.title,
+        MediaItem.media_type,
+        MediaItem.slug,
+        MediaItem.overview.is_not(None).label("has_overview"),
+        MediaItem.poster_url.is_not(None).label("has_poster"),
+        MediaItem.backdrop_url.is_not(None).label("has_backdrop"),
+        MediaItem.logo_url.is_not(None).label("has_logo"),
+        MediaItem.textless_poster_url.is_not(None).label("has_textless_poster"),
+        MediaItem.release_date.is_not(None).label("has_release_date"),
+        MediaItem.embedding.is_not(None).label("has_embedding"),
+        MediaItem.original_language.is_not(None).label("has_original_language"),
+        has_genres_expr,
+        has_credits_expr,
+        has_external_ids_expr,
+        has_external_ratings_expr,
+        has_videos_expr,
+        has_assets_expr,
+        has_releases_expr,
+        has_keywords_expr,
+        has_companies_expr,
+        has_watch_providers_expr,
+        has_runtime_expr,
+        has_collection_expr,
+        has_budget_expr,
+        has_show_status_expr,
+        has_episodes_expr,
+        has_platforms_expr,
+        has_game_modes_expr,
+        has_age_ratings_expr,
+        MediaItem.completeness_score,
+        MediaItem.synced_at,
+        MediaItem.next_sync_at,
+    ]
+
+    base = select(*cols).outerjoin(Movie, Movie.media_item_id == MediaItem.id).outerjoin(
+        Show, Show.media_item_id == MediaItem.id
+    ).outerjoin(Game, Game.media_item_id == MediaItem.id)
+
+    # ── Filters ─────────────────────────────────────────────────────
+
+    if media_type:
+        base = base.where(MediaItem.media_type == media_type)
+    if search:
+        base = base.where(MediaItem.title.ilike(f"%{search}%"))
+
+    count_base = select(func.count(MediaItem.id))
+    if media_type:
+        count_base = count_base.where(MediaItem.media_type == media_type)
+    if search:
+        count_base = count_base.where(MediaItem.title.ilike(f"%{search}%"))
+
+    total = await db.scalar(count_base) or 0
+
+    # ── Sort & paginate ─────────────────────────────────────────────
+
+    if sort_by not in VALID_HYDRATION_SORTS:
+        sort_by = "completeness_score"
+
+    if sort_by in ("completeness_score", "synced_at", "title"):
+        sort_col = getattr(MediaItem, sort_by)
+    else:
+        sort_col = column(sort_by)
+
+    if sort_dir == "desc":
+        base = base.order_by(sort_col.desc())
+    else:
+        base = base.order_by(sort_col.asc())
+
+    base = base.offset((page - 1) * per_page).limit(per_page)
+
+    # ── Execute & map ───────────────────────────────────────────────
+
+    rows = await db.execute(base)
+    items: list[MediaHydrationItem] = []
+    for row in rows:
+        core_flags = (
+            row.has_overview, row.has_poster, row.has_backdrop, row.has_logo,
+            row.has_textless_poster, row.has_release_date, row.has_embedding,
+            row.has_original_language,
+        )
+        relation_flags = (
+            row.has_genres, row.has_credits, row.has_external_ids,
+            row.has_external_ratings, row.has_videos, row.has_assets,
+            row.has_releases, row.has_keywords, row.has_companies,
+            row.has_watch_providers,
+        )
+
+        media_type = row.media_type
+        if media_type == "movie":
+            type_flags = (row.has_runtime, row.has_collection, row.has_budget)
+            type_denom = 3
+        elif media_type == "show":
+            type_flags = (row.has_show_status, row.has_episodes)
+            type_denom = 2
+        elif media_type == "game":
+            type_flags = (row.has_platforms, row.has_game_modes, row.has_age_ratings)
+            type_denom = 3
+        else:
+            type_flags = ()
+            type_denom = 0
+
+        all_flags = core_flags + relation_flags + type_flags
+        denominator = 8 + 10 + type_denom
+        score = sum(1 for f in all_flags if f) / denominator if denominator > 0 else 0.0
+
+        items.append(MediaHydrationItem(
+            id=row.id,
+            title=row.title,
+            media_type=row.media_type,
+            slug=row.slug,
+            has_overview=row.has_overview,
+            has_poster=row.has_poster,
+            has_backdrop=row.has_backdrop,
+            has_logo=row.has_logo,
+            has_textless_poster=row.has_textless_poster,
+            has_release_date=row.has_release_date,
+            has_embedding=row.has_embedding,
+            has_original_language=row.has_original_language,
+            has_genres=row.has_genres,
+            has_credits=row.has_credits,
+            has_external_ids=row.has_external_ids,
+            has_external_ratings=row.has_external_ratings,
+            has_videos=row.has_videos,
+            has_assets=row.has_assets,
+            has_releases=row.has_releases,
+            has_keywords=row.has_keywords,
+            has_companies=row.has_companies,
+            has_watch_providers=row.has_watch_providers,
+            has_runtime=row.has_runtime,
+            has_collection=row.has_collection,
+            has_budget=row.has_budget,
+            has_show_status=row.has_show_status,
+            has_episodes=row.has_episodes,
+            has_platforms=row.has_platforms,
+            has_game_modes=row.has_game_modes,
+            has_age_ratings=row.has_age_ratings,
+            completeness_score=round(score, 3),
+            synced_at=row.synced_at,
+            next_sync_at=row.next_sync_at,
+        ))
+
+    return MediaHydrationResponse(
+        items=items,
+        total=total,
+        page=page,
+        per_page=per_page,
+    )

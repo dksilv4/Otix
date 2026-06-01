@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import case, false, literal_column, or_, select, func, text, type_coerce, union
+from sqlalchemy import and_, case, false, or_, select, func, type_coerce, union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -12,13 +12,16 @@ from otix.domain.company import InvolvedCompany
 from otix.domain.media import (
     Album,
     Episode,
+    Game,
     MediaGameMode,
     MediaItem,
     MediaPlatform,
     Movie,
     Season,
     Show,
+    Track,
 )
+from otix.domain.watch_provider import MediaWatchProvider
 from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.people import MediaCredit, Person
@@ -38,8 +41,6 @@ def should_exclude_adult(user: User | None) -> bool:
 
 
 class MediaService:
-    _has_embedding_column: bool | None = None
-
     def __init__(self, session: AsyncSession):
         self.session = session
 
@@ -47,6 +48,7 @@ class MediaService:
         self,
         media_type: str | None = None,
         genre: str | None = None,
+        company: str | None = None,
         has_artwork: bool = False,
         sort_by: str | None = None,
         sort_dir: str = "desc",
@@ -62,12 +64,15 @@ class MediaService:
         exclude_adult: bool = False,
         certification: str | None = None,
         country_code: str = "us",
+        person_id: str | None = None,
+        credit_role: str | None = None,
     ) -> tuple[list[MediaItem], bool, int | None]:
         _sort_fields = {
             "popularity": MediaItem.popularity,
             "rating": MediaItem.avg_rating,
             "release_date": MediaItem.release_date,
             "title": MediaItem.title,
+            "views": MediaItem.view_count,
         }
         # Financial sorts require a JOIN to the movies table
         _financial_sorts = {
@@ -91,6 +96,10 @@ class MediaService:
             # Cursor pagination with default popularity sort
             query = select(MediaItem)
 
+        # Eager-load album for music queries so callers can access release-group ids
+        if media_type == 'music':
+            query = query.options(selectinload(MediaItem.album))
+
         if order is not None:
             query = query.order_by(order, MediaItem.id)
         else:
@@ -104,18 +113,23 @@ class MediaService:
             query = query.where(MediaItem.media_type == media_type)
 
         if has_artwork:
-            # Movies/shows/games need textless poster; music uses poster_url
-            # (album covers have artwork text, no "textless" variant exists).
+            # Movies/shows need textless poster (TMDB+Fanart provide it).
+            # Games use poster_url (IGDB covers don't have a textless variant,
+            # and SteamGridDB only covers Steam games).
+            # Music uses poster_url (album covers have artwork text).
             query = query.where(
                 MediaItem.textless_poster_url.isnot(None)
                 | (
-                    (MediaItem.media_type == "music")
+                    MediaItem.media_type.in_(["music", "game"])
                     & MediaItem.poster_url.isnot(None)
                 )
             )
 
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
+
+        if company:
+            query = query.join(MediaItem.involved_companies).where(InvolvedCompany.company_id == company)
 
         if media_ids:
             query = query.where(MediaItem.id.in_(media_ids))
@@ -154,6 +168,12 @@ class MediaService:
                 )
             )
 
+        if person_id:
+            query = query.join(MediaItem.credits).where(
+                MediaCredit.person_id == person_id,
+                MediaCredit.role == (credit_role or "primary"),
+            )
+
         if exclude_adult:
             query = query.where(MediaItem.is_adult == False)
 
@@ -169,11 +189,13 @@ class MediaService:
                 count_query = count_query.where(MediaItem.media_type == media_type)
             if genre:
                 count_query = count_query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
+            if company:
+                count_query = count_query.join(MediaItem.involved_companies).where(InvolvedCompany.company_id == company)
             if has_artwork:
                 count_query = count_query.where(
                     MediaItem.textless_poster_url.isnot(None)
                     | (
-                        (MediaItem.media_type == "music")
+                        MediaItem.media_type.in_(["music", "game"])
                         & MediaItem.poster_url.isnot(None)
                     )
                 )
@@ -208,6 +230,11 @@ class MediaService:
                             select(Show.media_item_id).where(show_cond)
                         )
                     )
+            if person_id:
+                count_query = count_query.join(MediaItem.credits).where(
+                    MediaCredit.person_id == person_id,
+                    MediaCredit.role == (credit_role or "primary"),
+                )
             if exclude_adult:
                 count_query = count_query.where(MediaItem.is_adult == False)
             if media_ids:
@@ -262,11 +289,13 @@ class MediaService:
                 selectinload(MediaItem.releases),
                 selectinload(MediaItem.platforms).joinedload(MediaPlatform.platform),
                 selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
+                selectinload(MediaItem.watch_providers).joinedload(MediaWatchProvider.watch_provider),
                 # Type-specific: use selectinload for collections to avoid cartesian blowup
                 joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
                 joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
-                joinedload(MediaItem.game),
-                joinedload(MediaItem.album).selectinload(Album.tracks),
+                joinedload(MediaItem.game).selectinload(Game._external_ids),
+                joinedload(MediaItem.album).selectinload(Album._external_ids),
+                joinedload(MediaItem.album).selectinload(Album.tracks).selectinload(Track._external_ids),
             )
             .where(MediaItem.id == media_id)
         )
@@ -274,37 +303,38 @@ class MediaService:
         if item is None:
             return None
 
-        # Movie ranking queries — count(*) with index scan, ~1ms each
-        if item.movie is not None and item.movie.revenue:
-            rank = await self.session.scalar(
-                select(func.count()).select_from(Movie).where(Movie.revenue > item.movie.revenue)
-            )
-            if rank is not None:
-                item.movie.revenue_rank = rank + 1
-
-        if item.movie is not None and item.movie.budget and item.movie.revenue:
+        # Movie ranking queries — all 3 combined into 1 round-trip via conditional aggregation
+        if item.movie is not None:
             movie = item.movie
-            profit_pct = round(((movie.revenue - movie.budget) / movie.budget) * 100, 1)
-            movie.profit_pct = profit_pct
+            needs_revenue = movie.revenue is not None
+            needs_profit = movie.budget is not None and movie.budget > 0 and movie.revenue is not None
 
-            profit_abs = movie.revenue - movie.budget
-            profit_expr = Movie.revenue - Movie.budget
+            if needs_revenue or needs_profit:
+                profit_abs = movie.revenue - movie.budget if needs_profit else 0
+                profit_expr = Movie.revenue - Movie.budget
 
-            higher = await self.session.scalar(
-                select(func.count()).select_from(Movie).where(
-                    Movie.budget > 0, Movie.revenue.isnot(None), profit_expr > profit_abs
-                )
-            )
-            if higher is not None:
-                movie.profit_rank = higher + 1
+                agg_cols = []
+                if needs_revenue:
+                    agg_cols.append(
+                        func.sum(case((Movie.revenue > movie.revenue, 1), else_=0)).label("revenue_rank")
+                    )
+                if needs_profit:
+                    agg_cols.append(
+                        func.sum(case((and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr > profit_abs), 1), else_=0)).label("profit_rank")
+                    )
+                    agg_cols.append(
+                        func.sum(case((and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr < profit_abs), 1), else_=0)).label("loss_rank")
+                    )
 
-            lower = await self.session.scalar(
-                select(func.count()).select_from(Movie).where(
-                    Movie.budget > 0, Movie.revenue.isnot(None), profit_expr < profit_abs
-                )
-            )
-            if lower is not None:
-                movie.loss_rank = lower + 1
+                ranks = await self.session.execute(select(*agg_cols).select_from(Movie))
+                rank_row = ranks.one()
+
+                if needs_revenue:
+                    movie.revenue_rank = rank_row.revenue_rank + 1
+                if needs_profit:
+                    movie.profit_pct = round(profit_abs / movie.budget * 100, 1)
+                    movie.profit_rank = rank_row.profit_rank + 1
+                    movie.loss_rank = rank_row.loss_rank + 1
 
         return item
 
@@ -330,7 +360,7 @@ class MediaService:
             select(MediaItem.id)
             .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
             .join(Person, Person.id == MediaCredit.person_id)
-            .where(Person.name.ilike(f"%{query_str}%"))
+            .where(Person.name.op("%")(query_str))
         )
 
         matched_ids = union(fts_ids, fuzzy_ids, credit_ids).subquery()
@@ -342,7 +372,7 @@ class MediaService:
             .join(Person, Person.id == MediaCredit.person_id)
             .where(
                 MediaCredit.media_item_id == MediaItem.id,
-                Person.name.ilike(f"%{query_str}%"),
+                Person.name.op("%")(query_str),
             )
             .exists()
         )
@@ -361,23 +391,13 @@ class MediaService:
         popularity_boost = func.ln(func.greatest(MediaItem.popularity, 1))
 
         # Vector similarity via cosine distance (pgvector). Falls back to 0 when
-        # no embedding column exists (pgvector unavailable), no embedding for the
-        # item, or no query embedding was provided.
-        if query_embedding is not None:
-            if MediaService._has_embedding_column is None:
-                col_check = await self.session.execute(
-                    text("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='media_items' AND column_name='embedding')")
-                )
-                MediaService._has_embedding_column = col_check.scalar_one()
-
-            if MediaService._has_embedding_column:
-                from pgvector.sqlalchemy import Vector
-                vector_sim = func.coalesce(
-                    1 - literal_column('embedding').op('<=>')(type_coerce(query_embedding, Vector(384))),
-                    0,
-                )
-            else:
-                vector_sim = 0
+        # no embedding for the item or no query embedding was provided.
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            from pgvector.sqlalchemy import Vector
+            vector_sim = func.coalesce(
+                1 - MediaItem.embedding.op('<=>')(type_coerce(query_embedding, Vector(1024))),
+                0,
+            )
         else:
             vector_sim = 0
 
@@ -415,6 +435,78 @@ class MediaService:
             total = None
 
         return items, total, has_more
+
+    async def search_tracks(
+        self,
+        query_str: str,
+        limit: int = 20,
+    ) -> list[Track]:
+        q = (
+            select(Track)
+            .join(Album, Album.media_item_id == Track.album_id)
+            .join(MediaItem, MediaItem.id == Album.media_item_id)
+            .where(Track.title.ilike(f"%{query_str}%"))
+            .order_by(Track.avg_rating.desc().nullslast())
+            .limit(limit)
+            .options(
+                selectinload(Track.album).selectinload(Album.media_item).selectinload(MediaItem.credits).selectinload(MediaCredit.person),
+            )
+        )
+        result = await self.session.scalars(q)
+        return list(result)
+
+    async def similar_media(
+        self,
+        media_id: str,
+        media_type: str | None = None,
+        limit: int = 20,
+        exclude_adult: bool = False,
+    ) -> list[MediaItem]:
+        """Find semantically similar items via embedding cosine distance.
+
+        Two-phase: KNN fetch (50 candidates via HNSW index), then re-rank with
+        a blended score that considers similarity, popularity, artwork, and
+        community ratings.
+
+        Falls back to empty list when the source item has no embedding.
+        """
+        import math
+
+        # Fetch the source embedding
+        src = await self.session.scalar(
+            select(MediaItem.embedding).where(MediaItem.id == media_id)
+        )
+        if src is None:
+            return []
+
+        # Phase 1: KNN via HNSW index — fetch top candidates by cosine distance
+        dist_label = MediaItem.embedding.cosine_distance(src).label("distance")
+        q = (
+            select(MediaItem, dist_label)
+            .where(MediaItem.id != media_id)
+            .where(MediaItem.embedding.isnot(None))
+            .order_by(dist_label)
+            .limit(50)
+        )
+        if media_type:
+            q = q.where(MediaItem.media_type == media_type)
+        if exclude_adult:
+            q = q.where(MediaItem.is_adult == False)
+
+        result = await self.session.execute(q)
+        rows = result.all()
+
+        # Phase 2: Re-rank with blended quality score
+        def _score(item: MediaItem, distance: float) -> float:
+            similarity = 1.0 - distance  # 1 = identical, -1 = opposite
+            popularity = math.log(max(item.popularity, 1) + 1)
+            has_poster = 1.0 if item.poster_url else 0.0
+            has_rating = 1.0 if item.avg_rating is not None else 0.0
+            return similarity * 5 + popularity * 0.3 + has_poster * 2 + has_rating * 0.5
+
+        scored = [(item, _score(item, dist)) for item, dist in rows]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return [item for item, _ in scored[:limit]]
 
     async def get_media_items_by_ids(self, ids: list[str]) -> list[MediaItem]:
         if not ids:

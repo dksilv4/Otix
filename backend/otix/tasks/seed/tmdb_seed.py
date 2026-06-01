@@ -37,7 +37,7 @@ from otix.tasks.seed import (
 logger = structlog.get_logger()
 
 BATCH_INSERT_SIZE = 5_000  # max rows per INSERT — stays under PostgreSQL 32767 param limit (6 cols × 5000 = 30000)
-BACKLOG_BATCH_SIZE = 500
+BACKLOG_BATCH_SIZE = 200
 
 # Backward-compatible aliases for internal use
 _check_fast_queue_backlog = check_fast_queue_backlog
@@ -87,7 +87,7 @@ async def _bulk_insert_stubs(rows: list[dict]) -> int:
         return 0
     async with async_session() as session:
         stmt = pg_insert(ExternalID.__table__).values(rows).on_conflict_do_nothing(
-            constraint="uq_external_id_provider_ext"
+            index_elements=["provider", "external_id", "entity_type"]
         )
         result = await session.execute(stmt)
         await session.commit()

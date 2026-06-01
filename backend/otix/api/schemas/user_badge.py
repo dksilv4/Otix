@@ -13,3 +13,8 @@ class BadgeOut(BaseModel):
     tier: str
     earned: bool = False
     earned_at: datetime | None = None
+    current_value: float = 0.0
+    target_value: float = 0.0
+    claimed: bool = False
+    xp_reward: int = 50
+

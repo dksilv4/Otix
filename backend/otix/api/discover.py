@@ -21,8 +21,28 @@ from otix.services.personalization_service import PersonalizationService
 
 discover_router = APIRouter(prefix="/discover", tags=["discover"])
 
-_DISCOVER_TTL = 15
-_SECTIONS_TTL = 30
+_DISCOVER_TTL = 120  # non-personalized lists (hero, trending, popular, etc.)
+_PERSONALIZED_TTL = 15  # collaborative, semantic, integration_*
+_SECTIONS_TTL = 30  # personalized sections
+
+
+async def _cache_get(key: str) -> str | None:
+    """Redis GET with failure tolerance — returns None on any error."""
+    try:
+        redis = await get_redis()
+        return await redis.get(key)
+    except Exception:
+        return None
+
+
+async def _cache_set(key: str, value: str, ex: int) -> None:
+    """Redis SET with failure tolerance — swallows errors silently."""
+    try:
+        redis = await get_redis()
+        await redis.set(key, value, ex=ex)
+    except Exception:
+        pass
+
 
 VALID_MEDIA_TYPES = {"movie", "show", "game", "music"}
 VALID_LIST_TYPES = {
@@ -32,6 +52,7 @@ VALID_LIST_TYPES = {
     "upcoming",
     "now_playing",
     "collaborative",
+    "semantic",
     "integration_steam",
     "integration_plex",
 }
@@ -91,10 +112,8 @@ async def discover_hero(
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
     exclude_adult = should_exclude_adult(current_user)
-    uid = current_user.id if current_user else "anon"
-    cache_key = f"discover:hero:{limit}:{uid}:adult{0 if exclude_adult else 1}"
-    redis = await get_redis()
-    cached = await redis.get(cache_key)
+    cache_key = f"discover:hero:{limit}:adult{0 if exclude_adult else 1}"
+    cached = await _cache_get(cache_key)
     if cached:
         return MediaItemListResponse.model_validate(json.loads(cached))
 
@@ -105,7 +124,7 @@ async def discover_hero(
         exclude_adult=exclude_adult,
     )
     response = await _build_response(db, items, has_more, current_user)
-    await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+    await _cache_set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
     return response
 
 
@@ -116,8 +135,7 @@ async def discover_sections(
 ) -> PersonalizedSectionsResponse:
     uid = current_user.id if current_user else "anon"
     cache_key = f"discover:sections:{uid}"
-    redis = await get_redis()
-    cached = await redis.get(cache_key)
+    cached = await _cache_get(cache_key)
     if cached:
         return PersonalizedSectionsResponse.model_validate(json.loads(cached))
 
@@ -129,7 +147,7 @@ async def discover_sections(
         sections = PersonalizationService.default_sections()
 
     response = PersonalizedSectionsResponse(sections=sections)
-    await redis.set(cache_key, response.model_dump_json(), ex=_SECTIONS_TTL)
+    await _cache_set(cache_key, response.model_dump_json(), ex=_SECTIONS_TTL)
     return response
 
 
@@ -155,11 +173,15 @@ async def discover_list(
         language = language.split("-")[0]
 
     exclude_adult = should_exclude_adult(current_user)
+    is_personalized = list_type in ("collaborative", "semantic", "integration_steam", "integration_plex")
+    cache_ttl = _PERSONALIZED_TTL if is_personalized else _DISCOVER_TTL
     uid = current_user.id if current_user else "anon"
-    raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}:adult{0 if exclude_adult else 1}"
+    if is_personalized:
+        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}:adult{0 if exclude_adult else 1}"
+    else:
+        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:adult{0 if exclude_adult else 1}"
     cache_key = f"discover:list:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
-    redis = await get_redis()
-    cached = await redis.get(cache_key)
+    cached = await _cache_get(cache_key)
     if cached:
         return MediaItemListResponse.model_validate(json.loads(cached))
 
@@ -175,7 +197,6 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
-                has_artwork=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
@@ -183,7 +204,19 @@ async def discover_list(
                 exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
-            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
+            return response
+
+    # Semantic: seed from user's content embedding centroid
+    if list_type == "semantic" and current_user:
+        personalization = PersonalizationService(db)
+        seed_ids = await personalization.get_semantic_recommendations(
+            current_user.id, media_type, limit=limit, exclude_adult=exclude_adult,
+        )
+        if seed_ids:
+            items = await service.get_media_items_by_ids(seed_ids[:limit])
+            response = await _build_response(db, items, has_more=False, current_user=current_user)
+            await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             return response
 
     # Integration: seed from connected platform data
@@ -198,7 +231,6 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
-                has_artwork=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
@@ -206,7 +238,7 @@ async def discover_list(
                 exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
-            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             return response
 
     if list_type == "integration_plex" and current_user and current_user.plex_id:
@@ -220,7 +252,6 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
-                has_artwork=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
@@ -228,9 +259,13 @@ async def discover_list(
                 exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
-            await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+            await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             return response
 
+    if list_type not in _LIST_CONFIG:
+        # Non-standard list types (semantic, collaborative, integration_*) that
+        # require auth — fall back to trending when unauthenticated
+        list_type = "trending"
     sort_by, sort_dir, date_filter_name = _LIST_CONFIG[list_type]
     date_from, date_to = _date_filter(date_filter_name)
 
@@ -253,5 +288,5 @@ async def discover_list(
         exclude_adult=exclude_adult,
     )
     response = await _build_response(db, items, has_more, current_user)
-    await redis.set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
+    await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
     return response

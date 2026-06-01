@@ -5,12 +5,13 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
-    from otix.domain.follow import Follow
+    from otix.domain.follow import Follow, FollowRequest
     from otix.domain.friend import FriendRequest
     from otix.domain.interaction import UserMediaInteraction
     from otix.domain.episode_interaction import UserEpisodeInteraction
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
     from otix.domain.list import UserList
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
+    from otix.domain.company import UserCompanyFollow
     from otix.domain.people import UserPersonFollow
     from otix.domain.review import Review
     from otix.domain.review_vote import ReviewVote
@@ -87,13 +89,16 @@ class User(Base, TimestampMixin):
     profile_card_sections: Mapped[list] = mapped_column(JSON, default=lambda: ["reviews", "stats", "top_rated", "recent_activity"], nullable=False)
     hall_of_fame_media_ids: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    preferred_media_types: Mapped[list] = mapped_column(JSON, default=lambda: ["movie", "show", "game", "music"], nullable=False)
-    preferred_genres: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
-    preferred_languages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    preferred_media_types: Mapped[list] = mapped_column(JSONB, default=lambda: ["movie", "show", "game", "music"], nullable=False)
+    preferred_genres: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    preferred_languages: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     discover_emphases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
     show_adult_content: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     country: Mapped[str | None] = mapped_column(String(100), nullable=True, default=None)
+    is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    notification_preferences: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     @property
     def hof_ids(self) -> dict[str, list[str]]:
@@ -141,10 +146,17 @@ class User(Base, TimestampMixin):
     following: Mapped[list[Follow]] = relationship(
         "Follow", foreign_keys="Follow.follower_id", back_populates="follower"
     )
+    follow_requests_sent: Mapped[list[FollowRequest]] = relationship(
+        "FollowRequest", foreign_keys="FollowRequest.requester_id", back_populates="requester"
+    )
+    follow_requests_received: Mapped[list[FollowRequest]] = relationship(
+        "FollowRequest", foreign_keys="FollowRequest.target_id", back_populates="target"
+    )
     given_votes: Mapped[list[ReviewVote]] = relationship(
         "ReviewVote", foreign_keys="ReviewVote.user_id", back_populates="voter"
     )
     person_follows: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="user")
+    company_follows: Mapped[list[UserCompanyFollow]] = relationship("UserCompanyFollow", back_populates="user")
 
 
 class RefreshToken(Base):

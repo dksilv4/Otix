@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import get_session
+from otix.lib.geoip import resolve_country_from_request
 from otix.services.auth_service import decode_token
 
 
@@ -61,6 +62,20 @@ async def get_current_admin_user(
     return current_user
 
 
+async def get_trusted_or_admin_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Allow admins or users with sufficient XP to perform proposal actions."""
+    if current_user.is_admin:
+        return current_user
+    if current_user.total_xp >= settings.proposal_min_xp:
+        return current_user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=f"Minimum {settings.proposal_min_xp} XP required for this action",
+    )
+
+
 async def get_optional_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -69,3 +84,27 @@ async def get_optional_user(
         return await get_current_user(request, db)
     except HTTPException:
         return None
+
+
+async def resolve_country_code(
+    request: Request,
+    current_user: User | None = None,
+) -> str:
+    """Resolve the country code for the current request.
+
+    Precedence:
+    1. Authenticated user with a saved country preference.
+    2. IP geolocation (Cloudflare header first, then ipapi.co).
+    3. ``"us"`` fallback.
+    """
+    if current_user and current_user.country:
+        return current_user.country.lower()
+
+    forwarded = request.headers.get("X-Forwarded-For")
+    cf_country = request.headers.get("CF-IPCountry")
+    client_host = request.client.host if request.client else None
+    return await resolve_country_from_request(
+        x_forwarded_for=forwarded,
+        cf_ipcountry=cf_country,
+        client_host=client_host,
+    )

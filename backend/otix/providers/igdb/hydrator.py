@@ -21,11 +21,17 @@ from otix.domain.media import (
     MediaPlatform,
     Platform,
 )
+from otix.lib.collection_matcher import normalize_franchise_name
 from otix.lib.genres import normalize_genre_names
+from otix.lib.slug import slugify as _slugify
 from otix.lib.types import JSONValue
+from otix.domain.franchise import Franchise, FranchiseItem
+from otix.services.external_id_service import ExternalIDService
 from otix.providers.igdb.client import IGDBProvider
+from otix.providers.asset_mapper import map_asset_type
 from otix.providers.igdb.transformer import (
     _cover_url,
+    extract_franchise,
     extract_involved_companies,
     extract_modes,
     extract_platforms,
@@ -37,7 +43,7 @@ class IGDBHydrator:
         self.provider = provider
         self.session = session
 
-    async def hydrate_all(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
+    async def hydrate_all(self, game, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
         """Run all hydration steps for a game."""
         await self.hydrate_external_id(media_item, raw)
         await self.hydrate_genres(media_item, raw)
@@ -48,6 +54,7 @@ class IGDBHydrator:
         await self.hydrate_platforms(media_item, raw)
         await self.hydrate_modes(media_item, raw)
         await self.hydrate_age_ratings(media_item, raw)
+        await self.hydrate_franchise(game, raw)
 
     # ── External ID ─────────────────────────────────────────────────
 
@@ -56,20 +63,8 @@ class IGDBHydrator:
         if not igdb_id:
             return
 
-        exists = await self.session.scalar(
-            select(ExternalID).where(
-                ExternalID.provider == "igdb",
-                ExternalID.external_id == str(igdb_id),
-            )
-        )
-        if not exists:
-            self.session.add(
-                ExternalID(
-                    provider="igdb",
-                    external_id=str(igdb_id),
-                    media_item_id=media_item.id,
-                )
-            )
+        eid_svc = ExternalIDService(self.session)
+        await eid_svc.upsert("igdb", str(igdb_id), "media_item", media_item.id)
 
     # ── Genres ──────────────────────────────────────────────────────
 
@@ -121,14 +116,14 @@ class IGDBHydrator:
         """Store cover, screenshots, and artworks as MediaAsset rows."""
         candidates: list[tuple[str, str]] = []
 
-        # Cover (asset_type="cover")
+        # Cover → poster
         cover = raw.get("cover")
         if isinstance(cover, dict):
             image_id = cover.get("image_id")
             if isinstance(image_id, str) and image_id:
                 url = _cover_url(image_id)
                 if url:
-                    candidates.append(("cover", url))
+                    candidates.append((map_asset_type("igdb", "cover"), url))
 
         # Screenshots
         screenshots = raw.get("screenshots", [])
@@ -140,9 +135,9 @@ class IGDBHydrator:
                 if isinstance(image_id, str) and image_id:
                     url = _cover_url(image_id, "t_screenshot_big")
                     if url:
-                        candidates.append(("screenshot", url))
+                        candidates.append((map_asset_type("igdb", "screenshot"), url))
 
-        # Artworks
+        # Artworks → backdrop
         artworks = raw.get("artworks", [])
         if isinstance(artworks, list):
             for a in artworks[:10]:
@@ -152,7 +147,7 @@ class IGDBHydrator:
                 if isinstance(image_id, str) and image_id:
                     url = _cover_url(image_id, "t_1080p")
                     if url:
-                        candidates.append(("artwork", url))
+                        candidates.append((map_asset_type("igdb", "artwork"), url))
 
         if not candidates:
             return
@@ -268,18 +263,31 @@ class IGDBHydrator:
         new_companies = []
         for e in entries:
             slug = e["company_slug"]
+            logo_image_id = e.get("logo_image_id")
             if slug not in by_slug:
                 company = Company(id=gen_otix_id(), name=e["company_name"], slug=slug)
                 igdb_id = e.get("igdb_id")
                 if isinstance(igdb_id, int):
                     company.igdb_id = igdb_id
+                if logo_image_id:
+                    company.logo_url = _cover_url(logo_image_id, "t_logo_med")
                 new_companies.append(company)
                 by_slug[slug] = company
             else:
                 existing_company = by_slug[slug]
                 igdb_id = e.get("igdb_id")
-                if existing_company.igdb_id is None and isinstance(igdb_id, int):
-                    existing_company.igdb_id = igdb_id
+                if isinstance(igdb_id, int):
+                    existing_igdb = await self.session.scalar(
+                        select(ExternalID.external_id).where(
+                            ExternalID.provider == "igdb",
+                            ExternalID.entity_id == existing_company.id,
+                            ExternalID.entity_type == "company",
+                        )
+                    )
+                    if not existing_igdb:
+                        existing_company.igdb_id = igdb_id
+                if logo_image_id and not existing_company.logo_url:
+                    existing_company.logo_url = _cover_url(logo_image_id, "t_logo_med")
 
         if new_companies:
             self.session.add_all(new_companies)
@@ -474,5 +482,66 @@ class IGDBHydrator:
                     country_code=country_code,
                     release_date=None,
                     certification=f"{system_name}: {label}",
+                )
+            )
+
+    # ── Franchise ────────────────────────────────────────────────────
+
+    async def hydrate_franchise(self, game, raw: dict[str, JSONValue]) -> None:
+        """Link a game to a Franchise via IGDB franchise data.
+
+        1. Extract franchise from raw game data
+        2. Look up Franchise by igdb_franchise_id
+        3. If not found, name-match against existing franchises
+        4. If still not found, create new Franchise
+        5. Set game.franchise_id
+        6. Create FranchiseItem link (guarded)
+        """
+        data = extract_franchise(raw)
+        if not data:
+            return
+
+        franchise = await self.session.scalar(
+            select(Franchise).join(
+                ExternalID,
+                ExternalID.entity_id == Franchise.id,
+            ).where(
+                ExternalID.provider == "igdb",
+                ExternalID.entity_type == "franchise",
+                ExternalID.external_id == str(data["id"]),
+            )
+        )
+
+        if franchise is None:
+            normalized = normalize_franchise_name(data["name"])
+            existing = (await self.session.scalars(select(Franchise))).all()
+            slug = _slugify(data["name"])
+            for fr in existing or []:
+                if normalize_franchise_name(fr.name) == normalized:
+                    franchise = fr
+                    break
+
+            if franchise is None:
+                franchise = Franchise(
+                    name=data["name"],
+                    slug=slug,
+                )
+                self.session.add(franchise)
+                await self.session.flush()
+                franchise.igdb_franchise_id = data["id"]
+
+        game.franchise_id = franchise.id
+
+        exists = await self.session.scalar(
+            select(FranchiseItem).where(
+                FranchiseItem.franchise_id == franchise.id,
+                FranchiseItem.media_item_id == game.media_item_id,
+            )
+        )
+        if not exists:
+            self.session.add(
+                FranchiseItem(
+                    franchise_id=franchise.id,
+                    media_item_id=game.media_item_id,
                 )
             )

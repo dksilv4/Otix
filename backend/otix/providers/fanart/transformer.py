@@ -35,18 +35,6 @@ _SHOW_CATEGORIES: list[tuple[str, str]] = [
     ("seasonposter", "poster"),
 ]
 
-_GAME_CATEGORIES: list[tuple[str, str]] = [
-    ("hdgameclearart", "clearart"),
-    ("gameclearart", "clearart"),
-    ("hdgamelogo", "logo"),
-    ("gamelogo", "logo"),
-    ("gameposter", "poster"),
-    ("gamebackground", "backdrop"),
-    ("gamebanner", "banner"),
-    ("gamethumb", "thumb"),
-    ("gamedisc", "disc"),
-]
-
 _MUSIC_CATEGORIES: list[tuple[str, str]] = [
     ("hdmusiclogo", "logo"),
     ("musiclogo", "logo"),
@@ -62,10 +50,6 @@ def movie_images_to_assets(raw: dict[str, JSONValue], media_item_id: str) -> lis
 
 def show_images_to_assets(raw: dict[str, JSONValue], media_item_id: str) -> list[MediaAsset]:
     return _extract_assets(raw, _SHOW_CATEGORIES, media_item_id)
-
-
-def game_images_to_assets(raw: dict[str, JSONValue], media_item_id: str) -> list[MediaAsset]:
-    return _extract_assets(raw, _GAME_CATEGORIES, media_item_id)
 
 
 def music_images_to_assets(raw: dict[str, JSONValue], media_item_id: str) -> list[MediaAsset]:

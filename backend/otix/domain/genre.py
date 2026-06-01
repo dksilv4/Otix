@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
-from otix.domain.base import Base, otix_fk, otix_pk
+from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
 
 if TYPE_CHECKING:
-    from otix.domain.media import MediaItem
+    from otix.domain.media import ExternalID, MediaItem
 
 
 class Genre(Base):
@@ -21,12 +21,22 @@ class Genre(Base):
     media_items: Mapped[list[MediaGenre]] = relationship("MediaGenre", back_populates="genre")
 
 
-class Keyword(Base):
+class Keyword(Base, HasExternalIDs):
     __tablename__ = "keywords"
+    __external_id_entity_type__ = "keyword"
 
     id: Mapped[otix_pk]
     name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
-    tmdb_id: Mapped[int | None] = mapped_column(Integer, unique=True)
+
+    tmdb_id = ExternalIDDescriptor("tmdb", cast_type=int)
+
+    _external_ids: Mapped[list[ExternalID]] = relationship(
+        "ExternalID",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Keyword.id, "
+                    "ExternalID.entity_type == 'keyword')",
+        lazy="raise",
+        viewonly=True,
+    )
 
     media_items: Mapped[list[MediaKeyword]] = relationship("MediaKeyword", back_populates="keyword")
 

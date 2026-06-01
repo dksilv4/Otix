@@ -7,7 +7,7 @@ on re-sync.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import MediaAsset
@@ -15,7 +15,6 @@ from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.transformer import (
-    game_images_to_assets,
     movie_images_to_assets,
     music_images_to_assets,
     show_images_to_assets,
@@ -79,27 +78,6 @@ class FanartHydrator:
 
         return await self._upsert_assets(assets)
 
-    async def hydrate_game_images(self, media_item: MediaItem) -> bool:
-        """Fetch Fanart images for a game and store as MediaAsset rows.
-
-        Uses the Fanart.tv game ID from ExternalID. Returns True if any new
-        assets were added.
-        """
-        fanart_id = await self._resolve_external_id(media_item.id, "fanart")
-        if fanart_id is None:
-            return False
-
-        try:
-            raw = await self.provider.get_game_images(fanart_id)
-        except Exception:
-            return False
-
-        assets = game_images_to_assets(raw, media_item.id)
-        if not assets:
-            return False
-
-        return await self._upsert_assets(assets)
-
     async def hydrate_music_images(self, media_item: MediaItem) -> bool:
         """Fetch Fanart images for a music album and store as MediaAsset rows.
 
@@ -111,10 +89,26 @@ class FanartHydrator:
         so different albums from the same artist get their correct cover.
         Artist logos are set on the Person record, not the media item.
         """
+        from sqlalchemy.orm import aliased
+
+        ArtistEID = aliased(ExternalID)
+        RGEID = aliased(ExternalID)
+
         result = await self.session.execute(
-            select(Person.musicbrainz_artist_id, Person.id, Album.musicbrainz_release_group_id)
+            select(ArtistEID.external_id, Person.id, RGEID.external_id)
+            .select_from(Person)
             .join(MediaCredit, MediaCredit.person_id == Person.id)
             .join(Album, Album.media_item_id == media_item.id)
+            .join(ArtistEID, and_(
+                ArtistEID.entity_id == Person.id,
+                ArtistEID.entity_type == "person",
+                ArtistEID.provider == "musicbrainz_artist",
+            ))
+            .join(RGEID, and_(
+                RGEID.entity_id == Album.media_item_id,
+                RGEID.entity_type == "media_item",
+                RGEID.provider == "musicbrainz_release_group",
+            ))
             .where(
                 MediaCredit.media_item_id == media_item.id,
                 MediaCredit.role == "primary",
@@ -162,7 +156,7 @@ class FanartHydrator:
                 ))
                 any_added = True
 
-        # Set artist logo on Person, not on the media item.
+        # Set artist logo on Person, and promote to MediaItem.logo_url.
         logo_assets = [a for a in artist_assets if a.asset_type == "logo"]
         if logo_assets and person_id:
             en_logos = [a for a in logo_assets if a.lang == "en"]
@@ -170,6 +164,10 @@ class FanartHydrator:
             person = await self.session.get(Person, person_id)
             if person and not person.logo_url:
                 person.logo_url = best.url
+                any_added = True
+            # Also promote to MediaItem.logo_url so music cards show a logo.
+            if media_item and not media_item.logo_url:
+                media_item.logo_url = best.url
                 any_added = True
 
         return any_added

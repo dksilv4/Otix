@@ -10,7 +10,7 @@ from otix.domain.asset import MediaAsset
 from otix.domain.media import ExternalID
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.hydrator import FanartHydrator
-from otix.providers.fanart.transformer import game_images_to_assets, movie_images_to_assets, show_images_to_assets
+from otix.providers.fanart.transformer import movie_images_to_assets, show_images_to_assets
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -84,32 +84,6 @@ def fanart_show_raw() -> dict:
     }
 
 
-@pytest.fixture
-def fanart_game_raw() -> dict:
-    return {
-        "name": "Cyberpunk 2077",
-        "game_id": "12345",
-        "hdgamelogo": [
-            {"id": "20", "url": "https://fanart.tv/fanart/game/12345/logo_hd.png", "lang": "00", "likes": "25"},
-        ],
-        "gamelogo": [
-            {"id": "20", "url": "https://fanart.tv/fanart/game/12345/logo_hd.png", "lang": "00", "likes": "5"},
-        ],
-        "hdgameclearart": [
-            {"id": "21", "url": "https://fanart.tv/fanart/game/12345/clearart_hd.png", "lang": "00", "likes": "30"},
-        ],
-        "gameclearart": [],
-        "gameposter": [
-            {"id": "22", "url": "https://fanart.tv/fanart/game/12345/poster1.jpg", "lang": "en", "likes": "18"},
-            {"id": "23", "url": "https://fanart.tv/fanart/game/12345/poster2.jpg", "lang": "00", "likes": "12"},
-        ],
-        "gamebackground": [
-            {"id": "24", "url": "https://fanart.tv/fanart/game/12345/bg.jpg", "lang": "", "likes": "14"},
-        ],
-        "gamebanner": [],
-        "gamethumb": [],
-        "gamedisc": [],
-    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -199,32 +173,6 @@ class TestFanartTransformer:
         assets = show_images_to_assets({}, "oti_test00000002")
         assert assets == []
 
-    # ── game_images_to_assets ──────────────────────────────────────────
-
-    def test_extracts_all_game_categories(self, fanart_game_raw: dict):
-        assets = game_images_to_assets(fanart_game_raw, "oti_test00000003")
-
-        types = {a.asset_type for a in assets}
-        assert types >= {"poster", "clearart", "logo", "backdrop"}
-
-    def test_game_dedup_hd_sd(self, fanart_game_raw: dict):
-        """HD and SD logo with same URL — only one record."""
-        assets = game_images_to_assets(fanart_game_raw, "oti_test00000003")
-
-        logos = [a for a in assets if a.asset_type == "logo"]
-        assert len(logos) == 1
-
-    def test_game_textless_lang(self, fanart_game_raw: dict):
-        assets = game_images_to_assets(fanart_game_raw, "oti_test00000003")
-
-        by_url = {a.url: a.lang for a in assets}
-        assert by_url["https://fanart.tv/fanart/game/12345/logo_hd.png"] == "00"
-        assert by_url["https://fanart.tv/fanart/game/12345/clearart_hd.png"] == "00"
-        assert by_url["https://fanart.tv/fanart/game/12345/poster2.jpg"] == "00"
-
-    def test_empty_game_raw(self):
-        assets = game_images_to_assets({}, "oti_test00000003")
-        assert assets == []
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -340,21 +288,6 @@ class TestFanartHydrator:
 
         assert added is False
 
-    async def test_hydrate_game_inserts_new_assets(
-        self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
-        media_item, fanart_game_raw: dict,
-    ):
-        fanart_ext_id = ExternalID(provider="fanart", external_id="12345", media_item_id=media_item.id)
-        mock_db_session.scalar.return_value = fanart_ext_id
-        mock_db_session.scalars.return_value = []
-
-        fanart_hydrator.provider.get_game_images = AsyncMock()
-        fanart_hydrator.provider.get_game_images.return_value = fanart_game_raw
-
-        added = await fanart_hydrator.hydrate_game_images(media_item)
-
-        assert added is True
-        fanart_hydrator.provider.get_game_images.assert_called_once_with("12345")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

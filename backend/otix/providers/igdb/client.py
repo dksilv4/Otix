@@ -176,6 +176,16 @@ class IGDBProvider(BaseProvider):
             return response.json()
         raise IGDBError(f"IGDB upcoming games query failed: {response.status_code}")
 
+    # ── Franchise ────────────────────────────────────────────────────
+
+    async def get_franchise(self, franchise_id: int) -> dict[str, JSONValue] | None:
+        body = f"fields name,slug; where id = {franchise_id}; limit 1;"
+        response = await self._post("/franchises", content=body)
+        if response.status_code == 200:
+            results = response.json()
+            return results[0] if results else None
+        raise IGDBError(f"IGDB franchise query failed: {response.status_code}")
+
     async def get_changed_game_ids(self, start_timestamp: int, limit: int = 100) -> list[dict[str, JSONValue]]:
         """Get game IDs changed since the given Unix timestamp."""
         body = f"fields id,updated_at; sort updated_at asc; where updated_at >= {start_timestamp}; limit {limit};"

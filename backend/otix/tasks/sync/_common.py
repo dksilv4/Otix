@@ -26,31 +26,31 @@ logger = structlog.get_logger()
 
 # ── Queue backlog safety ──────────────────────────────────────────────────
 
+_broker_redis: aioredis.Redis | None = None
 
-async def check_fast_queue_backlog() -> tuple[int, bool]:
-    """Check the fast queue backlog against the configured threshold.
+
+async def check_fast_queue_backlog(queue: str = "ingest-tmdb") -> tuple[int, bool]:
+    """Check a queue backlog against the configured threshold.
 
     Returns (length, throttled) — throttled is True when the queue is over the limit.
+    Default queue is 'ingest-tmdb' since that's the highest-traffic catalog queue.
     """
-    broker_url = settings.celery_broker
-    parsed = urlparse(broker_url)
-    broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
-
-    r: aioredis.Redis | None = None
+    global _broker_redis
     try:
-        r = aioredis.from_url(broker_redis_url, decode_responses=True)
-        length = await r.llen("fast") or 0
+        if _broker_redis is None:
+            broker_url = settings.celery_broker
+            parsed = urlparse(broker_url)
+            broker_redis_url = f"redis://{parsed.hostname}:{parsed.port}/0"
+            _broker_redis = aioredis.from_url(broker_redis_url, decode_responses=True)
+        length = await _broker_redis.llen(queue) or 0
     except Exception:
-        logger.warning("failed to check fast queue backlog", exc_info=True)
+        logger.warning("failed to check queue backlog", exc_info=True, queue=queue)
         return 0, False
-    finally:
-        if r is not None:
-            await r.aclose()
 
     threshold = settings.celery_fast_queue_max_backlog
     throttled = length > threshold
     if throttled:
-        logger.info("fast queue backlog throttle active", queue_length=length, threshold=threshold)
+        logger.info("queue backlog throttle active", queue=queue, queue_length=length, threshold=threshold)
     return length, throttled
 
 
@@ -171,12 +171,19 @@ async def filter_stale_ids(provider: str, external_ids: set[str]) -> set[str]:
 
 async def enqueue_list_items(provider: str, media_type: str, external_ids: set[str]) -> tuple[int, int]:
     """Enqueue individual sync tasks for stale items. Returns (enqueued, skipped)."""
+    from celery import group
+
     stale_ids = await filter_stale_ids(provider, external_ids)
+    if not stale_ids:
+        return 0, len(external_ids)
+
     task_name = f"sync.{provider}.{media_type}"
-    enqueued = 0
-    for ext_id in stale_ids:
-        app.send_task(task_name, args=[int(ext_id) if ext_id.isdigit() else ext_id])
-        enqueued += 1
+    sigs = [
+        app.signature(task_name, args=[int(ext_id) if ext_id.isdigit() else ext_id])
+        for ext_id in stale_ids
+    ]
+    group(sigs).apply_async()
+    enqueued = len(stale_ids)
     return enqueued, len(external_ids) - enqueued
 
 

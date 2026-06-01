@@ -10,7 +10,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, Track
+from otix.domain.media import Album, ExternalID, Track
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
@@ -114,8 +114,10 @@ async def sync_spotify_user_library(
         existing_tracks: set[str] = set()
         if track_spotify_ids:
             result = await session.execute(
-                select(Track.spotify_id).where(
-                    Track.spotify_id.in_(track_spotify_ids)
+                select(ExternalID.external_id).where(
+                    ExternalID.provider == "spotify",
+                    ExternalID.entity_type == "track",
+                    ExternalID.external_id.in_(track_spotify_ids),
                 )
             )
             existing_tracks = {row[0] for row in result if row[0]}
@@ -124,25 +126,31 @@ async def sync_spotify_user_library(
         existing_albums: dict[str, str] = {}  # album_spotify_id -> media_item_id
         if album_spotify_ids:
             album_result = await session.execute(
-                select(Album.spotify_id, Album.media_item_id).where(
-                    Album.spotify_id.in_(list(album_spotify_ids))
+                select(ExternalID.external_id, ExternalID.entity_id).where(
+                    ExternalID.provider == "spotify",
+                    ExternalID.entity_type == "media_item",
+                    ExternalID.external_id.in_(list(album_spotify_ids)),
                 )
             )
             for row in album_result:
-                if row[0]:
-                    existing_albums[row[0]] = row[1]
+                if row.external_id:
+                    existing_albums[row.external_id] = row.entity_id
 
         # ── 4. For matched tracks, get Track -> MediaItem mapping ────────
         track_media_map: dict[str, str] = {}  # track_spotify_id -> media_item_id
         if track_spotify_ids:
             tr_result = await session.execute(
-                select(Track.spotify_id, Track.album_id).where(
-                    Track.spotify_id.in_(track_spotify_ids)
+                select(ExternalID.external_id, Track.album_id)
+                .join(Track, Track.id == ExternalID.entity_id)
+                .where(
+                    ExternalID.provider == "spotify",
+                    ExternalID.entity_type == "track",
+                    ExternalID.external_id.in_(track_spotify_ids),
                 )
             )
             for row in tr_result:
-                if row[0]:
-                    track_media_map[row[0]] = row[1]  # album_id IS media_item_id
+                if row.external_id:
+                    track_media_map[row.external_id] = row.album_id  # album_id IS media_item_id
 
         # ── 5. Count matched tracks (no interaction records — Spotify tab
         #        queries by Album.spotify_id directly, matching Steam pattern)
@@ -276,13 +284,17 @@ async def sync_spotify_recently_played(
 
         if track_spotify_ids:
             result = await session.execute(
-                select(Track.spotify_id, Track.album_id).where(
-                    Track.spotify_id.in_(track_spotify_ids)
+                select(ExternalID.external_id, Track.album_id)
+                .join(Track, Track.id == ExternalID.entity_id)
+                .where(
+                    ExternalID.provider == "spotify",
+                    ExternalID.entity_type == "track",
+                    ExternalID.external_id.in_(track_spotify_ids),
                 )
             )
             for row in result:
-                if row[0]:
-                    track_album_map[row[0]] = row[1]
+                if row.external_id:
+                    track_album_map[row.external_id] = row.album_id
 
         matched = 0
         seeded = 0
@@ -298,25 +310,28 @@ async def sync_spotify_recently_played(
 
         await _emit("tracks_matched", matched=matched, total=total)
 
-        # ── 5. Create listened interactions ──────────────────────────────
-        listened_count = 0
-        for media_item_id in seen_album_media_ids:
-            # Use the latest played_at across all tracks for this album
-            latest_played_at = ""
-            for track_id in track_spotify_ids:
-                if track_album_map.get(track_id) == media_item_id:
-                    at = track_played_at.get(track_id, "")
-                    if at > latest_played_at:
-                        latest_played_at = at
+        # ── 5. Create listened interactions (batch upsert) ──────────────
+        if seen_album_media_ids:
+            # Build album_id -> latest_played_at map efficiently
+            album_played_at: dict[str, str] = {}
+            for track_id, album_id in track_album_map.items():
+                at = track_played_at.get(track_id, "")
+                if at > album_played_at.get(album_id, ""):
+                    album_played_at[album_id] = at
 
-            extra = {"source": "spotify_recently_played"}
-            if latest_played_at:
-                extra["played_at"] = latest_played_at
+            batch = []
+            for media_item_id in seen_album_media_ids:
+                extra = {"source": "spotify_recently_played"}
+                latest = album_played_at.get(media_item_id, "")
+                if latest:
+                    extra["played_at"] = latest
+                batch.append((media_item_id, "listened", extra))
 
-            await interaction_service.set_interaction(
-                user.id, media_item_id, "listened", extra
+            listened_count = await interaction_service.set_interactions_batch(
+                user.id, batch
             )
-            listened_count += 1
+        else:
+            listened_count = 0
 
         if listened_count:
             await _emit("interactions_created", count=listened_count)

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from otix.api.schemas.common import PaginatedResponse
 from otix.api.schemas.friend import FriendshipStatusOut
 
 
@@ -40,6 +41,7 @@ class UserProfileOut(BaseModel):
     friendship_status: FriendshipStatusOut | None = None
     # Follow
     is_following: bool = False
+    is_private: bool = False
     follower_count: int = 0
     following_count: int = 0
     # Gamification
@@ -47,11 +49,12 @@ class UserProfileOut(BaseModel):
     level_title: str = "Novice"
     xp_rank: int | None = None
     xp_percentile: float | None = None
+    # Proposals
+    proposal_count: int = 0
+    proposal_approval_rate: float | None = None
     # Admin
     is_admin: bool = False
-    # Karma
-    karma: int = 0
-    # Streaks (populated in Phase 4)
+    # Streaks
     current_login_streak: int = 0
     longest_login_streak: int = 0
     current_review_streak: int = 0
@@ -84,3 +87,19 @@ class MoodCheckinOut(BaseModel):
 
 class MoodTimelineOut(BaseModel):
     checkins: list[MoodCheckinOut] = []
+
+
+class UserSearchResult(BaseModel):
+    id: str
+    username: str
+    avatar_url: str | None = None
+    bio: str | None = None
+    level: int = 1
+    level_title: str = "Novice"
+    is_admin: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class UserSearchListResponse(PaginatedResponse):
+    items: list[UserSearchResult]

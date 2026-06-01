@@ -218,6 +218,16 @@ class TMDBProvider(BaseProvider):
         response = await self._get(f"/network/{tmdb_id}")
         return response.json()
 
+    # ── Watch Providers ──────────────────────────────────────────
+
+    async def get_movie_watch_providers(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/movie/{tmdb_id}/watch/providers")
+        return response.json()
+
+    async def get_show_watch_providers(self, tmdb_id: int) -> dict[str, JSONValue]:
+        response = await self._get(f"/tv/{tmdb_id}/watch/providers")
+        return response.json()
+
     # ── Keywords ─────────────────────────────────────────────────
 
     async def get_keyword(self, tmdb_id: int) -> dict[str, JSONValue]:

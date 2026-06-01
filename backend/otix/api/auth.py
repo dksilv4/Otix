@@ -445,6 +445,7 @@ def _user_response(user: User) -> UserResponse:
         date_of_birth=user.date_of_birth,
         show_adult_content=user.show_adult_content,
         country=user.country,
+        notification_preferences=user.notification_preferences if user.notification_preferences else None,
     )
 
 
@@ -462,7 +463,6 @@ async def update_me(
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(current_user, field, value)
     await db.commit()
-    await db.refresh(current_user)
     return _user_response(current_user)
 
 
@@ -571,23 +571,28 @@ async def steam_callback(
 async def list_integrations(
     current_user: User = Depends(get_current_user),
 ) -> IntegrationsResponse:
-    steam_profile = None
-    if current_user.steam_id is not None:
-        profile = await get_steam_user_info(current_user.steam_id)
-        if profile:
-            steam_profile = SteamProfileResponse(
-                personaname=profile.get("personaname"),
-                avatarfull=profile.get("avatarfull"),
-                profileurl=profile.get("profileurl"),
-                realname=profile.get("realname"),
-                loccountrycode=profile.get("loccountrycode"),
-                timecreated=profile.get("timecreated"),
-                personastate=profile.get("personastate"),
-                lastlogoff=profile.get("lastlogoff"),
-            )
+    import asyncio
 
-    # Backfill tmdb_avatar_hash for existing linked accounts
-    if current_user.tmdb_session_id is not None and current_user.tmdb_avatar_hash is None:
+    async def fetch_steam():
+        if current_user.steam_id is None:
+            return None
+        profile = await get_steam_user_info(current_user.steam_id)
+        if not profile:
+            return None
+        return SteamProfileResponse(
+            personaname=profile.get("personaname"),
+            avatarfull=profile.get("avatarfull"),
+            profileurl=profile.get("profileurl"),
+            realname=profile.get("realname"),
+            loccountrycode=profile.get("loccountrycode"),
+            timecreated=profile.get("timecreated"),
+            personastate=profile.get("personastate"),
+            lastlogoff=profile.get("lastlogoff"),
+        )
+
+    async def backfill_tmdb_avatar():
+        if current_user.tmdb_session_id is None or current_user.tmdb_avatar_hash is not None:
+            return
         try:
             account = await get_tmdb_account(current_user.tmdb_session_id)
             if account:
@@ -598,6 +603,14 @@ async def list_integrations(
                         current_user.tmdb_avatar_hash = gravatar.get("hash")
         except Exception:
             pass
+
+    # Run all external provider calls in parallel
+    steam_profile, _, tmdb_stats, spotify_stats = await asyncio.gather(
+        fetch_steam(),
+        backfill_tmdb_avatar(),
+        _tmdb_stats(current_user),
+        _spotify_stats(current_user),
+    )
 
     providers = [
         IntegrationProviderResponse(
@@ -619,7 +632,7 @@ async def list_integrations(
             connected=current_user.tmdb_session_id is not None,
             tmdb_username=current_user.tmdb_username,
             tmdb_avatar_url=_gravatar_url(current_user.tmdb_avatar_hash),
-            tmdb_stats=await _tmdb_stats(current_user),
+            tmdb_stats=tmdb_stats,
             tmdb_rating_sync_direction=current_user.tmdb_rating_sync_direction,
         ),
         IntegrationProviderResponse(
@@ -627,7 +640,7 @@ async def list_integrations(
             connected=current_user.spotify_id is not None,
             spotify_username=current_user.spotify_username,
             spotify_avatar_url=current_user.spotify_avatar_url,
-            spotify_stats=await _spotify_stats(current_user),
+            spotify_stats=spotify_stats,
         ),
         IntegrationProviderResponse(
             name="google",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import asc, func, nulls_last, select
+from sqlalchemy import and_, asc, func, nulls_last, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db
@@ -14,7 +14,7 @@ from otix.api.schemas.media import (
     SteamWishlistItemSummary,
     SteamWishlistListResponse,
 )
-from otix.domain.media import Track, UserPlexItem, UserPlexServer, UserSteamGame
+from otix.domain.media import ExternalID, Track, UserPlexItem, UserPlexServer, UserSteamGame
 from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 from otix.services.steam_library_service import (
@@ -38,8 +38,13 @@ async def _get_spotify_track_lookup(db: AsyncSession, spotify_ids: list[str]) ->
     if not spotify_ids:
         return {}
     result = await db.execute(
-        select(Track.spotify_id, Track.id, Track.avg_rating, Track.rating_count)
-        .where(Track.spotify_id.in_(spotify_ids))
+        select(ExternalID.external_id, Track.id, Track.avg_rating, Track.rating_count)
+        .join(Track, Track.id == ExternalID.entity_id)
+        .where(
+            ExternalID.provider == "spotify",
+            ExternalID.entity_type == "track",
+            ExternalID.external_id.in_(spotify_ids),
+        )
     )
     return {
         spotify_id: {
@@ -377,13 +382,18 @@ async def get_spotify_library_tab(
     query = (
         select(MediaItem)
         .join(Album, Album.media_item_id == MediaItem.id)
+        .join(ExternalID, and_(
+            ExternalID.entity_id == Album.media_item_id,
+            ExternalID.entity_type == "media_item",
+            ExternalID.provider == "spotify",
+        ))
         .options(
             joinedload(MediaItem.movie),
             joinedload(MediaItem.show),
             joinedload(MediaItem.game),
             joinedload(MediaItem.album),
         )
-        .where(Album.spotify_id.in_(album_id_list))
+        .where(ExternalID.external_id.in_(album_id_list))
         .order_by(MediaItem.popularity.desc(), MediaItem.id)
     )
 
