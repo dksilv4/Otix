@@ -74,7 +74,7 @@ export interface WorkoutCreatePayload {
   startedAt?: string | null
 }
 
-export function useWorkouts() {
+export function useWorkouts(opts?: { enabled?: boolean }) {
   return useInfiniteQuery({
     queryKey: workoutKeys.list(),
     queryFn: async ({ pageParam }) => {
@@ -86,6 +86,7 @@ export function useWorkouts() {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60,
+    enabled: opts?.enabled,
   })
 }
 
@@ -147,9 +148,9 @@ export interface WorkoutTodayResponse {
   longestStreak: number
 }
 
-export function useTodayWorkout() {
-  return useQuery(
-    queryOptions({
+export function useTodayWorkout(opts?: { enabled?: boolean }) {
+  return useQuery({
+    ...queryOptions({
       queryKey: workoutKeys.today(),
       queryFn: async () => {
         const { data } = await apiClient.get<WorkoutTodayResponse>('/workout/today')
@@ -157,7 +158,8 @@ export function useTodayWorkout() {
       },
       staleTime: 1000 * 60 * 2,
     }),
-  )
+    enabled: opts?.enabled,
+  })
 }
 
 export function useCheckIn() {

@@ -1,0 +1,22 @@
+{
+  "name": "desktop",
+  "private": true,
+  "version": "0.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npm run dev\" \"tsc --watch\" \"wait-on http://127.0.0.1:5173 && cross-env NODE_ENV=development electron .\"",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "concurrently": "^10.0.1",
+    "cross-env": "^10.1.0",
+    "electron": "^42.3.0",
+    "typescript": "~6.0.2",
+    "wait-on": "^9.0.10"
+  }
+}

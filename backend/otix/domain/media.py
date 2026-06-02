@@ -3,7 +3,20 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
 
@@ -149,7 +162,9 @@ class Episode(Base):
 
     season: Mapped[Season] = relationship("Season", back_populates="episodes")
     external_ratings: Mapped[list["ExternalRating"]] = relationship("ExternalRating", back_populates="episode")
-    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="episode")
+    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship(
+        "UserEpisodeInteraction", back_populates="episode"
+    )
 
 
 class Game(Base, HasExternalIDs):
@@ -172,8 +187,7 @@ class Game(Base, HasExternalIDs):
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
-        primaryjoin="and_(foreign(ExternalID.entity_id) == Game.media_item_id, "
-                    "ExternalID.entity_type == 'media_item')",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Game.media_item_id, ExternalID.entity_type == 'media_item')",
         lazy="raise",
         viewonly=True,
     )
@@ -184,8 +198,20 @@ class Game(Base, HasExternalIDs):
     @property
     def store_ids(self) -> dict | None:
         """Reconstruct store IDs from ExternalID entries for non-steam store providers."""
-        store_providers = {"steam", "epic", "gog", "origin", "uplay", "bnet", "eshop",
-                          "xbox", "playstation", "nintendo", "itchio", "stadia"}
+        store_providers = {
+            "steam",
+            "epic",
+            "gog",
+            "origin",
+            "uplay",
+            "bnet",
+            "eshop",
+            "xbox",
+            "playstation",
+            "nintendo",
+            "itchio",
+            "stadia",
+        }
         result: dict[str, str] = {}
         for eid in self._external_ids:
             if eid.provider in store_providers:
@@ -208,7 +234,9 @@ class Album(Base, HasExternalIDs):
 
     spotify_id = ExternalIDDescriptor("spotify", cast_type=str, entity_id_attr="media_item_id")
     musicbrainz_id = ExternalIDDescriptor("musicbrainz", cast_type=str, entity_id_attr="media_item_id")
-    musicbrainz_release_group_id = ExternalIDDescriptor("musicbrainz_release_group", cast_type=str, entity_id_attr="media_item_id")
+    musicbrainz_release_group_id = ExternalIDDescriptor(
+        "musicbrainz_release_group", cast_type=str, entity_id_attr="media_item_id"
+    )
 
     spotify_url: Mapped[str | None] = mapped_column(String(500))
     spotify_popularity: Mapped[int | None] = mapped_column(Integer)
@@ -218,7 +246,7 @@ class Album(Base, HasExternalIDs):
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
         primaryjoin="and_(foreign(ExternalID.entity_id) == Album.media_item_id, "
-                    "ExternalID.entity_type == 'media_item')",
+        "ExternalID.entity_type == 'media_item')",
         lazy="raise",
         viewonly=True,
     )
@@ -250,8 +278,7 @@ class Track(Base, TimestampMixin, HasExternalIDs):
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
-        primaryjoin="and_(foreign(ExternalID.entity_id) == Track.id, "
-                    "ExternalID.entity_type == 'track')",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Track.id, ExternalID.entity_type == 'track')",
         lazy="raise",
         viewonly=True,
     )
@@ -270,9 +297,7 @@ class TrackRating(Base, TimestampMixin):
     track: Mapped[Track] = relationship("Track", back_populates="ratings")
     user: Mapped["User"] = relationship("User")
 
-    __table_args__ = (
-        CheckConstraint("score >= 1 AND score <= 10", name="ck_track_rating_score_range"),
-    )
+    __table_args__ = (CheckConstraint("score >= 1 AND score <= 10", name="ck_track_rating_score_range"),)
 
 
 class ExternalID(Base):
@@ -283,7 +308,9 @@ class ExternalID(Base):
     external_id: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
     entity_id: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=True)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=True
+    )
     media_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -310,15 +337,15 @@ class TMDBDeletedID(Base):
     id: Mapped[otix_pk]
     tmdb_id: Mapped[int] = mapped_column(Integer, nullable=False)
     media_type: Mapped[str] = mapped_column(String(10), nullable=False)
-    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str | None] = mapped_column(String(1000))
     detection_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     media_item: Mapped[MediaItem | None] = relationship("MediaItem")
 
-    __table_args__ = (
-        UniqueConstraint("tmdb_id", "media_type", name="uq_tmdb_deleted_id"),
-    )
+    __table_args__ = (UniqueConstraint("tmdb_id", "media_type", name="uq_tmdb_deleted_id"),)
 
 
 class Platform(Base, HasExternalIDs):
@@ -335,8 +362,7 @@ class Platform(Base, HasExternalIDs):
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
-        primaryjoin="and_(foreign(ExternalID.entity_id) == Platform.id, "
-                    "ExternalID.entity_type == 'platform')",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Platform.id, ExternalID.entity_type == 'platform')",
         lazy="raise",
         viewonly=True,
     )
@@ -346,19 +372,13 @@ class MediaPlatform(Base):
     __tablename__ = "media_platforms"
 
     id: Mapped[otix_pk]
-    media_item_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False
-    )
-    platform_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False
-    )
+    media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
+    platform_id: Mapped[otix_fk] = mapped_column(ForeignKey("platforms.id", ondelete="CASCADE"), nullable=False)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="platforms")
     platform: Mapped[Platform] = relationship("Platform")
 
-    __table_args__ = (
-        UniqueConstraint("media_item_id", "platform_id", name="uq_media_platform"),
-    )
+    __table_args__ = (UniqueConstraint("media_item_id", "platform_id", name="uq_media_platform"),)
 
 
 class GameMode(Base):
@@ -373,19 +393,13 @@ class MediaGameMode(Base):
     __tablename__ = "media_game_modes"
 
     id: Mapped[otix_pk]
-    media_item_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False
-    )
-    game_mode_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("game_modes.id", ondelete="CASCADE"), nullable=False
-    )
+    media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
+    game_mode_id: Mapped[otix_fk] = mapped_column(ForeignKey("game_modes.id", ondelete="CASCADE"), nullable=False)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game_modes")
     game_mode: Mapped[GameMode] = relationship("GameMode")
 
-    __table_args__ = (
-        UniqueConstraint("media_item_id", "game_mode_id", name="uq_media_game_mode"),
-    )
+    __table_args__ = (UniqueConstraint("media_item_id", "game_mode_id", name="uq_media_game_mode"),)
 
 
 class UserSteamGame(Base):
@@ -408,9 +422,7 @@ class UserSteamGame(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_game"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_game"),)
 
 
 class UserSteamWishlist(Base):
@@ -432,9 +444,7 @@ class UserSteamWishlist(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_wishlist"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "steam_app_id", name="uq_user_steam_wishlist"),)
 
 
 class UserPlexServer(Base, TimestampMixin):
@@ -447,13 +457,12 @@ class UserPlexServer(Base, TimestampMixin):
     product: Mapped[str | None] = mapped_column(String(100))
     platform: Mapped[str | None] = mapped_column(String(100))
     base_url: Mapped[str | None] = mapped_column(String(2048))
+    fallback_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     access_token: Mapped[str | None] = mapped_column(Text)
     owned: Mapped[bool] = mapped_column(default=False)
     selected: Mapped[bool] = mapped_column(default=True)
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "machine_identifier", name="uq_user_plex_server"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "machine_identifier", name="uq_user_plex_server"),)
 
 
 class UserPlexLibrary(Base, TimestampMixin):
@@ -467,9 +476,7 @@ class UserPlexLibrary(Base, TimestampMixin):
     library_type: Mapped[str] = mapped_column(String(20), nullable=False)
     selected: Mapped[bool] = mapped_column(default=True)
 
-    __table_args__ = (
-        UniqueConstraint("server_id", "section_key", name="uq_user_plex_library"),
-    )
+    __table_args__ = (UniqueConstraint("server_id", "section_key", name="uq_user_plex_library"),)
 
 
 class UserPlexItem(Base, TimestampMixin):
@@ -478,8 +485,12 @@ class UserPlexItem(Base, TimestampMixin):
     id: Mapped[otix_pk]
     user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     server_id: Mapped[otix_fk] = mapped_column(ForeignKey("user_plex_servers.id", ondelete="CASCADE"), nullable=False)
-    library_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("user_plex_libraries.id", ondelete="SET NULL"), nullable=True)
-    media_item_id: Mapped[otix_fk | None] = mapped_column(ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True)
+    library_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("user_plex_libraries.id", ondelete="SET NULL"), nullable=True
+    )
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
     rating_key: Mapped[str] = mapped_column(String(128), nullable=False)
     guid: Mapped[str | None] = mapped_column(String(512))
     media_type: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -494,8 +505,4 @@ class UserPlexItem(Base, TimestampMixin):
     guids: Mapped[list | None] = mapped_column(JSONB)
     raw: Mapped[dict | None] = mapped_column(JSONB)
 
-    __table_args__ = (
-        UniqueConstraint("server_id", "rating_key", name="uq_user_plex_item"),
-    )
-
-
+    __table_args__ = (UniqueConstraint("server_id", "rating_key", name="uq_user_plex_item"),)

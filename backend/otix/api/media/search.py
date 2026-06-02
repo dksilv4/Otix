@@ -23,8 +23,6 @@ from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key, _embedding_cache
 from otix.api.schemas.interaction import UserInteractionState
 from otix.api.schemas.media import (
     CompanyOut,
-    ExternalGameResult,
-    ExternalGameSearchResponse,
     GenreOut,
     ImportGameResponse,
     LocalGameMatch,
@@ -112,6 +110,39 @@ async def _log_search(
         logger.warning("search_log_failed", exc_info=True)
 
 
+@media_router.get("/suggestions", response_model=list[MediaItemSummary])
+async def search_suggestions(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(8, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> list[MediaItemSummary]:
+    """Lightweight autocomplete — quick search, no backfill, no embeddings."""
+    exclude_adult = should_exclude_adult(current_user)
+    service = MediaService(db)
+    items, _total, _has_more = await service.search_media(
+        query_str=q,
+        page=1,
+        page_size=limit,
+        exclude_adult=exclude_adult,
+    )
+    summaries = [MediaItemSummary.model_validate(item) for item in items]
+
+    if current_user is not None and summaries:
+        from otix.services.interaction_service import InteractionService
+
+        interaction_service = InteractionService(db)
+        batch = await interaction_service.get_batch_interactions(
+            user_id=current_user.id,
+            media_item_ids=[s.id for s in summaries],
+        )
+        for summary in summaries:
+            state = batch.get(summary.id, {})
+            summary.user_interactions = UserInteractionState(**state)
+
+    return summaries
+
+
 @media_router.get("/", response_model=MediaItemListResponse)
 async def list_media(
     request: Request,
@@ -121,9 +152,13 @@ async def list_media(
     language: str | None = Query(None, description="Language code (e.g. 'ja', 'ko')"),
     is_anime: bool | None = Query(None, description="Filter to anime (movie/show only)"),
     has_artwork: bool = Query(False, description="Only return items with both textless poster and logo"),
-    sort_by: str | None = Query(None, description="popularity, rating, release_date, title, revenue, budget, or profit"),
+    sort_by: str | None = Query(
+        None, description="popularity, rating, release_date, title, revenue, budget, or profit"
+    ),
     sort_dir: str | None = Query(None, description="Sort direction: asc or desc (default desc)"),
-    certification: str | None = Query(None, description="Filter by certification in the user's country (e.g. 'PG-13', 'R', 'TV-MA')"),
+    certification: str | None = Query(
+        None, description="Filter by certification in the user's country (e.g. 'PG-13', 'R', 'TV-MA')"
+    ),
     cursor: str | None = Query(None, description="Pagination cursor (media item id) — cursor mode only"),
     page: int = Query(1, ge=1, description="Page number — sort mode only"),
     limit: int = Query(50, ge=1, le=100),
@@ -177,7 +212,7 @@ async def list_media(
     rg_future = None
     interactions_future = None
 
-    if media_type == 'music':
+    if media_type == "music":
         album_media_ids = [item.id for item in items if item.album]
         if album_media_ids:
             rg_future = asyncio.ensure_future(
@@ -200,7 +235,7 @@ async def list_media(
         )
 
     # Resolve release group map
-    if media_type == 'music':
+    if media_type == "music":
         rg_map: dict[str, str] = {}
         if rg_future is not None:
             eid_result = await rg_future
@@ -312,21 +347,23 @@ async def search_media(
             for summary in cached_response.items:
                 state = batch.get(summary.id, {})
                 summary.user_interactions = UserInteractionState(**state)
-        asyncio.create_task(_log_search(
-            q=q,
-            media_type=media_type,
-            sort_by=sort_by,
-            page=page,
-            page_size=page_size,
-            result_count=cached_response.total,
-            items_returned=len(cached_response.items),
-            tracks_returned=len(cached_response.tracks),
-            backfill_triggered=cached_response.backfill_pending,
-            cache_hit=True,
-            query_embedding_available=None,
-            user_id=current_user.id if current_user else None,
-            is_bot=current_user.is_bot if current_user else False,
-        ))
+        asyncio.create_task(
+            _log_search(
+                q=q,
+                media_type=media_type,
+                sort_by=sort_by,
+                page=page,
+                page_size=page_size,
+                result_count=cached_response.total,
+                items_returned=len(cached_response.items),
+                tracks_returned=len(cached_response.tracks),
+                backfill_triggered=cached_response.backfill_pending,
+                cache_hit=True,
+                query_embedding_available=None,
+                user_id=current_user.id if current_user else None,
+                is_bot=current_user.is_bot if current_user else False,
+            )
+        )
         return cached_response
 
     # Cold path: full search + embed
@@ -349,13 +386,13 @@ async def search_media(
         )
     )
     if page == 1 and (media_type is None or media_type == "music"):
+
         async def _search_tracks_with_fresh_session() -> list:
             async with async_session() as tracks_session:
                 tracks_service = MediaService(tracks_session)
                 return await tracks_service.search_tracks(query_str=q, limit=20)
-        tracks_future: asyncio.Task[list] | None = asyncio.ensure_future(
-            _search_tracks_with_fresh_session()
-        )
+
+        tracks_future: asyncio.Task[list] | None = asyncio.ensure_future(_search_tracks_with_fresh_session())
     else:
         tracks_future = None
 
@@ -433,21 +470,23 @@ async def search_media(
     await redis.set(cache_key, response.model_dump_json(), ex=SEARCH_CACHE_TTL)
 
     # Fire-and-forget search analytics
-    asyncio.create_task(_log_search(
-        q=q,
-        media_type=media_type,
-        sort_by=sort_by,
-        page=page,
-        page_size=page_size,
-        result_count=total,
-        items_returned=len(summaries),
-        tracks_returned=len(track_summaries),
-        backfill_triggered=backfill_pending,
-        cache_hit=False,
-        query_embedding_available=query_embedding is not None,
-        user_id=current_user.id if current_user else None,
-        is_bot=current_user.is_bot if current_user else False,
-    ))
+    asyncio.create_task(
+        _log_search(
+            q=q,
+            media_type=media_type,
+            sort_by=sort_by,
+            page=page,
+            page_size=page_size,
+            result_count=total,
+            items_returned=len(summaries),
+            tracks_returned=len(track_summaries),
+            backfill_triggered=backfill_pending,
+            cache_hit=False,
+            query_embedding_available=query_embedding is not None,
+            user_id=current_user.id if current_user else None,
+            is_bot=current_user.is_bot if current_user else False,
+        )
+    )
 
     # Patch fresh interactions for authenticated users before returning
     if current_user is not None and summaries:
@@ -663,112 +702,80 @@ async def poll_search_updates(
     )
 
 
-@media_router.get("/search/external", response_model=ExternalGameSearchResponse)
+@media_router.get("/search/external", response_model=MediaItemListResponse)
 async def search_external_games(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(8, ge=1, le=20),
-) -> ExternalGameSearchResponse:
-    """Search IGDB for games not yet in the Otix database.
+    db: AsyncSession = Depends(get_db),
+) -> MediaItemListResponse:
+    """Search IGDB for games, import missing ones async, return already-imported.
 
-    Used as a fallback when the main search returns too few results.
+    Games already in the Otix database are returned immediately.  Any that
+    aren't yet imported trigger a Celery task (sync.igdb.game) and the
+    response has ``backfill_pending = True`` so the frontend can poll for
+    newly-imported items.  A 2-minute Redis TTL on the query hash prevents
+    duplicate Celery triggers from repeated polling.
     """
-    from datetime import date
-
     redis = await _get_redis()
     from otix.providers.igdb.client import IGDBProvider
 
     provider = IGDBProvider(redis)
 
-    fields = "name,first_release_date,cover.url,involved_companies.company.name,involved_companies.publisher"
+    # Search IGDB — include version_parent to filter editions later
+    fields = "id,name,version_parent"
     try:
         igdb_results = await provider.search_games(q, limit=limit, fields=fields)
     except Exception:
         logger.exception("igdb_external_search_failed", q=q)
-        return ExternalGameSearchResponse(items=[])
+        return MediaItemListResponse(items=[])
 
-    items: list[ExternalGameResult] = []
-    igdb_ids: list[str] = []
-    for game in igdb_results:
-        title = game.get("name")
-        if not title:
-            continue
+    # Filter out edition/variant games when the base game is also in results.
+    has_base = any(game.get("version_parent") is None for game in igdb_results)
+    if has_base:
+        igdb_results = [g for g in igdb_results if g.get("version_parent") is None]
 
-        release_date_val = None
-        ts = game.get("first_release_date")
-        if isinstance(ts, int) and ts > 0:
-            release_date_val = date.fromtimestamp(ts)
+    igdb_ids = [str(r["id"]) for r in igdb_results if isinstance(r.get("id"), (int, str))]
+    if not igdb_ids:
+        return MediaItemListResponse(items=[])
 
-        poster_url = None
-        cover = game.get("cover")
-        if isinstance(cover, dict):
-            cover_url = cover.get("url")
-            if isinstance(cover_url, str):
-                # IGDB returns URLs like //images.igdb.com/.../t_thumb/abc.jpg
-                cover_url = cover_url.replace("t_thumb", "t_cover_big")
-                if cover_url.startswith("//"):
-                    cover_url = "https:" + cover_url
-                poster_url = cover_url
-
-        # Extract publisher from involved_companies
-        publisher = None
-        involved = game.get("involved_companies")
-        if isinstance(involved, list):
-            for ic in involved:
-                if isinstance(ic, dict) and ic.get("publisher"):
-                    company = ic.get("company")
-                    if isinstance(company, dict):
-                        publisher = company.get("name")
-                        if publisher:
-                            break
-
-        source_id = str(game.get("id", ""))
-        igdb_ids.append(source_id)
-
-        items.append(
-            ExternalGameResult(
-                title=title,
-                release_date=release_date_val,
-                poster_url=poster_url,
-                publisher=publisher,
-                source="igdb",
-                source_id=source_id,
+    # Check which IGDB IDs already exist in Otix (single query)
+    existing_eids = (
+        await db.scalars(
+            select(ExternalID).where(
+                ExternalID.provider == "igdb",
+                ExternalID.external_id.in_(igdb_ids),
             )
         )
+    ).all()
+    existing_ids: dict[str, str] = {}
+    for eid in existing_eids:
+        media_id = eid.entity_id or eid.media_item_id
+        if media_id:
+            existing_ids[eid.external_id] = media_id
 
-    # Check which IGDB games are already imported (via ExternalID records)
-    if igdb_ids:
-        async with async_session() as session:
-            existing_eids = (
-                await session.scalars(
-                    select(ExternalID).where(
-                        ExternalID.provider == "igdb",
-                        ExternalID.external_id.in_(igdb_ids),
-                    )
-                )
-            ).all()
+    # Build summary list from already-imported items
+    summaries: list[MediaItemSummary] = []
+    if existing_ids:
+        items = (await db.scalars(select(MediaItem).where(MediaItem.id.in_(existing_ids.values())))).all()
+        summaries = [MediaItemSummary.model_validate(item) for item in items]
 
-            if existing_eids:
-                eid_map: dict[str, ExternalID] = {eid.external_id: eid for eid in existing_eids}
-                media_ids = [eid.entity_id or eid.media_item_id for eid in existing_eids]
-                media_ids = [mid for mid in media_ids if mid]
+    # Trigger Celery imports for games not yet in the DB.
+    missing_ids = [gid for gid in igdb_ids if gid not in existing_ids]
+    if missing_ids:
+        query_hash = _poll_query_hash(q, "game")
+        dedup_key = f"ext_import:{query_hash}"
+        already_triggered = await redis.get(dedup_key)
+        if not already_triggered:
+            for gid in missing_ids:
+                app.send_task("sync.igdb.game", args=[int(gid)])
+            await redis.set(dedup_key, "1", ex=120)  # 2 min dedup
 
-                if media_ids:
-                    imported_items = (
-                        await session.scalars(
-                            select(MediaItem).where(MediaItem.id.in_(media_ids))
-                        )
-                    ).all()
-                    item_map: dict[str, MediaItem] = {mi.id: mi for mi in imported_items}
-
-                    for result in items:
-                        eid = eid_map.get(result.source_id)
-                        if eid is not None:
-                            media_id = eid.entity_id or eid.media_item_id
-                            if media_id and media_id in item_map:
-                                result.otix_media_id = media_id
-                                result.otix_slug = item_map[media_id].slug
-
-    return ExternalGameSearchResponse(items=items)
+    return MediaItemListResponse(
+        items=summaries,
+        backfill_pending=bool(missing_ids),
+        has_more=False,
+        total=len(summaries),
+    )
 
 
 @media_router.post("/import/igdb", response_model=ImportGameResponse)
@@ -802,7 +809,9 @@ async def import_igdb_game(
                 if media_id:
                     item = await session.get(MediaItem, media_id)
                     if item is not None:
-                        logger.info("igdb_import_returned_existing", igdb_id=igdb_id, media_id=item.id, title=item.title)
+                        logger.info(
+                            "igdb_import_returned_existing", igdb_id=igdb_id, media_id=item.id, title=item.title
+                        )
                         return ImportGameResponse(
                             media_id=item.id,
                             title=item.title,

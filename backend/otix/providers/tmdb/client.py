@@ -192,7 +192,9 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
-    async def get_trending(self, media_type: str, time_window: str, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+    async def get_trending(
+        self, media_type: str, time_window: str, page: int = 1, language: str = "en-US"
+    ) -> dict[str, JSONValue]:
         response = await self._get(
             f"/trending/{media_type}/{time_window}",
             params={"language": language, "page": page},
@@ -240,6 +242,21 @@ class TMDBProvider(BaseProvider):
         response = await self._get(
             "/search/multi",
             params={"query": query, "page": page, "language": language},
+        )
+        return response.json()
+
+    async def find_by_external_id(
+        self, external_id: str, external_source: str = "imdb_id", language: str = "en-US"
+    ) -> dict:
+        """Find TMDB IDs by external ID (imdb_id, tvdb_id, etc).
+
+        Uses TMDB's /find/{external_id} endpoint.
+        Returns movie_results, tv_results, etc. in the response.
+        https://developer.themoviedb.org/reference/find-by-id
+        """
+        response = await self._get(
+            f"/find/{external_id}",
+            params={"external_source": external_source, "language": language},
         )
         return response.json()
 
@@ -376,9 +393,7 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
-    async def rate_movie(
-        self, movie_id: int, rating: float, session_id: str
-    ) -> dict[str, JSONValue]:
+    async def rate_movie(self, movie_id: int, rating: float, session_id: str) -> dict[str, JSONValue]:
         response = await self._client.post(
             f"{self.BASE_URL}/movie/{movie_id}/rating",
             params={"api_key": settings.tmdb_api_key, "session_id": session_id},
@@ -387,9 +402,7 @@ class TMDBProvider(BaseProvider):
         response.raise_for_status()
         return response.json()
 
-    async def rate_tv(
-        self, tv_id: int, rating: float, session_id: str
-    ) -> dict[str, JSONValue]:
+    async def rate_tv(self, tv_id: int, rating: float, session_id: str) -> dict[str, JSONValue]:
         response = await self._client.post(
             f"{self.BASE_URL}/tv/{tv_id}/rating",
             params={"api_key": settings.tmdb_api_key, "session_id": session_id},

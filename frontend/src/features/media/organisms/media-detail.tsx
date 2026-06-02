@@ -36,6 +36,8 @@ import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
 import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
+import type { HypervisorConfirmResponse } from '@/features/downloads/types'
+import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { useExperiment } from '@/features/experiments/experiments-provider'
 import { getScannedGames, setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
@@ -253,6 +255,9 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   const [isInstallerOpen, setIsInstallerOpen] = useState(false);
   const [localGame, setLocalGame] = useState<DetectedGame | null>(null);
   const [scannedGames, setScannedGames] = useState<DetectedGame[]>([]);
+  const [hvDialogOpen, setHvDialogOpen] = useState(false);
+  const [hvCountdown, setHvCountdown] = useState(10);
+  const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null);
 
   // Load scanned games and local game map entry
   useEffect(() => {
@@ -279,6 +284,21 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     }
   }, [mediaId, mediaTitle]);
 
+  // Hypervisor confirmation countdown — auto-dismiss after 10s
+  useEffect(() => {
+    if (!hvDialogOpen) {
+      setHvCountdown(10);
+      return;
+    }
+    if (hvCountdown <= 0) {
+      setHvDialogOpen(false);
+      setErrorMsg('Hypervisor download cancelled (timeout).');
+      return;
+    }
+    const timer = setTimeout(() => setHvCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [hvDialogOpen, hvCountdown]);
+
   if (!window.electronAPI || !user?.isAdmin) return null;
 
   const matchingScannedGame = scannedGames.find(g => g.otixMediaId === mediaId) || localGame;
@@ -297,10 +317,32 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     setSearching(true);
     setErrorMsg('');
     const result = await searchAndDownload(user!.id, mediaId, mediaTitle);
-    if ('error' in result) {
+    if ('hypervisorAvailable' in result) {
+      setHvPending(result);
+      setHvCountdown(10);
+      setHvDialogOpen(true);
+    } else if ('error' in result) {
       setErrorMsg(result.error);
     }
     setSearching(false);
+  };
+
+  const handleHvConfirm = async () => {
+    setHvDialogOpen(false);
+    setHvPending(null);
+    setSearching(true);
+    setErrorMsg('');
+    const result = await searchAndDownload(user!.id, mediaId, mediaTitle, true);
+    if ('hypervisorAvailable' in result || 'error' in result) {
+      setErrorMsg(result.error ?? '');
+    }
+    setSearching(false);
+  };
+
+  const handleHvDismiss = () => {
+    setHvDialogOpen(false);
+    setHvPending(null);
+    setErrorMsg('Hypervisor download cancelled.');
   };
 
   // Status display helpers
@@ -490,10 +532,43 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     );
   }
 
-  return null;
+  // ── Hypervisor confirmation dialog ──
+  return (
+    <>
+      {null}
+      <DkDialog
+        open={hvDialogOpen}
+        onOpenChange={(open) => { if (!open) handleHvDismiss(); }}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Only hypervisor-tagged releases found for <strong>{hvPending?.gameName ?? 'this game'}</strong>.
+            These often require VM setup and may not run natively.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Auto-dismissing in <span className="font-mono font-bold text-foreground">{hvCountdown}</span>s
+          </p>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={handleHvConfirm}
+              className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 text-sm font-semibold transition-all active:scale-95"
+            >
+              Download HV version
+            </button>
+            <button
+              onClick={handleHvDismiss}
+              className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass)] px-4 py-2 text-sm font-medium transition-all"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      </DkDialog>
+    </>
+  );
 }
 
-type DetectedGame = import('@/electron.d').DetectedGame;
+type DetectedGame = import('@/features/game-scanner/types').DetectedGame;
 
 export function MediaDetail() {
   const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }

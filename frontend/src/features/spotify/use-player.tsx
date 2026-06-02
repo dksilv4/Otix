@@ -141,6 +141,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     dismissError: spotify.dismissError,
     playSpotify,
     playSpotifyQueue,
+    addToQueue: spotify.addToQueue,
     setSpotifyQueueMetadata: spotify.setQueueMetadata,
     playPlexTrack,
     playPlexAlbum,
@@ -148,6 +149,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     spotifyNextTracks: spotify.nextTracks,
     spotifyPreviousTracks: spotify.previousTracks,
     spotifyIsReady: spotify.isReady,
+    spotifyAvailableDevices: spotify.availableDevices,
+    spotifySelectDevice: spotify.selectDevice,
     plexQueue: plex.queue,
     plexPreviousTracks: plex.previousTracks,
   }
@@ -172,6 +175,7 @@ const defaultContextValue: PlayerContextValue = {
   dismissError: () => {},
   playSpotify: async () => {},
   playSpotifyQueue: async () => {},
+  addToQueue: async () => {},
   setSpotifyQueueMetadata: () => {},
   playPlexTrack: async () => {},
   playPlexAlbum: async () => {},
@@ -179,6 +183,8 @@ const defaultContextValue: PlayerContextValue = {
   spotifyNextTracks: [],
   spotifyPreviousTracks: [],
   spotifyIsReady: false,
+  spotifyAvailableDevices: [],
+  spotifySelectDevice: async () => {},
   plexQueue: [],
   plexPreviousTracks: [],
 }

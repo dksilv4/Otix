@@ -11,6 +11,7 @@ import json
 
 import structlog
 from sqlalchemy import delete, not_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -48,9 +49,7 @@ class TMDBHydrator:
         if not credits:
             return
 
-        await self.session.execute(
-            delete(MediaCredit).where(MediaCredit.media_item_id == media_item.id)
-        )
+        await self.session.execute(delete(MediaCredit).where(MediaCredit.media_item_id == media_item.id))
 
         cast = credits.get("cast", [])
         crew = credits.get("crew", [])
@@ -106,17 +105,14 @@ class TMDBHydrator:
             return {}
 
         eid_subq = (
-            select(ExternalID.entity_id)
-            .where(
+            select(ExternalID.entity_id).where(
                 ExternalID.provider == "tmdb",
                 ExternalID.entity_type == "person",
                 ExternalID.external_id.in_([str(x) for x in tmdb_ids]),
             )
         ).subquery()
         existing = await self.session.scalars(
-            select(Person)
-            .where(Person.id.in_(select(eid_subq)))
-            .options(selectinload(Person._external_ids))
+            select(Person).where(Person.id.in_(select(eid_subq))).options(selectinload(Person._external_ids))
         )
         persons_by_tmdb: dict[int, Person] = {}
         for p in existing:
@@ -138,24 +134,18 @@ class TMDBHydrator:
 
         if unmatched_by_tmdb:
             # Phase 2: check wikidata_id for cross-provider matches
-            wiki_ids = {
-                e.get("wikidata_id") for e in unmatched_by_tmdb.values()
-                if e.get("wikidata_id")
-            }
+            wiki_ids = {e.get("wikidata_id") for e in unmatched_by_tmdb.values() if e.get("wikidata_id")}
             wiki_matches: dict[str, Person] = {}
             if wiki_ids:
                 wiki_subq = (
-                    select(ExternalID.entity_id)
-                    .where(
+                    select(ExternalID.entity_id).where(
                         ExternalID.provider == "wikidata",
                         ExternalID.entity_type == "person",
                         ExternalID.external_id.in_(wiki_ids),
                     )
                 ).subquery()
                 existing_wiki = await self.session.scalars(
-                    select(Person)
-                    .where(Person.id.in_(select(wiki_subq)))
-                    .options(selectinload(Person._external_ids))
+                    select(Person).where(Person.id.in_(select(wiki_subq))).options(selectinload(Person._external_ids))
                 )
                 for p in existing_wiki:
                     wid = p.wikidata_id
@@ -174,17 +164,14 @@ class TMDBHydrator:
             # Phase 3: check for existing persons by name with no tmdb_id
             names = list({e["name"] for e in unmatched_by_tmdb.values()})
             has_tmdb = (
-                select(ExternalID.entity_id)
-                .where(
+                select(ExternalID.entity_id).where(
                     ExternalID.provider == "tmdb",
                     ExternalID.entity_type == "person",
                     ExternalID.entity_id == Person.id,
                 )
             ).exists()
             name_matches = await self.session.scalars(
-                select(Person)
-                .where(Person.name.in_(names), not_(has_tmdb))
-                .options(selectinload(Person._external_ids))
+                select(Person).where(Person.name.in_(names), not_(has_tmdb)).options(selectinload(Person._external_ids))
             )
             names_to_persons: dict[str, Person] = {}
             for person in name_matches:
@@ -227,13 +214,9 @@ class TMDBHydrator:
             return
 
         # Clear existing links for clean re-sync
-        await self.session.execute(
-            delete(MediaGenre).where(MediaGenre.media_item_id == media_item.id)
-        )
+        await self.session.execute(delete(MediaGenre).where(MediaGenre.media_item_id == media_item.id))
 
-        names_by_slug = normalize_genre_names(
-            str(g["name"]) for g in genre_list if g.get("name")
-        )
+        names_by_slug = normalize_genre_names(str(g["name"]) for g in genre_list if g.get("name"))
         if not names_by_slug:
             return
 
@@ -243,18 +226,12 @@ class TMDBHydrator:
             genre = genres_by_slug.get(slug)
             if genre is None:
                 continue
-            self.session.add(
-                MediaGenre(media_item_id=media_item.id, genre_id=genre.id)
-            )
+            self.session.add(MediaGenre(media_item_id=media_item.id, genre_id=genre.id))
 
-    async def _batch_get_or_create_genres(
-        self, names_by_slug: dict[str, str]
-    ) -> dict[str, Genre]:
+    async def _batch_get_or_create_genres(self, names_by_slug: dict[str, str]) -> dict[str, Genre]:
         """Resolve all genres in one batch."""
         slug_list = list(names_by_slug)
-        existing = await self.session.scalars(
-            select(Genre).where(Genre.slug.in_(slug_list))
-        )
+        existing = await self.session.scalars(select(Genre).where(Genre.slug.in_(slug_list)))
         genres_by_slug: dict[str, Genre] = {g.slug: g for g in existing}
 
         new_genres: list[Genre] = []
@@ -331,9 +308,7 @@ class TMDBHydrator:
         # Batch-check existing URLs
         existing_urls = set()
         if urls:
-            result = await self.session.scalars(
-                select(MediaAsset.url).where(MediaAsset.url.in_(urls))
-            )
+            result = await self.session.scalars(select(MediaAsset.url).where(MediaAsset.url.in_(urls)))
             existing_urls = set(result)
 
         for asset_type, entry in candidates:
@@ -389,9 +364,7 @@ class TMDBHydrator:
         if not results:
             return
 
-        await self.session.execute(
-            delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id)
-        )
+        await self.session.execute(delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id))
 
         for country in results:
             country_code = country.get("iso_3166_1", "")
@@ -431,9 +404,7 @@ class TMDBHydrator:
         if not results:
             return
 
-        await self.session.execute(
-            delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id)
-        )
+        await self.session.execute(delete(MediaRelease).where(MediaRelease.media_item_id == media_item.id))
 
         for entry in results:
             country_code = entry.get("iso_3166_1", "")
@@ -504,9 +475,7 @@ class TMDBHydrator:
                 movie.collection_id = collection.id
             return
 
-        coll_hash = hashlib.sha256(
-            json.dumps(coll_raw, sort_keys=True, default=str).encode()
-        ).hexdigest()
+        coll_hash = hashlib.sha256(json.dumps(coll_raw, sort_keys=True, default=str).encode()).hexdigest()
 
         if collection is not None and collection.content_hash == coll_hash:
             movie.collection_id = collection.id
@@ -566,11 +535,13 @@ class TMDBHydrator:
         for profile in profiles[:10]:
             url = _tmdb_image(profile.get("file_path"), "original")
             if url:
-                candidates.append({
-                    "url": url,
-                    "width": profile.get("width"),
-                    "height": profile.get("height"),
-                })
+                candidates.append(
+                    {
+                        "url": url,
+                        "width": profile.get("width"),
+                        "height": profile.get("height"),
+                    }
+                )
 
         if not candidates:
             return
@@ -578,9 +549,7 @@ class TMDBHydrator:
         urls = {c["url"] for c in candidates}
         existing_urls = set()
         if urls:
-            result = await self.session.scalars(
-                select(PersonAsset.url).where(PersonAsset.url.in_(urls))
-            )
+            result = await self.session.scalars(select(PersonAsset.url).where(PersonAsset.url.in_(urls)))
             existing_urls = set(result)
 
         for c in candidates:
@@ -640,9 +609,7 @@ class TMDBHydrator:
             company = await self.session.get(Company, entity_id) if entity_id else None
             if company is None:
                 computed_slug = f"{slugify(entry.get('name') or 'unknown-company')}-{tmdb_id}"
-                company = await self.session.scalar(
-                    select(Company).where(Company.slug == computed_slug)
-                )
+                company = await self.session.scalar(select(Company).where(Company.slug == computed_slug))
                 if company is None:
                     company = Company(
                         name=entry.get("name") or "Unknown Company",
@@ -655,11 +622,13 @@ class TMDBHydrator:
             await self.session.flush()
 
             # Create InvolvedCompany link
-            self.session.add(InvolvedCompany(
-                media_item_id=media_item.id,
-                company_id=company.id,
-                production=True,
-            ))
+            self.session.add(
+                InvolvedCompany(
+                    media_item_id=media_item.id,
+                    company_id=company.id,
+                    production=True,
+                )
+            )
 
     # ── Watch Providers ───────────────────────────────────────────
 
@@ -669,11 +638,7 @@ class TMDBHydrator:
         if not results:
             return
 
-        await self.session.execute(
-            delete(MediaWatchProvider).where(
-                MediaWatchProvider.media_item_id == media_item.id
-            )
-        )
+        await self.session.execute(delete(MediaWatchProvider).where(MediaWatchProvider.media_item_id == media_item.id))
 
         for country_code, country_data in results.items():
             if not isinstance(country_data, dict):
@@ -728,15 +693,39 @@ class TMDBHydrator:
                 wp.logo_url = _tmdb_image(logo_path, "w92")
             return wp
 
-        wp = WatchProvider(
-            name=name,
-            slug=f"{slugify(name)}-{tmdb_provider_id}",
-            logo_url=_tmdb_image(logo_path, "w92") if logo_path else None,
-            display_priority=priority,
-            tmdb_provider_id=tmdb_provider_id,
-        )
-        self.session.add(wp)
-        await self.session.flush()
+        slug = f"{slugify(name)}-{tmdb_provider_id}"
+        wp = await self.session.scalar(select(WatchProvider).where(WatchProvider.slug == slug))
+        if wp is not None:
+            wp.name = name
+            wp.display_priority = priority
+            if logo_path:
+                wp.logo_url = _tmdb_image(logo_path, "w92")
+            wp.tmdb_provider_id = tmdb_provider_id
+            await self.session.flush()
+            return wp
+
+        try:
+            async with self.session.begin_nested():
+                wp = WatchProvider(
+                    name=name,
+                    slug=slug,
+                    logo_url=_tmdb_image(logo_path, "w92") if logo_path else None,
+                    display_priority=priority,
+                    tmdb_provider_id=tmdb_provider_id,
+                )
+                self.session.add(wp)
+                await self.session.flush()
+        except IntegrityError:
+            # Fallback in case of concurrent insert race condition
+            wp = await self.session.scalar(select(WatchProvider).where(WatchProvider.slug == slug))
+            if wp is not None:
+                wp.name = name
+                wp.display_priority = priority
+                if logo_path:
+                    wp.logo_url = _tmdb_image(logo_path, "w92")
+                wp.tmdb_provider_id = tmdb_provider_id
+                await self.session.flush()
+
         return wp
 
     # ── Keywords ───────────────────────────────────────────────────
@@ -755,9 +744,7 @@ class TMDBHydrator:
         if not isinstance(keyword_list, list) or not keyword_list:
             return
 
-        await self.session.execute(
-            delete(MediaKeyword).where(MediaKeyword.media_item_id == media_item.id)
-        )
+        await self.session.execute(delete(MediaKeyword).where(MediaKeyword.media_item_id == media_item.id))
 
         for kw in keyword_list:
             if not isinstance(kw, dict):
@@ -774,10 +761,12 @@ class TMDBHydrator:
             if tmdb_id and not keyword.tmdb_id:
                 keyword.tmdb_id = int(tmdb_id)
 
-            self.session.add(MediaKeyword(
-                media_item_id=media_item.id,
-                keyword_id=keyword.id,
-            ))
+            self.session.add(
+                MediaKeyword(
+                    media_item_id=media_item.id,
+                    keyword_id=keyword.id,
+                )
+            )
 
     async def hydrate_keyword(self, keyword: Keyword, raw: dict) -> None:
         keyword.name = raw.get("name", keyword.name)
@@ -795,9 +784,7 @@ class TMDBHydrator:
 
         keyword_id = f"oti_{uuid4().hex[:12]}"
         await self.session.execute(
-            pg_insert(Keyword)
-            .values(id=keyword_id, name=name)
-            .on_conflict_do_nothing(constraint="keywords_name_key")
+            pg_insert(Keyword).values(id=keyword_id, name=name).on_conflict_do_nothing(constraint="keywords_name_key")
         )
         return await self.session.scalar(
             select(Keyword).options(selectinload(Keyword._external_ids)).where(Keyword.name == name)

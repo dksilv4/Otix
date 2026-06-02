@@ -57,24 +57,36 @@ export function UserMenu({ bare }: { bare?: boolean }) {
 
   if (!isAuthenticated) {
     return (
-      <Link
-        to="/auth/login"
-        className={cn(!bare && pillBase, !bare && 'p-1.5')}
-      >
-        <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
-      </Link>
+      <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
+        <Link
+          to="/auth/login"
+          className={cn(
+            !bare && pillBase,
+            !bare && 'p-1.5',
+            'flex items-center justify-center rounded-full transition-all',
+            bare && 'w-8 h-8 hover:bg-white/[0.06]',
+          )}
+        >
+          <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
+        </Link>
+      </div>
     )
   }
 
   const avatarUrl = user?.avatarUrl
 
   return (
-    <div className="relative">
+    <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
       <button
         type="button"
         data-user-menu-trigger
         onClick={() => setOpen(!open)}
-        className={cn(!bare && pillBase, !bare && 'p-1.5', 'cursor-pointer')}
+        className={cn(
+          !bare && pillBase,
+          !bare && 'p-1.5',
+          'cursor-pointer rounded-full flex items-center justify-center transition-all',
+          bare && 'w-8 h-8 hover:opacity-85 active:scale-95',
+        )}
       >
         <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
       </button>

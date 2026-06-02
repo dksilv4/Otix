@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { cleanGameTitle } from './game-parser';
 
 function execPromise(cmd: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -249,7 +250,8 @@ export async function previewOrganization(
   directory: string,
   regexPattern: string,
   isoTemplate: string,
-  updateTemplate: string
+  updateTemplate: string,
+  separator?: 'space' | 'dot' | 'underscore' | 'dash'
 ): Promise<OrganizationPreviewItem[]> {
   const files = await collectFilesToOrganize(directory);
   let regex: RegExp;
@@ -280,6 +282,13 @@ export async function previewOrganization(
         .replace(/[\._]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+      // apply full cleanGameTitle to strip scene tags, version numbers, etc.
+      interpolationData.title = cleanGameTitle(interpolationData.title);
+      // apply user's separator preference
+      if (separator && separator !== 'space') {
+        const sepChar = separator === 'dot' ? '.' : separator === 'underscore' ? '_' : '-';
+        interpolationData.title = interpolationData.title.replace(/\s+/g, sepChar);
+      }
     }
 
     const template = file.type === 'iso' ? isoTemplate : updateTemplate;

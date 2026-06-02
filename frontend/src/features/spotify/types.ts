@@ -40,6 +40,7 @@ export interface PlayerContextValue {
   playSpotify: (spotifyUri: string) => Promise<void>
   playSpotifyQueue: (uris: string[]) => Promise<void>
   setSpotifyQueueMetadata: (tracks: QueueTrack[]) => void
+  addToQueue: (spotifyUri: string) => Promise<void>
 
   playPlexTrack: (track: PlexTrackInfo) => Promise<void>
   playPlexAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
@@ -49,6 +50,8 @@ export interface PlayerContextValue {
   spotifyNextTracks: QueueTrack[]
   spotifyPreviousTracks: QueueTrack[]
   spotifyIsReady: boolean
+  spotifyAvailableDevices: Array<{ id: string; name: string; type: string; isActive: boolean }>
+  spotifySelectDevice: (deviceId: string) => Promise<void>
   plexQueue: PlexTrackInfo[]
   plexPreviousTracks: PlexTrackInfo[]
 }

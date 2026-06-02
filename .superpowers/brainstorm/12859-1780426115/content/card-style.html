@@ -1,0 +1,29 @@
+<h2>Game Card Design</h2>
+<p class="subtitle">Matched vs unmatched should look different. How should cards work?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Vertical Posters (Steam-style)</h3>
+      <p>Matched games: tall 2:3 poster cards with full cover art, logo overlay, hover play button. Unmatched: same size, but with gradient background + game icon + "Match" badge. Consistent grid spacing, clear visual tiering.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>Best visual hierarchy</li><li>Matches Steam/Playnite expectation</li><li>Artwork looks great</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>Less info visible per card</li><li>More scrolling</li></ul></div></div>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Horizontal Banner Cards</h3>
+      <p>Wide 16:9 cards with game artwork, logo on left, info on right (size, platform, play time). Matched get artwork + logo. Unmatched get gradient + icon + "Click to match" hint. More dense, more info.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>More info density</li><li>Better for storage + time stats</li><li>Good for wide screens</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>Less "shelf" feel</li><li>Harder to scan quickly</li></ul></div></div>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Large Poster + Compact List</h3>
+      <p>Matched games: large vertical posters in a multi-row grid (hero treatment). Unmatched games: compact rows below — small icon, title, platform badge, "Find Match" button. Best of both — matched get art spotlight, unmatched don't waste space.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>Spotlights matched games</li><li>Unmatched compact = less visual clutter</li><li>Clear visual separation</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>Two different layouts to maintain</li></ul></div></div>
+    </div>
+  </div>
+</div>

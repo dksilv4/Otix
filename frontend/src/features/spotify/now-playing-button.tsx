@@ -1,9 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Pin } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Music, Download } from 'lucide-react'
+import { useDownloads } from '@/features/downloads/use-downloads'
 import { usePlayer } from './use-player'
-import { PlexSessionList } from './plex-now-playing'
 import type { PlexSession } from './plex-now-playing'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { apiClient } from '@/lib/api-client'
@@ -44,17 +42,15 @@ function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
 export function NowPlayingButton({
   isPinned,
   isSidebarOpen,
-  onPin,
   onToggleSidebar,
+  bare,
 }: {
   isPinned?: boolean
   isSidebarOpen?: boolean
-  onPin?: () => void
   onToggleSidebar?: () => void
+  bare?: boolean
 }) {
   const { source, isPlaying, currentTrack } = usePlayer()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const { user: currentUser } = useAuth()
 
@@ -70,41 +66,18 @@ export function NowPlayingButton({
     enabled: !!currentUser?.plexId,
   })
 
-  const handleClickOutside = useCallback(
-    (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (target.closest('[data-now-playing-trigger]')) return
-      if (containerRef.current && !containerRef.current.contains(target)) {
-        setDropdownOpen(false)
-      }
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!dropdownOpen) return
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') setDropdownOpen(false)
-    })
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [dropdownOpen, handleClickOutside])
+  const { downloads } = useDownloads(currentUser?.id)
+  const activeDownloads = downloads.filter(d => d.status === 'queued' || d.status === 'downloading' || d.status === 'processing')
+  const hasDownloads = activeDownloads.length > 0
 
   const hasLocalPlayback = source !== 'none' && currentTrack !== null
   const plexCount = plexSessions.length
   const hasPlex = plexCount > 0
 
-  if (!hasLocalPlayback && !hasPlex) return null
-
   const handleClick = () => {
     if (isPinned) return
-    // Open the sidebar for local playback; keep dropdown for Plex-only
-    if (hasLocalPlayback && onToggleSidebar) {
+    if (onToggleSidebar) {
       onToggleSidebar()
-    } else {
-      setDropdownOpen(!dropdownOpen)
     }
   }
 
@@ -115,13 +88,15 @@ export function NowPlayingButton({
         data-now-playing-trigger
         onClick={handleClick}
         className={cn(
-          pillBase,
-          'p-1.5 relative gap-1 transition-all',
+          !bare && pillBase,
+          !bare && 'p-1.5',
+          'relative gap-1 transition-all flex items-center justify-center rounded-full',
           !isPinned && 'cursor-pointer',
           isSidebarOpen && 'ring-1 ring-purple-400/50 bg-purple-400/[0.06]',
           !hasLocalPlayback && hasPlex && 'ring-1 ring-[#e5a00d]/40',
+          bare && 'w-8 h-8 hover:bg-white/[0.06]',
         )}
-        aria-label="Now playing"
+        aria-label="Activity"
       >
         {hasLocalPlayback ? (
           currentTrack.albumArt ? (
@@ -137,55 +112,31 @@ export function NowPlayingButton({
           ) : (
             <EqualizerBars isPlaying={isPlaying} />
           )
+        ) : hasDownloads ? (
+          <div className="relative">
+            <Download className="h-5 w-5 text-blue-400" />
+            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500 px-[3px] text-[9px] font-bold text-black leading-none">
+              {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
+            </span>
+          </div>
+        ) : hasPlex ? (
+          <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
         ) : (
-          <PlexIcon className={cn('h-5 w-5', hasPlex ? 'text-[#e5a00d]' : 'text-muted-foreground')} />
+          <Music className="h-5 w-5 text-muted-foreground" />
         )}
         {hasPlex && !hasLocalPlayback && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e5a00d] px-1 text-[10px] font-bold text-black leading-none">
             {plexCount > 9 ? '9+' : plexCount}
           </span>
         )}
+        {hasLocalPlayback && hasDownloads && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500 px-[3px] text-[9px] font-bold text-black leading-none">
+            {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
+          </span>
+        )}
       </button>
 
-      <AnimatePresence>
-        {dropdownOpen && !isPinned && !hasLocalPlayback && (
-          <motion.div
-            ref={containerRef}
-            initial={{ opacity: 0, y: -8, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-[4.5rem] right-4 z-[9999] w-[26rem] max-w-[calc(100vw-2rem)]"
-          >
-            <div className="flex items-center justify-end mb-1.5">
-              {onPin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDropdownOpen(false)
-                    onPin()
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-glass)] px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all"
-                >
-                  <Pin className="h-3 w-3" />
-                  Pin
-                </button>
-              )}
-            </div>
-            {hasPlex && (
-              <div>
-                <div className="flex items-center gap-2 px-2 mb-3">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#e5a00d]" />
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Plex &middot; {plexCount} streaming
-                  </span>
-                </div>
-                <PlexSessionList sessions={plexSessions} />
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Dropdown removed - always slide in panel instead */}
     </>
   )
 }

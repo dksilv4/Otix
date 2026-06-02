@@ -8,241 +8,36 @@
 
 import path from 'path';
 import fs from 'fs';
-import { app } from 'electron';
-
-// ── SQLite setup (sql.js — WASM, no native deps) ──────────────────────────
-
-let db: any = null;
-let dbPath = '';
-
-interface DbRow {
-  [key: string]: any;
-}
-
-async function initDb(): Promise<any> {
-  if (db) return db;
-
-  try {
-    const initSqlJs = require('sql.js');
-    const SQL = await initSqlJs();
-    dbPath = path.join(app.getPath('userData'), 'otix-downloads.db');
-    console.log('[DB] Path:', dbPath, 'exists:', fs.existsSync(dbPath));
-
-    // Load existing DB or create new
-    if (fs.existsSync(dbPath)) {
-      const buffer = fs.readFileSync(dbPath);
-      console.log('[DB] Loaded existing, size:', buffer.length, 'bytes');
-      db = new SQL.Database(buffer);
-    } else {
-      console.log('[DB] No existing file, creating new');
-      db = new SQL.Database();
-    }
-
-    _createTables();
-    _migrateDb();
-    console.log('[DB] Tables ready');
-    // Debug: check row counts
-    try {
-      const dlCount = db.exec("SELECT COUNT(*) as cnt FROM downloads");
-      const cfgCount = db.exec("SELECT COUNT(*) as cnt FROM download_configs");
-      console.log('[DB] downloads rows:', JSON.stringify(dlCount));
-      console.log('[DB] configs rows:', JSON.stringify(cfgCount));
-    } catch (e) { console.log('[DB] count query failed:', e); }
-
-    // Auto-save every 30 seconds
-    setInterval(_saveDb, 30000);
-    return db;
-  } catch (err) {
-    console.error('Failed to open downloads database:', err);
-    return null;
-  }
-}
-
-let _saveSeq = 0;
-function _saveDb(): void {
-  if (!db || !dbPath) return;
-  try {
-    const data = db.export();
-    const dir = path.dirname(dbPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(dbPath, Buffer.from(data));
-    _saveSeq++;
-    if (_saveSeq <= 3 || _saveSeq % 20 === 0) {
-      console.log('[DB] Saved to', dbPath, 'size:', data.length, 'save #', _saveSeq);
-    }
-  } catch (err) {
-    console.error('Failed to save database:', err);
-  }
-}
-
-// ── sql.js query helpers ─────────────────────────────────────────────────
-
-function _run(sql: string, params: any[] = []): void {
-  if (!db) throw new Error('Database not available');
-  db.run(sql, params);
-  _saveDb(); // save after every write
-}
-
-function _get(sql: string, params: any[] = []): DbRow | null {
-  if (!db) return null;
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  if (stmt.step()) {
-    const cols = stmt.getColumnNames();
-    const vals = stmt.get();
-    stmt.free();
-    const row: DbRow = {};
-    cols.forEach((c: string, i: number) => { row[c] = vals[i]; });
-    return row;
-  }
-  stmt.free();
-  return null;
-}
-
-function _all(sql: string, params: any[] = []): DbRow[] {
-  if (!db) return [];
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  const rows: DbRow[] = [];
-  while (stmt.step()) {
-    const cols = stmt.getColumnNames();
-    const vals = stmt.get();
-    const row: DbRow = {};
-    cols.forEach((c: string, i: number) => { row[c] = vals[i]; });
-    rows.push(row);
-  }
-  stmt.free();
-  return rows;
-}
-
-// ── Schema ────────────────────────────────────────────────────────────────
-
-function _createTables(): void {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS downloads (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      media_item_id TEXT,
-      sabnzbd_nzo_id TEXT,
-      status TEXT NOT NULL DEFAULT 'queued',
-      nzb_name TEXT,
-      nzb_size INTEGER,
-      nzb_url TEXT,
-      iso_path TEXT,
-      error_message TEXT,
-      percentage INTEGER DEFAULT 0,
-      completed_at TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  // Migration: add percentage column if missing
-  try { db.run("ALTER TABLE downloads ADD COLUMN percentage INTEGER DEFAULT 0"); } catch (_) { /* column exists */ }
-  // Migration: add media_item_title column if missing
-  try { db.run("ALTER TABLE downloads ADD COLUMN media_item_title TEXT"); } catch (_) { /* column exists */ }
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS download_configs (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL UNIQUE,
-      sabnzbd_host TEXT,
-      sabnzbd_port INTEGER,
-      sabnzbd_api_key TEXT,
-      sabnzbd_use_ssl INTEGER NOT NULL DEFAULT 0,
-      nzbplanet_api_key TEXT,
-      sabnzbd_complete_path TEXT,
-      download_path TEXT,
-      post_process_enabled INTEGER NOT NULL DEFAULT 1,
-      auto_search_wishlist INTEGER NOT NULL DEFAULT 0,
-      wishlist_interval_hours INTEGER NOT NULL DEFAULT 12,
-      preferred_repackers TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS wishlist_download_tracking (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      media_item_id TEXT NOT NULL,
-      last_searched_at TEXT,
-      last_download_id TEXT,
-      attempts INTEGER NOT NULL DEFAULT 0,
-      skipped INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(user_id, media_item_id)
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS download_path_mappings (
-      id TEXT PRIMARY KEY,
-      config_id TEXT NOT NULL,
-      source_path TEXT NOT NULL,
-      dest_path TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      FOREIGN KEY (config_id) REFERENCES download_configs(id) ON DELETE CASCADE
-    )
-  `);
-
-  db.run('CREATE INDEX IF NOT EXISTS idx_downloads_user ON downloads(user_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_wishlist_tracking_user ON wishlist_download_tracking(user_id)');
-  db.run('CREATE INDEX IF NOT EXISTS idx_path_mappings_config ON download_path_mappings(config_id)');
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS scanned_games (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      exe_path TEXT NOT NULL,
-      local_exe_path TEXT,
-      install_dir TEXT NOT NULL,
-      platform TEXT NOT NULL,
-      icon_url TEXT,
-      update_files TEXT,
-      otix_media_id TEXT,
-      otix_media_title TEXT,
-      otix_media_slug TEXT,
-      otix_confidence REAL,
-      otix_match_suggestion TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS game_scan_paths (
-      path TEXT PRIMARY KEY,
-      type TEXT NOT NULL
-    )
-  `);
-
-  db.run(`
-    CREATE TABLE IF NOT EXISTS local_games_map (
-      media_id TEXT PRIMARY KEY,
-      game_json TEXT NOT NULL
-    )
-  `);
-}
-
-function _migrateDb(): void {
-  try { db.run('ALTER TABLE download_configs ADD COLUMN sabnzbd_complete_path TEXT'); } catch (_) {}
-  try { db.run('ALTER TABLE download_configs ADD COLUMN post_process_enabled INTEGER NOT NULL DEFAULT 1'); } catch (_) {}
-  try { db.run('ALTER TABLE download_configs ADD COLUMN preferred_repackers TEXT'); } catch (_) {}
-}
+import { _run, _get, _all, ensureDb, DbRow } from './db';
+import { autoOrganizeDownload } from './auto-organizer';
 
 function genId(): string {
   return 'dl_' + Math.random().toString(36).substring(2, 14);
 }
 
-// Ensure DB is initialized before any operation
-let dbReady: Promise<any> | null = null;
-function ensureDb(): Promise<any> {
-  if (!dbReady) dbReady = initDb();
-  return dbReady;
+// ── NZB search result cache (1 hour TTL) ─────────────────────────────────
+
+interface CacheEntry {
+  results: NZBResult[];
+  fetchedAt: number;
+}
+const searchCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function getCachedSearch(query: string): NZBResult[] | null {
+  const key = query.toLowerCase().trim();
+  const entry = searchCache.get(key);
+  if (entry && Date.now() - entry.fetchedAt < CACHE_TTL_MS) {
+    console.log('[NZBPlanet cache] Hit for:', query);
+    return entry.results;
+  }
+  return null;
+}
+
+function setCachedSearch(query: string, results: NZBResult[]): void {
+  const key = query.toLowerCase().trim();
+  searchCache.set(key, { results, fetchedAt: Date.now() });
+  console.log('[NZBPlanet cache] Cached', results.length, 'results for:', query);
 }
 
 // ── NZBPlanet API client ──────────────────────────────────────────────────
@@ -289,6 +84,10 @@ export async function searchNzbPlanet(
   categoryIds: string = '1000,2000',
   limit: number = 20,
 ): Promise<NZBResult[]> {
+  // Check cache first
+  const cached = getCachedSearch(query);
+  if (cached) return cached;
+
   const url = `https://api.nzbplanet.net/api?t=search&apikey=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&cat=${encodeURIComponent(categoryIds)}&o=json&num=${limit}`;
 
   const controller = new AbortController();
@@ -324,6 +123,7 @@ export async function searchNzbPlanet(
         detailsUrl: item.link ?? '',
       }));
       results.sort((a, b) => b.size - a.size);
+      setCachedSearch(query, results);
       return results;
     }
 
@@ -334,6 +134,7 @@ export async function searchNzbPlanet(
       if (items.length > 0) {
         console.log('[NZBPlanet search] First item:', { title: items[0].title, size: items[0].size, category: items[0].category });
       }
+      setCachedSearch(query, items);
       return items;
     }
 
@@ -393,7 +194,9 @@ export async function testNzbPlanetConnection(apiKey: string): Promise<boolean> 
 
 const DEMO_PATTERNS = ['demo', 'trial', 'beta', 'alpha'];
 const UPDATE_PATTERNS = ['update', 'patch', 'dlc', 'addon', 'add-on', 'hotfix'];
+const CRACK_ONLY_PATTERNS = ['crack by', 'crack-only', 'crack only', 'crackfix', 'standalone crack'];
 const SCENE_TAGS = ['iso', 'repack', 'codex', 'crack', 'gog', 'elamigos', 'dodi', 'fitgirl', 'skidrow', 'flt'];
+const HYPERVISOR_TAGS = ['hv', 'hypervisor', 'vm', 'vmware', 'virtualbox', 'qemu', 'vmic'];
 
 function isFullGame(result: NZBResult): boolean {
   const title = result.title.toLowerCase();
@@ -416,13 +219,202 @@ function hasPreferredRepacker(result: NZBResult, repackers: string[]): boolean {
   return repackers.some(r => title.includes(r.toLowerCase()));
 }
 
-export function filterQualityResults(results: NZBResult[]): NZBResult[] {
-  return results.filter(r => isFullGame(r) && isNotUpdate(r));
+function hasHypervisorTags(result: NZBResult): boolean {
+  const title = result.title.toLowerCase();
+  // Check for standalone hv (word boundary) to avoid false match on "have"
+  return HYPERVISOR_TAGS.some(tag => {
+    if (tag === 'hv') {
+      return title.includes(' hv ') || title.startsWith('hv ') || title.endsWith(' hv') || title === 'hv';
+    }
+    return title.includes(tag);
+  });
 }
 
-export function autoPickBest(results: NZBResult[], preferredRepackers?: string | null): NZBResult | null {
-  const quality = filterQualityResults(results);
+function isNotCrackOnly(result: NZBResult): boolean {
+  const title = result.title.toLowerCase();
+  return !CRACK_ONLY_PATTERNS.some(p => title.includes(p));
+}
+
+// ── Update matching ───────────────────────────────────────────────────────
+
+/** Words stripped from scene release titles when extracting core game name. */
+const _CORE_SKIP_WORDS = new Set([
+  'repack', 'codex', 'crack', 'gog', 'elamigos', 'dodi', 'fitgirl',
+  'skidrow', 'flt', 'update', 'patch', 'hotfix', 'dlc', 'addon', 'iso',
+  'program', 'game', 'install', 'setup', 'files', 'data', 'content',
+]);
+
+/** Does this result title look like a crack update/patch (not DLC)? */
+function isUpdateResult(title: string): boolean {
+  const t = title.toLowerCase();
+  return ['update', 'patch', 'hotfix'].some(p => t.includes(p));
+}
+
+/**
+ * Strip noise from a release title to get a comparable game signature.
+ * (Exported for use by auto-organizer)
+ *
+ * Handles both scene format (Game.Name.REPACK-GROUP) and Elamigos
+ * format (Game Name V##### Group Password=404).
+ *
+ * "Clair Obscur Expedition 33 V61339 ElAmigos"        → "clairobscurexpedition"
+ * "Clair Obscur Expedition 33 Update 62964-63936 ..." → "clairobscurexpedition"
+ * "Stellar.Blade.REPACK-DELUSION"                     → "stellarblade"
+ * "Stellar.Blade.Update.v1.01-Voices38"              → "stellarblade"
+ */
+export function gameSignature(title: string): string {
+  const lower = title.toLowerCase()
+    .replace(/\s*password=.*$/i, '')            // strip Password=... suffix
+    .replace(/-[a-z0-9_.]+$/, '')               // strip scene group (Game-GROUP)
+    .replace(/\b(update|patch|hotfix|demo|dlc|addon|repack)\b/gi, '')  // strip keywords
+    .replace(/\bv?\d+(\.\d+)*\b/gi, '');        // strip version numbers
+  return lower.split(/[.\s]+/)
+    .filter(w => w && !_CORE_SKIP_WORDS.has(w))
+    .map(w => w.replace(/[^a-z0-9]/g, ''))
+    .filter(Boolean)
+    .join('');
+}
+
+/** Extract release group from title.
+ *
+ *  Handles both dash-separated (scene) and space-separated (Elamigos) groups:
+ *    "Clair.Obscur.Expedition.33-Elamigos"  →  "elamigos"
+ *    "Clair Obscur Expedition 33 V61339 ElAmigos"  →  "elamigos"
+ *    "Password=NibNit999" also checked as fallback group marker.
+ *  (Exported for auto-organizer)
+ */
+export function extractGroup(title: string): string | null {
+  const lower = title.toLowerCase().trim();
+  // Cache Password= value in case it encodes the group
+  const pwMatch = lower.match(/password=([a-z0-9_.]+)/);
+  const cleaned = lower.replace(/\s*password=.*$/i, '').trim();
+
+  // Dash-group: Game-GROUP
+  const dashMatch = cleaned.match(/-([a-z0-9_.]+)$/);
+  if (dashMatch) return dashMatch[1];
+
+  // Space-group: last word is a known group tag
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  const last = words[words.length - 1];
+  if (last && _CORE_SKIP_WORDS.has(last)) return last;
+  // Last word looks like a scene group (2-10 alpha chars, not purely digits)
+  if (last && /^[a-z]{2,10}$/.test(last) && !/^\d+$/.test(last)) return last;
+
+  // Fallback: password value can encode the release group
+  if (pwMatch) {
+    const pv = pwMatch[1];
+    if (pv.length >= 2 && pv.length <= 15) return pv;
+  }
+  return null;
+}
+
+/** Parse version from Elamigos-style title: "V61339" → 61339, "Update 56180" → 56180
+ *  (Exported for auto-organizer) */
+export function parseVersion(title: string): number | null {
+  const lower = title.toLowerCase();
+  // Base: "Game Name V61339 Group"
+  const baseMatch = lower.match(/\bv(\d{3,})\b/);
+  if (baseMatch) return parseInt(baseMatch[1], 10);
+  // Update: "Update 56180 - 56442" → start version
+  const updateMatch = lower.match(/\bupdate\s+(\d{3,})/);
+  if (updateMatch) return parseInt(updateMatch[1], 10);
+  return null;
+}
+
+/** Parse TO version from an update range: "Update 61339 - 62964" → 62964 */
+function parseToVersion(title: string): number | null {
+  const match = title.toLowerCase().match(/\bupdate\s+\d+\s*-\s*(\d{3,})/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/** Deduplicate update NZBs: keep only the fattest update per FROM version.
+ *
+ *  "61339-61582"  +  "61339-61711"  +  "61339-62964"  →  "61339-62964" (fattest)
+ */
+function deduplicateUpdates(updates: NZBResult[]): NZBResult[] {
+  const best = new Map<number, NZBResult>();
+  for (const u of updates) {
+    const from = parseVersion(u.title);
+    if (from === null) {
+      // Keep updates without parseable version too
+      if (!best.has(-1)) best.set(-1, u);
+    } else {
+      const existing = best.get(from);
+      if (!existing) { best.set(from, u); continue; }
+      const existingTo = parseToVersion(existing.title) ?? 0;
+      const newTo = parseToVersion(u.title) ?? 0;
+      if (newTo > existingTo) best.set(from, u);
+    }
+  }
+  return Array.from(best.values());
+}
+
+/** Find update/patch results that belong to the same game as baseTitle.
+ *
+ *  Uses normalized game signature for cross-format matching (scene & Elamigos).
+ *  Prefers same release group (e.g. -Elamigos) to avoid incompatible updates.
+ *  When both base and update have parseable versions, only matches if the
+ *  update's start version is >= the base version (avoids legacy updates).
+ *  Deduplicates overlapping update ranges, keeping only the fattest per FROM.
+ */
+export function findMatchingUpdates(baseTitle: string, allResults: NZBResult[]): NZBResult[] {
+  const baseSig = gameSignature(baseTitle);
+  const baseGroup = extractGroup(baseTitle);
+  const baseVer = parseVersion(baseTitle);
+
+  // All results that are updates for the same game
+  let matches = allResults.filter(r => {
+    if (r.title.toLowerCase() === baseTitle.toLowerCase()) return false;
+    if (!isUpdateResult(r.title)) return false;
+    if (gameSignature(r.title) !== baseSig) return false;
+    // When we know base version, skip updates for older base releases
+    if (baseVer !== null) {
+      const updateVer = parseVersion(r.title);
+      if (updateVer !== null && updateVer < baseVer) return false;
+    }
+    return true;
+  });
+
+  // Prioritize same release group but keep cross-group updates too
+  if (baseGroup && matches.length > 0) {
+    const sameGroup = matches.filter(r => extractGroup(r.title) === baseGroup);
+    const otherGroup = matches.filter(r => extractGroup(r.title) !== baseGroup);
+    // Same-group first, then cross-group/unlabeled
+    matches = sameGroup.length > 0 ? [...sameGroup, ...otherGroup] : matches;
+  }
+
+  // Deduplicate: keep only fattest update per FROM version
+  return deduplicateUpdates(matches);
+}
+
+export function filterQualityResults(results: NZBResult[]): NZBResult[] {
+  // Try hard filter: exclude demos, updates, crack-only
+  const filtered = results.filter(r => isFullGame(r) && isNotUpdate(r) && isNotCrackOnly(r));
+  // Fallback: if hard filter kills everything, return all results so user
+  // still gets a release. Filter may be too broad or NZBPlanet may not
+  // return the valid release in the top N results.
+  return filtered.length > 0 ? filtered : results;
+}
+
+/** Compare NZB results by version descending. Versioned entries rank above non-versioned. */
+function compareByVersion(a: NZBResult, b: NZBResult): number {
+  const verA = parseVersion(a.title);
+  const verB = parseVersion(b.title);
+  if (verA !== null && verB !== null) return verB - verA;  // higher wins
+  if (verA !== null) return -1;  // only A versioned → A first
+  if (verB !== null) return 1;   // only B versioned → B first
+  return 0;                      // neither versioned → preserve order
+}
+
+export function autoPickBest(results: NZBResult[], preferredRepackers?: string | null, allowHypervisor?: boolean): NZBResult | null {
+  let quality = filterQualityResults(results);
   if (quality.length === 0) return null;
+
+  // Filter out hypervisor-tagged results unless explicitly allowed
+  if (!allowHypervisor) {
+    quality = quality.filter(r => !hasHypervisorTags(r));
+    if (quality.length === 0) return null;
+  }
 
   const repackerList = preferredRepackers
     ? preferredRepackers.split(',').map(r => r.trim()).filter(Boolean)
@@ -432,18 +424,174 @@ export function autoPickBest(results: NZBResult[], preferredRepackers?: string |
     const preferred = quality.filter(r => hasPreferredRepacker(r, repackerList));
     const others = quality.filter(r => !hasPreferredRepacker(r, repackerList));
     // Within preferred: scene first, then non-scene
-    const prefScene = preferred.filter(r => hasSceneTags(r));
-    const prefNonScene = preferred.filter(r => !hasSceneTags(r));
-    const otherScene = others.filter(r => hasSceneTags(r));
-    const otherNonScene = others.filter(r => !hasSceneTags(r));
+    // Within each tier: prefer upgraded version
+    const prefScene = preferred.filter(r => hasSceneTags(r)).sort(compareByVersion);
+    const prefNonScene = preferred.filter(r => !hasSceneTags(r)).sort(compareByVersion);
+    const otherScene = others.filter(r => hasSceneTags(r)).sort(compareByVersion);
+    const otherNonScene = others.filter(r => !hasSceneTags(r)).sort(compareByVersion);
     const ranked = [...prefScene, ...prefNonScene, ...otherScene, ...otherNonScene];
     return ranked[0];
   }
 
-  const scene = quality.filter(r => hasSceneTags(r));
-  const nonScene = quality.filter(r => !hasSceneTags(r));
+  const scene = quality.filter(r => hasSceneTags(r)).sort(compareByVersion);
+  const nonScene = quality.filter(r => !hasSceneTags(r)).sort(compareByVersion);
   const ranked = [...scene, ...nonScene];
   return ranked[0];
+}
+
+// ── Game update tracking ──────────────────────────────────────────────────
+
+export interface GameTrackEntry {
+  mediaItemId: string;
+  mediaItemTitle: string;
+  downloadedUpdateTags: string[];
+  lastUpdateCheck: string | null;
+}
+
+function ensureTrackingTable(): void {
+  _run(`
+    CREATE TABLE IF NOT EXISTS game_update_tracking (
+      media_item_id TEXT NOT NULL,
+      media_item_title TEXT NOT NULL DEFAULT '',
+      downloaded_updates TEXT NOT NULL DEFAULT '[]',
+      last_update_check TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(media_item_id)
+    )
+  `);
+}
+
+function trackRowToObj(row: DbRow): GameTrackEntry {
+  return {
+    mediaItemId: row.media_item_id,
+    mediaItemTitle: row.media_item_title,
+    downloadedUpdateTags: JSON.parse(row.downloaded_updates || '[]'),
+    lastUpdateCheck: row.last_update_check || null,
+  };
+}
+
+export async function ensureGameTracked(mediaItemId: string, title: string): Promise<void> {
+  await ensureDb();
+  ensureTrackingTable();
+  _run('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)',
+    [mediaItemId, title]);
+}
+
+function extractUpdateTag(title: string): string {
+  const lower = title.toLowerCase();
+  const rangeMatch = lower.match(/update\s+(\d{3,})\s*-\s*(\d{3,})/);
+  if (rangeMatch) return rangeMatch[1] + '-' + rangeMatch[2];
+  const verMatch = lower.match(/(?:update|patch)[.\s]*v?(\d+(?:\.\d+)*)/i);
+  if (verMatch) return verMatch[1];
+  return title.substring(0, 40);
+}
+
+export async function recordUpdateDownload(
+  mediaItemId: string, mediaTitle: string, updateTitle: string,
+): Promise<void> {
+  await ensureDb();
+  ensureTrackingTable();
+  const tag = extractUpdateTag(updateTitle);
+  const row = _get(
+    'SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', [mediaItemId],
+  );
+  if (row) {
+    const tags: string[] = JSON.parse(row.downloaded_updates || '[]');
+    if (!tags.includes(tag)) {
+      tags.push(tag);
+      _run(
+        "UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?",
+        [JSON.stringify(tags), mediaTitle, mediaItemId],
+      );
+    }
+  } else {
+    _run(
+      'INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)',
+      [mediaItemId, mediaTitle, JSON.stringify([tag])],
+    );
+  }
+}
+
+export async function getTrackedGames(): Promise<GameTrackEntry[]> {
+  await ensureDb();
+  ensureTrackingTable();
+  return _all('SELECT * FROM game_update_tracking ORDER BY media_item_title').map(trackRowToObj);
+}
+
+export async function checkGameForUpdates(
+  mediaItemId: string, title: string, apiKey: string,
+): Promise<{ newUpdates: NZBResult[]; error?: string }> {
+  await ensureDb();
+  try {
+    const results = await searchNzbPlanet(title, apiKey);
+    const gameResults = results.filter(r => {
+      const cat = r.category.toLowerCase();
+      return !cat || cat.startsWith('games') || cat.startsWith('console');
+    });
+    const base = autoPickBest(gameResults);
+    if (!base) return { newUpdates: [], error: 'No base release to anchor update matching' };
+    const allUpdates = findMatchingUpdates(base.title, gameResults);
+    const row = _get(
+      'SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', [mediaItemId],
+    );
+    const downloaded: string[] = row ? JSON.parse(row.downloaded_updates || '[]') : [];
+    const newUpdates = allUpdates.filter(u => {
+      const tag = extractUpdateTag(u.title);
+      return !downloaded.includes(tag);
+    });
+    _run(
+      "UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?",
+      [mediaItemId],
+    );
+    return { newUpdates };
+  } catch (err: any) {
+    return { newUpdates: [], error: err.message };
+  }
+}
+
+export async function scheduledUpdateCheck(): Promise<{ game: string; queued: number }[]> {
+  await ensureDb();
+  const config = await getConfig();
+  if (!config || !config.nzbplanetApiKey || !config.sabnzbdHost || !config.sabnzbdApiKey) {
+    console.log('[update-check] Skipping - SABnzbd or NZBPlanet not configured');
+    return [];
+  }
+  const games = await getTrackedGames();
+  if (games.length === 0) {
+    console.log('[update-check] No tracked games');
+    return [];
+  }
+  console.log('[update-check] Checking', games.length, 'tracked games for updates');
+  const results: { game: string; queued: number }[] = [];
+  for (const game of games) {
+    try {
+      const { newUpdates, error } = await checkGameForUpdates(
+        game.mediaItemId, game.mediaItemTitle, config.nzbplanetApiKey,
+      );
+      if (error) { console.log('[update-check]', game.mediaItemTitle, 'error:', error); continue; }
+      if (newUpdates.length === 0) { console.log('[update-check]', game.mediaItemTitle, '- no new updates'); continue; }
+      let queued = 0;
+      for (const update of newUpdates) {
+        const nzoId = await addNzbToSabnzbd(
+          config.sabnzbdHost, config.sabnzbdPort ?? 8080,
+          config.sabnzbdApiKey, config.sabnzbdUseSsl,
+          update.nzbUrl, update.title,
+        );
+        if (nzoId) {
+          await createDownload(config.userId || 'desktop', game.mediaItemId,
+            game.mediaItemTitle + ' (Update)', update, nzoId);
+          await recordUpdateDownload(game.mediaItemId, game.mediaItemTitle, update.title);
+          queued++;
+        }
+      }
+      results.push({ game: game.mediaItemTitle, queued });
+    } catch (err: any) {
+      console.error('[update-check] Error checking', game.mediaItemTitle, ':', err.message);
+    }
+  }
+  console.log('[update-check] Done -', results.reduce((s, r) => s + r.queued, 0), 'updates queued');
+  return results;
 }
 
 // ── SABnzbd API client ────────────────────────────────────────────────────
@@ -586,6 +734,9 @@ export interface DownloadConfig {
   autoSearchWishlist: boolean;
   wishlistIntervalHours: number;
   preferredRepackers: string | null;
+  allowHypervisor?: boolean;
+  autoOrganizeEnabled?: boolean;
+  namingTemplate?: string | null;
 }
 
 function configRowToObj(row: DbRow): DownloadConfig {
@@ -603,6 +754,9 @@ function configRowToObj(row: DbRow): DownloadConfig {
     autoSearchWishlist: row.auto_search_wishlist === 1,
     wishlistIntervalHours: row.wishlist_interval_hours,
     preferredRepackers: row.preferred_repackers ?? null,
+    allowHypervisor: row.allow_hypervisor === 1,
+    autoOrganizeEnabled: row.auto_organize_enabled === 1,
+    namingTemplate: row.naming_template ?? null,
   };
 }
 
@@ -614,7 +768,8 @@ export async function getConfig(_userId?: string): Promise<DownloadConfig | null
 }
 
 export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: string }): Promise<DownloadConfig> {
-  await ensureDb();
+  const dbReady = await ensureDb();
+  if (!dbReady) throw new Error('Database failed to initialize — check console for details');
   // Desktop app: single config. Check for any existing row regardless of user_id
   const existing = _get('SELECT id, user_id FROM download_configs LIMIT 1', []);
 
@@ -626,7 +781,8 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
         sabnzbd_use_ssl = ?, nzbplanet_api_key = ?,
         sabnzbd_complete_path = ?, download_path = ?, post_process_enabled = ?,
         auto_search_wishlist = ?, wishlist_interval_hours = ?,
-        preferred_repackers = ?,
+        preferred_repackers = ?, allow_hypervisor = ?,
+        auto_organize_enabled = ?, naming_template = ?,
         updated_at = datetime('now')
       WHERE id = ?
     `, [
@@ -635,7 +791,8 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
       config.sabnzbdUseSsl ? 1 : 0, config.nzbplanetApiKey,
       config.sabnzbdCompletePath, config.downloadPath, config.postProcessEnabled ? 1 : 0,
       config.autoSearchWishlist ? 1 : 0, config.wishlistIntervalHours,
-      config.preferredRepackers,
+      config.preferredRepackers, config.allowHypervisor ? 1 : 0,
+      config.autoOrganizeEnabled ? 1 : 0, config.namingTemplate ?? null,
       existing.id,
     ]);
     const cfg = await getConfig();
@@ -647,14 +804,16 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
   _run(`
     INSERT INTO download_configs (id, user_id, sabnzbd_host, sabnzbd_port, sabnzbd_api_key,
       sabnzbd_use_ssl, nzbplanet_api_key, sabnzbd_complete_path, download_path,
-      post_process_enabled, auto_search_wishlist, wishlist_interval_hours, preferred_repackers)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      post_process_enabled, auto_search_wishlist, wishlist_interval_hours, preferred_repackers, allow_hypervisor,
+      auto_organize_enabled, naming_template)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     id, config.userId, config.sabnzbdHost, config.sabnzbdPort, config.sabnzbdApiKey,
     config.sabnzbdUseSsl ? 1 : 0, config.nzbplanetApiKey,
     config.sabnzbdCompletePath, config.downloadPath, config.postProcessEnabled ? 1 : 0,
     config.autoSearchWishlist ? 1 : 0, config.wishlistIntervalHours,
-    config.preferredRepackers,
+    config.preferredRepackers, config.allowHypervisor ? 1 : 0,
+    config.autoOrganizeEnabled ? 1 : 0, config.namingTemplate ?? null,
   ]);
 
   const cfg = await getConfig();
@@ -662,7 +821,6 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
   return cfg;
 }
 
-// ── Download CRUD ─────────────────────────────────────────────────────────
 
 export interface Download {
   id: string;
@@ -750,7 +908,103 @@ export async function updateDownloadIsoPath(id: string, isoPath: string): Promis
 
 export async function deleteDownload(id: string): Promise<void> {
   await ensureDb();
-  _run('DELETE FROM downloads WHERE id = ?', [id]);
+  const dl = await getDownload(id);
+  if (!dl) return;
+
+  // Delete ISO files from disk
+  if (dl.isoPath) {
+    const paths = dl.isoPath.split(';');
+    for (const p of paths) {
+      const trimmed = p.trim();
+      if (trimmed) {
+        try {
+          if (fs.existsSync(trimmed)) {
+            fs.unlinkSync(trimmed);
+            console.log('[deleteDownload] Deleted ISO:', trimmed);
+          }
+        } catch (err: any) {
+          console.error('[deleteDownload] Failed to delete ISO:', trimmed, err.message);
+        }
+      }
+    }
+  }
+
+  // Soft-delete: mark as deleted so it shows in Deleted tab
+  _run("UPDATE downloads SET status = 'deleted', iso_path = NULL, updated_at = datetime('now') WHERE id = ?", [id]);
+}
+
+export async function purgeOldDeletedDownloads(): Promise<number> {
+  await ensureDb();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = _all("SELECT id FROM downloads WHERE status = 'deleted' AND updated_at < ?", [cutoff]);
+  for (const row of rows) {
+    _run('DELETE FROM downloads WHERE id = ?', [row.id]);
+  }
+  if (rows.length > 0) {
+    console.log(`[purge] Purged ${rows.length} deleted downloads older than 30 days`);
+  }
+  return rows.length;
+}
+
+// ── ISO Match Cache ──────────────────────────────────────────────────────
+
+export interface MatchCacheEntry {
+  isoPath: string;
+  queryTitle: string;
+  mediaId: string;
+  mediaTitle: string;
+  mediaSlug?: string;
+  confidence?: number;
+  posterUrl?: string;
+  logolessPosterUrl?: string;
+  logoUrl?: string;
+}
+
+export function batchCheckMatchCache(isoPaths: string[]): Record<string, MatchCacheEntry | null> {
+  const result: Record<string, MatchCacheEntry | null> = {};
+  for (const p of isoPaths) {
+    const row = _get('SELECT * FROM iso_match_cache WHERE iso_path = ?', [p]);
+    if (row) {
+      result[p] = {
+        isoPath: row.iso_path,
+        queryTitle: row.query_title,
+        mediaId: row.media_id,
+        mediaTitle: row.media_title,
+        mediaSlug: row.media_slug,
+        confidence: row.confidence,
+        posterUrl: row.poster_url,
+        logolessPosterUrl: row.logoless_poster_url,
+        logoUrl: row.logo_url,
+      };
+    } else {
+      result[p] = null;
+    }
+  }
+  return result;
+}
+
+export function saveMatchCache(entries: MatchCacheEntry[]): void {
+  const now = new Date().toISOString();
+  for (const e of entries) {
+    _run(`
+      INSERT INTO iso_match_cache (iso_path, query_title, media_id, media_title, media_slug, confidence, poster_url, logoless_poster_url, logo_url, checked_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(iso_path) DO UPDATE SET
+        query_title = excluded.query_title,
+        media_id = excluded.media_id,
+        media_title = excluded.media_title,
+        media_slug = excluded.media_slug,
+        confidence = excluded.confidence,
+        poster_url = excluded.poster_url,
+        logoless_poster_url = excluded.logoless_poster_url,
+        logo_url = excluded.logo_url,
+        checked_at = excluded.checked_at
+    `, [
+      e.isoPath, e.queryTitle, e.mediaId, e.mediaTitle, e.mediaSlug ?? null,
+      e.confidence ?? null, e.posterUrl ?? null, e.logolessPosterUrl ?? null,
+      e.logoUrl ?? null, now,
+    ]);
+  }
 }
 
 // ── Path mappings CRUD ───────────────────────────────────────────────────
@@ -871,6 +1125,16 @@ export async function postProcessDownload(
   await ensureDb();
   const result: PostProcessResult = { success: false, isosFound: [], isosMoved: [], errors: [] };
 
+  // Check if auto-organizer is enabled — delegate if so
+  const cfg = _get('SELECT auto_organize_enabled, naming_template FROM download_configs WHERE id = ?', [configId]);
+  if (cfg && cfg.auto_organize_enabled === 1) {
+    const orgResult = await autoOrganizeDownload(downloadId, configId, fallbackSource, fallbackDest);
+    result.success = orgResult.success;
+    result.isosMoved = orgResult.organized.map(o => ({ from: o.from, to: o.to }));
+    result.errors = orgResult.errors;
+    return result;
+  }
+
   const dl = _get('SELECT * FROM downloads WHERE id = ? AND status = ?', [downloadId, 'completed']);
   if (!dl) {
     result.errors.push('Download not found or not completed');
@@ -899,14 +1163,13 @@ export async function postProcessDownload(
   const nzbName: string = dl.nzb_name ?? '';
   const baseName = path.basename(nzbName, path.extname(nzbName));
 
-  // Path mappings are translation pairs: source=Unraid path prefix, dest=Windows equivalent
-  // Translate SABnzbd paths to Windows-accessible paths before searching
   function translatePath(originalPath: string, pair: { source: string; dest: string }): string | null {
-    // Normalize separators for comparison
-    const normPath = originalPath.replace(/\//g, path.sep);
-    const normSource = pair.source.replace(/\//g, path.sep);
+    const normPath = originalPath.replace(/[/\\]/g, path.sep);
+    const normSource = pair.source.replace(/[/\\]/g, path.sep);
+    const normDest = pair.dest.replace(/[/\\]/g, path.sep);
+
     if (normPath.startsWith(normSource)) {
-      return pair.dest + normPath.substring(normSource.length);
+      return normDest + normPath.substring(normSource.length);
     }
     return null;
   }
@@ -1027,6 +1290,10 @@ export async function pollAndUpdateDownloads(userId: string): Promise<Download[]
     if (historyItem) {
       if (historyItem.status === 'Completed') {
         await updateDownloadStatus(dl.id, 'completed');
+        // Track the completed game for future update checks
+        if (dl.mediaItemId && dl.mediaItemTitle) {
+          await ensureGameTracked(dl.mediaItemId, dl.mediaItemTitle);
+        }
         if (historyItem.storagePath) {
           await updateDownloadIsoPath(dl.id, historyItem.storagePath);
         }
@@ -1062,7 +1329,8 @@ export async function searchAndDownload(
   userId: string,
   mediaItemId: string | null,
   gameName: string,
-): Promise<{ download: Download; nzbResult: NZBResult } | { error: string }> {
+  allowHypervisorOverride?: boolean,
+): Promise<{ download: Download; nzbResult: NZBResult } | { error: string } | { hypervisorAvailable: true; hypervisorResults: NZBResult[]; gameName: string; error: string }> {
   await ensureDb();
   const config = await getConfig(userId);
   if (!config) return { error: 'Download configuration not found. Set up SABnzbd and NZBPlanet in Settings → Integrations.' };
@@ -1075,8 +1343,29 @@ export async function searchAndDownload(
     return { error: `No NZBs found for "${gameName}" on NZBPlanet.` };
   }
 
-  const best = autoPickBest(results, config.preferredRepackers);
+  // Filter to game-category results only (NZBPlanet can return Audio, XXX, etc.)
+  const gameResults = results.filter(r => {
+    const cat = r.category.toLowerCase();
+    return !cat || cat.startsWith('games') || cat.startsWith('console');
+  });
+
+  const allowHv = allowHypervisorOverride ?? config.allowHypervisor ?? false;
+  const best = autoPickBest(gameResults.length > 0 ? gameResults : results, config.preferredRepackers, allowHv);
   if (!best) {
+    // Check if hypervisor-tagged quality results exist but were filtered out
+    if (!allowHv) {
+      const pool = gameResults.length > 0 ? gameResults : results;
+      const qualityPool = filterQualityResults(pool);
+      const hvResults = qualityPool.filter(r => hasHypervisorTags(r));
+      if (hvResults.length > 0) {
+        return {
+          hypervisorAvailable: true,
+          hypervisorResults: hvResults,
+          gameName,
+          error: `Only hypervisor-tagged releases found for "${gameName}".`,
+        };
+      }
+    }
     return { error: `No quality releases found for "${gameName}". All results excluded (demos/updates).` };
   }
 
@@ -1091,6 +1380,27 @@ export async function searchAndDownload(
   }
 
   const download = await createDownload(userId, mediaItemId, gameName, best, nzoId);
+
+  // Track the base game for future update checks
+  if (mediaItemId) {
+    await ensureGameTracked(mediaItemId, gameName);
+  }
+
+  // ── Queue matching updates (update/patch/hotfix for the same game) ──
+  const updates = findMatchingUpdates(best.title, gameResults);
+  for (const update of updates) {
+    const updateNzoId = await addNzbToSabnzbd(
+      config.sabnzbdHost, config.sabnzbdPort ?? 8080,
+      config.sabnzbdApiKey, config.sabnzbdUseSsl,
+      update.nzbUrl, update.title,
+    );
+    if (updateNzoId) {
+      await createDownload(userId, mediaItemId, `${gameName} (Update)`, update, updateNzoId);
+      if (mediaItemId) {
+        await recordUpdateDownload(mediaItemId, gameName, update.title);
+      }
+    }
+  }
 
   if (mediaItemId) {
     await recordWishlistSearch(userId, mediaItemId, download.id);
@@ -1112,6 +1422,7 @@ export async function getScannedGamesFromDb(): Promise<any[]> {
     installDir: r.install_dir,
     platform: r.platform,
     iconUrl: r.icon_url || undefined,
+    posterUrl: r.poster_url || undefined,
     updateFiles: r.update_files ? JSON.parse(r.update_files) : undefined,
     otixMediaId: r.otix_media_id || undefined,
     otixMediaTitle: r.otix_media_title || undefined,
@@ -1127,10 +1438,10 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   for (const g of games) {
     _run(`
       INSERT OR REPLACE INTO scanned_games (
-        id, title, exe_path, local_exe_path, install_dir, platform, icon_url,
+        id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
         update_files, otix_media_id, otix_media_title, otix_media_slug,
         otix_confidence, otix_match_suggestion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       g.id,
       g.title,
@@ -1139,6 +1450,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
       g.installDir,
       g.platform,
       g.iconUrl || null,
+      g.posterUrl || null,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
       g.otixMediaId || null,
       g.otixMediaTitle || null,

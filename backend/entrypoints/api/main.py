@@ -30,14 +30,17 @@ async def lifespan(app: FastAPI) -> Any:
     # Run pending database migrations before accepting requests.
     # Alembic acquires an advisory lock so concurrent API containers don't race.
     try:
+        import asyncio
         from alembic.config import Config
         from alembic import command
 
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
-        command.upgrade(alembic_cfg, "head")
+        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+        setup_logging()
         logger.info("migrations applied")
     except Exception:
+        setup_logging()
         logger.exception("migrations failed — continuing startup")
 
     await get_redis()
@@ -77,6 +80,7 @@ def create_app() -> FastAPI:
     @app.get("/healthz")
     async def healthz():
         from otix.infrastructure.database import _get_engine
+
         try:
             engine = _get_engine()
             async with engine.connect() as conn:

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Loader2, CheckCircle2, XCircle, Clock, FolderOpen, X } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, FolderOpen, X, Trash2, ArchiveX } from 'lucide-react';
 import type { Download as DownloadType } from '../types';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   processing: Loader2,
   completed: CheckCircle2,
   failed: XCircle,
+  deleted: ArchiveX,
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -17,6 +18,7 @@ const STATUS_COLORS: Record<string, string> = {
   processing: 'text-purple-400',
   completed: 'text-green-400',
   failed: 'text-red-400',
+  deleted: 'text-muted-foreground',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -25,6 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   processing: 'Processing',
   completed: 'Completed',
   failed: 'Failed',
+  deleted: 'Deleted',
 };
 
 function formatSize(bytes: number | null): string {
@@ -38,10 +41,11 @@ function formatSize(bytes: number | null): string {
 interface DownloadCardProps {
   download: DownloadType;
   onCancel?: (id: string) => void;
+  onDelete?: (id: string) => void;
   onOpenFolder?: (path: string) => void;
 }
 
-export function DownloadCard({ download, onCancel, onOpenFolder }: DownloadCardProps) {
+export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: DownloadCardProps) {
   const StatusIcon = STATUS_ICONS[download.status] ?? Clock;
   const colorClass = STATUS_COLORS[download.status] ?? 'text-muted-foreground';
   const isActive = download.status === 'queued' || download.status === 'downloading';
@@ -109,6 +113,15 @@ export function DownloadCard({ download, onCancel, onOpenFolder }: DownloadCardP
             title="Cancel download"
           >
             <X className="h-4 w-4" />
+          </button>
+        )}
+        {!isActive && onDelete && (
+          <button
+            onClick={() => onDelete(download.id)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            title="Delete download"
+          >
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
         {download.status === 'completed' && download.isoPath && onOpenFolder && (

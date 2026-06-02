@@ -1,4 +1,4 @@
-/** Shared types for the downloads feature. Mirrors electron.d.ts. */
+/** Shared types for the downloads feature. Mirrors @desktop/preload-api. */
 
 export interface NZBResult {
   guid: string;
@@ -24,6 +24,9 @@ export interface DownloadConfig {
   autoSearchWishlist: boolean;
   wishlistIntervalHours: number;
   preferredRepackers?: string | null;
+  allowHypervisor?: boolean;
+  autoOrganizeEnabled?: boolean;
+  namingTemplate?: string | null;
 }
 
 export interface Download {
@@ -48,4 +51,11 @@ export interface WishlistTrackingEntry {
   mediaItemId: string;
   attempts: number;
   lastSearchedAt: string | null;
+}
+
+export interface HypervisorConfirmResponse {
+  hypervisorAvailable: true;
+  hypervisorResults: NZBResult[];
+  gameName: string;
+  error: string;
 }

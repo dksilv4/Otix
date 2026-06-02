@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { RunningGame, PlaySession } from '@/electron.d';
+import type { RunningGame, PlaySession } from '@desktop/preload-api';
 
 export function useGameDetector() {
   const [runningGame, setRunningGame] = useState<RunningGame | null>(null);

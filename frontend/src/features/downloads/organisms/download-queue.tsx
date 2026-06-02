@@ -13,7 +13,7 @@ export function DownloadQueuePage() {
   const { enabled: downloadsEnabled } = useExperiment('download_integration');
   const userId = user?.id;
   const { downloads, loading, pollQueue, cancelDownload } = useDownloads(userId);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'deleted'>('all');
 
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
 
@@ -45,6 +45,8 @@ export function DownloadQueuePage() {
   const filtered = downloads.filter((d) => {
     if (filter === 'active') return d.status === 'queued' || d.status === 'downloading';
     if (filter === 'completed') return d.status === 'completed' || d.status === 'failed';
+    if (filter === 'deleted') return d.status === 'deleted';
+    if (filter === 'all') return d.status !== 'deleted';
     return true;
   });
 
@@ -72,7 +74,7 @@ export function DownloadQueuePage() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-4">
-        {(['all', 'active', 'completed'] as const).map((f) => (
+        {(['all', 'active', 'completed', 'deleted'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -83,7 +85,7 @@ export function DownloadQueuePage() {
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]',
             )}
           >
-            {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Completed'}
+            {f === 'all' ? 'All' : f === 'active' ? 'Active' : f === 'completed' ? 'Completed' : 'Deleted'}
           </button>
         ))}
       </div>
@@ -104,6 +106,7 @@ export function DownloadQueuePage() {
               key={dl.id}
               download={dl}
               onCancel={cancelDownload}
+              onDelete={cancelDownload}
             />
           ))}
         </div>

@@ -47,6 +47,7 @@ type PlexSyncEvent =
   | { type: 'server_found'; serverName: string }
   | { type: 'library_found'; serverName: string; libraryName: string; libraryType: string }
   | { type: 'syncing_library'; serverName: string; libraryName: string; itemsTotal: number }
+  | { type: 'item_syncing'; serverName?: string; libraryName?: string; index: number; total: number; title: string; mediaType: string }
   | { type: 'library_progress'; serverName: string; libraryName: string; itemsProcessed: number; itemsTotal: number }
   | { type: 'library_complete'; serverName: string; libraryName: string; total: number; matched: number; seeded: number }
   | { type: 'sync_complete'; servers: number; libraries: number; total: number; matched: number; seeded: number }
@@ -57,6 +58,8 @@ type PlexProgressState = {
   libraryName?: string
   itemsProcessed?: number
   itemsTotal?: number
+  currentTitle?: string
+  currentIndex?: number
 }
 
 type SpotifySyncEvent =
@@ -955,12 +958,30 @@ export function IntegrationsSection() {
               itemsProcessed: 0,
             })
             break
-          case 'library_progress':
+          case 'item_syncing':
             setPlexProgress((prev) => prev ? {
               ...prev,
-              itemsProcessed: event.itemsProcessed,
-              itemsTotal: event.itemsTotal,
-            } : null)
+              phase: `[${event.mediaType}] ${event.title}`,
+              currentTitle: event.title,
+              currentIndex: event.index,
+              itemsProcessed: event.index,
+              itemsTotal: event.total,
+            } : {
+              phase: `[${event.mediaType}] ${event.title}`,
+              currentTitle: event.title,
+              currentIndex: event.index,
+              itemsProcessed: event.index,
+              itemsTotal: event.total,
+            })
+            break
+          case 'library_progress':
+            setPlexProgress((prev) => {
+              return prev ? {
+                ...prev,
+                itemsProcessed: event.itemsProcessed,
+                itemsTotal: event.itemsTotal,
+              } : null
+            })
             break
           case 'library_complete':
             setPlexProgress({
@@ -1334,7 +1355,12 @@ export function IntegrationsSection() {
                     />
                   </div>
                   {plexProgress && plexProgress.itemsTotal !== undefined && plexProgress.itemsTotal > 0 && (
-                    <div className="px-5 py-3 space-y-1 border-t border-border/20">
+                    <div className="px-5 py-3 space-y-2 border-t border-border/20">
+                      {plexProgress.currentTitle && (
+                        <p className="text-xs text-muted-foreground/70 truncate">
+                          {plexProgress.currentTitle}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{plexProgress.itemsProcessed ?? 0} / {plexProgress.itemsTotal} items</span>
                         <span>{plexProgress.itemsProcessed !== undefined && plexProgress.itemsTotal ? `${Math.round((plexProgress.itemsProcessed / plexProgress.itemsTotal) * 100)}%` : ''}</span>

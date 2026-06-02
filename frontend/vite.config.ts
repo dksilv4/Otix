@@ -18,6 +18,7 @@ export default defineConfig({
       '@company': path.resolve(__dirname, 'src/features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
       '@dk-ui': path.resolve(__dirname, 'src/features/dk-ui'),
+      '@desktop': path.resolve(__dirname, '../desktop'),
     },
   },
   server: {

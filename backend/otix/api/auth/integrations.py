@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.auth.helpers import _gravatar_url
 from otix.api.auth.spotify import _spotify_stats
 from otix.api.auth.tmdb import _tmdb_stats
-from otix.api.deps import get_current_user
+from otix.api.deps import get_current_user, get_db
 from otix.api.schemas.auth import (
     IntegrationProviderResponse,
     IntegrationsResponse,
@@ -23,6 +24,7 @@ auth_router = APIRouter()
 @auth_router.get("/integrations", response_model=IntegrationsResponse)
 async def list_integrations(
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> IntegrationsResponse:
     async def fetch_steam():
         if current_user.steam_id is None:
@@ -60,7 +62,7 @@ async def list_integrations(
         fetch_steam(),
         backfill_tmdb_avatar(),
         _tmdb_stats(current_user),
-        _spotify_stats(current_user),
+        _spotify_stats(current_user, db),
     )
 
     providers = [

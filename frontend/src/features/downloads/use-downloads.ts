@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry } from './types';
+import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry, HypervisorConfirmResponse } from './types';
 
 function isElectron(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI;
@@ -51,13 +51,13 @@ export function useNzbSearch() {
   const [searching, setSearching] = useState(false);
   const [bestPick, setBestPick] = useState<NZBResult | null>(null);
 
-  const search = useCallback(async (query: string, apiKey: string) => {
+  const search = useCallback(async (query: string, apiKey: string, allowHypervisor?: boolean) => {
     if (!isElectron()) return [];
     setSearching(true);
     try {
       const r = await window.electronAPI!.downloadsSearch(query, apiKey);
       setResults(r);
-      const best = await window.electronAPI!.downloadsAutoPick(r);
+      const best = await window.electronAPI!.downloadsAutoPick(r, allowHypervisor);
       setBestPick(best);
       return r;
     } catch (err) {
@@ -97,11 +97,12 @@ export function useDownloads(userId: string | undefined) {
     uid: string,
     mediaItemId: string | null,
     gameName: string,
-  ): Promise<{ download: Download } | { error: string }> => {
+    allowHypervisor?: boolean,
+  ): Promise<{ download: Download } | { error: string } | HypervisorConfirmResponse> => {
     if (!isElectron()) return { error: 'Not in Electron' };
     setLoading(true);
     try {
-      const result = await window.electronAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName);
+      const result = await window.electronAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor);
       await fetchDownloads();
       return result;
     } catch (err: any) {

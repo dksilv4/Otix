@@ -23,7 +23,7 @@ auth_router = APIRouter()
 logger = structlog.get_logger()
 
 
-async def _spotify_stats(user: User) -> dict | None:
+async def _spotify_stats(user: User, db: AsyncSession) -> dict | None:
     if user.spotify_id is None:
         return None
     try:
@@ -35,6 +35,9 @@ async def _spotify_stats(user: User) -> dict | None:
         profile = await get_spotify_user_profile(token)
         if not profile:
             return None
+        # get_user_access_token may have refreshed the token in-memory on user;
+        # commit so the new token isn't lost after this request.
+        await db.commit()
         return {
             "followers": (profile.get("followers") or {}).get("total", 0),
             "product": profile.get("product"),

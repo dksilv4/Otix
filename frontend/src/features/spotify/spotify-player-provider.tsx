@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 
+
 interface SpotifyPlayerInstance {
   device_id: string
   connect: () => Promise<boolean>
@@ -99,6 +100,10 @@ interface SpotifyPlayerContextValue {
   playWithQueue: (uris: string[]) => Promise<void>
   setQueueMetadata: (tracks: QueueTrack[]) => void
   dismissError: () => void
+  /** Desktop (Connect) mode: available Spotify Connect devices */
+  availableDevices: Array<{ id: string; name: string; type: string; isActive: boolean }>
+  /** Transfer playback to a specific device */
+  selectDevice: (deviceId: string) => Promise<void>
 }
 
 const SpotifyPlayerContext = createContext<SpotifyPlayerContextValue | null>(null)
@@ -201,6 +206,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   const [nextTracks, setNextTracks] = useState<QueueTrack[]>([])
   const [previousTracks, setPreviousTracks] = useState<QueueTrack[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [availableDevices, setAvailableDevices] = useState<Array<{ id: string; name: string; type: string; isActive: boolean }>>([])
   const playerRef = useRef<SpotifyPlayerInstance | null>(null)
   const deviceIdRef = useRef<string | null>(null)
   const tokenRef = useRef<string | null>(null)
@@ -211,6 +217,17 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   const pendingPlaybackRef = useRef<{ uri: string; expiresAt: number } | null>(null)
   const queuedTracksRef = useRef<QueueTrack[]>([])
   const tickCounterRef = useRef(0)
+  /** Number of consecutive auth failures — used as circuit breaker to stop SDK retry storms */
+  const authFailureCountRef = useRef(0)
+  const AUTH_FAILURE_LIMIT = 5
+
+  // Are we running in Electron? If so skip Web Playback SDK (no DRM/CDM
+  // guarantees) and use the Connect REST API as a remote control instead.
+  const [isElectron] = useState(() => typeof window !== 'undefined' && !!(window as any).electronAPI)
+  const [connectMode] = useState(isElectron)
+  // Mirror availableDevices in a ref so Connect play callbacks can read the
+  // latest active device without needing state in their dependency arrays.
+  const availableDevicesRef = useRef<Array<{ id: string; name: string; type: string; isActive: boolean }>>([])
 
   const hasSpotify = isAuthenticated && !!user?.spotifyId
 
@@ -292,287 +309,18 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     }
   }, [isPlaying, duration])
 
-  // Load SDK script
+  // Keep ref in sync with state so Electron play callbacks always see the
+  // latest device list without adding availableDevices to their dep arrays.
   useEffect(() => {
-    if (!hasSpotify || sdkLoadedRef.current) return
-
-    const existing = document.querySelector(`script[src="${SDK_URL}"]`)
-    if (existing) {
-      sdkLoadedRef.current = true
-      return
-    }
-
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      sdkLoadedRef.current = true
-    }
-    const script = document.createElement('script')
-    script.src = SDK_URL
-    script.async = true
-    script.onerror = () => {
-      console.error('Failed to load Spotify Web Playback SDK from', SDK_URL)
-    }
-    document.body.appendChild(script)
-  }, [hasSpotify])
-
-  // Create and connect player
-  useEffect(() => {
-    if (!hasSpotify) return
-
-    let player: SpotifyPlayerInstance | null = null
-    let disposed = false
-
-    async function initPlayer() {
-      if (disposed) return
-
-      // Retry token fetch up to 3 times for transient failures
-      let token: string | null = null
-      for (let attempt = 0; attempt < 3; attempt++) {
-        token = await fetchAccessToken()
-        if (token) break
-        if (attempt < 2) await sleep(1000 * (attempt + 1))
-      }
-
-      if (disposed) return
-
-      if (!token) {
-        console.error('Spotify player cannot initialize: failed to fetch access token')
-        notifyError(
-          'Could not start Spotify player',
-          'Check your Spotify connection in Settings and try reconnecting.',
-        )
-        return
-      }
-      tokenRef.current = token
-
-      player = new window.Spotify.Player({
-        name: 'Otix',
-        getOAuthToken: (cb: (token: string) => void) => {
-          // If we already have a token, use it immediately so the SDK
-          // doesn't block on connect() waiting for a network round-trip.
-          if (tokenRef.current) {
-            cb(tokenRef.current)
-            return
-          }
-
-          let attempts = 0
-          const tryFetch = async () => {
-            const t = await fetchAccessToken()
-            if (t) {
-              tokenRef.current = t
-              cb(t)
-              return
-            }
-            attempts++
-            if (attempts < 3) {
-              setTimeout(tryFetch, 1000 * attempts)
-            } else {
-              console.error('Spotify SDK requested token but fetch failed after 3 attempts')
-              // Must call cb even on failure — otherwise connect() hangs
-              // forever and the player never reaches a terminal state.
-              cb('')
-              notifyError(
-                'Spotify session expired',
-                'Reconnect your Spotify account in Settings.',
-              )
-            }
-          }
-          tryFetch()
-        },
-        volume: 0.5,
-      }) as unknown as SpotifyPlayerInstance
-
-      playerRef.current = player
-
-      player.addListener('ready', async ({ device_id }: { device_id: string }) => {
-        deviceIdRef.current = device_id
-        setIsReady(true)
-        setError(null)
-
-        // Resume playback from last session, or transfer from another device
-        if (!resumeAttemptedRef.current && !disposed) {
-          resumeAttemptedRef.current = true
-          const saved = loadPlaybackState()
-
-          if (saved && saved.uri && saved.wasPlaying) {
-            // Case 1: Was playing in Otix before reload — resume exactly where we left off
-            try {
-              const token = tokenRef.current || (await fetchAccessToken())
-              if (!token) return
-              await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${device_id}`, {
-                method: 'PUT',
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ uris: [saved.uri], position_ms: saved.position }),
-              })
-            } catch {
-              clearPlaybackState()
-            }
-          } else {
-            // Case 2: No local resume state — check if the user is playing on another
-            // Spotify device (phone, desktop app, etc.) and transfer playback here.
-            try {
-              const token = tokenRef.current || (await fetchAccessToken())
-              if (!token) return
-              const res = await fetch('https://api.spotify.com/v1/me/player', {
-                headers: { Authorization: `Bearer ${token}` },
-              })
-              if (res.status === 200) {
-                const playerState = await res.json()
-                if (playerState.device && playerState.device.id !== device_id && playerState.item) {
-                  await fetch('https://api.spotify.com/v1/me/player', {
-                    method: 'PUT',
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ device_ids: [device_id] }),
-                  })
-                }
-              }
-            } catch {
-              // Optional — don't notify the user for this best-effort transfer
-            }
-          }
-        }
-      })
-
-      player.addListener('not_ready', () => {
-        deviceIdRef.current = null
-        setIsReady(false)
-      })
-
-      player.addListener('player_state_changed', (state: PlaybackState | null) => {
-        if (!state) {
-          setIsPlaying(false)
-          setCurrentTrack(null)
-          setPosition(0)
-          setDuration(0)
-          setNextTracks([])
-          return
-        }
-
-        setIsPlaying(!state.paused)
-        setPosition(state.position)
-        setDuration(state.duration)
-
-        const track = state.track_window.current_track
-        setCurrentTrack({
-          id: track.id,
-          uri: track.uri,
-          name: track.name,
-          artist: track.artists.map((a) => a.name).join(', '),
-          artists: track.artists.map((a) => ({ name: a.name, uri: a.uri })),
-          albumName: track.album.name,
-          albumArt: track.album.images[0]?.url ?? null,
-          durationMs: track.duration_ms,
-        })
-
-        // Use our client-side queue when available (shows all upcoming tracks),
-        // otherwise fall back to the SDK's limited next_tracks.
-        const storedQueue = queuedTracksRef.current
-        const currentIdx = storedQueue.findIndex((q) => q.uri === track.uri)
-        if (currentIdx >= 0) {
-          // Push tracks before current to previous, and slice upcoming
-          setPreviousTracks((prev) => {
-            const newPrev = storedQueue.slice(0, currentIdx)
-            // Deduplicate: only add tracks not already in the previous list
-            const existingUris = new Set(prev.map((p) => p.uri))
-            const toAdd = newPrev.filter((t) => !existingUris.has(t.uri))
-            return [...prev, ...toAdd]
-          })
-          const upcoming = storedQueue.slice(currentIdx + 1)
-          setNextTracks(upcoming.length > 0 ? upcoming : state.track_window.next_tracks.map(trackToQueueTrack))
-        } else {
-          setNextTracks(state.track_window.next_tracks.map(trackToQueueTrack))
-        }
-      })
-
-      player.addListener('initialization_error', ({ message }: { message: string }) => {
-        console.error('Spotify player initialization error:', message)
-        notifyError('Failed to initialize Spotify player')
-      })
-
-      player.addListener('authentication_error', ({ message }: { message: string }) => {
-        console.error('Spotify player auth error:', message)
-        notifyError('Spotify authentication failed', 'Try reconnecting your Spotify account.')
-      })
-
-      player.addListener('account_error', ({ message }: { message: string }) => {
-        console.error('Spotify player account error:', message)
-        notifyError('Spotify Premium is required for playback')
-      })
-
-      player.addListener('playback_error', ({ message }: { message: string }) => {
-        console.error('Spotify playback error:', message)
-        window.setTimeout(async () => {
-          if (await playbackStarted(getPendingPlaybackUri())) return
-          notifyError('Playback error', 'Try again in a moment.')
-        }, 700)
-      })
-
-      try {
-        const connected = await player.connect()
-        if (!connected && !disposed) {
-          notifyError('Could not connect Spotify player')
-        }
-      } catch (err) {
-        console.error('Spotify player connect threw:', err)
-        if (!disposed) {
-          notifyError('Could not connect Spotify player')
-        }
-      }
-    }
-
-    const tryInit = () => {
-      if (window.Spotify) {
-        initPlayer()
-      } else {
-        window.onSpotifyWebPlaybackSDKReady = () => {
-          if (!disposed) initPlayer()
-        }
-      }
-    }
-
-    const timeout = setTimeout(tryInit, 500)
-
-    let reconnecting = false
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && !disposed) {
-        if (playerRef.current) {
-          playerRef.current.connect().catch((err) => {
-            console.error('Spotify player reconnect threw:', err)
-          })
-        } else if (!reconnecting && window.Spotify) {
-          reconnecting = true
-          initPlayer().finally(() => {
-            reconnecting = false
-          })
-        }
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    return () => {
-      disposed = true
-      clearTimeout(timeout)
-      document.removeEventListener('visibilitychange', handleVisibility)
-      if (player) {
-        player.disconnect()
-        playerRef.current = null
-      }
-      setIsReady(false)
-      setIsPlaying(false)
-      setCurrentTrack(null)
-      setPosition(0)
-      setDuration(0)
-    }
-  }, [getPendingPlaybackUri, hasSpotify, notifyError, playbackStarted])
+    availableDevicesRef.current = availableDevices
+  }, [availableDevices])
 
   const callSpotifyApi = useCallback(async (method: string, path: string, body?: unknown) => {
-    let token = tokenRef.current || (await fetchAccessToken())
+    let token = tokenRef.current
+    if (!token) {
+      token = await fetchAccessToken()
+      if (token) tokenRef.current = token
+    }
     if (!token) throw new Error('No Spotify token')
 
     const res = await fetch(`https://api.spotify.com/v1${path}`, {
@@ -615,6 +363,398 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     throw new Error(`Spotify API error: ${res.status}`)
   }, [])
 
+  // ── Desktop (Electron) mode: Spotify Connect REST API ──────
+  // Instead of the Web Playback SDK (which requires EME/PlayReady
+  // unavailable in Electron on Windows), poll the REST API for the
+  // currently-playing track and control external Spotify Connect devices.
+
+  useEffect(() => {
+    // Connect fallback is only active when the SDK has failed in Electron.
+    if (!hasSpotify || !connectMode) return
+
+    let disposed = false
+    setIsReady(true) // Connect mode is always "ready" to receive commands
+
+    async function pollPlayback() {
+      if (disposed) return
+      try {
+        const data = await callSpotifyApi('GET', '/me/player/currently-playing')
+        if (disposed) return
+        if (!data || !data.item) {
+          setIsPlaying(false)
+          setCurrentTrack(null)
+          setPosition(0)
+          setDuration(0)
+          return
+        }
+        setIsPlaying(data.is_playing ?? false)
+        setPosition(data.progress_ms ?? 0)
+        setDuration(data.item.duration_ms ?? 0)
+        const item = data.item
+        setCurrentTrack({
+          id: item.id,
+          uri: item.uri,
+          name: item.name,
+          artist: (item.artists ?? []).map((a: any) => a.name).join(', '),
+          artists: (item.artists ?? []).map((a: any) => ({ name: a.name, uri: a.uri })),
+          albumName: item.album?.name ?? '',
+          albumArt: item.album?.images?.[0]?.url ?? null,
+          durationMs: item.duration_ms ?? 0,
+        })
+      } catch {
+        // Transient network/API error — preserve existing state to avoid flashing
+        // empty on intermittent failures; the next poll will correct it.
+      }
+    }
+
+    async function pollDevices() {
+      if (disposed) return
+      try {
+        const data = await callSpotifyApi('GET', '/me/player/devices')
+        if (disposed || !data?.devices) return
+        setAvailableDevices(
+          (data.devices as Array<{ id: string; name: string; type: string; is_active: boolean }>).map((d) => ({
+            id: d.id,
+            name: d.name,
+            type: d.type,
+            isActive: d.is_active,
+          })),
+        )
+      } catch { /* best effort */ }
+    }
+
+    pollPlayback()
+    pollDevices()
+    const playbackTimer = setInterval(pollPlayback, 3000)
+    const deviceTimer = setInterval(pollDevices, 15000)
+
+    return () => {
+      disposed = true
+      clearInterval(playbackTimer)
+      clearInterval(deviceTimer)
+    }
+  }, [hasSpotify, connectMode, callSpotifyApi])
+
+  // Load SDK script (browser only — Electron uses Connect REST API)
+  // Load SDK script (browser only — Electron uses Connect REST API)
+  useEffect(() => {
+    if (!hasSpotify || sdkLoadedRef.current || isElectron) return
+
+    const existing = document.querySelector(`script[src="${SDK_URL}"]`)
+    if (existing) {
+      sdkLoadedRef.current = true
+      return
+    }
+
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      sdkLoadedRef.current = true
+    }
+    const script = document.createElement('script')
+    script.src = SDK_URL
+    script.async = true
+    script.onerror = () => {
+      console.error('Failed to load Spotify Web Playback SDK from', SDK_URL)
+    }
+    document.body.appendChild(script)
+  }, [hasSpotify])
+
+  // Create and connect player (browser only — Electron uses Connect REST API)
+  useEffect(() => {
+  // Create and connect player (browser only — Electron uses Connect REST API)
+    if (!hasSpotify || isElectron) return
+
+    let player: SpotifyPlayerInstance | null = null
+    let disposed = false
+
+    // Wait for the first ready or initialization_error event from the SDK.
+    // Returns true on ready, false on error/connect-failure.
+    function waitForInit(p: SpotifyPlayerInstance): Promise<boolean> {
+      return new Promise((resolve) => {
+        let settled = false
+        const onReady = () => { if (settled) return; settled = true; cleanup(); resolve(true) }
+        const onError = () => { if (settled) return; settled = true; cleanup(); resolve(false) }
+        const cleanup = () => {
+          p.removeListener('ready', onReady)
+          p.removeListener('initialization_error', onError)
+        }
+        p.addListener('ready', onReady)
+        p.addListener('initialization_error', onError)
+        // Safety timeout — if neither event fires within 15 s, treat as failure
+        setTimeout(() => { if (!settled) { settled = true; cleanup(); resolve(false) } }, 15000)
+      })
+    }
+
+    async function initOne(): Promise<boolean> {
+      if (disposed) return false
+
+      // Retry token fetch up to 3 times for transient failures
+      let token: string | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        token = await fetchAccessToken()
+        if (token) break
+        if (attempt < 2) await sleep(1000 * (attempt + 1))
+      }
+
+      if (disposed) return false
+
+      if (!token) {
+        console.error('Spotify player cannot initialize: failed to fetch access token')
+        notifyError(
+          'Could not start Spotify player',
+          'Check your Spotify connection in Settings and try reconnecting.',
+        )
+        return false
+      }
+      tokenRef.current = token
+
+      player = new window.Spotify.Player({
+        name: 'Otix',
+        getOAuthToken: (cb: (token: string) => void) => {
+          // Always fetch fresh token — SDK calls this on 401 to retry.
+          // Returning stale tokenRef.current causes infinite 401 retry storm.
+          let attempts = 0
+          const tryFetch = async () => {
+            const t = await fetchAccessToken()
+            if (t) {
+              tokenRef.current = t
+              cb(t)
+              return
+            }
+            attempts++
+            if (attempts < 3) {
+              setTimeout(tryFetch, 1000 * attempts)
+            } else {
+              console.error('Spotify SDK requested token but fetch failed after 3 attempts')
+              cb('')
+              notifyError(
+                'Spotify session expired',
+                'Reconnect your Spotify account in Settings.',
+              )
+            }
+          }
+          tryFetch()
+        },
+        volume: 0.5,
+      }) as unknown as SpotifyPlayerInstance
+
+      playerRef.current = player
+
+      // ── Persistent event listeners ────────────────────────────
+
+      player.addListener('ready', async ({ device_id }: { device_id: string }) => {
+        authFailureCountRef.current = 0  // reset circuit breaker on successful init
+        deviceIdRef.current = device_id
+        setIsReady(true)
+        setError(null)
+
+        // Resume playback from last session, or transfer from another device
+        if (!resumeAttemptedRef.current && !disposed) {
+          resumeAttemptedRef.current = true
+          const saved = loadPlaybackState()
+
+          if (saved && saved.uri && saved.wasPlaying) {
+            try {
+              const token = tokenRef.current || (await fetchAccessToken())
+              if (!token) return
+              await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${device_id}`, {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ uris: [saved.uri], position_ms: saved.position }),
+              })
+            } catch {
+              clearPlaybackState()
+            }
+          } else {
+            try {
+              const token = tokenRef.current || (await fetchAccessToken())
+              if (!token) return
+              const res = await fetch('https://api.spotify.com/v1/me/player', {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              if (res.status === 200) {
+                const playerState = await res.json()
+                if (playerState.device && playerState.device.id !== device_id && playerState.item) {
+                  await fetch('https://api.spotify.com/v1/me/player', {
+                    method: 'PUT',
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ device_ids: [device_id] }),
+                  })
+                }
+              }
+            } catch { /* optional */ }
+          }
+        }
+      })
+
+      player.addListener('not_ready', () => {
+        deviceIdRef.current = null
+        setIsReady(false)
+      })
+
+      player.addListener('player_state_changed', (state: PlaybackState | null) => {
+        if (!state) {
+          setIsPlaying(false)
+          setCurrentTrack(null)
+          setPosition(0)
+          setDuration(0)
+          setNextTracks([])
+          return
+        }
+
+        setIsPlaying(!state.paused)
+        setPosition(state.position)
+        setDuration(state.duration)
+
+        const track = state.track_window.current_track
+        setCurrentTrack({
+          id: track.id,
+          uri: track.uri,
+          name: track.name,
+          artist: track.artists.map((a) => a.name).join(', '),
+          artists: track.artists.map((a) => ({ name: a.name, uri: a.uri })),
+          albumName: track.album.name,
+          albumArt: track.album.images[0]?.url ?? null,
+          durationMs: track.duration_ms,
+        })
+
+        const storedQueue = queuedTracksRef.current
+        const currentIdx = storedQueue.findIndex((q) => q.uri === track.uri)
+        if (currentIdx >= 0) {
+          setPreviousTracks((prev) => {
+            const newPrev = storedQueue.slice(0, currentIdx)
+            const existingUris = new Set(prev.map((p) => p.uri))
+            const toAdd = newPrev.filter((t) => !existingUris.has(t.uri))
+            return [...prev, ...toAdd]
+          })
+          const upcoming = storedQueue.slice(currentIdx + 1)
+          setNextTracks(upcoming.length > 0 ? upcoming : state.track_window.next_tracks.map(trackToQueueTrack))
+        } else {
+          setNextTracks(state.track_window.next_tracks.map(trackToQueueTrack))
+        }
+      })
+
+      player.addListener('authentication_error', ({ message }: { message: string }) => {
+        authFailureCountRef.current++
+        console.error('Spotify player auth error:', message, `(x${authFailureCountRef.current})`)
+
+        if (authFailureCountRef.current >= AUTH_FAILURE_LIMIT) {
+          // Circuit breaker: disconnect player to stop SDK internal retry storm.
+          // The SDK loops indefinitely on check_scope / state 401s unless we
+          // tear down the player instance.
+          console.warn('Spotify auth failure limit reached — disconnecting player')
+          notifyError(
+            'Spotify connection lost',
+            'Reconnect your Spotify account in Settings.',
+          )
+          try { player?.disconnect() } catch { /* ignore */ }
+          return
+        }
+
+        notifyError('Spotify authentication failed', 'Try reconnecting your Spotify account.')
+      })
+
+      player.addListener('account_error', ({ message }: { message: string }) => {
+        console.error('Spotify player account error:', message)
+        notifyError('Spotify Premium is required for playback')
+      })
+
+      player.addListener('playback_error', ({ message }: { message: string }) => {
+        console.error('Spotify playback error:', message)
+        window.setTimeout(async () => {
+          if (await playbackStarted(getPendingPlaybackUri())) return
+          notifyError('Playback error', 'Try again in a moment.')
+        }, 700)
+      })
+
+      // Connect and wait for the SDK to confirm (ready) or deny (initialization_error)
+      try {
+        const connectPromise = player.connect()
+        const ok = await waitForInit(player)
+        await connectPromise  // let the connect promise settle so errors are consumed
+        if (ok) return true
+      } catch (err) {
+        console.error('Spotify player connect threw:', err)
+      }
+
+      // Init failed — clean up so the retry loop can retry
+      if (!disposed) {
+        player.disconnect()
+        player = null
+        playerRef.current = null
+        tokenRef.current = null
+      }
+      return false
+    }
+
+    async function initWithRetry() {
+      if (disposed) return false
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (attempt > 1) {
+          setError(`Reconnecting to Spotify (attempt ${attempt}/3)…`)
+          await sleep(500 * (attempt - 1))
+        }
+        console.log(`Spotify init attempt ${attempt}/3`)
+        const ok = await initOne()
+        if (ok) return true
+        if (disposed) return false
+      }
+      notifyError(
+        'Failed to initialize Spotify player',
+        'Check your Spotify connection in Settings and try reconnecting.',
+      )
+      return false
+    }
+
+    const tryInit = () => {
+      if (window.Spotify) {
+        initWithRetry()
+      } else {
+        window.onSpotifyWebPlaybackSDKReady = () => {
+          if (!disposed) initWithRetry()
+        }
+      }
+    }
+
+    const timeout = setTimeout(tryInit, 100)
+
+    let reconnecting = false
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && !disposed) {
+        if (playerRef.current) {
+          playerRef.current.connect().catch((err) => {
+            console.error('Spotify player reconnect threw:', err)
+          })
+        } else if (!reconnecting && window.Spotify) {
+          reconnecting = true
+          initOne().finally(() => { reconnecting = false })
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      disposed = true
+      clearTimeout(timeout)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      if (player) {
+        player.disconnect()
+        playerRef.current = null
+      }
+      setIsReady(false)
+      setIsPlaying(false)
+      setCurrentTrack(null)
+      setPosition(0)
+      setDuration(0)
+    }
+  }, [getPendingPlaybackUri, hasSpotify, notifyError, playbackStarted])
+
   const startPlayback = useCallback(
     async (deviceId: string, body: unknown) => {
       const path = `/me/player/play?device_id=${deviceId}`
@@ -653,6 +793,24 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
   const play = useCallback(
     async (spotifyUri: string) => {
+      if (connectMode) {
+        setError(null)
+        markPendingPlayback(spotifyUri)
+        try {
+          // Route to the currently active Spotify Connect device so playback
+          // doesn't accidentally land on a browser SDK device when both are open.
+          const activeDevice = availableDevicesRef.current.find((d) => d.isActive)
+          const path = activeDevice
+            ? `/me/player/play?device_id=${activeDevice.id}`
+            : '/me/player/play'
+          await callSpotifyApi('PUT', path, { uris: [spotifyUri] })
+        } catch (e) {
+          console.error('Play error:', e)
+          notifyError('Could not start playback', 'Make sure Spotify is open on a device.')
+        }
+        return
+      }
+
       const deviceId = await waitForValue(() => deviceIdRef.current)
       if (!deviceId) {
         notifyError('Spotify player is still connecting', 'Try again in a moment.')
@@ -674,10 +832,25 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         notifyError('Could not start playback')
       }
     },
-    [markPendingPlayback, notifyError, playbackStarted, startPlayback, verifyAndResume],
+    [markPendingPlayback, notifyError, playbackStarted, startPlayback, verifyAndResume, callSpotifyApi],
   )
 
   const togglePlay = useCallback(async () => {
+    if (connectMode) {
+      try {
+        if (isPlaying) {
+          await callSpotifyApi('PUT', '/me/player/pause')
+          setIsPlaying(false) // optimistic update — avoids double-toggle on stale 3-second poll state
+        } else {
+          await callSpotifyApi('PUT', '/me/player/play')
+          setIsPlaying(true)
+        }
+      } catch {
+        notifyError('Could not toggle playback', 'Make sure Spotify is playing on a device.')
+      }
+      return
+    }
+
     const player = await waitForValue(() => playerRef.current)
     if (!player) {
       notifyError('Spotify player is still connecting', 'Try again in a moment.')
@@ -688,9 +861,14 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     } catch {
       notifyError('Could not toggle playback')
     }
-  }, [notifyError])
+  }, [connectMode, isPlaying, notifyError, callSpotifyApi])
 
   const skipNext = useCallback(async () => {
+    if (connectMode) {
+      try { await callSpotifyApi('POST', '/me/player/next') }
+      catch { notifyError('Could not skip track') }
+      return
+    }
     const player = await waitForValue(() => playerRef.current)
     if (!player) return
     try {
@@ -698,9 +876,14 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     } catch {
       notifyError('Could not skip track')
     }
-  }, [notifyError])
+  }, [connectMode, notifyError, callSpotifyApi])
 
   const skipPrevious = useCallback(async () => {
+    if (connectMode) {
+      try { await callSpotifyApi('POST', '/me/player/previous') }
+      catch { notifyError('Could not go back') }
+      return
+    }
     const player = await waitForValue(() => playerRef.current)
     if (!player) return
     try {
@@ -708,10 +891,19 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     } catch {
       notifyError('Could not go back')
     }
-  }, [notifyError])
+  }, [connectMode, notifyError, callSpotifyApi])
 
   const seek = useCallback(
     async (positionMs: number) => {
+      if (connectMode) {
+        try {
+          await callSpotifyApi('PUT', `/me/player/seek?position_ms=${positionMs}`)
+          setPosition(positionMs)
+        } catch {
+          notifyError('Could not seek')
+        }
+        return
+      }
       const deviceId = await waitForValue(() => deviceIdRef.current)
       if (!deviceId) return
 
@@ -722,21 +914,19 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
         notifyError('Could not seek')
       }
     },
-    [callSpotifyApi, notifyError],
+    [connectMode, callSpotifyApi, notifyError],
   )
 
   const setPlayerVolume = useCallback(async (vol: number) => {
     const clamped = Math.min(1, Math.max(0, vol))
     setVolumeState(clamped)
-
-    if (playerRef.current) {
+    // Connect mode: Spotify REST API doesn't control local volume — keep UI state only.
+    if (!connectMode && playerRef.current) {
       try {
         await playerRef.current.setVolume(clamped)
-      } catch {
-        // volume change failed, keep UI state
-      }
+      } catch { /* best effort */ }
     }
-  }, [])
+  }, [connectMode])
 
   const addToQueue = useCallback(
     async (spotifyUri: string) => {
@@ -755,6 +945,24 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
   const playWithQueue = useCallback(
     async (uris: string[]) => {
+      // Connect fallback mode — use the REST API directly; no SDK device required
+      if (connectMode) {
+        if (uris.length === 0) return
+        setError(null)
+        markPendingPlayback(uris[0])
+        try {
+          const activeDevice = availableDevicesRef.current.find((d) => d.isActive)
+          const path = activeDevice
+            ? `/me/player/play?device_id=${activeDevice.id}`
+            : '/me/player/play'
+          await callSpotifyApi('PUT', path, { uris: uris.slice(0, 100) })
+        } catch (e) {
+          console.error('Play error:', e)
+          notifyError('Could not start playback', 'Make sure Spotify is open on a device.')
+        }
+        return
+      }
+
       const deviceId = await waitForValue(() => deviceIdRef.current)
       if (!deviceId) {
         notifyError('Spotify player is still connecting', 'Try again in a moment.')
@@ -794,6 +1002,14 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
   const dismissError = useCallback(() => setError(null), [])
 
+  const selectDevice = useCallback(async (deviceId: string) => {
+    try {
+      await callSpotifyApi('PUT', '/me/player', { device_ids: [deviceId] })
+    } catch {
+      notifyError('Could not switch device')
+    }
+  }, [callSpotifyApi, notifyError])
+
   const value: SpotifyPlayerContextValue = {
     isReady,
     isPlaying,
@@ -814,6 +1030,8 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
     playWithQueue,
     setQueueMetadata,
     dismissError,
+    availableDevices,
+    selectDevice,
   }
 
   return (
@@ -843,6 +1061,8 @@ const defaultContextValue: SpotifyPlayerContextValue = {
   playWithQueue: async () => {},
   setQueueMetadata: () => {},
   dismissError: () => {},
+  availableDevices: [],
+  selectDevice: async () => {},
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

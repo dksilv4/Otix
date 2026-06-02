@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useLocation } from '@tanstack/react-router'
 import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { apiClient } from '@/lib/api-client'
@@ -15,6 +15,7 @@ function extractMessage(err: unknown): string {
 
 export function SpotifyConnectCallbackPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const called = useRef(false)
@@ -23,7 +24,8 @@ export function SpotifyConnectCallbackPage() {
     if (called.current) return
     called.current = true
 
-    const search = new URLSearchParams(window.location.search)
+    // Use the router's location (works in both browser and Electron file:// context)
+    const search = new URLSearchParams(location.search)
     const code = search.get('code') ?? ''
     const state = search.get('state') ?? ''
     const linkError = search.get('error')
@@ -49,7 +51,7 @@ export function SpotifyConnectCallbackPage() {
         setError(extractMessage(err))
       }
     })()
-  }, [navigate])
+  }, [navigate, location.search])
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4">

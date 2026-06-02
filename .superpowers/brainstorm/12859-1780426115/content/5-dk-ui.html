@@ -1,0 +1,508 @@
+<h2>5 Designs — DK UI Language</h2>
+<p class="subtitle">All using Otix design tokens: no borders, surface stacking, emerald game accent, proper radii</p>
+
+<style>
+  .block { margin-bottom:36px; border-radius:var(--dk-radius-2xl); overflow:hidden; box-shadow:var(--dk-shadow-lg); }
+  .label { background:var(--dk-surface-base); padding:8px 14px; display:flex; align-items:center; gap:8px; }
+  .label h3 { margin:0; font-size:0.75em; }
+  .label span { font-size:0.6em; color:var(--muted); }
+  .game-card-poster { aspect-ratio:2/3; border-radius:var(--dk-radius-lg); overflow:hidden; position:relative; background:var(--dk-surface-base); cursor:pointer; transition:transform 0.3s var(--dk-ease-out); }
+  .game-card-poster:hover { transform:translateY(-3px) scale(1.02); }
+  .dk-chip { padding:4px 12px; border-radius:var(--dk-radius-full); font-size:0.6em; font-weight:var(--dk-font-medium); color:var(--muted); background:var(--dk-surface-glass); transition:all 0.15s; cursor:pointer; }
+  .dk-chip:hover { background:var(--dk-surface-glass-hover); }
+  .dk-chip.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:var(--dk-font-semibold); }
+  .badge-platform { font-size:0.45em; font-weight:var(--dk-font-semibold); padding:1px 6px; border-radius:var(--dk-radius-sm); background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); }
+</style>
+
+<!-- ═══════════════════════════ -->
+<!-- 1: DK Poster Grid (clean)  -->
+<!-- ═══════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#1: DK Poster Grid</h3><span>Clean 2:3 poster grid — matched get full art, unmatched get gradient swatch + "Match" chip</span></div>
+  <div style="padding:20px;background:var(--dk-surface-root);">
+
+    <!-- Top bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:var(--dk-text-xl);font-weight:var(--dk-font-bold);">Games</span>
+        <span class="dk-chip active">All · 42</span>
+        <span class="dk-chip">Matched · 18</span>
+        <span class="dk-chip">Unmatched · 20</span>
+        <span class="dk-chip">ISOs · 4</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div style="background:var(--dk-surface-glass);border-radius:var(--dk-radius-full);padding:5px 12px;font-size:0.6em;color:var(--muted);">🔍 Search</div>
+      </div>
+    </div>
+
+    <!-- Recently played row -->
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:var(--dk-text-sm);font-weight:var(--dk-font-semibold);color:var(--muted);">Recently Played</span>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;">
+        <div style="min-width:120px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);overflow:hidden;position:relative;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="badge-platform" style="color:#34d399;">PC</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Elden Ring</div>
+            <div style="font-size:0.5em;color:var(--muted);">2h ago</div>
+          </div>
+        </div>
+        <div style="min-width:120px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);overflow:hidden;position:relative;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);flex-shrink:0;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="badge-platform">Steam</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Hollow Knight</div>
+            <div style="font-size:0.5em;color:var(--muted);">Yesterday</div>
+          </div>
+        </div>
+        <div style="min-width:120px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);overflow:hidden;position:relative;background:linear-gradient(180deg,#0d1b2a,#070e17);flex-shrink:0;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="badge-platform">Steam</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Portal 2</div>
+            <div style="font-size:0.5em;color:var(--muted);">2d ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
+      <!-- Matched card -->
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#34d399;">PC</span></div>
+        <div style="position:absolute;top:6px;right:6px;z-index:1;"><span style="font-size:0.45em;color:#34d399;background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:4px;">86h</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">Elden Ring</div>
+          <div style="font-size:0.5em;color:var(--muted);">48.2 GB</div>
+        </div>
+        <!-- Hover play button (indicator) -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;border-radius:50%;background:#10b981;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;font-size:0.8em;">▶</div>
+      </div>
+
+      <!-- Matched card -->
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform">Steam</span></div>
+        <div style="position:absolute;top:6px;right:6px;z-index:1;"><span style="font-size:0.45em;color:#34d399;background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:4px;">120h</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">BG3</div>
+          <div style="font-size:0.5em;color:var(--muted);">32.1 GB</div>
+        </div>
+      </div>
+
+      <!-- Matched card -->
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#fbbf24;">Epic</span></div>
+        <div style="position:absolute;top:6px;right:6px;z-index:1;"><span style="font-size:0.45em;color:#34d399;background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:4px;">63h</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">Cyberpunk 2077</div>
+          <div style="font-size:0.5em;color:var(--muted);">28.4 GB</div>
+        </div>
+      </div>
+
+      <!-- Matched card -->
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#a78bfa;">GOG</span></div>
+        <div style="position:absolute;top:6px;right:6px;z-index:1;"><span style="font-size:0.45em;color:#34d399;background:rgba(0,0,0,0.4);padding:1px 5px;border-radius:4px;">200h</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">The Witcher 3</div>
+          <div style="font-size:0.5em;color:var(--muted);">35.0 GB</div>
+        </div>
+      </div>
+
+      <!-- Matched card -->
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform">Steam</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">Dark Souls III</div>
+          <div style="font-size:0.5em;color:var(--muted);">18.7 GB</div>
+        </div>
+      </div>
+
+      <!-- Unmatched card — gradient swatch -->
+      <div class="game-card-poster" style="background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:2em;opacity:0.1;">🎮</span>
+        </div>
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#fbbf24;">ISO</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">RDR2</div>
+          <div style="font-size:0.5em;color:#60a5fa;margin-top:2px;">Find match</div>
+        </div>
+      </div>
+
+      <!-- Unmatched card -->
+      <div class="game-card-poster" style="background:linear-gradient(135deg,oklch(0.25 0.08 120),oklch(0.18 0.06 160));">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:2em;opacity:0.1;">🎮</span>
+        </div>
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#fbbf24;">ISO</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.7em;font-weight:var(--dk-font-semibold);">God of War R</div>
+          <div style="font-size:0.5em;color:#60a5fa;margin-top:2px;">Find match</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ -->
+<!-- 2: DK List + Poster Mix    -->
+<!-- ═══════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#2: DK List + Grid Mix</h3><span>Matched = poster grid. Unmatched = compact list below. Clean separation.</span></div>
+  <div style="padding:20px;background:var(--dk-surface-root);">
+
+    <!-- Header row -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:var(--dk-text-xl);font-weight:var(--dk-font-bold);">Games</span>
+        <span style="font-size:var(--dk-text-xs);color:var(--muted);background:var(--dk-surface-glass);padding:3px 10px;border-radius:var(--dk-radius-full);">42 titles</span>
+      </div>
+      <div style="background:var(--dk-surface-glass);border-radius:var(--dk-radius-full);padding:5px 14px;font-size:0.6em;color:var(--muted);">🔍 Search games...</div>
+    </div>
+
+    <!-- Tab row -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <span class="dk-chip active">All</span>
+      <span class="dk-chip">Matched</span>
+      <span class="dk-chip">Unmatched</span>
+      <span class="dk-chip">ISOs</span>
+      <span class="dk-chip">Favorites</span>
+      <span style="margin-left:auto;font-size:0.55em;color:var(--muted);">↻ Scanned 2m ago</span>
+    </div>
+
+    <!-- Section: Matched Games -->
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:var(--dk-text-sm);font-weight:var(--dk-font-semibold);">Matched · <span style="color:var(--muted);font-weight:var(--dk-font-normal);">18 games</span></span>
+        <span style="font-size:0.55em;color:var(--muted);">234.5 GB total</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);">
+          <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#34d399;">PC</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Elden Ring</div>
+            <div style="font-size:0.45em;color:var(--muted);">48 GB · 86h</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);">
+          <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#a78bfa;">GOG</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">BG3</div>
+            <div style="font-size:0.45em;color:var(--muted);">32 GB · 120h</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);">
+          <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#fbbf24;">Epic</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Cyberpunk</div>
+            <div style="font-size:0.45em;color:var(--muted);">28 GB · 63h</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+          <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform">Steam</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.65em;font-weight:var(--dk-font-semibold);">Hollow Knight</div>
+            <div style="font-size:0.45em;color:var(--muted);">7 GB · 42h</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Separator -->
+    <div style="height:1px;background:var(--dk-surface-glass);margin-bottom:16px;"></div>
+
+    <!-- Section: Unmatched Games (compact list) -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:var(--dk-text-sm);font-weight:var(--dk-font-semibold);">Unmatched · <span style="color:var(--muted);font-weight:var(--dk-font-normal);">20 games need catalog matching</span></span>
+        <span style="font-size:0.55em;color:#60a5fa;">Match all →</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--dk-radius-lg);background:var(--dk-surface-glass);transition:background 0.15s;">
+          <span style="width:28px;height:28px;border-radius:var(--dk-radius-md);background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.7em;font-weight:var(--dk-font-medium);">Red Dead Redemption 2</span>
+          <span style="font-size:0.55em;color:var(--muted);">ISO · 22 GB</span>
+          <span style="font-size:0.55em;color:#60a5fa;background:rgba(96,165,250,0.1);padding:2px 10px;border-radius:var(--dk-radius-full);">Find match</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--dk-radius-lg);transition:background 0.15s;">
+          <span style="width:28px;height:28px;border-radius:var(--dk-radius-md);background:linear-gradient(135deg,oklch(0.25 0.08 120),oklch(0.18 0.06 160));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.7em;font-weight:var(--dk-font-medium);">God of War Ragnarök</span>
+          <span style="font-size:0.55em;color:var(--muted);">ISO · 64 GB</span>
+          <span style="font-size:0.55em;color:#60a5fa;background:rgba(96,165,250,0.1);padding:2px 10px;border-radius:var(--dk-radius-full);">Find match</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--dk-radius-lg);transition:background 0.15s;">
+          <span style="width:28px;height:28px;border-radius:var(--dk-radius-md);background:linear-gradient(135deg,oklch(0.25 0.08 340),oklch(0.18 0.06 20));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.7em;font-weight:var(--dk-font-medium);">Hades II</span>
+          <span style="font-size:0.55em;color:var(--muted);">Steam · 4.8 GB</span>
+          <span style="font-size:0.55em;color:#60a5fa;background:rgba(96,165,250,0.1);padding:2px 10px;border-radius:var(--dk-radius-full);">Find match</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ -->
+<!-- 3: DK Minimal Terminal     -->
+<!-- ═══════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#3: DK Minimal Table</h3><span>Clean table with dk surfaces — matched bright, unmatched dimmed, monospace for data</span></div>
+  <div style="padding:24px;background:var(--dk-surface-root);">
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:var(--dk-text-xl);font-weight:var(--dk-font-bold);">Games</span>
+        <span style="font-size:var(--dk-text-xs);color:var(--muted);">42 games</span>
+      </div>
+      <div style="display:flex;gap:6px;font-size:0.6em;">
+        <span class="dk-chip active">All</span>
+        <span class="dk-chip">Matched</span>
+        <span class="dk-chip">Unmatched</span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="border-radius:var(--dk-radius-xl);overflow:hidden;box-shadow:var(--dk-shadow-sm);">
+      <!-- Header row -->
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-glass);font-size:0.5em;color:var(--muted);font-weight:var(--dk-font-semibold);text-transform:uppercase;letter-spacing:0.04em;">
+        <span style="width:16px;"></span>
+        <span style="flex:1;">Name</span>
+        <span style="width:45px;text-align:right;">Size</span>
+        <span style="width:32px;text-align:right;">Played</span>
+        <span style="width:38px;">Source</span>
+      </div>
+
+      <!-- Matched rows -->
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-base);border-bottom:1px solid var(--dk-surface-glass);font-size:0.65em;">
+        <span style="width:16px;color:#10b981;">▶</span>
+        <span style="flex:1;font-weight:var(--dk-font-semibold);">Elden Ring</span>
+        <span style="width:45px;text-align:right;color:var(--muted);">48.2 GB</span>
+        <span style="width:32px;text-align:right;">86h</span>
+        <span style="width:38px;"><span style="font-size:0.5em;padding:1px 6px;border-radius:4px;background:rgba(16,185,129,0.1);color:#34d399;">PC</span></span>
+      </div>
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-base);border-bottom:1px solid var(--dk-surface-glass);font-size:0.65em;">
+        <span style="width:16px;color:#10b981;">▶</span>
+        <span style="flex:1;font-weight:var(--dk-font-semibold);">Baldur's Gate 3</span>
+        <span style="width:45px;text-align:right;color:var(--muted);">32.1 GB</span>
+        <span style="width:32px;text-align:right;">120h</span>
+        <span style="width:38px;"><span style="font-size:0.5em;padding:1px 6px;border-radius:4px;background:rgba(167,139,250,0.1);color:#a78bfa;">GOG</span></span>
+      </div>
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-base);border-bottom:1px solid var(--dk-surface-glass);font-size:0.65em;">
+        <span style="width:16px;color:#10b981;">▶</span>
+        <span style="flex:1;font-weight:var(--dk-font-semibold);">Cyberpunk 2077</span>
+        <span style="width:45px;text-align:right;color:var(--muted);">28.4 GB</span>
+        <span style="width:32px;text-align:right;">63h</span>
+        <span style="width:38px;"><span style="font-size:0.5em;padding:1px 6px;border-radius:4px;background:rgba(251,191,36,0.1);color:#fbbf24;">Epic</span></span>
+      </div>
+
+      <!-- Separator -->
+      <div style="display:flex;gap:8px;padding:6px 12px;background:var(--dk-surface-base);font-size:0.5em;color:rgba(255,255,255,0.1);">── 20 unmatched ──</div>
+
+      <!-- Unmatched rows -->
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-base);border-bottom:1px solid var(--dk-surface-glass);font-size:0.65em;opacity:0.4;">
+        <span style="width:16px;">↗</span>
+        <span style="flex:1;">Red Dead Redemption 2</span>
+        <span style="width:45px;text-align:right;">22.0 GB</span>
+        <span style="width:32px;text-align:right;">—</span>
+        <span style="width:38px;"><span style="font-size:0.5em;padding:1px 6px;border-radius:4px;background:rgba(251,191,36,0.1);color:#fbbf24;">ISO</span></span>
+      </div>
+      <div style="display:flex;gap:8px;padding:8px 12px;background:var(--dk-surface-base);font-size:0.65em;opacity:0.4;">
+        <span style="width:16px;">↗</span>
+        <span style="flex:1;">Hades II</span>
+        <span style="width:45px;text-align:right;">4.8 GB</span>
+        <span style="width:32px;text-align:right;">—</span>
+        <span style="width:38px;"><span style="font-size:0.5em;padding:1px 6px;border-radius:4px;">Steam</span></span>
+      </div>
+    </div>
+
+    <!-- Footer stats -->
+    <div style="display:flex;gap:12px;margin-top:8px;font-size:0.5em;color:var(--muted);">
+      <span>18/42 matched</span>
+      <span>234.5 GB total</span>
+      <span>7 installable via NZB</span>
+      <span style="margin-left:auto;">Last scan: 2m ago</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ -->
+<!-- 4: DK Focus + Grid          -->
+<!-- ═══════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#4: DK Focus Card</h3><span>Large selected game preview + grid below. Like Steam Deck's big picture selector.</span></div>
+  <div style="padding:24px;background:var(--dk-surface-root);">
+
+    <!-- Search + tabs inline -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="display:flex;gap:6px;">
+        <span class="dk-chip active">All</span>
+        <span class="dk-chip">Matched</span>
+        <span class="dk-chip">Unmatched</span>
+      </div>
+      <div style="background:var(--dk-surface-glass);border-radius:var(--dk-radius-full);padding:5px 14px;font-size:0.6em;color:var(--muted);">🔍 Search</div>
+    </div>
+
+    <!-- Hero: selected game -->
+    <div style="border-radius:var(--dk-radius-xl);overflow:hidden;background:linear-gradient(135deg,#2d1b00 0%,#1a0f00 100%);padding:24px;margin-bottom:20px;display:flex;gap:20px;align-items:center;">
+      <div style="width:90px;height:135px;border-radius:var(--dk-radius-lg);background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;">Now Playing</div>
+        <h2 style="margin:2px 0 4px;font-size:1.1em;">Elden Ring</h2>
+        <div style="display:flex;gap:10px;font-size:0.55em;color:var(--muted);margin-bottom:10px;">
+          <span>PC</span>
+          <span>48.2 GB</span>
+          <span>86h played</span>
+          <span>Last played 2h ago</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <span style="background:#10b981;padding:6px 18px;border-radius:var(--dk-radius-lg);font-size:0.65em;font-weight:var(--dk-font-bold);">▶ Play</span>
+          <span style="background:var(--dk-surface-glass);padding:6px 12px;border-radius:var(--dk-radius-lg);font-size:0.65em;">Open Folder</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid below -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#a78bfa;">GOG</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.6em;font-weight:var(--dk-font-semibold);">BG3</div>
+        </div>
+      </div>
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#fbbf24;">Epic</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.6em;font-weight:var(--dk-font-semibold);">Cyberpunk</div>
+        </div>
+      </div>
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform">Steam</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.6em;font-weight:var(--dk-font-semibold);">Hollow Knight</div>
+        </div>
+      </div>
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform">Steam</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.6em;font-weight:var(--dk-font-semibold);">Portal 2</div>
+        </div>
+      </div>
+      <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e2e,#0d1a1a);">
+        <div style="position:absolute;top:6px;left:6px;z-index:1;"><span class="badge-platform" style="color:#60a5fa;">Xbox</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+          <div style="font-size:0.6em;font-weight:var(--dk-font-semibold);">Starfield</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unmatched as horizontal scroll -->
+    <div style="margin-top:16px;">
+      <div style="font-size:0.55em;color:var(--muted);margin-bottom:6px;">Unmatched · <span style="color:#60a5fa;">Match from catalog</span></div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;">
+        <div style="min-width:80px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;position:relative;cursor:pointer;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.5em;font-weight:500;">RDR2</div>
+          </div>
+        </div>
+        <div style="min-width:80px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);background:linear-gradient(135deg,oklch(0.25 0.08 120),oklch(0.18 0.06 160));flex-shrink:0;position:relative;cursor:pointer;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.5em;font-weight:500;">GoW</div>
+          </div>
+        </div>
+        <div style="min-width:80px;aspect-ratio:2/3;border-radius:var(--dk-radius-lg);background:linear-gradient(135deg,oklch(0.25 0.08 340),oklch(0.18 0.06 20));flex-shrink:0;position:relative;cursor:pointer;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.5em;font-weight:500;">Hades</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ -->
+<!-- 5: DK Shelf Explorer       -->
+<!-- ═══════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#5: DK Shelf + Folders</h3><span>Left folder sidebar (like explorer) + right poster grid. Best of explorer + launcher.</span></div>
+  <div style="display:flex;background:var(--dk-surface-root);min-height:320px;">
+    <!-- Sidebar — folder explorer -->
+    <div style="width:150px;border-right:1px solid var(--dk-surface-glass);padding:12px 6px;flex-shrink:0;">
+      <div style="font-size:0.5em;font-weight:var(--dk-font-semibold);text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);padding:4px 8px;margin-bottom:4px;">Folders</div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;background:var(--dk-surface-glass);font-weight:var(--dk-font-semibold);">
+        <span>📁</span><span style="flex:1;">All Games</span><span style="color:var(--muted);">42</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+        <span>📁</span><span style="flex:1;">Steam</span><span style="color:var(--muted);">14</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+        <span>📁</span><span style="flex:1;">D:\Games</span><span style="color:var(--muted);">10</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+        <span>📁</span><span style="flex:1;">Epic Games</span><span style="color:var(--muted);">6</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+        <span>💿</span><span style="flex:1;">D:\ISOs</span><span style="color:var(--muted);">4</span>
+      </div>
+      <div style="border-top:1px solid var(--dk-surface-glass);margin:8px 4px;padding-top:6px;">
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+          <span>⭐</span><span style="flex:1;">Favorites</span><span style="color:var(--muted);">6</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--dk-radius-md);font-size:0.6em;">
+          <span>⬇️</span><span style="flex:1;">Installable</span><span style="color:#34d399;">7</span>
+        </div>
+      </div>
+      <div style="padding:6px 8px;margin-top:8px;border-top:1px solid var(--dk-surface-glass);display:flex;gap:4px;">
+        <span style="font-size:0.5em;padding:3px 8px;border-radius:var(--dk-radius-md);background:var(--dk-surface-glass);cursor:pointer;">↻ Scan</span>
+        <span style="font-size:0.5em;padding:3px 8px;border-radius:var(--dk-radius-md);background:var(--dk-surface-glass);cursor:pointer;">+ Add</span>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div style="flex:1;padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:var(--dk-text-sm);font-weight:var(--dk-font-semibold);">All Games</span>
+        <div style="background:var(--dk-surface-glass);border-radius:var(--dk-radius-full);padding:4px 12px;font-size:0.55em;color:var(--muted);">🔍 Filter...</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);">
+          <div style="position:absolute;top:5px;left:5px;z-index:1;"><span class="badge-platform" style="font-size:0.4em;color:#34d399;">PC</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">Elden Ring</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);">
+          <div style="position:absolute;top:5px;left:5px;z-index:1;"><span class="badge-platform" style="font-size:0.4em;color:#a78bfa;">GOG</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">BG3</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);">
+          <div style="position:absolute;top:5px;left:5px;z-index:1;"><span class="badge-platform" style="font-size:0.4em;color:#fbbf24;">Epic</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">Cyberpunk</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+          <div style="position:absolute;top:5px;left:5px;z-index:1;"><span class="badge-platform" style="font-size:0.4em;">Steam</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">Hollow Knight</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(180deg,#1a2e2e,#0d1a1a);">
+          <div style="position:absolute;top:5px;left:5px;z-index:1;"><span class="badge-platform" style="font-size:0.4em;color:#60a5fa;">Xbox</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">Starfield</div>
+          </div>
+        </div>
+        <div class="game-card-poster" style="background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.8em;opacity:0.1;">🎮</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:7px;background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent);">
+            <div style="font-size:0.55em;font-weight:var(--dk-font-semibold);">RDR2</div>
+            <div style="font-size:0.4em;color:#60a5fa;">Find</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

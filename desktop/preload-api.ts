@@ -6,6 +6,7 @@ export interface DetectedGame {
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
   iconUrl?: string; // base64 data URL
+  posterUrl?: string; // SGDB grid (cover/poster) URL
   updateFiles?: { name: string; path: string }[];
   otixMediaId?: string;
   otixMediaTitle?: string;
@@ -16,6 +17,10 @@ export interface DetectedGame {
     title: string;
     slug: string;
   };
+  otixPosterUrl?: string | null;
+  otixTextlessPosterUrl?: string | null;
+  otixLogoUrl?: string | null;
+  sources?: string[];
 }
 
 export interface MountResult {
@@ -93,6 +98,25 @@ export interface DownloadConfig {
   autoSearchWishlist: boolean;
   wishlistIntervalHours: number;
   preferredRepackers?: string | null;
+  allowHypervisor?: boolean;
+}
+
+export interface AutoOrganizeResult {
+  success: boolean;
+  organized: { from: string; to: string; type: string }[];
+  errors: string[];
+}
+
+export interface MatchCacheEntry {
+  isoPath: string;
+  queryTitle: string;
+  mediaId: string;
+  mediaTitle: string;
+  mediaSlug?: string;
+  confidence?: number;
+  posterUrl?: string;
+  logolessPosterUrl?: string;
+  logoUrl?: string;
 }
 
 export interface PostProcessResult {
@@ -152,6 +176,20 @@ export interface SearchAndDownloadError {
   error: string;
 }
 
+export interface SearchAndDownloadHypervisor {
+  hypervisorAvailable: true;
+  hypervisorResults: NZBResult[];
+  gameName: string;
+  error: string;
+}
+
+export interface GameTrackEntry {
+  mediaItemId: string;
+  mediaItemTitle: string;
+  downloadedUpdateTags: string[];
+  lastUpdateCheck: string | null;
+}
+
 export interface IElectronAPI {
   ping: () => Promise<string>;
   selectDirectory: () => Promise<string | null>;
@@ -163,9 +201,11 @@ export interface IElectronAPI {
   dismountIso: (isoPath: string) => Promise<boolean>;
   applyCrack: (crackPath: string, targetDir: string) => Promise<boolean>;
   getUpdatesForIso: (isoPath: string) => Promise<{ name: string; path: string }[]>;
-  previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string) => Promise<OrganizationPreviewItem[]>;
+  previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
   executeOrganization: (items: { sourcePath: string; targetPath: string }[]) => Promise<{ sourcePath: string; targetPath: string; success: boolean; error?: string }[]>;
   launchSetup: (setupPath: string) => Promise<boolean>;
+  batchOrganize: (directory: string, namingTemplate?: string) => Promise<AutoOrganizeResult>;
+  smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
   onScannerProgress: (callback: (data: { currentDir: string; progress: number }) => void) => () => void;
   getScannedGames: () => Promise<DetectedGame[]>;
   saveScannedGames: (games: DetectedGame[]) => Promise<void>;
@@ -173,6 +213,8 @@ export interface IElectronAPI {
   saveScanPaths: (paths: { path: string; type: 'game' | 'iso' }[]) => Promise<void>;
   getLocalGamesMap: () => Promise<Record<string, DetectedGame>>;
   saveLocalGamesMapEntry: (mediaId: string, game: DetectedGame | null) => Promise<void>;
+  batchCheckMatchCache: (isoPaths: string[]) => Promise<Record<string, MatchCacheEntry | null>>;
+  saveMatchCache: (entries: MatchCacheEntry[]) => Promise<void>;
 
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;
@@ -193,10 +235,10 @@ export interface IElectronAPI {
   downloadsSearch: (query: string, apiKey: string) => Promise<NZBResult[]>;
   downloadsScanWishlist: (userId: string, wishlistGames: { id: string; title: string }[]) =>
     Promise<{ mediaItemId: string; success: boolean; downloadId?: string; error?: string }[]>;
-  downloadsSearchAndDownload: (userId: string, mediaItemId: string | null, gameName: string) =>
-    Promise<SearchAndDownloadResult | SearchAndDownloadError>;
+  downloadsSearchAndDownload: (userId: string, mediaItemId: string | null, gameName: string, allowHypervisor?: boolean) =>
+    Promise<SearchAndDownloadResult | SearchAndDownloadError | SearchAndDownloadHypervisor>;
   downloadsFilterResults: (results: NZBResult[]) => Promise<NZBResult[]>;
-  downloadsAutoPick: (results: NZBResult[]) => Promise<NZBResult | null>;
+  downloadsAutoPick: (results: NZBResult[], allowHypervisor?: boolean) => Promise<NZBResult | null>;
   downloadsGetDownload: (id: string) => Promise<Download | null>;
   downloadsGetUserDownloads: (userId: string) => Promise<Download[]>;
   downloadsDelete: (id: string) => Promise<void>;
@@ -209,6 +251,14 @@ export interface IElectronAPI {
   downloadsGetPathMappings: (configId: string) => Promise<PathMapping[]>;
   downloadsAddPathMapping: (configId: string, sourcePath: string, destPath: string) => Promise<PathMapping>;
   downloadsRemovePathMapping: (id: string) => Promise<void>;
+
+  // Update tracking
+  downloadsGetTrackedGames: () => Promise<GameTrackEntry[]>;
+  downloadsCheckUpdates: () => Promise<{ game: string; queued: number }[]>;
+
+  // Organizer
+  downloadsPreviewNamingTemplate: (template: string, sampleName: string) => Promise<{ valid: boolean; result?: string; error?: string }>;
+  downloadsValidateNamingTemplate: (template: string) => Promise<{ valid: boolean; error?: string }>;
 }
 
 declare global {

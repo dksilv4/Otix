@@ -1,0 +1,134 @@
+<h2>Games Page v2 — Storage-Centric Layout</h2>
+<p class="subtitle">Per-game storage segments · bolder visuals · less standard</p>
+
+<div class="mockup">
+  <div class="mockup-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Games</span>
+    <span style="font-weight:400;font-size:0.85em;color:var(--muted);">Otix</span>
+  </div>
+  <div class="mockup-body" style="padding:0;">
+
+    <!-- Minimal header: just search + compact actions -->
+    <div style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.3em;font-weight:700;">🎮 Games</span>
+        <span style="font-size:0.75em;color:var(--muted);background:var(--surface);padding:2px 10px;border-radius:12px;">42 titles</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <div class="mock-input" style="width:180px;padding:5px 10px;font-size:0.75em;">🔍 Filter...</div>
+        <div class="mock-button" style="padding:5px 12px;font-size:0.75em;">↻</div>
+      </div>
+    </div>
+
+    <!-- Storage breakdown — each game is a segment -->
+    <div style="padding:20px 24px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <span style="font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);">Storage · 234.5 GB / 1.2 TB used</span>
+        <span style="font-size:0.7em;color:var(--muted);">C: 42% · D: 58%</span>
+      </div>
+
+      <!-- Game segments bar — each colored segment = one game, proportional to size -->
+      <div style="margin-top:10px;height:32px;border-radius:8px;overflow:hidden;display:flex;gap:2px;">
+        <div style="flex:48;background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:6px 0 0 6px;position:relative;" title="Elden Ring — 48.2 GB">
+          <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:600;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">Elden Ring</span>
+        </div>
+        <div style="flex:32;background:linear-gradient(135deg,#3b82f6,#2563eb);position:relative;" title="Baldur's Gate 3 — 32.1 GB">
+          <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:600;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">BG3</span>
+        </div>
+        <div style="flex:28;background:linear-gradient(135deg,#a855f7,#7c3aed);position:relative;" title="Cyberpunk 2077 — 28.4 GB">
+          <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:600;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">Cyberpunk</span>
+        </div>
+        <div style="flex:22;background:linear-gradient(135deg,#f59e0b,#d97706);position:relative;" title="Red Dead Redemption 2 — 22.0 GB">
+          <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:600;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">RDR2</span>
+        </div>
+        <div style="flex:15;background:linear-gradient(135deg,#ef4444,#dc2626);position:relative;" title="Starfield — 15.3 GB">
+          <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:600;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.5);">Starfield</span>
+        </div>
+        <div style="flex:8;background:linear-gradient(135deg,#ec4899,#db2777);position:relative;" title="Hollow Knight — 7.2 GB"></div>
+        <div style="flex:5;background:linear-gradient(135deg,#14b8a6,#0d9488);position:relative;" title="Portal 2 — 5.1 GB"></div>
+        <div style="flex:4;background:rgba(255,255,255,0.08);border-radius:0 6px 6px 0;" title="Other games + free space"></div>
+      </div>
+      <!-- hover tooltip example -->
+      <div style="margin-top:6px;display:flex;gap:8px;font-size:0.65em;color:var(--muted);flex-wrap:wrap;">
+        <span>● Elden Ring · 48.2 GB</span>
+        <span>● BG3 · 32.1 GB</span>
+        <span>● Cyberpunk · 28.4 GB</span>
+        <span style="color:rgba(255,255,255,0.2);">+ 3 more</span>
+      </div>
+    </div>
+
+    <!-- Tab-less view: just Matched section + Unmatched section -->
+    <div style="padding:8px 24px 0;display:flex;gap:16px;font-size:0.8em;">
+      <span style="font-weight:600;color:#22c55e;">● Matched · 18</span>
+      <span style="color:var(--muted);">Unmatched · 20</span>
+      <span style="color:var(--muted);">ISOs · 4</span>
+    </div>
+
+    <!-- Matched games — horizontal shelf (steam-style carousel) -->
+    <div style="padding:16px 24px 8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:0.8em;font-weight:600;">Matched Games</span>
+        <span style="font-size:0.7em;color:var(--muted);">Show all →</span>
+      </div>
+      <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;">
+        <div style="min-width:140px;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;top:6px;left:6px;padding:1px 6px;font-size:0.55em;font-weight:600;background:rgba(0,0,0,0.4);border-radius:4px;">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.7em;">Hollow Knight</div>
+            <div style="font-size:0.55em;color:var(--muted);margin-top:2px;">💾 7.2 GB · ⏱ 42h</div>
+          </div>
+        </div>
+        <div style="min-width:140px;aspect-ratio:2/3;background:linear-gradient(135deg,#2d1b00,#1a1a2e);border-radius:12px;position:relative;">
+          <div style="position:absolute;top:6px;left:6px;padding:1px 6px;font-size:0.55em;font-weight:600;background:rgba(0,0,0,0.4);border-radius:4px;color:#22c55e;">PC</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.7em;">Elden Ring</div>
+            <div style="font-size:0.55em;color:var(--muted);margin-top:2px;">💾 48.2 GB · ⏱ 86h</div>
+          </div>
+        </div>
+        <div style="min-width:140px;aspect-ratio:2/3;background:linear-gradient(135deg,#0d1b2a,#1b2838);border-radius:12px;position:relative;">
+          <div style="position:absolute;top:6px;left:6px;padding:1px 6px;font-size:0.55em;font-weight:600;background:rgba(0,0,0,0.4);border-radius:4px;">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.7em;">Portal 2</div>
+            <div style="font-size:0.55em;color:var(--muted);margin-top:2px;">💾 5.1 GB · ⏱ 18h</div>
+          </div>
+        </div>
+        <div style="min-width:140px;aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#3b0764);border-radius:12px;position:relative;">
+          <div style="position:absolute;top:6px;left:6px;padding:1px 6px;font-size:0.55em;font-weight:600;background:rgba(0,0,0,0.4);border-radius:4px;">Epic</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.7em;">Cyberpunk 2077</div>
+            <div style="font-size:0.55em;color:var(--muted);margin-top:2px;">💾 28.4 GB · ⏱ 63h</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unmatched games — compact list instead of grid -->
+    <div style="padding:16px 24px 24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:0.8em;font-weight:600;">Unmatched</span>
+        <span style="font-size:0.7em;color:var(--muted);">20 games · <span style="color:#3b82f6;">Auto-match all</span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:8px;">
+          <span style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.8em;font-weight:500;">Red Dead Redemption 2</span>
+          <span style="font-size:0.65em;color:var(--muted);">ISO · 22.0 GB</span>
+          <span style="font-size:0.65em;color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:2px 8px;">Find match</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:8px;">
+          <span style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,oklch(0.25 0.08 340),oklch(0.18 0.06 20));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.8em;font-weight:500;">Stellar Blade Demo</span>
+          <span style="font-size:0.65em;color:var(--muted);">PC · 15.2 GB</span>
+          <span style="font-size:0.65em;color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:2px 8px;">Find match</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border-radius:8px;">
+          <span style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,oklch(0.25 0.08 120),oklch(0.18 0.06 160));flex-shrink:0;"></span>
+          <span style="flex:1;font-size:0.8em;font-weight:500;">God of War Ragnarök</span>
+          <span style="font-size:0.65em;color:var(--muted);">ISO · 64.0 GB</span>
+          <span style="font-size:0.65em;color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:2px 8px;">Find match</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

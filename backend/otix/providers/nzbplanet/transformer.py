@@ -51,8 +51,13 @@ class NZBPlanetTransformer:
         return any(tag in title_lower for tag in self._SCENE_TAGS)
 
     def filter_quality(self, results: list[NZBResult]) -> list[NZBResult]:
-        """Filter out demos, updates, and patches, keeping full releases."""
-        return [r for r in results if self.is_full_game(r) and self.is_not_update(r)]
+        """Filter out demos, updates, and patches, keeping full releases.
+
+        Falls back to returning all results if the hard filter removes
+        everything — prevents false-positive exclusion of valid releases.
+        """
+        filtered = [r for r in results if self.is_full_game(r) and self.is_not_update(r)]
+        return filtered if filtered else results
 
     def rank_results(self, results: list[NZBResult]) -> list[NZBResult]:
         """Rank results: scene releases first, then by size descending.

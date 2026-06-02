@@ -1,0 +1,75 @@
+<h2>Feature Checklist</h2>
+<p class="subtitle">What features belong in the games launcher? Click all that apply.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="storage" onclick="toggleSelect(this)">
+    <div class="letter">S</div>
+    <div class="content">
+      <h3>Storage Breakdown</h3>
+      <p>Per-game disk size, per-drive usage bar, total library size. Show individual game install sizes (read from disk).</p>
+    </div>
+  </div>
+  <div class="option" data-choice="recent" onclick="toggleSelect(this)">
+    <div class="letter">R</div>
+    <div class="content">
+      <h3>Recently Played</h3>
+      <p>Show last played games with timestamps. Track via existing game-detector.ts. "Continue" button for recent.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="playtime" onclick="toggleSelect(this)">
+    <div class="letter">P</div>
+    <div class="content">
+      <h3>Play Time Tracking</h3>
+      <p>Per-game play time (total hours). Show on game cards. Sort by most played.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="favorites" onclick="toggleSelect(this)">
+    <div class="letter">F</div>
+    <div class="content">
+      <h3>Favorites</h3>
+      <p>Star/favorite individual games. Filter by favorites. Persisted to local DB.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="context" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Right-Click Context Menu</h3>
+      <p>Launch, Open Install Folder, Show in File Explorer, Unlink Match, Run As Admin, Create Desktop Shortcut.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="sorting" onclick="toggleSelect(this)">
+    <div class="letter">O</div>
+    <div class="content">
+      <h3>Advanced Sorting</h3>
+      <p>Sort by: Name, Install Date, Last Played, Size (largest first), Platform, Match Status.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="updates" onclick="toggleSelect(this)">
+    <div class="letter">U</div>
+    <div class="content">
+      <h3>Update Scanner</h3>
+      <p>Check for game updates via NZBPlanet. Show available updates on matched games. One-click download.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="library" onclick="toggleSelect(this)">
+    <div class="letter">L</div>
+    <div class="content">
+      <h3>Library Sync</h3>
+      <p>Rescan button (existing). Auto-scan on startup. Notification when new games detected.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="iso" onclick="toggleSelect(this)">
+    <div class="letter">I</div>
+    <div class="content">
+      <h3>ISO Installer Integration</h3>
+      <p>ISO tab shows all scanned ISOs with install button. Mount → Setup → Crack → Done workflow from current installer modal.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="match" onclick="toggleSelect(this)">
+    <div class="letter">M</div>
+    <div class="content">
+      <h3>Match Games Flow</h3>
+      <p>Auto-match on scan. Manual match modal from card context. Batch confirm suggestions.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,29 @@
+<h2>Games Tab: Where should it live?</h2>
+<p class="subtitle">Currently it's a sub-tab inside Library (/library/local-games). Where do you want it?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Main Sidebar Tab — Separate Route</h3>
+      <p>Games gets its own top-level entry in the sidebar navigation (e.g. /games). Makes it feel like a primary feature — a launcher, not a library filter.</p>
+      <p style="color: var(--muted); font-size: 0.85em; margin-top: 8px;">→ Biggest visual real estate, can have its own layout and top nav</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Main Library Tab — Promoted Locally</h3>
+      <p>Keep it under Library but promote it to first position (before overview). Give it a distinct visual identity with a different icon/badge.</p>
+      <p style="color: var(--muted); font-size: 0.85em; margin-top: 8px;">→ Stays within Library ecosystem, shares header/nav context</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Desktop Shell — Outside Browser</h3>
+      <p>Make the Games tab a dedicated native Electron window or sidebar panel that sits alongside the web content. More like a native app experience.</p>
+      <p style="color: var(--muted); font-size: 0.85em; margin-top: 8px;">→ Most work, but feels native and game-launcher-y</p>
+    </div>
+  </div>
+</div>

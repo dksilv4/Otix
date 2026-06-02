@@ -1,0 +1,378 @@
+<h2>10 More Designs — Mix of List + Sidebar Concepts</h2>
+<p class="subtitle">Scroll through. Pick favorites. Note elements you like.</p>
+
+<style>
+  .block { margin-bottom:36px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+  .label { background:var(--surface); padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; gap:8px; }
+  .label h3 { margin:0; font-size:0.75em; }
+  .label span { font-size:0.6em; color:var(--muted); }
+  .tag { font-size:0.5em; font-weight:600; padding:1px 5px; border-radius:3px; background:rgba(0,0,0,0.3); }
+  .row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; font-size:0.6em; cursor:pointer; }
+  .row:hover { background:rgba(255,255,255,0.04); }
+  .side-item { padding:5px 10px; font-size:0.6em; border-radius:5px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .side-item:hover { background:rgba(255,255,255,0.03); }
+  .side-item.active { background:rgba(255,255,255,0.05); font-weight:600; }
+  .col-hdr { font-size:0.5em; color:rgba(255,255,255,0.2); text-transform:uppercase; letter-spacing:0.05em; padding:4px 8px; }
+</style>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 1: Split Pane Explorer (macOS Finder)   -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#1: Split Pane Explorer</h3><span>macOS Finder — sidebar + sortable table list</span></div>
+  <div style="display:flex;background:#0b0b10;min-height:260px;">
+    <div style="width:140px;border-right:1px solid rgba(255,255,255,0.03);padding:12px 6px;flex-shrink:0;">
+      <div class="side-item active"><span>📁</span> All Games <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">42</span></div>
+      <div class="side-item"><span>📁</span> Matched <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">18</span></div>
+      <div class="side-item"><span>📁</span> Unmatched <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">20</span></div>
+      <div class="side-item"><span>📁</span> ISOs <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">4</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);margin:6px 0;padding-top:6px;">
+        <div class="side-item"><span>⭐</span> Favorites <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">6</span></div>
+        <div class="side-item"><span>🕐</span> Recent <span style="margin-left:auto;color:var(--muted);font-size:0.9em;">3</span></div>
+      </div>
+    </div>
+    <div style="flex:1;padding:8px 10px;overflow:hidden;">
+      <div style="display:flex;gap:4px;margin-bottom:6px;">
+        <div style="flex:1;background:var(--surface);border-radius:6px;padding:4px 8px;font-size:0.55em;color:var(--muted);">🔍 Name, platform, folder...</div>
+      </div>
+      <div class="col-hdr" style="display:flex;gap:8px;">
+        <span style="width:16px;"></span>
+        <span style="flex:1;">Name</span>
+        <span style="width:35px;">Size</span>
+        <span style="width:32px;">Hours</span>
+        <span style="width:28px;"></span>
+      </div>
+      <div class="row"><span style="width:16px;color:#22c55e;">▶</span><span style="flex:1;font-weight:600;">Elden Ring</span><span style="width:35px;">48 GB</span><span style="width:32px;">86h</span><span style="width:28px;font-size:0.5em;background:rgba(34,197,94,0.1);color:#22c55e;text-align:center;border-radius:3px;">PC</span></div>
+      <div class="row"><span style="width:16px;color:#22c55e;">▶</span><span style="flex:1;font-weight:600;">Baldur's Gate 3</span><span style="width:35px;">32 GB</span><span style="width:32px;">120h</span><span style="width:28px;font-size:0.5em;background:rgba(168,85,247,0.1);color:#a855f7;text-align:center;border-radius:3px;">GOG</span></div>
+      <div class="row"><span style="width:16px;color:#22c55e;">▶</span><span style="flex:1;font-weight:600;">Cyberpunk 2077</span><span style="width:35px;">28 GB</span><span style="width:32px;">63h</span><span style="width:28px;font-size:0.5em;background:rgba(245,158,11,0.1);color:#f59e0b;text-align:center;border-radius:3px;">Epic</span></div>
+      <div class="row" style="opacity:0.45;"><span style="width:16px;color:#3b82f6;">↗</span><span style="flex:1;">Red Dead Redemption 2</span><span style="width:35px;">22 GB</span><span style="width:32px;">—</span><span style="width:28px;font-size:0.5em;background:rgba(251,191,36,0.1);color:#fbbf24;text-align:center;border-radius:3px;">ISO</span></div>
+      <div class="row" style="opacity:0.45;"><span style="width:16px;color:#3b82f6;">↗</span><span style="flex:1;">Hades II</span><span style="width:35px;">4.8 GB</span><span style="width:32px;">—</span><span style="width:28px;font-size:0.5em;color:var(--muted);text-align:center;">Steam</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 2: Terminal + Sidebar (combo #3 + #5)   -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#2: Terminal + Sidebar</h3><span>Sidebar categories + monospace table — your two faves combined</span></div>
+  <div style="display:flex;background:#0a0a0a;min-height:260px;font-family:'JetBrains Mono','SF Mono',monospace;">
+    <div style="width:130px;border-right:1px solid rgba(255,255,255,0.04);padding:12px 6px;flex-shrink:0;font-size:0.6em;">
+      <div style="padding:4px 8px;margin-bottom:4px;font-size:0.5em;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.15);">Library</div>
+      <div class="side-item active"><span style="color:#22c55e;">◆</span> all <span style="margin-left:auto;color:#22c55e;font-size:0.8em;">42</span></div>
+      <div class="side-item"><span style="color:#3b82f6;">◇</span> matched <span style="margin-left:auto;color:var(--muted);font-size:0.8em;">18</span></div>
+      <div class="side-item" style="opacity:0.5;"><span>◇</span> unmatched <span style="margin-left:auto;color:var(--muted);font-size:0.8em;">20</span></div>
+      <div class="side-item" style="opacity:0.5;"><span>◇</span> isos <span style="margin-left:auto;color:var(--muted);font-size:0.8em;">4</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);margin:8px 4px;padding-top:6px;font-size:0.55em;color:rgba(255,255,255,0.15);">
+        <div class="side-item" style="font-size:0.9em;"><span style="color:#f59e0b;">★</span> favorites</div>
+      </div>
+    </div>
+    <div style="flex:1;padding:10px 12px;font-size:0.6em;">
+      <div style="color:#22c55e;margin-bottom:6px;"><span style="color:var(--muted);">otix</span> ~ $ games --all <span style="color:var(--muted);">| sort size</span></div>
+      <div style="display:flex;gap:8px;padding:3px 4px;color:rgba(255,255,255,0.15);font-size:0.5em;">
+        <span style="width:12px;"></span><span style="width:60px;">SIZE</span><span style="flex:1;">TITLE</span><span style="width:35px;">PLAT</span><span style="width:30px;">PLAY</span>
+      </div>
+      <div style="display:flex;gap:8px;padding:3px 4px;"><span style="width:12px;color:#22c55e;">▶</span><span style="width:60px;color:var(--muted);">48.2 GB</span><span style="flex:1;font-weight:600;">Elden Ring</span><span style="width:35px;color:#22c55e;">PC</span><span style="width:30px;">86h</span></div>
+      <div style="display:flex;gap:8px;padding:3px 4px;"><span style="width:12px;color:#22c55e;">▶</span><span style="width:60px;color:var(--muted);">32.1 GB</span><span style="flex:1;font-weight:600;">Baldur's Gate 3</span><span style="width:35px;color:#a855f7;">GOG</span><span style="width:30px;">120h</span></div>
+      <div style="display:flex;gap:8px;padding:3px 4px;"><span style="width:12px;color:#22c55e;">▶</span><span style="width:60px;color:var(--muted);">28.4 GB</span><span style="flex:1;font-weight:600;">Cyberpunk 2077</span><span style="width:35px;color:#f59e0b;">Epic</span><span style="width:30px;">63h</span></div>
+      <div style="display:flex;gap:8px;padding:3px 4px;opacity:0.4;"><span style="width:12px;">↗</span><span style="width:60px;color:var(--muted);">22.0 GB</span><span style="flex:1;">Red Dead Redemption 2</span><span style="width:35px;color:#fbbf24;">ISO</span><span style="width:30px;">—</span></div>
+      <div style="display:flex;gap:8px;padding:3px 4px;opacity:0.4;"><span style="width:12px;">↗</span><span style="width:60px;color:var(--muted);">15.2 GB</span><span style="flex:1;">Stellar Blade Demo</span><span style="width:35px;">PC</span><span style="width:30px;">—</span></div>
+      <div style="margin-top:4px;font-size:0.5em;color:rgba(255,255,255,0.12);">--- 20 unmatched (dimmed) ---</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 3: Arc Browser Preview                   -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#3: Arc Browser Style</h3><span>Thin sidebar + clean list + preview panel on selection</span></div>
+  <div style="display:flex;background:#0b0b12;min-height:290px;">
+    <!-- Thin sidebar -->
+    <div style="width:60px;border-right:1px solid rgba(255,255,255,0.03);padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:0.75em;">◇</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,197,94,0.1);display:flex;align-items:center;justify-content:center;font-size:0.75em;color:#22c55e;">◆</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:0.75em;opacity:0.4;">◇</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:0.75em;opacity:0.4;">◇</div>
+    </div>
+    <!-- List panel -->
+    <div style="width:200px;border-right:1px solid rgba(255,255,255,0.03);padding:10px;flex-shrink:0;">
+      <div style="background:var(--surface);border-radius:6px;padding:4px 8px;font-size:0.55em;color:var(--muted);margin-bottom:8px;">🔍 Search...</div>
+      <div class="row" style="border-left:2px solid #22c55e;border-radius:0 6px 6px 0;">
+        <span style="width:20px;height:20px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></span>
+        <span style="flex:1;font-size:0.6em;font-weight:600;">Elden Ring</span>
+        <span style="font-size:0.5em;color:#22c55e;">48 GB</span>
+      </div>
+      <div class="row">
+        <span style="width:20px;height:20px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></span>
+        <span style="flex:1;font-size:0.6em;">Baldur's Gate 3</span>
+        <span style="font-size:0.5em;color:var(--muted);">32 GB</span>
+      </div>
+      <div class="row">
+        <span style="width:20px;height:20px;border-radius:4px;background:#2e1a1a;flex-shrink:0;"></span>
+        <span style="flex:1;font-size:0.6em;">Cyberpunk 2077</span>
+        <span style="font-size:0.5em;color:var(--muted);">28 GB</span>
+      </div>
+      <div class="row" style="opacity:0.4;">
+        <span style="width:20px;height:20px;border-radius:4px;background:#1a1a0e;flex-shrink:0;"></span>
+        <span style="flex:1;font-size:0.6em;">RDR2</span>
+        <span style="font-size:0.5em;color:var(--muted);">22 GB</span>
+      </div>
+    </div>
+    <!-- Preview panel -->
+    <div style="flex:1;padding:14px;display:flex;flex-direction:column;justify-content:center;">
+      <div style="display:flex;gap:14px;">
+        <div style="width:70px;height:105px;border-radius:10px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <h3 style="margin:0 0 2px;font-size:0.9em;">Elden Ring</h3>
+          <p style="margin:0;font-size:0.55em;color:var(--muted);">PC · 48.2 GB · Last played yesterday</p>
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <span style="background:#22c55e;padding:4px 14px;border-radius:8px;font-size:0.6em;font-weight:700;">▶ Play</span>
+            <span style="background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:8px;font-size:0.6em;">Open Folder</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 4: VS Code Activity Bar                  -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#4: VS Code Layout</h3><span>Activity bar icons + panels + main content area</span></div>
+  <div style="display:flex;background:#0d0d12;min-height:260px;">
+    <div style="width:36px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:10px;flex-shrink:0;">
+      <span style="font-size:0.65em;opacity:0.3;">📁</span>
+      <span style="font-size:0.65em;color:#22c55e;">🎮</span>
+      <span style="font-size:0.65em;opacity:0.3;">⭐</span>
+      <span style="font-size:0.65em;opacity:0.3;">⚙️</span>
+    </div>
+    <div style="width:150px;border-right:1px solid rgba(255,255,255,0.03);padding:10px;flex-shrink:0;">
+      <div style="font-size:0.5em;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.15);margin-bottom:6px;">GAMES</div>
+      <div class="row"><span>🎮</span><span style="flex:1;font-size:0.6em;">All Games</span><span style="font-size:0.5em;color:var(--muted);">42</span></div>
+      <div class="row" style="opacity:0.5;"><span>✅</span><span style="flex:1;font-size:0.6em;">Matched</span><span style="font-size:0.5em;color:var(--muted);">18</span></div>
+      <div class="row" style="opacity:0.5;"><span>❓</span><span style="flex:1;font-size:0.6em;">Unmatched</span><span style="font-size:0.5em;color:var(--muted);">20</span></div>
+      <div class="row" style="opacity:0.5;"><span>💿</span><span style="flex:1;font-size:0.6em;">ISOs</span><span style="font-size:0.5em;color:var(--muted);">4</span></div>
+      <div style="font-size:0.5em;text-transform:uppercase;letter-spacing:0.05em;color:rgba(255,255,255,0.15);margin:8px 0 4px;">FOLDERS</div>
+      <div class="row" style="opacity:0.5;"><span>📂</span><span style="flex:1;font-size:0.6em;">C:\Games</span></div>
+      <div class="row" style="opacity:0.5;"><span>📂</span><span style="flex:1;font-size:0.6em;">D:\ISOs</span></div>
+    </div>
+    <div style="flex:1;padding:10px;">
+      <div class="row" style="background:rgba(255,255,255,0.03);"><span style="color:#22c55e;">▶</span><span style="flex:1;font-size:0.6em;font-weight:600;">Elden Ring</span><span style="font-size:0.5em;color:var(--muted);">48.2 GB</span></div>
+      <div class="row"><span style="color:#22c55e;">▶</span><span style="flex:1;font-size:0.6em;">Baldur's Gate 3</span><span style="font-size:0.5em;color:var(--muted);">32.1 GB</span></div>
+      <div class="row"><span style="color:#22c55e;">▶</span><span style="flex:1;font-size:0.6em;">Cyberpunk 2077</span><span style="font-size:0.5em;color:var(--muted);">28.4 GB</span></div>
+      <div class="row" style="opacity:0.4;"><span style="color:#3b82f6;">↗</span><span style="flex:1;font-size:0.6em;">Red Dead Redemption 2</span><span style="font-size:0.5em;color:var(--muted);">22.0 GB</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 5: File Explorer Detail View            -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#5: Explorer Detail View</h3><span>Windows Explorer — columns headers, sortable, detail-rich rows</span></div>
+  <div style="padding:12px 14px;background:#0b0b10;">
+    <div style="display:flex;gap:8px;padding:5px 6px;font-size:0.5em;color:rgba(255,255,255,0.2);text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.04);margin-bottom:4px;">
+      <span style="flex:1;">Name</span>
+      <span style="width:45px;">Size</span>
+      <span style="width:35px;">Type</span>
+      <span style="width:55px;">Platform</span>
+      <span style="width:40px;">Played</span>
+    </div>
+    <div class="row"><span style="flex:1;font-weight:600;font-size:0.65em;">🎮 Elden Ring</span><span style="width:45px;">48.2 GB</span><span style="width:35px;color:#22c55e;">App</span><span style="width:55px;">PC</span><span style="width:40px;">86h</span></div>
+    <div class="row"><span style="flex:1;font-size:0.65em;">🎮 Baldur's Gate 3</span><span style="width:45px;">32.1 GB</span><span style="width:35px;color:#22c55e;">App</span><span style="width:55px;color:#a855f7;">GOG</span><span style="width:40px;">120h</span></div>
+    <div class="row"><span style="flex:1;font-size:0.65em;">🎮 Cyberpunk 2077</span><span style="width:45px;">28.4 GB</span><span style="width:35px;color:#22c55e;">App</span><span style="width:55px;color:#f59e0b;">Epic</span><span style="width:40px;">63h</span></div>
+    <div class="row" style="opacity:0.5;"><span style="flex:1;font-size:0.65em;">💿 Red Dead Redemption 2</span><span style="width:45px;">22.0 GB</span><span style="width:35px;color:#fbbf24;">ISO</span><span style="width:55px;">ISO</span><span style="width:40px;">—</span></div>
+    <div class="row" style="opacity:0.5;"><span style="flex:1;font-size:0.65em;">🎮 Hades II</span><span style="width:45px;">4.8 GB</span><span style="width:35px;color:#22c55e;">App</span><span style="width:55px;">Steam</span><span style="width:40px;">—</span></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 6: Notion Database / Spreadsheet        -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#6: Notion Database</h3><span>Rich table — inline properties, badges, filter bar, selectable rows</span></div>
+  <div style="padding:12px 14px;background:#0b0b10;">
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <span style="font-size:0.55em;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.04);color:#fff;font-weight:600;">All</span>
+      <span style="font-size:0.55em;padding:3px 8px;border-radius:4px;color:var(--muted);">Matched</span>
+      <span style="font-size:0.55em;padding:3px 8px;border-radius:4px;color:var(--muted);">Unmatched</span>
+      <span style="margin-left:auto;font-size:0.55em;padding:3px 8px;border-radius:4px;color:var(--muted);">Sort: Size ▼</span>
+    </div>
+    <div style="font-size:0.55em;color:rgba(255,255,255,0.15);display:flex;gap:6px;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.04);margin-bottom:2px;">
+      <span style="width:16px;"></span><span style="width:130px;">Name</span><span style="width:32px;">Size</span><span style="width:50px;">Platform</span><span style="width:50px;">Last Played</span><span style="width:20px;">★</span>
+    </div>
+    <div style="display:flex;gap:6px;padding:5px 6px;font-size:0.6em;border-radius:4px;background:rgba(255,255,255,0.02);">
+      <span style="width:16px;color:#22c55e;">▶</span>
+      <span style="width:130px;font-weight:500;">Elden Ring</span>
+      <span style="width:32px;">48.2</span>
+      <span style="width:50px;"><span style="background:rgba(34,197,94,0.1);color:#22c55e;padding:1px 5px;border-radius:3px;font-size:0.5em;font-weight:600;">PC</span></span>
+      <span style="width:50px;color:var(--muted);">Yesterday</span>
+      <span style="width:20px;color:#f59e0b;">★</span>
+    </div>
+    <div style="display:flex;gap:6px;padding:5px 6px;font-size:0.6em;">
+      <span style="width:16px;color:#22c55e;">▶</span>
+      <span style="width:130px;font-weight:500;">Baldur's Gate 3</span>
+      <span style="width:32px;">32.1</span>
+      <span style="width:50px;"><span style="background:rgba(168,85,247,0.1);color:#a855f7;padding:1px 5px;border-radius:3px;font-size:0.5em;font-weight:600;">GOG</span></span>
+      <span style="width:50px;color:var(--muted);">3d ago</span>
+      <span style="width:20px;"></span>
+    </div>
+    <div style="display:flex;gap:6px;padding:5px 6px;font-size:0.6em;">
+      <span style="width:16px;color:#22c55e;">▶</span>
+      <span style="width:130px;font-weight:500;">Cyberpunk 2077</span>
+      <span style="width:32px;">28.4</span>
+      <span style="width:50px;"><span style="background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 5px;border-radius:3px;font-size:0.5em;font-weight:600;">Epic</span></span>
+      <span style="width:50px;color:var(--muted);">Last week</span>
+      <span style="width:20px;">☆</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 7: Trello Kanban Board                   -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#7: Kanban Board</h3><span>Columns for each status — drag between columns</span></div>
+  <div style="padding:14px;background:#0d0d12;display:flex;gap:10px;min-height:200px;">
+    <div style="flex:1;background:var(--surface);border-radius:10px;padding:8px;">
+      <div style="font-size:0.55em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">📥 Installable <span style="color:#22c55e;">7</span></div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;margin-bottom:4px;">
+        <div style="font-size:0.6em;font-weight:600;">RDR2</div>
+        <div style="font-size:0.5em;color:var(--muted);">22 GB · ISO</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;">
+        <div style="font-size:0.6em;font-weight:600;">God of War</div>
+        <div style="font-size:0.5em;color:var(--muted);">64 GB · ISO</div>
+      </div>
+    </div>
+    <div style="flex:1;background:var(--surface);border-radius:10px;padding:8px;">
+      <div style="font-size:0.55em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">🎮 Unmatched <span style="color:#3b82f6;">20</span></div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;margin-bottom:4px;">
+        <div style="font-size:0.6em;font-weight:600;">Hades II</div>
+        <div style="font-size:0.5em;color:var(--muted);">Steam · 4.8 GB</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;">
+        <div style="font-size:0.6em;font-weight:600;">Armored Core VI</div>
+        <div style="font-size:0.5em;color:var(--muted);">PC · 42 GB</div>
+      </div>
+    </div>
+    <div style="flex:1;background:var(--surface);border-radius:10px;padding:8px;">
+      <div style="font-size:0.55em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">✅ Matched <span style="color:#22c55e;">18</span></div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;margin-bottom:4px;">
+        <div style="font-size:0.6em;font-weight:600;">Elden Ring</div>
+        <div style="font-size:0.5em;color:var(--muted);">PC · 48.2 GB</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;">
+        <div style="font-size:0.6em;font-weight:600;">Cyberpunk 2077</div>
+        <div style="font-size:0.5em;color:var(--muted);">Epic · 28.4 GB</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 8: RSS Reader 3-Pane                    -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#8: RSS Reader 3-Pane</h3><span>Categories left · list middle · detail right</span></div>
+  <div style="display:flex;background:#0b0b10;min-height:260px;">
+    <div style="width:110px;border-right:1px solid rgba(255,255,255,0.03);padding:10px;flex-shrink:0;">
+      <div class="side-item active"><span>📡</span> All</div>
+      <div class="side-item"><span>📡</span> Matched</div>
+      <div class="side-item"><span>📡</span> Unmatched</div>
+      <div class="side-item"><span>📡</span> ISOs</div>
+    </div>
+    <div style="width:180px;border-right:1px solid rgba(255,255,255,0.03);padding:8px;flex-shrink:0;">
+      <div style="background:rgba(255,255,255,0.03);border-radius:6px;padding:6px 8px;margin-bottom:6px;border-left:2px solid #22c55e;">
+        <div style="font-size:0.6em;font-weight:600;">Elden Ring</div>
+        <div style="font-size:0.5em;color:var(--muted);">PC · 48 GB</div>
+      </div>
+      <div style="padding:6px 8px;border-radius:6px;">
+        <div style="font-size:0.6em;">Baldur's Gate 3</div>
+        <div style="font-size:0.5em;color:var(--muted);">GOG · 32 GB</div>
+      </div>
+      <div style="padding:6px 8px;border-radius:6px;">
+        <div style="font-size:0.6em;">Cyberpunk 2077</div>
+        <div style="font-size:0.5em;color:var(--muted);">Epic · 28 GB</div>
+      </div>
+    </div>
+    <div style="flex:1;padding:12px;">
+      <h3 style="margin:0 0 2px;font-size:0.8em;">Elden Ring</h3>
+      <div style="display:flex;gap:10px;font-size:0.55em;color:var(--muted);margin-bottom:10px;">
+        <span>PC</span><span>48.2 GB</span><span>Last played: yesterday</span><span>86h total</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <span style="background:#22c55e;padding:4px 14px;border-radius:6px;font-size:0.6em;font-weight:700;">▶ Play</span>
+        <span style="background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:6px;font-size:0.6em;">📍 Open Folder</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 9: Discord Channel List                 -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#9: Discord Channels</h3><span>Server-style sidebar with channel categories + feed</span></div>
+  <div style="display:flex;background:#0c0c12;min-height:250px;">
+    <div style="width:48px;background:#07070a;border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:8px;flex-shrink:0;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:0.6em;font-weight:700;">OG</div>
+      <div style="width:32px;height:2px;border-radius:1px;background:rgba(255,255,255,0.06);"></div>
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:0.5em;">🎮</div>
+    </div>
+    <div style="width:160px;border-right:1px solid rgba(255,255,255,0.03);padding:10px;flex-shrink:0;">
+      <div style="font-size:0.55em;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:4px;">
+        <span>Otix Games</span>
+        <span style="margin-left:auto;font-size:0.5em;">▼</span>
+      </div>
+      <div style="font-size:0.45em;text-transform:uppercase;color:var(--muted);letter-spacing:0.05em;margin:8px 0 4px;">COLLECTIONS</div>
+      <div class="row" style="font-size:0.55em;"><span style="color:#22c55e;">#</span> all-games</div>
+      <div class="row" style="font-size:0.55em;opacity:0.5;"><span style="color:#3b82f6;">#</span> matched</div>
+      <div class="row" style="font-size:0.55em;opacity:0.5;"><span>#</span> unmatched</div>
+      <div class="row" style="font-size:0.55em;opacity:0.5;"><span>#</span> isos</div>
+    </div>
+    <div style="flex:1;padding:10px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.7em;font-weight:600;"># all-games</span>
+        <span style="font-size:0.5em;color:var(--muted);">42 games · 234 GB</span>
+      </div>
+      <div class="row"><span style="width:24px;height:24px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></span><span style="flex:1;font-size:0.65em;font-weight:600;">Elden Ring</span><span style="font-size:0.5em;color:#22c55e;">Online</span></div>
+      <div class="row"><span style="width:24px;height:24px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></span><span style="flex:1;font-size:0.65em;">Baldur's Gate 3</span><span style="font-size:0.5em;color:var(--muted);">Idle</span></div>
+      <div class="row"><span style="width:24px;height:24px;border-radius:4px;background:#2e1a1a;flex-shrink:0;"></span><span style="flex:1;font-size:0.65em;">Cyberpunk 2077</span><span style="font-size:0.5em;color:var(--muted);">Offline</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- 10: macOS Launchpad                      -->
+<!-- ════════════════════════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#10: Launchpad Grid</h3><span>macOS Launchpad — clean square icon grid, full-bleed, search at top</span></div>
+  <div style="padding:20px;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.4));min-height:260px;">
+    <div style="width:200px;margin:0 auto 16px;background:rgba(255,255,255,0.06);border-radius:20px;padding:5px 12px;font-size:0.65em;color:var(--muted);text-align:center;backdrop-filter:blur(4px);">🔍 Search Games</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;max-width:400px;margin:0 auto;">
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:14px;background:linear-gradient(135deg,#1a2e1a,#0d1a0d);margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:0.55em;color:#22c55e;font-weight:600;">ER</div>
+        <div style="font-size:0.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Elden Ring</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:14px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:0.55em;font-weight:600;">BG3</div>
+        <div style="font-size:0.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Baldur's Gate 3</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:14px;background:linear-gradient(135deg,#2e1a1a,#1a0d0d);margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:0.55em;font-weight:600;">CP</div>
+        <div style="font-size:0.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Cyberpunk 2077</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:14px;background:linear-gradient(135deg,#1a2e2e,#0d1a1a);margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:0.55em;font-weight:600;">SF</div>
+        <div style="font-size:0.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Starfield</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:14px;background:rgba(255,255,255,0.04);margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:0.6em;color:var(--muted);">+</div>
+        <div style="font-size:0.5em;color:var(--muted);">More</div>
+      </div>
+    </div>
+  </div>
+</div>

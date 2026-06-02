@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Link, useRouter } from '@tanstack/react-router'
+import { Link, useRouter, useLocation } from '@tanstack/react-router'
 import { Menu, ArrowLeft } from 'lucide-react'
 import { DkButton } from '@dk-ui/atoms/button'
 import { DkLogo } from '@dk-ui/atoms/logo'
@@ -9,11 +9,8 @@ import { UserMenu } from '@/features/auth/molecules/user-menu'
 import { NotificationBell } from '@/features/notifications/molecules/notification-bell'
 import { useNotificationToasts } from '@/features/notifications/use-notification-toasts'
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
-import { PlayerBar } from '@/features/spotify/player-bar'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { NowPlayingView } from '@/features/spotify/now-playing-view'
-import { GameIndicator } from '@/features/game-detector/game-indicator'
-import { GameMatcher } from '@/features/game-detector/game-matcher'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -27,13 +24,7 @@ function loadPinState(): boolean {
   }
 }
 
-function savePinState(pinned: boolean) {
-  try {
-    localStorage.setItem(PIN_KEY, String(pinned))
-  } catch {
-    // localStorage not available
-  }
-}
+
 
 const floatingPill = cn(
   'fixed z-[9999]',
@@ -48,9 +39,9 @@ function MenuToggle() {
   return (
     <DkButton
       variant="ghost"
-      size="icon"
+      size="sm"
       onClick={toggle}
-      className="rounded-full"
+      className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
       aria-label="Toggle menu"
     >
       <Menu className="h-5 w-5" />
@@ -67,9 +58,9 @@ function BackButton() {
   return (
     <DkButton
       variant="ghost"
-      size="icon"
+      size="sm"
       onClick={() => router.history.back()}
-      className="rounded-full"
+      className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
       aria-label="Go back"
     >
       <ArrowLeft className="h-5 w-5" />
@@ -79,19 +70,15 @@ function BackButton() {
 
 function AppShell({ children }: { children: ReactNode }) {
   const { navLogo } = usePageMeta()
-  const [isPinned, setIsPinned] = useState(() => loadPinState())
+  const location = useLocation()
+  const isPinned = loadPinState()
+
+  const isHomePage = location.pathname === '/'
+  const canGoBack = typeof window !== "undefined" && window.history.length > 1
+  const showBackButton = !isHomePage && canGoBack
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isMatcherOpen, setIsMatcherOpen] = useState(false)
 
-  const handlePin = useCallback(() => {
-    setIsPinned(true)
-    savePinState(true)
-  }, [])
 
-  const handleUnpin = useCallback(() => {
-    setIsPinned(false)
-    savePinState(false)
-  }, [])
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev)
@@ -113,9 +100,8 @@ function AppShell({ children }: { children: ReactNode }) {
         )}
         data-menu-trigger
       >
+        {showBackButton && <BackButton />}
         <MenuToggle />
-        <BackButton />
-        <div className="w-px h-6 bg-white/[0.08]" />
         {navLogo ? (
           <img
             src={navLogo}
@@ -130,40 +116,28 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MenuDropdown />
-      <div className="fixed top-4 right-4 z-[9998] flex items-center gap-2">
+      <div
+        className={cn(
+          floatingPill,
+          'top-4 right-4 px-2 py-1.5 gap-1 transition-all duration-300',
+        )}
+      >
         <NowPlayingButton
+          bare
           isPinned={isPinned}
           isSidebarOpen={isSidebarOpen}
-          onPin={handlePin}
           onToggleSidebar={handleToggleSidebar}
         />
         <NavSearch />
-        <div
-          className={cn(
-            'flex items-center rounded-[2rem]',
-            'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-            'backdrop-blur-lg',
-            'shadow-[var(--dk-shadow-glass)]',
-            'px-2 py-1.5 gap-1',
-          )}
-        >
-          <NotificationBell bare />
-          <UserMenu bare />
-        </div>
+        <NotificationBell bare />
+        <UserMenu bare />
       </div>
 
       <div className="flex min-h-screen">
-        <main className="flex-1 container mx-auto px-4 pt-20 pb-6">{children}</main>
+        <main className="flex-1 container mx-auto px-4 pt-20 pb-24">{children}</main>
         <NowPlayingView open={isSidebarOpen} onClose={handleCloseSidebar} />
       </div>
 
-      <GameIndicator onOpenMatcher={() => setIsMatcherOpen(true)} />
-      <GameMatcher isOpen={isMatcherOpen} onClose={() => setIsMatcherOpen(false)} />
-      <PlayerBar
-        isPinned={isPinned}
-        onPin={handlePin}
-        onUnpin={handleUnpin}
-      />
       <XPToastContainer />
     </div>
   )

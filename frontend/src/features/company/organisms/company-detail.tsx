@@ -15,6 +15,7 @@ import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
 const BROWSE_TYPES = [
+  { value: 'all', label: 'All', Icon: Building2 },
   { value: 'movie', label: 'Movies', Icon: Film },
   { value: 'show', label: 'Shows', Icon: Tv },
   { value: 'game', label: 'Games', Icon: Gamepad2 },
@@ -70,8 +71,10 @@ export function CompanyDetail() {
   const rate = useRateCompany(id)
   const unrate = useUnrateCompany(id)
 
-  const [mediaType, setMediaType] = useState<string>('movie')
+  const [mediaType, setMediaType] = useState<string>('all')
   const [sortBy, setSortBy] = useState('popularity')
+
+  const queryType = mediaType === 'all' ? undefined : mediaType
 
   const {
     data,
@@ -81,7 +84,7 @@ export function CompanyDetail() {
     fetchNextPage,
   } = useInfiniteQuery({
     ...mediaQueries.infiniteList({
-      type: mediaType,
+      type: queryType,
       company: id,
       sortBy,
       sortDir: 'desc',
@@ -118,7 +121,7 @@ export function CompanyDetail() {
     )
   }
 
-  const typeLabel = BROWSE_TYPES.find((t) => t.value === mediaType)?.label ?? 'Movies'
+  const typeLabel = mediaType === 'all' ? 'items' : (BROWSE_TYPES.find((t) => t.value === mediaType)?.label ?? 'movies').toLowerCase()
 
   return (
     <div className="pb-16">
