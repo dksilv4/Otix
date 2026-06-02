@@ -10,6 +10,7 @@ import {
   InformationCircleIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/solid"
+import { Gamepad2 } from "lucide-react"
 import { useAuth } from "@/features/auth/auth-provider"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigation } from "@navigation/providers/navigation-provider"
@@ -56,6 +57,9 @@ export function MenuDropdown() {
 
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
+    ...(isElectron ? [
+      { to: "/games" as string, icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined as any },
+    ] : []),
     { to: "/library", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
     ...(user ? [
       { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },

@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
+import { apiClient, API_BASE_URL } from "@/lib/api-client"
 import { libraryKeys } from "./library-keys"
 
 export interface LibraryResponse {
@@ -36,7 +36,7 @@ export interface LibraryResponse {
   hasMore: boolean
 }
 
-export const LIBRARY_TABS = ["overview", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists", "local-games"] as const
+export const LIBRARY_TABS = ["overview", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
@@ -51,7 +51,6 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   plex: "Plex",
   wishlist: "Wishlist",
   lists: "Lists",
-  "local-games": "Local Games",
 }
 
 export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, string>) {
@@ -86,22 +85,98 @@ export function useSteamLibraryScan() {
   })
 }
 
+export interface PlexSyncResult {
+  total: number
+  matched: number
+  seeded: number
+  servers?: number
+  libraries?: number
+}
+
+/**
+ * Shared helper: POST /plex/sync → open SSE stream → await sync_complete or error.
+ * Resolves with the final PlexSyncResult so callers get meaningful data.
+ * Calls `onEvent` for each progress event (optional, for UI feedback).
+ */
+export async function streamPlexSync(
+  onEvent?: (event: { type: string; [key: string]: unknown }) => void,
+): Promise<PlexSyncResult> {
+  const { data } = await apiClient.post<{ taskId: string }>("/auth/integrations/plex/sync")
+  const token = localStorage.getItem("otix-access-token")
+
+  const response = await fetch(
+    `${API_BASE_URL}/auth/integrations/plex/sync/${data.taskId}/stream`,
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  )
+
+  if (!response.ok) {
+    throw new Error(`SSE connection failed: ${response.status}`)
+  }
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  const convertToCamel = (str: string) =>
+    str.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+
+  const camelCaseKeys = (obj: Record<string, unknown>): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [convertToCamel(k), v]),
+    )
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const frames = buffer.split("\n\n")
+    buffer = frames.pop() ?? ""
+
+    for (const frame of frames) {
+      for (const line of frame.split("\n")) {
+        if (!line.startsWith("data: ")) continue
+        // Skip SSE keep-alive comments
+        if (line.trim() === "data:") continue
+        let event: Record<string, unknown>
+        try {
+          event = camelCaseKeys(JSON.parse(line.slice(6)))
+        } catch {
+          continue
+        }
+        onEvent?.(event as { type: string; [key: string]: unknown })
+        if (event.type === "sync_complete") {
+          return {
+            total: (event.total as number) ?? 0,
+            matched: (event.matched as number) ?? 0,
+            seeded: (event.seeded as number) ?? 0,
+            servers: event.servers as number | undefined,
+            libraries: event.libraries as number | undefined,
+          }
+        }
+        if (event.type === "error") {
+          throw new Error((event.message as string) ?? "Plex sync failed")
+        }
+      }
+    }
+  }
+
+  // Stream closed without a sync_complete — treat as success with zeros
+  return { total: 0, matched: 0, seeded: 0 }
+}
+
 export function usePlexLibraryScan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiClient.post<{ total: number; matched: number; seeded: number }>(
-        "/auth/integrations/plex/sync",
-      )
-      return data
-    },
+    mutationFn: () => streamPlexSync(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.tab("plex") })
       queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "status"] })
     },
   })
 }
+
 
 export function usePlexStatus({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
@@ -231,13 +306,17 @@ export interface SpotifyTrack {
   id: string
   name: string
   artist: string
+  artistId?: string | null
   albumName: string
+  albumId?: string | null
   albumArt: string | null
   durationMs: number | null
   uri: string
   previewUrl: string | null
   spotifyLiked?: boolean
   otixTrackId?: string | null
+  otixAlbumId?: string | null
+  otixArtistId?: string | null
   avgRating?: number | null
   ratingCount?: number
 }
