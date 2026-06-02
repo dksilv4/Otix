@@ -33,7 +33,7 @@ export function GamesPage() {
   }, [])
 
   const handleFavorite = useCallback((_gameId: string) => {
-    // Placeholder — will be connected to persisted state
+    // Placeholder
   }, [])
 
   const matchedCount = filteredGames.filter((g) => g.otixMediaId).length
@@ -42,7 +42,7 @@ export function GamesPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-center gap-2.5">
         <h1 className="text-xl font-extrabold text-foreground">🎮 Games</h1>
         <span className="text-[11px] text-white/25 bg-white/5 px-2.5 py-1 rounded-lg">
@@ -50,41 +50,62 @@ export function GamesPage() {
         </span>
       </div>
 
-      {/* Hero row */}
-      <div className="flex gap-2.5 min-h-[180px]">
-        <GamesSidePanel
-          open={sidePanelOpen}
-          onClose={() => setSidePanelOpen(false)}
-          games={filteredGames}
-          selectedId={selectedGame?.id ?? null}
-          onSelect={selectGame}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onRescan={() => {}}
-        />
-        <GamesHero
-          game={selectedGame}
-          onTogglePanel={() => setSidePanelOpen(!sidePanelOpen)}
-          onPlay={handlePlay}
-          onOpenFolder={handleOpenFolder}
-          onFavorite={handleFavorite}
-          isFavorite={false}
-          panelLabel={selectedGame?.otixMediaTitle || selectedGame?.title || "Browse"}
-        />
-      </div>
+      {/* Browser wrapper — single surface like mockup */}
+      <div className="rounded-3xl overflow-hidden bg-[rgba(10,10,15,0.5)]">
+        <div className="p-5">
+          {/* Hero row */}
+          <div className="flex gap-2.5 min-h-[180px] mb-5">
+            <GamesSidePanel
+              open={sidePanelOpen}
+              onClose={() => setSidePanelOpen(false)}
+              games={filteredGames}
+              selectedId={selectedGame?.id ?? null}
+              onSelect={selectGame}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onRescan={() => {}}
+            />
+            <GamesHero
+              game={selectedGame}
+              onTogglePanel={() => setSidePanelOpen(!sidePanelOpen)}
+              onPlay={handlePlay}
+              onOpenFolder={handleOpenFolder}
+              onFavorite={handleFavorite}
+              isFavorite={false}
+              panelLabel={selectedGame?.otixMediaTitle || selectedGame?.title || "Browse"}
+            />
+          </div>
 
-      {/* Game Pass shelves */}
-      <GamesShelf rows={shelves} onSelectGame={selectGame} />
+          {/* Shelf category chips */}
+          <div className="flex gap-1.5 mb-4 overflow-x-auto">
+            {["For You", "Recently Played", "Action", "RPG", "FPS", "Available"].map((label) => (
+              <button
+                key={label}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap ${
+                  label === "For You"
+                    ? "bg-emerald-500/10 text-emerald-400 font-semibold"
+                    : "text-white/40 hover:text-white/60 hover:bg-white/5"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-      {/* Footer stats */}
-      <div className="flex gap-4 pt-3 border-t border-white/5 text-[10px] text-white/10">
-        <span>{matchedCount} matched</span>
-        <span>{unmatchedCount} unmatched</span>
-        <span>{isoCount} ISOs</span>
-        <span>{totalSize} GB total</span>
-        <span className="ml-auto">Last scan: —</span>
+          {/* Game Pass shelves */}
+          <GamesShelf rows={shelves} onSelectGame={selectGame} />
+
+          {/* Footer stats */}
+          <div className="flex gap-4 pt-3 mt-4 border-t border-white/5 text-[10px] text-white/10">
+            <span>{matchedCount} matched</span>
+            <span>{unmatchedCount} unmatched</span>
+            <span>{isoCount} ISOs</span>
+            <span>{totalSize} GB total</span>
+            <span className="ml-auto">Last scan: —</span>
+          </div>
+        </div>
       </div>
     </div>
   )
