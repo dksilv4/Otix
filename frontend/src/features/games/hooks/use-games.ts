@@ -1,33 +1,64 @@
-import { useState, useMemo, useCallback, useEffect } from "react"
-import { getScannedGames, setScannedGames, setLocalGamesMapEntry } from "@/features/game-scanner/storage"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { getScannedGames, setScannedGames, setLocalGamesMapEntry, getScanPaths, getIsoPaths, hasElectronAPI } from "@/features/game-scanner/storage"
+import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import type { DetectedGame } from "@/features/game-scanner/types"
 import type { GamesTab, ShelfRow } from "../types"
 
-// Demo data for when no games are scanned yet
-const DEMO_GAMES: DetectedGame[] = [
-  { id: "elden", title: "Elden Ring", exePath: "", installDir: "D:/Games/Elden Ring", platform: "steam", otixMediaId: "game_1", otixMediaTitle: "Elden Ring", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "bg3", title: "Baldur's Gate 3", exePath: "", installDir: "D:/Games/BG3", platform: "steam", otixMediaId: "game_2", otixMediaTitle: "Baldur's Gate 3", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "cs2", title: "CS2", exePath: "", installDir: "D:/Games/CS2", platform: "steam", otixMediaId: "game_3", otixMediaTitle: "Counter-Strike 2", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "witcher", title: "The Witcher 3", exePath: "", installDir: "D:/Games/Witcher3", platform: "gog", otixMediaId: "game_4", otixMediaTitle: "The Witcher 3: Wild Hunt", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "cyberpunk", title: "Cyberpunk 2077", exePath: "", installDir: "D:/Games/Cyberpunk", platform: "gog", otixMediaId: "game_5", otixMediaTitle: "Cyberpunk 2077", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "helldivers", title: "Helldivers 2", exePath: "", installDir: "D:/Games/Helldivers2", platform: "steam", otixMediaId: "game_6", otixMediaTitle: "Helldivers 2", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "hollow", title: "Hollow Knight", exePath: "", installDir: "D:/Games/HollowKnight", platform: "steam", otixMediaId: "game_7", otixMediaTitle: "Hollow Knight", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "portal2", title: "Portal 2", exePath: "", installDir: "D:/Games/Portal2", platform: "steam", otixMediaId: "game_8", otixMediaTitle: "Portal 2", otixPosterUrl: "", otixLogoUrl: "", otixConfidence: 1 },
-  { id: "rdr2", title: "Red Dead Redemption 2", exePath: "", installDir: "D:/Games/RDR2", platform: "iso", otixMediaId: undefined },
-  { id: "gowr", title: "God of War Ragnarök", exePath: "", installDir: "D:/ISOs/GoW_Ragnarok", platform: "iso", otixMediaId: undefined },
-  { id: "hades2", title: "Hades II", exePath: "", installDir: "D:/Games/Hades2", platform: "steam", otixMediaId: undefined },
-  { id: "stellar", title: "Stellar Blade", exePath: "", installDir: "D:/Games/StellarBlade", platform: "pc", otixMediaId: undefined },
-]
-
 export function useGames() {
-  const scannedGames = getScannedGames()
-  const [games, setGames] = useState<DetectedGame[]>(
-    () => scannedGames.length > 0 ? scannedGames : DEMO_GAMES,
-  )
+  const [games, setGames] = useState<DetectedGame[]>(() => getScannedGames())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidePanelOpen, setSidePanelOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<GamesTab>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [scanning, setScanning] = useState(false)
+
+  const matchMutation = useMatchLocalGames()
+  const hasMatched = useRef(false)
+  const gamesRef = useRef(games)
+  gamesRef.current = games
+
+  // Auto-match on first mount
+  useEffect(() => {
+    if (games.length > 0 && !hasMatched.current) {
+      const needsMatch = games.some((g) => !g.otixMediaId && !g.otixMatchSuggestion)
+      if (needsMatch) {
+        hasMatched.current = true
+        matchMutation.mutateAsync(games).then((matched) => {
+          if (matched && matched.length > 0) setGames(matched)
+        }).catch(() => {})
+      } else {
+        hasMatched.current = true
+      }
+    }
+  }, [])
+
+  // Restore match data from previous scans
+  useEffect(() => {
+    if (games.length > 0) {
+      setScannedGames(games)
+      for (const g of games) {
+        if (g.otixMediaId) setLocalGamesMapEntry(g.otixMediaId, g)
+      }
+      if (hasElectronAPI()) {
+        (window as any).electronAPI.setLibrary(games).catch(() => {})
+      }
+    }
+  }, [games])
+
+  // Re-match games that matched before but lost poster art
+  useEffect(() => {
+    if (games.length === 0 || hasMatched.current) return
+    const needsArt = games.filter((g) => g.otixMediaId && !g.otixPosterUrl && !g.otixLogoUrl)
+    if (needsArt.length === 0) return
+    const stripped = needsArt.map((g) => ({ ...g, otixMediaId: undefined as string | undefined }))
+    matchMutation.mutateAsync(stripped).then((updated) => {
+      if (!updated) return
+      setGames((prev) => {
+        const map = new Map(updated.map((g) => [g.id, g]))
+        return prev.map((g) => map.get(g.id) ?? g)
+      })
+    }).catch(() => {})
+  }, [])
 
   const selectedGame = useMemo(
     () => games.find((g) => g.id === selectedId) ?? games[0] ?? null,
@@ -40,17 +71,6 @@ export function useGames() {
     }
   }, [games, selectedId])
 
-  useEffect(() => {
-    if (scannedGames.length > 0) {
-      setScannedGames(games)
-      for (const game of games) {
-        if (game.otixMediaId) {
-          setLocalGamesMapEntry(game.otixMediaId, game)
-        }
-      }
-    }
-  }, [games])
-
   const filteredGames = useMemo(() => {
     let result = games
     if (activeTab === "matched") result = result.filter((g) => g.otixMediaId)
@@ -58,7 +78,7 @@ export function useGames() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       result = result.filter(
-        (g) => g.title.toLowerCase().includes(q) || g.platform.toLowerCase().includes(q),
+        (g) => g.title.toLowerCase().includes(q) || g.platform.toLowerCase().includes(q) || g.installDir.toLowerCase().includes(q),
       )
     }
     return result
@@ -67,40 +87,125 @@ export function useGames() {
   const matchedGames = useMemo(() => games.filter((g) => g.otixMediaId), [games])
   const unmatchedGames = useMemo(() => games.filter((g) => !g.otixMediaId), [games])
 
-  const shelves = useMemo((): ShelfRow[] => [
-    {
-      id: "recent",
-      label: "Recently Played",
-      icon: "🕐",
-      games: matchedGames.slice(0, 5),
-      emptyMessage: "Play some games to see them here",
-    },
-    {
-      id: "rpg",
-      label: "Role-Playing Games",
-      icon: "⚔️",
-      games: matchedGames.filter(g => g.id === "bg3" || g.id === "witcher" || g.id === "cyberpunk" || g.id === "elden").slice(0, 6),
-      emptyMessage: "No RPGs matched yet",
-    },
-    {
-      id: "action",
-      label: "Action & Adventure",
-      icon: "💥",
-      games: matchedGames.filter(g => g.id === "helldivers" || g.id === "hollow" || g.id === "portal2").slice(0, 6),
-      emptyMessage: "No action games yet",
-    },
-    {
-      id: "available",
-      label: "Available to Install",
-      icon: "⬇️",
-      games: unmatchedGames.filter((g) => g.platform === "iso").slice(0, 6),
-      emptyMessage: "No installable games available",
-    },
-  ], [matchedGames, unmatchedGames])
+  // Build shelves from real game data
+  const shelves = useMemo((): ShelfRow[] => {
+    const hasMatchedGames = matchedGames.length > 0
+    return [
+      {
+        id: "recent",
+        label: "Recently Played",
+        icon: "🕐",
+        games: matchedGames.slice(0, 5),
+        emptyMessage: "Play some games to see them here",
+      },
+      {
+        id: "matched",
+        label: "Matched Games",
+        icon: "✅",
+        games: matchedGames.slice(0, 8),
+        emptyMessage: hasMatchedGames ? "" : "No games matched yet — scan your library to get started",
+      },
+      {
+        id: "suggested",
+        label: "Suggested Matches",
+        icon: "🔗",
+        games: games.filter((g) => g.otixMatchSuggestion).slice(0, 6),
+        emptyMessage: "No match suggestions yet",
+      },
+      {
+        id: "unmatched",
+        label: "Unmatched Games",
+        icon: "🔍",
+        games: unmatchedGames.filter((g) => !g.otixMatchSuggestion).slice(0, 6),
+        emptyMessage: "All games matched!",
+      },
+      {
+        id: "available",
+        label: "Available to Install",
+        icon: "⬇️",
+        games: games.filter((g) => g.platform === "iso" || (!g.otixMediaId && !g.exePath.startsWith("steam://"))).slice(0, 6),
+        emptyMessage: "No installable games available",
+      },
+    ]
+  }, [matchedGames, unmatchedGames, games])
 
-  const totalSize = useMemo(() => games.length * 50, [games])
+  const totalSize = useMemo(() => {
+    return games.length * 50 // estimate
+  }, [games])
 
-  const selectGame = useCallback((id: string) => setSelectedId(id), [])
+  const selectGame = useCallback((id: string) => {
+    setSelectedId(id)
+  }, [])
+
+  const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
+    if (!game.otixMatchSuggestion) return
+    setGames((prev) =>
+      prev.map((g) =>
+        g.id === game.id
+          ? {
+              ...g,
+              otixMediaId: game.otixMatchSuggestion!.mediaId,
+              otixMediaTitle: game.otixMatchSuggestion!.title,
+              otixMediaSlug: game.otixMatchSuggestion!.slug,
+              otixMatchSuggestion: undefined,
+            }
+          : g,
+      ),
+    )
+  }, [])
+
+  const handleRejectSuggestion = useCallback((game: DetectedGame) => {
+    setGames((prev) =>
+      prev.map((g) =>
+        g.id === game.id ? { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined } : g,
+      ),
+    )
+  }, [])
+
+  const handleRescan = useCallback(async () => {
+    if (!hasElectronAPI()) return
+    setScanning(true)
+    try {
+      const api = (window as any).electronAPI
+      const gamePaths = getScanPaths()
+      const isoPaths = getIsoPaths()
+      const scanned = await api.scanPaths(gamePaths, isoPaths)
+
+      // Carry over previous match data
+      const prevOtixMap = new Map<string, DetectedGame>()
+      for (const g of gamesRef.current) {
+        if (g.otixMediaId || g.otixMatchSuggestion) {
+          prevOtixMap.set(g.id, g)
+        }
+      }
+
+      const matched = await matchMutation.mutateAsync(scanned)
+      if (!matched) return
+
+      const restored = matched.map((g) => {
+        if (g.otixMediaId || g.otixMatchSuggestion) return g
+        const prev = prevOtixMap.get(g.id)
+        if (!prev) return g
+        return {
+          ...g,
+          otixMediaId: prev.otixMediaId,
+          otixMediaTitle: prev.otixMediaTitle,
+          otixMediaSlug: prev.otixMediaSlug,
+          otixConfidence: prev.otixConfidence,
+          otixPosterUrl: prev.otixPosterUrl,
+          otixTextlessPosterUrl: prev.otixTextlessPosterUrl,
+          otixLogoUrl: prev.otixLogoUrl,
+          otixMatchSuggestion: prev.otixMatchSuggestion,
+        }
+      })
+
+      setGames(restored)
+    } catch (err) {
+      console.error("Rescan failed:", err)
+    } finally {
+      setScanning(false)
+    }
+  }, [matchMutation])
 
   return {
     games,
@@ -113,9 +218,13 @@ export function useGames() {
     activeTab,
     searchQuery,
     totalSize,
+    scanning,
     selectGame,
     setSidePanelOpen,
     setActiveTab,
     setSearchQuery,
+    handleAcceptSuggestion,
+    handleRejectSuggestion,
+    handleRescan,
   }
 }
