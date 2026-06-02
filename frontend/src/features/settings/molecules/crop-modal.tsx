@@ -58,7 +58,7 @@ export function CropModal({
 
   return (
     <div
-      className="flex flex-col rounded-2xl border border-white/[0.12] bg-black/90 p-5 shadow-2xl backdrop-blur-2xl ring-1 ring-white/[0.06] w-[28rem] max-w-[calc(100vw-2rem)]"
+      className="flex flex-col rounded-2xl bg-black/90 p-5 shadow-2xl backdrop-blur-2xl w-[28rem] max-w-[calc(100vw-2rem)]"
       style={{ height: '32rem', maxHeight: 'calc(100vh - 4rem)' }}
     >
       {/* header */}

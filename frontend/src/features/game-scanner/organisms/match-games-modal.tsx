@@ -411,9 +411,9 @@ export function MatchGamesModal({
                     >
                       {/* Game art */}
                       <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--dk-surface-glass)] ring-1 ring-white/[0.04]">
-                        {game.otixPosterUrl || game.iconUrl ? (
+                        {game.otixPosterUrl || game.posterUrl || game.iconUrl ? (
                           <img
-                            src={(game.otixPosterUrl || game.iconUrl)!}
+                            src={(game.otixPosterUrl || game.posterUrl || game.iconUrl)!}
                             alt=""
                             className="h-full w-full object-cover"
                           />

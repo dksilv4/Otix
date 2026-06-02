@@ -56,6 +56,7 @@ function getContentType(headers: Record<string, unknown>): string {
 // ── Refresh token flow (must be declared before the interceptor) ─────
 
 let isRefreshing = false
+let refreshFailed = false // cooldown flag — prevent retry storm after failed refresh
 let refreshQueue: Array<{
   resolve: (token: string) => void
   reject: (err: unknown) => void
@@ -79,6 +80,7 @@ export const apiClient = axios.create({
   baseURL: BASE_URL,
   withCredentials: true, // for httpOnly refresh cookie
   headers: { 'Content-Type': 'application/json' },
+  timeout: 15_000, // 15s — prevent forever-hanging requests (Docker/Win networking etc.)
 })
 
 // ── Request interceptor — camelCase → snake_case + auth token ─────────
@@ -148,6 +150,11 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // Cooldown: if a refresh already failed, don't retry — prevents 401/429 storms
+    if (refreshFailed) {
+      return Promise.reject(error)
+    }
+
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         refreshQueue.push({ resolve, reject })
@@ -164,6 +171,7 @@ apiClient.interceptors.response.use(
 
     try {
       const token = await refreshAccessToken()
+      refreshFailed = false // clear cooldown on success
       refreshQueue.forEach(({ resolve }) => resolve(token))
       refreshQueue = []
       if (originalRequest.headers) {
@@ -171,6 +179,7 @@ apiClient.interceptors.response.use(
       }
       return apiClient(originalRequest)
     } catch (refreshError) {
+      refreshFailed = true // block further refresh attempts until next login
       refreshQueue.forEach(({ reject }) => reject(refreshError))
       refreshQueue = []
       localStorage.removeItem(ACCESS_TOKEN_KEY)

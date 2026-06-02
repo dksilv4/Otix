@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { getBestIconUrl } from './steamgrid';
+import { getBestIconUrl, getBestGridUrl } from './steamgrid';
 
 export interface DetectedGame {
   id: string;
@@ -10,7 +10,8 @@ export interface DetectedGame {
   localExePath?: string;
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
-  iconUrl?: string; // base64 data URL
+  iconUrl?: string; // base64 data URL or SGDB icon URL
+  posterUrl?: string; // SGDB grid (cover/poster) URL
   updateFiles?: { name: string; path: string }[];
 }
 
@@ -44,12 +45,18 @@ export function cleanGameTitle(filename: string): string {
     /\[repack\]/gi, /\brepack\b/gi, /\belamigos\b/gi, /\bfitgirl\b/gi, /\bdodi\b/gi,
     /\bcodex\b/gi, /\bflt\b/gi, /\bplaza\b/gi, /\bskidrow\b/gi, /\brune\b/gi, /\btenoke\b/gi,
     /\bgoldberg\b/gi, /\brazor1911\b/gi, /\bfairlight\b/gi, /\bhoodlum\b/gi,
-    /\bmulti\d+\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bbuild\s*\d+\b/gi, /\bupdate\s*\d*\b/gi,
+    /\bmulti\d+\b/gi, /\bvoices\d*\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bbuild\s*\d+\b/gi, /\bupdate\s*\d*\b/gi,
     /\bhbg\b/gi, /\bdlc\b/gi, /\bgog\b/gi, /\bcrack\b/gi
   ];
   for (const tag of tags) {
     name = name.replace(tag, '');
   }
+  // Remove empty brackets and parentheses, or brackets/parentheses containing only spaces or non-word symbols
+  name = name.replace(/\[\s*\]/g, '');
+  name = name.replace(/\(\s*\)/g, '');
+  name = name.replace(/\{\s*\}/g, '');
+  // Remove dangling trailing punctuation symbols
+  name = name.replace(/[\s\-\+\:\,]+$/, '');
   // Clean double spaces and trim
   return name.replace(/\s+/g, ' ').trim();
 }
@@ -293,27 +300,45 @@ async function pickBestExe(exes: string[], installDirName: string): Promise<stri
   return bestExe || exes[0];
 }
 
-// Get icon for a game — native Electron file icon with SteamGridDB fallback
-async function getIconDataUrl(exePath: string, title?: string): Promise<string | undefined> {
+interface IconDataResult {
+  iconUrl?: string;
+  posterUrl?: string;
+}
+
+// Get icon and poster for a game — native Electron file icon with SteamGridDB fallback
+async function getIconDataUrl(exePath: string, title?: string): Promise<IconDataResult> {
+  const result: IconDataResult = {};
+
   // 1. Native file icon
   try {
     const icon = await app.getFileIcon(exePath, { size: 'large' });
-    return icon.toDataURL();
+    result.iconUrl = icon.toDataURL();
   } catch {
     // Native icon failed — try SteamGridDB if we have a title
   }
 
-  // 2. SteamGridDB fallback
+  // 2. SteamGridDB fallbacks
   if (title) {
+    // Icon fallback
+    if (!result.iconUrl) {
+      try {
+        const url = await getBestIconUrl(title);
+        if (url) result.iconUrl = url;
+      } catch (err) {
+        console.error('SteamGridDB icon lookup failed for', title, err);
+      }
+    }
+
+    // Poster (grid) — always try to get cover art
     try {
-      const url = await getBestIconUrl(title);
-      if (url) return url;
+      const posterUrl = await getBestGridUrl(title);
+      if (posterUrl) result.posterUrl = posterUrl;
     } catch (err) {
-      console.error('SteamGridDB icon lookup failed for', title, err);
+      console.error('SteamGridDB grid lookup failed for', title, err);
     }
   }
 
-  return undefined;
+  return result;
 }
 
 // Resolve the parent game folder, skipping subdirectories like 'bin', 'x64', 'engine', etc.
@@ -412,8 +437,11 @@ export async function scanPaths(
                 }
 
                 let iconUrl: string | undefined;
+                let posterUrl: string | undefined;
                 if (localExePath) {
-                  iconUrl = await getIconDataUrl(localExePath, name);
+                  const iconData = await getIconDataUrl(localExePath, name);
+                  iconUrl = iconData.iconUrl;
+                  posterUrl = iconData.posterUrl;
                 }
 
                 games.push({
@@ -424,6 +452,7 @@ export async function scanPaths(
                   installDir: commonDir,
                   platform: 'steam',
                   iconUrl,
+                  posterUrl,
                 });
               }
             } catch (err) {
@@ -436,13 +465,16 @@ export async function scanPaths(
         const selfExes = await findExecutables(dir, 2);
         const hasSelfGame = selfExes.some(exe => {
           const nameLower = path.basename(exe).toLowerCase();
-          return !nameLower.includes('unins') && !nameLower.includes('setup') && !nameLower.includes('helper') && !nameLower.includes('crash');
+          if (nameLower.includes('unins') || nameLower.includes('setup') || nameLower.includes('helper') || nameLower.includes('crash')) return false;
+          // Exe must resolve back to dir (not a subdirectory) to avoid treating library folders as games
+          const gameFolder = getGameFolder(exe, dir);
+          return path.resolve(gameFolder).toLowerCase() === path.resolve(dir).toLowerCase();
         });
 
         if (hasSelfGame) {
           const bestExe = await pickBestExe(selfExes, path.basename(dir));
           if (bestExe) {
-            const iconUrl = await getIconDataUrl(bestExe, path.basename(dir));
+            const iconData = await getIconDataUrl(bestExe, path.basename(dir));
             const cleanTitle = cleanGameTitle(path.basename(dir));
             games.push({
               id: generateId(bestExe),
@@ -450,7 +482,8 @@ export async function scanPaths(
               exePath: bestExe,
               installDir: dir,
               platform: 'pc',
-              iconUrl,
+              iconUrl: iconData.iconUrl,
+              posterUrl: iconData.posterUrl,
             });
           }
         } else {
@@ -474,7 +507,7 @@ export async function scanPaths(
             if (subExes.length > 0) {
               const bestExe = await pickBestExe(subExes, subName);
               if (bestExe) {
-                const iconUrl = await getIconDataUrl(bestExe, subName);
+                const iconData = await getIconDataUrl(bestExe, subName);
                 const cleanTitle = cleanGameTitle(subName);
                 games.push({
                   id: generateId(bestExe),
@@ -482,7 +515,8 @@ export async function scanPaths(
                   exePath: bestExe,
                   installDir: gameFolder,
                   platform: 'pc',
-                  iconUrl,
+                  iconUrl: iconData.iconUrl,
+                  posterUrl: iconData.posterUrl,
                 });
               }
             }

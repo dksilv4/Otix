@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otix Games — Hybrid Launchers</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070a; color:#e2e8f0; font-family:system-ui,-apple-system,sans-serif; padding:20px; }
+  .topbar { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .topbar h1 { font-size:1.1em; font-weight:700; color:#fff; }
+  .desc { font-size:0.6em; color:rgba(255,255,255,0.3); }
+  .switcher { display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap; }
+  .switcher button { padding:6px 14px; border-radius:10px; font-size:0.65em; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .switcher button:hover { background:rgba(255,255,255,0.06); color:#fff; }
+  .switcher button.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+
+  .design { display:none; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); box-shadow:0 8px 32px rgba(0,0,0,0.3); margin-bottom:16px; }
+  .design.active { display:block; }
+
+  .hdr { padding:10px 16px; background:var(--surface,#0f0f14); border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; gap:10px; }
+  .hdr h2 { font-size:0.8em; font-weight:600; margin:0; }
+  .hdr span { font-size:0.55em; color:rgba(255,255,255,0.3); font-weight:400; }
+
+  .tag-feature { font-size:0.5em; padding:2px 8px; border-radius:10px; background:rgba(16,185,129,0.08); color:#34d399; white-space:nowrap; }
+  .tag-blue { background:rgba(96,165,250,0.08); color:#60a5fa; }
+  .tag-yellow { background:rgba(251,191,36,0.08); color:#fbbf24; }
+
+  .row { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:background 0.15s; font-size:0.6em; }
+  .row:hover { background:rgba(255,255,255,0.04); }
+  .row.active { background:rgba(16,185,129,0.05); border-left:2px solid #10b981; border-radius:0 6px 6px 0; }
+
+  .poster { aspect-ratio:2/3; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; transition:all 0.2s; background:var(--surface); }
+  .poster:hover { transform:translateY(-3px) scale(1.02); box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .poster.selected { box-shadow:0 0 0 2px #10b981; }
+  .poster .play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:32px; height:32px; border-radius:50%; background:#10b981; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s; font-size:0.7em; pointer-events:none; }
+  .poster:hover .play { opacity:1; }
+  .poster .bg { position:absolute; bottom:0; left:0; right:0; padding:7px; background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent); }
+  .poster .bg .t { font-size:0.55em; font-weight:600; }
+  .poster .bg .s { font-size:0.4em; color:rgba(255,255,255,0.4); }
+
+  .badge { font-size:0.45em; font-weight:600; padding:1px 6px; border-radius:3px; background:rgba(0,0,0,0.35); }
+  .tag-steam { background:rgba(16,185,129,0.1); color:#34d399; }
+  .tag-epic { background:rgba(251,191,36,0.1); color:#fbbf24; }
+  .tag-gog { background:rgba(167,139,250,0.1); color:#a78bfa; }
+
+  .tile-btn { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.15s; font-size:0.5em; font-weight:700; border:none; }
+  .tile-btn:hover { transform:scale(1.05); }
+
+  .btn { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:8px; font-size:0.6em; font-weight:600; border:none; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .btn-primary { background:#10b981; color:#fff; }
+  .btn-primary:hover { background:#059669; }
+  .btn-ghost { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); }
+  .btn-ghost:hover { background:rgba(255,255,255,0.1); }
+
+  .pill { padding:3px 10px; border-radius:6px; font-size:0.55em; cursor:pointer; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); transition:all 0.15s; font-family:inherit; }
+  .pill:hover { background:rgba(255,255,255,0.07); }
+  .pill.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+
+  .info { padding:8px 16px 10px; font-size:0.55em; color:rgba(255,255,255,0.3); border-bottom:1px solid rgba(255,255,255,0.03); display:flex; gap:8px; flex-wrap:wrap; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🎮 Hybrid Launchers</h1>
+  <span class="desc">Blending Steam sidebar · GOG details panel · Battle.net hero tiles</span>
+</div>
+
+<div class="switcher" id="switcher">
+  <button class="active" onclick="switchD('h1')">#1 Steam + GOG</button>
+  <button onclick="switchD('h2')">#2 Bnet + GOG</button>
+  <button onclick="switchD('h3')">#3 Steam + Bnet</button>
+  <button onclick="switchD('h4')">#4 GOG + Steam + Bnet Nav</button>
+  <button onclick="switchD('h5')">#5 Trifecta</button>
+</div>
+
+<!-- ═══ H1: Steam Sidebar + GOG Details Panel ═══ -->
+<div class="design active" id="d-h1">
+  <div class="hdr"><h2>#1: Steam Sidebar + GOG Details Panel</h2><span>Categories on left · Game list center · Preview on right</span></div>
+  <div class="info">
+    <span class="tag-feature">Steam categories</span>
+    <span class="tag-blue">GOG game list</span>
+    <span class="tag-yellow">GOG details panel</span>
+  </div>
+  <div style="display:flex;background:#0b0b12;min-height:340px;">
+    <!-- Steam sidebar -->
+    <div style="width:130px;background:var(--surface,#0f0f14);border-right:1px solid rgba(255,255,255,0.03);padding:8px 4px;flex-shrink:0;">
+      <div style="font-size:0.5em;color:rgba(255,255,255,0.15);padding:4px 8px;text-transform:uppercase;">Library</div>
+      <div class="row active"><span>🎮</span><span style="flex:1;">All Games</span><span>42</span></div>
+      <div class="row"><span>💿</span><span style="flex:1;">Installed</span><span>38</span></div>
+      <div class="row"><span>⬇️</span><span style="flex:1;">Downloads</span><span>2</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);margin:6px 0;padding-top:6px;">
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.15);padding:4px 8px;text-transform:uppercase;">Collections</div>
+        <div class="row"><span>⭐</span><span style="flex:1;">Favorites</span><span>6</span></div>
+        <div class="row"><span>🕐</span><span style="flex:1;">Recent</span><span>3</span></div>
+      </div>
+    </div>
+    <!-- GOG game list -->
+    <div style="width:170px;border-right:1px solid rgba(255,255,255,0.03);padding:8px;flex-shrink:0;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.5em;color:var(--muted);"><span>GAMES</span><span>42</span></div>
+      <div class="row active"><div style="width:20px;height:20px;border-radius:4px;background:#2d1b00;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.45em;color:var(--muted);">Steam · 48 GB</div></div></div>
+      <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">BG3</div><div style="font-size:0.45em;color:var(--muted);">Steam · 150 GB</div></div></div>
+      <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#0d1b2a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Cyberpunk 2077</div><div style="font-size:0.45em;color:var(--muted);">GOG · 70 GB</div></div></div>
+      <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">The Witcher 3</div><div style="font-size:0.45em;color:var(--muted);">GOG · 50 GB</div></div></div>
+      <div class="row" style="opacity:0.4;"><div style="width:20px;height:20px;border-radius:4px;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">RDR2</div><div style="font-size:0.45em;color:var(--muted);">120 GB</div></div></div>
+    </div>
+    <!-- GOG details panel -->
+    <div style="flex:1;padding:16px;display:flex;flex-direction:column;justify-content:center;">
+      <div style="display:flex;gap:14px;">
+        <div style="width:72px;height:108px;border-radius:10px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;cursor:pointer;"></div>
+        <div>
+          <h3 style="margin:0;font-size:0.85em;">Elden Ring</h3>
+          <p style="margin:2px 0;font-size:0.5em;color:var(--muted);">Steam · FromSoftware · ARPG · 48.2 GB</p>
+          <p style="font-size:0.45em;color:rgba(255,255,255,0.2);">Last played 2h ago · 86h total</p>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">⭐ Favorite</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">🔄 Update check</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ H2: Battle.net Game Tiles + GOG List ═══ -->
+<div class="design" id="d-h2">
+  <div class="hdr"><h2>#2: Battle.net Game Tiles + GOG List</h2><span>Icon grid top · Platform filter · List + details</span></div>
+  <div class="info">
+    <span class="tag-feature">Battle.net game tiles</span>
+    <span class="tag-blue">GOG platform filter</span>
+    <span class="tag-yellow">GOG detail panel</span>
+  </div>
+  <div style="background:#0b0b14;">
+    <!-- Battle.net game tile selector -->
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <span style="font-size:0.5em;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:0.05em;margin-right:6px;">Games</span>
+      <div class="tile-btn" style="background:linear-gradient(135deg,#1a3a5c,#0d1f3a);color:#00aaff;" onclick="event.stopPropagation()">WoW</div>
+      <div class="tile-btn" style="background:linear-gradient(135deg,#3a2a1a,#2a1a0a);color:#fbbf24;" onclick="event.stopPropagation()">OW</div>
+      <div class="tile-btn" style="background:linear-gradient(135deg,#1a1a3a,#0d0d2a);color:#6366f1;" onclick="event.stopPropagation()">D4</div>
+      <div class="tile-btn" style="background:linear-gradient(135deg,#1a2a1a,#0d1a0d);color:#34d399;" onclick="event.stopPropagation()">HS</div>
+      <div class="tile-btn" style="background:linear-gradient(135deg,#2a1a1a,#1a0d0d);color:#ef4444;" onclick="event.stopPropagation()">D2</div>
+      <div style="margin-left:auto;display:flex;gap:4px;">
+        <span class="pill active">All</span>
+        <span class="pill">Installed</span>
+      </div>
+    </div>
+    <!-- GOG-style platform filter + list -->
+    <div style="display:flex;min-height:280px;">
+      <div style="width:110px;border-right:1px solid rgba(255,255,255,0.03);padding:8px 4px;flex-shrink:0;">
+        <div style="font-size:0.5em;color:var(--muted);text-transform:uppercase;padding:4px 8px;">Platform</div>
+        <div class="row active"><span>🎮</span><span style="flex:1;">All</span><span>42</span></div>
+        <div class="row"><span>🔵</span><span style="flex:1;">Steam</span><span>36</span></div>
+        <div class="row"><span>🟡</span><span style="flex:1;">GOG</span><span>12</span></div>
+        <div class="row"><span>🟣</span><span style="flex:1;">Epic</span><span>8</span></div>
+        <div class="row"><span>🔴</span><span style="flex:1;">Bnet</span><span>5</span></div>
+      </div>
+      <div style="width:160px;border-right:1px solid rgba(255,255,255,0.03);padding:8px;flex-shrink:0;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.5em;color:var(--muted);"><span>42 GAMES</span><span>650 GB</span></div>
+        <div class="row active"><div style="width:20px;height:20px;border-radius:4px;background:#2d1b00;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.45em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">BG3</div><div style="font-size:0.45em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Diablo IV</div><div style="font-size:0.45em;color:var(--muted);">Bnet</div></div></div>
+      </div>
+      <div style="flex:1;padding:14px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="display:flex;gap:14px;">
+          <div style="width:60px;height:90px;border-radius:10px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;cursor:pointer;"></div>
+          <div>
+            <h3 style="margin:0;font-size:0.8em;">Elden Ring</h3>
+            <p style="margin:2px 0;font-size:0.5em;color:var(--muted);">Steam · 48 GB · 86h played</p>
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">⭐</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ H3: Steam Grid + Battle.net Hero ═══ -->
+<div class="design" id="d-h3">
+  <div class="hdr"><h2>#3: Steam Grid + Battle.net Hero</h2><span>Featured hero banner · Tab chips · Poster grid below</span></div>
+  <div class="info">
+    <span class="tag-yellow">Battle.net hero banner</span>
+    <span class="tag-feature">Steam poster grid</span>
+    <span class="tag-blue">Tab chips</span>
+  </div>
+  <div style="background:#0b0b12;">
+    <!-- Battle.net hero -->
+    <div style="background:linear-gradient(135deg,#2d1b00,#1a0a2e);padding:20px;margin:12px;border-radius:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="event.stopPropagation()">
+      <div>
+        <div style="font-size:0.45em;color:rgba(255,255,255,0.3);text-transform:uppercase;">Continue Playing</div>
+        <h2 style="margin:2px 0;font-size:1.1em;font-weight:700;">Elden Ring</h2>
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.4);">Last played 2 hours ago · 86h total</div>
+        <div style="margin-top:10px;display:flex;gap:6px;">
+          <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Continue</button>
+          <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+        </div>
+      </div>
+      <div style="width:64px;height:64px;border-radius:12px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;font-size:1.2em;">🎮</div>
+    </div>
+    <!-- Steam tab chips + grid -->
+    <div style="padding:8px 16px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;gap:6px;">
+          <span class="pill active">All · 42</span>
+          <span class="pill">Matched · 18</span>
+          <span class="pill">Unmatched · 20</span>
+          <span class="pill">ISOs · 4</span>
+        </div>
+        <div style="display:flex;gap:4px;font-size:0.55em;">
+          <span style="padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.04);cursor:pointer;">🔍</span>
+          <span style="padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.04);cursor:pointer;">Sort ▼</span>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(115px,1fr));">
+        <div class="poster" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);" onclick="event.stopPropagation();this.classList.toggle('selected')"><div style="padding:4px;"><span class="badge tag-steam">Steam</span></div><div class="play">▶</div><div class="bg"><div class="t">Elden Ring</div><div class="s">48 GB · 86h</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);" onclick="event.stopPropagation();this.classList.toggle('selected')"><div style="padding:4px;"><span class="badge tag-steam">Steam</span></div><div class="play">▶</div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#0d1b2a,#070e17);" onclick="event.stopPropagation();this.classList.toggle('selected')"><div style="padding:4px;"><span class="badge tag-steam">Steam</span></div><div class="play">▶</div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);" onclick="event.stopPropagation();this.classList.toggle('selected')"><div style="padding:4px;"><span class="badge tag-steam">Steam</span></div><div class="play">▶</div><div class="bg"><div class="t">Helldivers 2</div><div class="s">100 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);" onclick="event.stopPropagation();this.classList.toggle('selected')"><div style="padding:4px;"><span class="badge tag-epic">Epic</span></div><div class="play">▶</div><div class="bg"><div class="t">Alan Wake 2</div><div class="s">80 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ H4: GOG List + Steam Categories + Battle.net Top Nav ═══ -->
+<div class="design" id="d-h4">
+  <div class="hdr"><h2>#4: GOG List + Steam Cats + Bnet Nav</h2><span>Battle.net top bar · Steam sidebar · GOG list + details</span></div>
+  <div class="info">
+    <span class="tag-yellow">Battle.net top nav</span>
+    <span class="tag-feature">Steam categories</span>
+    <span class="tag-blue">GOG list + preview</span>
+  </div>
+  <div style="background:#0b0b14;">
+    <!-- Battle.net top nav -->
+    <div style="display:flex;gap:14px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.55em;">
+      <span style="font-weight:700;color:#00aaff;cursor:pointer;">OTIX GAMES</span>
+      <span class="pill active" style="font-size:0.55em;padding:3px 12px;">Library</span>
+      <span class="pill" style="font-size:0.55em;padding:3px 12px;">Recently Played</span>
+      <span class="pill" style="font-size:0.55em;padding:3px 12px;">Favorites</span>
+      <span style="margin-left:auto;display:flex;gap:8px;">
+        <span style="color:var(--muted);cursor:pointer;">🔍</span>
+        <span style="color:var(--muted);cursor:pointer;">⚙️</span>
+      </span>
+    </div>
+    <!-- Steam sidebar + GOG list -->
+    <div style="display:flex;min-height:280px;">
+      <div style="width:120px;background:var(--surface,#0f0f14);border-right:1px solid rgba(255,255,255,0.03);padding:8px 4px;flex-shrink:0;">
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.15);padding:4px 8px;text-transform:uppercase;">Categories</div>
+        <div class="row active"><span>🎮</span><span style="flex:1;">All Games</span><span>42</span></div>
+        <div class="row"><span>💿</span><span style="flex:1;">Installed</span><span>38</span></div>
+        <div class="row"><span>⬇️</span><span style="flex:1;">Unmatched</span><span>20</span></div>
+        <div class="row"><span>⭐</span><span style="flex:1;">Favorites</span><span>6</span></div>
+      </div>
+      <!-- GOG list -->
+      <div style="width:150px;border-right:1px solid rgba(255,255,255,0.03);padding:8px;flex-shrink:0;">
+        <div style="font-size:0.5em;color:var(--muted);margin-bottom:6px;">42 games</div>
+        <div class="row active"><div style="width:20px;height:20px;border-radius:4px;background:#2d1b00;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.45em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">BG3</div><div style="font-size:0.45em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#0d1b2a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Cyberpunk</div><div style="font-size:0.45em;color:var(--muted);">GOG</div></div></div>
+        <div class="row"><div style="width:20px;height:20px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Witcher 3</div><div style="font-size:0.45em;color:var(--muted);">GOG</div></div></div>
+      </div>
+      <!-- Details -->
+      <div style="flex:1;padding:14px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="display:flex;gap:14px;">
+          <div style="width:60px;height:90px;border-radius:10px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;cursor:pointer;"></div>
+          <div>
+            <h3 style="margin:0;font-size:0.8em;">Elden Ring</h3>
+            <p style="margin:2px 0;font-size:0.5em;color:var(--muted);">Steam · 48 GB · 86h</p>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+              <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">📁</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">⬇️ Update</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ H5: Trifecta ═══ -->
+<div class="design" id="d-h5">
+  <div class="hdr"><h2>#5: Trifecta — All Three Combined</h2><span>Bnet nav · Steam sidebar · GOG list · Detail preview · Game tiles</span></div>
+  <div class="info">
+    <span class="tag-yellow">Bnet top nav</span>
+    <span class="tag-feature">Steam categories</span>
+    <span class="tag-blue">GOG list + panel</span>
+    <span class="tag-feature">Game tile quick-switch</span>
+  </div>
+  <div style="background:#0b0b14;">
+    <!-- Bnet top nav -->
+    <div style="display:flex;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.55em;align-items:center;">
+      <span style="font-weight:700;font-size:0.7em;margin-right:4px;">🎮</span>
+      <span class="pill active">Library</span>
+      <span class="pill">Store</span>
+      <span class="pill">Downloads</span>
+      <!-- Bnet-style game tile quick-switch -->
+      <div style="display:flex;gap:4px;margin-left:12px;">
+        <div class="tile-btn" style="width:32px;height:32px;font-size:0.4em;background:linear-gradient(135deg,#1a3a5c,#0d1f3a);color:#00aaff;" onclick="event.stopPropagation()">WoW</div>
+        <div class="tile-btn" style="width:32px;height:32px;font-size:0.4em;background:linear-gradient(135deg,#3a2a1a,#2a1a0a);color:#fbbf24;" onclick="event.stopPropagation()">OW</div>
+        <div class="tile-btn" style="width:32px;height:32px;font-size:0.4em;background:linear-gradient(135deg,#1a1a3a,#0d0d2a);color:#6366f1;" onclick="event.stopPropagation()">D4</div>
+      </div>
+      <span style="margin-left:auto;color:var(--muted);cursor:pointer;">🔍</span>
+    </div>
+    <!-- Main split -->
+    <div style="display:flex;min-height:300px;">
+      <!-- Steam sidebar -->
+      <div style="width:120px;background:var(--surface,#0f0f14);border-right:1px solid rgba(255,255,255,0.03);padding:8px 4px;flex-shrink:0;">
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.15);padding:4px 8px;text-transform:uppercase;">Library</div>
+        <div class="row active"><span>🎮</span><span style="flex:1;">All</span><span>42</span></div>
+        <div class="row"><span>💿</span><span style="flex:1;">Installed</span><span>38</span></div>
+        <div class="row"><span>⬇️</span><span style="flex:1;">Unmatched</span><span>20</span></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.04);margin:6px 0;padding-top:6px;">
+          <div class="row"><span>⭐</span><span style="flex:1;">Favorites</span><span>6</span></div>
+          <div class="row"><span>🕐</span><span style="flex:1;">Recent</span><span>3</span></div>
+        </div>
+      </div>
+      <!-- GOG list -->
+      <div style="width:150px;border-right:1px solid rgba(255,255,255,0.03);padding:8px;flex-shrink:0;">
+        <div style="font-size:0.5em;color:var(--muted);margin-bottom:6px;">42 GAMES</div>
+        <div class="row active"><div style="width:18px;height:18px;border-radius:4px;background:#2d1b00;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.5em;font-weight:600;">Elden Ring</div><div style="font-size:0.4em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:#1a1a2e;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.5em;">BG3</div><div style="font-size:0.4em;color:var(--muted);">Steam</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:#0d1b2a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.5em;">Cyberpunk</div><div style="font-size:0.4em;color:var(--muted);">GOG</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:#1a2e1a;flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.5em;">Witcher 3</div><div style="font-size:0.4em;color:var(--muted);">GOG</div></div></div>
+      </div>
+      <!-- Preview -->
+      <div style="flex:1;padding:14px;display:flex;flex-direction:column;justify-content:center;">
+        <div style="display:flex;gap:14px;">
+          <div style="width:65px;height:98px;border-radius:10px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;cursor:pointer;"></div>
+          <div>
+            <h3 style="margin:0;font-size:0.8em;">Elden Ring</h3>
+            <p style="margin:2px 0;font-size:0.5em;color:var(--muted);">Steam · 48.2 GB · 86h played</p>
+            <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">⭐</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation()">⬇️ Check Updates</button>
+            </div>
+            <div style="margin-top:8px;display:flex;gap:8px;font-size:0.45em;color:var(--muted);">
+              <span style="color:#34d399;">● Installed</span>
+              <span>· 86h played</span>
+              <span>· Last played 2h ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchD(id) {
+  document.querySelectorAll('.design').forEach(d => d.classList.remove('active'));
+  document.getElementById('d-' + id).classList.add('active');
+  document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

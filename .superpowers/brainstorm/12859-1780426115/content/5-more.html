@@ -1,0 +1,388 @@
+<h2>5 More — Complete Reset</h2>
+<p class="subtitle">No sidebars, no terminal tables, no standard layouts</p>
+
+<style>
+  .block { margin-bottom:36px; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); }
+  .label { background:var(--surface); padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; gap:8px; }
+  .label h3 { margin:0; font-size:0.75em; }
+  .label span { font-size:0.6em; color:var(--muted); }
+  .tag { font-size:0.45em; font-weight:600; padding:1px 5px; border-radius:3px; background:rgba(0,0,0,0.35); }
+</style>
+
+<!-- ═══════════════════════ -->
+<!-- 1: iOS App Library      -->
+<!-- ═══════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#1: App Library</h3><span>iOS home screen — big icon grid, search, categories as folders</span></div>
+  <div style="padding:24px;background:linear-gradient(180deg,#0c0c12,#07070a);">
+
+    <!-- Search -->
+    <div style="width:220px;margin:0 auto 20px;background:rgba(255,255,255,0.06);border-radius:24px;padding:6px 14px;font-size:0.6em;color:var(--muted);text-align:center;backdrop-filter:blur(8px);">🔍 Search games</div>
+
+    <!-- Icon grid -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px 20px;max-width:420px;margin:0 auto;">
+
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#1a2e1a,#0d1a0d);margin-bottom:4px;display:flex;align-items:flex-end;padding:6px;justify-content:center;">
+          <span style="font-size:0.4em;background:rgba(0,0,0,0.4);padding:1px 6px;border-radius:3px;color:#22c55e;">PC</span>
+        </div>
+        <div style="font-size:0.5em;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Elden Ring</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);margin-bottom:4px;display:flex;align-items:flex-end;padding:6px;justify-content:center;">
+          <span style="font-size:0.4em;background:rgba(0,0,0,0.4);padding:1px 6px;border-radius:3px;color:#a855f7;">GOG</span>
+        </div>
+        <div style="font-size:0.5em;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Baldur's Gate 3</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#2e1a1a,#1a0d0d);margin-bottom:4px;display:flex;align-items:flex-end;padding:6px;justify-content:center;">
+          <span style="font-size:0.4em;background:rgba(0,0,0,0.4);padding:1px 6px;border-radius:3px;color:#f59e0b;">Epic</span>
+        </div>
+        <div style="font-size:0.5em;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Cyberpunk 2077</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#1a2e2e,#0d1a1a);margin-bottom:4px;display:flex;align-items:flex-end;padding:6px;justify-content:center;">
+          <span style="font-size:0.4em;background:rgba(0,0,0,0.4);padding:1px 6px;border-radius:3px;color:#3b82f6;">Xbox</span>
+        </div>
+        <div style="font-size:0.5em;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Starfield</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="aspect-ratio:1;border-radius:16px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);margin-bottom:4px;display:flex;align-items:flex-end;padding:6px;justify-content:center;">
+          <span style="font-size:0.4em;background:rgba(0,0,0,0.4);padding:1px 6px;border-radius:3px;">Steam</span>
+        </div>
+        <div style="font-size:0.5em;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Hollow Knight</div>
+      </div>
+
+      <!-- Unmatched — dimmed icon -->
+      <div style="text-align:center;opacity:0.4;">
+        <div style="aspect-ratio:1;border-radius:16px;background:rgba(255,255,255,0.04);margin-bottom:4px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:0.6em;">?</span>
+        </div>
+        <div style="font-size:0.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">RDR2</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ -->
+<!-- 2: Netflix Rows        -->
+<!-- ═══════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#2: Netflix-style Rows</h3><span>Horizontal category shelves — like browsing a streaming service</span></div>
+  <div style="padding:20px;background:#08080c;">
+
+    <!-- Category tab strip -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;font-size:0.65em;">
+      <span style="font-weight:600;">All</span>
+      <span style="color:var(--muted);">Matched</span>
+      <span style="color:var(--muted);">Unmatched</span>
+      <span style="color:var(--muted);">ISOs</span>
+      <span style="margin-left:auto;color:var(--muted);font-weight:400;">🔍 Search</span>
+    </div>
+
+    <!-- Row 1: Recently Played -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.7em;font-weight:600;">Recently Played</span>
+        <span style="font-size:0.55em;color:var(--muted);">More →</span>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;">
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#2d1b00,#1a0f00);position:relative;overflow:hidden;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Elden Ring</div>
+            <div style="font-size:0.45em;color:var(--muted);">2h ago · 48.2 GB</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);position:relative;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Hollow Knight</div>
+            <div style="font-size:0.45em;color:var(--muted);">Yesterday · 7.2 GB</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#0d1b2a,#070e17);position:relative;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Portal 2</div>
+            <div style="font-size:0.45em;color:var(--muted);">2d ago · 5.1 GB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Matched Games -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.7em;font-weight:600;">Your Games</span>
+        <span style="font-size:0.55em;color:var(--muted);">18 matched</span>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;">
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#1a2e1a,#0d1a0d);position:relative;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="tag">GOG</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Baldur's Gate 3</div>
+            <div style="font-size:0.45em;color:var(--muted);">32.1 GB · 120h</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#2e1a1a,#1a0d0d);position:relative;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="tag">Epic</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Cyberpunk 2077</div>
+            <div style="font-size:0.45em;color:var(--muted);">28.4 GB · 63h</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);position:relative;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="tag">Steam</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Dark Souls III</div>
+            <div style="font-size:0.45em;color:var(--muted);">18.7 GB · 55h</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:linear-gradient(135deg,#1a2e2e,#0d1a1a);position:relative;">
+          <div style="position:absolute;top:6px;left:6px;"><span class="tag">Xbox</span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Starfield</div>
+            <div style="font-size:0.45em;color:var(--muted);">15.3 GB · 32h</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Unmatched / ISOs -->
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:0.7em;font-weight:600;">Need Attention</span>
+        <span style="font-size:0.55em;color:var(--muted);">20 unmatched · 4 ISOs</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:rgba(255,255,255,0.03);position:relative;border:1px solid rgba(255,255,255,0.04);">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.5em;color:var(--muted);">🔍 RDR2</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.55em;font-weight:500;">RDR2</div>
+            <div style="font-size:0.45em;color:#3b82f6;">Find match</div>
+          </div>
+        </div>
+        <div style="min-width:130px;aspect-ratio:16/9;border-radius:10px;background:rgba(255,255,255,0.03);position:relative;border:1px solid rgba(255,255,255,0.04);">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.5em;color:var(--muted);">🔍 GoW Ragnarök</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.55em;font-weight:500;">God of War R</div>
+            <div style="font-size:0.45em;color:#3b82f6;">Find match</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ -->
+<!-- 3: PS5 Home Screen     -->
+<!-- ═══════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#3: PS5 Home</h3><span>Big game tiles, recently played as hero, grid below — minimal text</span></div>
+  <div style="padding:20px;background:#050508;">
+
+    <!-- Hero tile (largest game) -->
+    <div style="border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#2d1b00,#1a0f00);padding:28px 24px;margin-bottom:16px;position:relative;">
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:0.45em;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);">Continue Playing</div>
+        <h2 style="margin:4px 0;font-size:1.2em;">Elden Ring</h2>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <span style="background:rgba(255,255,255,0.1);padding:4px 14px;border-radius:8px;font-size:0.55em;backdrop-filter:blur(4px);">▶ Resume</span>
+          <span style="background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:8px;font-size:0.55em;">48.2 GB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick action chips -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;font-size:0.55em;">
+      <span style="padding:4px 10px;border-radius:16px;background:rgba(255,255,255,0.08);font-weight:600;">All</span>
+      <span style="padding:4px 10px;border-radius:16px;color:var(--muted);">Matched</span>
+      <span style="padding:4px 10px;border-radius:16px;color:var(--muted);">Unmatched</span>
+      <span style="margin-left:auto;color:var(--muted);">🔍</span>
+    </div>
+
+    <!-- Game grid — 2 columns of large square-ish tiles -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div style="border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);padding:14px;position:relative;">
+        <div style="font-size:0.6em;font-weight:600;">Baldur's Gate 3</div>
+        <div style="font-size:0.45em;color:var(--muted);">32.1 GB · GOG</div>
+      </div>
+      <div style="border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#2e1a1a,#1a0d0d);padding:14px;position:relative;">
+        <div style="font-size:0.6em;font-weight:600;">Cyberpunk 2077</div>
+        <div style="font-size:0.45em;color:var(--muted);">28.4 GB · Epic</div>
+      </div>
+      <div style="border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);padding:14px;position:relative;">
+        <div style="font-size:0.6em;font-weight:600;">Hollow Knight</div>
+        <div style="font-size:0.45em;color:var(--muted);">7.2 GB · Steam</div>
+      </div>
+      <div style="border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#0d1b2a,#070e17);padding:14px;position:relative;">
+        <div style="font-size:0.6em;font-weight:600;">Portal 2</div>
+        <div style="font-size:0.45em;color:var(--muted);">5.1 GB · Steam</div>
+      </div>
+    </div>
+
+    <!-- Unmatched pill strip -->
+    <div style="margin-top:10px;display:flex;gap:6px;font-size:0.5em;color:rgba(255,255,255,0.3);overflow-x:auto;padding-bottom:2px;">
+      <span style="white-space:nowrap;">🎮 RDR2 · Find match</span>
+      <span style="white-space:nowrap;">🎮 Hades II · Find match</span>
+      <span style="white-space:nowrap;">🎮 God of War R · Find match</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ -->
+<!-- 4: Steam Deck / Bento  -->
+<!-- ═══════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#4: Steam Deck UI</h3><span>Clean side nav + big game card area — select a game, it expands</span></div>
+  <div style="display:flex;background:#0b0b12;min-height:300px;">
+
+    <!-- Left nav — just icon categories -->
+    <div style="width:40px;border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:10px;flex-shrink:0;background:var(--surface);">
+      <span style="font-size:0.6em;color:#22c55e;">🎮</span>
+      <span style="font-size:0.6em;opacity:0.3;">⭐</span>
+      <span style="font-size:0.6em;opacity:0.3;">⬇️</span>
+      <span style="font-size:0.6em;opacity:0.3;">⚙️</span>
+    </div>
+
+    <!-- Main area — big centered game card -->
+    <div style="flex:1;padding:20px;display:flex;flex-direction:column;align-items:center;">
+
+      <!-- Search -->
+      <div style="width:200px;border-radius:20px;background:var(--surface);padding:6px 12px;font-size:0.55em;color:var(--muted);text-align:center;margin-bottom:16px;">🔍 Search games</div>
+
+      <!-- Big game card (selected) -->
+      <div style="width:180px;aspect-ratio:2/3;border-radius:16px;background:linear-gradient(180deg,#2d1b00,#1a0f00);position:relative;margin-bottom:12px;box-shadow:0 4px 24px rgba(0,0,0,0.3);">
+        <div style="position:absolute;top:8px;left:8px;"><span class="tag">PC</span></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+          <div style="font-size:0.7em;font-weight:700;">Elden Ring</div>
+          <div style="display:flex;gap:8px;margin-top:4px;font-size:0.5em;color:var(--muted);">
+            <span>48.2 GB</span>
+            <span>86h played</span>
+          </div>
+          <div style="margin-top:8px;display:flex;gap:6px;">
+            <span style="background:#22c55e;padding:4px 16px;border-radius:8px;font-size:0.55em;font-weight:700;">▶ Play</span>
+            <span style="background:rgba(255,255,255,0.06);padding:4px 10px;border-radius:8px;font-size:0.55em;">ℹ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carousel dots (other games) -->
+      <div style="display:flex;gap:4px;">
+        <div style="width:32px;height:48px;border-radius:6px;background:rgba(255,255,255,0.03);transform:scale(0.85);opacity:0.5;"></div>
+        <div style="width:32px;height:48px;border-radius:6px;background:#1a1a2e;transform:scale(0.85);opacity:0.5;"></div>
+        <div style="width:32px;height:48px;border-radius:6px;background:#2d1b00;transform:scale(1);border:1px solid rgba(255,255,255,0.1);"></div>
+        <div style="width:32px;height:48px;border-radius:6px;background:#2e1a1a;transform:scale(0.85);opacity:0.5;"></div>
+        <div style="width:32px;height:48px;border-radius:6px;background:rgba(255,255,255,0.03);transform:scale(0.85);opacity:0.5;"></div>
+      </div>
+
+      <!-- Quick info chips -->
+      <div style="display:flex;gap:4px;margin-top:10px;font-size:0.45em;color:var(--muted);">
+        <span style="padding:3px 8px;border-radius:8px;background:var(--surface);">42 games</span>
+        <span style="padding:3px 8px;border-radius:8px;background:var(--surface);">234.5 GB</span>
+        <span style="padding:3px 8px;border-radius:8px;background:rgba(34,197,94,0.05);color:#22c55e;">7 installable</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ -->
+<!-- 5: Pure Terminal (htop)-->
+<!-- ═══════════════════════ -->
+<div class="block">
+  <div class="label"><h3>#5: Pure Terminal</h3><span>No sidebar, no shelves, no frills — just clean monospace like htop</span></div>
+  <div style="padding:16px;background:#0a0a0a;font-family:'JetBrains Mono','SF Mono',monospace;">
+
+    <!-- Top bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:0.55em;">
+      <div>
+        <span style="color:#22c55e;">otix</span>@<span style="color:#3b82f6;">games</span> <span style="color:rgba(255,255,255,0.1);">──</span>
+        <span style="color:var(--muted);">42 games · 234.5 GB</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <span style="padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.04);">🔍 filter...</span>
+        <span style="padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.04);">↻</span>
+      </div>
+    </div>
+
+    <!-- Tab pills with monospace -->
+    <div style="display:flex;gap:4px;margin-bottom:10px;font-size:0.5em;">
+      <span style="padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.07);color:#fff;">all</span>
+      <span style="padding:2px 8px;border-radius:4px;color:var(--muted);">matched</span>
+      <span style="padding:2px 8px;border-radius:4px;color:var(--muted);">unmatched</span>
+      <span style="padding:2px 8px;border-radius:4px;color:var(--muted);">isos</span>
+      <span style="padding:2px 8px;border-radius:4px;background:rgba(59,130,246,0.08);color:#3b82f6;">installable</span>
+    </div>
+
+    <!-- Column headers -->
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.45em;color:rgba(255,255,255,0.1);border-bottom:1px solid rgba(255,255,255,0.04);margin-bottom:2px;">
+      <span style="width:12px;"></span>
+      <span style="flex:1;">GAME</span>
+      <span style="width:36px;">SIZE</span>
+      <span style="width:28px;">HRS</span>
+      <span style="width:32px;">SRC</span>
+    </div>
+
+    <!-- Matched entries -->
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;">
+      <span style="width:12px;color:#22c55e;">▶</span>
+      <span style="flex:1;font-weight:600;">Elden Ring</span>
+      <span style="width:36px;color:var(--muted);">48.2G</span>
+      <span style="width:28px;">86h</span>
+      <span style="width:32px;color:#22c55e;">PC</span>
+    </div>
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;">
+      <span style="width:12px;color:#22c55e;">▶</span>
+      <span style="flex:1;font-weight:600;">Baldur's Gate 3</span>
+      <span style="width:36px;color:var(--muted);">32.1G</span>
+      <span style="width:28px;">120h</span>
+      <span style="width:32px;color:#a855f7;">GOG</span>
+    </div>
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;">
+      <span style="width:12px;color:#22c55e;">▶</span>
+      <span style="flex:1;font-weight:600;">Cyberpunk 2077</span>
+      <span style="width:36px;color:var(--muted);">28.4G</span>
+      <span style="width:28px;">63h</span>
+      <span style="width:32px;color:#f59e0b;">Epic</span>
+    </div>
+
+    <!-- Separator -->
+    <div style="display:flex;gap:4px;padding:2px 6px;font-size:0.45em;color:rgba(59,130,246,0.3);border-bottom:1px dashed rgba(255,255,255,0.03);margin:2px 0;">
+      <span style="flex:1;">── unmatched (20) ──</span>
+    </div>
+
+    <!-- Unmatched entries (dimmed) -->
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;opacity:0.35;">
+      <span style="width:12px;">↗</span>
+      <span style="flex:1;">Red Dead Redemption 2</span>
+      <span style="width:36px;">22.0G</span>
+      <span style="width:28px;">—</span>
+      <span style="width:32px;color:#fbbf24;">ISO</span>
+    </div>
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;opacity:0.35;">
+      <span style="width:12px;">↗</span>
+      <span style="flex:1;">God of War Ragnarök</span>
+      <span style="width:36px;">64.0G</span>
+      <span style="width:28px;">—</span>
+      <span style="width:32px;color:#fbbf24;">ISO</span>
+    </div>
+    <div style="display:flex;gap:4px;padding:3px 6px;font-size:0.55em;opacity:0.35;">
+      <span style="width:12px;">↗</span>
+      <span style="flex:1;">Hades II</span>
+      <span style="width:36px;">4.8G</span>
+      <span style="width:28px;">—</span>
+      <span style="width:32px;">Steam</span>
+    </div>
+
+    <!-- Status line -->
+    <div style="margin-top:8px;font-size:0.45em;color:rgba(255,255,255,0.08);display:flex;gap:12px;">
+      <span>18/42 matched</span>
+      <span>7 installable</span>
+      <span style="margin-left:auto;">last scan: 2m ago</span>
+    </div>
+  </div>
+</div>

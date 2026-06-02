@@ -47,12 +47,7 @@ export function SimilarSection({ mediaId, mediaType, className }: SimilarSection
 
   return (
     <section className={cn('space-y-4', className)}>
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-lg font-semibold">Similar</h2>
-        <span className="text-sm text-muted-foreground">
-          {items.length} {items.length === 1 ? 'result' : 'results'}
-        </span>
-      </div>
+      <h2 className="text-lg font-semibold">Similar</h2>
 
       <div className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex gap-3">

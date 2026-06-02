@@ -32,7 +32,7 @@ function readApiKey(): string | null {
 
   // 2. Read from backend .env
   try {
-    const projectRoot = path.resolve(__dirname, '..', '..', '..');
+    const projectRoot = path.resolve(__dirname, '..', '..');
     const envPath = path.join(projectRoot, 'backend', '.env');
     if (fs.existsSync(envPath)) {
       const content = fs.readFileSync(envPath, 'utf-8');
@@ -102,4 +102,47 @@ export async function getBestIconUrl(title: string): Promise<string | null> {
   // Prefer static (png) over animated (gif/webp)
   const staticIcon = icons.find((i) => i.mime === 'image/png');
   return staticIcon?.url ?? icons[0].url;
+}
+
+interface SGDBGrid {
+  id: number;
+  url: string;
+  width: number;
+  height: number;
+  score: number;
+  style: string;
+  mime: string;
+}
+
+async function getGrids(gameId: number): Promise<SGDBGrid[]> {
+  const data = await sgdbRequest<{ data: SGDBGrid[] }>(`/grids/game/${gameId}`);
+  return data?.data ?? [];
+}
+
+export async function getBestGridUrl(title: string): Promise<string | null> {
+  const games = await searchGames(title);
+  if (games.length === 0) return null;
+
+  let game = games.find(
+    (g) => g.name.toLowerCase() === title.toLowerCase(),
+  );
+  if (!game) game = games[0];
+
+  const grids = await getGrids(game.id);
+  if (grids.length === 0) return null;
+
+  // Prefer no_logo and material styles (textless covers), matching backend _pick_grid logic
+  const styleRank: Record<string, number> = { no_logo: 0, material: 1 };
+  const textless = grids.filter((g) => g.style in styleRank);
+  const candidates = textless.length > 0 ? textless : grids;
+
+  // Sort by style rank then score
+  candidates.sort((a, b) => {
+    const rankA = styleRank[a.style] ?? 2;
+    const rankB = styleRank[b.style] ?? 2;
+    if (rankA !== rankB) return rankA - rankB;
+    return (b.score || 0) - (a.score || 0);
+  });
+
+  return candidates[0]?.url ?? null;
 }

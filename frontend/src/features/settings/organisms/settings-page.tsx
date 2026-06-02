@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2 } from 'lucide-react'
+import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2, Download, FolderKanban } from 'lucide-react'
 import { ExperimentsSection } from '@/features/experiments/organisms/experiments-section'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -13,8 +13,10 @@ import { AppearanceSection } from './settings-sections/appearance'
 import { AccountSection } from './settings-sections/account'
 import { IntegrationsSection } from './settings-sections/integrations'
 import { NotificationsSection } from './settings-sections/notifications'
+import { DownloadsSection } from './settings-sections/downloads-section'
+import { OrganizerSection } from './settings-sections/organizer-section'
 
-type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments'
+type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments' | 'downloads' | 'organizer'
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -23,6 +25,8 @@ const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'account', label: 'Account', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'downloads', label: 'Downloads', icon: Download },
+  { id: 'organizer', label: 'Organizer', icon: FolderKanban },
   { id: 'experiments', label: 'Experiments', icon: FlaskConical },
 ]
 
@@ -33,8 +37,11 @@ function isSettingsSection(value: unknown): value is Section {
 export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
+  const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const electronSections = new Set(['downloads', 'organizer'])
+  const filteredNav = NAV_ITEMS.filter(i => !electronSections.has(i.id) || isElectron)
   const [activeSection, setActiveSection] = useState<Section>(() =>
-    isSettingsSection(search.section) ? search.section : 'profile',
+    isSettingsSection(search.section) && (!electronSections.has(search.section) || isElectron) ? search.section : 'profile',
   )
   const [mobileView, setMobileView] = useState<'menu' | 'section'>('menu')
   const { theme, setTheme } = useTheme()
@@ -65,7 +72,7 @@ export function SettingsPage() {
         <div className={cn('md:hidden', mobileView === 'section' && 'hidden')}>
           <h1 className="mb-6 text-2xl font-bold tracking-[-0.02em]">Settings</h1>
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {filteredNav.map((item) => {
               const Icon = item.icon
               return (
                 <button
@@ -104,7 +111,7 @@ export function SettingsPage() {
           <div className="sticky top-24 space-y-1">
             <h1 className="px-3 mb-4 text-lg font-bold tracking-[-0.02em]">Settings</h1>
             <nav className="space-y-0.5">
-              {NAV_ITEMS.map((item) => {
+              {filteredNav.map((item) => {
                 const Icon = item.icon
                 const isActive = activeSection === item.id
                 return (
@@ -171,6 +178,12 @@ export function SettingsPage() {
           )}
           {activeSection === 'integrations' && (
             <IntegrationsSection />
+          )}
+          {activeSection === 'downloads' && (
+            <DownloadsSection />
+          )}
+          {activeSection === 'organizer' && (
+            <OrganizerSection />
           )}
           {activeSection === 'experiments' && (
             <ExperimentsSection />

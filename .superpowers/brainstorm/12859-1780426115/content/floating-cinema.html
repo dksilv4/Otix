@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070a; color:#e2e8f0; font-family:system-ui,-apple-system,sans-serif; padding:20px; }
+  .topbar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .topbar h1 { font-size:1.1em; font-weight:700; color:#fff; }
+  .topbar .d { font-size:0.6em; color:rgba(255,255,255,0.3); }
+  .switcher { display:flex; gap:4px; margin-bottom:16px; flex-wrap:wrap; }
+  .switcher button { padding:6px 14px; border-radius:10px; font-size:0.65em; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .switcher button:hover { background:rgba(255,255,255,0.06); color:#fff; }
+  .switcher button.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+
+  .design { display:none; }
+  .design.active { display:block; }
+
+  .page { border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); position:relative; min-height:420px; }
+
+  /* Floating glass */
+  .glass { background:rgba(15,15,20,0.85); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.06); box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.5); }
+
+  .poster { aspect-ratio:2/3; border-radius:12px; overflow:hidden; position:relative; cursor:pointer; transition:all 0.2s; flex-shrink:0; background:rgba(255,255,255,0.03); }
+  .poster:hover { transform:translateY(-3px) scale(1.02); }
+  .poster .bg { position:absolute; bottom:0; left:0; right:0; padding:7px; background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent); }
+  .poster .bg .t { font-size:0.55em; font-weight:600; }
+  .poster .bg .s { font-size:0.4em; color:rgba(255,255,255,0.4); }
+  .badge-t { font-size:0.45em; font-weight:600; padding:1px 6px; border-radius:3px; background:rgba(0,0,0,0.35); }
+
+  .btn { display:inline-flex; align-items:center; gap:4px; padding:5px 14px; border-radius:10px; font-size:0.6em; font-weight:600; border:none; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .btn-primary { background:#10b981; color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,0.15); }
+  .btn-primary:hover { background:#059669; }
+  .btn-ghost { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); }
+  .btn-ghost:hover { background:rgba(255,255,255,0.1); }
+  .chip { padding:3px 10px; border-radius:6px; font-size:0.55em; cursor:pointer; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); font-family:inherit; }
+  .chip:hover { background:rgba(255,255,255,0.07); }
+  .chip.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+  .row { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:background 0.15s; font-size:0.6em; }
+  .row:hover { background:rgba(255,255,255,0.04); }
+
+  /* Overlay for panel */
+  .overlay { position:absolute; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(4px); z-index:10; display:none; }
+  .panel-open .overlay { display:block; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🎬 Floating Cinema Hero</h1>
+  <span class="d">Floating glass elements · Otix design language · Dismissable library panel</span>
+</div>
+
+<div class="switcher">
+  <button class="active" onclick="sw('v1')">#1 Slide Panel</button>
+  <button onclick="sw('v2')">#2 Drawer Panel</button>
+  <button onclick="sw('v3')">#3 Bottom Sheet</button>
+  <button onclick="sw('v4')">#4 Right Panel</button>
+</div>
+
+<script>
+let panelOpen = false;
+
+function togglePanel(id) {
+  panelOpen = !panelOpen;
+  const el = document.getElementById(id);
+  if (panelOpen) {
+    el.classList.add('panel-open');
+  } else {
+    el.classList.remove('panel-open');
+  }
+}
+
+function sw(id) {
+  document.querySelectorAll('.design').forEach(d => d.classList.remove('active'));
+  document.getElementById('d-' + id).classList.add('active');
+  document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  // Reset panel state
+  panelOpen = false;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('panel-open'));
+}
+</script>
+
+<!-- ═══ V1: Left Slide Panel ═══ -->
+<div class="design active" id="d-v1">
+  <div class="page" style="background:#0a0a0f;">
+    <!-- Overlay -->
+    <div class="overlay" onclick="togglePanel('d-v1')"></div>
+
+    <!-- Floating library panel (left slide) -->
+    <div class="glass" style="position:absolute;top:12px;left:12px;bottom:12px;width:220px;border-radius:16px;z-index:20;padding:12px;display:none;flex-direction:column;" id="panel-v1">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.65em;font-weight:600;">Library</span>
+        <span style="font-size:0.65em;cursor:pointer;color:var(--muted);" onclick="event.stopPropagation();togglePanel('d-v1')">✕</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:4px 8px;font-size:0.5em;color:var(--muted);margin-bottom:8px;">🔍 Search games...</div>
+      <div style="flex:1;overflow-y:auto;">
+        <div class="row active"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.45em;color:var(--muted);">48 GB · Steam</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Baldur's Gate 3</div><div style="font-size:0.45em;color:var(--muted);">150 GB · Steam</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#0d1b2a,#070e17);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">CS2</div><div style="font-size:0.45em;color:var(--muted);">85 GB · Steam</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#1a2e1a,#0d1a0d);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Cyberpunk 2077</div><div style="font-size:0.45em;color:var(--muted);">70 GB · GOG</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#2e1a1a,#1a0d0d);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">The Witcher 3</div><div style="font-size:0.45em;color:var(--muted);">50 GB · GOG</div></div></div>
+        <div class="row" style="opacity:0.4;"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Red Dead Redemption 2</div><div style="font-size:0.45em;color:var(--muted);">120 GB · ISO</div></div></div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);padding-top:6px;display:flex;gap:4px;">
+        <span class="chip" style="font-size:0.5em;">➕ Add Folder</span>
+        <span class="chip" style="font-size:0.5em;">↻ Rescan</span>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div style="min-height:300px;background:linear-gradient(135deg,#2d1b00 0%,#1a0a2e 50%,#0f3460 100%);position:relative;overflow:hidden;border-radius:20px 20px 0 0;">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%);"></div>
+      <!-- Library button — top left -->
+      <div style="position:absolute;z-index:5;top:16px;left:16px;">
+        <button class="btn btn-ghost" style="background:rgba(15,15,20,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);" onclick="togglePanel('d-v1')">☰ Library</button>
+      </div>
+      <div style="position:relative;z-index:1;padding:48px 28px 24px;display:flex;gap:24px;align-items:flex-end;">
+        <div style="width:100px;height:150px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,0.5);"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.45em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;">FromSoftware · 2022</div>
+          <h2 style="font-size:1.3em;font-weight:800;margin:2px 0;letter-spacing:-0.02em;">Elden Ring</h2>
+          <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;">
+            <span style="background:rgba(16,185,129,0.1);color:#34d399;padding:2px 8px;border-radius:4px;font-size:0.5em;font-weight:600;">Steam</span>
+            <span style="background:rgba(96,165,250,0.1);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:0.5em;font-weight:600;">PS5</span>
+            <span style="background:rgba(251,191,36,0.1);color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:0.5em;font-weight:600;">ARPG</span>
+            <span style="background:var(--muted);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:4px;font-size:0.5em;">48.2 GB</span>
+          </div>
+          <p style="font-size:0.55em;color:rgba(255,255,255,0.4);max-width:500px;margin:6px 0 10px;line-height:1.5;">Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring and become an Elden Lord in the Lands Between.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play Now</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">⭐ Favorite</button>
+            <span style="font-size:0.5em;display:flex;align-items:center;gap:4px;color:#34d399;">● 86h played</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Game grid -->
+    <div style="padding:16px 20px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <span class="chip active">All · 42</span>
+        <span class="chip">Matched · 18</span>
+        <span class="chip">Unmatched · 20</span>
+        <span style="margin-left:auto;font-size:0.5em;color:var(--muted);">650 GB total</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;">
+        <div class="poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#0d1b2a,#070e17);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">Helldivers 2</div><div class="s">100 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Epic</span></div><div class="bg"><div class="t">Alan Wake 2</div><div class="s">80 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a2e2e,#0d1a1a);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Xbox</span></div><div class="bg"><div class="t">Starfield</div><div class="s">15 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));opacity:0.35;" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">ISO</span></div><div class="bg"><div class="t">RDR2</div><div style="color:#60a5fa;font-size:0.4em;">Find match</div></div></div>
+      </div>
+    </div>
+    <div style="padding:0 20px 14px;display:flex;gap:16px;font-size:0.45em;color:rgba(255,255,255,0.1);">
+      <span>18 matched</span><span>20 unmatched</span><span>4 ISOs</span><span>7 installable</span><span style="margin-left:auto;">Last scan: 2m ago</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ V2: Drawer Panel (bottom) ═══ -->
+<div class="design" id="d-v2">
+  <div class="page" style="background:#0a0a0f;">
+    <div class="overlay" onclick="togglePanel('d-v2')"></div>
+
+    <!-- Floating library drawer (bottom) -->
+    <div class="glass" style="position:absolute;left:12px;right:12px;bottom:12px;border-radius:16px;z-index:20;padding:12px;display:none;max-height:240px;" id="panel-v2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.65em;font-weight:600;">Games · <span style="font-weight:400;color:var(--muted);">42 titles</span></span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="background:rgba(16,185,129,0.1);color:#34d399;padding:2px 8px;border-radius:4px;font-size:0.5em;">18 matched</span>
+          <span style="font-size:0.65em;cursor:pointer;color:var(--muted);" onclick="event.stopPropagation();togglePanel('d-v2')">✕</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;overflow-x:auto;flex:1;">
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#2d1b00,#1a0f00);position:relative;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">Elden Ring</div></div></div>
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);position:relative;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">BG3</div></div></div>
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#0d1b2a,#070e17);position:relative;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">CS2</div></div></div>
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#1a2e1a,#0d1a0d);position:relative;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">Helldivers</div></div></div>
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#2e1a1a,#1a0d0d);position:relative;cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">Alan Wake</div></div></div>
+        <div style="min-width:70px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));position:relative;cursor:pointer;flex-shrink:0;opacity:0.4;" onclick="event.stopPropagation()"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">RDR2</div></div></div>
+      </div>
+    </div>
+
+    <div style="min-height:300px;background:linear-gradient(135deg,#2d1b00 0%,#1a0a2e 50%,#0f3460 100%);position:relative;overflow:hidden;border-radius:20px 20px 0 0;">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%);"></div>
+      <div style="position:absolute;z-index:5;top:16px;left:16px;">
+        <button class="btn btn-ghost" style="background:rgba(15,15,20,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);" onclick="togglePanel('d-v2')">☰ Library</button>
+      </div>
+      <div style="position:relative;z-index:1;padding:48px 28px 24px;display:flex;gap:24px;align-items:flex-end;">
+        <div style="width:100px;height:150px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,0.5);"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.45em;color:rgba(255,255,255,0.3);">FromSoftware · 2022</div>
+          <h2 style="font-size:1.3em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+          <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;">
+            <span style="background:rgba(16,185,129,0.1);color:#34d399;padding:2px 8px;border-radius:4px;font-size:0.5em;font-weight:600;">Steam</span>
+            <span style="background:var(--muted);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:4px;font-size:0.5em;">48.2 GB</span>
+          </div>
+          <p style="font-size:0.5em;color:rgba(255,255,255,0.4);max-width:500px;margin:6px 0 10px;">Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring...</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play Now</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 20px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <span class="chip active">All · 42</span>
+        <span class="chip">Matched · 18</span>
+        <span class="chip">Unmatched · 20</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;">
+        <div class="poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#0d1b2a,#070e17);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">Helldivers</div><div class="s">100 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ V3: Minimal Overlay ═══ -->
+<div class="design" id="d-v3">
+  <div class="page" style="background:#0a0a0f;">
+    <div class="overlay" onclick="togglePanel('d-v3')"></div>
+
+    <!-- Floating minimal panel (center) -->
+    <div class="glass" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:320px;max-height:70%;border-radius:20px;z-index:20;padding:16px;display:none;flex-direction:column;" id="panel-v3">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:0.7em;font-weight:600;">All Games</span>
+        <span style="font-size:0.65em;cursor:pointer;color:var(--muted);" onclick="event.stopPropagation();togglePanel('d-v3')">✕</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:4px 10px;font-size:0.55em;color:var(--muted);margin-bottom:8px;">🔍 Search</div>
+      <div style="display:flex;gap:4px;margin-bottom:8px;">
+        <span class="chip active" style="font-size:0.5em;">All 42</span>
+        <span class="chip" style="font-size:0.5em;">Matched 18</span>
+        <span class="chip" style="font-size:0.5em;">Unmatched 20</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;">
+        <div class="row active"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#2d1b00,#1a0f00);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.45em;color:var(--muted);">48 GB</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">BG3</div><div style="font-size:0.45em;color:var(--muted);">150 GB</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#0d1b2a,#070e17);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">CS2</div><div style="font-size:0.45em;color:var(--muted);">85 GB</div></div></div>
+        <div class="row"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(180deg,#1a2e1a,#0d1a0d);flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">Cyberpunk 2077</div><div style="font-size:0.45em;color:var(--muted);">70 GB</div></div></div>
+        <div class="row" style="opacity:0.4;"><div style="width:18px;height:18px;border-radius:4px;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));flex-shrink:0;"></div><div style="flex:1;"><div style="font-size:0.55em;">RDR2</div><div style="font-size:0.45em;color:var(--muted);">120 GB</div><span style="color:#60a5fa;font-size:0.45em;">Match</span></div></div>
+      </div>
+    </div>
+
+    <div style="min-height:300px;background:linear-gradient(135deg,#2d1b00 0%,#1a0a2e 50%,#0f3460 100%);position:relative;overflow:hidden;border-radius:20px 20px 0 0;">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%);"></div>
+      <div style="position:absolute;z-index:5;top:16px;left:16px;">
+        <button class="btn btn-ghost" style="background:rgba(15,15,20,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);" onclick="togglePanel('d-v3')">☰ Games</button>
+      </div>
+      <div style="position:relative;z-index:1;padding:48px 28px 24px;display:flex;gap:24px;align-items:flex-end;">
+        <div style="width:100px;height:150px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,0.5);"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.45em;color:rgba(255,255,255,0.3);">FromSoftware · 2022</div>
+          <h2 style="font-size:1.3em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+          <div style="display:flex;gap:6px;margin:6px 0;flex-wrap:wrap;">
+            <span style="background:rgba(16,185,129,0.1);color:#34d399;padding:2px 8px;border-radius:4px;font-size:0.5em;font-weight:600;">Steam</span>
+            <span style="background:var(--muted);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:4px;font-size:0.5em;">48.2 GB</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play Now</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 20px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <span class="chip active">All · 42</span>
+        <span class="chip">Matched · 18</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;">
+        <div class="poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#0d1b2a,#070e17);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ V4: Right Mini Panel ═══ -->
+<div class="design" id="d-v4">
+  <div class="page" style="background:#0a0a0f;">
+    <div class="overlay" onclick="togglePanel('d-v4')"></div>
+
+    <!-- Floating right panel -->
+    <div class="glass" style="position:absolute;top:12px;right:12px;bottom:12px;width:200px;border-radius:16px;z-index:20;padding:12px;display:none;flex-direction:column;" id="panel-v4">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.55em;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Library</span>
+        <span style="font-size:0.55em;cursor:pointer;color:var(--muted);" onclick="event.stopPropagation();togglePanel('d-v4')">✕</span>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+        <div class="row" style="font-size:0.55em;"><span>🎮</span><span style="flex:1;">All Games</span><span>42</span></div>
+        <div class="row" style="font-size:0.55em;opacity:0.5;"><span>✅</span><span style="flex:1;">Matched</span><span>18</span></div>
+        <div class="row" style="font-size:0.55em;opacity:0.5;"><span>❓</span><span style="flex:1;">Unmatched</span><span>20</span></div>
+        <div class="row" style="font-size:0.55em;opacity:0.5;"><span>💿</span><span style="flex:1;">ISOs</span><span>4</span></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.04);margin:6px 0;padding-top:6px;">
+          <div class="row" style="font-size:0.55em;opacity:0.5;"><span>⭐</span><span style="flex:1;">Favorites</span><span>6</span></div>
+          <div class="row" style="font-size:0.55em;opacity:0.5;"><span>🕐</span><span style="flex:1;">Recent</span><span>3</span></div>
+          <div class="row" style="font-size:0.55em;opacity:0.5;"><span>⬇️</span><span style="flex:1;">Installable</span><span>7</span></div>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);padding-top:6px;display:flex;gap:4px;">
+        <span class="chip" style="font-size:0.5em;flex:1;text-align:center;">↻ Scan</span>
+        <span class="chip" style="font-size:0.5em;flex:1;text-align:center;">+ Add</span>
+      </div>
+    </div>
+
+    <div style="min-height:300px;background:linear-gradient(135deg,#2d1b00 0%,#1a0a2e 50%,#0f3460 100%);position:relative;overflow:hidden;border-radius:20px 20px 0 0;">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%);"></div>
+      <div style="position:absolute;z-index:5;top:16px;left:16px;">
+        <button class="btn btn-ghost" style="background:rgba(15,15,20,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.06);" onclick="togglePanel('d-v4')">☰ Library</button>
+      </div>
+      <div style="position:relative;z-index:1;padding:48px 28px 24px;display:flex;gap:24px;align-items:flex-end;">
+        <div style="width:100px;height:150px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,0.5);"></div>
+        <div style="flex:1;">
+          <div style="font-size:0.45em;color:rgba(255,255,255,0.3);">FromSoftware · 2022</div>
+          <h2 style="font-size:1.3em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+          <div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="event.stopPropagation()">▶ Play Now</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">📁 Open Folder</button>
+            <button class="btn btn-ghost" onclick="event.stopPropagation()">⭐</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:16px 20px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <span class="chip active">All · 42</span>
+        <span class="chip">Matched · 18</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;">
+        <div class="poster" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#0d1b2a,#070e17);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div class="poster" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);" onclick="event.stopPropagation()"><div style="padding:4px;"><span class="badge-t">Steam</span></div><div class="bg"><div class="t">Helldivers</div><div class="s">100 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

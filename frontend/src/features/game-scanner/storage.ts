@@ -8,7 +8,7 @@ export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .replace(/[™®©]/g, "")
-    .replace(/[-.\s](goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors)\s*edition/gi, "")
+    .replace(/[-.\s](goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\s*edition/gi, "")
     .replace(/\bii\b/g, '2')
     .replace(/\biii\b/g, '3')
     .replace(/\biv\b/g, '4')

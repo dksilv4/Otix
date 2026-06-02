@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Search, RefreshCw, Disc, Link2 } from "lucide-react";
+import { Search, RefreshCw, Disc, Link2, FolderKanban } from "lucide-react";
 import { GameGrid } from "../molecules/game-grid";
 import { DirectoryManager } from "../molecules/directory-manager";
 import { ScanProgress } from "../molecules/scan-progress";
@@ -9,6 +9,7 @@ import { IsoInstallerModal } from "./iso-installer-modal";
 import { IsoOrganizerModal } from "./iso-organizer-modal";
 import { MatchGamesModal } from "./match-games-modal";
 import { useMatchLocalGames } from "../queries";
+import { apiClient } from "@/lib/api-client";
 import {
   getScanPaths,
   setScanPaths,
@@ -43,6 +44,7 @@ export function GameScannerTab() {
   const [installerOpen, setInstallerOpen] = useState(false);
   const [organizerOpen, setOrganizerOpen] = useState(false);
   const [matchModalOpen, setMatchModalOpen] = useState(false);
+
 
   // Mutations
   const matchMutation = useMatchLocalGames();
@@ -157,7 +159,7 @@ export function GameScannerTab() {
     }
   }, [games, matchMutation]);
 
-  // Ref to access latest games inside callbacks without stale closure
+  // Ref to avoid stale closures in callbacks
   const gamesRef = useRef(games);
   gamesRef.current = games;
 
@@ -189,8 +191,7 @@ export function GameScannerTab() {
       }
 
       if (scannedGames.length > 0) {
-        // Carry over otix data from previous scan for games the API can't match
-        // (e.g. manually linked via SteamGridDB/IGDB — not in Otix catalog)
+        // Carry over previous match data
         const prevOtixMap = new Map<string, DetectedGame>();
         for (const g of gamesRef.current) {
           if (g.otixMediaId || g.otixMatchSuggestion) {
@@ -206,19 +207,38 @@ export function GameScannerTab() {
           const prev = prevOtixMap.get(g.id);
           if (!prev) return g;
           return {
-            ...g,
-            otixMediaId: prev.otixMediaId,
-            otixMediaTitle: prev.otixMediaTitle,
-            otixMediaSlug: prev.otixMediaSlug,
-            otixConfidence: prev.otixConfidence,
-            otixPosterUrl: prev.otixPosterUrl,
-            otixTextlessPosterUrl: prev.otixTextlessPosterUrl,
-            otixLogoUrl: prev.otixLogoUrl,
-            otixMatchSuggestion: prev.otixMatchSuggestion,
+            ...g, otixMediaId: prev.otixMediaId, otixMediaTitle: prev.otixMediaTitle,
+            otixMediaSlug: prev.otixMediaSlug, otixConfidence: prev.otixConfidence,
+            otixPosterUrl: prev.otixPosterUrl, otixTextlessPosterUrl: prev.otixTextlessPosterUrl,
+            otixLogoUrl: prev.otixLogoUrl, otixMatchSuggestion: prev.otixMatchSuggestion,
           };
         });
 
         setGames(restored);
+
+        // Seed the game catalog: send unique titles to backend for IGDB search
+        const uniqueTitles = [...new Set(scannedGames.map(g => g.title))];
+        if (uniqueTitles.length > 0 && hasElectronAPI()) {
+          const api = (window as any).electronAPI;
+          // Check cache to avoid re-seeding known titles
+          const cacheResult = await api.batchCheckMatchCache(uniqueTitles.map(t => `seed:${t}`));
+          const toSeed = uniqueTitles.filter(t => !cacheResult[`seed:${t}`]);
+          if (toSeed.length > 0) {
+            // Fire-and-forget: send each title to backend to trigger IGDB search + catalog seeding
+            for (const title of toSeed) {
+              apiClient.get(`/media/search/external?q=${encodeURIComponent(title)}&limit=3`)
+                .catch(() => {}); // errors don't matter — just seeding
+            }
+            // Record in cache that we seeded these titles
+            api.saveMatchCache(toSeed.map(t => ({
+              isoPath: `seed:${t}`,
+              queryTitle: t,
+              mediaId: 'seed_pending',
+              mediaTitle: t,
+              confidence: 0,
+            }))).catch(console.error);
+          }
+        }
       } else {
         setGames([]);
       }
@@ -428,6 +448,15 @@ export function GameScannerTab() {
               <Disc className="h-4 w-4" />
               Install ISO
             </button>
+            <button
+              onClick={() => setOrganizerOpen(true)}
+              disabled={isoPaths.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--dk-surface-glass)] px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.97] disabled:opacity-40"
+              title={isoPaths.length === 0 ? 'Add ISO folders in the directory manager first' : 'Choose how to organize your ISOs'}
+            >
+              <FolderKanban className="h-4 w-4" />
+              Organize ISOs
+            </button>
           </div>
         </div>
       )}
@@ -561,6 +590,7 @@ export function GameScannerTab() {
         open={organizerOpen}
         onClose={() => setOrganizerOpen(false)}
         isoPaths={isoPaths}
+        games={games}
       />
     </div>
   );

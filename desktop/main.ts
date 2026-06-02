@@ -1,30 +1,97 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, screen } from 'electron';
 import * as path from 'path';
-import { spawn } from 'child_process';
-import { scanPaths, findUpdateFilesForIso, DetectedGame } from './scanner';
-import { scanAllLaunchers } from './launchers';
-import { mountIso, dismountIso, applyCrack, previewOrganization, executeOrganization, launchSetup } from './installer';
+import * as fs from 'fs';
 import { GameDetector } from './game-detector';
-import {
-  getConfig, saveConfig, getDownload, getUserDownloads, deleteDownload,
-  searchNzbPlanet, testNzbPlanetConnection, testSabnzbdConnection,
-  searchAndDownload, pollAndUpdateDownloads, postProcessDownload,
-  filterQualityResults, autoPickBest,
-  getWishlistTracking, skipWishlistItem,
-  getPathMappings, addPathMapping, removePathMapping,
-  getScannedGamesFromDb, saveScannedGamesToDb,
-  getScanPathsFromDb, saveScanPathsToDb,
-  getLocalGamesMapFromDb, saveLocalGamesMapEntryToDb,
-} from './downloads';
+import { registerDownloadsIPC } from './ipc/downloads';
+import { registerScannerIPC } from './ipc/scanner';
+import { registerInstallerIPC } from './ipc/installer';
+import { registerGameDetectorIPC } from './ipc/game-detector';
+import { ensureDb } from './db';
+import { scheduledUpdateCheck } from './downloads';
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// ── Window position persistence ───────────────────────────────
+interface WindowState {
+  x?: number
+  y?: number
+  width: number
+  height: number
+  maximized: boolean
+}
+
+const DEFAULT_SIZE: WindowState = { width: 1280, height: 800, maximized: false }
+
+function statePath(): string {
+  return path.join(app.getPath('userData'), 'window-state.json')
+}
+
+function loadWindowState(): WindowState | null {
+  try {
+    const raw = fs.readFileSync(statePath(), 'utf-8')
+    return JSON.parse(raw) as WindowState
+  } catch {
+    return null
+  }
+}
+
+function saveWindowState(win: BrowserWindow) {
+  let bounds: Electron.Rectangle
+  if (win.isMaximized()) {
+    bounds = win.getNormalBounds()
+    fs.writeFileSync(statePath(), JSON.stringify({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, maximized: true }))
+  } else {
+    bounds = win.getBounds()
+    fs.writeFileSync(statePath(), JSON.stringify({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, maximized: false }))
+  }
+}
+
+function ensureVisible(saved: WindowState): Electron.Rectangle {
+  const pri = screen.getPrimaryDisplay().workArea
+  const w = saved.width || DEFAULT_SIZE.width
+  const h = saved.height || DEFAULT_SIZE.height
+
+  // If x/y are undefined (maximized save) or off-screen, center on primary
+  if (saved.x === undefined || saved.y === undefined) {
+    return {
+      x: pri.x + Math.max(0, (pri.width - w) / 2),
+      y: pri.y + Math.max(0, (pri.height - h) / 2),
+      width: w,
+      height: h,
+    }
+  }
+
+  const onScreen = screen.getAllDisplays().some((d) => {
+    const { x, y, width, height } = d.workArea
+    return (
+      saved.x! >= x && saved.x! + w <= x + width &&
+      saved.y! >= y && saved.y! + h <= y + height
+    )
+  })
+
+  if (onScreen) {
+    return { x: saved.x, y: saved.y, width: w, height: h }
+  }
+
+  return {
+    x: pri.x + Math.max(0, (pri.width - w) / 2),
+    y: pri.y + Math.max(0, (pri.height - h) / 2),
+    width: w,
+    height: h,
+  }
+}
+
 function createWindow() {
+  const saved = loadWindowState()
+  const bounds = saved ? ensureVisible(saved) : DEFAULT_SIZE
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
     title: 'Otix',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -34,6 +101,16 @@ function createWindow() {
       partition: 'persist:main',
     },
   });
+
+  if (saved?.maximized) {
+    mainWindow.maximize()
+  }
+
+  // Save window state on resize, move, maximize, unmaximize, and close
+  mainWindow.on('resize', () => saveWindowState(mainWindow!))
+  mainWindow.on('move', () => saveWindowState(mainWindow!))
+  mainWindow.on('maximize', () => saveWindowState(mainWindow!))
+  mainWindow.on('unmaximize', () => saveWindowState(mainWindow!))
 
   if (isDev) {
     mainWindow.loadURL('http://127.0.0.1:5173/');
@@ -59,10 +136,9 @@ app.on('ready', () => {
     mainWindow?.webContents.send('game:ended', session);
   });
 
-  // IPC communication test handler
+  // General utilities
   ipcMain.handle('ping', () => 'pong');
 
-  // Directory selection dialog
   ipcMain.handle('dialog:select-directory', async () => {
     const result = await dialog.showOpenDialog({
       title: 'Select Game Directory or Steam Library Folder',
@@ -72,266 +148,30 @@ app.on('ready', () => {
     return result.filePaths[0];
   });
 
-  // Scan games in paths
-  ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
-    const games = await scanPaths(paths, isoPaths, (progressData) => {
-      event.sender.send('scanner:progress', progressData);
-    });
-    // Feed scanned games into detector for external process matching
-    gameDetector?.setLibrary(games);
-    gameDetector?.startPeriodicScan();
-    return games;
-  });
+  // Register modular IPC handlers
+  registerDownloadsIPC();
+  registerScannerIPC(gameDetector);
+  registerInstallerIPC();
+  registerGameDetectorIPC(gameDetector);
 
-  // Scan installed launcher libraries (Epic, GOG, Battle.net, Ubisoft, EA, Riot, Xbox, Itch)
-  ipcMain.handle('scanner:scan-launchers', async () => {
-    const results = await scanAllLaunchers();
-    const allGames: DetectedGame[] = [];
-    for (const result of results) {
-      allGames.push(...result.games);
-    }
-    gameDetector?.setLibrary(allGames);
-    gameDetector?.startPeriodicScan();
-    return results;
-  });
-
-  // Launch game — now accepts full DetectedGame for tracking
-  ipcMain.handle('launcher:launch-game', async (_, game: DetectedGame) => {
-    try {
-      if (game.exePath.startsWith('steam://')) {
-        await shell.openExternal(game.exePath);
-        gameDetector?.startTracking(game); // no PID for Steam, scan will confirm
-        return true;
-      } else {
-        const gameDir = path.dirname(game.exePath);
-        const child = spawn(game.exePath, [], {
-          cwd: gameDir,
-          detached: true,
-          stdio: 'ignore',
-        });
-        gameDetector?.startTracking(game, child.pid);
-        child.unref();
-        return true;
-      }
-    } catch (err) {
-      console.error('Failed to launch game', game.exePath, err);
-      throw err;
-    }
-  });
-
-  // ── Game detection IPC ──
-
-  ipcMain.handle('game:get-running', () => {
-    return gameDetector?.getRunningGames() ?? [];
-  });
-
-  ipcMain.handle('game:get-running-single', () => {
-    return gameDetector?.getRunningGame() ?? null;
-  });
-
-  ipcMain.handle('game:get-recent-sessions', () => {
-    return gameDetector?.getRecentSessions() ?? [];
-  });
-
-  ipcMain.handle('game:set-library', (_, games: DetectedGame[]) => {
-    gameDetector?.setLibrary(games);
-    gameDetector?.startPeriodicScan();
-    return true;
-  });
-
-  ipcMain.handle('game:stop-tracking', (_, gameId: string) => {
-    gameDetector?.stopTracking(gameId);
-    return true;
-  });
-
-  // ── Manual mapping IPC ──
-
-  ipcMain.handle('game:get-running-processes', async () => {
-    return gameDetector?.getRunningProcesses() ?? [];
-  });
-
-  ipcMain.handle('game:add-mapping', (_, processName: string, gameId: string, gameTitle: string) => {
-    gameDetector?.addMapping(processName, gameId, gameTitle);
-    return true;
-  });
-
-  ipcMain.handle('game:remove-mapping', (_, processName: string) => {
-    gameDetector?.removeMapping(processName);
-    return true;
-  });
-
-  ipcMain.handle('game:get-mappings', () => {
-    return gameDetector?.getMappings() ?? [];
-  });
-
-  ipcMain.handle('game:get-library', () => {
-    return gameDetector?.getLibrary() ?? [];
-  });
-
-  // Select ISO dialog
-  ipcMain.handle('installer:select-iso', async () => {
-    const result = await dialog.showOpenDialog({
-      title: 'Select Game ISO File',
-      filters: [{ name: 'Disk Images', extensions: ['iso'] }],
-      properties: ['openFile'],
-    });
-    if (result.canceled) return null;
-    return result.filePaths[0];
-  });
-
-  // Mount ISO
-  ipcMain.handle('installer:mount-iso', async (_, isoPath: string) => {
-    return await mountIso(isoPath);
-  });
-
-  // Dismount ISO
-  ipcMain.handle('installer:dismount-iso', async (_, isoPath: string) => {
-    return await dismountIso(isoPath);
-  });
-
-  // Apply Crack
-  ipcMain.handle('installer:apply-crack', async (_, crackPath: string, targetDir: string) => {
-    return await applyCrack(crackPath, targetDir);
-  });
-
-  // Find updates for ISO
-  ipcMain.handle('installer:get-updates', async (_, isoPath: string) => {
-    return await findUpdateFilesForIso(isoPath);
-  });
-
-  // Preview ISO Folder Reorganization
-  ipcMain.handle('installer:preview-organization', async (_, directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string) => {
-    return await previewOrganization(directory, regexPattern, isoTemplate, updateTemplate);
-  });
-
-  // Execute ISO Folder Reorganization
-  ipcMain.handle('installer:execute-organization', async (_, items: { sourcePath: string; targetPath: string }[]) => {
-    return await executeOrganization(items);
-  });
-
-  ipcMain.handle('installer:launch-setup', async (_, setupPath: string) => {
-    try {
-      return await launchSetup(setupPath);
-    } catch (err) {
-      console.error('Failed to launch installer:', setupPath, err);
-      throw err;
-    }
-  });
-
-  // ── Database storage for scans ──
-  ipcMain.handle('scanner:get-scanned-games', () => {
-    return getScannedGamesFromDb();
-  });
-  ipcMain.handle('scanner:save-scanned-games', (_, games: any[]) => {
-    return saveScannedGamesToDb(games);
-  });
-  ipcMain.handle('scanner:get-scan-paths', () => {
-    return getScanPathsFromDb();
-  });
-  ipcMain.handle('scanner:save-scan-paths', (_, paths: any[]) => {
-    return saveScanPathsToDb(paths);
-  });
-  ipcMain.handle('scanner:get-local-games-map', () => {
-    return getLocalGamesMapFromDb();
-  });
-  ipcMain.handle('scanner:save-local-games-map-entry', (_, mediaId: string, game: any | null) => {
-    return saveLocalGamesMapEntryToDb(mediaId, game);
-  });
-
-  // ── Downloads IPC ──
-
-  ipcMain.handle('downloads:get-config', (_, userId: string) => {
-    return getConfig(userId);
-  });
-
-  ipcMain.handle('downloads:save-config', (_, config: any) => {
-    return saveConfig(config);
-  });
-
-  ipcMain.handle('downloads:search', async (_, query: string, apiKey: string) => {
-    return await searchNzbPlanet(query, apiKey);
-  });
-
-  ipcMain.handle('downloads:scan-wishlist', async (_, userId: string, wishlistGames: { id: string; title: string }[]) => {
-    const config = getConfig(userId);
-    if (!config) return { error: 'No download config' };
-
-    const results: { mediaItemId: string; success: boolean; downloadId?: string; error?: string }[] = [];
-    for (const game of wishlistGames) {
-      const result = await searchAndDownload(userId, game.id, game.title);
-      if ('download' in result) {
-        results.push({ mediaItemId: game.id, success: true, downloadId: result.download.id });
-      } else {
-        results.push({ mediaItemId: game.id, success: false, error: result.error });
-      }
-    }
-    return results;
-  });
-
-  ipcMain.handle('downloads:search-and-download', async (_, userId: string, mediaItemId: string | null, gameName: string) => {
-    return await searchAndDownload(userId, mediaItemId, gameName);
-  });
-
-  ipcMain.handle('downloads:filter-results', (_, results: any[]) => {
-    return filterQualityResults(results);
-  });
-
-  ipcMain.handle('downloads:auto-pick', (_, results: any[]) => {
-    return autoPickBest(results);
-  });
-
-  ipcMain.handle('downloads:get-download', (_, id: string) => {
-    return getDownload(id);
-  });
-
-  ipcMain.handle('downloads:get-user-downloads', (_, userId: string) => {
-    return getUserDownloads(userId);
-  });
-
-  ipcMain.handle('downloads:delete', (_, id: string) => {
-    return deleteDownload(id);
-  });
-
-  ipcMain.handle('downloads:poll-queue', async (_, userId: string) => {
-    return await pollAndUpdateDownloads(userId);
-  });
-
-  ipcMain.handle('downloads:test-sabnzbd', async (_, host: string, port: number, apiKey: string, useSsl: boolean) => {
-    return await testSabnzbdConnection(host, port, apiKey, useSsl);
-  });
-
-  ipcMain.handle('downloads:test-nzbplanet', async (_, apiKey: string) => {
-    console.log('[IPC] downloads:test-nzbplanet called, key length:', apiKey?.length ?? 0);
-    const result = await testNzbPlanetConnection(apiKey);
-    console.log('[IPC] downloads:test-nzbplanet result:', result);
-    return result;
-  });
-
-  ipcMain.handle('downloads:get-wishlist-tracking', (_, userId: string) => {
-    return getWishlistTracking(userId);
-  });
-
-  ipcMain.handle('downloads:skip-wishlist-item', (_, userId: string, mediaItemId: string) => {
-    return skipWishlistItem(userId, mediaItemId);
-  });
-
-  ipcMain.handle('downloads:post-process', (_, downloadId: string, configId: string, fallbackSource?: string, fallbackDest?: string) => {
-    return postProcessDownload(downloadId, configId, fallbackSource, fallbackDest);
-  });
-
-  ipcMain.handle('downloads:get-path-mappings', async (_, configId: string) => {
-    return await getPathMappings(configId);
-  });
-
-  ipcMain.handle('downloads:add-path-mapping', async (_, configId: string, sourcePath: string, destPath: string) => {
-    return await addPathMapping(configId, sourcePath, destPath);
-  });
-
-  ipcMain.handle('downloads:remove-path-mapping', async (_, id: string) => {
-    return await removePathMapping(id);
-  });
+  // Initialize database eagerly so failures surface at startup, not on first IPC call
+  ensureDb().catch((err) => console.error('[main] DB init failed:', err));
 
   createWindow();
+
+  // ── Scheduled update check ──
+  // First check 5 minutes after startup, then every 12 hours
+  setTimeout(() => {
+    scheduledUpdateCheck().catch((err) =>
+      console.error('[main] Initial update check failed:', err)
+    );
+  }, 5 * 60 * 1000);
+
+  setInterval(() => {
+    scheduledUpdateCheck().catch((err) =>
+      console.error('[main] Periodic update check failed:', err)
+    );
+  }, 12 * 60 * 60 * 1000);
 });
 
 app.on('window-all-closed', () => {

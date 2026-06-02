@@ -1,0 +1,98 @@
+<h2>🎮 Steam Library</h2>
+<p class="subtitle">Steam's current desktop UI — left sidebar categories + grid view</p>
+<style>
+  .launcher-block { border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.05); margin-bottom:36px; }
+  .launcher-header { padding:8px 14px; background:var(--surface); border-bottom:1px solid rgba(255,255,255,0.03); display:flex; align-items:center; gap:8px; }
+  .launcher-header h3 { margin:0; font-size:0.75em; }
+  .launcher-header span { font-size:0.6em; color:var(--muted); }
+  .poster-card { aspect-ratio:2/3; border-radius:10px; overflow:hidden; position:relative; background:var(--surface); }
+  .game-row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:6px; font-size:0.6em; }
+  .game-row:hover { background:rgba(255,255,255,0.03); }
+</style>
+
+<div class="launcher-block">
+  <div class="launcher-header"><h3>Steam Library</h3><span>valve/steam</span></div>
+  <div style="display:flex;background:#0b0b12;min-height:380px;">
+    <!-- Left sidebar -->
+    <div style="width:170px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03);padding:10px 6px;flex-shrink:0;">
+      <div style="font-size:0.5em;color:rgba(255,255,255,0.15);text-transform:uppercase;padding:4px 8px;">Library</div>
+      <div class="game-row" style="background:rgba(255,255,255,0.04);font-weight:600;"><span>🎮</span><span style="flex:1;">All Games</span><span>42</span></div>
+      <div class="game-row"><span>💿</span><span style="flex:1;">Installed</span><span>38</span></div>
+      <div class="game-row"><span>⬇️</span><span style="flex:1;">Downloads</span><span>2</span></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.04);margin:6px 0;padding-top:6px;">
+        <div style="font-size:0.5em;color:rgba(255,255,255,0.15);text-transform:uppercase;padding:4px 8px;">Collections</div>
+        <div class="game-row"><span>⭐</span><span style="flex:1;">Favorites</span><span>6</span></div>
+        <div class="game-row"><span>🕐</span><span style="flex:1;">Recently Played</span><span>3</span></div>
+      </div>
+    </div>
+    <!-- Main content -->
+    <div style="flex:1;padding:12px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:0.8em;font-weight:600;">All Games</span>
+        <div style="display:flex;gap:6px;font-size:0.55em;">
+          <span style="color:var(--muted);padding:3px 8px;border-radius:4px;background:var(--surface);">🔍 Search</span>
+          <span style="color:var(--muted);padding:3px 8px;border-radius:4px;background:var(--surface);">Sort: A-Z ▼</span>
+        </div>
+      </div>
+      <!-- Game grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+        <div class="poster-card" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Elden Ring</div>
+            <div style="font-size:0.45em;color:var(--muted);">48 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Baldur's Gate 3</div>
+            <div style="font-size:0.45em;color:var(--muted);">150 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#0d1b2a,#070e17);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Counter-Strike 2</div>
+            <div style="font-size:0.45em;color:var(--muted);">85 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Helldivers 2</div>
+            <div style="font-size:0.45em;color:var(--muted);">100 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">PUBG</div>
+            <div style="font-size:0.45em;color:var(--muted);">80 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Dota 2</div>
+            <div style="font-size:0.45em;color:var(--muted);">60 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#0d1b2a,#070e17);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">Palworld</div>
+            <div style="font-size:0.45em;color:var(--muted);">30 GB</div>
+          </div>
+        </div>
+        <div class="poster-card" style="background:linear-gradient(180deg,#1a2e2e,#0d1a1a);">
+          <div style="position:absolute;top:6px;left:6px;font-size:0.45em;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(0,0,0,0.4);">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);">
+            <div style="font-size:0.6em;font-weight:600;">GTA V</div>
+            <div style="font-size:0.45em;color:var(--muted);">120 GB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

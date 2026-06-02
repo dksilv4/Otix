@@ -41,8 +41,9 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const badge = hasMultipleSources
     ? { variant: "default" as const, label: game.sources!.map((s) => PLATFORM_BADGES[s]?.label ?? s).join(" + ") }
     : primaryBadge;
-  // Prefer textless poster so the floating logo pops clean
-  const backgroundUrl = game.otixTextlessPosterUrl || game.otixPosterUrl;
+  // Prefer textless poster so the floating logo pops clean.
+  // Fall back to SGDB grid (posterUrl from scanner) for unmatched games.
+  const backgroundUrl = game.otixTextlessPosterUrl || game.otixPosterUrl || game.posterUrl;
   const hasBackground = backgroundUrl && !posterError;
   const hasLogo = game.otixLogoUrl && !logoError;
   const isMatched = !!game.otixMediaId;

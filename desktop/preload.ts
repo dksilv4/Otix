@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DetectedGame } from './scanner';
+import type { DetectedGame } from './preload-api';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   ping: () => ipcRenderer.invoke('ping'),
@@ -12,11 +12,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   dismountIso: (isoPath: string) => ipcRenderer.invoke('installer:dismount-iso', isoPath),
   applyCrack: (crackPath: string, targetDir: string) => ipcRenderer.invoke('installer:apply-crack', crackPath, targetDir),
   getUpdatesForIso: (isoPath: string) => ipcRenderer.invoke('installer:get-updates', isoPath),
-  previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string) =>
-    ipcRenderer.invoke('installer:preview-organization', directory, regexPattern, isoTemplate, updateTemplate),
+  previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string, separator?: string) =>
+    ipcRenderer.invoke('installer:preview-organization', directory, regexPattern, isoTemplate, updateTemplate, separator),
   executeOrganization: (items: { sourcePath: string; targetPath: string }[]) =>
     ipcRenderer.invoke('installer:execute-organization', items),
   launchSetup: (setupPath: string) => ipcRenderer.invoke('installer:launch-setup', setupPath),
+  batchOrganize: (directory: string, namingTemplate?: string) => ipcRenderer.invoke('installer:batch-organize', directory, namingTemplate),
+  smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => ipcRenderer.invoke('installer:smart-preview', directory, namingTemplate, separator),
   onScannerProgress: (callback: (data: any) => void) => {
     const subscription = (_event: any, data: any) => callback(data);
     ipcRenderer.on('scanner:progress', subscription);
@@ -30,6 +32,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveScanPaths: (paths: any[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
   getLocalGamesMap: () => ipcRenderer.invoke('scanner:get-local-games-map'),
   saveLocalGamesMapEntry: (mediaId: string, game: any | null) => ipcRenderer.invoke('scanner:save-local-games-map-entry', mediaId, game),
+  batchCheckMatchCache: (isoPaths: string[]) => ipcRenderer.invoke('scanner:batch-check-match-cache', isoPaths),
+  saveMatchCache: (entries: any[]) => ipcRenderer.invoke('scanner:save-match-cache', entries),
 
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
@@ -59,10 +63,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadsSearch: (query: string, apiKey: string) => ipcRenderer.invoke('downloads:search', query, apiKey),
   downloadsScanWishlist: (userId: string, wishlistGames: { id: string; title: string }[]) =>
     ipcRenderer.invoke('downloads:scan-wishlist', userId, wishlistGames),
-  downloadsSearchAndDownload: (userId: string, mediaItemId: string | null, gameName: string) =>
-    ipcRenderer.invoke('downloads:search-and-download', userId, mediaItemId, gameName),
+  downloadsSearchAndDownload: (userId: string, mediaItemId: string | null, gameName: string, allowHypervisor?: boolean) =>
+    ipcRenderer.invoke('downloads:search-and-download', userId, mediaItemId, gameName, allowHypervisor),
   downloadsFilterResults: (results: any[]) => ipcRenderer.invoke('downloads:filter-results', results),
-  downloadsAutoPick: (results: any[]) => ipcRenderer.invoke('downloads:auto-pick', results),
+  downloadsAutoPick: (results: any[], allowHypervisor?: boolean) => ipcRenderer.invoke('downloads:auto-pick', results, allowHypervisor),
   downloadsGetDownload: (id: string) => ipcRenderer.invoke('downloads:get-download', id),
   downloadsGetUserDownloads: (userId: string) => ipcRenderer.invoke('downloads:get-user-downloads', userId),
   downloadsDelete: (id: string) => ipcRenderer.invoke('downloads:delete', id),
@@ -79,4 +83,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadsAddPathMapping: (configId: string, sourcePath: string, destPath: string) =>
     ipcRenderer.invoke('downloads:add-path-mapping', configId, sourcePath, destPath),
   downloadsRemovePathMapping: (id: string) => ipcRenderer.invoke('downloads:remove-path-mapping', id),
+
+  // Update tracking
+  downloadsGetTrackedGames: () => ipcRenderer.invoke('downloads:get-tracked-games'),
+  downloadsCheckUpdates: () => ipcRenderer.invoke('downloads:check-updates'),
+
+  // Organizer
+  downloadsPreviewNamingTemplate: (template: string, sampleName: string) =>
+    ipcRenderer.invoke('downloads:preview-naming-template', template, sampleName),
+  downloadsValidateNamingTemplate: (template: string) =>
+    ipcRenderer.invoke('downloads:validate-naming-template', template),
 });

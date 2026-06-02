@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Otix Games — Final Design</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070a; color:#e2e8f0; font-family:system-ui,-apple-system,sans-serif; padding:20px; display:flex; justify-content:center; }
+  .wrap { max-width:1100px; width:100%; }
+  .glass { background:rgba(15,15,20,0.88); backdrop-filter:blur(20px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.5); }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:10px; font-size:0.7em; font-weight:700; border:none; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .btn-p { background:#10b981; color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,0.15); }
+  .btn-p:hover { background:#059669; }
+  .btn-g { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.7); }
+  .btn-g:hover { background:rgba(255,255,255,0.1); }
+  .chip { padding:5px 14px; border-radius:8px; font-size:0.6em; cursor:pointer; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); transition:all 0.15s; font-family:inherit; white-space:nowrap; }
+  .chip:hover { background:rgba(255,255,255,0.07); }
+  .chip.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+  .row-g { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:6px; cursor:pointer; transition:all 0.15s; font-size:0.6em; }
+  .row-g:hover { background:rgba(255,255,255,0.06); }
+  .row-g.active { background:rgba(16,185,129,0.08); border-left:2px solid #10b981; border-radius:0 6px 6px 0; }
+  .poster-sm { width:18px; height:27px; border-radius:4px; flex-shrink:0; }
+  .search-box { background:rgba(255,255,255,0.04); border-radius:10px; padding:6px 10px; font-size:0.55em; display:flex; align-items:center; gap:6px; }
+  .search-box input { background:transparent; border:none; color:#fff; width:100%; outline:none; font-family:inherit; font-size:1em; }
+  .search-box input::placeholder { color:rgba(255,255,255,0.2); }
+  .panel-scroll { flex:1; overflow-y:auto; margin:0 -4px; padding:0 4px; }
+  .panel-scroll::-webkit-scrollbar { width:3px; }
+  .panel-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:4px; }
+
+  /* Hero row */
+  .hero-row { display:flex; gap:10px; min-height:180px; margin-bottom:20px; position:relative; }
+  .side-panel { width:0; overflow:hidden; flex-shrink:0; transition:width 0.4s cubic-bezier(0.16,1,0.3,1); display:flex; flex-direction:column; padding:0; border-radius:20px; }
+  .side-panel.open { width:280px; padding:16px 14px; }
+  .hero-main { flex:1; border-radius:20px; overflow:hidden; position:relative; min-height:180px; }
+
+  .hero-bg { position:absolute; inset:0; transition:background 0.4s; }
+  .hero-overlay { position:absolute; inset:0; background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%); }
+  .hero-content { position:relative; z-index:1; padding:28px 28px 20px; display:flex; gap:20px; align-items:flex-end; }
+
+  /* Shelf */
+  .shelf { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
+  .shelf::-webkit-scrollbar { height:3px; }
+  .shelf::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:4px; }
+  .shelf-label { font-size:0.6em; color:rgba(255,255,255,0.35); font-weight:600; margin-bottom:8px; display:flex; justify-content:space-between; }
+
+  .pc { aspect-ratio:2/3; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+  .pc:hover { transform:translateY(-3px) scale(1.02); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+  .pc .bg { position:absolute; bottom:0; left:0; right:0; padding:8px; background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent); }
+  .pc .bg .t { font-size:0.55em; font-weight:600; }
+  .pc .bg .s { font-size:0.4em; color:rgba(255,255,255,0.4); }
+  .badge { font-size:0.45em; font-weight:600; padding:2px 6px; border-radius:3px; background:rgba(0,0,0,0.35); }
+  .tag { font-size:0.5em; font-weight:600; padding:2px 8px; border-radius:4px; }
+  .tag-s { background:rgba(16,185,129,0.1); color:#34d399; }
+  .tag-g { background:rgba(167,139,250,0.1); color:#a78bfa; }
+  .tag-y { background:rgba(251,191,36,0.1); color:#fbbf24; }
+  .tag-b { background:rgba(96,165,250,0.1); color:#60a5fa; }
+
+  /* Browser section */
+  .browser { border-radius:24px; overflow:hidden; background:rgba(10,10,15,0.5); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+  <span style="font-size:1.2em;font-weight:800;color:#fff;">🎮 Games</span>
+  <span style="font-size:0.6em;color:rgba(255,255,255,0.25);background:rgba(255,255,255,0.03);padding:4px 12px;border-radius:10px;">Otix · 12 titles</span>
+</div>
+
+<div class="browser">
+  <div style="padding:20px;">
+    <!-- Hero row -->
+    <div class="hero-row">
+      <div class="side-panel glass" id="sidePanel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0;">
+          <span style="font-size:0.7em;font-weight:600;display:flex;align-items:center;gap:6px;">☰ Library</span>
+          <span style="font-size:0.65em;cursor:pointer;color:var(--muted);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;" onclick="closePanel()" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✕</span>
+        </div>
+        <div class="search-box" style="flex-shrink:0;">
+          <span>🔍</span>
+          <input type="text" placeholder="Search games..." id="searchInput" oninput="filterGames(this.value)">
+        </div>
+        <div style="display:flex;gap:4px;margin:8px 0;flex-shrink:0;">
+          <button class="chip active" id="tabAll" onclick="setTab('all')">All <span style="color:rgba(255,255,255,0.2);">12</span></button>
+          <button class="chip" id="tabMatched" onclick="setTab('matched')">Matched <span style="color:rgba(255,255,255,0.2);">8</span></button>
+          <button class="chip" id="tabUnmatched" onclick="setTab('unmatched')">Unmatched <span style="color:rgba(255,255,255,0.2);">4</span></button>
+        </div>
+        <div class="panel-scroll" id="gameList"></div>
+        <div style="border-top:1px solid rgba(255,255,255,0.04);padding-top:6px;display:flex;gap:4px;flex-shrink:0;">
+          <span class="chip" style="font-size:0.5em;flex:1;text-align:center;">➕ Add Folder</span>
+          <span class="chip" style="font-size:0.5em;flex:1;text-align:center;">↻ Rescan</span>
+        </div>
+      </div>
+      <div class="hero-main" id="heroMain">
+        <div class="hero-bg" id="heroBg" style="background:linear-gradient(135deg,#2d1b00,#1a0a2e,#0f3460);"></div>
+        <div class="hero-overlay"></div>
+        <div style="position:absolute;z-index:5;top:16px;left:16px;">
+          <button class="btn btn-g" style="padding:6px 14px;font-size:0.6em;" onclick="togglePanel()">☰ <span id="panelLabel" style="font-weight:400;">Browse</span></button>
+        </div>
+        <div class="hero-content" id="heroContent">
+          <div id="heroPoster" style="width:80px;height:120px;border-radius:14px;flex-shrink:0;box-shadow:0 4px 24px rgba(0,0,0,0.5);background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.2));"></div>
+          <div style="flex:1;min-width:0;">
+            <div id="heroMeta" style="font-size:0.5em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;">FromSoftware · 2022</div>
+            <h2 id="heroTitle" style="font-size:1.2em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+            <div id="heroBadges" style="display:flex;gap:6px;margin:4px 0;flex-wrap:wrap;"></div>
+            <p id="heroDesc" style="font-size:0.5em;color:rgba(255,255,255,0.4);max-width:500px;margin:3px 0 8px;line-height:1.5;">Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-p">▶ Play Now</button>
+              <button class="btn btn-g">📁 Open Folder</button>
+              <button class="btn btn-g">⭐ Favorite</button>
+              <span id="heroPlaytime" style="font-size:0.55em;display:flex;align-items:center;gap:4px;color:#34d399;">● 86h played</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Pass shelves -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;">
+        <span class="chip active">For You</span>
+        <span class="chip">Recently Played</span>
+        <span class="chip">Action</span>
+        <span class="chip">RPG</span>
+        <span class="chip">FPS</span>
+        <span class="chip">Available</span>
+      </div>
+
+      <!-- Shelf 1: Recently Played -->
+      <div style="margin-bottom:16px;">
+        <div class="shelf-label"><span>🕐 Recently Played</span><span style="font-weight:400;color:rgba(255,255,255,0.15);">3 games</span></div>
+        <div class="shelf" id="shelfRecent"></div>
+      </div>
+
+      <!-- Shelf 2: RPG -->
+      <div style="margin-bottom:16px;">
+        <div class="shelf-label"><span>⚔️ Role-Playing Games</span><span style="font-weight:400;color:rgba(255,255,255,0.15);">3 games</span></div>
+        <div class="shelf" id="shelfRPG"></div>
+      </div>
+
+      <!-- Shelf 3: Action -->
+      <div style="margin-bottom:16px;">
+        <div class="shelf-label"><span>💥 Action & Adventure</span><span style="font-weight:400;color:rgba(255,255,255,0.15);">2 games</span></div>
+        <div class="shelf" id="shelfAction"></div>
+      </div>
+
+      <!-- Shelf 4: Available to Install -->
+      <div>
+        <div class="shelf-label"><span>⬇️ Available to Install <span style="font-weight:400;color:#34d399;">· 7 ready</span></span><span style="font-weight:400;color:rgba(255,255,255,0.15);">via NZBPlanet</span></div>
+        <div class="shelf" id="shelfAvailable"></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex;gap:16px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03);font-size:0.45em;color:rgba(255,255,255,0.08);">
+      <span>8 matched</span><span>4 unmatched</span><span>2 ISOs</span><span>650 GB total</span><span style="margin-left:auto;">Last scan: 2m ago</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const GAMES = [
+  { id:'elden', name:'Elden Ring', size:'48.2 GB', hours:'86h', plat:'Steam', bg:'linear-gradient(135deg,#2d1b00,#1a0a2e,#0f3460)', posterBg:'linear-gradient(180deg,#2d1b00,#1a0f00)', desc:'Rise, Tarnished, and be guided by grace to brandish the power of the Elden Ring.', company:'FromSoftware · 2022', tags:['Steam','PS5','Xbox'], genres:['ARPG','Open World'], matched:true, shelf:'recent', recent:'2h ago' },
+  { id:'bg3', name:"Baldur's Gate 3", size:'150 GB', hours:'120h', plat:'Steam', bg:'linear-gradient(135deg,#1a1a2e,#0d0d1a,#16213e)', posterBg:'linear-gradient(180deg,#1a1a2e,#0d0d1a)', desc:'Gather your party and return to the Forgotten Realms in this tale of friendship and betrayal.', company:'Larian Studios · 2023', tags:['Steam','PC'], genres:['RPG','Strategy'], matched:true, shelf:'rpg', recent:'Yesterday' },
+  { id:'cs2', name:'CS2', size:'85 GB', hours:'500h', plat:'Steam', bg:'linear-gradient(135deg,#0d1b2a,#070e17,#1a1a2e)', posterBg:'linear-gradient(180deg,#0d1b2a,#070e17)', desc:'World-class competitive gameplay shaped by millions of players worldwide.', company:'Valve · 2023', tags:['Steam'], genres:['FPS','Competitive'], matched:true, shelf:'recent', recent:'2d ago' },
+  { id:'witcher', name:'The Witcher 3', size:'50 GB', hours:'200h', plat:'GOG', bg:'linear-gradient(135deg,#1a2e2a,#0d1a1a,#1a3a2e)', posterBg:'linear-gradient(180deg,#1a2e2a,#0d1a1a)', desc:'Become Geralt of Rivia, a monster hunter for hire in a vast open world.', company:'CD Projekt Red · 2015', tags:['GOG','Steam'], genres:['RPG','Fantasy'], matched:true, shelf:'rpg', recent:'' },
+  { id:'cyberpunk', name:'Cyberpunk 2077', size:'70 GB', hours:'63h', plat:'GOG', bg:'linear-gradient(135deg,#2e1a1a,#1a0d0d,#3a1a1a)', posterBg:'linear-gradient(180deg,#2e1a1a,#1a0d0d)', desc:'Enter the world of Night City, a megacity obsessed with power and modification.', company:'CDPR · 2020', tags:['GOG','Steam'], genres:['RPG','Open World'], matched:true, shelf:'rpg', recent:'' },
+  { id:'helldivers', name:'Helldivers 2', size:'100 GB', hours:'40h', plat:'Steam', bg:'linear-gradient(135deg,#1a2e1a,#0d1a0d,#1a3a2a)', posterBg:'linear-gradient(180deg,#1a2e1a,#0d1a0d)', desc:'Fight for freedom in this intense squad-based third-person shooter.', company:'Arrowhead · 2024', tags:['Steam','PS5'], genres:['Action','Co-op'], matched:true, shelf:'action', recent:'' },
+  { id:'hollow', name:'Hollow Knight', size:'9 GB', hours:'42h', plat:'Steam', bg:'linear-gradient(135deg,#1a1a2e,#0d0d1a,#2a1a3a)', posterBg:'linear-gradient(180deg,#1a1a2e,#0d0d1a)', desc:'A hand-drawn action-adventure through a ruined kingdom of insects.', company:'Team Cherry · 2017', tags:['Steam','Switch'], genres:['Metroidvania','Action'], matched:true, shelf:'action', recent:'' },
+  { id:'portal2', name:'Portal 2', size:'8 GB', hours:'18h', plat:'Steam', bg:'linear-gradient(135deg,#0d1b2a,#16213e,#1a2a3a)', posterBg:'linear-gradient(180deg,#0d1b2a,#16213e)', desc:'Think with portals in this award-winning puzzle game.', company:'Valve · 2011', tags:['Steam'], genres:['Puzzle'], matched:true, shelf:'', recent:'' },
+  { id:'rdr2', name:'Red Dead Redemption 2', size:'120 GB', hours:'—', plat:'Rockstar', bg:'linear-gradient(135deg,#3a2a1a,#2a1a0a,#4a3a2a)', posterBg:'linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260))', desc:'America, 1899. The end of the Wild West era has begun.', company:'Rockstar · 2018', tags:['Rockstar'], genres:['Action','Open World'], matched:false, shelf:'avail', recent:'' },
+  { id:'gowr', name:'God of War Ragnarök', size:'64 GB', hours:'—', plat:'ISO', bg:'linear-gradient(135deg,#1a2a3a,#0d1a2a,#2a3a4a)', posterBg:'linear-gradient(135deg,oklch(0.25 0.08 120),oklch(0.18 0.06 160))', desc:'Atreus seeks knowledge of the prophecy of Ragnarök.', company:'Sony SM · 2022', tags:['ISO','PS5'], genres:['Action','Adventure'], matched:false, shelf:'avail', recent:'' },
+  { id:'hades2', name:'Hades II', size:'4 GB', hours:'—', plat:'Steam', bg:'linear-gradient(135deg,#2a1a2e,#1a0d1a,#3a2a3e)', posterBg:'linear-gradient(135deg,oklch(0.25 0.08 340),oklch(0.18 0.06 20))', desc:'Battle beyond the Underworld using dark sorcery.', company:'Supergiant · 2024', tags:['Steam'], genres:['Roguelike'], matched:false, shelf:'avail', recent:'' },
+  { id:'stellar', name:'Stellar Blade', size:'30 GB', hours:'—', plat:'PC', bg:'linear-gradient(135deg,#1a2e3a,#0d1a2a,#2a3a4a)', posterBg:'linear-gradient(135deg,oklch(0.25 0.08 180),oklch(0.18 0.06 220))', desc:'Humanity\'s last stand against the Naytiba threat.', company:'Shift Up · 2024', tags:['PC'], genres:['Action','Hack and Slash'], matched:false, shelf:'avail', recent:'' },
+];
+
+let panelOpen = false, currentId = 'elden', currentTab = 'all', searchQ = '';
+
+function filtered() {
+  let gs = GAMES;
+  if (currentTab === 'matched') gs = gs.filter(g => g.matched);
+  if (currentTab === 'unmatched') gs = gs.filter(g => !g.matched);
+  if (searchQ) { const q = searchQ.toLowerCase(); gs = gs.filter(g => g.name.toLowerCase().includes(q) || g.plat.toLowerCase().includes(q)); }
+  return gs;
+}
+
+function renderList() {
+  document.getElementById('gameList').innerHTML = filtered().map(g => `
+    <div class="row-g ${g.id === currentId ? 'active' : ''}" onclick="selectGame('${g.id}')">
+      <div class="poster-sm" style="background:${g.posterBg};${!g.matched ? 'opacity:0.35;' : ''}"></div>
+      <div style="flex:1;${!g.matched ? 'opacity:0.35;' : ''}">
+        <div style="font-size:0.55em;font-weight:${g.matched ? '600' : '400'};">${g.name}</div>
+        <div style="font-size:0.45em;color:var(--muted);">${g.size} · ${g.plat}</div>
+      </div>
+      ${!g.matched ? '<span style="font-size:0.45em;color:#60a5fa;">🔍</span>' : '<span style="font-size:0.4em;color:#34d399;">●</span>'}
+    </div>
+  `).join('');
+}
+
+function renderShelves() {
+  const renderShelf = (id, games, matched) => {
+    document.getElementById(id).innerHTML = games.map(g => `
+      <div style="min-width:110px;" class="pc" style="background:${g.posterBg};${!g.matched ? 'opacity:0.35;' : ''}" onclick="selectGame('${g.id}')">
+        <div style="padding:4px;"><span class="badge">${g.plat}</span></div>
+        <div class="bg"><div class="t">${g.name}</div><div class="s">${g.recent || g.size}</div></div>
+      </div>
+    `).join('');
+  };
+  renderShelf('shelfRecent', GAMES.filter(g => g.shelf === 'recent' && g.matched));
+  renderShelf('shelfRPG', GAMES.filter(g => g.shelf === 'rpg'));
+  renderShelf('shelfAction', GAMES.filter(g => g.shelf === 'action'));
+  renderShelf('shelfAvailable', GAMES.filter(g => g.shelf === 'avail'));
+}
+
+function selectGame(id) {
+  currentId = id; const g = GAMES.find(x => x.id === id); if (!g) return;
+  document.getElementById('heroBg').style.background = g.bg;
+  document.getElementById('heroMeta').textContent = g.company;
+  document.getElementById('heroTitle').textContent = g.name;
+  document.getElementById('heroPoster').style.background = g.posterBg;
+  document.getElementById('heroDesc').textContent = g.desc;
+  document.getElementById('panelLabel').textContent = g.name;
+  document.getElementById('heroBadges').innerHTML = g.tags.map(t => `<span class="tag tag-s">${t}</span>`).join('') + g.genres.map(t => `<span class="tag tag-y">${t}</span>`).join('') + `<span style="font-size:0.5em;color:rgba(255,255,255,0.4);">${g.size}</span>`;
+  document.getElementById('heroPlaytime').innerHTML = g.matched ? `● ${g.hours} played` : '● Not installed';
+  renderList();
+}
+
+function setTab(t) { currentTab = t;
+  document.querySelectorAll('#sidePanel .chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('active');
+  renderList();
+}
+function filterGames(q) { searchQ = q; renderList(); }
+function togglePanel() { panelOpen = !panelOpen; document.getElementById('sidePanel').classList.toggle('open', panelOpen); }
+function closePanel() { panelOpen = false; document.getElementById('sidePanel').classList.remove('open'); }
+
+renderList(); renderShelves();
+</script>
+</body>
+</html>

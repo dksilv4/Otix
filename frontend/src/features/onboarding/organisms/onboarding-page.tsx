@@ -482,7 +482,7 @@ function SummaryStep({ selectedTypes, selectedGenres, selectedLangs, error, isSu
         <p className="text-sm text-muted-foreground">Here's what we'll use to personalize your home page.</p>
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-glass)] p-6 space-y-5 ring-1 ring-white/[0.04]">
+      <div className="rounded-2xl bg-[var(--dk-surface-glass)] p-6 space-y-5 ring-0">
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Content Types</p>
           <div className="flex flex-wrap gap-2">

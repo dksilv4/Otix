@@ -1,0 +1,29 @@
+<h2>Games Page Layout</h2>
+<p class="subtitle">What sections live on the main games page? (from top to bottom)</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Dashboard-Style</h3>
+      <p><strong>Storage bar</strong> (total used/free per drive) → <strong>Hero section</strong> (featured matched game, large artwork) → <strong>Recently Played</strong> row → <strong>All Matched Games</strong> grid → <strong>Unmatched Games</strong> compact list</p>
+      <p style="color: var(--muted); font-size: 0.85em;">Focus on discovery + visual polish. Like Steam library.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Launcher-Style</h3>
+      <p><strong>Custom title bar</strong> (search + settings) → <strong>Tab strip</strong> (All / Matched / Unmatched / ISOs) → <strong>Storage breakdown</strong> per-game bar chart → <strong>Grid view</strong> (filterable, sortable)</p>
+      <p style="color: var(--muted); font-size: 0.85em;">Functional first. Like Playnite or GOG Galaxy. Faster scanning, more controls.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Minimal Grid</h3>
+      <p><strong>Storage bar</strong> (compact ring chart) → <strong>Search bar</strong> → <strong>Grid</strong> with a toggle: Show Matched First / Show All. Matched games get poster art & logo; unmatched get icon + gradient. Inline "Match" button on unmatched cards.</p>
+      <p style="color: var(--muted); font-size: 0.85em;">Simple, single scroll. Everything in one view.</p>
+    </div>
+  </div>
+</div>

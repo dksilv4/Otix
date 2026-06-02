@@ -1,0 +1,142 @@
+<h2>Games Page — Full Layout</h2>
+<p class="subtitle">Route: /games · Standard app navbar/header · Tab bar inside</p>
+
+<div class="mockup">
+  <div class="mockup-header" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>Games</span>
+    <span style="font-weight:400;font-size:0.85em;color:var(--muted);">Otix · Electron</span>
+  </div>
+  <div class="mockup-body" style="padding:0;">
+
+    <!-- App header area -->
+    <div style="background:var(--surface);padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:600;">Otix</span>
+      <div style="display:flex;gap:8px;font-size:0.8em;">
+        <span style="color:var(--muted);">Discover</span>
+        <span style="color:#fff;">Games</span>
+        <span style="color:var(--muted);">Library</span>
+      </div>
+    </div>
+
+    <!-- Page title row -->
+    <div style="padding:24px 24px 0;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h3 style="margin:0;font-size:1.2em;">Games Library</h3>
+        <p style="margin:4px 0 0;color:var(--muted);font-size:0.8em;">42 games · 234.5 GB total</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div class="mock-input" style="width:200px;padding:6px 12px;font-size:0.8em;">🔍 Search games...</div>
+        <div class="mock-button" style="padding:6px 16px;font-size:0.8em;">Sort ▼</div>
+        <div class="mock-button" style="padding:6px 16px;font-size:0.8em;">↻ Scan</div>
+      </div>
+    </div>
+
+    <!-- Storage bar -->
+    <div style="padding:16px 24px 0;">
+      <div style="display:flex;gap:12px;font-size:0.75em;color:var(--muted);">
+        <span>■ C: 128 GB used / 500 GB</span>
+        <span>■ D: 320 GB used / 2 TB</span>
+      </div>
+      <div style="margin-top:6px;height:6px;background:var(--surface);border-radius:4px;overflow:hidden;display:flex;">
+        <div style="width:35%;background:linear-gradient(90deg,#22c55e,#16a34a);"></div>
+        <div style="width:15%;background:linear-gradient(90deg,#3b82f6,#2563eb);"></div>
+        <div style="width:50%;background:rgba(255,255,255,0.06);"></div>
+      </div>
+    </div>
+
+    <!-- Tab strip -->
+    <div style="padding:16px 24px 0;display:flex;gap:4px;">
+      <div class="mock-button" style="background:rgba(255,255,255,0.08);font-weight:600;">All 42</div>
+      <div class="mock-button" style="font-weight:400;color:var(--muted);">Matched 18</div>
+      <div class="mock-button" style="font-weight:400;color:var(--muted);">Unmatched 20</div>
+      <div class="mock-button" style="font-weight:400;color:var(--muted);">ISOs 4</div>
+    </div>
+
+    <!-- Recently played row -->
+    <div style="padding:20px 24px 8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.75em;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);">Recently played</span>
+        <span style="font-size:0.7em;color:var(--muted);">View all →</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <div class="placeholder" style="width:120px;height:80px;border-radius:8px;flex-shrink:0;">Hollow Knight</div>
+        <div class="placeholder" style="width:120px;height:80px;border-radius:8px;flex-shrink:0;">Elden Ring</div>
+        <div class="placeholder" style="width:120px;height:80px;border-radius:8px;flex-shrink:0;">Portal 2</div>
+      </div>
+    </div>
+
+    <!-- Game grid — vertical posters -->
+    <div style="padding:12px 24px 24px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;">
+
+        <!-- Matched card 1 -->
+        <div style="aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;top:0;left:0;right:0;height:60%;background:linear-gradient(180deg,rgba(0,0,0,0.2),transparent);"></div>
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:4px;padding:2px 8px;font-size:0.6em;font-weight:600;">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.75em;">Hollow Knight</div>
+            <div style="display:flex;gap:6px;margin-top:4px;font-size:0.6em;color:var(--muted);">
+              <span>💾 7.2 GB</span>
+              <span>⏱ 42h</span>
+            </div>
+          </div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#22c55e;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;opacity:0;font-size:1.2em;">▶</div>
+        </div>
+
+        <!-- Matched card 2 -->
+        <div style="aspect-ratio:2/3;background:linear-gradient(135deg,#2d1b00,#1a1a2e);border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:4px;padding:2px 8px;font-size:0.6em;font-weight:600;color:#22c55e;">PC</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.75em;">Elden Ring</div>
+            <div style="display:flex;gap:6px;margin-top:4px;font-size:0.6em;color:var(--muted);">
+              <span>💾 48.2 GB</span>
+              <span>⏱ 86h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unmatched card 1 -->
+        <div style="aspect-ratio:2/3;background:linear-gradient(135deg,oklch(0.25 0.08 220),oklch(0.18 0.06 260));border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:3em;opacity:0.15;">🎮</span>
+          </div>
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:4px;padding:2px 8px;font-size:0.6em;font-weight:600;color:#fbbf24;">ISO</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.75em;">Red Dead Redemption 2</div>
+            <div style="margin-top:4px;display:flex;gap:4px;">
+              <span style="font-size:0.6em;color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;">Find Match</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matched card 3 -->
+        <div style="aspect-ratio:2/3;background:linear-gradient(135deg,#0d1b2a,#1b2838);border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:4px;padding:2px 8px;font-size:0.6em;font-weight:600;">Steam</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.75em;">Portal 2</div>
+            <div style="display:flex;gap:6px;margin-top:4px;font-size:0.6em;color:var(--muted);">
+              <span>💾 8.1 GB</span>
+              <span>⏱ 18h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unmatched card 2 -->
+        <div style="aspect-ratio:2/3;background:linear-gradient(135deg,oklch(0.25 0.08 340),oklch(0.18 0.06 20));border-radius:12px;overflow:hidden;position:relative;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:3em;opacity:0.15;">🎮</span>
+          </div>
+          <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border-radius:4px;padding:2px 8px;font-size:0.6em;font-weight:600;color:#a855f7;">PC</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent);">
+            <div style="font-weight:700;font-size:0.75em;">Stellar Blade Demo</div>
+            <div style="margin-top:4px;">
+              <span style="font-size:0.6em;color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:4px;padding:1px 6px;">Find Match</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>

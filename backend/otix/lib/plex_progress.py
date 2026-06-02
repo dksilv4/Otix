@@ -5,11 +5,15 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import structlog
+
 from otix.infrastructure.redis import get_redis
 
 _CHANNEL_TPL = "plex:sync:{}:events"
 _RESULT_TPL = "plex:sync:{}:result"
 _RESULT_TTL = 300  # 5 minutes
+
+logger = structlog.get_logger()
 
 
 async def publish_progress(task_id: str, event_type: str, **data: Any) -> None:
@@ -17,6 +21,7 @@ async def publish_progress(task_id: str, event_type: str, **data: Any) -> None:
     redis = await get_redis()
     channel = _CHANNEL_TPL.format(task_id)
     payload = json.dumps({"type": event_type, **data})
+    logger.debug("plex progress publish", event_type=event_type, payload_len=len(payload), key_fields=list(data.keys()))
     await redis.publish(channel, payload)
 
 

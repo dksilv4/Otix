@@ -40,7 +40,9 @@
       "@list/*": ["./src/features/list/*"],
       "@list": ["./src/features/list"],
       "@dk-ui/*": ["./src/features/dk-ui/*"],
-      "@dk-ui": ["./src/features/dk-ui"]
+      "@dk-ui": ["./src/features/dk-ui"],
+      "@desktop/*": ["../desktop/*"],
+      "@desktop": ["../desktop"]
     }
   },
   "include": ["src"]

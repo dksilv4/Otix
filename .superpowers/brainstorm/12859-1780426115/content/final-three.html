@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070a; color:#e2e8f0; font-family:system-ui,-apple-system,sans-serif; padding:20px; display:flex; justify-content:center; }
+  .wrap { max-width:1200px; width:100%; }
+
+  .glass { background:rgba(15,15,20,0.85); backdrop-filter:blur(20px); box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.5); }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:10px; font-size:0.7em; font-weight:600; border:none; cursor:pointer; font-family:inherit; }
+  .btn-p { background:#10b981; color:#fff; }
+  .btn-g { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); }
+  .chip { padding:5px 14px; border-radius:8px; font-size:0.65em; cursor:pointer; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); font-family:inherit; }
+  .chip.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+  .badge { font-size:0.5em; font-weight:600; padding:2px 7px; border-radius:4px; background:rgba(0,0,0,0.35); }
+  .pc { aspect-ratio:2/3; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; flex-shrink:0; }
+  .pc .bg { position:absolute; bottom:0; left:0; right:0; padding:8px; background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent); }
+  .pc .bg .t { font-size:0.6em; font-weight:600; }
+  .pc .bg .s { font-size:0.45em; color:rgba(255,255,255,0.4); }
+  .shelf { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .shelf::-webkit-scrollbar { height:2px; }
+  .shelf::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:4px; }
+  .row-label { font-size:0.6em; color:rgba(255,255,255,0.35); font-weight:600; margin-bottom:8px; display:flex; justify-content:space-between; }
+
+  .hero-section { min-height:200px; border-radius:20px; overflow:hidden; position:relative; }
+  .hero-section .hero-bg { position:absolute; inset:0; }
+  .hero-section .hero-overlay { position:absolute; inset:0; background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,0.85) 100%); }
+  .hero-section .hero-content { position:relative; z-index:1; padding:28px 28px 20px; display:flex; gap:20px; align-items:flex-end; }
+
+  /* Layout: vertical stack, full width */
+  .stack-3 { display:flex; flex-direction:column; gap:24px; }
+
+  .panel-card { border-radius:24px; overflow:hidden; background:rgba(10,10,15,0.6); border:2px solid #fbbf24; }
+  .panel-header { padding:14px 20px; background:rgba(255,255,255,0.03); display:flex; align-items:center; gap:10px; }
+  .panel-header h3 { font-size:0.85em; }
+  .panel-header span { font-size:0.6em; color:rgba(255,255,255,0.25); }
+  .panel-body { padding:20px; }
+
+  .tag { font-size:0.5em; padding:3px 8px; border-radius:4px; }
+  .tag-s { background:rgba(16,185,129,0.1); color:#34d399; }
+  .tag-g { background:rgba(167,139,250,0.1); color:#a78bfa; }
+  .tag-e { background:rgba(251,191,36,0.1); color:#fbbf24; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+  <span style="font-size:1.1em;font-weight:700;color:#fff;">🎮 Compare: 3 Finalists</span>
+  <span style="font-size:0.55em;color:rgba(255,255,255,0.3);">Side by side</span>
+</div>
+
+<div class="stack-3">
+
+<!-- ═══ COLUMN 1: Otix Skeleton No.1 ═══ -->
+<div class="panel-card">
+  <div class="panel-header"><h3>✅ Otix Skeleton №1</h3><span>Side panel + hero + grid</span></div>
+  <div class="panel-body">
+    <!-- Hero -->
+    <div class="hero-section" style="margin-bottom:16px;">
+      <div class="hero-bg" style="background:linear-gradient(135deg,#2d1b00,#1a0a2e,#0f3460);"></div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div style="width:80px;height:120px;border-radius:14px;background:rgba(255,255,255,0.03);flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,0.5);"></div>
+        <div>
+          <div style="font-size:0.5em;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.06em;">FromSoft · 2022</div>
+          <h2 style="font-size:1.2em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+          <div style="display:flex;gap:6px;margin:4px 0;">
+            <span class="tag tag-s">Steam</span>
+            <span class="tag tag-s">PS5</span>
+            <span style="font-size:0.5em;color:rgba(255,255,255,0.4);">48.2 GB</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-p">▶ Play Now</button>
+            <button class="btn btn-g">📁 Open Folder</button>
+            <button class="btn btn-g">⭐ Favorite</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Grid -->
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <span class="chip active">All · 12</span>
+      <span class="chip">Matched · 8</span>
+      <span class="chip">Unmatched · 4</span>
+      <span style="margin-left:auto;font-size:0.55em;color:rgba(255,255,255,0.15);">650 GB total</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;">
+      <div class="pc" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+      <div class="pc" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Witcher 3</div><div class="s">50 GB</div></div></div>
+      <div class="pc" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Cyberpunk</div><div class="s">70 GB</div></div></div>
+      <div class="pc" style="background:linear-gradient(180deg,#0d1b2a,#070e17);"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COLUMN 2: Game Pass ═══ -->
+<div class="panel-card">
+  <div class="panel-header"><h3>📺 Game Pass</h3><span>Row-based shelves, horizontal scroll</span></div>
+  <div class="panel-body">
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <span class="chip active">For You</span>
+      <span class="chip">Action</span>
+      <span class="chip">RPG</span>
+    </div>
+    <!-- Row 1 -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>Recently Played</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Elden Ring</div><div class="s">2h ago</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Baldur's Gate 3</div><div class="s">150 GB</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+      </div>
+    </div>
+    <!-- Row 2 -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>RPG</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">The Witcher 3</div><div class="s">50 GB</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Cyberpunk 2077</div><div class="s">70 GB</div></div></div>
+      </div>
+    </div>
+    <!-- Row 3 -->
+    <div>
+      <div class="row-label"><span>Available to Install</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;opacity:0.4;" class="pc"><div class="bg"><div class="t">RDR2</div><div class="s">120 GB</div></div></div>
+        <div style="min-width:110px;opacity:0.4;" class="pc"><div class="bg"><div class="t">God of War R</div><div class="s">64 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ COLUMN 3: Hero Row ═══ -->
+<div class="panel-card">
+  <div class="panel-header"><h3>🎬 Hero Row</h3><span>Featured hero + genre shelves</span></div>
+  <div class="panel-body">
+    <!-- Hero -->
+    <div class="hero-section" style="margin-bottom:16px;">
+      <div class="hero-bg" style="background:linear-gradient(135deg,#2d1b00,#1a0a2e);"></div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <div style="width:80px;height:120px;border-radius:14px;background:rgba(255,255,255,0.03);flex-shrink:0;box-shadow:0 4px 20px rgba(0,0,0,0.5);"></div>
+        <div>
+          <div style="font-size:0.5em;color:rgba(255,255,255,0.3);text-transform:uppercase;">Featured · Most Played</div>
+          <h2 style="font-size:1.1em;font-weight:800;margin:2px 0;">Elden Ring</h2>
+          <div style="font-size:0.5em;color:var(--muted);margin:2px 0;">48 GB · 86h · Steam</div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-p">▶ Play Now</button>
+            <button class="btn btn-g">📁 Open Folder</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Row 1 -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>Recently Played</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Elden Ring</div><div class="s">2h ago</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Baldur's Gate 3</div><div class="s">Yesterday</div></div></div>
+      </div>
+    </div>
+    <!-- Row 2 -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>RPG</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">The Witcher 3</div><div class="s">50 GB</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Cyberpunk 2077</div><div class="s">70 GB</div></div></div>
+      </div>
+    </div>
+    <!-- Row 3 -->
+    <div>
+      <div class="row-label"><span>FPS & Action</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div style="min-width:110px;" class="pc"><div style="padding:4px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Helldivers 2</div><div class="s">100 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+</body>
+</html>

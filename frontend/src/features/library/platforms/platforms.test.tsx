@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { steamPlatform } from "./steam"
 import { plexPlatform } from "./plex"
 import { spotifyPlatform } from "./spotify"
-import { useLibraryTab, useSteamLibraryScan, useSteamStatus, useUnmatchedSteamGames, usePlexStatus, usePlexLibraryScan, useSpotifyStatus, useSpotifyLibraryScan, useSpotifyLikedTracks } from "../library-queries"
+import { useLibraryTab, useSteamLibraryScan, useSteamStatus, useUnmatchedSteamGames, usePlexStatus, usePlexLibraryScan, useSpotifyStatus, useSpotifyLibraryScan, useSpotifyLikedTracks, streamPlexSync } from "../library-queries"
 
 
 // Setup query client
@@ -50,6 +50,7 @@ vi.mock("../library-queries", () => ({
   useUnmatchedSteamGames: vi.fn(),
   usePlexStatus: vi.fn(),
   usePlexLibraryScan: vi.fn(),
+  streamPlexSync: vi.fn().mockResolvedValue({ total: 0, matched: 0, seeded: 0 }),
   useSpotifyStatus: vi.fn(),
   useSpotifyLibraryScan: vi.fn(),
   useSpotifyLikedTracks: vi.fn(),
@@ -201,13 +202,8 @@ describe("Platforms Component Suite", () => {
         data: { itemCount: 1, lastScannedAt: new Date().toISOString() },
       } as any)
 
-      const mockMutate = vi.fn()
-      vi.mocked(usePlexLibraryScan).mockReturnValue({
-        mutate: mockMutate,
-        isPending: false,
-        data: null,
-        error: null,
-      } as any)
+      // plex.tsx now calls streamPlexSync directly, not the hook
+      vi.mocked(streamPlexSync).mockResolvedValue({ total: 10, matched: 8, seeded: 2 })
 
       const Content = plexPlatform.Content
       render(<Content />)
@@ -217,7 +213,7 @@ describe("Platforms Component Suite", () => {
 
       const resyncBtn = screen.getByRole("button", { name: /resync/i })
       await userEvent.click(resyncBtn)
-      expect(mockMutate).toHaveBeenCalled()
+      expect(streamPlexSync).toHaveBeenCalled()
     })
   })
 

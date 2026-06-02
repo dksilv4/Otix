@@ -8,15 +8,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "../frontend/dist-electron",
+    "outDir": "./dist",
     "rootDir": "./",
-    "baseUrl": ".",
-    "paths": {
-      "electron": ["../frontend/node_modules/electron"]
-    },
-    "typeRoots": [
-      "../frontend/node_modules/@types"
-    ]
+    "baseUrl": "."
   },
   "include": ["**/*"]
 }

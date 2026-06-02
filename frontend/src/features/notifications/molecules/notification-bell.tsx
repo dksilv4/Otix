@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { BellRing } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -39,13 +39,13 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: isAuthenticated,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   })
 
   const { data: listData } = useQuery({
     ...notificationQueries.list(),
     enabled: isAuthenticated,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   })
 
   const notifications = listData?.items ?? []
@@ -164,14 +164,19 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
   if (!isAuthenticated) return null
 
   return (
-    <div className="relative">
+    <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
       <button
         type="button"
         data-notification-trigger
         onClick={() => setOpen(!open)}
-        className={cn(!bare && pillBase, !bare && 'p-1.5', 'cursor-pointer relative')}
+        className={cn(
+          !bare && pillBase,
+          !bare && 'p-1.5',
+          'cursor-pointer relative flex items-center justify-center rounded-full',
+          bare && 'w-8 h-8 hover:bg-white/[0.06] transition-colors',
+        )}
       >
-        <Bell className="h-5 w-5" />
+        <BellRing className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground leading-none">
             {unreadCount > 9 ? '9+' : unreadCount}

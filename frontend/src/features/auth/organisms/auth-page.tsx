@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, type FormEvent } from 'react'
-import { Link, useNavigate, useSearch, useLocation } from '@tanstack/react-router'
+import { Link, useNavigate, useRouter, useSearch, useLocation } from '@tanstack/react-router'
 import { LogIn, UserPlus, Loader2, Check, Shield, ArrowLeft, ArrowRight } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -232,9 +232,23 @@ export function AuthPage() {
   }
 
   const isLogin = mode === 'login'
+  const router = useRouter()
+  const canGoBack = typeof window !== 'undefined' && window.history.length > 1
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 auth-aurora-bg">
+      {canGoBack && (
+        <div className="fixed top-4 left-4 z-[9999] flex items-center rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-lg shadow-[var(--dk-shadow-glass)] px-2 py-1.5">
+          <button
+            type="button"
+            onClick={() => router.history.back()}
+            className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </div>
+      )}
 
       <div
         className={cn(

@@ -27,7 +27,9 @@ vi.mock('@/lib/api-client', () => ({
     post: vi.fn(),
     put: vi.fn(),
   },
+  API_BASE_URL: '',
 }))
+
 
 function likedTracksPage(overrides: Partial<SpotifyLikedTracks>): SpotifyLikedTracks {
   return {
@@ -115,16 +117,31 @@ describe('Library Query Hooks', () => {
   })
 
   it('usePlexLibraryScan triggers plex sync mutation', async () => {
-    const mockResponse = { total: 20, matched: 10, seeded: 5 }
-    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: mockResponse })
+    // Step 1: POST returns a task ID (202 response)
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { taskId: 'task-abc' } })
+
+    // Step 2: GET SSE stream returns a sync_complete event then closes
+    const sseBody = 'data: {"type":"sync_complete","total":20,"matched":10,"seeded":5,"servers":1,"libraries":2}\n\n'
+    const encoder = new TextEncoder()
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(sseBody))
+        controller.close()
+      }
+    })
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      body: readable,
+    })
 
     const { result } = renderHook(() => usePlexLibraryScan(), { wrapper: createWrapper() })
     result.current.mutate()
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 })
     expect(apiClient.post).toHaveBeenCalledWith('/auth/integrations/plex/sync')
-    expect(result.current.data).toEqual(mockResponse)
+    expect(result.current.data).toEqual({ total: 20, matched: 10, seeded: 5, servers: 1, libraries: 2 })
   })
+
 
   it('usePlexStatus fetches plex sync status', async () => {
     const mockResponse = { itemCount: 100, lastScannedAt: '2026-05-24' }

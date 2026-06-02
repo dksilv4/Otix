@@ -14,6 +14,7 @@ export interface DetectedGame {
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
   sources?: string[];
   iconUrl?: string;
+  posterUrl?: string; // SGDB grid (cover/poster) URL
   updateFiles?: UpdateFile[];
   otixMediaId?: string;
   otixMediaTitle?: string;
@@ -66,7 +67,7 @@ export type Platform = "all" | "steam" | "pc" | "iso" | "epic" | "gog" | "battle
 
 export type InstallerStep = 1 | 2 | 3 | 4;
 
-export type OrgPreset = "scene" | "simple" | "custom";
+export type OrgPreset = "scene" | "simple" | "clean" | "custom";
 
 export const ORG_PRESETS: Record<
   OrgPreset,
@@ -89,6 +90,12 @@ export const ORG_PRESETS: Record<
     regex: "^(?<title>.+?)\\s+v?(?<version>\\d+(?:\\.\\d+)*)\\.(?<ext>.+)$",
     isoTemplate: "{title}/{title} v{version}.{ext}",
     updateTemplate: "{title}/Updates/{title} update v{version}.{ext}",
+  },
+  clean: {
+    label: "Clean Title",
+    regex: "^(?<title>.+)\\.(?<ext>[^.]+)$",
+    isoTemplate: "{title}/{title}.{ext}",
+    updateTemplate: "{title}/Updates/{title} update.{ext}",
   },
   custom: {
     label: "Custom Regex",

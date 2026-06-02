@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, useState } from "react"
+import { useRef, useMemo, useEffect, useState, useCallback } from "react"
 import { useInView } from "framer-motion"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { RefreshCw } from "lucide-react"
@@ -7,9 +7,11 @@ import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import {
   useLibraryTab,
-  usePlexLibraryScan,
   usePlexStatus,
+  streamPlexSync,
 } from "../library-queries"
+import { useQueryClient } from "@tanstack/react-query"
+import { libraryKeys } from "../library-keys"
 import { DkDropdown } from "@/features/dk-ui/atoms/dropdown"
 import { PlexIcon } from "@/features/dk-ui/atoms/plex-icon"
 import { registerPlatform } from "./registry"
@@ -76,6 +78,12 @@ function PlexEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformE
 
 // ── Main content ──
 
+type SyncProgress = {
+  phase: string
+  itemsProcessed?: number
+  itemsTotal?: number
+}
+
 function PlexTabContent() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(loadMoreRef, { margin: "0px 0px 800px 0px" })
@@ -83,6 +91,12 @@ function PlexTabContent() {
   const search = useSearch({ strict: false }) as { mediaType?: string; sortBy?: string }
   const [mediaType, setMediaType] = useState(search.mediaType || "")
   const [sortBy, setSortBy] = useState(search.sortBy || "")
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<{ total: number; matched: number } | null>(null)
+  const [scanError, setScanError] = useState<Error | null>(null)
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
+  const hasAutoScanned = useRef(false)
+  const queryClient = useQueryClient()
 
   const handleMediaTypeChange = (value: string) => {
     setMediaType(value)
@@ -119,19 +133,59 @@ function PlexTabContent() {
     useLibraryTab("plex", extraParams)
 
   const { data: status } = usePlexStatus()
-  const scan = usePlexLibraryScan()
+
+  const handleScan = useCallback(async () => {
+    if (isScanning) return
+    setIsScanning(true)
+    setScanError(null)
+    setScanResult(null)
+    setSyncProgress({ phase: "Starting sync..." })
+    try {
+      const result = await streamPlexSync((event) => {
+        const ev = event as { type: string; serverName?: string; libraryName?: string; itemsProcessed?: number; itemsTotal?: number; total?: number; matched?: number; seeded?: number }
+        switch (ev.type) {
+          case "server_found":
+            setSyncProgress({ phase: `Found server: ${ev.serverName}` })
+            break
+          case "library_found":
+            setSyncProgress({ phase: `Found library: ${ev.libraryName}` })
+            break
+          case "syncing_library":
+            setSyncProgress({ phase: `Syncing ${ev.libraryName}...`, itemsTotal: ev.itemsTotal, itemsProcessed: 0 })
+            break
+          case "library_progress":
+            setSyncProgress((prev) => prev ? { ...prev, itemsProcessed: ev.itemsProcessed, itemsTotal: ev.itemsTotal } : null)
+            break
+          case "library_complete":
+            setSyncProgress({ phase: `Synced ${ev.libraryName}: ${ev.total} items` })
+            break
+        }
+      })
+      setScanResult({ total: result.total, matched: result.matched })
+      setSyncProgress(null)
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("plex") })
+      queryClient.invalidateQueries({ queryKey: [...libraryKeys.tab("plex"), "status"] })
+    } catch (err) {
+      setScanError(err instanceof Error ? err : new Error("Sync failed"))
+      setSyncProgress(null)
+    } finally {
+      setIsScanning(false)
+    }
+  }, [isScanning, queryClient])
 
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
   )
 
-  // Auto-scan if no items scanned yet
+  // Auto-scan once per mount if the library is empty
   useEffect(() => {
-    if (status && status.itemCount === 0 && !scan.isPending && !scan.data) {
-      scan.mutate()
+    if (hasAutoScanned.current) return
+    if (status && status.itemCount === 0 && !isScanning) {
+      hasAutoScanned.current = true
+      handleScan()
     }
-  }, [status, scan.isPending, scan.data, scan.mutate])
+  }, [status, isScanning, handleScan])
 
   useEffect(() => {
     if (isInView && hasNextPage && !isFetchingNextPage && !isLoading) {
@@ -147,58 +201,85 @@ function PlexTabContent() {
       </div>
     )
   }
-  if (items.length === 0) {
-    return <PlexEmptyState onScan={() => scan.mutate()} isScanning={scan.isPending} scanResult={scan.data} scanError={scan.error} />
+  const isLibraryEmpty = !mediaType && !sortBy && status?.itemCount === 0
+
+  if (items.length === 0 && isLibraryEmpty) {
+    return <PlexEmptyState onScan={handleScan} isScanning={isScanning} scanResult={scanResult} scanError={scanError} />
   }
 
   return (
     <>
-      {status && status.itemCount > 0 && (
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <DkDropdown
-              variant="filter"
-              label="Type"
-              options={[
-                { value: "", label: "All" },
-                { value: "movie", label: "Movies" },
-                { value: "show", label: "Shows" },
-                { value: "music", label: "Music" },
-              ]}
-              value={mediaType}
-              onChange={handleMediaTypeChange}
-            />
-            <DkDropdown
-              variant="filter"
-              label="Sort"
-              options={[
-                { value: "", label: "Recent" },
-                { value: "artist", label: "Artist" },
-                { value: "title", label: "Title" },
-                { value: "year", label: "Year" },
-              ]}
-              value={sortBy}
-              onChange={handleSortChange}
-            />
-            <p className="text-xs text-muted-foreground">
-              {status.lastScannedAt
-                ? `Last synced ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
-                : `${status.itemCount} items in library`}
-            </p>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <DkDropdown
+            variant="filter"
+            label="Type"
+            options={[
+              { value: "", label: "All" },
+              { value: "movie", label: "Movies" },
+              { value: "show", label: "Shows" },
+              { value: "music", label: "Music" },
+            ]}
+            value={mediaType}
+            onChange={handleMediaTypeChange}
+          />
+          <DkDropdown
+            variant="filter"
+            label="Sort"
+            options={[
+              { value: "", label: "Recent" },
+              { value: "artist", label: "Artist" },
+              { value: "title", label: "Title" },
+              { value: "year", label: "Year" },
+            ]}
+            value={sortBy}
+            onChange={handleSortChange}
+          />
+          <p className="text-xs text-muted-foreground">
+            {status?.lastScannedAt
+              ? `Last synced ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
+              : status ? `${status.itemCount} items in library` : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {syncProgress && (
+            <span className="text-xs text-primary truncate max-w-[200px]">{syncProgress.phase}</span>
+          )}
+          <button
+            onClick={handleScan}
+            disabled={isScanning}
+            className={cn(
+              "inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors",
+              isScanning && "opacity-60 pointer-events-none",
+            )}
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isScanning && "animate-spin")} />
+            Resync
+          </button>
+        </div>
+      </div>
+
+      {syncProgress && syncProgress.itemsTotal !== undefined && syncProgress.itemsTotal > 0 && (
+        <div className="mb-4 space-y-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{syncProgress.itemsProcessed ?? 0} / {syncProgress.itemsTotal} items</span>
+            <span>{syncProgress.itemsProcessed !== undefined && syncProgress.itemsTotal ? `${Math.round((syncProgress.itemsProcessed / syncProgress.itemsTotal) * 100)}%` : ""}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => scan.mutate()}
-              disabled={scan.isPending}
-              className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors",
-                scan.isPending && "opacity-60 pointer-events-none",
-              )}
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", scan.isPending && "animate-spin")} />
-              Resync
-            </button>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/30">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${syncProgress.itemsProcessed !== undefined && syncProgress.itemsTotal ? (syncProgress.itemsProcessed / syncProgress.itemsTotal) * 100 : 0}%` }}
+            />
           </div>
+        </div>
+      )}
+
+      {items.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <p className="text-lg font-semibold text-foreground">No results found</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+            No items match your current filters.
+          </p>
         </div>
       )}
 

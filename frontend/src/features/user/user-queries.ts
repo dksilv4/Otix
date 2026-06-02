@@ -273,6 +273,16 @@ export const userQueries = {
       },
       staleTime: 1000 * 60 * 5,
     }),
+
+  ratingDistribution: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'rating-distribution'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<RatingDistribution>(`/users/${username}/rating-distribution`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
 }
 
 export interface MoodCheckin {
@@ -313,6 +323,19 @@ export interface HallOfFameItem {
   mediaType: string
   posterUrl: string | null
   releaseYear: number | null
+}
+
+export interface RatingDistributionItem {
+  score: number
+  movie: number
+  show: number
+  game: number
+  music: number
+}
+
+export interface RatingDistribution {
+  distribution: RatingDistributionItem[]
+  totalRatings: number
 }
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'

@@ -214,8 +214,8 @@ function HomeExperience() {
     }
   }, [query, activeType, navigate])
 
-  // Workout check-in
-  const todayWorkoutQuery = useTodayWorkout()
+  // Workout check-in — only fire when authenticated
+  const todayWorkoutQuery = useTodayWorkout({ enabled: isAuthenticated })
   const checkInMutation = useCheckIn()
   const undoCheckInMutation = useUndoCheckIn()
 
@@ -250,8 +250,8 @@ function HomeExperience() {
     undoCheckInMutation.mutate()
   }
 
-  // Workout history for workout home view
-  const workoutsQuery = useWorkouts()
+  // Workout history for workout home view — only fire when authenticated
+  const workoutsQuery = useWorkouts({ enabled: isAuthenticated })
   const deleteWorkoutMutation = useDeleteWorkout()
   const workouts = workoutsQuery.data?.pages.flatMap((p) => p.items) ?? []
   const dayGroups = useMemo(() => groupWorkoutsByDay(workouts), [workouts])
@@ -316,7 +316,12 @@ function HomeExperience() {
   }, [isMoodNoteMode])
 
   const handleMoodRecorded = useCallback((context: RecordedMoodContext) => {
-    setMoodNoteContext(context)
+    if (context.feeling !== null) {
+      setMoodNote('')
+      setMoodNoteContext(null)
+    } else {
+      setMoodNoteContext(context)
+    }
   }, [])
 
   const handleMoodNoteSubmit = useCallback(async () => {

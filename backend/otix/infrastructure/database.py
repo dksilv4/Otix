@@ -66,12 +66,14 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                         legacy.entity_type = entity_type
                         legacy.entity_id = entity_id
                     else:
-                        session.add(ExternalID(
-                            provider=provider,
-                            external_id=str_val,
-                            entity_type=entity_type,
-                            entity_id=entity_id,
-                        ))
+                        session.add(
+                            ExternalID(
+                                provider=provider,
+                                external_id=str_val,
+                                entity_type=entity_type,
+                                entity_id=entity_id,
+                            )
+                        )
             elif existing is not None:
                 session.delete(existing)
 
@@ -94,6 +96,7 @@ def _get_engine() -> AsyncEngine:
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
             pool_pre_ping=True,
+            pool_recycle=300,
             connect_args={"timeout": settings.db_connect_timeout},
         )
 

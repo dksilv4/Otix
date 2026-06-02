@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Pass — More Variations</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#07070a; color:#e2e8f0; font-family:system-ui,-apple-system,sans-serif; padding:20px; display:flex; justify-content:center; }
+  .wrap { max-width:960px; width:100%; }
+  .btn { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:8px; font-size:0.55em; font-weight:600; border:none; cursor:pointer; font-family:inherit; }
+  .btn-p { background:#10b981; color:#fff; }
+  .btn-g { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); }
+  .chip { padding:3px 10px; border-radius:6px; font-size:0.5em; cursor:pointer; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); font-family:inherit; }
+  .chip.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+  .switcher { display:flex; gap:4px; margin-bottom:12px; flex-wrap:wrap; }
+  .switcher button { padding:5px 12px; border-radius:8px; font-size:0.6em; border:none; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); cursor:pointer; font-family:inherit; }
+  .switcher button:hover { background:rgba(255,255,255,0.06); color:#fff; }
+  .switcher button.active { background:rgba(16,185,129,0.1); color:#34d399; font-weight:600; }
+  .design { display:none; border-radius:24px; overflow:hidden; min-height:380px; margin-bottom:10px; }
+  .design.active { display:block; }
+  .dl { padding:8px 14px; background:rgba(255,255,255,0.03); display:flex; align-items:center; gap:8px; font-size:0.65em; }
+  .dl h3 { font-size:0.8em; }
+  .dl span { color:rgba(255,255,255,0.3); }
+  .row-label { font-size:0.48em; color:rgba(255,255,255,0.4); font-weight:600; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .shelf { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+  .shelf::-webkit-scrollbar { height:2px; }
+  .shelf::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.06); border-radius:4px; }
+  .pc { aspect-ratio:2/3; border-radius:8px; overflow:hidden; position:relative; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+  .pc:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.3); }
+  .pc .bg { position:absolute; bottom:0; left:0; right:0; padding:5px; background:linear-gradient(0deg,rgba(0,0,0,0.95) 40%,transparent); }
+  .pc .bg .t { font-size:0.45em; font-weight:600; }
+  .pc .bg .s { font-size:0.35em; color:rgba(255,255,255,0.4); }
+  .badge { font-size:0.38em; font-weight:600; padding:1px 4px; border-radius:2px; background:rgba(0,0,0,0.35); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+  <span style="font-size:1.1em;font-weight:700;color:#fff;">🎮 Game Pass Variations</span>
+  <span style="font-size:0.55em;color:rgba(255,255,255,0.3);">5 fresh takes on the Netflix shelf layout</span>
+</div>
+<div class="switcher">
+  <button class="active" onclick="sw(1)">#1 Hero Row</button>
+  <button onclick="sw(2)">#2 Compact</button>
+  <button onclick="sw(3)">#3 Category + Grid</button>
+  <button onclick="sw(4)">#4 Mixed Sizes</button>
+  <button onclick="sw(5)">#5 Status Rows</button>
+</div>
+
+<!-- ═══ #1: Hero Row ═══ -->
+<div class="design active" id="d1">
+  <div class="dl"><h3>#1 — Hero Row</h3><span>Featured game as large hero card · Genre shelves below</span></div>
+  <div style="background:rgba(10,10,15,0.6);padding:16px;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <span style="font-size:0.5em;padding:3px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-weight:600;">All</span>
+      <span style="font-size:0.5em;padding:3px 10px;border-radius:6px;color:var(--muted);">Action</span>
+      <span style="font-size:0.5em;padding:3px 10px;border-radius:6px;color:var(--muted);">RPG</span>
+      <span style="font-size:0.5em;padding:3px 10px;border-radius:6px;color:var(--muted);">Strategy</span>
+      <span style="font-size:0.5em;padding:3px 10px;border-radius:6px;color:var(--muted);">FPS</span>
+      <span style="margin-left:auto;font-size:0.45em;color:var(--muted);">🔍</span>
+    </div>
+    <!-- Hero card -->
+    <div style="background:linear-gradient(135deg,#2d1b00,#1a0a2e);border-radius:14px;padding:20px;margin-bottom:16px;display:flex;gap:14px;align-items:center;">
+      <div style="width:56px;height:84px;border-radius:10px;background:rgba(255,255,255,0.03);flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.4);"></div>
+      <div style="flex:1;">
+        <div style="font-size:0.4em;color:rgba(255,255,255,0.3);text-transform:uppercase;">Featured · Most Played</div>
+        <div style="font-size:0.8em;font-weight:700;">Elden Ring</div>
+        <div style="font-size:0.45em;color:var(--muted);">48 GB · 86h · Steam</div>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="btn btn-p" style="font-size:0.5em;">▶ Play</button>
+          <button class="btn btn-g" style="font-size:0.5em;">📁</button>
+        </div>
+      </div>
+    </div>
+    <!-- Row: Recently Played -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>Recently Played</span><span style="font-weight:400;">View all →</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Elden Ring</div><div class="s">2h ago</div></div></div>
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">Yesterday</div></div></div>
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#0d1b2a,#070e17);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">2d ago</div></div></div>
+      </div>
+    </div>
+    <!-- Row: RPG -->
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>Role-Playing Games</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s">150 GB</div></div></div>
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Witcher 3</div><div class="s">50 GB</div></div></div>
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Cyberpunk</div><div class="s">70 GB</div></div></div>
+      </div>
+    </div>
+    <!-- Row: FPS -->
+    <div>
+      <div class="row-label"><span>FPS & Action</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#0d1b2a,#070e17);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div><div class="s">85 GB</div></div></div>
+        <div style="min-width:80px;" class="pc" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Helldivers</div><div class="s">100 GB</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ #2: Compact ═══ -->
+<div class="design" id="d2">
+  <div class="dl"><h3>#2 — Compact</h3><span>Tighter rows, smaller cards, more categories visible at once</span></div>
+  <div style="background:rgba(10,10,15,0.6);padding:14px;">
+    <div style="display:flex;gap:4px;margin-bottom:12px;overflow-x:auto;font-size:0.5em;">
+      <span class="chip active">For You</span>
+      <span class="chip">All</span>
+      <span class="chip">Matched</span>
+      <span class="chip">Unmatched</span>
+      <span class="chip">ISOs</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <!-- Left column: rows -->
+      <div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.45em;color:var(--muted);margin-bottom:5px;">Recently Played</div>
+          <div class="shelf">
+            <div style="min-width:65px;" class="pc"><div style="padding:2px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Elden</div></div></div>
+            <div style="min-width:65px;" class="pc"><div style="padding:2px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">BG3</div></div></div>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:0.45em;color:var(--muted);margin-bottom:5px;">RPG</div>
+          <div class="shelf">
+            <div style="min-width:65px;" class="pc"><div style="padding:2px;"><span class="badge">GOG</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Witcher</div></div></div>
+            <div style="min-width:65px;" class="pc"><div style="padding:2px;"><span class="badge">GOG</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Cyberpunk</div></div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:0.45em;color:var(--muted);margin-bottom:5px;">Available</div>
+          <div class="shelf">
+            <div style="min-width:65px;opacity:0.4;" class="pc"><div class="bg"><div class="t" style="font-size:0.4em;">RDR2</div><div style="font-size:0.35em;color:#60a5fa;">Match</div></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Right column: highlights -->
+      <div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;margin-bottom:8px;">
+          <div style="font-size:0.4em;color:var(--muted);">Most Played</div>
+          <div style="font-size:0.65em;font-weight:700;">Elden Ring</div>
+          <div style="font-size:0.4em;color:var(--muted);">86h · 48 GB</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:12px;">
+          <div style="font-size:0.4em;color:var(--muted);">Recent Install</div>
+          <div style="font-size:0.65em;font-weight:700;">CS2</div>
+          <div style="font-size:0.4em;color:var(--muted);">2 days ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ #3: Category + Grid ═══ -->
+<div class="design" id="d3">
+  <div class="dl"><h3>#3 — Category + Grid</h3><span>Left: category list · Right: expanded grid for selected category</span></div>
+  <div style="display:flex;background:rgba(10,10,15,0.6);min-height:320px;">
+    <div style="width:100px;border-right:1px solid rgba(255,255,255,0.03);padding:12px 6px;flex-shrink:0;">
+      <div style="font-size:0.4em;color:var(--muted);text-transform:uppercase;padding:4px 8px;">Genres</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:0.5em;background:rgba(16,185,129,0.08);color:#34d399;font-weight:600;cursor:pointer;">🎮 All</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:0.5em;color:var(--muted);cursor:pointer;">🗡️ Action</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:0.5em;color:var(--muted);cursor:pointer;">🛡️ RPG</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:0.5em;color:var(--muted);cursor:pointer;">🎯 FPS</div>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;font-size:0.5em;color:var(--muted);cursor:pointer;">🧩 Puzzle</div>
+    </div>
+    <div style="flex:1;padding:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:0.55em;font-weight:600;">All Games</span>
+        <span style="font-size:0.45em;color:var(--muted);">12 titles</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;">
+        <div class="pc" style="background:linear-gradient(180deg,#2d1b00,#1a0f00);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Elden</div></div></div>
+        <div class="pc" style="background:linear-gradient(180deg,#1a1a2e,#0d0d1a);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">BG3</div></div></div>
+        <div class="pc" style="background:linear-gradient(180deg,#0d1b2a,#070e17);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">CS2</div></div></div>
+        <div class="pc" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Witcher</div></div></div>
+        <div class="pc" style="background:linear-gradient(180deg,#2e1a1a,#1a0d0d);"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Cyberpunk</div></div></div>
+        <div class="pc" style="background:linear-gradient(180deg,#1a2e1a,#0d1a0d);"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t" style="font-size:0.4em;">Helldivers</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ #4: Mixed Sizes ═══ -->
+<div class="design" id="d4">
+  <div class="dl"><h3>#4 — Mixed Sizes</h3><span>Variable card sizes per row. Featured/popular get wider treatment.</span></div>
+  <div style="background:rgba(10,10,15,0.6);padding:16px;">
+    <div style="margin-bottom:16px;">
+      <div class="row-label"><span  style="font-size:0.5em;">🔥 Most Played</span></div>
+      <div class="shelf">
+        <div style="min-width:110px;aspect-ratio:16/10;border-radius:10px;background:linear-gradient(135deg,#2d1b00,#1a0a2e);flex-shrink:0;position:relative;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:8px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.55em;font-weight:600;">Elden Ring</div><div style="font-size:0.35em;color:var(--muted);">86h · 48 GB</div></div>
+        </div>
+        <div style="min-width:90px;aspect-ratio:16/10;border-radius:10px;background:linear-gradient(135deg,#1a1a2e,#0d0d1a);flex-shrink:0;position:relative;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">BG3</div><div style="font-size:0.35em;color:var(--muted);">120h</div></div>
+        </div>
+        <div style="min-width:90px;aspect-ratio:16/10;border-radius:10px;background:linear-gradient(135deg,#0d1b2a,#070e17);flex-shrink:0;position:relative;">
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">CS2</div><div style="font-size:0.35em;color:var(--muted);">500h</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="row-label"><span style="font-size:0.5em;">📚 RPG Collection</span></div>
+      <div class="shelf">
+        <div style="min-width:90px;aspect-ratio:16/10;border-radius:10px;background:linear-gradient(135deg,#1a2e1a,#0d1a0d);flex-shrink:0;position:relative;"><div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">Witcher 3</div></div></div>
+        <div style="min-width:90px;aspect-ratio:16/10;border-radius:10px;background:linear-gradient(135deg,#2e1a1a,#1a0d0d);flex-shrink:0;position:relative;"><div style="position:absolute;bottom:0;left:0;right:0;padding:6px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.45em;font-weight:600;">Cyberpunk</div></div></div>
+        <div style="min-width:65px;aspect-ratio:2/3;border-radius:8px;background:linear-gradient(180deg,#1a1a2e,#0d0d1a);flex-shrink:0;position:relative;"><div style="position:absolute;bottom:0;left:0;right:0;padding:4px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent);"><div style="font-size:0.35em;font-weight:600;">Hollow</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="row-label"><span style="font-size:0.5em;">⬇️ Available to Install</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;aspect-ratio:16/10;border-radius:10px;background:rgba(255,255,255,0.03);flex-shrink:0;position:relative;opacity:0.4;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.4em;color:#60a5fa;">RDR2</div>
+        </div>
+        <div style="min-width:80px;aspect-ratio:16/10;border-radius:10px;background:rgba(255,255,255,0.03);flex-shrink:0;position:relative;opacity:0.4;">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:0.4em;color:#60a5fa;">GoW R</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ #5: Status Rows ═══ -->
+<div class="design" id="d5">
+  <div class="dl"><h3>#5 — Status Rows</h3><span>Rows organized by status: Playing → Paused → Unmatched → Installable</span></div>
+  <div style="background:rgba(10,10,15,0.6);padding:16px;">
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>▶ Playing</span><span style="color:#34d399;">2 games</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Elden Ring</div><div class="s" style="color:#34d399;">● Playing</div></div></div>
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">BG3</div><div class="s" style="color:#34d399;">● Playing</div></div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>⏸ Paused</span><span style="color:#fbbf24;">3 games</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Cyberpunk</div><div class="s" style="color:#fbbf24;">⏸ Paused</div></div></div>
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">GOG</span></div><div class="bg"><div class="t">Witcher 3</div><div class="s" style="color:#fbbf24;">⏸ Paused</div></div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="row-label"><span>⏳ Backlog</span><span style="color:var(--muted);">3 games</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">CS2</div></div></div>
+        <div style="min-width:80px;" class="pc"><div style="padding:3px;"><span class="badge">Steam</span></div><div class="bg"><div class="t">Hollow</div></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="row-label"><span>🔍 Unmatched</span><span style="color:#60a5fa;">4 games</span></div>
+      <div class="shelf">
+        <div style="min-width:80px;opacity:0.4;" class="pc"><div class="bg"><div class="t">RDR2</div><div style="font-size:0.35em;color:#60a5fa;">Find match</div></div></div>
+        <div style="min-width:80px;opacity:0.4;" class="pc"><div class="bg"><div class="t">GoW R</div></div></div>
+        <div style="min-width:80px;opacity:0.4;" class="pc"><div class="bg"><div class="t">Hades II</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function sw(n) { document.querySelectorAll('.design').forEach(d => d.classList.remove('active')); document.getElementById('d'+n).classList.add('active'); document.querySelectorAll('.switcher button').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); }
+</script>
+</body>
+</html>

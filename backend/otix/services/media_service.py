@@ -97,7 +97,7 @@ class MediaService:
             query = select(MediaItem)
 
         # Eager-load album for music queries so callers can access release-group ids
-        if media_type == 'music':
+        if media_type == "music":
             query = query.options(selectinload(MediaItem.album))
 
         if order is not None:
@@ -119,10 +119,7 @@ class MediaService:
             # Music uses poster_url (album covers have artwork text).
             query = query.where(
                 MediaItem.textless_poster_url.isnot(None)
-                | (
-                    MediaItem.media_type.in_(["music", "game"])
-                    & MediaItem.poster_url.isnot(None)
-                )
+                | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
             )
 
         if genre:
@@ -145,20 +142,13 @@ class MediaService:
                 movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
                 show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
             if media_type == "movie":
-                query = query.where(
-                    MediaItem.id.in_(
-                        select(Movie.media_item_id).where(movie_cond)
-                    )
-                )
+                query = query.where(MediaItem.id.in_(select(Movie.media_item_id).where(movie_cond)))
             elif media_type == "show":
-                query = query.where(
-                    MediaItem.id.in_(
-                        select(Show.media_item_id).where(show_cond)
-                    )
-                )
+                query = query.where(MediaItem.id.in_(select(Show.media_item_id).where(show_cond)))
 
         if certification:
             from otix.domain.asset import MediaRelease
+
             query = query.where(
                 MediaItem.id.in_(
                     select(MediaRelease.media_item_id).where(
@@ -190,19 +180,19 @@ class MediaService:
             if genre:
                 count_query = count_query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
             if company:
-                count_query = count_query.join(MediaItem.involved_companies).where(InvolvedCompany.company_id == company)
+                count_query = count_query.join(MediaItem.involved_companies).where(
+                    InvolvedCompany.company_id == company
+                )
             if has_artwork:
                 count_query = count_query.where(
                     MediaItem.textless_poster_url.isnot(None)
-                    | (
-                        MediaItem.media_type.in_(["music", "game"])
-                        & MediaItem.poster_url.isnot(None)
-                    )
+                    | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
                 )
             if language:
                 count_query = count_query.where(MediaItem.original_language == language)
             if certification:
                 from otix.domain.asset import MediaRelease
+
                 count_query = count_query.where(
                     MediaItem.id.in_(
                         select(MediaRelease.media_item_id).where(
@@ -219,17 +209,9 @@ class MediaService:
                     movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
                     show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
                 if media_type == "movie":
-                    count_query = count_query.where(
-                        MediaItem.id.in_(
-                            select(Movie.media_item_id).where(movie_cond)
-                        )
-                    )
+                    count_query = count_query.where(MediaItem.id.in_(select(Movie.media_item_id).where(movie_cond)))
                 elif media_type == "show":
-                    count_query = count_query.where(
-                        MediaItem.id.in_(
-                            select(Show.media_item_id).where(show_cond)
-                        )
-                    )
+                    count_query = count_query.where(MediaItem.id.in_(select(Show.media_item_id).where(show_cond)))
             if person_id:
                 count_query = count_query.join(MediaItem.credits).where(
                     MediaCredit.person_id == person_id,
@@ -257,10 +239,7 @@ class MediaService:
         else:
             # Cursor pagination with (popularity, id) ordering
             if cursor:
-                sub = (
-                    select(MediaItem)
-                    .where(MediaItem.id == cursor)
-                )
+                sub = select(MediaItem).where(MediaItem.id == cursor)
                 cursor_item = await self.session.scalar(sub)
                 if cursor_item is not None:
                     query = query.where(
@@ -291,8 +270,14 @@ class MediaService:
                 selectinload(MediaItem.game_modes).joinedload(MediaGameMode.game_mode),
                 selectinload(MediaItem.watch_providers).joinedload(MediaWatchProvider.watch_provider),
                 # Type-specific: use selectinload for collections to avoid cartesian blowup
-                joinedload(MediaItem.movie).joinedload(Movie.collection).selectinload(Collection.movies).joinedload(Movie.media_item),
-                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes).selectinload(Episode.external_ratings),
+                joinedload(MediaItem.movie)
+                .joinedload(Movie.collection)
+                .selectinload(Collection.movies)
+                .joinedload(Movie.media_item),
+                joinedload(MediaItem.show)
+                .selectinload(Show.seasons)
+                .selectinload(Season.episodes)
+                .selectinload(Episode.external_ratings),
                 joinedload(MediaItem.game).selectinload(Game._external_ids),
                 joinedload(MediaItem.album).selectinload(Album._external_ids),
                 joinedload(MediaItem.album).selectinload(Album.tracks).selectinload(Track._external_ids),
@@ -315,15 +300,23 @@ class MediaService:
 
                 agg_cols = []
                 if needs_revenue:
-                    agg_cols.append(
-                        func.sum(case((Movie.revenue > movie.revenue, 1), else_=0)).label("revenue_rank")
-                    )
+                    agg_cols.append(func.sum(case((Movie.revenue > movie.revenue, 1), else_=0)).label("revenue_rank"))
                 if needs_profit:
                     agg_cols.append(
-                        func.sum(case((and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr > profit_abs), 1), else_=0)).label("profit_rank")
+                        func.sum(
+                            case(
+                                (and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr > profit_abs), 1),
+                                else_=0,
+                            )
+                        ).label("profit_rank")
                     )
                     agg_cols.append(
-                        func.sum(case((and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr < profit_abs), 1), else_=0)).label("loss_rank")
+                        func.sum(
+                            case(
+                                (and_(Movie.budget > 0, Movie.revenue.isnot(None), profit_expr < profit_abs), 1),
+                                else_=0,
+                            )
+                        ).label("loss_rank")
                     )
 
                 ranks = await self.session.execute(select(*agg_cols).select_from(Movie))
@@ -409,9 +402,7 @@ class MediaService:
         if sort_by:
             order = sort_map[sort_by]
         else:
-            order = (
-                relevance * 10 + sim * 5 + credit_boost + vector_sim * 3 + popularity_boost * 0.5
-            ).desc()
+            order = (relevance * 10 + sim * 5 + credit_boost + vector_sim * 3 + popularity_boost * 0.5).desc()
 
         q = base_q.order_by(order)
 
@@ -448,7 +439,10 @@ class MediaService:
             .order_by(Track.avg_rating.desc().nullslast())
             .limit(limit)
             .options(
-                selectinload(Track.album).selectinload(Album.media_item).selectinload(MediaItem.credits).selectinload(MediaCredit.person),
+                selectinload(Track.album)
+                .selectinload(Album.media_item)
+                .selectinload(MediaItem.credits)
+                .selectinload(MediaCredit.person),
             )
         )
         result = await self.session.scalars(q)
@@ -472,9 +466,7 @@ class MediaService:
         import math
 
         # Fetch the source embedding
-        src = await self.session.scalar(
-            select(MediaItem.embedding).where(MediaItem.id == media_id)
-        )
+        src = await self.session.scalar(select(MediaItem.embedding).where(MediaItem.id == media_id))
         if src is None:
             return []
 
@@ -510,9 +502,7 @@ class MediaService:
     async def get_media_items_by_ids(self, ids: list[str]) -> list[MediaItem]:
         if not ids:
             return []
-        result = await self.session.scalars(
-            select(MediaItem).where(MediaItem.id.in_(ids))
-        )
+        result = await self.session.scalars(select(MediaItem).where(MediaItem.id.in_(ids)))
         items = list(result)
         id_order = {id_: idx for idx, id_ in enumerate(ids)}
         items.sort(key=lambda item: id_order.get(item.id, 999))
@@ -549,6 +539,20 @@ class MediaService:
             )
             # Remove version-like patterns: v1.0, v1.2.3, (v1.0), [v1.0]
             clean = re.sub(r"[\[\(]?\s*v?\d+(?:\.\d+)+(?:\w\d*)?\s*[\]\)]?", "", clean)
+            # Strip edition suffixes (GOTY, Definitive, Special, etc.)
+            clean = re.sub(
+                r"\b(goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\s*edition\b",
+                "",
+                clean,
+                flags=re.IGNORECASE,
+            )
+            # Strip standalone edition/repack tags that may remain after removal
+            clean = re.sub(
+                r"\b(goty|remastered|definitive|enhanced|complete|deluxe|legendary|anniversary|repack|multilingual)\b",
+                "",
+                clean,
+                flags=re.IGNORECASE,
+            )
             # Dots and underscores → spaces
             clean = clean.replace(".", " ").replace("_", " ")
             # Collapse whitespace

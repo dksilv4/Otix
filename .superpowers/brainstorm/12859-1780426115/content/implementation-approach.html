@@ -1,0 +1,29 @@
+<h2>Implementation Approach</h2>
+<p class="subtitle">"Dedicated Electron window" can mean different things. Pick the level of separation.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Secondary BrowserWindow</h3>
+      <p>Separate Electron window with its own preload, IPC channel, and lifecycle. Launched from main process. Toggleable from the main app. Fully native OS window — can be minimized, snapped, etc.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>True native feel</li><li>Can focus independently</li><li>Separate state</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>More IPC wiring</li><li>Two renderer processes</li><li>Memory overhead</li></ul></div></div>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Immersive App Route (Recommended)</h3>
+      <p>Full-screen route in existing Electron renderer (/games). Removes all web chrome (header, sidebar). Custom title bar with native-looking controls. Same renderer = zero IPC duplication. Can use a CSS draggable region for window moves.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>Fastest to build</li><li>No memory overhead</li><li>Shared state/query cache</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>Not truly separate window (yet)</li></ul></div></div>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid: Immersive Route + Toggleable Window</h3>
+      <p>Build as immersive route first (B). Then add a "Pop Out" button that opens it as a secondary BrowserWindow (A) with shared state. Best of both — quick initial build, optional native pop-out later.</p>
+      <div class="pros-cons"><div class="pros"><h4>Pros</h4><ul><li>Fast initial build</li><li>Future native window</li><li>No regrets architecture</li></ul></div><div class="cons"><h4>Cons</h4><ul><li>Slightly more code upfront</li></ul></div></div>
+    </div>
+  </div>
+</div>
