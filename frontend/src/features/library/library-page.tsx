@@ -11,8 +11,6 @@ import { ListCard } from "@/features/list/molecules/list-card"
 import { ListComposer } from "@/features/list/organisms/list-composer"
 import { useAuth } from "@/features/auth/auth-provider"
 import { getPlatformTabs, getPlatform } from "./platforms"
-import { Gamepad2 } from "lucide-react"
-import { GameScannerTab } from "@/features/game-scanner"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
 import type { DetectedGame } from "@/features/game-scanner/types"
 import { getScannedGames } from "@/features/game-scanner/storage"
@@ -508,18 +506,6 @@ export function LibraryPage() {
     // Lists
     tabs.push({ id: "lists", label: TAB_LABELS.lists, icon: <ListIcon className="h-4 w-4" /> })
 
-    // Local games scanner (Electron only)
-    if (
-      typeof window !== "undefined" &&
-      !!(window as any).electronAPI
-    ) {
-      tabs.push({
-        id: "local-games",
-        label: TAB_LABELS["local-games"],
-        icon: <Gamepad2 className="h-4 w-4" />,
-      })
-    }
-
     return tabs
   }, [user, authLoading])
 
@@ -552,10 +538,6 @@ export function LibraryPage() {
     if (activeTab === "wishlist") {
       return <WishlistTabContent />
     }
-    if (activeTab === "local-games") {
-      return <GameScannerTab />
-    }
-
     // Check if it's a platform tab
     const platformDef = getPlatform(activeTab)
     if (platformDef) {

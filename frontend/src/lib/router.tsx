@@ -38,6 +38,7 @@ const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboar
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
+const GamesPage = lazy(() => import("@/features/games").then(m => ({ default: m.GamesPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -311,6 +312,12 @@ const aboutRoute = createRoute({
   component: AboutPage,
 })
 
+const gamesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/games",
+  component: GamesPage,
+})
+
 const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/downloads",
@@ -330,22 +337,6 @@ const searchRoute = createRoute({
     type?: string;
     sort?: string;
   }),
-})
-
-// ── Desktop Scanner redirect (moved to /library/local-games) ──
-
-function DesktopScannerRedirect() {
-  const navigate = useNavigate()
-  useEffect(() => {
-    navigate({ to: "/library/$tab", params: { tab: "local-games" }, replace: true })
-  }, [navigate])
-  return <LoadingPage />
-}
-
-const desktopScannerRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/desktop",
-  component: DesktopScannerRedirect,
 })
 
 // ── Assemble ──
@@ -385,7 +376,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   searchRoute,
   aboutRoute,
-  desktopScannerRoute,
+  gamesRoute,
   downloadsRoute,
 ])
 
