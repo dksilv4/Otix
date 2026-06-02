@@ -1,12 +1,15 @@
 import type { ShelfRow } from "../types"
 import { ShelfCard } from "../molecules/shelf-card"
+import type { DetectedGame } from "@/features/game-scanner/types"
 
 interface GamesShelfProps {
   rows: ShelfRow[]
   onSelectGame: (id: string) => void
+  onAcceptSuggestion?: (game: DetectedGame) => void
+  onRejectSuggestion?: (game: DetectedGame) => void
 }
 
-export function GamesShelf({ rows, onSelectGame }: GamesShelfProps) {
+export function GamesShelf({ rows, onSelectGame, onAcceptSuggestion, onRejectSuggestion }: GamesShelfProps) {
   if (rows.length === 0) return null
 
   return (
@@ -24,7 +27,13 @@ export function GamesShelf({ rows, onSelectGame }: GamesShelfProps) {
           {row.games.length > 0 ? (
             <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin">
               {row.games.map((game) => (
-                <ShelfCard key={game.id} game={game} onClick={onSelectGame} />
+                <ShelfCard
+                  key={game.id}
+                  game={game}
+                  onClick={onSelectGame}
+                  onAcceptSuggestion={onAcceptSuggestion}
+                  onRejectSuggestion={onRejectSuggestion}
+                />
               ))}
             </div>
           ) : (
