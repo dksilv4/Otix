@@ -162,6 +162,12 @@ def upgrade() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100)"
     )
     op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT false"
+    )
+    op.execute(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false"
+    )
+    op.execute(
         "ALTER TABLE media_items "
         "ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0"
     )
