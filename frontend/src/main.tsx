@@ -27,7 +27,8 @@ window.addEventListener('unhandledrejection', (event) => {
   if (
     msg.includes('EMEError') ||
     msg.includes('No supported keysystem') ||
-    msg.includes('requestMediaKeySystemAccess')
+    msg.includes('requestMediaKeySystemAccess') ||
+    msg.includes('send was called before connect')
   ) {
     event.preventDefault()
   }
