@@ -179,6 +179,11 @@ _beat_schedule: dict = {
         "task": "maintenance.sync_spotify_recently_played",
         "schedule": crontab(minute="4,11,18,25,32,39,46,53"),
     },
+    # Spotify playlist refresh (every 6 hours at off-peak minute)
+    "refresh-spotify-playlists": {
+        "task": "sync.spotify.refresh_all_playlists",
+        "schedule": crontab(hour="*/6", minute="37"),
+    },
     # YouTube watch history sync (every 15 min at off-peak minutes)
     "sync-youtube-watch-history": {
         "task": "maintenance.sync_youtube_watch_history",
@@ -223,23 +228,25 @@ _beat_schedule: dict = {
 
 # TMDB catalog seeding — disabled in local dev
 if settings.app_env != "local":
-    _beat_schedule.update({
-        # People cascade to movies/shows via combined_credits filmography
-        "seed-people": {
-            "task": "seed.people_cycle",
-            "schedule": crontab(minute="13,43"),
-        },
-        # TMDB daily import (download all exports, insert stubs, detect deletions)
-        "seed-tmdb-daily-import": {
-            "task": "seed.tmdb_daily_import",
-            "schedule": crontab(hour="3", minute="7"),
-        },
-        # TMDB backlog drain (every 5 min — 200 stubs/batch)
-        "seed-tmdb-backlog": {
-            "task": "seed.tmdb_backlog_cycle",
-            "schedule": crontab(minute="*/5"),
-        },
-    })
+    _beat_schedule.update(
+        {
+            # People cascade to movies/shows via combined_credits filmography
+            "seed-people": {
+                "task": "seed.people_cycle",
+                "schedule": crontab(minute="13,43"),
+            },
+            # TMDB daily import (download all exports, insert stubs, detect deletions)
+            "seed-tmdb-daily-import": {
+                "task": "seed.tmdb_daily_import",
+                "schedule": crontab(hour="3", minute="7"),
+            },
+            # TMDB backlog drain (every 5 min — 200 stubs/batch)
+            "seed-tmdb-backlog": {
+                "task": "seed.tmdb_backlog_cycle",
+                "schedule": crontab(minute="*/5"),
+            },
+        }
+    )
 
 app.config_from_object(
     {
@@ -256,20 +263,90 @@ app.config_from_object(
         "task_default_queue": "maintain",
         "beat_max_loop_interval": 30,  # wake at least every 30s for minutely tasks
         "task_queues": [
-            Queue("ingest-tmdb", Exchange("ingest-tmdb", type="direct"), routing_key="ingest-tmdb", queue_arguments={"x-max-priority": 10}),
-            Queue("ingest-steam", Exchange("ingest-steam", type="direct"), routing_key="ingest-steam", queue_arguments={"x-max-priority": 10}),
-            Queue("ingest-igdb", Exchange("ingest-igdb", type="direct"), routing_key="ingest-igdb", queue_arguments={"x-max-priority": 10}),
-            Queue("ingest-musicbrainz", Exchange("ingest-musicbrainz", type="direct"), routing_key="ingest-musicbrainz", queue_arguments={"x-max-priority": 10}),
-            Queue("ingest-deezer", Exchange("ingest-deezer", type="direct"), routing_key="ingest-deezer", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-fanart", Exchange("enrich-fanart", type="direct"), routing_key="enrich-fanart", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-omdb", Exchange("enrich-omdb", type="direct"), routing_key="enrich-omdb", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-steamgrid", Exchange("enrich-steamgrid", type="direct"), routing_key="enrich-steamgrid", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-lastfm", Exchange("enrich-lastfm", type="direct"), routing_key="enrich-lastfm", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-theaudiodb", Exchange("enrich-theaudiodb", type="direct"), routing_key="enrich-theaudiodb", queue_arguments={"x-max-priority": 10}),
-            Queue("enrich-lrclib", Exchange("enrich-lrclib", type="direct"), routing_key="enrich-lrclib", queue_arguments={"x-max-priority": 10}),
-            Queue("reactive-fast", Exchange("reactive-fast", type="direct"), routing_key="reactive-fast", queue_arguments={"x-max-priority": 10}),
-            Queue("reactive-user", Exchange("reactive-user", type="direct"), routing_key="reactive-user", queue_arguments={"x-max-priority": 10}),
-            Queue("maintain", Exchange("maintain", type="direct"), routing_key="maintain", queue_arguments={"x-max-priority": 10}),
+            Queue(
+                "ingest-tmdb",
+                Exchange("ingest-tmdb", type="direct"),
+                routing_key="ingest-tmdb",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "ingest-steam",
+                Exchange("ingest-steam", type="direct"),
+                routing_key="ingest-steam",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "ingest-igdb",
+                Exchange("ingest-igdb", type="direct"),
+                routing_key="ingest-igdb",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "ingest-musicbrainz",
+                Exchange("ingest-musicbrainz", type="direct"),
+                routing_key="ingest-musicbrainz",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "ingest-deezer",
+                Exchange("ingest-deezer", type="direct"),
+                routing_key="ingest-deezer",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-fanart",
+                Exchange("enrich-fanart", type="direct"),
+                routing_key="enrich-fanart",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-omdb",
+                Exchange("enrich-omdb", type="direct"),
+                routing_key="enrich-omdb",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-steamgrid",
+                Exchange("enrich-steamgrid", type="direct"),
+                routing_key="enrich-steamgrid",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-lastfm",
+                Exchange("enrich-lastfm", type="direct"),
+                routing_key="enrich-lastfm",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-theaudiodb",
+                Exchange("enrich-theaudiodb", type="direct"),
+                routing_key="enrich-theaudiodb",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "enrich-lrclib",
+                Exchange("enrich-lrclib", type="direct"),
+                routing_key="enrich-lrclib",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "reactive-fast",
+                Exchange("reactive-fast", type="direct"),
+                routing_key="reactive-fast",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "reactive-user",
+                Exchange("reactive-user", type="direct"),
+                routing_key="reactive-user",
+                queue_arguments={"x-max-priority": 10},
+            ),
+            Queue(
+                "maintain",
+                Exchange("maintain", type="direct"),
+                routing_key="maintain",
+                queue_arguments={"x-max-priority": 10},
+            ),
         ],
         "task_routes": (route_task,),
         "task_create_missing_queues": True,
@@ -279,10 +356,12 @@ app.config_from_object(
 
 # worker_hijack_root_logger=False keeps Celery from overwriting our log levels.
 # We call setup_logging at import time and re-apply after each fork.
-from otix.infrastructure.logging import setup_logging  # noqa: E402
 import celery.signals  # noqa: E402
 
+from otix.infrastructure.logging import setup_logging  # noqa: E402
+
 setup_logging()
+
 
 @celery.signals.worker_process_init.connect
 def _on_worker_process_init(**kwargs):
@@ -290,23 +369,3 @@ def _on_worker_process_init(**kwargs):
 
 
 # Register tasks — explicit imports so tasks are guaranteed to be discovered.
-import otix.tasks.sync.tmdb  # noqa: E402
-import otix.tasks.sync.igdb  # noqa: E402
-import otix.tasks.sync.steam  # noqa: E402
-import otix.tasks.sync.fanart  # noqa: E402
-import otix.tasks.sync.omdb  # noqa: E402
-import otix.tasks.sync.lastfm  # noqa: E402
-import otix.tasks.sync.musicbrainz  # noqa: E402
-import otix.tasks.sync.spotify  # noqa: E402
-import otix.tasks.sync.deezer  # noqa: E402
-import otix.tasks.sync.theaudiodb  # noqa: E402
-import otix.tasks.sync.lrclib  # noqa: E402
-import otix.tasks.sync.youtube  # noqa: E402
-import otix.tasks.sync.search  # noqa: E402
-import otix.tasks.sync.embedding  # noqa: E402
-import otix.tasks.sync.media  # noqa: E402
-import otix.tasks.maintenance  # noqa: E402
-import otix.tasks.seed.catalog_seed  # noqa: E402
-import otix.tasks.seed.tmdb_seed  # noqa: E402
-import otix.tasks.xp  # noqa: E402
-import otix.tasks.gamification  # noqa: E402
