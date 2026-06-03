@@ -129,8 +129,6 @@ async def update_subscription(
 @spotify_playlists_router.get("/{playlist_id}")
 async def get_playlist_detail(
     playlist_id: str,
-    track_limit: int = Query(100, ge=1, le=100),
-    track_offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -140,7 +138,13 @@ async def get_playlist_detail(
     spotify = SpotifyProvider(redis)
 
     playlist = await spotify.get_playlist(token, playlist_id)
-    tracks = await spotify.get_playlist_tracks(token, playlist_id, limit=track_limit, offset=track_offset)
+    # Spotify API embeds tracks under "items" key (not "tracks") for dev-mode apps.
+    # Rename so frontend can read playlist.tracks as expected.
+    tracks = playlist.pop("items", {})
+    # The embedded tracks use "item" key instead of "track" — normalize it.
+    for t in tracks.get("items", []):
+        if "item" in t:
+            t["track"] = t.pop("item")
     playlist["tracks"] = tracks
 
     # Annotate subscription status
