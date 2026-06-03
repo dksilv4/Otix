@@ -81,7 +81,7 @@ class PersonCreditMediaOut(BaseModel):
 
 class PersonCreditOut(BaseModel):
     id: str
-    media_item: PersonCreditMediaOut
+    media_item: PersonCreditMediaOut | None = None
     role: str
     character_name: str | None = None
     sort_order: int

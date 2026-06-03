@@ -4,23 +4,23 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from otix.api.schemas.media_rating import MediaRatingOut
+
 
 class ReviewCreate(BaseModel):
-    score: int | None = Field(None, ge=1, le=10, description="Rating 1-10, omit for text-only")
     title: str | None = Field(None, max_length=200)
     content: str | None = Field(None, max_length=5000)
     is_spoiler: bool = False
     is_private: bool = False
 
     @model_validator(mode="after")
-    def require_content_or_score(self) -> ReviewCreate:
-        if self.score is None and not self.content:
-            raise ValueError("Either score or content must be provided")
+    def require_content_or_title(self) -> ReviewCreate:
+        if not self.content:
+            raise ValueError("Review content must not be empty")
         return self
 
 
 class ReviewUpdate(BaseModel):
-    score: int | None = Field(None, ge=1, le=10)
     title: str | None = Field(None, max_length=200)
     content: str | None = Field(None, max_length=5000)
     is_spoiler: bool | None = None
@@ -30,14 +30,13 @@ class ReviewUpdate(BaseModel):
 class ReviewOut(BaseModel):
     user_id: str
     media_item_id: str
-    score: int | None = None
     title: str | None = None
     content: str | None = None
     is_spoiler: bool = False
     is_private: bool = False
+    cooldown_until: datetime | None = None
     created_at: datetime
     updated_at: datetime
-    cooldown_until: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -53,7 +52,6 @@ class ReviewUserOut(BaseModel):
 class ReviewWithUserOut(BaseModel):
     user_id: str
     media_item_id: str
-    score: int | None = None
     title: str | None = None
     content: str | None = None
     is_spoiler: bool = False
@@ -61,11 +59,6 @@ class ReviewWithUserOut(BaseModel):
     updated_at: datetime
     cooldown_until: datetime | None = None
     user: ReviewUserOut
+    rating: MediaRatingOut | None = None
 
     model_config = {"from_attributes": True}
-
-
-class ScoreOnlyOut(BaseModel):
-    score: int
-    avg_rating: float | None = None
-    rating_count: int = 0

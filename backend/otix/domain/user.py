@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.karma_transaction import KarmaTransaction
     from otix.domain.list import UserList
+    from otix.domain.media_rating import MediaItemRating
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
     from otix.domain.company import UserCompanyFollow
@@ -120,6 +121,7 @@ class User(Base, TimestampMixin):
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
     episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="user")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
+    media_ratings: Mapped[list[MediaItemRating]] = relationship("MediaItemRating", back_populates="user")
     lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")
     workouts: Mapped[list[Workout]] = relationship("Workout", back_populates="user")
     refresh_tokens: Mapped[list[RefreshToken]] = relationship("RefreshToken", back_populates="user")

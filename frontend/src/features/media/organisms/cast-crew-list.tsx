@@ -6,7 +6,7 @@ import { PersonCard } from '@person/molecules/person-card'
 
 interface CreditItem {
   id: string
-  person: { id: string; name: string; photoUrl?: string }
+  person: { id: string; name: string; photoUrl?: string } | null
   role: string
   characterName?: string
   sortOrder: number
@@ -18,8 +18,10 @@ interface CastCrewListProps {
 }
 
 function groupByRole(credits: CreditItem[]) {
-  const cast = credits.filter((c) => c.role === 'cast')
-  const directors = credits.filter((c) => c.role === 'director')
+  // Safety: skip credits where person is null (person record was deleted)
+  const valid = credits.filter((c) => c.person != null)
+  const cast = valid.filter((c) => c.role === 'cast')
+  const directors = valid.filter((c) => c.role === 'director')
   const writers = credits.filter((c) => c.role === 'writer')
   const producers = credits.filter((c) => c.role === 'producer')
   const composers = credits.filter((c) => c.role === 'composer')

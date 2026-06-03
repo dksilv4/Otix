@@ -65,6 +65,8 @@ function formatDate(dateStr: string): string {
 }
 
 function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
+ const reviewScore = review.rating?.score ?? null
+
  return (
  <div className="w-fit rounded-xl bg-[var(--dk-surface-base)] px-4 py-3.5">
  {/* Top row: user, date, score */}
@@ -98,10 +100,10 @@ function ReviewCard({ review, isOwn, onEdit, onDelete }: ReviewCardProps) {
  )}
  </div>
 
- {review.score != null && (
+ {reviewScore != null && (
  <div className="shrink-0 flex items-center gap-1">
- <StarRating score={review.score} maxScore={10} size="sm" />
- <span className="text-sm font-semibold tabular-nums">{review.score}</span>
+ <StarRating score={reviewScore} maxScore={10} size="sm" />
+ <span className="text-sm font-semibold tabular-nums">{reviewScore}</span>
  </div>
  )}
  </div>

@@ -193,6 +193,11 @@ export function BrowsePage() {
     <div className="pb-16">
       <Helmet>
         <title>{companyInfo ? `${companyInfo.name} ${typeLabel} - Otix` : `Browse ${typeLabel} - Otix`}</title>
+        <meta name="description" content={companyInfo ? `Browse ${companyInfo.name} ${typeLabel} on Otix.` : `Browse ${typeLabel} on Otix — discover new movies, shows, games, and music.`} />
+        <meta property="og:title" content={companyInfo ? `${companyInfo.name} ${typeLabel} - Otix` : `Browse ${typeLabel} - Otix`} />
+        <meta property="og:description" content={companyInfo ? `Browse ${companyInfo.name} ${typeLabel} on Otix.` : `Browse ${typeLabel} on Otix.`} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary" />
       </Helmet>
 
       {/* Header */}

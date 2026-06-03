@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from "react"
+import { Helmet } from "react-helmet-async"
 import { useInView } from "framer-motion"
 import { useParams, useNavigate } from "@tanstack/react-router"
 import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, LayoutDashboardIcon, ListIcon, MusicIcon, PlusIcon, RefreshCw } from "lucide-react"
@@ -14,6 +15,7 @@ import { getPlatformTabs, getPlatform } from "./platforms"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
 import type { DetectedGame } from "@/features/game-scanner/types"
 import { getScannedGames } from "@/features/game-scanner/storage"
+import { GamesLauncher } from "./molecules/games-launcher"
 
 // ── Tab definitions ──
 
@@ -467,6 +469,12 @@ function OverviewTabContent() {
   )
 }
 
+// ── Games Tab ──────────────────────────────────────────────────────
+
+function GamesTabContent() {
+  return <GamesLauncher />
+}
+
 // ── Library Tab Page (/library/$tab) ──
 
 export function LibraryPage() {
@@ -485,6 +493,9 @@ export function LibraryPage() {
 
     // Overview tab (always first)
     tabs.push({ id: "overview", label: TAB_LABELS.overview, icon: <LayoutDashboardIcon className="h-4 w-4" /> })
+
+    // Games tab (always second — game launcher)
+    tabs.push({ id: "games", label: TAB_LABELS.games, icon: <Gamepad2Icon className="h-4 w-4" /> })
 
     // Core tabs
     for (const t of CORE_TABS) {
@@ -545,12 +556,21 @@ export function LibraryPage() {
       return <PlatformContent />
     }
 
+    if (activeTab === "games") {
+      return <GamesTabContent />
+    }
+
     // Fallback to core media tab
     return <MediaTabContent tab={activeTab} />
   }
 
   return (
     <div className="space-y-8">
+      <Helmet>
+        <title>Library - Otix</title>
+        <meta name="description" content="Your saved, liked, watched items, and lists on Otix." />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <div>
         <h1 className="text-2xl font-bold text-foreground">Library</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
@@ -381,6 +382,17 @@ function HomeExperience() {
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)]">
+      <Helmet>
+        <title>Otix — Your media command center</title>
+        <meta name="description" content="Discover movies, shows, games, and music. Track your workouts, build your library, and find your next obsession with Otix." />
+        <meta property="og:title" content="Otix — Your media command center" />
+        <meta property="og:description" content="Discover movies, shows, games, and music. Track your workouts, build your library, and find your next obsession with Otix." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.origin} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Otix — Your media command center" />
+        <meta name="twitter:description" content="Discover movies, shows, games, and music. Track your workouts, build your library, and find your next obsession with Otix." />
+      </Helmet>
       <Suspense fallback={null}>
         <AnimatedShaderBackground mode="idle" />
       </Suspense>

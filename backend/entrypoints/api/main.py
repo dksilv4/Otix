@@ -5,7 +5,7 @@ from typing import Any
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -69,6 +69,29 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(Exception)
+    async def cors_safe_exception_handler(request: Request, exc: Exception):
+        """Translate unhandled exceptions into JSON with CORS headers.
+
+        Starlette's CORSMiddleware only adds CORS headers to responses that
+        pass through the normal middleware chain — 500s raised at the ASGI
+        layer bypass this entirely, causing confusing "CORS" errors in the
+        browser when the real issue is a server-side crash.
+        """
+        import structlog
+        logger = structlog.get_logger()
+        logger.exception("unhandled exception", exc_info=exc)
+        origin = request.headers.get("origin")
+        headers: dict[str, str] = {}
+        if origin and settings.cors_origin_regex and __import__("re").match(settings.cors_origin_regex, origin):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error"},
+            headers=headers,
+        )
 
     app.include_router(api_router, prefix="/api")
 

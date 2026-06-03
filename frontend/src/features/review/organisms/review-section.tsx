@@ -6,6 +6,7 @@ import { DkButton } from "@/features/dk-ui/atoms/button"
 import { DkDialog } from "@/features/dk-ui/molecules/dialog"
 import { ReviewComposer } from "../molecules/review-composer"
 import { reviewQueries, type ReviewOut } from "../review-queries"
+import { ratingQueries, type MediaRatingOut } from "../rating-queries"
 import { cn } from "@/lib/utils"
 
 interface ReviewSectionProps {
@@ -48,144 +49,174 @@ function StarRow({ count, filled, size = "md" }: { count: number; filled: number
 function ReviewSection({ mediaId, className }: ReviewSectionProps) {
  const { isAuthenticated } = useAuth()
  const [composerOpen, setComposerOpen] = useState(false)
- const { data: myReview, isLoading, isError, refetch } = useQuery(reviewQueries.myReview(mediaId))
+
+ const myReviewQuery = useQuery({
+   ...reviewQueries.myReview(mediaId),
+   enabled: isAuthenticated,
+ })
+ const myRatingQuery = useQuery({
+   ...ratingQueries.myRating(mediaId),
+   enabled: isAuthenticated,
+ })
+
+ const isLoading = myReviewQuery.isLoading || myRatingQuery.isLoading
+ const isError = myReviewQuery.isError && myRatingQuery.isError
 
  if (!isAuthenticated) return null
 
  if (isLoading) {
- return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
- <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8">
- <div className="flex flex-col items-center gap-4">
- <div className="h-7 w-48 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
- <div className="h-10 w-28 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
- </div>
- </div>
- </section>
- )
+   return (
+     <section className={cn(className)}>
+       <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
+       <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8">
+         <div className="flex flex-col items-center gap-4">
+           <div className="h-7 w-48 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
+           <div className="h-10 w-28 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
+         </div>
+       </div>
+     </section>
+   )
  }
 
  if (isError) {
- return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
- <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8 text-center">
- <p className="text-sm text-muted-foreground mb-3">Failed to load your review.</p>
- <DkButton variant="outline" size="sm" onClick={() => refetch()}>
- Retry
- </DkButton>
- </div>
- </section>
- )
+   return (
+     <section className={cn(className)}>
+       <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
+       <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8 text-center">
+         <p className="text-sm text-muted-foreground mb-3">Failed to load your rating.</p>
+         <DkButton variant="outline" size="sm" onClick={() => { myReviewQuery.refetch(); myRatingQuery.refetch() }}>
+           Retry
+         </DkButton>
+       </div>
+     </section>
+   )
  }
 
- const review = (myReview ?? null) as ReviewOut | null
+ const review = (myReviewQuery.data ?? null) as ReviewOut | null
+ const rating = (myRatingQuery.data ?? null) as MediaRatingOut | null
+ const hasRatingOrReview = !!rating || !!review
 
  return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
+   <section className={cn(className)}>
+     <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
 
- {review ? (
- /* ── Rated state — big show-off display ── */
- <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
- {/* Score-colored ambient glow */}
- <div
- className={cn(
- "absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,var(--tw-gradient-from),transparent_70%)]",
- scoreColor(review.score ?? 0).glow,
- )}
- />
+     {hasRatingOrReview ? (
+       /* ── Rated/reviewed state — show-off display ── */
+       <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
+         {rating && (
+           <div
+             className={cn(
+               "absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,var(--tw-gradient-from),transparent_70%)]",
+               scoreColor(rating.score).glow,
+             )}
+           />
+         )}
 
- <div className="relative p-6 sm:p-8">
- <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-8">
- {/* Big score display */}
- <div className="flex flex-col items-center gap-2 shrink-0">
- <span
- className={cn(
- "text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight",
- scoreColor(review.score ?? 0).text,
- )}
- style={{ fontFamily: "var(--dk-font-mono)" }}
- >
- {review.score}
- </span>
- <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
- out of 10
- </span>
- </div>
+         <div className="relative p-6 sm:p-8">
+           <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-8">
+             {/* Big score display */}
+             {rating ? (
+               <div className="flex flex-col items-center gap-2 shrink-0">
+                 <span
+                   className={cn(
+                     "text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight",
+                     scoreColor(rating.score).text,
+                   )}
+                   style={{ fontFamily: "var(--dk-font-mono)" }}
+                 >
+                   {rating.score}
+                 </span>
+                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                   out of 10
+                 </span>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center gap-2 shrink-0 opacity-30">
+                 <span
+                   className="text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight text-muted-foreground"
+                   style={{ fontFamily: "var(--dk-font-mono)" }}
+                 >
+                   —
+                 </span>
+                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                   no rating
+                 </span>
+               </div>
+             )}
 
- {/* Stars + content */}
- <div className="flex flex-col items-center sm:items-start gap-3 min-w-0">
- <StarRow count={5} filled={(review.score ?? 0) / 2} size="md" />
+             {/* Stars + content */}
+             <div className="flex flex-col items-center sm:items-start gap-3 min-w-0">
+               {rating && (
+                 <StarRow count={5} filled={rating.score / 2} size="md" />
+               )}
 
- {review.title && (
- <p className="text-base font-semibold text-center sm:text-left">
- {review.title}
- </p>
- )}
+               {review?.title && (
+                 <p className="text-base font-semibold text-center sm:text-left">
+                   {review.title}
+                 </p>
+               )}
 
- {review.content && (
- <p className="text-sm text-muted-foreground text-center sm:text-left leading-relaxed line-clamp-3">
- {review.content}
- </p>
- )}
+               {review?.content && (
+                 <p className="text-sm text-muted-foreground text-center sm:text-left leading-relaxed line-clamp-3">
+                   {review.content}
+                 </p>
+               )}
 
- {review.isPrivate && (
- <span className="text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-2 py-0.5 rounded-full">
- Private
- </span>
- )}
+               {review?.isPrivate && (
+                 <span className="text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-2 py-0.5 rounded-full">
+                   Private
+                 </span>
+               )}
 
- <DkButton
- variant="outline"
- size="sm"
- onClick={() => setComposerOpen(true)}
- className="mt-1"
- >
- <Pencil className="w-3.5 h-3.5" />
- Edit Review
- </DkButton>
- </div>
- </div>
- </div>
- </div>
- ) : (
- /* ── Unrated state — inviting prompt ── */
- <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
- {/* Subtle neutral ambient glow */}
- <div className="absolute inset-0 opacity-30 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,var(--primary),transparent_70%)]" />
+               <DkButton
+                 variant="outline"
+                 size="sm"
+                 onClick={() => setComposerOpen(true)}
+                 className="mt-1"
+               >
+                 <Pencil className="w-3.5 h-3.5" />
+                 Edit
+               </DkButton>
+             </div>
+           </div>
+         </div>
+       </div>
+     ) : (
+       /* ── Unrated state — inviting prompt ── */
+       <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
+         <div className="absolute inset-0 opacity-30 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,var(--primary),transparent_70%)]" />
 
- <div className="relative p-6 sm:p-8 flex flex-col items-center gap-4">
- <div className="flex flex-col items-center gap-2">
- <StarRow count={5} filled={0} size="md" />
- <p className="text-sm text-muted-foreground">How would you rate this?</p>
- </div>
+         <div className="relative p-6 sm:p-8 flex flex-col items-center gap-4">
+           <div className="flex flex-col items-center gap-2">
+             <StarRow count={5} filled={0} size="md" />
+             <p className="text-sm text-muted-foreground">How would you rate this?</p>
+           </div>
 
- <DkButton
- variant="primary"
- size="md"
- onClick={() => setComposerOpen(true)}
- >
- <Star className="w-4 h-4" />
- Rate &amp; Review
- </DkButton>
- </div>
- </div>
- )}
+           <DkButton
+             variant="primary"
+             size="md"
+             onClick={() => setComposerOpen(true)}
+           >
+             <Star className="w-4 h-4" />
+             Rate &amp; Review
+           </DkButton>
+         </div>
+       </div>
+     )}
 
- <DkDialog
- open={composerOpen}
- onOpenChange={setComposerOpen}
- title={review ? "Edit Your Review" : "Rate & Review"}
- >
- <ReviewComposer
- mediaId={mediaId}
- existingReview={review}
- onClose={() => setComposerOpen(false)}
- />
- </DkDialog>
- </section>
+     <DkDialog
+       open={composerOpen}
+       onOpenChange={setComposerOpen}
+       title={hasRatingOrReview ? "Edit Your Rating" : "Rate & Review"}
+     >
+       <ReviewComposer
+         mediaId={mediaId}
+         existingReview={review}
+         existingRating={rating}
+         onClose={() => setComposerOpen(false)}
+       />
+     </DkDialog>
+   </section>
  )
 }
 

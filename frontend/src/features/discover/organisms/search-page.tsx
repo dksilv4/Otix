@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChatSearchInput } from '../molecules/chat-search-input'
 import { TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
@@ -78,6 +79,14 @@ export function SearchPage() {
 
   return (
     <div className="relative min-h-[calc(100vh-5rem)]">
+      <Helmet>
+        <title>{q ? `"${q}" - Search - Otix` : 'Search - Otix'}</title>
+        <meta name="description" content={q ? `Search results for "${q}" on Otix — find movies, shows, games, and music.` : 'Search Otix for movies, shows, games, and music.'} />
+        <meta property="og:title" content={q ? `"${q}" - Search - Otix` : 'Search - Otix'} />
+        <meta property="og:description" content={q ? `Search results for "${q}" on Otix.` : 'Find your next obsession on Otix.'} />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary" />
+      </Helmet>
       <div className="flex flex-col items-center px-4 pb-16 w-full">
         <div className="min-h-[25vh] flex flex-col justify-center items-center w-full gap-6">
           <div className="w-full max-w-3xl flex flex-col items-center">

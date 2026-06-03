@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.media import ExternalID, MediaItem
-from otix.domain.review import Review
+from otix.domain.media_rating import MediaItemRating
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
@@ -116,15 +116,12 @@ async def import_tmdb_ratings(
 
                     score = _tmdb_rating_to_score(float(rating))
 
-                    review = await session.get(Review, (user.id, media.id))
-                    if review is None:
-                        review = Review(user_id=user.id, media_item_id=media.id, score=score)
-                        session.add(review)
-                    elif review.score is None:
-                        review.score = score
+                    rating = await session.get(MediaItemRating, (user.id, media.id))
+                    if rating is None:
+                        rating = MediaItemRating(user_id=user.id, media_item_id=media.id, score=score)
+                        session.add(rating)
                     else:
-                        result.skipped += 1
-                        continue
+                        rating.score = score
 
                     result.imported += 1
                 except Exception:
@@ -153,16 +150,16 @@ async def export_otix_ratings(
 
     session_id = user.tmdb_session_id
 
-    reviews = await session.execute(
-        select(Review).where(Review.user_id == user.id, Review.score.isnot(None))
+    ratings = await session.execute(
+        select(MediaItemRating).where(MediaItemRating.user_id == user.id)
     )
-    user_reviews = reviews.scalars().all()
+    user_ratings = ratings.scalars().all()
 
-    for review in user_reviews:
+    for rating in user_ratings:
         try:
             external_ids = await session.execute(
                 select(ExternalID).where(
-                    ExternalID.media_item_id == review.media_item_id,
+                    ExternalID.media_item_id == rating.media_item_id,
                     ExternalID.provider == "tmdb",
                 )
             )
@@ -172,19 +169,19 @@ async def export_otix_ratings(
                 continue
 
             tmdb_id = int(tmdb_ext.external_id)
-            media = await session.get(MediaItem, review.media_item_id)
-            rating = _score_to_tmdb_rating(review.score)
+            media = await session.get(MediaItem, rating.media_item_id)
+            tmdb_rating = _score_to_tmdb_rating(rating.score)
 
             if media is not None and media.media_type in ("movie", "show"):
                 if media.media_type == "movie":
-                    await provider.rate_movie(tmdb_id, rating, session_id)
+                    await provider.rate_movie(tmdb_id, tmdb_rating, session_id)
                 else:
-                    await provider.rate_tv(tmdb_id, rating, session_id)
+                    await provider.rate_tv(tmdb_id, tmdb_rating, session_id)
                 result.exported += 1
             else:
                 result.skipped += 1
         except Exception:
-            logger.exception("tmdb rating export failed", review_id=(review.user_id, review.media_item_id))
+            logger.exception("tmdb rating export failed", rating_id=(rating.user_id, rating.media_item_id))
             result.skipped += 1
 
     return result

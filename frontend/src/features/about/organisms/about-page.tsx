@@ -166,6 +166,11 @@ export function AboutPage() {
     <div className="mx-auto max-w-2xl pb-16">
       <Helmet>
         <title>About - Otix</title>
+        <meta name="description" content="Otix is your personal media command center — discover movies, shows, games, and music, track your fitness, and curate your collection." />
+        <meta property="og:title" content="About - Otix" />
+        <meta property="og:description" content="Learn more about Otix — your personal media command center." />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary" />
       </Helmet>
 
       {/* About */}

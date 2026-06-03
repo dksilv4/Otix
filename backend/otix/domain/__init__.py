@@ -17,6 +17,7 @@ from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
+from otix.domain.media_rating import MediaItemRating
 from otix.domain.review import Review
 from otix.domain.media import (
     Album,
@@ -86,6 +87,7 @@ __all__ = [
     "MediaGameMode",
     "MediaGenre",
     "MediaItem",
+    "MediaItemRating",
     "MediaKeyword",
     "MediaPlatform",
     "MediaRelease",

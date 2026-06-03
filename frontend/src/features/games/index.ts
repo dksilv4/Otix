@@ -1,3 +1,13 @@
-// frontend/src/features/games/index.ts
 export { GamesPage } from "./organisms/games-page"
-export type { ShelfRow, GamesTab, GamesState } from "./types"
+export { useGames } from "./hooks/use-games"
+export {
+  usePopularGames,
+  useGameDetail,
+  useGameSuggestions,
+  useGameGenres,
+  useSeedFromTitles,
+  popularGamesOptions,
+  gameDetailOptions,
+  gameKeys,
+} from "./games-queries"
+export type { CatalogGame, CatalogGameDetail, ShelfRow, GamesTab } from "./types"

@@ -6,18 +6,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db, get_optional_user
+from otix.api.schemas.media_rating import MediaRatingAggregateOut, MediaRatingCreate, MediaRatingOut
 from otix.api.schemas.review import (
     ReviewCreate,
     ReviewOut,
     ReviewUpdate,
     ReviewWithUserOut,
-    ScoreOnlyOut,
 )
 from otix.domain.media import MediaItem
 from otix.domain.user import User
+from otix.services.media_rating_service import MediaRatingService
 from otix.services.review_service import ReviewService
 
 review_router = APIRouter(prefix="/media", tags=["review"])
+
+
+# ── Review CRUD ──
 
 
 @review_router.get("/{media_id}/review", response_model=ReviewOut | None)
@@ -41,7 +45,6 @@ async def upsert_review(
     return await service.upsert_review(
         user_id=current_user.id,
         media_item_id=media_id,
-        score=body.score,
         title=body.title,
         content=body.content,
         is_spoiler=body.is_spoiler,
@@ -66,14 +69,10 @@ async def update_review(
 
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        if field == "score":
-            setattr(existing, field, value)
-        elif in_cooldown:
+        if in_cooldown:
             setattr(existing, field, value)
 
     await db.flush()
-    if "score" in update_data:
-        await service._recalc_rating_aggregates(media_id)
     return existing
 
 
@@ -98,37 +97,70 @@ async def list_reviews(
     current_user: User | None = Depends(get_optional_user),
 ) -> list[ReviewWithUserOut]:
     service = ReviewService(db)
-    items, _ = await service.get_reviews_for_media(
+    items, _ = await service.get_reviews_for_media_with_ratings(
         media_item_id=media_id,
         cursor=cursor,
         limit=limit,
         current_user_id=current_user.id if current_user else None,
     )
-    return [ReviewWithUserOut.model_validate(r) for r in items]
+    return [
+        ReviewWithUserOut(
+            user_id=review.user_id,
+            media_item_id=review.media_item_id,
+            title=review.title,
+            content=review.content,
+            is_spoiler=review.is_spoiler,
+            created_at=review.created_at,
+            updated_at=review.updated_at,
+            cooldown_until=review.cooldown_until,
+            user=review.user,  # type: ignore
+            rating=MediaRatingOut.model_validate(rating) if rating else None,
+        )
+        for review, rating in items
+    ]
 
 
-@review_router.put("/{media_id}/rating", response_model=ScoreOnlyOut)
-async def quick_rate(
+# ── Rating CRUD ──
+
+
+@review_router.get("/{media_id}/rating", response_model=MediaRatingOut | None)
+async def get_my_rating(
     media_id: str,
-    body: ReviewCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> ScoreOnlyOut:
-    if body.score is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Score is required")
+) -> MediaRatingOut | None:
+    service = MediaRatingService(db)
+    return await service.get_my_rating(user_id=current_user.id, media_item_id=media_id)
 
-    service = ReviewService(db)
-    review = await service.upsert_review(
+
+@review_router.put("/{media_id}/rating", response_model=MediaRatingAggregateOut)
+async def upsert_rating(
+    media_id: str,
+    body: MediaRatingCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MediaRatingAggregateOut:
+    service = MediaRatingService(db)
+    rating = await service.upsert_rating(
         user_id=current_user.id,
         media_item_id=media_id,
         score=body.score,
-        title=None,
-        content=None,
-        is_spoiler=False,
     )
     media = await db.get(MediaItem, media_id)
-    return ScoreOnlyOut(
-        score=review.score,
+    return MediaRatingAggregateOut(
+        score=rating.score,
         avg_rating=media.avg_rating if media else None,
         rating_count=media.rating_count if media else 0,
     )
+
+
+@review_router.delete("/{media_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_rating(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    service = MediaRatingService(db)
+    deleted = await service.delete_rating(user_id=current_user.id, media_item_id=media_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found")

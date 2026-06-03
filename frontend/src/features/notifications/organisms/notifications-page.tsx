@@ -300,6 +300,8 @@ export function NotificationsPage() {
  <div className="mx-auto lg:max-w-2xl pb-16">
  <Helmet>
  <title>Notifications - Otix</title>
+ <meta name="description" content="Your notifications on Otix." />
+ <meta name="robots" content="noindex" />
  </Helmet>
 
  {/* Header */}

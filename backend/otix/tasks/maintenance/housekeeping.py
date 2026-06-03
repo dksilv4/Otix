@@ -9,7 +9,7 @@ import structlog
 from sqlalchemy import delete, func, select, text
 
 from otix.domain.media import MediaItem
-from otix.domain.people import Person
+from otix.domain.people import MediaCredit, Person
 from otix.domain.user import RefreshToken
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
@@ -274,3 +274,46 @@ def vacuum_high_churn_tables() -> dict:
     result = loop.run_until_complete(_vacuum())
     logger.info("periodic_vacuum_complete", tables=HIGH_CHURN_TABLES)
     return result
+
+
+@app.task(name="maintenance.cleanup_orphan_credits")
+def cleanup_orphan_credits() -> dict:
+    """Remove MediaCredit rows whose person_id no longer exists in the people table.
+
+    These orphans can occur when the FK constraint on media_credits.person_id
+    was added after the table was created, leaving stale references to deleted
+    Person records. They surface as "Person not found" 404 errors in the UI.
+    """
+    return run_async(_cleanup_orphan_credits())
+
+
+async def _cleanup_orphan_credits() -> dict:
+    from sqlalchemy import and_, delete, select
+
+    from otix.infrastructure.database import async_session
+
+    async with async_session() as session:
+        # Find orphaned credits
+        orphaned = await session.scalars(
+            select(MediaCredit.id).where(
+                ~MediaCredit.person_id.in_(select(Person.id))
+            )
+        )
+        orphan_ids = list(orphaned.all())
+
+        if not orphan_ids:
+            return {"deleted": 0}
+
+        # Delete them
+        result = await session.execute(
+            delete(MediaCredit).where(MediaCredit.id.in_(orphan_ids))
+        )
+        await session.commit()
+
+        count = result.rowcount
+        logger.warning(
+            "cleaned up orphaned media credits",
+            count=count,
+        )
+
+    return {"deleted": count}

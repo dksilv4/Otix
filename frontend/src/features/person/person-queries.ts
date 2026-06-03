@@ -25,7 +25,7 @@ export interface PersonCredit {
     posterUrl: string | null
     releaseDate: string | null
     seasons: SeasonInfo[] | null
-  }
+  } | null
   role: string
   characterName?: string
   sortOrder: number

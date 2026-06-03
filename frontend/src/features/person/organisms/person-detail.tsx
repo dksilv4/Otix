@@ -22,9 +22,11 @@ function formatDate(dateStr?: string | null): string {
 }
 
 function getStats(credits: PersonDetailData['credits']) {
-  const total = credits.length
-  const years = credits
-    .map((c) => c.mediaItem.releaseDate)
+  // Safety: filter out credits with deleted media items
+  const valid = credits.filter((c) => c.mediaItem != null)
+  const total = valid.length
+  const years = valid
+    .map((c) => c.mediaItem!.releaseDate)
     .filter(Boolean)
     .map((d) => new Date(d!).getFullYear())
     .sort((a, b) => a - b)
@@ -34,8 +36,8 @@ function getStats(credits: PersonDetailData['credits']) {
     : null
 
   const byType: Record<string, number> = {}
-  for (const c of credits) {
-    const t = c.mediaItem.mediaType || 'other'
+  for (const c of valid) {
+    const t = c.mediaItem!.mediaType || 'other'
     byType[t] = (byType[t] || 0) + 1
   }
 
@@ -153,7 +155,20 @@ export function PersonDetail() {
           name="description"
           content={person.biography?.slice(0, 200) || `Credits for ${person.name}`}
         />
+        <meta property="og:title" content={`${person.name} - Otix`} />
+        <meta
+          property="og:description"
+          content={person.biography?.slice(0, 200) || `Credits for ${person.name}`}
+        />
+        <meta property="og:type" content="profile" />
         {person.photoUrl && <meta property="og:image" content={person.photoUrl} />}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={`${person.name} - Otix`} />
+        <meta
+          name="twitter:description"
+          content={person.biography?.slice(0, 200) || `Credits for ${person.name}`}
+        />
+        {person.photoUrl && <meta name="twitter:image" content={person.photoUrl} />}
       </Helmet>
 
       {/* ── Header ── */}

@@ -263,6 +263,7 @@ export const mediaQueries = {
         const { data } = await apiClient.get<MediaItemDetail>(`/media/${id}`)
         return data
       },
+      enabled: !!id,
       staleTime: 1000 * 60 * 10,
       gcTime: 1000 * 60 * 30,
     }),

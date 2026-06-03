@@ -356,7 +356,22 @@
       "Bash(findstr /N \"backfill_pending\\\\|backfill\\\\|poll\\\\|has_more\\\\|known_ids\")",
       "Bash(findstr -i electron)",
       "Bash(Write-Output \"---\")",
-      "Bash(Select-String -Pattern \"node_modules\")"
+      "Bash(Select-String -Pattern \"node_modules\")",
+      "Bash(npx -p typescript tsc --noEmit --pretty)",
+      "Bash(awk '{print \"profile_setup: \" $1}')",
+      "Bash(graphify explain *)",
+      "Bash(sort -t/ -k8)",
+      "Bash(xxd)",
+      "Bash(./node_modules/.bin/vite --host 0.0.0.0)",
+      "Bash(npm pack *)",
+      "Bash(tar -xzf igdb-api-types-*.tgz)",
+      "Bash(cat package/index.d.ts)",
+      "Bash(npm cache *)",
+      "Bash(sudo chown *)",
+      "Bash(ps *)",
+      "Bash(kill 24054 24056 13656 13655 13638 13621 13620 13588 13589 13584 24055 24053 24052 24051 24019 24020 24014 1334 1335 1350 1320)",
+      "Bash(log show *)",
+      "Bash(echo \"---EXIT:$?\")"
     ]
   },
   "outputStyle": "default"

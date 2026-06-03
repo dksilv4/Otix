@@ -50,7 +50,7 @@ export async function initDb(): Promise<any> {
     return db;
   } catch (err) {
     console.error('Failed to open downloads database with better-sqlite3:', err);
-    return null;
+    throw err;
   }
 }
 

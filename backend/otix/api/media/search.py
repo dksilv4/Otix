@@ -30,6 +30,8 @@ from otix.api.schemas.media import (
     LocalGameMatchResponse,
     MediaItemListResponse,
     MediaItemSummary,
+    SeedFromTitlesRequest,
+    SeedFromTitlesResponse,
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
@@ -535,6 +537,44 @@ async def match_local_games(
         matches.append(summary)
 
     return LocalGameMatchResponse(matches=matches)
+
+
+@media_router.post("/seed-from-titles")
+async def seed_from_titles(
+    body: SeedFromTitlesRequest,
+    current_user: User = Depends(get_optional_user),
+) -> SeedFromTitlesResponse:
+    """Trigger background IGDB seeding for local game titles from a desktop scan.
+
+    When a user runs a desktop game scan, the extracted titles are sent here so
+    the backend can search IGDB for each title and import any missing games into
+    the catalog. This ensures subsequent match-local-games calls can find them.
+
+    The actual IGDB searches and Celery sync tasks run asynchronously in the
+    background via ``seed.igdb_from_titles``. This endpoint returns immediately
+    with the Celery task ID for optional tracking.
+    """
+    unique_titles = list(dict.fromkeys([t.strip() for t in body.titles if t.strip()]))
+    if not unique_titles:
+        return SeedFromTitlesResponse(accepted=True, total_titles=0)
+
+    task = app.send_task("seed.igdb_from_titles", args=[unique_titles])
+
+    # Track via Redis counter for debugging
+    try:
+        redis = await _get_redis()
+        await redis.incr("seed_from_titles_count")
+    except Exception:
+        pass
+
+    print(f"SEED_FROM_TITLES_HIT: {len(unique_titles)} titles -> task {task.id}", flush=True)
+    logger.info("seed_from_titles_requested", total=len(unique_titles), task_id=task.id)
+
+    return SeedFromTitlesResponse(
+        accepted=True,
+        total_titles=len(unique_titles),
+        task_id=task.id,
+    )
 
 
 def _should_backfill(q: str) -> bool:

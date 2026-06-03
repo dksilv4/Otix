@@ -103,3 +103,16 @@ class UserSearchResult(BaseModel):
 
 class UserSearchListResponse(PaginatedResponse):
     items: list[UserSearchResult]
+
+
+class RatingDistributionItem(BaseModel):
+    score: int
+    movie: int = 0
+    show: int = 0
+    game: int = 0
+    music: int = 0
+
+
+class RatingDistributionOut(BaseModel):
+    distribution: list[RatingDistributionItem]
+    total_ratings: int

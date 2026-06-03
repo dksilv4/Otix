@@ -38,7 +38,6 @@ const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboar
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
-const GamesPage = lazy(() => import("@/features/games").then(m => ({ default: m.GamesPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -312,12 +311,6 @@ const aboutRoute = createRoute({
   component: AboutPage,
 })
 
-const gamesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/games",
-  component: GamesPage,
-})
-
 const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/downloads",
@@ -376,7 +369,6 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   searchRoute,
   aboutRoute,
-  gamesRoute,
   downloadsRoute,
 ])
 

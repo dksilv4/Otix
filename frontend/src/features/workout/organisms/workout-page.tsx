@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { Dumbbell, Flame, Weight } from 'lucide-react'
 import { DkToastProvider, useToast } from '@/features/dk-ui/molecules/toast'
 import { DkSpinner } from '@/features/dk-ui/atoms/spinner'
@@ -170,6 +171,11 @@ function WorkoutPageInner() {
 export function WorkoutPage() {
   return (
     <DkToastProvider>
+      <Helmet>
+        <title>Workout - Otix</title>
+        <meta name="description" content="Log your workouts with natural language and track your training history on Otix." />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <WorkoutPageInner />
     </DkToastProvider>
   )
