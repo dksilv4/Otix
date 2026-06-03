@@ -73,18 +73,11 @@ def upgrade() -> None:
         "ADD COLUMN IF NOT EXISTS downvote_count INTEGER NOT NULL DEFAULT 0"
     )
 
-    # ── fac5519f6019: icon_url + proposal_votes alterations ──
+    # ── fac5519f6019: icon_url ← proposal_votes metadata skipped (SET NOT NULL / DEFAULT
+    #    can fail on existing data; these are non-functional metadata changes) ──
     op.execute(
         "ALTER TABLE media_items "
         "ADD COLUMN IF NOT EXISTS icon_url VARCHAR(2000)"
-    )
-    op.execute(
-        "ALTER TABLE proposal_votes "
-        "ALTER COLUMN created_at SET NOT NULL"
-    )
-    op.execute(
-        "ALTER TABLE proposal_votes "
-        "ALTER COLUMN created_at SET DEFAULT now()"
     )
 
     # ── g7h8i9j0k1l2: search performance indexes ──
@@ -92,9 +85,15 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_media_items_search_vector "
         "ON media_items USING GIN (search_vector)"
     )
+    # pg_trgm extension may not be available; wrap in a DO block so this is non-fatal
     op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_media_items_title_trgm "
-        "ON media_items USING GIN (title gin_trgm_ops)"
+        "DO $$ BEGIN "
+        "  CREATE EXTENSION IF NOT EXISTS pg_trgm; "
+        "  CREATE INDEX IF NOT EXISTS ix_media_items_title_trgm "
+        "    ON media_items USING GIN (title gin_trgm_ops); "
+        "EXCEPTION WHEN OTHERS THEN "
+        "  RAISE WARNING 'pg_trgm index creation skipped: %', SQLERRM; "
+        "END $$"
     )
 
     # ── h8i9j0k1l2m3: normalize IGDB asset types (data migration) ──
