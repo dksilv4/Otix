@@ -52,10 +52,6 @@ x-otix-env: &otix-env
   # ── Embeddings ──
   HF_HUB_TOKEN: ${HF_HUB_TOKEN}
 
-x-otix-backend-build: &otix-backend-build
-  args:
-    HF_HUB_TOKEN: ${HF_HUB_TOKEN}
-
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -88,7 +84,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     healthcheck:
@@ -108,7 +105,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
@@ -129,7 +127,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
@@ -150,7 +149,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
@@ -171,7 +171,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
@@ -192,7 +193,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
@@ -213,7 +215,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *otix-backend-build
+      args:
+        HF_HUB_TOKEN: ${HF_HUB_TOKEN}
     environment:
       <<: *otix-env
     depends_on:
