@@ -15,7 +15,6 @@ import httpx
 from redis.asyncio import Redis
 
 from otix.infrastructure.config import settings
-from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider, ProviderError
 
 TOKEN_KEY = "spotify:client_token"
@@ -127,11 +126,14 @@ class SpotifyProvider(BaseProvider):
         return resp.get("audio_features", []) or []
 
     async def search(self, query: str, search_type: str = "album", limit: int = 20) -> list[dict]:
-        resp = await self._get("search", {
-            "q": query,
-            "type": search_type,
-            "limit": limit,
-        })
+        resp = await self._get(
+            "search",
+            {
+                "q": query,
+                "type": search_type,
+                "limit": limit,
+            },
+        )
         key = f"{search_type}s" if not search_type.endswith("s") else search_type
         return resp.get(key, {}).get("items", [])
 
@@ -143,7 +145,8 @@ class SpotifyProvider(BaseProvider):
 
     async def _user_request(self, access_token: str, path: str, params: dict | None = None) -> dict:
         resp = await self._request(
-            "GET", f"/{path.lstrip('/')}",
+            "GET",
+            f"/{path.lstrip('/')}",
             params=params,
             headers={"Authorization": f"Bearer {access_token}"},
         )
@@ -161,9 +164,7 @@ class SpotifyProvider(BaseProvider):
         """List liked/saved tracks. Returns: {href, items: [{added_at, track}], ...}"""
         return await self._user_request(access_token, "me/tracks", {"limit": limit, "offset": offset})
 
-    async def get_user_recently_played(
-        self, access_token: str, limit: int = 50, after: int | None = None
-    ) -> dict:
+    async def get_user_recently_played(self, access_token: str, limit: int = 50, after: int | None = None) -> dict:
         """Get the last played tracks for the current user.
 
         Returns: {items: [{track: TrackObject, played_at: ISO8601, context: ...}], ...}
@@ -185,4 +186,42 @@ class SpotifyProvider(BaseProvider):
         if resp.status_code >= 400:
             raise ProviderError(f"Spotify save tracks failed: {resp.status_code}")
 
+    # ── Playlists ──────────────────────────────────────────────────────────
 
+    async def get_user_playlists(self, access_token: str, limit: int = 50, offset: int = 0) -> dict:
+        """GET /me/playlists. Returns {items: [{...}], total, ...}"""
+        return await self._user_request(
+            access_token,
+            "me/playlists",
+            {"limit": limit, "offset": offset},
+        )
+
+    async def get_playlist(
+        self,
+        access_token: str,
+        playlist_id: str,
+        fields: str | None = None,
+    ) -> dict:
+        """GET /playlists/{id}. Optionally filter response fields."""
+        params: dict[str, str] = {}
+        if fields:
+            params["fields"] = fields
+        return await self._user_request(
+            access_token,
+            f"playlists/{playlist_id}",
+            params,
+        )
+
+    async def get_playlist_tracks(
+        self,
+        access_token: str,
+        playlist_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict:
+        """GET /playlists/{id}/tracks. Returns {items: [{track: TrackObject}], total, ...}"""
+        return await self._user_request(
+            access_token,
+            f"playlists/{playlist_id}/tracks",
+            {"limit": limit, "offset": offset},
+        )
