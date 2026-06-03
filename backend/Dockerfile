@@ -30,11 +30,13 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
-# Pre-download the ONNX embedding model so it doesn't fail at runtime
+# Pre-download the ONNX embedding model so it doesn't fail at runtime.
+# If this fails (e.g. no HF_TOKEN or network issues), the model will be
+# downloaded lazily when embeddings are first used.
 ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
-RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5')" || echo "Model download skipped — will download at runtime"
 
 # TODO GPU: Set OTIX_EMBEDDING_API_URL to a GPU embedding server (Ollama/TEI)
 # to use Qwen3-Embedding-8B instead of the CPU ONNX model.
