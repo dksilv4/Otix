@@ -37,7 +37,11 @@ const AdminHydrationPage = lazy(() => import("@/features/admin/organisms/admin-h
 const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboarding-page").then(m => ({ default: m.OnboardingPage })))
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
+const AboutProfilePage = lazy(() => import("@/features/about/organisms/about-profile-page").then(m => ({ default: m.AboutProfilePage })))
+const AboutAchievementsPage = lazy(() => import("@/features/about/organisms/about-achievements-page").then(m => ({ default: m.AboutAchievementsPage })))
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
+const SpotifyPlaylistsPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlists-page").then(m => ({ default: m.SpotifyPlaylistsPage })))
+const SpotifyPlaylistDetailPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlist-detail-page").then(m => ({ default: m.SpotifyPlaylistDetailPage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -311,6 +315,18 @@ const aboutRoute = createRoute({
   component: AboutPage,
 })
 
+const aboutProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about/profile",
+  component: AboutProfilePage,
+})
+
+const aboutAchievementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about/achievements",
+  component: AboutAchievementsPage,
+})
+
 const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/downloads",
@@ -330,6 +346,18 @@ const searchRoute = createRoute({
     type?: string;
     sort?: string;
   }),
+})
+
+const spotifyPlaylistsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library/spotify/playlists",
+  component: SpotifyPlaylistsPage,
+})
+
+const spotifyPlaylistDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/library/spotify/playlists/$id",
+  component: SpotifyPlaylistDetailPage,
 })
 
 // ── Assemble ──
@@ -369,7 +397,11 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   searchRoute,
   aboutRoute,
+  aboutProfileRoute,
+  aboutAchievementsRoute,
   downloadsRoute,
+  spotifyPlaylistsRoute,
+  spotifyPlaylistDetailRoute,
 ])
 
 export interface RouterContext {
