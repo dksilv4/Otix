@@ -23,7 +23,7 @@ export interface SpotifyPlaylist {
   description?: string
   images?: SpotifyPlaylistImage[]
   owner?: SpotifyPlaylistOwner
-  tracks?: { total: number }
+  items?: { total: number }
   public?: boolean
   collaborative?: boolean
   uri?: string

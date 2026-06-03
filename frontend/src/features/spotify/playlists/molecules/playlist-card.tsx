@@ -11,7 +11,7 @@ interface PlaylistCardProps {
 export function PlaylistCard({ playlist, className }: PlaylistCardProps) {
   const navigate = useNavigate()
   const image = playlist.images?.[0]?.url
-  const trackCount = playlist.tracks?.total ?? 0
+  const trackCount = playlist.items?.total ?? 0
   const isSubscribed = playlist._subscription?.subscribed ?? false
 
   return (
