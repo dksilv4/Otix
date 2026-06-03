@@ -48,6 +48,12 @@ x-otix-env: &otix-env
   CELERY_WORKER_USER_CONCURRENCY: ${CELERY_WORKER_USER_CONCURRENCY:-2}
   CELERY_WORKER_CONTROL_CONCURRENCY: ${CELERY_WORKER_CONTROL_CONCURRENCY:-4}
   CELERY_WORKER_CCU_CONCURRENCY: ${CELERY_WORKER_CCU_CONCURRENCY:-1}
+  # ── Embeddings ──
+  HF_HUB_TOKEN: ${HF_HUB_TOKEN}
+
+x-otix-backend-build: &otix-backend-build
+  args:
+    HF_HUB_TOKEN: ${HF_HUB_TOKEN}
 
 services:
   db:
@@ -81,6 +87,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     healthcheck:
@@ -100,6 +107,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
@@ -120,6 +128,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
@@ -140,6 +149,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
@@ -160,6 +170,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
@@ -180,6 +191,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
@@ -200,6 +212,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      <<: *otix-backend-build
     environment:
       <<: *otix-env
     depends_on:
