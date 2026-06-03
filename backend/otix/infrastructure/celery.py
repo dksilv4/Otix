@@ -378,3 +378,15 @@ import otix.tasks.gamification  # noqa: F401 — gamification.*
 import otix.tasks.sync.embedding  # noqa: F401 — embedding.*
 import otix.tasks.sync.spotify  # noqa: F401 — sync.spotify.*
 import otix.tasks.sync.deezer  # noqa: F401 — seed.deezer_cycle, sync.deezer.*
+import otix.tasks.sync.tmdb  # noqa: F401 — sync.tmdb.*
+import otix.tasks.sync.igdb  # noqa: F401 — sync.igdb.*
+import otix.tasks.sync.steam  # noqa: F401 — sync.steam.*, sync.steamgrid.*
+import otix.tasks.sync.musicbrainz  # noqa: F401 — sync.musicbrainz.*
+import otix.tasks.sync.fanart  # noqa: F401 — sync.fanart.*
+import otix.tasks.sync.omdb  # noqa: F401 — sync.omdb.*
+import otix.tasks.sync.lastfm  # noqa: F401 — sync.lastfm.*
+import otix.tasks.sync.theaudiodb  # noqa: F401 — sync.theaudiodb.*
+import otix.tasks.sync.lrclib  # noqa: F401 — sync.lrclib.*
+import otix.tasks.sync.youtube  # noqa: F401 — sync.youtube.*
+import otix.tasks.sync.media  # noqa: F401 — sync.media.*
+import otix.tasks.sync.search  # noqa: F401 — search.*
