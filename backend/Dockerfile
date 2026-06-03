@@ -31,6 +31,8 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
 # Pre-download the ONNX embedding model so it doesn't fail at runtime
+ARG HF_HUB_TOKEN
+ENV HF_HUB_TOKEN=${HF_HUB_TOKEN}
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-large-en-v1.5')"
 
