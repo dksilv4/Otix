@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Badge } from '@ui/atoms/badge'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
+import { MEDIA_TYPE_LABEL } from '@/constants/media'
 import { Calendar, Clock, ExternalLink, Languages } from 'lucide-react'
 
 interface Genre {
@@ -64,13 +65,6 @@ function backdropSrc(url: string): string {
   return url
 }
 
-function mediaTypeLabel(type: string): string {
-  if (type === 'movie') return 'Movie'
-  if (type === 'show') return 'TV'
-  if (type === 'music') return 'Music'
-  return 'Game'
-}
-
 function languageName(code: string): string {
   try {
     return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code.toUpperCase()
@@ -115,20 +109,22 @@ export function MediaHero({
   const languageDisplay = originalLanguage ? languageName(originalLanguage) : null
 
   return (
-    <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden lg:min-h-[75vh] rounded-3xl shadow-[var(--dk-shadow-glass)]', className)}>
+    <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden lg:min-h-[75vh] rounded-3xl ', className)}>
       {/* Backdrop with cinematic gradient */}
-      {heroBackdrop && (
+      {heroBackdrop && (<>
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <img
             src={backdropSrc(heroBackdrop)}
             alt=""
             className="h-full w-full object-cover object-[center_20%] animate-ken-burns"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/40 via-30% to-background/10" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
         </div>
-      )}
+        {/* Image darken for text readability */}
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-background/25" />
+      </>)}
 
       {/* Content */}
       <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8 animate-hero-fade-in">
@@ -166,7 +162,10 @@ export function MediaHero({
 
             {/* Tagline */}
             {tagline && (
-              <p className="max-w-[60ch] text-base italic text-muted-foreground sm:text-lg">
+              <p
+                className="max-w-[60ch] text-base italic text-muted-foreground sm:text-lg"
+                style={{ textShadow: '0 1px 12px rgba(0,0,0,0.5)' }}
+              >
                 {tagline}
               </p>
             )}
@@ -207,7 +206,7 @@ export function MediaHero({
                   variant={mediaType}
                   className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur"
                 >
-                  {mediaTypeLabel(mediaType)}
+                  {MEDIA_TYPE_LABEL[mediaType]}
                 </Badge>
               )}
               {year && (
@@ -243,7 +242,10 @@ export function MediaHero({
 
             {/* Overview */}
             {overview && (
-              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-left">
+              <p
+                className="max-w-2xl text-sm leading-relaxed text-foreground/85 sm:text-left"
+                style={{ textShadow: '0 2px 16px rgba(0,0,0,0.7)' }}
+              >
                 {overview.length > 400 ? overview.slice(0, 400) + '…' : overview}
               </p>
             )}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
@@ -41,6 +41,7 @@ interface GenreOption {
 
 export function PreferencesSection() {
   const { user, refreshUser } = useAuth()
+  const queryClient = useQueryClient()
   const [selectedTypes, setSelectedTypes] = useState<string[]>(user?.preferredMediaTypes ?? ['movie', 'show', 'game', 'music'])
   const [selectedGenres, setSelectedGenres] = useState<string[]>(user?.preferredGenres ?? [])
   const [selectedLangs, setSelectedLangs] = useState<string[]>(user?.preferredLanguages ?? [])
@@ -92,6 +93,7 @@ export function PreferencesSection() {
         preferred_languages: selectedLangs,
       })
       await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['discover'] })
       setSaved(true)
     } catch { /* error handled silently */ }
     finally { setIsSaving(false) }
@@ -230,6 +232,7 @@ export function PreferencesSection() {
                 try {
                   await apiClient.patch('/auth/me', { show_adult_content: checked })
                   await refreshUser()
+                  await queryClient.invalidateQueries({ queryKey: ['discover'] })
                 } catch { setShowAdultContent(!checked) }
               }}
             />

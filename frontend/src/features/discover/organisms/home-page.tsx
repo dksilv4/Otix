@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ChatSearchInput } from '../molecules/chat-search-input'
 import { DailyMoodCheckIn, type RecordedMoodContext } from '../molecules/daily-mood-check-in'
 import { discoverQueries } from '@discover/discover-queries'
@@ -37,6 +38,29 @@ const PLACEHOLDERS = [
   'Chase a new gaming rabbit hole...',
   'What vibe are we on today?',
 ]
+
+const MEDIA_DOT_COLORS: Record<string, { active: string; inactive: string; text: string }> = {
+  movie: {
+    active: 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.6)]',
+    inactive: 'bg-rose-500/30 hover:bg-rose-500/80',
+    text: 'text-rose-400',
+  },
+  show: {
+    active: 'bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.6)]',
+    inactive: 'bg-violet-500/30 hover:bg-violet-500/80',
+    text: 'text-violet-400',
+  },
+  game: {
+    active: 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]',
+    inactive: 'bg-emerald-500/30 hover:bg-emerald-500/80',
+    text: 'text-emerald-400',
+  },
+  music: {
+    active: 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.6)]',
+    inactive: 'bg-amber-500/30 hover:bg-amber-500/80',
+    text: 'text-amber-400',
+  },
+}
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -176,12 +200,20 @@ function HomeExperience() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const searchParams = useSearch({ from: '/' })
+  const queryClient = useQueryClient()
+  const activeType = searchParams.type || 'all'
+
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0)
+
+  const scrollToSection = useCallback((id: string) => {
+    const el = document.getElementById(`section-${id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
 
   const [query, setQuery] = useState('')
-  const activeType = searchParams.type
-  const setActiveType = (type: string) => {
-    navigate({ to: '/', search: { type }, replace: true })
-  }
+  const [isHovered, setIsHovered] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [greeting] = useState(() => getGreeting())
   const [isMoodPromptVisible, setIsMoodPromptVisible] = useState(false)
@@ -293,10 +325,36 @@ function HomeExperience() {
 
   const { data: sections = [] } = useQuery(discoverQueries.sections())
 
-  const filteredSections = useMemo(
-    () => sections.filter(s => activeType === 'all' || s.mediaType === activeType || !s.mediaType),
-    [sections, activeType],
-  )
+  useEffect(() => {
+    if (sections.length === 0) return
+
+    const observerOptions = {
+      root: null,
+      rootMargin: '-40% 0px -40% 0px',
+      threshold: 0,
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id.replace('section-', '')
+          const idx = sections.findIndex((s) => s.id === id)
+          if (idx !== -1) {
+            setActiveSectionIndex(idx)
+          }
+        }
+      })
+    }, observerOptions)
+
+    sections.forEach((section) => {
+      const el = document.getElementById(`section-${section.id}`)
+      if (el) observer.observe(el)
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [sections])
 
   // Rotate placeholder text
   useEffect(() => {
@@ -330,18 +388,20 @@ function HomeExperience() {
     const note = moodNote.trim()
     setMoodNoteSaving(true)
     try {
-      await apiClient.post('/mood-checkins', {
+      const { data } = await apiClient.post('/mood-checkins', {
         feeling: moodNoteContext.feeling,
         mood: moodNoteContext.mood,
         note: note || null,
       })
+      queryClient.setQueryData(['mood-checkins', 'today'], { due: false, checkin: data })
+      showXPToast(10)
       setMoodNote('')
       setMoodNoteContext(null)
       setMoodNoteResetKey((key) => key + 1)
     } finally {
       setMoodNoteSaving(false)
     }
-  }, [moodNote, moodNoteContext, moodNoteSaving])
+  }, [moodNote, moodNoteContext, moodNoteSaving, queryClient])
 
   // Pre-warm the API connection when the search input receives focus
   const prewarmedRef = useRef(false)
@@ -398,12 +458,26 @@ function HomeExperience() {
       </Suspense>
 
       <div className="relative z-10 flex flex-col items-center px-4 pb-16 w-full">
-        {/* Logo hero — 50vh */}
-        <div className="h-[50vh] flex items-center justify-center w-full">
-          <Logo
-            className="h-32 md:h-48 lg:h-56"
-            color="rgba(255,255,255,0.5)"
-          />
+        {/* Logo hero — 50vh with dynamic float */}
+        <div
+          className="h-[50vh] flex items-center justify-center w-full relative"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{
+              opacity: 1,
+              scale: isHovered ? 1.03 : 1,
+            }}
+            transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+            className="relative z-10 select-none group cursor-default"
+          >
+            <Logo
+              className="h-32 md:h-48 lg:h-56 filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+              color="rgba(255,255,255,0.65)"
+            />
+          </motion.div>
         </div>
 
         <div
@@ -551,60 +625,103 @@ function HomeExperience() {
             )}
           </div>
 
-          {activeMode === 'workout' && !isMoodNoteMode ? (
-            <WorkoutHomeContent
-              dayGroups={dayGroups}
-              isLoading={workoutsQuery.isLoading}
-              isEmpty={isEmptyWorkoutHistory}
-              weeklyStats={weeklyStats}
-              workoutStreak={workoutStreak}
-              isAuthenticated={isAuthenticated}
-              onDeleteWorkout={handleDeleteWorkout}
-              isDeleting={deleteWorkoutMutation.isPending}
-              hasMore={!!workoutsQuery.hasNextPage}
-              isFetchingMore={workoutsQuery.isFetchingNextPage}
-              onLoadMore={() => workoutsQuery.fetchNextPage()}
-            />
-          ) : (
-            <>
-            {/* DiscoverHero carousel */}
-            <div className="w-full max-w-[1400px] mt-6 mb-12 rounded-[2rem] overflow-hidden bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
-              <DiscoverHero className="bg-transparent" />
-            </div>
-
-            {/* Discover sections */}
-            <div className="w-full space-y-8">
-              <div className="flex justify-center">
-                <DkTabs defaultValue="all" value={activeType} onValueChange={setActiveType}>
-                  <DkTabList>
-                    {TYPE_TABS.map((tab) => (
-                      <DkTab key={tab.value} value={tab.value}>
-                        {tab.label}
-                      </DkTab>
-                    ))}
-                  </DkTabList>
-                </DkTabs>
-              </div>
-
-              <QueryErrorBoundary>
-                {filteredSections.map((section) => (
-                  <MediaSection
-                  key={section.id}
-                  title={section.title}
-                  mediaType={(section.mediaType as 'movie' | 'show' | 'game' | 'music') || undefined}
-                  listType={section.listType}
-                  genre={section.genre}
-                  language={section.language}
-                  isAnime={section.isAnime}
-                  reason={section.reason}
+          <AnimatePresence mode="wait">
+            {activeMode === 'workout' && !isMoodNoteMode ? (
+              <motion.div
+                key="workout"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full"
+              >
+                <WorkoutHomeContent
+                  dayGroups={dayGroups}
+                  isLoading={workoutsQuery.isLoading}
+                  isEmpty={isEmptyWorkoutHistory}
+                  weeklyStats={weeklyStats}
+                  workoutStreak={workoutStreak}
+                  isAuthenticated={isAuthenticated}
+                  onDeleteWorkout={handleDeleteWorkout}
+                  isDeleting={deleteWorkoutMutation.isPending}
+                  hasMore={!!workoutsQuery.hasNextPage}
+                  isFetchingMore={workoutsQuery.isFetchingNextPage}
+                  onLoadMore={() => workoutsQuery.fetchNextPage()}
                 />
-              ))}
-              </QueryErrorBoundary>
-            </div>
-          </>
-        )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="discover"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full flex flex-col items-center gap-6"
+              >
+                {/* DiscoverHero carousel */}
+                <div className="w-full max-w-[1400px] mt-6 mb-12 rounded-[2rem] overflow-hidden bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
+                  <DiscoverHero className="bg-transparent" />
+                </div>
+
+                {/* Discover sections vertically stacked layout */}
+                <div className="w-full flex flex-col gap-12">
+                  <QueryErrorBoundary>
+                    {sections.map((section) => (
+                      <div
+                        key={section.id}
+                        id={`section-${section.id}`}
+                        className="w-full px-4 lg:px-8 scroll-mt-24"
+                      >
+                        <MediaSection
+                          title={section.title}
+                          mediaType={(section.mediaType as 'movie' | 'show' | 'game' | 'music') || undefined}
+                          listType={section.listType}
+                          genre={section.genre}
+                          language={section.language}
+                          isAnime={section.isAnime}
+                          reason={section.reason}
+                        />
+                      </div>
+                    ))}
+                  </QueryErrorBoundary>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+
+      {/* Floating Vertical Navigation Dots on the Side */}
+      {activeMode === 'discover' && sections.length > 1 && (
+        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 bg-black/20 backdrop-blur-md px-3 py-5 rounded-full shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
+          {sections.map((section, idx) => {
+            const isActive = idx === activeSectionIndex
+            const mType = section.mediaType
+            const colorConfig = mType ? MEDIA_DOT_COLORS[mType] : null
+
+            return (
+              <div key={section.id} className="group relative flex items-center justify-end">
+                <span className={cn(
+                  "absolute right-8 text-[11px] font-bold text-white/90 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 opacity-0 scale-90 origin-right group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-md",
+                  colorConfig?.text
+                )}>
+                  {section.title}
+                </span>
+                <button
+                  onClick={() => scrollToSection(section.id)}
+                  className={cn(
+                    "rounded-full cursor-pointer transition-all duration-300 outline-none",
+                    isActive 
+                      ? cn("w-2.5 h-6", colorConfig?.active || "bg-primary shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]") 
+                      : cn("w-2.5 h-2.5 hover:scale-110", colorConfig?.inactive || "bg-white/20 hover:bg-white/50")
+                  )}
+                  aria-label={`Scroll to ${section.title}`}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

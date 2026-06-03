@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
+import type { MediaType } from '@/constants/media'
+import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR_TINTED } from '@/constants/media'
 import type { PersonCredit } from '../person-queries'
 
 interface EpisodeRef {
@@ -211,16 +213,6 @@ function formatRole(role: string): string {
  return labels[role] || role
 }
 
-function mediaTypeBadge(mediaType: string): { label: string; color: string } {
- const map: Record<string, { label: string; color: string }> = {
- movie: { label: 'Movie', color: 'bg-blue-500/10 text-blue-400 ring-blue-500/20' },
- show: { label: 'Show', color: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20' },
- game: { label: 'Game', color: 'bg-purple-500/10 text-purple-400 ring-purple-500/20' },
- music: { label: 'Music', color: 'bg-amber-500/10 text-amber-400 ring-amber-500/20' },
- }
- return map[mediaType] || { label: mediaType, color: 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/20' }
-}
-
 interface PersonTimelineProps {
  credits: PersonCredit[]
  mediaTypeFilter: string
@@ -330,12 +322,12 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  {displayTitle}
  </span>
  {(() => {
- const b = mediaTypeBadge(credit.mediaType)
+ const mt = credit.mediaType as MediaType
  return (
  <span
- className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ring-1 ring-inset ${b.color}`}
+ className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ring-1 ring-inset ${MEDIA_TYPE_COLOR_TINTED[mt] ?? 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/20'}`}
  >
- {b.label}
+ {MEDIA_TYPE_LABEL[mt] ?? credit.mediaType}
  </span>
  )
  })()}

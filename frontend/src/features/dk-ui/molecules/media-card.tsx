@@ -1,10 +1,11 @@
 import { memo, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Film, Tv, Gamepad2, Music, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { DkImage } from '@dk-ui/atoms/image'
 import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
+import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/image-position'
 
 interface DkMediaCardProps {
@@ -24,20 +25,6 @@ interface DkMediaCardProps {
   subtitle?: string | null
   subtitleColor?: string
   artistName?: string | null
-}
-
-const mediaTypeIcon: Record<string, React.ReactNode> = {
-  movie: <Film className="h-3 w-3" />,
-  show: <Tv className="h-3 w-3" />,
-  game: <Gamepad2 className="h-3 w-3" />,
-  music: <Music className="h-3 w-3" />,
-}
-
-const mediaTypeColor: Record<string, string> = {
-  movie: 'bg-rose-600',
-  show: 'bg-violet-600',
-  game: 'bg-emerald-600',
-  music: 'bg-amber-600',
 }
 
 const DkMediaCard = memo(function DkMediaCard({
@@ -68,6 +55,7 @@ const DkMediaCard = memo(function DkMediaCard({
   const imageUrl = textlessPosterUrl || posterUrl || undefined
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
+  const TypeIcon = MEDIA_TYPE_ICON[mediaType]
 
   return (
     <Link
@@ -112,10 +100,10 @@ const DkMediaCard = memo(function DkMediaCard({
           <span
             className={cn(
               'inline-flex items-center p-1.5 rounded-full text-white',
-              mediaTypeColor[mediaType] ?? 'bg-muted-foreground',
+              MEDIA_TYPE_COLOR[mediaType] ?? 'bg-muted-foreground',
             )}
           >
-            {mediaTypeIcon[mediaType]}
+            {TypeIcon && <TypeIcon className="h-3 w-3" fill="currentColor" />}
           </span>
         </div>
       )}

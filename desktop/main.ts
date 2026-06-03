@@ -125,7 +125,7 @@ function createWindow() {
   });
 }
 
-app.on('ready', () => {
+app.on('ready', async () => {
   gameDetector = new GameDetector(app.getPath('userData'));
 
   // Forward game detection events to renderer
@@ -148,14 +148,18 @@ app.on('ready', () => {
     return result.filePaths[0];
   });
 
+  // Init DB before any IPC handler or window — eliminates race where frontend calls
+  // DB-dependent handlers before DB is ready.
+  await ensureDb().catch((err) => {
+    console.error('[main] DB init failed:', err);
+    throw err;
+  });
+
   // Register modular IPC handlers
   registerDownloadsIPC();
   registerScannerIPC(gameDetector);
   registerInstallerIPC();
   registerGameDetectorIPC(gameDetector);
-
-  // Initialize database eagerly so failures surface at startup, not on first IPC call
-  ensureDb().catch((err) => console.error('[main] DB init failed:', err));
 
   createWindow();
 

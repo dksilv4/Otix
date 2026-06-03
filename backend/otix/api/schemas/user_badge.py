@@ -18,3 +18,12 @@ class BadgeOut(BaseModel):
     claimed: bool = False
     xp_reward: int = 50
 
+
+class BadgeDefOut(BaseModel):
+    badge_key: str
+    label: str
+    description: str
+    icon: str
+    tier: str
+    target: float
+    xp_reward: int

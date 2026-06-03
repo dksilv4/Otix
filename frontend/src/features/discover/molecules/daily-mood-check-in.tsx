@@ -88,7 +88,6 @@ export function DailyMoodCheckIn({
   const queryClient = useQueryClient()
   const [selectedMood, setSelectedMood] = useState<MoodValue | null>(null)
   const [selectedFeeling, setSelectedFeeling] = useState<FeelingValue | null>(null)
-  const [recordedMood, setRecordedMood] = useState<RecordedMoodContext | null>(null)
   const [error, setError] = useState('')
 
   const todayQuery = useQuery({
@@ -134,7 +133,6 @@ export function DailyMoodCheckIn({
         label: option.label,
         mood: option.value,
       }
-      setRecordedMood(nextContext)
       onMoodRecorded?.(nextContext)
     },
   })
@@ -144,14 +142,15 @@ export function DailyMoodCheckIn({
     && user?.dailyMoodCheckinsEnabled !== false
     && !todayQuery.isLoading
     && !!todayQuery.data?.due
-  const isVisible = isPromptDue || recordedMood != null
+  const isVisible = isPromptDue
 
   useEffect(() => {
     onPromptVisibleChange?.(isPromptDue)
   }, [isPromptDue, onPromptVisibleChange])
 
   useEffect(() => {
-    setRecordedMood(null)
+    setSelectedMood(null)
+    setSelectedFeeling(null)
   }, [noteComposerResetKey])
 
   const handleDismiss = async () => {
@@ -164,31 +163,31 @@ export function DailyMoodCheckIn({
     }
   }
 
-  const handleMoodSelect = async (option: (typeof moodOptions)[number]) => {
+  const handleMoodSelect = (option: (typeof moodOptions)[number]) => {
     if (isBusy) return
     setSelectedMood(option.value)
     setError('')
-    try {
-      await submitMutation.mutateAsync({
-        mood: option.value,
-        feeling: selectedFeeling,
-      })
-      showXPToast(MOOD_CHECKIN_XP)
-    } catch {
-      setError('Could not save this check-in. Please try again.')
-    }
+    onMoodRecorded?.({
+      feeling: null,
+      Icon: option.Icon,
+      label: option.label,
+      mood: option.value,
+    })
   }
 
   const handleFeelingSelect = async (feeling: FeelingValue) => {
-    if (!recordedMood || isBusy) return
+    if (!selectedMood || isBusy) return
     const nextFeeling = selectedFeeling === feeling ? null : feeling
     setSelectedFeeling(nextFeeling)
     setError('')
     try {
       await submitMutation.mutateAsync({
-        mood: recordedMood.mood,
+        mood: selectedMood,
         feeling: nextFeeling,
       })
+      showXPToast(MOOD_CHECKIN_XP)
+      setSelectedMood(null)
+      setSelectedFeeling(null)
     } catch {
       setSelectedFeeling(selectedFeeling)
       setError('Could not save this feeling. Please try again.')
@@ -205,7 +204,7 @@ export function DailyMoodCheckIn({
       className="w-full max-w-3xl"
     >
       <div className="flex flex-col items-center gap-2">
-        {isPromptDue && (
+        {isPromptDue && !selectedMood && (
           <div className="flex w-full flex-wrap items-center justify-center gap-1.5 text-xs">
             {moodOptions.map(({ value, label, Icon }) => {
               const isSelected = selectedMood === value
@@ -238,7 +237,7 @@ export function DailyMoodCheckIn({
           </div>
         )}
 
-        {recordedMood && (
+        {isPromptDue && selectedMood && (
           <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
             {feelingOptions.map(({ value, label }) => {
               const isSelected = selectedFeeling === value
