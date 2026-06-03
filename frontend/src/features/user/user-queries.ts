@@ -71,6 +71,16 @@ export interface BadgeDef {
   xpReward: number
 }
 
+export interface AchievementDef {
+  badgeKey: string
+  label: string
+  description: string
+  icon: string
+  tier: string
+  target: number
+  xpReward: number
+}
+
 export interface FollowCounts {
   followers: number
   following: number
@@ -272,6 +282,16 @@ export const userQueries = {
         return data
       },
       staleTime: 1000 * 60 * 5,
+    }),
+
+  achievementDefs: () =>
+    queryOptions({
+      queryKey: ['achievements', 'definitions'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<AchievementDef[]>('/users/achievements')
+        return data
+      },
+      staleTime: 1000 * 60 * 30,
     }),
 
   ratingDistribution: (username: string) =>

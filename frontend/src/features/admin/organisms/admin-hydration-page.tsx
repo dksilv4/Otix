@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/auth-provider'
 import { useAdminHydration } from '../admin-queries'
 import { Check, X, Minus, Loader2, AlertTriangle, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { MEDIA_TYPE_LABEL } from '@/constants/media'
 
 const MEDIA_TYPE_TABS = [
  { value: undefined, label: 'All' },
@@ -13,13 +14,6 @@ const MEDIA_TYPE_TABS = [
  { value: 'game', label: 'Games' },
  { value: 'music', label: 'Music' },
 ] as const
-
-const MEDIA_TYPE_LABELS: Record<string, string> = {
- movie: 'Movie',
- show: 'TV',
- music: 'Music',
- game: 'Game',
-}
 
 const PAGE_SIZE = 50
 
@@ -195,7 +189,7 @@ export function AdminHydrationPage() {
  {data && (
  <p className="mb-4 text-xs text-muted-foreground">
  Showing {data.items.length} of {data.total.toLocaleString()} media items
- {mediaType ? ` (${MEDIA_TYPE_LABELS[mediaType] ?? mediaType})` : ''}
+ {mediaType ? ` (${MEDIA_TYPE_LABEL[mediaType] ?? mediaType})` : ''}
  {search ? ` matching "${search}"` : ''}
  </p>
  )}
@@ -395,7 +389,7 @@ export function AdminHydrationPage() {
 
  <td className="px-2 py-2 text-center">
  <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
- {MEDIA_TYPE_LABELS[item.mediaType] ?? item.mediaType}
+ {MEDIA_TYPE_LABEL[item.mediaType] ?? item.mediaType}
  </span>
  </td>
 

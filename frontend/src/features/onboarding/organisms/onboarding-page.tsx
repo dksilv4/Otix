@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Film, Tv, Gamepad2, Music, ChevronRight, Check, Loader2, ArrowLeft } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -101,6 +101,7 @@ const HUE_TEXT: Record<string, string> = {
 
 export function OnboardingPage() {
   const { user, refreshUser } = useAuth()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { from?: string }
   const fromSettings = search.from === 'settings'
@@ -183,6 +184,7 @@ export function OnboardingPage() {
         preferred_languages: selectedLangs,
       })
       await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['discover'] })
       clearProgress()
       navigate({ to: fromSettings ? '/settings' : '/', replace: true })
     } catch (e: any) {

@@ -32,9 +32,7 @@ class UserRatingService:
         cnt = row.cnt if row else 0
 
         await self.session.execute(
-            update(User)
-            .where(User.id == user_id)
-            .values(avg_user_rating=avg, user_rating_count=cnt)
+            update(User).where(User.id == user_id).values(avg_user_rating=avg, user_rating_count=cnt)
         )
 
     async def get_my_rating(self, rater_id: str, rated_user_id: str) -> UserRating | None:
@@ -85,62 +83,61 @@ class UserRatingService:
         - Tenure (0–150): account age, login streaks, review streaks
         - Impact (0–200): community karma from review upvotes
         """
-        row = (await self.session.execute(
-            select(
-                User.avg_user_rating,
-                User.user_rating_count,
-                User.created_at,
-                User.karma,
-            ).where(User.id == user_id)
-        )).one_or_none()
+        row = (
+            await self.session.execute(
+                select(
+                    User.avg_user_rating,
+                    User.user_rating_count,
+                    User.created_at,
+                    User.karma,
+                    User.is_admin,
+                ).where(User.id == user_id)
+            )
+        ).one_or_none()
         if row is None:
             return {"composite_score": None, "components": {}}
 
-        avg_rating, rating_count, created_at, karma = row
+        avg_rating, rating_count, created_at, karma, is_admin = row
 
         def log2s(v: float) -> float:
             return math.log2(v + 1)
 
         # ── Activity counts (single query) ──
 
-        counts = (await self.session.execute(
-            select(
-                func.coalesce(
-                    select(func.count())
-                    .select_from(Review)
-                    .where(
-                        Review.user_id == user_id,
-                        Review.content.isnot(None),
-                        Review.is_private == False,  # noqa: E712
-                    )
-                    .scalar_subquery(),
-                    0,
-                ).label("content_reviews"),
-                func.coalesce(
-                    select(func.count())
-                    .select_from(MediaItemRating)
-                    .where(
-                        MediaItemRating.user_id == user_id,
-                    )
-                    .scalar_subquery(),
-                    0,
-                ).label("score_only_reviews"),
-                func.coalesce(
-                    select(func.count())
-                    .select_from(UserList)
-                    .where(UserList.user_id == user_id)
-                    .scalar_subquery(),
-                    0,
-                ).label("list_count"),
-                func.coalesce(
-                    select(func.count())
-                    .select_from(Workout)
-                    .where(Workout.user_id == user_id)
-                    .scalar_subquery(),
-                    0,
-                ).label("workout_count"),
+        counts = (
+            await self.session.execute(
+                select(
+                    func.coalesce(
+                        select(func.count())
+                        .select_from(Review)
+                        .where(
+                            Review.user_id == user_id,
+                            Review.content.isnot(None),
+                            Review.is_private == False,  # noqa: E712
+                        )
+                        .scalar_subquery(),
+                        0,
+                    ).label("content_reviews"),
+                    func.coalesce(
+                        select(func.count())
+                        .select_from(MediaItemRating)
+                        .where(
+                            MediaItemRating.user_id == user_id,
+                        )
+                        .scalar_subquery(),
+                        0,
+                    ).label("score_only_reviews"),
+                    func.coalesce(
+                        select(func.count()).select_from(UserList).where(UserList.user_id == user_id).scalar_subquery(),
+                        0,
+                    ).label("list_count"),
+                    func.coalesce(
+                        select(func.count()).select_from(Workout).where(Workout.user_id == user_id).scalar_subquery(),
+                        0,
+                    ).label("workout_count"),
+                )
             )
-        )).one()
+        ).one()
 
         content_reviews = counts.content_reviews
         score_only_reviews = counts.score_only_reviews
@@ -150,10 +147,10 @@ class UserRatingService:
         # ── Contribution (0–250) ──
 
         contribution = (
-            log2s(content_reviews) * 12 +
-            log2s(score_only_reviews) * 4 +
-            log2s(list_count) * 10 +
-            log2s(workout_count) * 6
+            log2s(content_reviews) * 12
+            + log2s(score_only_reviews) * 4
+            + log2s(list_count) * 10
+            + log2s(workout_count) * 6
         )
         contribution = min(contribution, 250)
 
@@ -161,7 +158,7 @@ class UserRatingService:
 
         trust = 0.0
         if avg_rating is not None and rating_count > 0:
-            rating_factor = (avg_rating - 5.0) / 5.0    # -1.0 to +1.0
+            rating_factor = (avg_rating - 5.0) / 5.0  # -1.0 to +1.0
             confidence = min(1.0, rating_count / 20.0)
             trust = rating_factor * confidence * 400
 
@@ -171,9 +168,7 @@ class UserRatingService:
         years = max(0.0, (now - created_at).total_seconds() / (365.25 * 24 * 3600))
         tenure_score = log2s(years) * 30
 
-        streak = await self.session.scalar(
-            select(UserStreak).where(UserStreak.user_id == user_id)
-        )
+        streak = await self.session.scalar(select(UserStreak).where(UserStreak.user_id == user_id))
         longest_login = streak.longest_login_streak if streak else 0
         longest_review = streak.longest_review_streak if streak else 0
 
@@ -188,8 +183,9 @@ class UserRatingService:
 
         # ── Final score ──
 
-        raw = 100 + contribution + trust + tenure_total + impact
-        aura = min(1000, round(raw))
+        base = 1000 if is_admin else 100
+        raw = base + contribution + trust + tenure_total + impact
+        aura = round(raw) if is_admin else min(1000, round(raw))
 
         return {
             "composite_score": aura,

@@ -3,7 +3,7 @@ import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
 import { Film, Tv, Gamepad2, Music } from 'lucide-react'
-import { useInView } from 'framer-motion'
+import { useInView, motion } from 'framer-motion'
 import { mediaQueries, type MediaItemSummary } from '@/features/media/media-queries'
 import { SORT_OPTIONS } from '@/features/discover/molecules/search-sort-bar'
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
@@ -246,15 +246,6 @@ export function BrowsePage() {
               value={search.sort}
               onChange={handleSortChange}
             />
-            {genres && genres.length > 0 && (
-              <DkDropdown
-                variant="filter"
-                label="Genre"
-                options={genreOptions}
-                value={search.genre}
-                onChange={handleGenreChange}
-              />
-            )}
             {certifications && certifications.length > 0 && (
               <DkDropdown
                 variant="filter"
@@ -269,6 +260,42 @@ export function BrowsePage() {
             {total.toLocaleString()} {typeLabel.toLowerCase()}
           </span>
         </div>
+
+        {/* Genre Pill Bar */}
+        {genres && genres.length > 0 && (
+          <div className="relative w-full overflow-hidden">
+            {/* Fade overlays for smooth horizontal scroll edges */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 hidden md:block" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 hidden md:block" />
+            
+            <div className="flex gap-2 overflow-x-auto scrollbar-none py-2 scroll-smooth -mx-4 px-4 md:mx-0 md:px-0">
+              {genreOptions.map((g) => {
+                const isActive = (search.genre || '') === g.value
+                return (
+                  <button
+                    key={g.value}
+                    onClick={() => handleGenreChange(g.value)}
+                    className={cn(
+                      "relative px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors duration-200",
+                      isActive
+                        ? "text-primary-foreground font-bold"
+                        : "text-muted-foreground bg-[var(--dk-surface-glass)] hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)]"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeGenrePill"
+                        className="absolute inset-0 bg-primary rounded-full -z-10 shadow-lg shadow-primary/20"
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    {g.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grid */}

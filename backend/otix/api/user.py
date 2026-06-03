@@ -12,10 +12,23 @@ from otix.domain.admin_edit import MediaEditProposal
 from otix.infrastructure.database import async_session
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
-from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, RatingDistributionItem, RatingDistributionOut, SteamIntegrationPublic, UserProfileOut, UserSearchListResponse, UserSearchResult
+from otix.api.schemas.user import (
+    HallOfFameItem,
+    LibraryStatsOut,
+    MoodCheckinOut,
+    MoodTimelineOut,
+    PlexIntegrationPublic,
+    RatingDistributionItem,
+    RatingDistributionOut,
+    SteamIntegrationPublic,
+    UserProfileOut,
+    UserSearchListResponse,
+    UserSearchResult,
+)
 from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
-from otix.api.schemas.user_badge import BadgeOut
+from otix.api.schemas.user_badge import BadgeDefOut, BadgeOut
+from otix.lib.badges import BADGES
 from otix.api.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
@@ -88,6 +101,22 @@ def _visibility_allows(visibility: dict, provider: str, is_friend: bool) -> bool
     return False
 
 
+@user_router.get("/achievements", response_model=list[BadgeDefOut])
+async def get_achievement_defs() -> list[BadgeDefOut]:
+    return [
+        BadgeDefOut(
+            badge_key=b.key,
+            label=b.label,
+            description=b.description,
+            icon=b.icon,
+            tier=b.tier,
+            target=float(b.target),
+            xp_reward=b.xp_reward,
+        )
+        for b in BADGES.values()
+    ]
+
+
 @user_router.get("/{username}", response_model=UserProfileOut)
 async def get_user_profile(
     username: str,
@@ -110,22 +139,27 @@ async def get_user_profile(
     # and can't be used as a scalar_subquery.
     counts = await db.execute(
         select(
-            select(func.count()).select_from(Review).where(
+            select(func.count())
+            .select_from(Review)
+            .where(
                 Review.user_id == user.id,
                 Review.content.isnot(None),
                 Review.is_private == False,  # noqa: E712
-            ).scalar_subquery(),
-            select(func.count()).select_from(User).where(
-                User.total_xp > user.total_xp
-            ).scalar_subquery(),
+            )
+            .scalar_subquery(),
+            select(func.count()).select_from(User).where(User.total_xp > user.total_xp).scalar_subquery(),
             select(func.count()).select_from(User).scalar_subquery(),
-            select(func.count()).select_from(MediaEditProposal).where(
-                MediaEditProposal.proposer_user_id == user.id
-            ).scalar_subquery(),
-            select(func.count()).select_from(MediaEditProposal).where(
+            select(func.count())
+            .select_from(MediaEditProposal)
+            .where(MediaEditProposal.proposer_user_id == user.id)
+            .scalar_subquery(),
+            select(func.count())
+            .select_from(MediaEditProposal)
+            .where(
                 MediaEditProposal.proposer_user_id == user.id,
                 MediaEditProposal.status == "approved",
-            ).scalar_subquery(),
+            )
+            .scalar_subquery(),
         )
     )
     review_count, higher_count, total_users_count, proposal_count, approved_count = counts.one()
@@ -181,7 +215,9 @@ async def get_user_profile(
     higher_count = higher_count or 0
     xp_rank = higher_count + 1
     total_users_count = total_users_count or 0
-    xp_percentile = round((total_users_count - higher_count) / total_users_count * 100, 1) if total_users_count > 0 else 100.0
+    xp_percentile = (
+        round((total_users_count - higher_count) / total_users_count * 100, 1) if total_users_count > 0 else 100.0
+    )
     proposal_count = proposal_count or 0
     approved_count = approved_count or 0
     proposal_approval_rate = round(approved_count / proposal_count * 100, 1) if proposal_count > 0 else None
@@ -374,17 +410,14 @@ async def get_user_rating_distribution(
 
     # Seed a map: score -> { movie: 0, show: 0, game: 0, music: 0 }
     by_score: dict[int, dict[str, int]] = {
-        score: {"movie": 0, "show": 0, "game": 0, "music": 0}
-        for score in range(1, 11)
+        score: {"movie": 0, "show": 0, "game": 0, "music": 0} for score in range(1, 11)
     }
     total = 0
     for score, media_type, cnt in rows:
         by_score[score][media_type] = cnt
         total += cnt
 
-    distribution = [
-        RatingDistributionItem(score=s, **by_score[s]) for s in range(1, 11)
-    ]
+    distribution = [RatingDistributionItem(score=s, **by_score[s]) for s in range(1, 11)]
 
     return RatingDistributionOut(distribution=distribution, total_ratings=total)
 
@@ -418,9 +451,7 @@ async def claim_badge(
 
     badge_def = BADGES.get(badge_key)
     if not badge_def:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Badge definition not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Badge definition not found")
 
     # Check if user earned this badge
     user_badge = await db.scalar(
@@ -430,14 +461,10 @@ async def claim_badge(
         )
     )
     if not user_badge:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Badge not earned yet"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Badge not earned yet")
 
     if user_badge.claimed:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Badge reward already claimed"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Badge reward already claimed")
 
     # Set claimed
     user_badge.claimed = True
@@ -447,7 +474,6 @@ async def claim_badge(
 
     await db.commit()
     return {"status": "ok", "xp_awarded": badge_def.xp_reward}
-
 
 
 # ── Profile Sections Data ──
@@ -463,42 +489,38 @@ async def get_user_stats(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     # Single query with scalar subqueries instead of 4 round-trips
-    counts = (await db.execute(
-        select(
-            func.coalesce(
-                select(func.count())
-                .select_from(Review)
-                .where(
-                    Review.user_id == user.id,
-                    Review.content.isnot(None),
-                    Review.is_private == False,  # noqa: E712
-                )
-                .scalar_subquery(),
-                0,
-            ).label("review_count"),
-            func.coalesce(
-                select(func.count())
-                .select_from(UserMediaInteraction)
-                .where(UserMediaInteraction.user_id == user.id)
-                .scalar_subquery(),
-                0,
-            ).label("interaction_count"),
-            func.coalesce(
-                select(func.count())
-                .select_from(Workout)
-                .where(Workout.user_id == user.id)
-                .scalar_subquery(),
-                0,
-            ).label("workout_count"),
-            func.coalesce(
-                select(func.count())
-                .select_from(UserList)
-                .where(UserList.user_id == user.id)
-                .scalar_subquery(),
-                0,
-            ).label("list_count"),
+    counts = (
+        await db.execute(
+            select(
+                func.coalesce(
+                    select(func.count())
+                    .select_from(Review)
+                    .where(
+                        Review.user_id == user.id,
+                        Review.content.isnot(None),
+                        Review.is_private == False,  # noqa: E712
+                    )
+                    .scalar_subquery(),
+                    0,
+                ).label("review_count"),
+                func.coalesce(
+                    select(func.count())
+                    .select_from(UserMediaInteraction)
+                    .where(UserMediaInteraction.user_id == user.id)
+                    .scalar_subquery(),
+                    0,
+                ).label("interaction_count"),
+                func.coalesce(
+                    select(func.count()).select_from(Workout).where(Workout.user_id == user.id).scalar_subquery(),
+                    0,
+                ).label("workout_count"),
+                func.coalesce(
+                    select(func.count()).select_from(UserList).where(UserList.user_id == user.id).scalar_subquery(),
+                    0,
+                ).label("list_count"),
+            )
         )
-    )).one()
+    ).one()
 
     review_count = counts.review_count
     interaction_count = counts.interaction_count
@@ -614,19 +636,21 @@ async def get_user_activity(
     events: list[dict] = []
 
     for review, media in review_rows:
-        events.append({
-            "type": "review",
-            "timestamp": review.created_at.isoformat(),
-            "summary": f"Reviewed {media.title}",
-            "score": review.score,
-            "content": review.content[:200] if review.content else None,
-            "media_item": {
-                "id": media.id,
-                "title": media.title,
-                "media_type": media.media_type,
-                "poster_url": media.poster_url,
-            },
-        })
+        events.append(
+            {
+                "type": "review",
+                "timestamp": review.created_at.isoformat(),
+                "summary": f"Reviewed {media.title}",
+                "score": review.score,
+                "content": review.content[:200] if review.content else None,
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     for interaction, media in interaction_rows:
         action = interaction.interaction_type
@@ -639,31 +663,35 @@ async def get_user_activity(
             "completed": "Completed",
             "dropped": "Dropped",
         }.get(action, action.capitalize())
-        events.append({
-            "type": "interaction",
-            "timestamp": interaction.created_at.isoformat(),
-            "summary": f"{past_tense} {media.title}",
-            "interaction_type": action,
-            "media_item": {
-                "id": media.id,
-                "title": media.title,
-                "media_type": media.media_type,
-                "poster_url": media.poster_url,
-            },
-        })
+        events.append(
+            {
+                "type": "interaction",
+                "timestamp": interaction.created_at.isoformat(),
+                "summary": f"{past_tense} {media.title}",
+                "interaction_type": action,
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     for ei, episode, season, media in episode_rows:
-        events.append({
-            "type": "episode_watched",
-            "timestamp": ei.created_at.isoformat(),
-            "summary": f"Watched S{season.season_number}E{episode.episode_number} of {media.title}",
-            "media_item": {
-                "id": media.id,
-                "title": media.title,
-                "media_type": media.media_type,
-                "poster_url": media.poster_url,
-            },
-        })
+        events.append(
+            {
+                "type": "episode_watched",
+                "timestamp": ei.created_at.isoformat(),
+                "summary": f"Watched S{season.season_number}E{episode.episode_number} of {media.title}",
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     # Sort merged timeline by timestamp desc
     events.sort(key=lambda e: e["timestamp"], reverse=True)

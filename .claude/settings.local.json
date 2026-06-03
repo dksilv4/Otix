@@ -376,7 +376,19 @@
       "Bash(awk '/10:5[7-9]|10:5[7-9]|11:0[0-9]/')",
       "Bash(ruff check *)",
       "Bash(.venv/Scripts/ruff check *)",
-      "Bash(py -m ruff check --fix backend/otix/infrastructure/database.py)"
+      "Bash(py -m ruff check --fix backend/otix/infrastructure/database.py)",
+      "Bash(gh repo *)",
+      "Bash(gh push *)",
+      "Bash(Sort-Object)",
+      "Bash(Select-String -Path \"about-page\" -SimpleMatch -Context 0,2)",
+      "Bash(.venv\\\\Scripts\\\\python *)",
+      "PowerShell(.venv\\\\Scripts\\\\python -m ruff format backend\\\\otix\\\\services\\\\spotify_auth_service.py)",
+      "Bash(ruff format *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(& \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\.venv\\\\Scripts\\\\ruff.exe\" format \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\services\\\\spotify_auth_service.py\")",
+      "PowerShell(ruff check *)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-Content *)"
     ]
   },
   "outputStyle": "default"
