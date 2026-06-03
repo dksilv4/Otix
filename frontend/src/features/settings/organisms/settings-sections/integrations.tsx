@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient, API_BASE_URL, convertKeysToCamelCase } from '@/lib/api-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -13,7 +13,7 @@ import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 import { cn } from '@/lib/utils'
 import { useDownloadConfig, useConnectionTest } from '@/features/downloads/use-downloads'
 import { useExperiment } from '@/features/experiments/experiments-provider'
-import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle, ListMusic } from 'lucide-react'
 
 type SteamProfile = {
   personaname: string | null
@@ -415,6 +415,7 @@ function IntegrationStats({ items }: { items: { label: string; value: string | n
 export function IntegrationsSection() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -1395,6 +1396,7 @@ export function IntegrationsSection() {
                     ]} />
                   )}
                   <IntegrationAction label="Library Sync" description="Spotify Library" result={spotifySyncResult ? `${spotifySyncResult.likedMatched} matched out of ${spotifySyncResult.likedTotal} liked songs` : null} buttonLabel={spotifySyncing ? 'Syncing...' : spotifySyncResult ? 'Re-sync' : 'Sync Library'} buttonIcon={RefreshCw} onPress={handleSpotifySync} loading={spotifySyncing} disabled={spotifySyncing} progress={spotifyProgress && <span className="text-xs text-primary">{spotifyProgress.phase}{spotifyProgress.detail ? ` (${spotifyProgress.detail})` : ''}</span>} />
+                  <IntegrationAction label="Playlists" description="Spotify Playlists" buttonLabel="Browse" buttonIcon={ListMusic} onPress={() => navigate({ to: '/library/spotify/playlists' })} muted />
                   {spotifyMessage && <p className="px-5 py-2 text-xs text-green-500">{spotifyMessage}</p>}
                   {spotifyError && <p className="px-5 py-2 text-xs text-destructive">{spotifyError}</p>}
                 </>
