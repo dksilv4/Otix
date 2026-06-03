@@ -1,6 +1,6 @@
 [project]
 name = "otix"
-version = "0.2.6"
+version = "0.2.7"
 description = "Otix media tracking and discovery platform"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -60,7 +60,7 @@ select = [
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
 ]
-ignore = ["E501"]
+ignore = ["E501", "B008"]
 
 [tool.ruff.format]
 quote-style = "double"
