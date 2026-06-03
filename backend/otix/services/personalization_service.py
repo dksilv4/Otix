@@ -522,9 +522,7 @@ class PersonalizationService:
               AND mi.media_type = :media_type
               AND mi.embedding IS NOT NULL
               AND umi.interaction_type IN ('liked', 'rated', 'watched', 'played', 'listened')
-            ORDER BY
-              CASE WHEN umi.interaction_type = 'rated' THEN umi.score ELSE 5 END DESC,
-              umi.created_at DESC
+            ORDER BY umi.created_at DESC
             LIMIT 10
         """)
         result = await self.session.execute(seed_query, {
