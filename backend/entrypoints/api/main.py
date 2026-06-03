@@ -9,7 +9,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-import sqlalchemy as sa
 from sqlalchemy import select
 
 from otix.infrastructure.config import settings
@@ -43,45 +42,6 @@ async def lifespan(app: FastAPI) -> Any:
     except Exception:
         setup_logging()
         logger.exception("migrations failed — continuing startup")
-
-    # Ensure schema columns that may have been back-ported into the initial
-    # migration after it was applied to the production DB are present.
-    try:
-        from otix.infrastructure.database import _get_engine
-
-        engine = _get_engine()
-        async with engine.connect() as conn:
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100)"
-                )
-            )
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE media_items ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0"
-                )
-            )
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE external_ids ADD COLUMN IF NOT EXISTS entity_id VARCHAR(16)"
-                )
-            )
-            await conn.execute(
-                sa.text(
-                    "CREATE INDEX IF NOT EXISTS ix_external_id_entity ON external_ids (entity_type, entity_id)"
-                )
-            )
-            await conn.execute(
-                sa.text(
-                    "ALTER TABLE involved_companies ADD COLUMN IF NOT EXISTS production BOOLEAN NOT NULL DEFAULT false"
-                )
-            )
-            await conn.commit()
-        setup_logging()
-        logger.info("schema columns ensured")
-    except Exception:
-        setup_logging()
-        logger.exception("schema column fixup failed — continuing startup")
 
     await get_redis()
 
