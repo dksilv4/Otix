@@ -63,6 +63,35 @@ services:
           cpus: "0.25"
           memory: 128M
 
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    ports:
+      - "6432:6432"
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: otix
+      DB_PASSWORD: password
+      DB_NAME: otix_dev
+      LISTEN_ADDR: "0.0.0.0"
+      LISTEN_PORT: "6432"
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: "25"
+      MAX_CLIENT_CONN: "150"
+      MIN_POOL_SIZE: "5"
+      RESERVE_POOL_SIZE: "5"
+      AUTH_TYPE: scram-sha-256
+      SERVER_IDLE_TIMEOUT: "300"
+      CLIENT_IDLE_TIMEOUT: "600"
+      QUERY_TIMEOUT: "30"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
+      interval: 5s
+      retries: 5
+
   api:
     build:
       context: ./backend
@@ -73,8 +102,8 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "20"
@@ -82,6 +111,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     command: uvicorn entrypoints.api.main:app --host 0.0.0.0 --port 8000 --reload
@@ -104,27 +135,23 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "6"
-      DB_MAX_OVERFLOW: "4"
+      DB_POOL_SIZE: "16"
+      DB_MAX_OVERFLOW: "8"
       OTIX_WORKER_TYPE: ingest
+      CELERY_WORKER_PREFETCH_MULTIPLIER: "4"
+      APP_ENV: development
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 4 -n otix-ingest@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
-          cpus: "3"
-          memory: 2G
-        reservations:
-          cpus: "1"
-          memory: 512M
+    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer -c 10 -n otix-ingest@%h --loglevel WARNING --pool=threads
 
   worker-enrich:
     build:
@@ -134,27 +161,22 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "4"
-      DB_MAX_OVERFLOW: "3"
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "6"
       OTIX_WORKER_TYPE: enrich
+      CELERY_WORKER_PREFETCH_MULTIPLIER: "4"
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 2 -n otix-enrich@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
+    command: celery -A otix.infrastructure.celery worker -Q enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib -c 6 -n otix-enrich@%h --loglevel WARNING --pool=threads
 
   worker-reactive:
     build:
@@ -164,27 +186,21 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "4"
-      DB_MAX_OVERFLOW: "3"
+      DB_POOL_SIZE: "8"
+      DB_MAX_OVERFLOW: "4"
       OTIX_WORKER_TYPE: reactive
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q reactive-fast,reactive-user -c 2 -n otix-reactive@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
+    command: celery -A otix.infrastructure.celery worker -Q reactive-fast,reactive-user -c 4 -n otix-reactive@%h --loglevel WARNING --pool=threads
 
   worker-maintain:
     build:
@@ -194,27 +210,21 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
-      DB_POOL_SIZE: "4"
-      DB_MAX_OVERFLOW: "3"
+      DB_POOL_SIZE: "6"
+      DB_MAX_OVERFLOW: "4"
       OTIX_WORKER_TYPE: maintain
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q maintain -c 1 -n otix-maintain@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
+    command: celery -A otix.infrastructure.celery worker -Q maintain -c 3 -n otix-maintain@%h --loglevel WARNING --pool=threads
 
   worker-embedding:
     build:
@@ -224,8 +234,8 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "8"
@@ -234,17 +244,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
-    deploy:
-      resources:
-        limits:
-          cpus: "3"
-          memory: 10G
-        reservations:
-          cpus: "1"
-          memory: 2G
+    command: celery -A otix.infrastructure.celery worker -Q embedding -c 2 -n otix-embedding@%h --loglevel WARNING
   beat:
     build:
       context: ./backend
@@ -253,13 +257,16 @@ services:
       - ./backend:/app
     env_file: ./backend/.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@db:5432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@db:5432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
+      APP_ENV: development
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
