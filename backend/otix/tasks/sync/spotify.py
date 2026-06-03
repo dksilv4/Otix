@@ -9,7 +9,7 @@ No Spotify catalog enrichment occurs — Otix is the source of truth.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -23,11 +23,11 @@ from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.progress import incr as _progress_incr
 from otix.lib.slug import slugify
-from otix.lib.types import JSONValue
 from otix.lib.task_guard import TaskGuard
+from otix.lib.types import JSONValue
 from otix.providers.base import RateLimitError
 from otix.providers.spotify.client import SpotifyProvider
-from otix.providers.spotify.transformer import extract_artist_spotify_ids, extract_track_isrc, extract_album_upc
+from otix.providers.spotify.transformer import extract_album_upc, extract_track_isrc
 from otix.services.external_id_service import ExternalIDService
 
 logger = structlog.get_logger()
@@ -164,7 +164,7 @@ def sync_spotify_seed_album_task(self, spotify_id: str) -> dict | None:
     try:
         return run_async(_sync_spotify_seed_album(spotify_id))
     except RateLimitError as e:
-        raise self.retry(countdown=e.retry_after or 60)
+        raise self.retry(countdown=e.retry_after or 60) from e
 
 
 async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
@@ -214,12 +214,15 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
                 parts = str(release_date_raw).split("-")
                 if len(parts) == 3:
                     from datetime import date
+
                     release_date = date.fromisoformat(str(release_date_raw))
                 elif len(parts) == 2:
                     from datetime import date
+
                     release_date = date(int(parts[0]), int(parts[1]), 1)
                 elif len(parts) == 1:
                     from datetime import date
+
                     release_date = date(int(parts[0]), 1, 1)
             except (ValueError, IndexError):
                 pass
@@ -230,7 +233,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
             media_type="music",
             poster_url=poster_url,
             release_date=release_date,
-            synced_at=datetime.now(timezone.utc),
+            synced_at=datetime.now(UTC),
         )
         session.add(item)
         await session.flush()
@@ -249,12 +252,14 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
         await _create_spotify_artist_credits(session, item.id, artists_data)
 
         # Store Spotify ID as ExternalID
-        session.add(ExternalID(
-            provider="spotify",
-            external_id=spotify_id,
-            media_item_id=item.id,
-            media_type="music",
-        ))
+        session.add(
+            ExternalID(
+                provider="spotify",
+                external_id=spotify_id,
+                media_item_id=item.id,
+                media_type="music",
+            )
+        )
 
         # Track ISRCs for downstream MB matching
         isrcs: list[str] = []
@@ -284,17 +289,23 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
 
         # Store barcode if available
         if upc:
-            session.add(ExternalID(
-                provider="barcode",
-                external_id=upc,
-                media_item_id=item.id,
-                media_type="music",
-            ))
+            session.add(
+                ExternalID(
+                    provider="barcode",
+                    external_id=upc,
+                    media_item_id=item.id,
+                    media_type="music",
+                )
+            )
 
         await session.commit()
 
-        logger.info("spotify album seeded",
-            otix_id=item.id, spotify_id=spotify_id, title=title, artist=primary_artist_name,
+        logger.info(
+            "spotify album seeded",
+            otix_id=item.id,
+            spotify_id=spotify_id,
+            title=title,
+            artist=primary_artist_name,
         )
 
         # Chain into Tier 1-2-3 pipeline (no Spotify enrichment)
@@ -322,8 +333,7 @@ def sync_spotify_user_library_task(self, user_id: str, task_id: str | None = Non
     try:
         return run_async(_sync_spotify_user_library(user_id, task_id))
     except RateLimitError as e:
-        raise self.retry(countdown=e.retry_after or 120)
-
+        raise self.retry(countdown=e.retry_after or 120) from e
 
 async def _sync_spotify_user_library(user_id: str, task_id: str | None = None) -> dict | None:
     from otix.services.spotify_auth_service import get_user_access_token
@@ -357,8 +367,7 @@ def sync_spotify_recently_played_task(self, user_id: str, task_id: str | None = 
     try:
         return run_async(_sync_spotify_recently_played(user_id, task_id))
     except RateLimitError as e:
-        raise self.retry(countdown=e.retry_after or 120)
-
+        raise self.retry(countdown=e.retry_after or 120) from e
 
 async def _sync_spotify_recently_played(user_id: str, task_id: str | None = None) -> dict | None:
     from otix.services.spotify_auth_service import get_user_access_token
@@ -377,3 +386,183 @@ async def _sync_spotify_recently_played(user_id: str, task_id: str | None = None
         result = await sync_spotify_recently_played(session, user, token, task_id=task_id)
         await session.commit()
         return result
+
+
+# ── Playlist sync ──────────────────────────────────────────────────
+
+
+@app.task(
+    name="sync.spotify.sync_playlist",
+    bind=True,
+    max_retries=1,
+)
+def sync_spotify_playlist_task(
+    self, user_id: str, playlist_id: str, playlist_name: str, task_id: str | None = None
+) -> dict | None:
+    """Sync a single Spotify playlist for a user into Otix."""
+    try:
+        return run_async(_sync_spotify_playlist(user_id, playlist_id, playlist_name, task_id))
+    except RateLimitError as e:
+        raise self.retry(countdown=e.retry_after or 120) from e
+
+async def _sync_spotify_playlist(
+    user_id: str, playlist_id: str, playlist_name: str, task_id: str | None = None
+) -> dict | None:
+    from otix.services.spotify_auth_service import get_user_access_token
+    from otix.services.spotify_playlist_service import sync_playlist_to_library
+
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        if user is None or user.spotify_id is None:
+            return None
+
+        token = await get_user_access_token(user)
+        if token is None:
+            logger.warning("spotify playlist sync failed, no valid token", user_id=user_id, playlist_id=playlist_id)
+            return None
+
+        result = await sync_playlist_to_library(
+            session,
+            user,
+            token,
+            playlist_id=playlist_id,
+            playlist_name=playlist_name,
+            task_id=task_id,
+        )
+
+        # Update subscription snapshot_id and last_synced_at
+        from sqlalchemy import text
+
+        snapshot = result.get("snapshot_id")
+        if snapshot:
+            await session.execute(
+                text("""
+                    UPDATE spotify_playlist_subscriptions
+                    SET playlist_snapshot = :snapshot,
+                        last_synced_at = :now
+                    WHERE user_id = :user_id AND playlist_id = :playlist_id
+                """),
+                {
+                    "snapshot": snapshot,
+                    "now": datetime.now(UTC),
+                    "user_id": user_id,
+                    "playlist_id": playlist_id,
+                },
+            )
+
+        await session.commit()
+        return result
+
+
+@app.task(
+    name="sync.spotify.refresh_all_playlists",
+    bind=True,
+    max_retries=0,
+)
+def refresh_all_playlists_task(self) -> dict:
+    """Refresh all subscribed playlists across all users.
+
+    Queries subscriptions with auto_sync=True, checks snapshot_id,
+    only syncs playlists that have changed.
+    """
+    try:
+        return run_async(_refresh_all_playlists())
+    except Exception:
+        logger.exception("refresh all playlists failed")
+        return {"error": "Refresh failed"}
+
+
+async def _refresh_all_playlists() -> dict:
+    from otix.services.spotify_auth_service import get_user_access_token
+    from otix.services.spotify_playlist_service import sync_playlist_to_library
+
+    async with async_session() as session:
+        from sqlalchemy import text
+
+        result = await session.execute(
+            text("""
+                SELECT sps.user_id, sps.playlist_id, sps.playlist_name, sps.playlist_snapshot,
+                       u.spotify_id, u.spotify_access_token, u.spotify_refresh_token, u.spotify_token_expires_at
+                FROM spotify_playlist_subscriptions sps
+                JOIN users u ON u.id = sps.user_id
+                WHERE sps.auto_sync = true
+                ORDER BY sps.last_synced_at ASC NULLS FIRST
+                LIMIT 50
+            """)
+        )
+        rows = result.all()
+
+        total = 0
+        synced = 0
+        skipped = 0
+
+        for row in rows:
+            import uuid
+
+            user_id = str(row.user_id) if not isinstance(row.user_id, str) else row.user_id
+
+            # Build user object with enough data for get_user_access_token
+            user = User(
+                id=user_id,
+                spotify_id=row.spotify_id,
+                spotify_access_token=row.spotify_access_token,
+                spotify_refresh_token=row.spotify_refresh_token,
+                spotify_token_expires_at=row.spotify_token_expires_at,
+            )
+
+            token = await get_user_access_token(user)
+            if token is None:
+                skipped += 1
+                continue
+
+            total += 1
+            redis = await get_redis()
+
+            # Check if playlist has changed
+            from otix.providers.spotify.client import SpotifyProvider
+
+            spotify = SpotifyProvider(redis)
+            current_snapshot = row.playlist_snapshot
+
+            try:
+                playlist_info = await spotify.get_playlist(token, row.playlist_id, fields="snapshot_id")
+                new_snapshot = playlist_info.get("snapshot_id")
+                if new_snapshot and new_snapshot == current_snapshot:
+                    skipped += 1
+                    continue
+            except Exception:
+                skipped += 1
+                continue
+
+            # Playlist changed — sync it
+            task_id = uuid.uuid4().hex[:16]
+            await sync_playlist_to_library(
+                session,
+                user,
+                token,
+                playlist_id=row.playlist_id,
+                playlist_name=row.playlist_name or "Unknown",
+                task_id=task_id,
+            )
+
+            # Update snapshot
+            await session.execute(
+                text("""
+                    UPDATE spotify_playlist_subscriptions
+                    SET playlist_snapshot = :snapshot,
+                        last_synced_at = :now
+                    WHERE user_id = :user_id AND playlist_id = :playlist_id
+                """),
+                {
+                    "snapshot": new_snapshot,
+                    "now": datetime.now(UTC),
+                    "user_id": user_id,
+                    "playlist_id": row.playlist_id,
+                },
+            )
+
+            synced += 1
+
+        await session.commit()
+        logger.info("spotify playlists refresh completed", total=total, synced=synced, skipped=skipped)
+        return {"total": total, "synced": synced, "skipped": skipped}

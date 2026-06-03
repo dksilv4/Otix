@@ -1,0 +1,166 @@
+<h2>XP Level Icons — Live Preview</h2>
+<p class="subtitle">Each level spins faster. More shapes added per tier. Colors are distinct.</p>
+
+<style>
+  .g { display:grid; grid-template-columns:repeat(4, 1fr); gap:24px; margin-top:24px; }
+  .c { background:#2e2e2e; border-radius:20px; padding:28px 16px 18px; text-align:center; }
+  .c .lvl { font-size:10px; font-weight:600; color:rgba(255,255,255,0.2); letter-spacing:0.1em; margin-bottom:6px; text-transform:uppercase; }
+  .c .sw { height:88px; display:flex; align-items:center; justify-content:center; }
+  .c .nm { font-size:15px; font-weight:600; margin-top:6px; }
+  .c .el { font-size:10px; color:rgba(255,255,255,0.25); margin-top:2px; }
+  .c .spd { font-size:9px; color:rgba(255,255,255,0.12); margin-top:2px; font-family:monospace; }
+
+  @keyframes s14 { to{transform:rotate(360deg)} }  .a1 .sw .g { animation:s14 14s linear infinite; transform-origin:512px 512px; }
+  @keyframes s11 { to{transform:rotate(360deg)} }  .a2 .sw .g { animation:s11 11s linear infinite; transform-origin:512px 512px; }
+  @keyframes s8  { to{transform:rotate(360deg)} }  .a3 .sw .g { animation:s8 8s linear infinite; transform-origin:512px 512px; }
+  @keyframes s6  { to{transform:rotate(360deg)} }  .a4 .sw .g { animation:s6 6s linear infinite; transform-origin:512px 512px; }
+  @keyframes s5  { to{transform:rotate(360deg)} }  .a5 .sw .g { animation:s5 5s linear infinite; transform-origin:512px 512px; }
+  @keyframes s4  { to{transform:rotate(360deg)} }  .a6 .sw .g { animation:s4 4s linear infinite; transform-origin:512px 512px; }
+  @keyframes s3  { to{transform:rotate(360deg)} }  .a7 .sw .g { animation:s3 3s linear infinite; transform-origin:512px 512px; }
+  @keyframes scw { to{transform:rotate(360deg)} }
+  @keyframes sccw { to{transform:rotate(-360deg)} }
+  @keyframes bp { 0%,100%{opacity:0;transform:scale(.3)} 50%{opacity:.8;transform:scale(1)} }
+  @keyframes dd { 0%,100%{stroke-dashoffset:0} 50%{stroke-dashoffset:-80} }
+</style>
+
+<div class="g">
+
+  <!-- Novice -->
+  <div class="c">
+    <div class="lvl">Level 1–4</div>
+    <div class="sw">
+      <svg width="40" height="40" viewBox="0 0 2048 2048"><circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/></svg>
+    </div>
+    <div class="nm" style="color:#d97706">Novice</div>
+    <div class="el">Empty circle</div>
+    <div class="spd">—</div>
+  </div>
+
+  <!-- Apprentice -->
+  <div class="c a1">
+    <div class="lvl">Level 5–9</div>
+    <div class="sw">
+      <svg width="40" height="40" viewBox="0 0 2048 2048">
+        <g class="g">
+          <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+          <g style="transform-origin:1024px 1024px;animation:sccw 14s linear infinite">
+            <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#94a3b8" stroke-width="30" stroke-linecap="round" stroke-dasharray="8 20"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <div class="nm" style="color:#94a3b8">Apprentice</div>
+    <div class="el">Dotted ∞ · counter-spin</div>
+    <div class="spd">14s · ∞ spins opposite</div>
+  </div>
+
+  <!-- Adept -->
+  <div class="c a2">
+    <div class="lvl">Level 10–19</div>
+    <div class="sw">
+      <svg width="40" height="40" viewBox="0 0 2048 2048">
+        <g class="g">
+          <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#fbbf24" stroke-width="35" stroke-linecap="round" stroke-dasharray="8 20"/>
+        </g>
+      </svg>
+    </div>
+    <div class="nm" style="color:#fbbf24">Adept</div>
+    <div class="el">Dotted ∞</div>
+    <div class="spd">11s</div>
+  </div>
+
+  <!-- Expert -->
+  <div class="c a3">
+    <div class="lvl">Level 20–34</div>
+    <div class="sw">
+      <svg width="40" height="40" viewBox="0 0 2048 2048">
+        <g class="g">
+          <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#34d399" stroke-width="50" stroke-linecap="round"/>
+          <circle cx="1024" cy="274" r="24" fill="#34d399" opacity=".6" style="transform-origin:1024px 1024px;animation:sccw 8s linear infinite"/>
+        </g>
+      </svg>
+    </div>
+    <div class="nm" style="color:#34d399">Expert</div>
+    <div class="el">Solid ∞ + orbiting dot</div>
+    <div class="spd">8s · dot counter-spins</div>
+  </div>
+
+  <!-- Master -->
+  <div class="c a4">
+    <div class="lvl" style="color:#22d3ee">Level 35–49</div>
+    <div class="sw">
+      <svg width="44" height="44" viewBox="0 0 2048 2048">
+        <g class="g">
+          <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#22d3ee" stroke-width="80" stroke-linecap="round" style="filter:drop-shadow(0 0 12px #22d3ee)"/>
+          <circle cx="1024" cy="160" r="28" fill="#22d3ee" style="transform-origin:1024px 1024px;animation:sccw 6s linear infinite"/>
+          <circle cx="1024" cy="1888" r="18" fill="#22d3ee" opacity=".5" style="transform-origin:1024px 1024px;animation:sccw 6s linear infinite"/>
+        </g>
+      </svg>
+    </div>
+    <div class="nm" style="color:#22d3ee">★ Master</div>
+    <div class="el">Thick ∞ glow + 2 dots</div>
+    <div class="spd">6s · dots counter-spin</div>
+  </div>
+
+  <!-- Grandmaster -->
+  <div class="c a5">
+    <div class="lvl">Level 50–74</div>
+    <div class="sw">
+      <svg width="44" height="44" viewBox="0 0 2048 2048">
+        <g class="g">
+          <path d="M345 1024 C345 600 805 645 1024 1024 C1243 1403 1703 1448 1703 1024 C1703 600 1243 645 1024 1024 C805 1403 345 1448 345 1024" fill="none" stroke="#a78bfa" stroke-width="40" stroke-linecap="round" opacity=".35"/>
+          <path d="M545 1024 C545 800 805 845 1024 1024 C1243 1203 1503 1248 1503 1024 C1503 800 1243 845 1024 1024 C805 1203 545 1248 545 1024" fill="none" stroke="#a78bfa" stroke-width="40" stroke-linecap="round"/>
+          <circle cx="1024" cy="1024" r="600" fill="none" stroke="#a78bfa" stroke-width="10" opacity=".15" style="transform-origin:1024px 1024px;animation:sccw 8s linear infinite"/>
+        </g>
+        <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#a78bfa">Grandmaster</div>
+    <div class="el">Dual ∞ + ring</div>
+    <div class="spd">4s · ring counter-spins</div>
+  </div>
+
+  <!-- Legend -->
+  <div class="c a6">
+    <div class="lvl">Level 75–99</div>
+    <div class="sw">
+      <svg width="44" height="44" viewBox="0 0 2048 2048">
+        <g class="g">
+          <circle cx="1024" cy="1024" r="750" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="26"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#f472b6" stroke-width="55" stroke-linecap="square"/>
+          <path d="M700 1024 L1024 700 L1348 1024 L1024 1348Z" fill="#f472b6" fill-opacity="0.15" stroke="#f472b6" stroke-width="20" stroke-linejoin="miter"/>
+          <path d="M1024 100 L1024 200 M1024 1848 L1024 1948 M100 1024 L200 1024 M1848 1024 L1948 1024" stroke="#f472b6" stroke-width="30" stroke-linecap="round" opacity=".5"/>
+        </g>
+      </svg>
+    </div>
+    <div class="nm" style="color:#f472b6">Legend</div>
+    <div class="el">Angular ∞ + diamond + stars</div>
+    <div class="spd">5s</div>
+  </div>
+
+  <!-- Transcendent -->
+  <div class="c a7">
+    <div class="lvl">Level 100+</div>
+    <div class="sw">
+      <svg width="48" height="48" viewBox="0 0 2048 2048">
+        <g class="g">
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" fill="none" stroke="#fb7185" stroke-width="70" stroke-linecap="round" style="filter:drop-shadow(0 0 20px #fb7185)"/>
+          <circle cx="200" cy="400" r="14" fill="#fb7185" style="animation:bp 2s ease-in-out infinite"/>
+          <circle cx="1848" cy="400" r="12" fill="#fb7185" style="animation:bp 2s ease-in-out .5s infinite"/>
+          <circle cx="200" cy="1600" r="10" fill="#fb7185" style="animation:bp 2s ease-in-out 1s infinite"/>
+          <circle cx="1848" cy="1600" r="16" fill="#fb7185" style="animation:bp 2s ease-in-out 1.5s infinite"/>
+        </g>
+        <circle cx="1024" cy="1024" r="770" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="22" stroke-dasharray="100 20" style="animation:dd 3s ease-in-out infinite"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#fb7185">Transcendent</div>
+    <div class="el">∞ burst + particles</div>
+    <div class="spd">3s · particles pop</div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:20px;text-align:center">All animating live — rotation speed, extra shapes, orbiting dots, burst particles. Scroll up/down to re-trigger if needed.</p>

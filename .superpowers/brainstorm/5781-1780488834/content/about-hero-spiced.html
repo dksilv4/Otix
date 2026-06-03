@@ -1,0 +1,186 @@
+<h2>Spiced Up — Same Clean Layout, More Visual Punch</h2>
+<p class="subtitle">Gradient headings, media type badges as decor, feature highlights with icons, visual flair.</p>
+
+<style>
+  .page-preview { max-width:700px; margin:0 auto; }
+
+  .glass-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.1);
+    border-radius: 20px;
+  }
+
+  .slim-search {
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center;
+    padding: 4px 4px 4px 20px; transition: all 0.3s;
+  }
+  .slim-search:focus-within { border-color: rgba(233,69,96,0.3); transform: scale(1.005); }
+  .slim-search input { flex:1; background:transparent; border:none; outline:none; color:rgba(255,255,255,0.85); font-size:14px; height:40px; }
+  .slim-search input::placeholder { color:rgba(255,255,255,0.2); }
+  .slim-search .icon { color:rgba(255,255,255,0.3); font-size:15px; margin-right:8px; flex-shrink:0; }
+  .slim-search .submit-btn {
+    width:36px; height:36px; border-radius:50%;
+    background:rgba(233,69,96,0.2); color:#e94560;
+    border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all 0.2s; flex-shrink:0; font-size:16px;
+  }
+  .slim-search .submit-btn:hover { background:rgba(233,69,96,0.3); transform:scale(1.05); }
+
+  .section-title {
+    font-size:20px; font-weight:700; letter-spacing:-0.02em;
+    background: linear-gradient(135deg, #e94560, #ff6b6b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom:16px;
+  }
+  .body-text { font-size:13px; color:rgba(255,255,255,0.45); line-height:1.65; }
+
+  .faq-item { background:#2e2e2e; border-radius:16px; overflow:hidden; margin-bottom:6px; }
+  .faq-item button {
+    display:flex; width:100%; justify-content:space-between; align-items:center; gap:16px;
+    padding:14px 20px; text-align:left; background:none; border:none; cursor:pointer;
+    color:rgba(255,255,255,0.85); font-size:13px; font-weight:500;
+  }
+  .faq-item button:hover { background:rgba(255,255,255,0.03); }
+  .faq-answer { padding:0 20px 14px; font-size:12px; color:rgba(255,255,255,0.45); line-height:1.55; }
+  .chevron { color:rgba(255,255,255,0.25); font-size:10px; transition:transform 0.2s; flex-shrink:0; }
+  .chevron.open { transform:rotate(180deg); }
+</style>
+
+<div class="page-preview">
+
+  <!-- ═══ HERO ═══ -->
+  <div class="glass-card" style="padding:52px 40px 56px;text-align:center">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(233,69,96,0.06),transparent 70%);pointer-events:none"></div>
+    <div style="position:relative;z-index:1">
+      <svg viewBox="0 0 110 28" style="height:34px;margin:0 auto 18px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+      <p style="color:white;font-size:26px;font-weight:700;letter-spacing:-0.02em">About Otix</p>
+      <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:10px auto 0;max-width:520px;line-height:1.6">Your personal media command center. Track, rate, review, and discover across movies, shows, games, and music — all in one place, for free.</p>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:28px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">4</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">MEDIA TYPES</p></div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">∞</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">100% FREE</p></div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">100+</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">ACHIEVEMENTS</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIM SEARCH ═══ -->
+  <div class="slim-search" style="margin:-24px auto 0;max-width:480px;position:relative;z-index:2">
+    <span class="icon">✨</span>
+    <input placeholder="What are you in the mood for?">
+    <button class="submit-btn">→</button>
+  </div>
+
+  <!-- ═══ ABOUT TEXT with MEDIA TYPE BADGES ═══ -->
+  <div style="margin-top:48px">
+    <p class="section-title">What is Otix?</p>
+
+    <!-- Media type badges — decorative row -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="background:rgba(244,63,94,0.1);color:#fb7185;font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid rgba(244,63,94,0.15)">🎬 Movies</span>
+      <span style="background:rgba(139,92,246,0.1);color:#a78bfa;font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid rgba(139,92,246,0.15)">📺 Shows</span>
+      <span style="background:rgba(52,211,153,0.1);color:#34d399;font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid rgba(52,211,153,0.15)">🎮 Games</span>
+      <span style="background:rgba(251,191,36,0.1);color:#fbbf24;font-size:11px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid rgba(251,191,36,0.15)">🎵 Music</span>
+    </div>
+
+    <p class="body-text">
+      Otix is a media tracking and discovery platform. <strong style="color:rgba(255,255,255,0.7)">Track movies, shows, games, and music</strong> in one place — rate what you've experienced, write reviews, build curated lists, and earn XP as you go.
+    </p>
+    <p class="body-text" style="margin-top:12px">
+      Connect your accounts from <strong style="color:rgba(255,255,255,0.7)">Steam, Plex, Spotify, YouTube, TMDb, and Google</strong> to import your libraries, sync your history, and share what you're playing or listening to. Your profile becomes a living record of your taste across every medium.
+    </p>
+
+    <!-- Feature highlight cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:20px">
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px">⭐</span>
+        <div>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600">Rate & Review</p>
+          <p style="color:rgba(255,255,255,0.35);font-size:11px;line-height:1.4">Score every title and write thoughtful reviews</p>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px">📋</span>
+        <div>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600">Curated Lists</p>
+          <p style="color:rgba(255,255,255,0.35);font-size:11px;line-height:1.4">Build public or private collections around any theme</p>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px">🏆</span>
+        <div>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600">Earn XP & Badges</p>
+          <p style="color:rgba(255,255,255,0.35);font-size:11px;line-height:1.4">Level up and unlock achievements as you engage</p>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:16px;flex-shrink:0;margin-top:1px">🔗</span>
+        <div>
+          <p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:600">Connected Accounts</p>
+          <p style="color:rgba(255,255,255,0.35);font-size:11px;line-height:1.4">Sync from Steam, Plex, Spotify, YouTube, TMDb</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="body-text" style="margin-top:20px">
+      Otix is built for people who take their media seriously — <strong style="color:rgba(255,255,255,0.7)">not just what you watch, but what you think about it</strong>. Discover new favorites through the community, follow people with similar taste, and find the next thing worth your time.
+    </p>
+  </div>
+
+  <!-- ═══ COMPACT FAQ ═══ -->
+  <div style="margin-top:40px">
+    <p class="section-title">Quick Answers</p>
+
+    <div class="faq-item">
+      <button onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('.chevron').classList.toggle('open')">
+        <span>What media types are supported?</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="faq-answer" style="display:none">Movies, TV shows, games, and music. Search, rate, review, and organize all four into lists and collections.</div>
+      <style>.faq-answer.show { display:block !important; }</style>
+    </div>
+
+    <div class="faq-item">
+      <button onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('.chevron').classList.toggle('open')">
+        <span>Is Otix free?</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="faq-answer" style="display:none">Yes, completely free. No paid tiers, no premium features, no hidden costs.</div>
+    </div>
+
+    <div class="faq-item">
+      <button onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('.chevron').classList.toggle('open')">
+        <span>How do I earn XP?</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="faq-answer" style="display:none">Every action earns XP — writing reviews (150 XP), rating media (50 XP), marking as watched (30 XP), creating lists, completing workouts, maintaining streaks, and gaining followers.</div>
+    </div>
+
+    <div class="faq-item">
+      <button onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('.chevron').classList.toggle('open')">
+        <span>How do I connect external accounts?</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="faq-answer" style="display:none">Head to Settings → Integrations to connect Steam, Plex, Spotify, YouTube, TMDb, or Google.</div>
+    </div>
+
+    <div class="faq-item">
+      <button onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('.chevron').classList.toggle('open')">
+        <span>How do I report a bug?</span>
+        <span class="chevron">▼</span>
+      </button>
+      <div class="faq-answer" style="display:none">Submit feedback through the admin proposals page if you have access, or reach out directly to the Otix team.</div>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:24px;text-align:center">Spice added: gradient section titles, media type badge pills (🎬📺🎮🎵), 2×2 feature highlight grid, bold keywords in body text. Still clean but has character now.</p>
