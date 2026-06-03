@@ -75,6 +75,57 @@ async def list_playlists(
     return data
 
 
+@spotify_playlists_router.get("/subscriptions")
+async def list_subscriptions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """List all subscribed playlists for the current user."""
+    result = await db.execute(
+        text("""
+            SELECT id, playlist_id, playlist_name, playlist_owner, auto_sync, last_synced_at, created_at
+            FROM spotify_playlist_subscriptions
+            WHERE user_id = :uid
+            ORDER BY created_at DESC
+        """),
+        {"uid": current_user.id},
+    )
+    rows = result.all()
+    return [
+        {
+            "id": row.id,
+            "playlist_id": row.playlist_id,
+            "playlist_name": row.playlist_name,
+            "playlist_owner": row.playlist_owner,
+            "auto_sync": row.auto_sync,
+            "last_synced_at": row.last_synced_at.isoformat() if row.last_synced_at else None,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
+@spotify_playlists_router.put("/subscriptions/{subscription_id}")
+async def update_subscription(
+    subscription_id: str,
+    auto_sync: bool,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Update subscription settings (auto_sync toggle)."""
+    result = await db.execute(
+        text(
+            "UPDATE spotify_playlist_subscriptions SET auto_sync = :auto WHERE id = :id AND user_id = :uid RETURNING id"
+        ),
+        {"auto": auto_sync, "id": subscription_id, "uid": current_user.id},
+    )
+    if not result.one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
+
+    await db.commit()
+    return {"message": "Subscription updated", "auto_sync": auto_sync}
+
+
 @spotify_playlists_router.get("/{playlist_id}")
 async def get_playlist_detail(
     playlist_id: str,
@@ -212,54 +263,3 @@ async def sync_playlist(
     )
 
     return {"task_id": task_id, "message": "Sync started."}
-
-
-@spotify_playlists_router.get("/subscriptions")
-async def list_subscriptions(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> list[dict]:
-    """List all subscribed playlists for the current user."""
-    result = await db.execute(
-        text("""
-            SELECT id, playlist_id, playlist_name, playlist_owner, auto_sync, last_synced_at, created_at
-            FROM spotify_playlist_subscriptions
-            WHERE user_id = :uid
-            ORDER BY created_at DESC
-        """),
-        {"uid": current_user.id},
-    )
-    rows = result.all()
-    return [
-        {
-            "id": row.id,
-            "playlist_id": row.playlist_id,
-            "playlist_name": row.playlist_name,
-            "playlist_owner": row.playlist_owner,
-            "auto_sync": row.auto_sync,
-            "last_synced_at": row.last_synced_at.isoformat() if row.last_synced_at else None,
-            "created_at": row.created_at.isoformat() if row.created_at else None,
-        }
-        for row in rows
-    ]
-
-
-@spotify_playlists_router.put("/subscriptions/{subscription_id}")
-async def update_subscription(
-    subscription_id: str,
-    auto_sync: bool,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Update subscription settings (auto_sync toggle)."""
-    result = await db.execute(
-        text(
-            "UPDATE spotify_playlist_subscriptions SET auto_sync = :auto WHERE id = :id AND user_id = :uid RETURNING id"
-        ),
-        {"auto": auto_sync, "id": subscription_id, "uid": current_user.id},
-    )
-    if not result.one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-
-    await db.commit()
-    return {"message": "Subscription updated", "auto_sync": auto_sync}
