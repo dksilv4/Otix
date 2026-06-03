@@ -39,22 +39,20 @@ async def _fetch_all_user_playlists(access_token: str, spotify: SpotifyProvider)
 
 
 async def _fetch_all_playlist_tracks(access_token: str, spotify: SpotifyProvider, playlist_id: str) -> list[dict]:
-    """Fetch all tracks in a playlist, handling pagination."""
-    items: list[dict] = []
-    offset = 0
-    while True:
-        resp = await spotify.get_playlist_tracks(
-            access_token, playlist_id, limit=SPOTIFY_PAGE_LIMIT_TRACKS, offset=offset
-        )
-        page_items = resp.get("items", [])
-        if not page_items:
-            break
-        items.extend(page_items)
-        offset += len(page_items)
-        total = resp.get("total")
-        if total and offset >= total:
-            break
-    return items
+    """Fetch tracks in a playlist from the embedded playlist response.
+
+    Uses GET /playlists/{id} (works in Spotify dev mode) instead of
+    the /playlists/{id}/tracks endpoint (returns 403 without Extended Quota Mode).
+    Limited to first 100 tracks — pagination needs the restricted endpoint.
+    """
+    playlist = await spotify.get_playlist(access_token, playlist_id)
+    tracks_container = playlist.get("items", {})
+    raw_items = tracks_container.get("items", [])
+    # Normalize: embedded tracks use "item" key instead of "track"
+    for entry in raw_items:
+        if "item" in entry:
+            entry["track"] = entry.pop("item")
+    return raw_items
 
 
 async def sync_playlist_to_library(
