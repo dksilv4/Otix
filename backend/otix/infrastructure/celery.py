@@ -368,4 +368,13 @@ def _on_worker_process_init(**kwargs):
     setup_logging()
 
 
-# Register tasks — explicit imports so tasks are guaranteed to be discovered.
+# Register tasks — explicit top-level imports so all @app.task decorators fire.
+# Each import guarantees the worker knows the task when it picks up a message.
+import otix.tasks.seed.tmdb_seed  # noqa: F401 — seed.* TMDB cycle
+import otix.tasks.seed.catalog_seed  # noqa: F401 — seed.* IGDB/Steam/MusicBrainz/Deezer
+import otix.tasks.maintenance  # noqa: F401 — maintenance.* (via __init__ imports all submodules)
+import otix.tasks.xp  # noqa: F401 — xp.*
+import otix.tasks.gamification  # noqa: F401 — gamification.*
+import otix.tasks.sync.embedding  # noqa: F401 — embedding.*
+import otix.tasks.sync.spotify  # noqa: F401 — sync.spotify.*
+import otix.tasks.sync.deezer  # noqa: F401 — seed.deezer_cycle, sync.deezer.*
