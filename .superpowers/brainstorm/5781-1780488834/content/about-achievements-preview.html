@@ -1,0 +1,76 @@
+<h2>Achievements — With Sub-Categories</h2>
+<p class="subtitle">Workout split into Logs, Streaks, and Weight Lifted. Each group has its own scrollable row.</p>
+
+<style>
+  .g { display:flex; flex-direction:column; gap:24px; margin-top:16px; }
+  .grp h3 { font-size:14px; font-weight:600; color:rgba(255,255,255,0.85); margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .grp h3 .dot { width:10px; height:10px; border-radius:4px; display:inline-block; }
+  .row { display:flex; gap:10px; overflow-x:auto; padding-bottom:4px; }
+  .card { background:#2e2e2e; border-radius:12px; padding:12px 14px; min-width:220px; flex-shrink:0; border-left:3px solid; display:flex; align-items:center; gap:10px; }
+  .card .icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+  .card .info { flex:1; min-width:0; }
+  .card .info .nm { font-size:12px; font-weight:500; color:rgba(255,255,255,0.85); }
+  .card .info .ds { font-size:10px; color:rgba(255,255,255,0.35); }
+  .card .xp { font-size:10px; font-weight:600; flex-shrink:0; }
+  .card .tl { font-size:8px; padding:1px 6px; border-radius:10px; text-align:center; margin-top:2px; }
+
+  .parent-group { background:rgba(255,255,255,0.02); border-radius:16px; padding:16px; }
+  .parent-title { font-size:12px; font-weight:600; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px; }
+</style>
+
+<div class="g">
+
+  <!-- Review -->
+  <div class="grp">
+    <h3><span class="dot" style="background:#fb7185"></span> Review Milestones</h3>
+    <div class="row">
+      <div class="card" style="border-color:#e8326e"><div class="icon" style="background:#e8326e18;color:#e8326e">★</div><div class="info"><div class="nm">First Words</div><div class="ds">Write your first review</div></div><div><div class="xp" style="color:#e8326e">+100</div><div class="tl" style="background:#e8326e14;color:#e8326e">special</div></div></div>
+      <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">I</div><div class="info"><div class="nm">Critic</div><div class="ds">Write 10 reviews</div></div><div><div class="xp" style="color:#cd7f32">+250</div><div class="tl" style="background:#cd7f3214;color:#cd7f32">bronze</div></div></div>
+      <div class="card" style="border-color:#a8b2c1"><div class="icon" style="background:#a8b2c118;color:#a8b2c1">II</div><div class="info"><div class="nm">Prolific Critic</div><div class="ds">Write 50 reviews</div></div><div><div class="xp" style="color:#a8b2c1">+500</div><div class="tl" style="background:#a8b2c114;color:#a8b2c1">silver</div></div></div>
+      <div class="card" style="border-color:#f0b90b"><div class="icon" style="background:#f0b90b18;color:#f0b90b">III</div><div class="info"><div class="nm">Review Machine</div><div class="ds">Write 100 reviews</div></div><div><div class="xp" style="color:#f0b90b">+1K</div><div class="tl" style="background:#f0b90b14;color:#f0b90b">gold</div></div></div>
+      <div class="card" style="border-color:#55c0e0"><div class="icon" style="background:#55c0e018;color:#55c0e0">IV</div><div class="info"><div class="nm">Legendary Critic</div><div class="ds">Write 500 reviews</div></div><div><div class="xp" style="color:#55c0e0">+2.5K</div><div class="tl" style="background:#55c0e014;color:#55c0e0">platinum</div></div></div>
+    </div>
+  </div>
+
+  <!-- Workout Sub-Categories -->
+  <div class="parent-group">
+    <div class="parent-title">🏋️ Workout</div>
+
+    <div class="grp">
+      <h3><span class="dot" style="background:#34d399"></span> Workout Logs</h3>
+      <div class="row">
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">I</div><div class="info"><div class="nm">First Sweat</div><div class="ds">Log your first workout</div></div><div><div class="xp" style="color:#cd7f32">+50</div></div></div>
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">II</div><div class="info"><div class="nm">Getting Started</div><div class="ds">Log 10 workouts</div></div><div><div class="xp" style="color:#cd7f32">+100</div></div></div>
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">III</div><div class="info"><div class="nm">Regular</div><div class="ds">Log 50 workouts</div></div><div><div class="xp" style="color:#cd7f32">+150</div></div></div>
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">IV</div><div class="info"><div class="nm">Consistent</div><div class="ds">Log 100 workouts</div></div><div><div class="xp" style="color:#a8b2c1">+250</div></div></div>
+        <div class="card" style="border-color:#a8b2c1"><div class="icon" style="background:#a8b2c118;color:#a8b2c1">V</div><div class="info"><div class="nm">Athlete</div><div class="ds">Log 200 workouts</div></div><div><div class="xp" style="color:#a8b2c1">+400</div></div></div>
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#f0b90b18;color:#f0b90b">VI</div><div class="info"><div class="nm">Iron Will</div><div class="ds">Log 500 workouts</div></div><div><div class="xp" style="color:#f0b90b">+750</div></div></div>
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#f0b90b18;color:#f0b90b">VII</div><div class="info"><div class="nm">Unstoppable</div><div class="ds">Log 1K workouts</div></div><div><div class="xp" style="color:#f0b90b">+1.2K</div></div></div>
+      </div>
+    </div>
+
+    <div class="grp" style="margin-top:4px">
+      <h3><span class="dot" style="background:#fb923c"></span> Workout Streaks</h3>
+      <div class="row">
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">I</div><div class="info"><div class="nm">Two in a Row</div><div class="ds">2-day workout streak</div></div><div><div class="xp" style="color:#cd7f32">+50</div></div></div>
+        <div class="card" style="border-color:#a8b2c1"><div class="icon" style="background:#a8b2c118;color:#a8b2c1">II</div><div class="info"><div class="nm">Consistency</div><div class="ds">7-day workout streak</div></div><div><div class="xp" style="color:#a8b2c1">+200</div></div></div>
+        <div class="card" style="border-color:#a8b2c1"><div class="icon" style="background:#a8b2c118;color:#a8b2c1">III</div><div class="info"><div class="nm">Fortnight</div><div class="ds">14-day streak</div></div><div><div class="xp" style="color:#a8b2c1">+400</div></div></div>
+        <div class="card" style="border-color:#f0b90b"><div class="icon" style="background:#f0b90b18;color:#f0b90b">IV</div><div class="info"><div class="nm">Dedication</div><div class="ds">30-day streak</div></div><div><div class="xp" style="color:#f0b90b">+750</div></div></div>
+        <div class="card" style="border-color:#55c0e0"><div class="icon" style="background:#55c0e018;color:#55c0e0">V</div><div class="info"><div class="nm">Unbroken</div><div class="ds">60-day streak</div></div><div><div class="xp" style="color:#55c0e0">+1.5K</div></div></div>
+      </div>
+    </div>
+
+    <div class="grp" style="margin-top:4px">
+      <h3><span class="dot" style="background:#22d3ee"></span> Weight Lifted</h3>
+      <div class="row">
+        <div class="card" style="border-color:#cd7f32"><div class="icon" style="background:#cd7f3218;color:#cd7f32">I</div><div class="info"><div class="nm">Getting Strong</div><div class="ds">Lift 10K kg total</div></div><div><div class="xp" style="color:#cd7f32">+100</div></div></div>
+        <div class="card" style="border-color:#a8b2c1"><div class="icon" style="background:#a8b2c118;color:#a8b2c1">II</div><div class="info"><div class="nm">Beast Mode</div><div class="ds">Lift 100K kg total</div></div><div><div class="xp" style="color:#a8b2c1">+300</div></div></div>
+        <div class="card" style="border-color:#f0b90b"><div class="icon" style="background:#f0b90b18;color:#f0b90b">III</div><div class="info"><div class="nm">Powerhouse</div><div class="ds">Lift 500K kg total</div></div><div><div class="xp" style="color:#f0b90b">+700</div></div></div>
+        <div class="card" style="border-color:#55c0e0"><div class="icon" style="background:#55c0e018;color:#55c0e0">IV</div><div class="info"><div class="nm">Peak Form</div><div class="ds">Lift 10M kg total</div></div><div><div class="xp" style="color:#55c0e0">+2K</div></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:20px;">Workout badges now under a parent "Workout" container with 3 sub-groups. Other groups (Review, Interaction, List, Level, Social, Special) remain flat.</p>

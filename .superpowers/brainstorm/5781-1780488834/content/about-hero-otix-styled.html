@@ -1,0 +1,226 @@
+<style>
+  .g2 { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .g2 .it { cursor:pointer; border-radius:12px; padding:0; transition:all 0.15s; position:relative; background:transparent; }
+  .g2 .it:hover { outline:2px solid rgba(233,69,96,0.3); }
+  .g2 .it.selected { outline:2px solid #e94560; background:rgba(233,69,96,0.05); }
+  .g2 .it.selected::after { content:"✓ SELECTED"; position:absolute; top:-10px; right:8px; background:#e94560; color:white; font-size:10px; font-weight:700; padding:2px 8px; border-radius:4px; letter-spacing:0.5px; }
+  .g2 .it > div:first-child, .g2 .it > div { border-radius:12px; overflow:hidden; }
+
+  h3.mock-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size:16px; font-weight:600; margin-bottom:8px; color:rgba(255,255,255,0.9); }
+
+  .otx-glass { background:linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 100%); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px); box-shadow:0 8px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.1); }
+  .otx-surface-base { background:#2e2e2e; }
+  .otx-surface-raised { background:#383838; }
+  .otx-surface-overlay { background:#404040; }
+  .otx-badge { font-size:11px; font-weight:500; letter-spacing:0.02em; }
+
+  .otx-stat { background:rgba(255,255,255,0.04); border-radius:12px; padding:16px 24px; min-width:110px; text-align:center; }
+  .otx-stat-num { color:#e94560; font-size:24px; font-weight:800; }
+  .otx-stat-label { color:rgba(255,255,255,0.35); font-size:11px; letter-spacing:0.05em; }
+
+  .otx-search { background:rgba(255,255,255,0.04); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,0.06); border-radius:40px; padding:4px; display:flex; align-items:center; }
+  .otx-search input { background:transparent; border:none; outline:none; color:rgba(255,255,255,0.8); padding:0 16px; flex:1; font-size:14px; }
+  .otx-search input::placeholder { color:rgba(255,255,255,0.2); }
+  .otx-search-btn { background:linear-gradient(135deg, #e94560, #ff6b6b); border-radius:30px; padding:10px 24px; font-size:14px; color:white; font-weight:600; border:none; cursor:pointer; }
+
+  .otx-hero { border-radius:20px; position:relative; overflow:hidden; }
+  .otx-hero-inner { position:relative; z-index:1; }
+</style>
+
+<h2>Updated With Real Otix Tokens</h2>
+<p class="subtitle">All options now match actual Otix surfaces (dk-surface-base: #2e2e2e, raised: #383838), glass patterns, shadows, radius, and typography.</p>
+
+<div class="g2">
+
+  <!-- E1: Gradient Pill Search -->
+  <div class="it" data-choice="e1" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E1: Gradient Pill Search</h3>
+    <div style="background:linear-gradient(160deg,#242424,#2e2e2e 40%,#383838);padding:48px 40px;text-align:center">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(233,69,96,0.06),transparent 70%)"></div>
+      <div style="position:relative;z-index:1">
+        <!-- Otix SVG logo -->
+        <svg viewBox="0 0 110 28" style="height:32px;margin:0 auto 16px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+        <p style="color:white;font-size:24px;font-weight:700;letter-spacing:-0.02em">About Otix</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:8px auto 0;max-width:480px;line-height:1.5">Your personal media command center. Track, rate, review, and discover across every medium.</p>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:28px">
+          <div class="otx-stat"><span class="otx-stat-num">4</span><br><span class="otx-stat-label">MEDIA TYPES</span></div>
+          <div class="otx-stat"><span class="otx-stat-num">∞</span><br><span class="otx-stat-label">100% FREE</span></div>
+          <div class="otx-stat"><span class="otx-stat-num">100+</span><br><span class="otx-stat-label">ACHIEVEMENTS</span></div>
+        </div>
+        <div class="otx-search" style="max-width:480px;margin:28px auto 0">
+          <span style="color:rgba(255,255,255,0.25);padding:0 8px 0 16px;font-size:14px">🔍</span>
+          <input placeholder="Search movies, shows, games..." style="color:rgba(255,255,255,0.2)">
+          <button class="otx-search-btn">Search</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E2: Floating Search Card -->
+  <div class="it" data-choice="e2" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E2: Floating Search Card</h3>
+    <div style="background:linear-gradient(160deg,#242424,#2e2e2e 40%,#383838);padding:48px 40px 72px;text-align:center;position:relative">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(233,69,96,0.06),transparent 70%)"></div>
+      <div style="position:relative;z-index:1">
+        <svg viewBox="0 0 110 28" style="height:32px;margin:0 auto 16px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+        <p style="color:white;font-size:24px;font-weight:700">About Otix</p>
+        <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:8px 0 28px">Your personal media command center</p>
+        <div style="display:flex;gap:12px;justify-content:center">
+          <div class="otx-stat"><span class="otx-stat-num">4</span><br><span class="otx-stat-label">MEDIA TYPES</span></div>
+          <div class="otx-stat"><span class="otx-stat-num">∞</span><br><span class="otx-stat-label">100% FREE</span></div>
+          <div class="otx-stat"><span class="otx-stat-num">100+</span><br><span class="otx-stat-label">ACHIEVEMENTS</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- Floating glass card -->
+    <div style="margin:-40px 24px 0;background:linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.08));backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 24px;display:flex;align-items:center;gap:12px;position:relative;z-index:2;box-shadow:0 8px 32px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.1)">
+      <span style="color:rgba(255,255,255,0.3);font-size:16px">🔍</span>
+      <span style="color:rgba(255,255,255,0.2);font-size:14px;flex:1">Search across all media...</span>
+      <span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 6px;font-size:11px;color:rgba(255,255,255,0.3);font-family:system-ui,sans-serif">⌘K</span>
+      <button style="background:#e94560;border-radius:30px;padding:10px 24px;font-size:14px;color:white;font-weight:600;border:none;cursor:pointer">Go</button>
+    </div>
+  </div>
+
+  <!-- E3: Side-By-Side -->
+  <div class="it" data-choice="e3" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E3: Side-By-Side Hero</h3>
+    <div style="display:flex;overflow:hidden">
+      <div style="flex:1.3;background:linear-gradient(135deg,#242424,#2e2e2e);padding:44px 36px;display:flex;flex-direction:column;justify-content:center">
+        <svg viewBox="0 0 110 28" style="height:28px;margin-bottom:14px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+        <p style="color:white;font-size:22px;font-weight:700">About Otix</p>
+        <p style="color:rgba(255,255,255,0.45);font-size:13px;margin:8px 0 20px;line-height:1.6">Track, rate, review, and discover across every medium — all in one place for free.</p>
+        <div style="display:flex;gap:10px">
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px 16px;flex:1;text-align:center"><span style="color:#e94560;font-size:20px;font-weight:800">4</span><br><span style="color:rgba(255,255,255,0.35);font-size:10px;letter-spacing:0.05em">TYPES</span></div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px 16px;flex:1;text-align:center"><span style="color:#e94560;font-size:20px;font-weight:800">∞</span><br><span style="color:rgba(255,255,255,0.35);font-size:10px;letter-spacing:0.05em">FREE</span></div>
+          <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px 16px;flex:1;text-align:center"><span style="color:#e94560;font-size:20px;font-weight:800">100+</span><br><span style="color:rgba(255,255,255,0.35);font-size:10px;letter-spacing:0.05em">BADGES</span></div>
+        </div>
+      </div>
+      <div style="flex:1;background:#383838;padding:44px 28px;display:flex;flex-direction:column;justify-content:center;align-items:center">
+        <div style="background:rgba(233,69,96,0.08);border:1px solid rgba(233,69,96,0.15);border-radius:16px;padding:24px;text-align:center;width:100%">
+          <p style="color:white;font-size:16px;font-weight:600;margin-bottom:6px">🔍 Find Something</p>
+          <p style="color:rgba(255,255,255,0.35);font-size:13px;margin-bottom:18px">Search all media</p>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:30px;padding:12px 18px;font-size:14px;color:rgba(255,255,255,0.4);font-weight:500">🔍 Search...</div>
+          <button style="margin-top:10px;background:linear-gradient(135deg,#e94560,#ff6b6b);border-radius:30px;padding:12px;font-size:14px;color:white;font-weight:600;width:100%;border:none;cursor:pointer">Go to Search →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E4: Inline Icon Stats -->
+  <div class="it" data-choice="e4" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E4: Inline Icon Stats</h3>
+    <div style="background:linear-gradient(160deg,#242424,#2e2e2e 40%,#383838);padding:48px 40px;text-align:center">
+      <p style="color:white;font-size:24px;font-weight:700;letter-spacing:-0.02em">About Otix</p>
+      <p style="color:rgba(255,255,255,0.45);font-size:14px;margin:8px auto 0;max-width:520px;line-height:1.5">Your personal media command center. Track, rate, review, and discover across every medium.</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border-radius:30px;padding:10px 18px"><span style="font-size:18px">🎬</span><span style="color:#e94560;font-size:18px;font-weight:800">4</span><span style="color:rgba(255,255,255,0.35);font-size:12px">Media Types</span></div>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border-radius:30px;padding:10px 18px"><span style="font-size:18px">🆓</span><span style="color:#e94560;font-size:18px;font-weight:800">∞</span><span style="color:rgba(255,255,255,0.35);font-size:12px">Free Forever</span></div>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border-radius:30px;padding:10px 18px"><span style="font-size:18px">🏆</span><span style="color:#e94560;font-size:18px;font-weight:800">100+</span><span style="color:rgba(255,255,255,0.35);font-size:12px">Achievements</span></div>
+      </div>
+      <div class="otx-search" style="max-width:440px;margin:24px auto 0">
+        <span style="color:rgba(255,255,255,0.25);padding:0 8px 0 16px;font-size:14px">🔍</span>
+        <input placeholder="Search all media...">
+        <button class="otx-search-btn">Search</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- E5: Centered Minimal -->
+  <div class="it" data-choice="e5" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E5: Centered Minimal</h3>
+    <div style="background:linear-gradient(180deg,#242424 0%,transparent 100%);padding:52px 40px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <svg viewBox="0 0 110 28" style="height:36px;margin:0 auto 16px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+      <p style="color:white;font-size:26px;font-weight:700;letter-spacing:-0.02em">About Otix</p>
+      <p style="color:rgba(255,255,255,0.5);font-size:15px;margin:10px auto 0;max-width:560px;line-height:1.6">Track what you watch, play, and listen to. Write reviews, build lists, earn XP, and discover through the community.</p>
+      <div style="display:flex;gap:36px;justify-content:center;margin-top:28px">
+        <div><span style="color:white;font-size:22px;font-weight:700">4</span> <span style="color:rgba(255,255,255,0.3);font-size:13px">media types</span></div>
+        <div><span style="color:white;font-size:22px;font-weight:700">∞</span> <span style="color:rgba(255,255,255,0.3);font-size:13px">free</span></div>
+        <div><span style="color:white;font-size:22px;font-weight:700">100+</span> <span style="color:rgba(255,255,255,0.3);font-size:13px">achievements</span></div>
+      </div>
+      <div style="margin-top:28px;display:inline-flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.06);border-radius:40px;padding:10px 20px 10px 24px">
+        <span style="color:rgba(255,255,255,0.3);font-size:15px">🔍</span>
+        <span style="color:rgba(255,255,255,0.2);font-size:14px">Search movies, shows, games, music...</span>
+        <span style="background:rgba(255,255,255,0.06);border-radius:4px;padding:2px 6px;font-size:11px;color:rgba(255,255,255,0.3)">⌘K</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- E6: Dark Glass Hero -->
+  <div class="it" data-choice="e6" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E6: Dark Glass Hero</h3>
+    <div style="padding:48px 40px;position:relative;overflow:hidden;background:#242424">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(233,69,96,0.05),transparent 60%),radial-gradient(ellipse at 70% 80%,rgba(99,102,241,0.04),transparent 60%)"></div>
+      <div style="position:relative;z-index:1;display:flex;gap:36px;align-items:center;max-width:800px;margin:0 auto">
+        <div style="flex:1">
+          <p style="color:white;font-size:20px;font-weight:700">About Otix</p>
+          <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:8px;line-height:1.6">Your media command center. Track, rate, review, and discover across movies, shows, games, and music — all in one place, for free.</p>
+          <div style="margin-top:20px;background:rgba(255,255,255,0.04);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.06);border-radius:40px;padding:4px;display:flex;align-items:center;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.14),inset 0 1px 0 rgba(255,255,255,0.1)">
+            <span style="color:rgba(255,255,255,0.25);padding:0 12px;font-size:13px">🔍</span>
+            <span style="color:rgba(255,255,255,0.15);font-size:12px;flex:1">Search...</span>
+            <button style="background:rgba(233,69,96,0.9);border-radius:30px;padding:8px 18px;font-size:13px;color:white;font-weight:600;border:none;cursor:pointer">Search</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:150px">
+          <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 20px;text-align:center;border:1px solid rgba(255,255,255,0.04)"><span style="color:#e94560;font-size:16px;font-weight:700">4 Media Types</span></div>
+          <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 20px;text-align:center;border:1px solid rgba(255,255,255,0.04)"><span style="color:#e94560;font-size:16px;font-weight:700">100% Free</span></div>
+          <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px 20px;text-align:center;border:1px solid rgba(255,255,255,0.04)"><span style="color:#e94560;font-size:16px;font-weight:700">100+ Badges</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E7: Video Game Splash -->
+  <div class="it" data-choice="e7" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E7: Video Game Splash</h3>
+    <div style="background:#242424;overflow:hidden;border-radius:12px">
+      <div style="height:3px;background:linear-gradient(90deg,#e94560,#ff6b6b,#e94560)"></div>
+      <div style="padding:44px 40px;text-align:center">
+        <svg viewBox="0 0 110 28" style="height:30px;margin:0 auto 14px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">OTIX</text></svg>
+        <p style="color:white;font-size:24px;font-weight:800;letter-spacing:-0.02em;text-transform:uppercase">About Otix</p>
+        <p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:4px;letter-spacing:2px;text-transform:uppercase">Your Media Command Center</p>
+        <div style="display:flex;gap:12px;justify-content:center;margin:24px 0">
+          <div style="border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:14px 24px;min-width:100px;background:rgba(255,255,255,0.02)"><span style="color:white;font-size:20px;font-weight:700">4</span><br><span style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:1px;text-transform:uppercase">Types</span></div>
+          <div style="border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:14px 24px;min-width:100px;background:rgba(255,255,255,0.02)"><span style="color:white;font-size:20px;font-weight:700">∞</span><br><span style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:1px;text-transform:uppercase">Free</span></div>
+          <div style="border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:14px 24px;min-width:100px;background:rgba(255,255,255,0.02)"><span style="color:white;font-size:20px;font-weight:700">100+</span><br><span style="color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:1px;text-transform:uppercase">Badges</span></div>
+        </div>
+        <button style="background:#e94560;border-radius:6px;padding:14px 28px;font-size:14px;color:white;font-weight:700;letter-spacing:0.5px;max-width:400px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:none;cursor:pointer;text-transform:uppercase">🔍 Search All Media</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- E8: Grid Layout Hero -->
+  <div class="it" data-choice="e8" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E8: Grid Layout Hero</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#242424,#2e2e2e);padding:36px 32px"><p style="color:white;font-size:20px;font-weight:700">About Otix</p><p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:6px;line-height:1.5">Your media command center — track, rate, review, and discover.</p></div>
+      <div style="background:#2e2e2e;padding:36px 32px;display:flex;align-items:center;justify-content:center">
+        <div class="otx-search" style="width:100%">
+          <span style="color:rgba(255,255,255,0.2);padding:0 8px 0 16px;font-size:13px">🔍</span>
+          <input placeholder="Search all media..." style="font-size:12px">
+          <button style="background:#e94560;border-radius:30px;padding:8px 18px;font-size:12px;color:white;font-weight:600;border:none;cursor:pointer">Go</button>
+        </div>
+      </div>
+      <div style="background:#2e2e2e;padding:24px 32px;text-align:center;border-top:1px solid rgba(255,255,255,0.03)"><span style="color:#e94560;font-size:28px;font-weight:800">4</span><p style="color:rgba(255,255,255,0.3);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-top:4px">Media Types</p></div>
+      <div style="background:#242424;padding:24px 32px;text-align:center;border-top:1px solid rgba(255,255,255,0.03);display:flex;gap:20px;justify-content:center;align-items:center"><div><span style="color:white;font-size:20px;font-weight:700">∞</span><p style="color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:0.5px">Free</p></div><div style="width:1px;height:24px;background:rgba(255,255,255,0.06)"></div><div><span style="color:white;font-size:20px;font-weight:700">100+</span><p style="color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:0.5px">Badges</p></div></div>
+    </div>
+  </div>
+
+  <!-- E9: Terminal -->
+  <div class="it" data-choice="e9" onclick="toggleSelect(this)">
+    <h3 class="mock-title">E9: Terminal / Dev Aesthetic</h3>
+    <div style="background:#1a1a1a;overflow:hidden;font-family:'JetBrains Mono','Courier New',monospace;border-radius:12px">
+      <div style="background:#222;padding:10px 16px;display:flex;gap:8px;align-items:center;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <span style="width:10px;height:10px;background:#ff5f57;border-radius:50%;display:inline-block"></span>
+        <span style="width:10px;height:10px;background:#febc2e;border-radius:50%;display:inline-block"></span>
+        <span style="width:10px;height:10px;background:#28c840;border-radius:50%;display:inline-block"></span>
+        <span style="color:rgba(255,255,255,0.2);font-size:11px;margin-left:8px">otix-about — bash</span>
+      </div>
+      <div style="padding:28px 24px">
+        <div style="display:flex;gap:14px;align-items:flex-start"><span style="color:#28c840;font-size:14px;line-height:1.5">$</span><div><p style="color:#e94560;font-size:16px;font-weight:600">cat about.txt</p><p style="color:rgba(255,255,255,0.6);font-size:14px;margin-top:6px;line-height:1.6;font-family:'JetBrains Mono','Courier New',monospace">Otix — your personal media command center.<br>Track movies, shows, games &amp; music.</p><div style="margin-top:14px;display:flex;gap:16px"><span style="color:#febc2e;font-size:12px">4 media types</span><span style="color:#febc2e;font-size:12px">100% free</span><span style="color:#febc2e;font-size:12px">100+ badges</span></div><div style="margin-top:16px;display:flex;gap:8px"><span style="color:#28c840;font-size:13px;line-height:2">$</span><div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:4px;padding:6px 12px;display:flex;align-items:center;gap:6px;flex:1;font-family:'JetBrains Mono','Courier New',monospace"><span style="color:rgba(255,255,255,0.15);font-size:12px">search --all "..."</span><span style="background:#28c840;color:#0a0a0f;border-radius:2px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer">⏎</span></div></div></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:20px">All options now use real Otix design tokens: surfaces (#242424/#2e2e2e/#383838), glass patterns, shadows, border-radius, the "otix" wordmark logo, and correct font weights. Click to select, then tell me in chat.</p>

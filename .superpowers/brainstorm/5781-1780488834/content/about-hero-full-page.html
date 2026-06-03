@@ -1,0 +1,194 @@
+<h2>Full Page — Floating Hero + Search + Real Content</h2>
+<p class="subtitle">Showing hero, search, and actual about page sections with Otix styling.</p>
+
+<style>
+  .page-preview { max-width:700px; margin:0 auto; }
+
+  .glass-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.1);
+    border-radius: 20px;
+  }
+
+  .slim-search {
+    border-radius: 9999px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.08) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    padding: 4px 4px 4px 20px;
+    transition: all 0.3s;
+  }
+  .slim-search:focus-within { border-color: rgba(233,69,96,0.3); transform: scale(1.005); }
+  .slim-search input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: rgba(255,255,255,0.85); font-size: 14px; height: 40px;
+  }
+  .slim-search input::placeholder { color: rgba(255,255,255,0.2); }
+  .slim-search .icon { color: rgba(255,255,255,0.3); font-size: 15px; margin-right: 8px; flex-shrink: 0; }
+  .slim-search .submit-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(233,69,96,0.2); color: #e94560;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0; font-size: 16px;
+  }
+  .slim-search .submit-btn:hover { background: rgba(233,69,96,0.3); transform: scale(1.05); }
+
+  .section-title { font-size:20px; font-weight:700; letter-spacing:-0.02em; color:white; margin-bottom:16px; }
+  .subsection-title { font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); }
+  .body-text { font-size:13px; color:rgba(255,255,255,0.45); line-height:1.6; }
+  .stat-card { background:#2e2e2e; border-radius:16px; padding:20px; }
+  .inline-stat { background:rgba(255,255,255,0.04); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:8px; }
+  .faq-card { background:#2e2e2e; border-radius:16px; overflow:hidden; }
+  .faq-card button { display:flex; width:100%; justify-content:space-between; align-items:center; gap:16px; padding:16px 20px; text-align:left; background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.85); font-size:13px; font-weight:500; }
+
+  .icon-box { width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
+
+  .badge-item { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); border-radius:12px; padding:10px 14px; }
+  .badge-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .badge-tier { font-size:9px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:2px 8px; border-radius:20px; }
+</style>
+
+<div class="page-preview">
+
+  <!-- ═══ HERO ═══ -->
+  <div class="glass-card" style="padding:52px 40px 56px;text-align:center">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(233,69,96,0.06),transparent 70%);pointer-events:none"></div>
+    <div style="position:relative;z-index:1">
+      <svg viewBox="0 0 110 28" style="height:34px;margin:0 auto 18px;color:white;fill:currentColor"><text x="0" y="22" font-family="system-ui,-apple-system,sans-serif" font-weight="800" font-size="24" letter-spacing="-0.5">otix</text></svg>
+      <p style="color:white;font-size:26px;font-weight:700;letter-spacing:-0.02em">About Otix</p>
+      <p style="color:rgba(255,255,255,0.5);font-size:14px;margin:10px auto 0;max-width:520px;line-height:1.6">Your personal media command center. Track, rate, review, and discover across movies, shows, games, and music — all in one place, for free.</p>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:28px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">4</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">MEDIA TYPES</p></div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">∞</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">100% FREE</p></div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 28px;min-width:120px;text-align:center"><span style="color:#e94560;font-size:26px;font-weight:800">100+</span><p style="color:rgba(255,255,255,0.35);font-size:11px;letter-spacing:0.05em;margin-top:2px">ACHIEVEMENTS</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SLIM SEARCH (overlapping) ═══ -->
+  <div class="slim-search" style="margin:-24px auto 0;max-width:480px;position:relative;z-index:2">
+    <span class="icon">✨</span>
+    <input placeholder="What are you in the mood for?">
+    <button class="submit-btn">→</button>
+  </div>
+
+  <!-- ═══ ABOUT SECTION ═══ -->
+  <div style="margin-top:48px">
+    <p class="section-title">About Otix</p>
+    <p class="body-text">Otix is a media tracking and discovery platform. Track movies, shows, games, and music in one place — rate what you've experienced, write reviews, build curated lists, and earn XP as you go.</p>
+    <p class="body-text" style="margin-top:12px">Connect your accounts from Steam, Plex, Spotify, YouTube, TMDb, and Google to import your libraries, sync your history, and share what you're playing or listening to.</p>
+  </div>
+
+  <!-- ═══ PROFILE SCORES ═══ -->
+  <div style="margin-top:40px">
+    <p class="section-title">Profile Scores</p>
+    <p class="body-text" style="margin-bottom:16px">Your profile shows three scores that measure different things.</p>
+
+    <!-- XP & Level -->
+    <div class="stat-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="icon-box" style="background:rgba(251,191,36,0.1);color:#fbbf24">⚡</div>
+        <div><p class="subsection-title">XP & Level</p><p style="font-size:11px;color:rgba(255,255,255,0.35)">Your activity score</p></div>
+      </div>
+      <p class="body-text">Every action on Otix earns XP — writing reviews, rating media, building lists, completing workouts, maintaining streaks, and more. Each level requires 300 XP.</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <div class="inline-stat"><span style="width:8px;height:8px;border-radius:50%;background:#d97706;flex-shrink:0"></span><span style="color:rgba(255,255,255,0.4);font-size:11px">1–4</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Novice</span></div>
+        <div class="inline-stat"><span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0"></span><span style="color:rgba(255,255,255,0.4);font-size:11px">5–9</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Apprentice</span></div>
+        <div class="inline-stat"><span style="width:8px;height:8px;border-radius:50%;background:#fbbf24;flex-shrink:0"></span><span style="color:rgba(255,255,255,0.4);font-size:11px">10–19</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Adept</span></div>
+        <div class="inline-stat"><span style="width:8px;height:8px;border-radius:50%;background:#34d399;flex-shrink:0"></span><span style="color:rgba(255,255,255,0.4);font-size:11px">20–34</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Expert</span></div>
+      </div>
+    </div>
+
+    <!-- Aura -->
+    <div class="stat-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="icon-box" style="background:rgba(139,92,246,0.1);color:#a78bfa">✨</div>
+        <div><p class="subsection-title">Aura</p><p style="font-size:11px;color:rgba(255,255,255,0.35)">0–1000 scale, starts at 100</p></div>
+      </div>
+      <p class="body-text">Your aura is a composite score that represents your standing in the community. It's built from four pillars: contribution, trust, tenure, and impact.</p>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <div class="inline-stat"><span style="color:rgba(255,255,255,0.4);font-size:11px">100–149</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Newcomer</span></div>
+        <div class="inline-stat"><span style="color:rgba(255,255,255,0.4);font-size:11px">150–249</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Contributor</span></div>
+        <div class="inline-stat"><span style="color:rgba(255,255,255,0.4);font-size:11px">250–399</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Trusted</span></div>
+        <div class="inline-stat"><span style="color:rgba(255,255,255,0.4);font-size:11px">400–599</span><span style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:500">Respected</span></div>
+      </div>
+    </div>
+
+    <!-- User Rating -->
+    <div class="stat-card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <div class="icon-box" style="background:rgba(234,179,8,0.1);color:#eab308">★</div>
+        <div><p class="subsection-title">User Rating</p><p style="font-size:11px;color:rgba(255,255,255,0.35)">1–10 scale from other users</p></div>
+      </div>
+      <p class="body-text">Other users can rate your profile on a 1–10 scale. Your average rating directly boosts or reduces your aura through the trust pillar.</p>
+    </div>
+  </div>
+
+  <!-- ═══ ACHIEVEMENTS ═══ -->
+  <div style="margin-top:40px">
+    <p class="section-title">Achievements</p>
+    <p class="body-text" style="margin-bottom:16px">Badges are earned by hitting milestones across different activities.</p>
+
+    <!-- Review Milestones -->
+    <div class="stat-card" style="margin-bottom:12px">
+      <p class="subsection-title" style="margin-bottom:12px">Review Milestones</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="badge-item">
+          <span class="badge-dot" style="background:#e8326e"></span>
+          <div style="flex:1;min-width:0"><p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:500">First Words</p><p style="color:rgba(255,255,255,0.35);font-size:10px">Write your first review</p></div>
+          <span class="badge-tier" style="background:rgba(232,50,110,0.1);color:#e8326e">special</span>
+        </div>
+        <div class="badge-item">
+          <span class="badge-dot" style="background:#cd7f32"></span>
+          <div style="flex:1;min-width:0"><p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:500">Critic</p><p style="color:rgba(255,255,255,0.35);font-size:10px">Write 10 reviews</p></div>
+          <span class="badge-tier" style="background:rgba(205,127,50,0.1);color:#cd7f32">bronze</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Milestones -->
+    <div class="stat-card" style="margin-bottom:12px">
+      <p class="subsection-title" style="margin-bottom:12px">Level Milestones</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="badge-item">
+          <span class="badge-dot" style="background:#cd7f32"></span>
+          <div style="flex:1;min-width:0"><p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:500">Rising Star</p><p style="color:rgba(255,255,255,0.35);font-size:10px">Reach level 5</p></div>
+          <span class="badge-tier" style="background:rgba(205,127,50,0.1);color:#cd7f32">bronze</span>
+        </div>
+        <div class="badge-item">
+          <span class="badge-dot" style="background:#a8b2c1"></span>
+          <div style="flex:1;min-width:0"><p style="color:rgba(255,255,255,0.8);font-size:12px;font-weight:500">Established</p><p style="color:rgba(255,255,255,0.35);font-size:10px">Reach level 10</p></div>
+          <span class="badge-tier" style="background:rgba(168,178,193,0.1);color:#a8b2c1">silver</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ FAQ ═══ -->
+  <div style="margin-top:40px">
+    <p class="section-title">FAQ</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="faq-card">
+        <button><span>What media types does Otix support?</span><span style="color:rgba(255,255,255,0.3);font-size:12px">▼</span></button>
+      </div>
+      <div class="faq-card">
+        <button><span>How do I earn XP?</span><span style="color:rgba(255,255,255,0.3);font-size:12px">▼</span></button>
+      </div>
+      <div class="faq-card">
+        <button><span>How do I connect external accounts?</span><span style="color:rgba(255,255,255,0.3);font-size:12px">▼</span></button>
+      </div>
+      <div class="faq-card">
+        <button><span>Is Otix free?</span><span style="color:rgba(255,255,255,0.3);font-size:12px">▼</span></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:24px;text-align:center">Full page layout: floating glass hero → slim search (overlap) → About → Profile Scores → Achievements → FAQ. Approve and I'll build it?</p>

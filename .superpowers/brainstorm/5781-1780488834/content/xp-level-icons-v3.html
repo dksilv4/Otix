@@ -1,0 +1,215 @@
+<h2>XP Level Icons — Premium Scalar Animations</h2>
+<p class="subtitle">Each level intensifies naturally. Same ease-out curve throughout. No spinning, no gimmicks.</p>
+
+<style>
+  .g { display:grid; grid-template-columns:repeat(4, 1fr); gap:24px; margin-top:24px; }
+  .c { background:#2e2e2e; border-radius:20px; padding:28px 16px 20px; text-align:center; position:relative; }
+  .c .lvl { font-size:10px; font-weight:600; color:rgba(255,255,255,0.2); letter-spacing:0.1em; margin-bottom:8px; text-transform:uppercase; }
+  .c .sw { height:92px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+  .c .nm { font-size:15px; font-weight:600; }
+  .c .ds { font-size:11px; color:rgba(255,255,255,0.3); margin-top:3px; }
+  .c .anim-label { font-size:9px; color:rgba(255,255,255,0.15); margin-top:6px; font-family:monospace; letter-spacing:0.03em; }
+
+  .f { outline:2px solid rgba(34,211,238,0.25); position:relative; }
+  .f::before { content:"★"; position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#22d3ee; color:#000; font-size:10px; font-weight:700; padding:2px 14px; border-radius:20px; letter-spacing:0.05em; z-index:2; }
+
+  /* Shared ease curve */
+  :root { --otx-ease: cubic-bezier(0.16, 1, 0.3, 1); }
+
+  /* 1: Static — nothing */
+
+  /* 2: Fade in — ∞ draws itself */
+  @keyframes draw-in {
+    0% { stroke-dashoffset: 240; opacity: 0; }
+    60% { opacity: 0.4; }
+    100% { stroke-dashoffset: 0; opacity: 0.35; }
+  }
+  .a2 .inf { stroke-dasharray: 240; stroke-dashoffset: 240; animation: draw-in 3s var(--otx-ease) infinite; }
+
+  /* 3: Float — gentle vertical drift */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .a3 .inf-group { animation: float 4s var(--otx-ease) infinite; }
+
+  /* 4: Orbit — slow figure-8 path around circle */
+  @keyframes orbit {
+    0% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(4px, -4px) scale(1.02); }
+    50% { transform: translate(0, 0) scale(1); }
+    75% { transform: translate(-4px, 4px) scale(0.98); }
+    100% { transform: translate(0, 0) scale(1); }
+  }
+  .a4 .inf-group { animation: orbit 6s var(--otx-ease) infinite; }
+
+  /* 5: Radiant glow — breathing light */
+  @keyframes radiate {
+    0%, 100% { filter: drop-shadow(0 0 4px currentColor); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 18px currentColor); transform: scale(1.03); }
+  }
+  .a5 .inf-group { animation: radiate 3s var(--otx-ease) infinite; transform-origin: center; }
+
+  /* 6: Dual harmonic — layers drift opposite */
+  @keyframes drift-a {
+    0%, 100% { transform: translate(0, 0); opacity: 0.5; }
+    50% { transform: translate(3px, -3px); opacity: 0.7; }
+  }
+  @keyframes drift-b {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-3px, 3px); }
+  }
+  .a6 .a { animation: drift-a 5s var(--otx-ease) infinite; }
+  .a6 .b { animation: drift-b 5s var(--otx-ease) infinite; }
+
+  /* 7: Resonant — sharp rapid pulse */
+  @keyframes resonate {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.06); }
+    60% { transform: scale(0.97); }
+    80% { transform: scale(1.02); }
+  }
+  .a7 .inf-group { animation: resonate 1.2s var(--otx-ease) infinite; transform-origin: center; }
+
+  /* 8: Transcend — expand/contract + glow wave */
+  @keyframes transcend {
+    0% { transform: scale(1); filter: drop-shadow(0 0 0 currentColor); }
+    25% { transform: scale(1.08); filter: drop-shadow(0 0 24px currentColor); }
+    50% { transform: scale(0.95); filter: drop-shadow(0 0 8px currentColor); }
+    75% { transform: scale(1.04); filter: drop-shadow(0 0 16px currentColor); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 0 currentColor); }
+  }
+  @keyframes dash-break {
+    0%, 100% { stroke-dashoffset: 0; }
+    50% { stroke-dashoffset: -60; }
+  }
+  .a8 .inf-path { animation: transcend 2s var(--otx-ease) infinite; transform-origin: center; }
+  .a8 .circle-path { animation: dash-break 2s var(--otx-ease) infinite; }
+</style>
+
+<div class="g">
+
+  <!-- 1. Novice — static -->
+  <div class="c">
+    <div class="lvl">Level 1–4</div>
+    <div class="sw">
+      <svg width="52" height="52" viewBox="0 0 2048 2048" fill="none">
+        <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#d97706">Novice</div>
+    <div class="ds">Still · waiting</div>
+    <div class="anim-label">—</div>
+  </div>
+
+  <!-- 2. Apprentice — ∞ draws in -->
+  <div class="c a2">
+    <div class="lvl">Level 5–9</div>
+    <div class="sw">
+      <svg width="52" height="52" viewBox="0 0 2048 2048" fill="none">
+        <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>
+        <path class="inf" d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#94a3b8" stroke-width="30" stroke-linecap="round" opacity="0.35"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#94a3b8">Apprentice</div>
+    <div class="ds">Drawing in · awakening</div>
+    <div class="anim-label">stroke-dashoffset</div>
+  </div>
+
+  <!-- 3. Adept — gentle float -->
+  <div class="c a3">
+    <div class="lvl">Level 10–19</div>
+    <div class="sw">
+      <div class="inf-group">
+        <svg width="52" height="52" viewBox="0 0 2048 2048" fill="none">
+          <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#fbbf24" stroke-width="35" stroke-linecap="round" opacity="0.7"/>
+        </svg>
+      </div>
+    </div>
+    <div class="nm" style="color:#fbbf24">Adept</div>
+    <div class="ds">Floating · breathing</div>
+    <div class="anim-label">translateY</div>
+  </div>
+
+  <!-- 4. Expert — slow orbit -->
+  <div class="c a4">
+    <div class="lvl">Level 20–34</div>
+    <div class="sw">
+      <div class="inf-group">
+        <svg width="52" height="52" viewBox="0 0 2048 2048" fill="none">
+          <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.08)" stroke-width="30"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#34d399" stroke-width="50" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="nm" style="color:#34d399">Expert</div>
+    <div class="ds">Orbiting · centering</div>
+    <div class="anim-label">orbit 6s</div>
+  </div>
+
+  <!-- 5. Master — radiant glow -->
+  <div class="c f">
+    <div class="lvl" style="color:#22d3ee">Level 35–49</div>
+    <div class="sw">
+      <div class="inf-group">
+        <svg width="56" height="56" viewBox="0 0 2048 2048" fill="none" color="#22d3ee">
+          <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.06)" stroke-width="30"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#22d3ee" stroke-width="80" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="nm" style="color:#22d3ee">Master</div>
+    <div class="ds">★ Logo · radiating</div>
+    <div class="anim-label">glow 3s</div>
+  </div>
+
+  <!-- 6. Grandmaster — dual drift -->
+  <div class="c a6">
+    <div class="lvl">Level 50–74</div>
+    <div class="sw">
+      <svg width="56" height="56" viewBox="0 0 2048 2048" fill="none">
+        <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.06)" stroke-width="30"/>
+        <path class="a" d="M345 1024 C345 600 805 645 1024 1024 C1243 1403 1703 1448 1703 1024 C1703 600 1243 645 1024 1024 C805 1403 345 1448 345 1024" stroke="#a78bfa" stroke-width="35" stroke-linecap="round" opacity="0.5"/>
+        <path class="b" d="M545 1024 C545 800 805 845 1024 1024 C1243 1203 1503 1248 1503 1024 C1503 800 1243 845 1024 1024 C805 1203 545 1248 545 1024" stroke="#a78bfa" stroke-width="40" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#a78bfa">Grandmaster</div>
+    <div class="ds">Layers diverging</div>
+    <div class="anim-label">opposing drift</div>
+  </div>
+
+  <!-- 7. Legend — resonant pulses -->
+  <div class="c a7">
+    <div class="lvl">Level 75–99</div>
+    <div class="sw">
+      <div class="inf-group">
+        <svg width="56" height="56" viewBox="0 0 2048 2048" fill="none">
+          <circle cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.06)" stroke-width="30"/>
+          <path d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#a78bfa" stroke-width="55" stroke-linecap="square"/>
+          <path d="M700 1024 L1024 700 L1348 1024 L1024 1348 Z" fill="rgba(167,139,250,0.15)" stroke="#a78bfa" stroke-width="25" stroke-linejoin="miter"/>
+        </svg>
+      </div>
+    </div>
+    <div class="nm" style="color:#a78bfa">Legend</div>
+    <div class="ds">Resonating · intensifying</div>
+    <div class="anim-label">scale 1.2s</div>
+  </div>
+
+  <!-- 8. Transcendent — expand/contract wave -->
+  <div class="c a8">
+    <div class="lvl">Level 100+</div>
+    <div class="sw">
+      <svg width="64" height="64" viewBox="0 0 2048 2048" fill="none" color="#a78bfa">
+        <circle class="circle-path" cx="1024" cy="1024" r="750" stroke="rgba(255,255,255,0.06)" stroke-width="25" stroke-dasharray="100 20"/>
+        <path class="inf-path" d="M445 1024 C445 700 805 745 1024 1024 C1243 1303 1603 1348 1603 1024 C1603 700 1243 745 1024 1024 C805 1303 445 1348 445 1024" stroke="#a78bfa" stroke-width="70" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="nm" style="color:#a78bfa">Transcendent</div>
+    <div class="ds">Expanding · breaking through</div>
+    <div class="anim-label">expand/wave 2s</div>
+  </div>
+
+</div>
+
+<p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:20px;text-align:center">Scalar intensity: none → draw-in → float → orbit → glow → dual-drift → resonate → transcend. All use `cubic-bezier(0.16, 1, 0.3, 1)`.</p>
