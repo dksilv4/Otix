@@ -8,7 +8,7 @@ from __future__ import annotations
 import base64
 import secrets
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import structlog
@@ -36,6 +36,8 @@ SCOPES = [
     "user-read-playback-state",
     "user-modify-playback-state",
     "user-read-recently-played",
+    "playlist-read-private",
+    "playlist-read-collaborative",
 ]
 
 
@@ -182,7 +184,10 @@ async def link_spotify_to_user(session: AsyncSession, user: User, code: str, sta
     # Check for duplicate links
     existing = await session.scalar(select(User).where(User.spotify_id == spotify_id))
     if existing is not None and existing.id != user.id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This Spotify account is already linked to another Otix account.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This Spotify account is already linked to another Otix account.",
+        )
 
     user.spotify_id = spotify_id
     user.spotify_username = profile.get("display_name")
@@ -192,7 +197,7 @@ async def link_spotify_to_user(session: AsyncSession, user: User, code: str, sta
         user.spotify_avatar_url = images[0].get("url")
     user.spotify_access_token = access_token
     user.spotify_refresh_token = refresh_token
-    user.spotify_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    user.spotify_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     await session.flush()
     logger.info("spotify account linked", user_id=user.id, spotify_id=spotify_id)
@@ -224,7 +229,7 @@ async def get_user_access_token(user: User) -> str | None:
 
     expires_at = user.spotify_token_expires_at
     if expires_at and isinstance(expires_at, datetime):
-        if datetime.now(timezone.utc) < expires_at - timedelta(seconds=60):
+        if datetime.now(UTC) < expires_at - timedelta(seconds=60):
             return user.spotify_access_token
 
     # Token expired or about to expire — refresh
@@ -241,7 +246,7 @@ async def get_user_access_token(user: User) -> str | None:
     # Store new token on user. Caller must commit.
     user.spotify_access_token = new_access
     expires_in = tokens.get("expires_in", 3600)
-    user.spotify_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    user.spotify_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     # Spotify may rotate the refresh token
     if tokens.get("refresh_token"):
