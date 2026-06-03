@@ -1,7 +1,7 @@
 import { memo, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Star } from 'lucide-react'
+import { Film, Tv, Gamepad2, Music, Star } from 'lucide-react'
 import { DkImage } from '@dk-ui/atoms/image'
 import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
@@ -26,18 +26,18 @@ interface DkMediaCardProps {
   artistName?: string | null
 }
 
+const mediaTypeIcon: Record<string, React.ReactNode> = {
+  movie: <Film className="h-3 w-3" />,
+  show: <Tv className="h-3 w-3" />,
+  game: <Gamepad2 className="h-3 w-3" />,
+  music: <Music className="h-3 w-3" />,
+}
+
 const mediaTypeColor: Record<string, string> = {
   movie: 'bg-rose-600',
   show: 'bg-violet-600',
   game: 'bg-emerald-600',
   music: 'bg-amber-600',
-}
-
-const mediaTypeLabel: Record<string, string> = {
-  movie: 'Movie',
-  show: 'TV',
-  game: 'Game',
-  music: 'Music',
 }
 
 const DkMediaCard = memo(function DkMediaCard({
@@ -111,11 +111,11 @@ const DkMediaCard = memo(function DkMediaCard({
         <div className="absolute top-2 left-2">
           <span
             className={cn(
-              'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold text-white',
+              'inline-flex items-center p-1.5 rounded-full text-white',
               mediaTypeColor[mediaType] ?? 'bg-muted-foreground',
             )}
           >
-            {mediaTypeLabel[mediaType] ?? mediaType}
+            {mediaTypeIcon[mediaType]}
           </span>
         </div>
       )}

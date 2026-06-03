@@ -371,7 +371,12 @@
       "Bash(ps *)",
       "Bash(kill 24054 24056 13656 13655 13638 13621 13620 13588 13589 13584 24055 24053 24052 24051 24019 24020 24014 1334 1335 1350 1320)",
       "Bash(log show *)",
-      "Bash(echo \"---EXIT:$?\")"
+      "Bash(echo \"---EXIT:$?\")",
+      "Bash(docker pull *)",
+      "Bash(awk '/10:5[7-9]|10:5[7-9]|11:0[0-9]/')",
+      "Bash(ruff check *)",
+      "Bash(.venv/Scripts/ruff check *)",
+      "Bash(py -m ruff check --fix backend/otix/infrastructure/database.py)"
     ]
   },
   "outputStyle": "default"

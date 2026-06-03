@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import delete as sa_delete, event, select as sa_select
+from sqlalchemy import event
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Session
 
@@ -21,10 +22,6 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
 
     Runs after PK defaults are assigned (unlike before_flush) so new objects
     have their entity_id available for ExternalID row creation."""
-    # Process _pending_external_ids on session.new and session.dirty
-    # objects. _pending_external_ids is populated by
-    # ExternalIDDescriptor.__set__, which also calls flag_modified() on
-    # the first column to ensure attached objects appear in session.dirty.
     from otix.domain.media import ExternalID
 
     for obj in list(session.new) + list(session.dirty):
@@ -51,10 +48,6 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                 if existing is not None:
                     existing.external_id = str_val
                 else:
-                    # Check for a legacy stub (same provider+external_id
-                    # but entity_type IS NULL from tmdb_seed daily import).
-                    # Upgrade it in-place instead of inserting a new row
-                    # that would violate the unique constraint.
                     legacy = session.scalar(
                         sa_select(ExternalID).where(
                             ExternalID.provider == provider,
@@ -83,8 +76,6 @@ def _get_engine() -> AsyncEngine:
     current_pid = os.getpid()
 
     if _engine is not None and _pid != current_pid:
-        # Process changed (Celery prefork child) — dispose the parent's pool
-        # synchronously (connections are invalid in the child anyway).
         _engine.sync_engine.dispose()
         _engine = None
         _session_factory = None
@@ -97,10 +88,12 @@ def _get_engine() -> AsyncEngine:
             max_overflow=settings.db_max_overflow,
             pool_pre_ping=True,
             pool_recycle=300,
-            connect_args={"timeout": settings.db_connect_timeout},
+            connect_args={
+                "timeout": settings.db_connect_timeout,
+                "statement_cache_size": 0,
+            },
         )
 
-        # Set pg_trgm similarity threshold for the % operator used in search.
         @event.listens_for(_engine.sync_engine, "connect")
         def _set_pg_trgm_limit(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
@@ -117,10 +110,6 @@ def _get_engine() -> AsyncEngine:
     return _engine
 
 
-# Register the after_flush handler on the sync Session so ExternalID
-# descriptor values set on attached objects are persisted automatically.
-# Registered at module level (not inside _get_engine) so it works with any
-# Session factory, including tests.
 if not event.contains(Session, "after_flush", _process_pending_external_ids):
     event.listen(Session, "after_flush", _process_pending_external_ids)
 
@@ -130,7 +119,6 @@ class Base(DeclarativeBase):
 
 
 def async_session():
-    """Get a session from a process-aware factory. Safe for Celery prefork workers."""
     _get_engine()
     return _session_factory()
 
