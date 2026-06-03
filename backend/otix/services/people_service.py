@@ -51,11 +51,15 @@ class PeopleService:
                 .joinedload(MediaItem.show)
                 .selectinload(Show.seasons)
                 .selectinload(Season.episodes),
+                selectinload(Person._external_ids),
             )
             .where(Person.id == person_id)
         )
         if person is None:
             return None
+
+        # Safety: filter out credits whose media_item no longer exists
+        person.credits = [c for c in person.credits if c.media_item is not None]
 
         # Sort credits by release_date descending, nulls last
         null_credits = [c for c in person.credits if not c.media_item.release_date]

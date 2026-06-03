@@ -233,6 +233,11 @@ export function UserProfilePage() {
  <div className="pb-16">
  <Helmet>
  <title>{`${profile.username} - Otix`}</title>
+ <meta name="description" content={`${profile.username}'s profile on Otix — check out their library, lists, and activity.`} />
+ <meta property="og:title" content={`${profile.username} - Otix`} />
+ <meta property="og:description" content={`${profile.username}'s profile on Otix.`} />
+ <meta property="og:type" content="profile" />
+ <meta name="twitter:card" content="summary" />
  </Helmet>
 
  {/* Hero */}

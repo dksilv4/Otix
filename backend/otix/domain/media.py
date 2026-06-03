@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.franchise import Franchise, FranchiseItem
     from otix.domain.people import MediaCredit
+    from otix.domain.media_rating import MediaItemRating
     from otix.domain.review import Review
     from otix.domain.user import User
 
@@ -90,6 +91,7 @@ class MediaItem(Base, TimestampMixin):
     involved_companies: Mapped[list[InvolvedCompany]] = relationship("InvolvedCompany", back_populates="media_item")
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="media_item")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="media_item")
+    ratings: Mapped[list[MediaItemRating]] = relationship("MediaItemRating", back_populates="media_item")
     collection_items: Mapped[list[CollectionItem]] = relationship("CollectionItem", back_populates="media_item")
     franchise_items: Mapped[list[FranchiseItem]] = relationship("FranchiseItem", back_populates="media_item")
     external_ids: Mapped[list[ExternalID]] = relationship(

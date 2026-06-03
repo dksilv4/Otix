@@ -48,7 +48,7 @@ class MediaCreditPersonOut(BaseModel):
 
 class MediaCreditOut(BaseModel):
     id: str
-    person: MediaCreditPersonOut
+    person: MediaCreditPersonOut | None = None
     role: str
     character_name: str | None = None
     sort_order: int
@@ -262,6 +262,19 @@ class LocalGameMatch(BaseModel):
 
 class LocalGameMatchResponse(BaseModel):
     matches: list[LocalGameMatch]
+
+
+# ── Seed game titles from desktop scan ──────────────────────────
+
+
+class SeedFromTitlesRequest(BaseModel):
+    titles: list[str]
+
+
+class SeedFromTitlesResponse(BaseModel):
+    accepted: bool = True
+    total_titles: int = 0
+    task_id: str | None = None
 
 
 # ── Media detail (full) ──────────────────────────────────────────

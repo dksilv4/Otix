@@ -36,7 +36,7 @@ export function useMatchLocalGames() {
         data.matches.map((m) => [m.queryTitle, m]),
       );
 
-      const AUTO_ACCEPT_THRESHOLD = 0.7;
+      const AUTO_ACCEPT_THRESHOLD = 0.9;
 
       return games.map((game) => {
         const match = matchMap.get(game.title);

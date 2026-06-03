@@ -2,7 +2,10 @@
 
 # ── Reviews ──
 REVIEW_WITH_CONTENT = 150
-REVIEW_SCORE_ONLY = 50
+REVIEW_SCORE_ONLY = 50  # kept for historical reference
+
+# ── Media Ratings ──
+RATE_MEDIA = 50
 
 # ── Interactions ──
 INTERACTION_WATCHED_PLAYED = 30

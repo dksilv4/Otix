@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Film, Tv, Gamepad2, Music, ChevronRight, Check, Loader2, ArrowLeft } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -193,6 +194,10 @@ export function OnboardingPage() {
 
   return (
     <div className="min-h-[calc(100vh-5rem)] flex items-center justify-center px-4 py-12">
+      <Helmet>
+        <title>Onboarding - Otix</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <div className="w-full max-w-2xl">
         {/* Progress indicator */}
         <div className="mb-10">

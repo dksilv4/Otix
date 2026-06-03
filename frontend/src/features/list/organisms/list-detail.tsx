@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react"
+import { Helmet } from "react-helmet-async"
 import { useParams, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -145,6 +146,13 @@ export function ListDetail() {
 
  return (
  <div className="space-y-8">
+ <Helmet>
+ <title>{`${list.name} - List - Otix`}</title>
+ {list.description && <meta name="description" content={list.description.slice(0, 200)} />}
+ <meta property="og:title" content={`${list.name} - List - Otix`} />
+ {list.description && <meta property="og:description" content={list.description.slice(0, 200)} />}
+ <meta name="twitter:card" content="summary" />
+ </Helmet>
  {/* Header */}
  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
  <div>

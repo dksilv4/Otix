@@ -168,3 +168,73 @@ async def _backfill_tmdb_movies(query: str, redis: aioredis.Redis, query_hash: s
 
 async def _backfill_tmdb_shows(query: str, redis: aioredis.Redis, query_hash: str) -> dict:
     return await _backfill_tmdb(query, redis, query_hash, "show")
+
+
+# ── Seed game titles from desktop scan ───────────────────────────────────
+
+
+@app.task(
+    name="seed.igdb_from_titles",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=120,
+    queue="reactive-fast",
+    acks_late=True,
+)
+def seed_igdb_from_titles_task(self, titles: list[str]) -> dict:
+    """Search IGDB for a batch of game titles and enqueue sync tasks for missing games.
+
+    Called after a desktop scan to proactively seed the catalog with games
+    the user has locally, so subsequent match-local-games calls can find them.
+    """
+    return run_async(_seed_igdb_from_titles(titles))
+
+
+async def _seed_igdb_from_titles(titles: list[str]) -> dict:
+    redis = await get_redis()
+    provider = IGDBProvider(redis)
+
+    unique = list(dict.fromkeys([t.strip() for t in titles if t.strip()]))
+    if not unique:
+        return {"enqueued": 0, "skipped": 0, "total_titles": 0, "found": 0}
+
+    # Search IGDB with concurrency — 5 concurrent requests to stay within rate limits
+    semaphore = asyncio.Semaphore(5)
+
+    async def _search(title: str) -> set[str]:
+        async with semaphore:
+            try:
+                results = await provider.search_games(title, limit=3, fields="id")
+                return {str(r["id"]) for r in results if r.get("id")}
+            except Exception:
+                return set()
+
+    id_sets = await asyncio.gather(*[_search(t) for t in unique])
+    all_ids: set[str] = set()
+    for ids in id_sets:
+        all_ids |= ids
+
+    if not all_ids:
+        logger.info("seed_igdb_from_titles_no_results", total_titles=len(unique))
+        return {"enqueued": 0, "skipped": 0, "total_titles": len(unique), "found": 0}
+
+    missing = await filter_missing_ids("igdb", all_ids)
+
+    enqueued = 0
+    for ext_id in missing:
+        app.send_task("sync.igdb.game", args=[int(ext_id)], priority=9)
+        enqueued += 1
+
+    logger.info(
+        "seed_igdb_from_titles_complete",
+        total_titles=len(unique),
+        unique_ids_found=len(all_ids),
+        enqueued=enqueued,
+        skipped=len(all_ids) - enqueued,
+    )
+    return {
+        "enqueued": enqueued,
+        "skipped": len(all_ids) - enqueued,
+        "total_titles": len(unique),
+        "found": len(all_ids),
+    }

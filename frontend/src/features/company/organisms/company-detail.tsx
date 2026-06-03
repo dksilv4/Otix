@@ -127,6 +127,16 @@ export function CompanyDetail() {
     <div className="pb-16">
       <Helmet>
         <title>{company ? `${company.name} - Otix` : `Company - Otix`}</title>
+        {company?.description && (
+          <meta name="description" content={company.description.slice(0, 200)} />
+        )}
+        <meta property="og:title" content={company ? `${company.name} - Otix` : `Company - Otix`} />
+        {company?.description && (
+          <meta property="og:description" content={company.description.slice(0, 200)} />
+        )}
+        <meta property="og:type" content="website" />
+        {company?.logoUrl && <meta property="og:image" content={company.logoUrl} />}
+        <meta name="twitter:card" content="summary" />
       </Helmet>
 
       {/* Header */}

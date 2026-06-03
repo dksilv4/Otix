@@ -6,6 +6,7 @@ import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { cn } from '@/lib/utils'
 import { ReviewComposer } from './review-composer'
 import { reviewQueries, type ReviewOut } from '../review-queries'
+import { ratingQueries, type MediaRatingOut } from '../rating-queries'
 
 interface ReviewActionButtonProps {
   mediaId: string
@@ -15,16 +16,23 @@ interface ReviewActionButtonProps {
 export function ReviewActionButton({ mediaId, className }: ReviewActionButtonProps) {
   const { isAuthenticated } = useAuth()
   const [composerOpen, setComposerOpen] = useState(false)
-  const { data: myReview, refetch } = useQuery({
+
+  const myReviewQuery = useQuery({
     ...reviewQueries.myReview(mediaId),
+    enabled: isAuthenticated,
+  })
+  const myRatingQuery = useQuery({
+    ...ratingQueries.myRating(mediaId),
     enabled: isAuthenticated,
   })
 
   if (!isAuthenticated) return null
 
-  const review = (myReview ?? null) as ReviewOut | null
-  const hasReview = Boolean(review?.score || review?.title || review?.content)
-  const Icon = hasReview ? Pencil : Star
+  const review = (myReviewQuery.data ?? null) as ReviewOut | null
+  const rating = (myRatingQuery.data ?? null) as MediaRatingOut | null
+  const hasRating = !!rating
+  const hasReview = !!(review?.title || review?.content)
+  const Icon = hasRating || hasReview ? Pencil : Star
 
   return (
     <>
@@ -37,30 +45,31 @@ export function ReviewActionButton({ mediaId, className }: ReviewActionButtonPro
           className,
         )}
       >
-        {hasReview && (
+        {(hasRating || hasReview) && (
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,var(--tw-gradient-from),transparent_70%)] from-amber-500/15 opacity-30" />
         )}
         <Icon
           className={cn(
             'relative h-5 w-5 transition-colors',
-            hasReview ? 'fill-current text-amber-400' : 'text-muted-foreground',
+            (hasRating || hasReview) ? 'fill-current text-amber-400' : 'text-muted-foreground',
           )}
         />
         <span className="relative text-[11px] font-medium text-muted-foreground">
-          {hasReview ? 'Review' : 'Rate'}
+          {hasRating || hasReview ? 'Review' : 'Rate'}
         </span>
       </button>
 
       <DkDialog
         open={composerOpen}
         onOpenChange={setComposerOpen}
-        title={review ? 'Edit Your Review' : 'Rate & Review'}
+        title={(hasRating || hasReview) ? 'Edit Your Rating' : 'Rate & Review'}
       >
         <ReviewComposer
           mediaId={mediaId}
           existingReview={review}
+          existingRating={rating}
           onClose={() => setComposerOpen(false)}
-          onSaved={() => refetch()}
+          onSaved={() => { myReviewQuery.refetch(); myRatingQuery.refetch() }}
         />
       </DkDialog>
     </>

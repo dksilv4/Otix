@@ -31,7 +31,9 @@ function expandCredits(credits: PersonCredit[]): GroupedCredit[] {
  const result: GroupedCredit[] = []
 
  for (const c of credits) {
- const seasons = c.mediaItem.seasons
+   // Skip credits whose mediaItem was deleted (data integrity safety net)
+   if (!c.mediaItem) continue
+   const seasons = c.mediaItem.seasons
  if (c.mediaItem.mediaType === 'show' && seasons && seasons.length > 0) {
  for (const season of seasons) {
  const episodes = season.episodes ?? []
@@ -228,8 +230,11 @@ interface PersonTimelineProps {
 export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonTimelineProps) {
  let filtered = credits
 
+ // Safety: skip credits whose mediaItem or person was deleted
+ filtered = filtered.filter((c) => c.mediaItem != null)
+
  if (mediaTypeFilter !== 'all') {
- filtered = filtered.filter((c) => c.mediaItem.mediaType === mediaTypeFilter)
+ filtered = filtered.filter((c) => c.mediaItem!.mediaType === mediaTypeFilter)
  }
  if (roleFilter !== 'all') {
  filtered = filtered.filter((c) => c.role === roleFilter)

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, type FormEvent } from 'react'
+import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate, useRouter, useSearch, useLocation } from '@tanstack/react-router'
 import { LogIn, UserPlus, Loader2, Check, Shield, ArrowLeft, ArrowRight } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
@@ -237,6 +238,11 @@ export function AuthPage() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 auth-aurora-bg">
+      <Helmet>
+        <title>{isLogin ? 'Sign In - Otix' : 'Create Account - Otix'}</title>
+        <meta name="description" content={isLogin ? 'Sign in to Otix to continue your journey.' : 'Create an account on Otix to track movies, shows, games, and music.'} />
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {canGoBack && (
         <div className="fixed top-4 left-4 z-[9999] flex items-center rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-lg shadow-[var(--dk-shadow-glass)] px-2 py-1.5">
           <button

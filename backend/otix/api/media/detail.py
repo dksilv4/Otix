@@ -193,6 +193,8 @@ async def get_media_item(
     cached = await redis.get(cache_key)
     if cached:
         result = MediaItemDetail.model_validate(json.loads(cached))
+        # Safety net: filter stale credits whose person was deleted after caching
+        result.credits = [c for c in result.credits if c.person is not None]
         asyncio.create_task(_increment_view_count(media_id))
         if current_user is not None:
             await _patch_user_detail(result, db, current_user, media_id)
@@ -205,6 +207,11 @@ async def get_media_item(
     item = await service.get_media_item(media_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
+
+    # Filter out credits whose person record no longer exists (data integrity safety net).
+    # The selectinload + joinedload produces a LEFT JOIN — if the person was deleted,
+    # credit.person is None, which would fail serialization and create stale links.
+    item.credits = [c for c in item.credits if c.person is not None]
 
     result = MediaItemDetail.model_validate(item)
 

@@ -56,6 +56,8 @@ export function DownloadQueuePage() {
     <div className="mx-auto max-w-3xl pb-16">
       <Helmet>
         <title>Downloads - Otix</title>
+        <meta name="description" content="Manage your downloads on Otix." />
+        <meta name="robots" content="noindex" />
       </Helmet>
 
       {/* Header */}

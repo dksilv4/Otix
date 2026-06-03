@@ -118,6 +118,7 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
  <ReviewComposer
  mediaId={mediaId}
  existingReview={editTarget}
+ existingRating={editTarget?.rating ?? null}
  onClose={() => { setComposerOpen(false); setEditTarget(null) }}
  />
  </DkDialog>

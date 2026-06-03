@@ -57,7 +57,7 @@ export function MenuDropdown() {
 
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
-    { to: "/games" as string, icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined as any },
+    { to: "/games", icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined },
     { to: "/library", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
     ...(user ? [
       { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },

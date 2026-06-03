@@ -54,6 +54,7 @@ export function DiscoverHero({ className }: { className?: string }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const failedDetailIdsRef = useRef(new Set<string>())
 
   const heroQuery = useInfiniteQuery({
     ...discoverQueries.hero(),
@@ -85,8 +86,25 @@ export function DiscoverHero({ className }: { className?: string }) {
   })
 
   const detail = detailQuery.data
+  const detailError = detailQuery.isError
   const isLoading = heroQuery.isLoading || (!!activeId && detailQuery.isLoading && !detail)
-  const hasError = (heroQuery.isError && !heroQuery.data) || detailQuery.isError
+  // Only error if the hero list itself failed — not when a single item's detail fails
+  const hasError = heroQuery.isError && !heroQuery.data
+
+  // ── Graceful skip: when a hero item's detail can't be loaded, advance ──
+  useEffect(() => {
+    if (!detailError || !activeId || items.length <= 1) return
+    failedDetailIdsRef.current.add(activeId)
+
+    // Find the next item whose detail hasn't failed yet
+    const nextIdx = items.findIndex((item, i) =>
+      i !== activeIndex && !failedDetailIdsRef.current.has(item.id),
+    )
+    if (nextIdx !== -1) {
+      setActiveIndex(nextIdx)
+    }
+    // If all items have failed, fall through — the fallback render handles it
+  }, [detailError, activeId, activeIndex, items.length])
 
   // ── Autoplay ──
   const tick = useCallback(() => {
@@ -101,8 +119,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     }
   }, [items.length, isPaused, tick])
 
-  // ── Background image (backdrop > textless poster) ──
-  const bgImageRaw = detail?.backdropUrl || detail?.textlessPosterUrl || null
+  // ── Background image (backdrop > textless poster > summary poster fallback) ──
+  const summaryFallbackPoster = activeItem?.textlessPosterUrl || activeItem?.posterUrl || null
+  const bgImageRaw = detail?.backdropUrl || detail?.textlessPosterUrl || summaryFallbackPoster
   const bgImage = bgImageRaw ? heroImage(bgImageRaw) : null
 
   const handleMouseEnter = useCallback(() => setIsPaused(true), [])
@@ -135,7 +154,7 @@ export function DiscoverHero({ className }: { className?: string }) {
       )}
 
       {/* ── Active slide ── */}
-      {detail && (
+      {activeItem && (
         <AnimatePresence>
           <motion.div
             key={activeId}
@@ -168,7 +187,7 @@ export function DiscoverHero({ className }: { className?: string }) {
               className="relative z-10 flex flex-col items-center justify-end h-full p-10 pb-16"
             >
               {/* Logo or text title */}
-              {detail.logoUrl ? (
+              {detail?.logoUrl ? (
                 <img
                   src={detail.logoUrl}
                   alt={detail.title}
@@ -176,11 +195,12 @@ export function DiscoverHero({ className }: { className?: string }) {
                 />
               ) : (
                 <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3 leading-tight max-w-2xl text-center">
-                  {detail.title}
+                  {detail?.title || activeItem.title}
                 </h1>
               )}
 
-              {/* Meta row */}
+              {/* Meta row — only from full detail */}
+              {detail && (
               <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
                 {/* Media type badge */}
                 <Badge
@@ -216,9 +236,10 @@ export function DiscoverHero({ className }: { className?: string }) {
                   </Badge>
                 ))}
               </div>
+              )}
 
-              {/* Overview */}
-              {detail.overview && (
+              {/* Overview — only from full detail */}
+              {detail?.overview && (
                 <p className="text-sm text-white/70 max-w-xl text-center line-clamp-2 mb-6">
                   {detail.overview}
                 </p>
@@ -228,8 +249,8 @@ export function DiscoverHero({ className }: { className?: string }) {
               <Link
                 to="/media/$mediaType/$mediaId"
                 params={{
-                  mediaType: detail.mediaType as 'movie' | 'show' | 'game' | 'music',
-                  mediaId: detail.id,
+                  mediaType: (detail?.mediaType || activeItem.mediaType) as 'movie' | 'show' | 'game' | 'music',
+                  mediaId: activeItem.id,
                 }}
               >
                 <button

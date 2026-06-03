@@ -41,26 +41,18 @@ export function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
       continue;
     }
 
-    // Priority order:
-    // 1. Steam/Launcher games (official, achievements)
-    // 2. Installed PC games (playable)
-    // 3. ISOs (installable)
     const getPriority = (g: DetectedGame) => {
       if (g.platform === 'steam') return 4;
-      if (g.platform !== 'iso') return 3; // installers (epic, gog, etc) or standard PC executables
-      return 1; // ISO disk files
+      if (g.platform !== 'iso') return 3;
+      return 1;
     };
 
-    // Sort to choose the best base game
     const best = [...group].sort((a, b) => {
-      // 1. Prefer matching otix media ID
       if (a.otixMediaId && !b.otixMediaId) return -1;
       if (!a.otixMediaId && b.otixMediaId) return 1;
-      // 2. Prefer launcher/installed over ISO
       const pA = getPriority(a);
       const pB = getPriority(b);
       if (pA !== pB) return pB - pA;
-      // 3. Prefer having icon URL
       if (a.iconUrl && !b.iconUrl) return -1;
       if (!a.iconUrl && b.iconUrl) return 1;
       return 0;
@@ -71,7 +63,6 @@ export function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
     merged.push({
       ...best,
       sources: sources.length > 1 ? sources : undefined,
-      // Keep the best exe path (prefer steam)
       exePath: group.find((g) => g.platform === "steam")?.exePath ?? best.exePath,
       installDir: best.installDir,
     });
@@ -80,7 +71,7 @@ export function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
   return merged;
 }
 
-// In-memory cache for game scan data to avoid layout flashing and maintain synchronous frontend behavior
+// In-memory cache — the frontend's fast synchronous read layer
 const cache = {
   paths: [] as string[],
   isoPaths: [] as string[],
@@ -88,14 +79,14 @@ const cache = {
   localMap: {} as Record<string, DetectedGame>
 };
 
-// Helper to check if running in Electron environment
 export function hasElectronAPI(): boolean {
   return (
     typeof window !== "undefined" && !!(window as any).electronAPI
   );
 }
 
-// Initialize cache synchronously from localStorage on startup (zero flash)
+// ── Initialise cache from localStorage (fast, for immediate reads) ──
+
 if (typeof window !== "undefined") {
   try {
     const rawPaths = localStorage.getItem(STORAGE_KEYS.PATHS);
@@ -126,81 +117,57 @@ if (typeof window !== "undefined") {
   }
 }
 
-// Asynchronously sync localStorage cache with the Electron SQLite database on startup
-export async function syncStorageWithDatabase(): Promise<void> {
+// ── Overwrite cache from SQLite database (the real source of truth) ──
+
+export async function loadFromDatabase(): Promise<void> {
   if (!hasElectronAPI()) return;
   const api = (window as any).electronAPI;
-  
+
   try {
-    // 1. Sync scan paths
+    // Paths
     const dbPaths = await api.getScanPaths();
     if (dbPaths && dbPaths.length > 0) {
       const paths = dbPaths.filter((p: any) => p.type === 'game').map((p: any) => p.path);
       const isoPaths = dbPaths.filter((p: any) => p.type === 'iso').map((p: any) => p.path);
-      
       cache.paths = paths;
       cache.isoPaths = isoPaths;
-      
       localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(paths));
       localStorage.setItem(STORAGE_KEYS.ISO_PATHS, JSON.stringify(isoPaths));
-    } else {
-      // If database has no paths but localStorage does, seed the database
-      if (cache.paths.length > 0 || cache.isoPaths.length > 0) {
-        const combined = [
-          ...cache.paths.map(p => ({ path: p, type: 'game' as const })),
-          ...cache.isoPaths.map(p => ({ path: p, type: 'iso' as const }))
-        ];
-        await api.saveScanPaths(combined);
-      }
     }
 
-    // 2. Sync scanned games
+    // Games — authoritative
     const dbGames = await api.getScannedGames();
     if (dbGames && dbGames.length > 0) {
       const deduped = mergeDuplicateGames(dbGames);
       cache.games = deduped;
       localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
-      
-      // If duplicates were merged and pruned, save the cleaned list back to the SQLite DB!
       if (deduped.length < dbGames.length) {
-        console.log(`[syncStorageWithDatabase] Pruning ${dbGames.length - deduped.length} duplicate games from SQLite DB`);
         await api.saveScannedGames(deduped);
-      }
-    } else {
-      // Seed database if localStorage has games
-      if (cache.games.length > 0) {
-        await api.saveScannedGames(cache.games);
       }
     }
 
-    // 3. Sync local games mapping
+    // Local map
     const dbMap = await api.getLocalGamesMap();
     if (dbMap && Object.keys(dbMap).length > 0) {
       cache.localMap = dbMap;
       localStorage.setItem(STORAGE_KEYS.LOCAL_MAP, JSON.stringify(dbMap));
-    } else {
-      // Seed database if localStorage has mapping
-      if (Object.keys(cache.localMap).length > 0) {
-        for (const [mediaId, game] of Object.entries(cache.localMap)) {
-          await api.saveLocalGamesMapEntry(mediaId, game);
-        }
-      }
     }
   } catch (err) {
-    console.error("Failed to sync scanned library/paths with SQLite database:", err);
+    console.error("Failed to load game data from SQLite database:", err);
   }
 }
 
-// Auto-trigger the async SQLite synchronization block deferred to next microtask
+// Run on startup — defer so components get an initial render from localStorage first
 if (typeof window !== "undefined") {
   setTimeout(() => {
-    syncStorageWithDatabase().catch(err => {
-      console.error("Deferred storage sync failed:", err);
+    loadFromDatabase().catch((err) => {
+      console.error("Database load failed:", err);
     });
   }, 0);
 }
 
-// Synchronous getters from in-memory cache
+// ── Synchronous getters (from in-memory cache) ──
+
 export function getScanPaths(): string[] {
   return cache.paths;
 }
@@ -217,11 +184,12 @@ export function getLocalGamesMap(): Record<string, DetectedGame> {
   return cache.localMap;
 }
 
-// Setters write to cache/localStorage synchronously, and persist to SQLite asynchronously
+// ── Setters — write to cache + localStorage + SQLite ──
+
 export function setScanPaths(paths: string[]): void {
   cache.paths = paths;
   localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(paths));
-  
+
   if (hasElectronAPI()) {
     const combined = [
       ...paths.map(p => ({ path: p, type: 'game' as const })),
@@ -236,7 +204,7 @@ export function setScanPaths(paths: string[]): void {
 export function setIsoPaths(paths: string[]): void {
   cache.isoPaths = paths;
   localStorage.setItem(STORAGE_KEYS.ISO_PATHS, JSON.stringify(paths));
-  
+
   if (hasElectronAPI()) {
     const combined = [
       ...cache.paths.map(p => ({ path: p, type: 'game' as const })),
@@ -252,7 +220,7 @@ export function setScannedGames(games: DetectedGame[]): void {
   const deduped = mergeDuplicateGames(games);
   cache.games = deduped;
   localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
-  
+
   if (hasElectronAPI()) {
     (window as any).electronAPI.saveScannedGames(deduped).catch((err: any) => {
       console.error("Failed to save scanned games to SQLite:", err);
@@ -270,10 +238,60 @@ export function setLocalGamesMapEntry(
     delete cache.localMap[mediaId];
   }
   localStorage.setItem(STORAGE_KEYS.LOCAL_MAP, JSON.stringify(cache.localMap));
-  
+
   if (hasElectronAPI()) {
     (window as any).electronAPI.saveLocalGamesMapEntry(mediaId, game).catch((err: any) => {
       console.error("Failed to save local games mapping entry to SQLite:", err);
     });
   }
+}
+
+// ── Rejected suggestions ───────────────────────────────────────────
+// Remember suggestions the user denied so they don't reappear on re-match.
+
+type RejectedKey = string
+
+function rejectedKey(game: { title: string; platform: string }, mediaId: string): RejectedKey {
+  return `${normalizeTitle(game.title)}|${game.platform}|${mediaId}`
+}
+
+let _rejectedCache: Set<RejectedKey> | null = null
+
+function getRejectedSet(): Set<RejectedKey> {
+  if (_rejectedCache) return _rejectedCache
+  try {
+    const raw = localStorage.getItem("otix_rejected_suggestions")
+    _rejectedCache = new Set<RejectedKey>(raw ? JSON.parse(raw) : [])
+  } catch {
+    _rejectedCache = new Set()
+  }
+  return _rejectedCache
+}
+
+function saveRejectedSet(set: Set<RejectedKey>): void {
+  _rejectedCache = set
+  localStorage.setItem("otix_rejected_suggestions", JSON.stringify([...set]))
+}
+
+export function rejectSuggestion(game: { title: string; platform: string }, suggestionMediaId: string): void {
+  const set = getRejectedSet()
+  set.add(rejectedKey(game, suggestionMediaId))
+  saveRejectedSet(set)
+}
+
+export function clearRejectedSuggestion(game: { title: string; platform: string }, mediaId: string): void {
+  const set = getRejectedSet()
+  set.delete(rejectedKey(game, mediaId))
+  saveRejectedSet(set)
+}
+
+export function filterRejectedSuggestions(games: DetectedGame[]): DetectedGame[] {
+  return games.map((g) => {
+    if (!g.otixMatchSuggestion) return g
+    const key = rejectedKey(g, g.otixMatchSuggestion.mediaId)
+    if (getRejectedSet().has(key)) {
+      return { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined }
+    }
+    return g
+  })
 }

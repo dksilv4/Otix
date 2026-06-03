@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /auth/
+Disallow: /settings/
+Disallow: /downloads/
+Disallow: /workout/
+Disallow: /onboarding/
+Disallow: /notifications/
+Disallow: /admin/
+Disallow: /library/
+Disallow: /games/
+
+Sitemap: https://otix.app/sitemap.xml

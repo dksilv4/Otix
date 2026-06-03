@@ -12,6 +12,35 @@ import {
   saveMatchCache,
 } from '../downloads';
 import { GameDetector } from '../game-detector';
+import http from 'http';
+
+const BACKEND_BASE = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
+
+/** Fire-and-forget: send scanned game titles to backend for IGDB seeding. */
+function seedTitlesOnBackend(titles: string[]): void {
+  if (!titles.length) return;
+  console.log('[seedTitlesOnBackend] sending', titles.length, 'titles');
+  try {
+    const url = new URL('/api/media/seed-from-titles', BACKEND_BASE);
+    const body = JSON.stringify({ titles });
+    console.log('[seedTitlesOnBackend] POST', url.href);
+    const req = http.request(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 10_000,
+    });
+    req.on('response', (res) => {
+      let data = '';
+      res.on('data', (chunk: string) => (data += chunk));
+      res.on('end', () => console.log('[seedTitlesOnBackend] response', res.statusCode, data));
+    });
+    req.on('error', (err) => console.error('[seedTitlesOnBackend] error:', err.message));
+    req.write(body);
+    req.end();
+  } catch (e) {
+    console.error('[seedTitlesOnBackend] exception:', e);
+  }
+}
 
 export function registerScannerIPC(gameDetector: GameDetector | null): void {
   // Scan games in paths
@@ -22,6 +51,8 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     // Feed scanned games into detector for external process matching
     gameDetector?.setLibrary(games);
     gameDetector?.startPeriodicScan();
+    // Seed backend with scanned game titles (fire-and-forget)
+    seedTitlesOnBackend([...new Set(games.map((g) => g.title))]);
     return games;
   });
 

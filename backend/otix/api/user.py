@@ -12,7 +12,7 @@ from otix.domain.admin_edit import MediaEditProposal
 from otix.infrastructure.database import async_session
 from otix.api.schemas.friend import FriendshipStatusOut
 from otix.api.schemas.review import ReviewWithUserOut
-from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, SteamIntegrationPublic, UserProfileOut, UserSearchListResponse, UserSearchResult
+from otix.api.schemas.user import HallOfFameItem, LibraryStatsOut, MoodCheckinOut, MoodTimelineOut, PlexIntegrationPublic, RatingDistributionItem, RatingDistributionOut, SteamIntegrationPublic, UserProfileOut, UserSearchListResponse, UserSearchResult
 from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.api.schemas.karma import KarmaOut, KarmaTransactionOut
 from otix.api.schemas.user_badge import BadgeOut
@@ -21,6 +21,7 @@ from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
 from otix.domain.media import Episode, MediaItem, Season
+from otix.domain.media_rating import MediaItemRating
 from otix.domain.notification import Notification
 from otix.domain.review import Review
 from otix.domain.mood import UserMoodCheckIn
@@ -104,7 +105,9 @@ async def get_user_profile(
     if user.steam_id:
         steam_task = asyncio.create_task(get_steam_user_info(user.steam_id))
 
-    # Fetch review_count, xp_rank, total_users, proposal stats, and streak in a single round-trip
+    # Fetch review_count, xp_rank, total_users, proposal stats in a single round-trip.
+    # Streak is fetched separately because select(UserStreak) has multiple columns
+    # and can't be used as a scalar_subquery.
     counts = await db.execute(
         select(
             select(func.count()).select_from(Review).where(
@@ -116,7 +119,6 @@ async def get_user_profile(
                 User.total_xp > user.total_xp
             ).scalar_subquery(),
             select(func.count()).select_from(User).scalar_subquery(),
-            select(UserStreak).where(UserStreak.user_id == user.id).scalar_subquery(),
             select(func.count()).select_from(MediaEditProposal).where(
                 MediaEditProposal.proposer_user_id == user.id
             ).scalar_subquery(),
@@ -126,7 +128,8 @@ async def get_user_profile(
             ).scalar_subquery(),
         )
     )
-    review_count, higher_count, total_users_count, streak, proposal_count, approved_count = counts.one()
+    review_count, higher_count, total_users_count, proposal_count, approved_count = counts.one()
+    streak = await db.scalar(select(UserStreak).where(UserStreak.user_id == user.id))
 
     rating_service = UserRatingService(db)
     reputation = await rating_service.compute_composite_score(user.id)
@@ -343,6 +346,49 @@ async def get_user_reputation(
     )
 
 
+# ── Rating Distribution ──
+
+
+@user_router.get("/{username}/rating-distribution", response_model=RatingDistributionOut)
+async def get_user_rating_distribution(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+) -> RatingDistributionOut:
+    user = await db.scalar(select(User).where(User.username == username))
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    rows = await db.execute(
+        select(
+            MediaItemRating.score,
+            MediaItem.media_type,
+            func.count().label("cnt"),
+        )
+        .join(MediaItem, MediaItemRating.media_item_id == MediaItem.id)
+        .where(
+            MediaItemRating.user_id == user.id,
+        )
+        .group_by(MediaItemRating.score, MediaItem.media_type)
+        .order_by(MediaItemRating.score)
+    )
+
+    # Seed a map: score -> { movie: 0, show: 0, game: 0, music: 0 }
+    by_score: dict[int, dict[str, int]] = {
+        score: {"movie": 0, "show": 0, "game": 0, "music": 0}
+        for score in range(1, 11)
+    }
+    total = 0
+    for score, media_type, cnt in rows:
+        by_score[score][media_type] = cnt
+        total += cnt
+
+    distribution = [
+        RatingDistributionItem(score=s, **by_score[s]) for s in range(1, 11)
+    ]
+
+    return RatingDistributionOut(distribution=distribution, total_ratings=total)
+
+
 # ── Badges ──
 
 
@@ -479,21 +525,22 @@ async def get_user_top_rated(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     result = await db.execute(
-        select(Review, MediaItem)
-        .join(MediaItem, Review.media_item_id == MediaItem.id)
+        select(MediaItemRating, MediaItem)
+        .join(MediaItem, MediaItemRating.media_item_id == MediaItem.id)
         .where(
-            Review.user_id == user.id,
-            Review.score.isnot(None),
-            Review.is_private == False,  # noqa: E712
+            MediaItemRating.user_id == user.id,
         )
-        .order_by(Review.score.desc(), Review.created_at.desc())
+        .order_by(MediaItemRating.score.desc(), MediaItemRating.created_at.desc())
         .limit(limit)
     )
     rows = result.all()
 
     return [
         {
-            "review": ReviewWithUserOut.model_validate(review).model_dump(),
+            "rating": {
+                "score": rating.score,
+                "created_at": rating.created_at.isoformat(),
+            },
             "media_item": {
                 "id": media.id,
                 "title": media.title,
@@ -502,7 +549,7 @@ async def get_user_top_rated(
                 "release_year": media.release_year,
             },
         }
-        for review, media in rows
+        for rating, media in rows
     ]
 
 

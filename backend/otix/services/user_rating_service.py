@@ -7,6 +7,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.list import UserList
+from otix.domain.media_rating import MediaItemRating
 from otix.domain.review import Review
 from otix.domain.user import User, UserRating
 from otix.domain.user_streak import UserStreak
@@ -117,11 +118,9 @@ class UserRatingService:
                 ).label("content_reviews"),
                 func.coalesce(
                     select(func.count())
-                    .select_from(Review)
+                    .select_from(MediaItemRating)
                     .where(
-                        Review.user_id == user_id,
-                        Review.content.is_(None),
-                        Review.is_private == False,  # noqa: E712
+                        MediaItemRating.user_id == user_id,
                     )
                     .scalar_subquery(),
                     0,
