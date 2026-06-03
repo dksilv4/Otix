@@ -166,6 +166,9 @@ def upgrade() -> None:
         "ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0"
     )
     op.execute(
+        "ALTER TABLE external_ids ADD COLUMN IF NOT EXISTS entity_type VARCHAR(30)"
+    )
+    op.execute(
         "ALTER TABLE external_ids ADD COLUMN IF NOT EXISTS entity_id VARCHAR(16)"
     )
     op.execute(
