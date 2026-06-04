@@ -88,11 +88,20 @@ def upgrade() -> None:
         )
         op.create_index(op.f('ix_search_logs_user_id'), 'search_logs', ['user_id'], unique=False)
 
+    # Check reviews table columns
+    reviews_columns = [c['name'] for c in inspector.get_columns('reviews')]
+    if 'cooldown_until' not in reviews_columns:
+        op.add_column('reviews', sa.Column('cooldown_until', sa.DateTime(timezone=True), nullable=True))
+
 
 def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     tables = inspector.get_table_names()
+
+    reviews_columns = [c['name'] for c in inspector.get_columns('reviews')]
+    if 'cooldown_until' in reviews_columns:
+        op.drop_column('reviews', 'cooldown_until')
 
     if 'search_logs' in tables:
         op.drop_table('search_logs')
