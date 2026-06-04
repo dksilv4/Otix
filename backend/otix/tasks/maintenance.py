@@ -87,7 +87,7 @@ def sync_plex_accounts() -> dict:
 
 
 async def _sync_plex_accounts() -> dict:
-    from otix.services.plex_sync_service import sync_plex
+    import uuid
 
     synced = 0
     failed = 0
@@ -97,10 +97,11 @@ async def _sync_plex_accounts() -> dict:
         )).all())
         for user in users:
             try:
-                await sync_plex(session, user)
+                task_id = f"scheduled-{uuid.uuid4().hex[:8]}"
+                app.send_task("maintenance.plex_sync_user", args=[task_id, user.id], queue="reactive-fast")
                 synced += 1
             except Exception:
-                logger.exception("scheduled plex sync failed", user_id=user.id)
+                logger.exception("scheduled plex sync enqueue failed", user_id=user.id)
                 failed += 1
     return {"synced": synced, "failed": failed}
 

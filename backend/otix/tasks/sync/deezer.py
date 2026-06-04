@@ -130,21 +130,11 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
             if isrc_val:
                 await eid_svc.upsert("isrc", isrc_val, "track", t.id)
 
-        # 4. Insert ExternalIDs
+        # 4. Insert ExternalIDs (upsert to survive task retries)
         if deezer_id_str:
-            session.add(ExternalID(
-                provider="deezer",
-                external_id=str(deezer_id_str),
-                media_item_id=item.id,
-                media_type="music",
-            ))
+            await eid_svc.upsert("deezer", str(deezer_id_str), "media_item", item.id)
         if upc:
-            session.add(ExternalID(
-                provider="barcode",
-                external_id=upc,
-                media_item_id=item.id,
-                media_type="music",
-            ))
+            await eid_svc.upsert("barcode", upc, "media_item", item.id)
 
         # 5. Artist credits
         artist_data = raw.get("artist")
@@ -387,12 +377,8 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
         ))
 
         if matched_deezer_id and not deezer_eid:
-            session.add(ExternalID(
-                provider="deezer",
-                external_id=matched_deezer_id,
-                media_item_id=otix_id,
-                media_type="music",
-            ))
+            eid_svc = ExternalIDService(session)
+            await eid_svc.upsert("deezer", matched_deezer_id, "media_item", otix_id)
 
         await session.commit()
         logger.info("deezer cover art enriched",

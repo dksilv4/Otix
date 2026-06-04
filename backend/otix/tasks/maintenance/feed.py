@@ -1,13 +1,10 @@
-"""Feed refresh, provider health check, and Plex account sync."""
+"""Feed refresh and provider health check."""
 
 from __future__ import annotations
 
 import structlog
-from sqlalchemy import select
 
-from otix.domain.user import User
 from otix.infrastructure.celery import app
-from otix.infrastructure.database import async_session
 from otix.lib.concurrency import run_async
 from otix.lib.metrics import get_registry
 
@@ -70,11 +67,6 @@ def provider_health_check() -> dict:
     return run_async(_provider_health_check())
 
 
-@app.task(name="maintenance.sync_plex_accounts")
-def sync_plex_accounts() -> dict:
-    return run_async(_sync_plex_accounts())
-
-
 async def _provider_health_check() -> dict:
     registry = get_registry()
     snapshot = registry.snapshot()
@@ -85,20 +77,3 @@ async def _provider_health_check() -> dict:
         logger.warning("circuit breakers open", providers=open_breakers)
 
     return {"circuit_breakers": circuit_breakers, "open": open_breakers}
-
-
-async def _sync_plex_accounts() -> dict:
-    from otix.services.plex_sync_service import sync_plex
-
-    synced = 0
-    failed = 0
-    async with async_session() as session:
-        users = list((await session.scalars(select(User).where(User.plex_auth_token.isnot(None)).limit(500))).all())
-        for user in users:
-            try:
-                await sync_plex(session, user)
-                synced += 1
-            except Exception:
-                logger.exception("scheduled plex sync failed", user_id=user.id)
-                failed += 1
-    return {"synced": synced, "failed": failed}
