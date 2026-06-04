@@ -28,6 +28,13 @@ from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 
+try:
+    from redis.exceptions import BusyLoadingError as _RedisBusyLoadingError
+    from redis.exceptions import ConnectionError as _RedisConnectionError
+    _REDIS_ERRORS = (_RedisBusyLoadingError, _RedisConnectionError, OSError)
+except ImportError:  # pragma: no cover
+    _REDIS_ERRORS = (OSError,)
+
 from otix.tasks.seed import (
     TMDB_EXPORT_BASE,
     check_fast_queue_backlog,
@@ -293,9 +300,12 @@ async def _daily_import_loop() -> dict:
             "deletion": deletion_results,
         }
     finally:
-        # Keep the lock until expiry (prevents same-day re-run).
-        # Refresh TTL in case the import took a while.
-        await redis.expire(lock_key, _EXPORT_LOCK_TTL)
+        try:
+            # Keep the lock until expiry (prevents same-day re-run).
+            # Refresh TTL in case the import took a while.
+            await redis.expire(lock_key, _EXPORT_LOCK_TTL)
+        except _REDIS_ERRORS:
+            pass  # Lock will expire on its own via TTL
 
 
 async def _detect_deletions_after_import() -> dict:
@@ -404,7 +414,11 @@ async def _detect_deletions_after_import() -> dict:
 
 async def _seed_backlog_loop() -> dict:
     redis = await get_redis()
-    acquired = await redis.set(_BACKLOG_LOCK, "1", nx=True, ex=_BACKLOG_LOCK_TTL)
+    try:
+        acquired = await redis.set(_BACKLOG_LOCK, "1", nx=True, ex=_BACKLOG_LOCK_TTL)
+    except _REDIS_ERRORS:
+        # Redis unavailable — skip this cycle rather than crash
+        return {"status": "redis_unavailable"}
     if not acquired:
         return {"status": "locked"}
 
@@ -413,4 +427,7 @@ async def _seed_backlog_loop() -> dict:
         logger.info("tmdb seed backlog cycle", **result)
         return result
     finally:
-        await redis.delete(_BACKLOG_LOCK)
+        try:
+            await redis.delete(_BACKLOG_LOCK)
+        except _REDIS_ERRORS:
+            pass  # Lock TTL will expire naturally

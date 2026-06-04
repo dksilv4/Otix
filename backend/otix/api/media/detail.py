@@ -5,6 +5,8 @@ import json
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from redis.exceptions import BusyLoadingError
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import Integer as SAInteger
 from sqlalchemy import func as safunc
 from sqlalchemy import select, update
@@ -190,7 +192,11 @@ async def get_media_item(
     redis = await get_redis()
 
     # Cache hit: serve cached public response, patch user data if authenticated
-    cached = await redis.get(cache_key)
+    cached = None
+    try:
+        cached = await redis.get(cache_key)
+    except (BusyLoadingError, RedisConnectionError, OSError):
+        pass  # Redis unavailable — fall through to cold DB path
     if cached:
         result = MediaItemDetail.model_validate(json.loads(cached))
         # Safety net: filter stale credits whose person was deleted after caching
@@ -240,7 +246,10 @@ async def get_media_item(
 
     # Cache public response (no user-specific data)
     response_data = result.model_dump(mode="json")
-    await redis.set(cache_key, json.dumps(response_data), ex=_MEDIA_DETAIL_TTL)
+    try:
+        await redis.set(cache_key, json.dumps(response_data), ex=_MEDIA_DETAIL_TTL)
+    except (BusyLoadingError, RedisConnectionError, OSError):
+        pass  # Redis unavailable — skip caching, serve uncached
 
     # Patch user-specific data before returning
     if current_user is not None:

@@ -50,6 +50,10 @@ services:
     image: redis:7-alpine
     ports:
       - "6380:6379"
+    # maxmemory must be below the Docker memory limit so Redis uses its own
+    # eviction policy (allkeys-lru) instead of being OOM-killed by the kernel.
+    # The RDB snapshot is ~485MB; 768mb gives enough headroom for live data.
+    command: redis-server --maxmemory 768mb --maxmemory-policy allkeys-lru --save 3600 1
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -58,10 +62,10 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 512M
+          memory: 1G
         reservations:
           cpus: "0.25"
-          memory: 128M
+          memory: 256M
 
   pgbouncer:
     image: edoburu/pgbouncer:latest
