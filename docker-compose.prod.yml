@@ -106,6 +106,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
     restart: unless-stopped
     deploy:
       resources:
@@ -261,3 +263,5 @@ services:
 volumes:
   pgdata:
   redisdata:
+  uploads:
+
