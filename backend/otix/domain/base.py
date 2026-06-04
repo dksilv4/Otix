@@ -121,10 +121,12 @@ async def flush_pending_external_ids(obj, session) -> int:
     if not pending:
         return 0
 
+    import structlog
     from sqlalchemy import delete, select
 
     from otix.domain.media import ExternalID
 
+    _log = structlog.get_logger()
     entity_type: str = getattr(obj, "__external_id_entity_type__", "")
     entity_id: str | None = getattr(obj, "id", None) or getattr(obj, "media_item_id", None)
 
@@ -170,14 +172,37 @@ async def flush_pending_external_ids(obj, session) -> int:
                         legacy.media_item_id = entity_id
                     count += 1
                 else:
-                    session.add(ExternalID(
-                        provider=provider,
-                        external_id=str_val,
-                        entity_type=entity_type,
-                        entity_id=entity_id,
-                        media_item_id=entity_id if entity_type == "media_item" else None,
-                    ))
-                    count += 1
+                    # Guard against a cross-entity collision: another entity may
+                    # already own this (provider, external_id, entity_type) tuple.
+                    # This can happen when the same task is redelivered and runs
+                    # concurrently (e.g. after a broker restart). Skip the insert
+                    # rather than letting the unique constraint violation roll back
+                    # the entire session.
+                    collision = await session.scalar(
+                        select(ExternalID).where(
+                            ExternalID.provider == provider,
+                            ExternalID.external_id == str_val,
+                            ExternalID.entity_type == entity_type,
+                        )
+                    )
+                    if collision is not None:
+                        _log.warning(
+                            "external_id_cross_entity_collision",
+                            provider=provider,
+                            external_id=str_val,
+                            entity_type=entity_type,
+                            existing_entity_id=collision.entity_id,
+                            current_entity_id=entity_id,
+                        )
+                    else:
+                        session.add(ExternalID(
+                            provider=provider,
+                            external_id=str_val,
+                            entity_type=entity_type,
+                            entity_id=entity_id,
+                            media_item_id=entity_id if entity_type == "media_item" else None,
+                        ))
+                        count += 1
         elif existing is not None:
             await session.delete(existing)
             count += 1
