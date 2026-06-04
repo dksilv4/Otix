@@ -91,6 +91,7 @@ class MediaItemSummary(BaseModel):
     slug: str
     poster_url: str | None = None
     textless_poster_url: str | None = None
+    backdrop_url: str | None = None
     logo_url: str | None = None
     release_date: date | None = None
     popularity: float

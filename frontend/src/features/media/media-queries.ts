@@ -10,6 +10,7 @@ export interface MediaItemSummary {
   slug: string
   posterUrl: string | null
   textlessPosterUrl: string | null
+  backdropUrl: string | null
   logoUrl: string | null
   releaseDate: string | null
   popularity: number

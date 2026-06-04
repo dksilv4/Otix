@@ -112,35 +112,29 @@ class TestStateHelpers:
 
 class TestQueueBacklog:
     async def test_not_throttled_when_under_threshold(self):
-        with patch("otix.tasks.seed.aioredis.from_url") as mock_from_url:
-            mock_redis = AsyncMock()
-            mock_redis.llen = AsyncMock(return_value=0)
-            mock_redis.aclose = AsyncMock()
-            mock_from_url.return_value = mock_redis
-
+        mock_redis = AsyncMock()
+        mock_redis.llen = AsyncMock(return_value=0)
+        with patch("otix.tasks.sync._common._broker_redis", mock_redis):
             length, throttled = await _check_fast_queue_backlog(caller="test")
         assert length == 0
         assert throttled is False
 
-    async def test_throttled_when_over_threshold(self, fakeredis):
+    async def test_throttled_when_over_threshold(self):
         from otix.infrastructure.config import settings
 
         threshold = settings.celery_fast_queue_max_backlog
-        # We need to mock the broker Redis check since fakeredis doesn't have the "fast" list
-        with patch("otix.tasks.seed.aioredis.from_url") as mock_from_url:
-            mock_redis = AsyncMock()
-            mock_redis.llen = AsyncMock(return_value=threshold + 1)
-            mock_redis.aclose = AsyncMock()
-            mock_from_url.return_value = mock_redis
-
+        mock_redis = AsyncMock()
+        mock_redis.llen = AsyncMock(return_value=threshold + 1)
+        with patch("otix.tasks.sync._common._broker_redis", mock_redis):
             length, throttled = await _check_fast_queue_backlog(caller="test")
 
         assert length == threshold + 1
         assert throttled is True
 
     async def test_error_returns_safe_default(self):
-        with patch("otix.tasks.seed.aioredis.from_url", side_effect=OSError("connection refused")):
-            length, throttled = await _check_fast_queue_backlog(caller="test")
+        with patch("otix.tasks.sync._common._broker_redis", new=None):
+            with patch("otix.tasks.sync._common.aioredis.from_url", side_effect=OSError("connection refused")):
+                length, throttled = await _check_fast_queue_backlog(caller="test")
 
         assert length == 0
         assert throttled is False

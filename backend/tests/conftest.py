@@ -362,7 +362,7 @@ def mock_db_session() -> AsyncMock:
     session = AsyncMock(spec=AsyncSession)
     session.scalar.return_value = None
     session.scalars.return_value = MagicMock(all=MagicMock(return_value=[]))
-    session.execute.return_value = None
+    session.execute.return_value = MagicMock()
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.rollback = AsyncMock()
@@ -459,7 +459,9 @@ async def integration_session(docker_compose):
 
         async with engine.begin() as conn:
             await conn.execute(text("SELECT pg_advisory_xact_lock(9001)"))
-            await conn.run_sync(Base.metadata.drop_all)
+            await conn.execute(text("DROP SCHEMA public CASCADE"))
+            await conn.execute(text("CREATE SCHEMA public"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
         _integration_schema_ready = True
 

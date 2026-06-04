@@ -198,12 +198,12 @@ class TestHydrateExternalIds:
 
         await hydrator.hydrate_external_ids(media_item, raw)
 
-        added = [c.args[0] for c in mock_db_session.add.call_args_list]
-        # TMDB is skipped (already created in sync task), only imdb and tvdb
-        assert len(added) == 2
-
-        providers = {e.provider for e in added if isinstance(e, ExternalID)}
-        assert providers == {"imdb", "tvdb"}
+        assert mock_db_session.execute.call_count == 2
+        inserted_providers = set()
+        for call_args in mock_db_session.execute.call_args_list:
+            stmt = call_args.args[0]
+            inserted_providers.add(stmt.compile().params.get("provider"))
+        assert inserted_providers == {"imdb", "tvdb"}
 
     async def test_skips_missing_external_ids(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
@@ -549,7 +549,8 @@ class TestHydrateCollection:
             tmdb_id=123, name="Fight Club Collection", content_hash=coll_hash
         )
         existing.id = "oti_coll000001"
-        mock_db_session.scalar.return_value = existing
+        mock_db_session.scalar.return_value = MagicMock(entity_id="oti_coll000001")
+        mock_db_session.get.return_value = existing
         hydrator.provider.get_collection = AsyncMock(return_value=coll_raw)
 
         await hydrator.hydrate_collection(movie, sample_movie_raw_with_collection)

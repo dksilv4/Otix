@@ -197,17 +197,23 @@ class ExternalIDService:
         entity_type: str,
         entity_id: str,
     ) -> ExternalID:
+        set_values = {"entity_type": entity_type, "entity_id": entity_id}
+        insert_values = {
+            "provider": provider,
+            "external_id": external_id,
+            "entity_type": entity_type,
+            "entity_id": entity_id,
+        }
+        if entity_type == "media_item":
+            insert_values["media_item_id"] = entity_id
+            set_values["media_item_id"] = entity_id
+
         stmt = (
             pg_insert(ExternalID)
-            .values(
-                provider=provider,
-                external_id=external_id,
-                entity_type=entity_type,
-                entity_id=entity_id,
-            )
+            .values(**insert_values)
             .on_conflict_do_update(
                 index_elements=["provider", "external_id", "entity_type"],
-                set_={"entity_type": entity_type, "entity_id": entity_id},
+                set_=set_values,
             )
             .returning(ExternalID)
         )

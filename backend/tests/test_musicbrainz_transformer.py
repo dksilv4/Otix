@@ -62,7 +62,7 @@ class TestToAlbumExtractsSpotifyFromUrlRels:
         album = to_album(raw)
         assert album.spotify_id == "0PhuLAU1wViMC90qw83r0v"
         # All URL relationships are captured as external IDs
-        assert set(album._external_ids) == {
+        assert set(album._url_external_ids) == {
             ("spotify", "0PhuLAU1wViMC90qw83r0v"),
             ("discogs", "2546204"),
         }
@@ -85,7 +85,7 @@ class TestToAlbumExtractsSpotifyFromUrlRels:
 
         album = to_album(raw)
         assert album.spotify_id is None
-        assert album._external_ids == [("amazon", "B000002UJQ")]
+        assert album._url_external_ids == [("amazon", "B000002UJQ")]
 
     def test_album_with_multiple_streaming_links(self):
         """Spotify gets spotify_id column; all get saved as _external_ids."""
@@ -117,7 +117,7 @@ class TestToAlbumExtractsSpotifyFromUrlRels:
         }
         album = to_album(raw)
         assert album.spotify_id == "abc123"
-        assert set(album._external_ids) == {
+        assert set(album._url_external_ids) == {
             ("spotify", "abc123"),
             ("youtube_music", "OLAK5uy_abc123"),
             ("apple_music", "123456789"),

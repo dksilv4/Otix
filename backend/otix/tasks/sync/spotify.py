@@ -52,7 +52,7 @@ async def _get_or_create_spotify_artist(
         person = await session.get(Person, person_id) if person_id else None
         if person is not None:
             if wikidata_id:
-                await eid_svc.upsert("wikidata", wikidata_id, "person", person.id)
+                person.wikidata_id = wikidata_id
             return person
 
     # Check wikidata_id for cross-provider match
@@ -61,7 +61,7 @@ async def _get_or_create_spotify_artist(
         person = await session.get(Person, person_id) if person_id else None
         if person is not None:
             if spotify_artist_id:
-                await eid_svc.upsert("spotify", spotify_artist_id, "person", person.id)
+                person.spotify_artist_id = spotify_artist_id
             return person
 
     name_match_filters = [sa_func.lower(Person.name) == name.lower()]
@@ -80,18 +80,18 @@ async def _get_or_create_spotify_artist(
     person = await session.scalar(select(Person).where(*name_match_filters))
     if person is not None:
         if spotify_artist_id:
-            await eid_svc.upsert("spotify", spotify_artist_id, "person", person.id)
+            person.spotify_artist_id = spotify_artist_id
         if wikidata_id:
-            await eid_svc.upsert("wikidata", wikidata_id, "person", person.id)
+            person.wikidata_id = wikidata_id
         return person
 
     person = Person(name=name)
+    if spotify_artist_id:
+        person.spotify_artist_id = spotify_artist_id
+    if wikidata_id:
+        person.wikidata_id = wikidata_id
     session.add(person)
     await session.flush()
-    if spotify_artist_id:
-        await eid_svc.upsert("spotify", spotify_artist_id, "person", person.id)
-    if wikidata_id:
-        await eid_svc.upsert("wikidata", wikidata_id, "person", person.id)
     return person
 
 

@@ -89,6 +89,11 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
                 item.album = None
                 item.id = ext_id.media_item_id
                 item = await session.merge(item)
+                album.media_item = item
+                await session.flush()
+                ext_id.media_item_id = item.id
+                ext_id.entity_id = item.id
+                ext_id.entity_type = "media_item"
         else:
             session.add(item)
             await session.flush()

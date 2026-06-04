@@ -33,6 +33,10 @@ async def test_sync_musicbrainz_album_with_stub_creates_new_media_item(monkeypat
         def add(self, item):
             self.added.append(item)
 
+        async def merge(self, item):
+            self.added.append(item)
+            return item
+
         def add_all(self, items):
             self.added.extend(items)
 
@@ -68,8 +72,13 @@ async def test_sync_musicbrainz_album_with_stub_creates_new_media_item(monkeypat
             for idx, item in enumerate(self.added):
                 if hasattr(item, "id") and item.id is None:
                     item.id = f"oti_mock{idx:08d}"
+            media_item = next((i for i in self.added if isinstance(i, MediaItem)), None)
+            album = next((i for i in self.added if isinstance(i, Album)), None)
+            if media_item and album:
+                album.media_item_id = media_item.id
 
         async def commit(self):
+            await self.flush()
             self.committed = True
 
     # Setup the stub ExternalID (media_item_id and entity_id are None)

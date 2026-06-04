@@ -176,7 +176,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
         )}
       >
         {/* Input row */}
-        <div className="flex items-center gap-3 px-5 pt-5 pb-2">
+        <div className="flex items-center gap-3 px-6 pt-6 pb-2.5">
           <ResolvedIcon className="h-5 w-5 shrink-0 text-primary/50" />
 
           {/* Media type tag */}
@@ -208,7 +208,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
             placeholder={displayType ? `Search ${MEDIA_TYPE_LABEL[displayType].toLowerCase()}...` : placeholder}
             disabled={disabled}
             className={cn(
-              'flex-1 min-w-0 h-12 md:h-14',
+              'flex-1 min-w-0 h-14 md:h-16',
               'text-lg md:text-xl',
               'bg-transparent border-0 outline-none',
               'shadow-none ring-0 focus:ring-0 focus:ring-offset-0',
@@ -235,7 +235,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
         </div>
 
         {/* Tools row */}
-        <div className="flex items-center gap-2 px-5 pb-4">
+        <div className="flex items-center gap-2 px-6 pb-5">
           {MODES.map((mode) => {
             const isActive = mode.id === activeMode
             return (

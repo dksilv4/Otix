@@ -761,7 +761,13 @@ class TestHydrateFull:
             return_value={"response": {"player_count": 50000, "result": 1}}
         )
         steam_hydrator.provider.get_app_details = AsyncMock(return_value=steam_store_raw)
-        steam_hydrator.session.scalar.return_value = None
+        
+        def mock_scalar(stmt):
+            stmt_str = str(stmt).lower()
+            if "external_id" in stmt_str:
+                return "730"
+            return None
+        steam_hydrator.session.scalar.side_effect = mock_scalar
         steam_hydrator.session.scalars.return_value = []
 
         await steam_hydrator.hydrate(sample_game)
