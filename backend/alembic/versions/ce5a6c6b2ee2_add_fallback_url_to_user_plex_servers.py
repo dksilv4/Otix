@@ -18,7 +18,12 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column('user_plex_servers', sa.Column('fallback_url', sa.String(length=2048), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c['name'] for c in inspector.get_columns('user_plex_servers')]
+    if 'fallback_url' not in columns:
+        op.add_column('user_plex_servers', sa.Column('fallback_url', sa.String(length=2048), nullable=True))
+
 
 
 def downgrade() -> None:
