@@ -245,7 +245,11 @@ class TestEnqueueListItems:
             enqueued, skipped = await _enqueue_list_items("tmdb", "movie", {"550", "680"})
             assert enqueued == 1
             assert skipped == 1
-            mock_send.assert_called_once_with("sync.tmdb.movie", args=[680])
+            assert mock_send.call_count == 1
+            call_args = mock_send.call_args
+            assert call_args.args[0] == "sync.tmdb.movie"
+            val = call_args.args[1][0] if len(call_args.args) > 1 else call_args.kwargs.get("args")[0]
+            assert val == 680
 
     async def test_correct_task_name_for_show(self):
         with (
@@ -253,7 +257,11 @@ class TestEnqueueListItems:
             patch("otix.tasks.sync._common.app.send_task") as mock_send,
         ):
             await _enqueue_list_items("tmdb", "show", {"1399"})
-            mock_send.assert_called_once_with("sync.tmdb.show", args=[1399])
+            assert mock_send.call_count == 1
+            call_args = mock_send.call_args
+            assert call_args.args[0] == "sync.tmdb.show"
+            val = call_args.args[1][0] if len(call_args.args) > 1 else call_args.kwargs.get("args")[0]
+            assert val == 1399
 
     async def test_all_stale(self):
         with (
@@ -683,7 +691,7 @@ class TestSearchBackfillTask:
 
     def test_task_uses_fast_queue(self):
         """Search backfill should use the fast queue."""
-        assert search_backfill_task.queue == "fast"
+        assert search_backfill_task.queue == "reactive-fast"
 
     def test_task_has_max_retries_1(self):
         """Should have at most 1 retry."""

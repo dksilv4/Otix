@@ -10,7 +10,7 @@ from uuid import uuid4
 
 import httpx
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, or_, and_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -355,10 +355,21 @@ async def _find_or_seed_media(
     plex_guid: str | None = None,
     artist_name: str | None = None,
 ) -> str:
+    eid_svc = ExternalIDService(db)
     # Check Plex GUID first — fast path for re-syncs
     if plex_guid:
         existing = await db.scalar(
-            select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
+            select(ExternalID).where(
+                ExternalID.provider == "plex",
+                ExternalID.external_id == plex_guid,
+                or_(
+                    ExternalID.entity_type == "media_item",
+                    and_(
+                        ExternalID.entity_type.is_(None),
+                        ExternalID.media_type.in_(["movie", "show", "game", "music"]),
+                    ),
+                ),
+            )
         )
         if existing and existing.media_item_id is not None:
             return existing.media_item_id
@@ -366,7 +377,17 @@ async def _find_or_seed_media(
     # Return existing resolved media if any GUID already matches
     for provider, external_id in guids.items():
         existing = await db.scalar(
-            select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
+            select(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+                or_(
+                    ExternalID.entity_type == "media_item",
+                    and_(
+                        ExternalID.entity_type.is_(None),
+                        ExternalID.media_type.in_(["movie", "show", "game", "music"]),
+                    ),
+                ),
+            )
         )
         if existing and existing.media_item_id is not None:
             return existing.media_item_id
@@ -379,22 +400,10 @@ async def _find_or_seed_media(
         if match_id is not None:
             # Link this Plex item to the existing catalog entry
             if plex_guid:
-                ext = await db.scalar(
-                    select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
-                )
-                if ext is not None:
-                    ext.media_item_id = match_id
-                else:
-                    db.add(ExternalID(provider="plex", external_id=plex_guid, media_item_id=match_id))
+                await eid_svc.upsert("plex", plex_guid, "media_item", match_id)
             # Also link any GUIDs we didn't already have
             for provider, external_id in guids.items():
-                ext = await db.scalar(
-                    select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
-                )
-                if ext is not None and ext.media_item_id is None:
-                    ext.media_item_id = match_id
-                elif ext is None:
-                    db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=match_id))
+                await eid_svc.upsert(provider, external_id, "media_item", match_id)
             await db.flush()
             return match_id
 
@@ -427,24 +436,12 @@ async def _find_or_seed_media(
 
     # Upsert ExternalIDs: update existing stubs, insert new ones
     for provider, external_id in guids.items():
-        ext = await db.scalar(
-            select(ExternalID).where(ExternalID.provider == provider, ExternalID.external_id == external_id)
-        )
-        if ext is not None:
-            ext.media_item_id = media.id
-        else:
-            db.add(ExternalID(provider=provider, external_id=external_id, media_item_id=media.id))
+        await eid_svc.upsert(provider, external_id, "media_item", media.id)
 
     # Stamp a Plex ExternalID so this item is discoverable via the standard
     # external_ids table (enables cross-platform overlap queries, etc.)
     if plex_guid:
-        ext = await db.scalar(
-            select(ExternalID).where(ExternalID.provider == "plex", ExternalID.external_id == plex_guid)
-        )
-        if ext is not None:
-            ext.media_item_id = media.id
-        else:
-            db.add(ExternalID(provider="plex", external_id=plex_guid, media_item_id=media.id))
+        await eid_svc.upsert("plex", plex_guid, "media_item", media.id)
 
     await db.flush()
 

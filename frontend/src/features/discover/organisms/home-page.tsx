@@ -458,9 +458,9 @@ function HomeExperience() {
       </Suspense>
 
       <div className="relative z-10 flex flex-col items-center px-4 pb-16 w-full">
-        {/* Logo hero — 50vh with dynamic float */}
+        {/* Logo hero */}
         <div
-          className="h-[50vh] flex items-center justify-center w-full relative"
+          className="h-[40vh] flex items-center justify-center w-full relative"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -474,7 +474,7 @@ function HomeExperience() {
             className="relative z-10 select-none group cursor-default"
           >
             <Logo
-              className="h-32 md:h-48 lg:h-56 filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+              className="h-28 md:h-40 filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
               color="rgba(255,255,255,0.65)"
             />
           </motion.div>
@@ -485,7 +485,7 @@ function HomeExperience() {
             'flex flex-col items-center w-full gap-6',
           )}
         >
-          <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center">
+          <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center py-6 md:py-10">
             <p className="text-muted-foreground text-sm md:text-base font-medium mb-3">
               {isMoodPromptVisible ? `${greeting}, how are you feeling today?` : greeting}
             </p>
@@ -659,12 +659,10 @@ function HomeExperience() {
                 className="w-full flex flex-col items-center gap-6"
               >
                 {/* DiscoverHero carousel */}
-                <div className="w-full max-w-[1400px] mt-6 mb-12 rounded-[2rem] overflow-hidden bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
-                  <DiscoverHero className="bg-transparent" />
-                </div>
+                <DiscoverHero className="w-full max-w-[1400px]" />
 
                 {/* Discover sections vertically stacked layout */}
-                <div className="w-full flex flex-col gap-12">
+                <div className="w-full flex flex-col gap-12 mt-6">
                   <QueryErrorBoundary>
                     {sections.map((section) => (
                       <div

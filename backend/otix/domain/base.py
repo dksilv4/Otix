@@ -83,6 +83,32 @@ class HasExternalIDs:
     __external_id_entity_type__: str
 
 
+def get_expected_media_types(entity_type: str, obj) -> list[str] | None:
+    class_name = obj.__class__.__name__
+    if entity_type == "media_item":
+        if class_name == "Movie":
+            return ["movie"]
+        elif class_name == "Show":
+            return ["show"]
+        elif class_name == "Game":
+            return ["game"]
+        elif class_name == "Album":
+            return ["music"]
+        elif class_name == "MediaItem":
+            mtype = getattr(obj, "media_type", None)
+            if mtype:
+                return [mtype]
+    elif entity_type == "person":
+        return ["person"]
+    elif entity_type == "collection":
+        return ["collection"]
+    elif entity_type == "keyword":
+        return ["keyword"]
+    elif entity_type == "company":
+        return ["company", "network"]
+    return None
+
+
 async def flush_pending_external_ids(obj, session) -> int:
     """Apply pending external IDs stored by ExternalIDDescriptor.__set__.
 
@@ -127,16 +153,21 @@ async def flush_pending_external_ids(obj, session) -> int:
             else:
                 # Check for a legacy stub (same provider+external_id
                 # but entity_type IS NULL from tmdb_seed daily import).
-                legacy = await session.scalar(
-                    select(ExternalID).where(
-                        ExternalID.provider == provider,
-                        ExternalID.external_id == str_val,
-                        ExternalID.entity_type.is_(None),
-                    )
-                )
+                expected_media_types = get_expected_media_types(entity_type, obj)
+                clauses = [
+                    ExternalID.provider == provider,
+                    ExternalID.external_id == str_val,
+                    ExternalID.entity_type.is_(None),
+                ]
+                if expected_media_types:
+                    clauses.append(ExternalID.media_type.in_(expected_media_types))
+                
+                legacy = await session.scalar(select(ExternalID).where(*clauses))
                 if legacy is not None:
                     legacy.entity_type = entity_type
                     legacy.entity_id = entity_id
+                    if entity_type == "media_item":
+                        legacy.media_item_id = entity_id
                     count += 1
                 else:
                     session.add(ExternalID(
@@ -144,6 +175,7 @@ async def flush_pending_external_ids(obj, session) -> int:
                         external_id=str_val,
                         entity_type=entity_type,
                         entity_id=entity_id,
+                        media_item_id=entity_id if entity_type == "media_item" else None,
                     ))
                     count += 1
         elif existing is not None:

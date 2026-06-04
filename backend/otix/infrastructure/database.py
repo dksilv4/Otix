@@ -48,16 +48,22 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                 if existing is not None:
                     existing.external_id = str_val
                 else:
-                    legacy = session.scalar(
-                        sa_select(ExternalID).where(
-                            ExternalID.provider == provider,
-                            ExternalID.external_id == str_val,
-                            ExternalID.entity_type.is_(None),
-                        )
-                    )
+                    from otix.domain.base import get_expected_media_types
+                    expected_media_types = get_expected_media_types(entity_type, obj)
+                    clauses = [
+                        ExternalID.provider == provider,
+                        ExternalID.external_id == str_val,
+                        ExternalID.entity_type.is_(None),
+                    ]
+                    if expected_media_types:
+                        clauses.append(ExternalID.media_type.in_(expected_media_types))
+
+                    legacy = session.scalar(sa_select(ExternalID).where(*clauses))
                     if legacy is not None:
                         legacy.entity_type = entity_type
                         legacy.entity_id = entity_id
+                        if entity_type == "media_item":
+                            legacy.media_item_id = entity_id
                     else:
                         session.add(
                             ExternalID(
@@ -65,6 +71,7 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
                                 external_id=str_val,
                                 entity_type=entity_type,
                                 entity_id=entity_id,
+                                media_item_id=entity_id if entity_type == "media_item" else None,
                             )
                         )
             elif existing is not None:

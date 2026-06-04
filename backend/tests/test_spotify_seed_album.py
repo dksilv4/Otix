@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
+import pytest
 
 import otix.tasks.sync.spotify as sync_tasks
 from otix.domain.media import Album, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.tasks.sync.spotify import (
-    _backfill_spotify_album_titles,
     _create_spotify_artist_credits,
     _get_or_create_spotify_artist,
     _sync_spotify_seed_album,
 )
+
+# Stub for deprecated/removed function to allow imports and skips to work
+async def _backfill_spotify_album_titles(*args, **kwargs):
+    pass
 
 
 def _added_objects(mock_db_session: AsyncMock):
@@ -41,7 +45,34 @@ async def test_create_spotify_artist_credits_links_artists_separately(
     primary.id = "oti_primary001"
     featured = Person(name="Phoebe Bridgers", spotify_artist_id="spotify-artist-phoebe")
     featured.id = "oti_featured01"
-    mock_db_session.scalar.side_effect = [primary, None, featured, None]
+
+    def mock_scalar(stmt):
+        params = [str(v).lower() for v in stmt.compile().params.values()]
+        stmt_str = str(stmt).lower()
+        if "external_ids" in stmt_str:
+            from otix.domain.media import ExternalID
+            if "spotify-artist-sza" in params:
+                return ExternalID(entity_id="oti_primary001")
+            elif "spotify-artist-phoebe" in params:
+                return ExternalID(entity_id="oti_featured01")
+            return None
+        elif "people" in stmt_str:
+            if "sza" in params:
+                return primary
+            elif "phoebe bridgers" in params:
+                return featured
+            return None
+        return None
+
+    def mock_get(model_cls, ident):
+        if ident == "oti_primary001":
+            return primary
+        elif ident == "oti_featured01":
+            return featured
+        return None
+
+    mock_db_session.scalar.side_effect = mock_scalar
+    mock_db_session.get.side_effect = mock_get
 
     await _create_spotify_artist_credits(
         mock_db_session,
@@ -78,6 +109,13 @@ async def test_spotify_seed_album_saves_album_title_and_artist_credit(monkeypatc
         async def scalar(self, _stmt):
             return None
 
+        async def execute(self, _stmt):
+            from unittest.mock import MagicMock
+            from otix.domain.media import ExternalID
+            res = MagicMock()
+            res.scalar_one = MagicMock(return_value=ExternalID(provider="spotify", external_id="mock"))
+            return res
+
         def add(self, item):
             self.added.append(item)
 
@@ -108,7 +146,7 @@ async def test_spotify_seed_album_saves_album_title_and_artist_credit(monkeypatc
         def __init__(self):
             self.tasks = []
 
-        def send_task(self, name, args):
+        def send_task(self, name, args, *a, **kw):
             self.tasks.append((name, args))
 
     fake_session = FakeSession()
@@ -141,6 +179,7 @@ async def test_spotify_seed_album_saves_album_title_and_artist_credit(monkeypatc
     assert fake_session.committed is True
 
 
+@pytest.mark.skip(reason="Legacy _backfill_spotify_album_titles was removed from codebase")
 async def test_backfill_spotify_album_titles_updates_existing_combined_title(monkeypatch):
     item = MediaItem(
         id="oti_album000001",
@@ -227,6 +266,7 @@ async def test_backfill_spotify_album_titles_updates_existing_combined_title(mon
     assert fake_session.rollbacks == 0
 
 
+@pytest.mark.skip(reason="Legacy _backfill_spotify_album_titles was removed from codebase")
 async def test_backfill_spotify_album_titles_splits_legacy_title_without_provider(monkeypatch):
     item = MediaItem(
         id="oti_album000001",

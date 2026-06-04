@@ -151,28 +151,32 @@ def sync_tmdb_keyword_task(self, tmdb_id: int) -> dict | None:
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
-async def _resolve_external_id(session, tmdb_id: str) -> tuple[MediaItem | None, ExternalID | None]:
-    """Look up media_item by TMDB ID, filtering strictly by entity_type.
+async def _resolve_external_id(session, tmdb_id: str, media_type: str) -> tuple[MediaItem | None, ExternalID | None]:
+    """Look up media_item by TMDB ID, filtering strictly by entity_type and media_type.
 
     TMDB reuses numeric IDs across entity types (movie 350, person 350,
     company 350 are all different things). Without the entity_type filter,
     we'd resolve a movie to a person's ExternalID row and create a duplicate.
     """
     ext_id = await session.scalar(
-        select(ExternalID).where(
+        select(ExternalID)
+        .join(MediaItem, ExternalID.entity_id == MediaItem.id)
+        .where(
             ExternalID.provider == "tmdb",
             ExternalID.external_id == tmdb_id,
             ExternalID.entity_type == "media_item",
+            MediaItem.media_type == media_type,
         )
     )
     if ext_id is None:
-        # Backward compat: check legacy rows with NULL entity_type
-        # (created before entity_type was always set).
+        # Backward compat: check legacy stubs with NULL entity_type.
+        # Filter by media_type to prevent matching stubs of other entity types.
         ext_id = await session.scalar(
             select(ExternalID).where(
                 ExternalID.provider == "tmdb",
                 ExternalID.external_id == tmdb_id,
                 ExternalID.entity_type.is_(None),
+                ExternalID.media_type == media_type,
             )
         )
     if ext_id is None:
@@ -192,7 +196,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
     with track_entity_duration("tmdb", media_type):
         async with async_session() as session:
             tmdb_id_str = str(tmdb_id)
-            media_item, ext_id = await _resolve_external_id(session, tmdb_id_str)
+            media_item, ext_id = await _resolve_external_id(session, tmdb_id_str, media_type)
 
             if not force and media_item is not None and media_item.next_sync_at is not None:
                 if media_item.next_sync_at > datetime.now(timezone.utc):
