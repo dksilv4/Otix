@@ -21,7 +21,7 @@ local requested = tonumber(ARGV[4])
 local tokens = tonumber(redis.call('GET', key .. ':tokens'))
 local last = tonumber(redis.call('GET', key .. ':last'))
 
-if tokens == nil then
+if tokens == nil or last == nil then
     tokens = burst
     last = now
 end

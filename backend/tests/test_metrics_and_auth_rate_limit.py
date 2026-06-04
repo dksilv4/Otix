@@ -88,3 +88,19 @@ async def test_auth_rate_limiter_raises_429_after_burst(fakeredis) -> None:
 
     assert exc.value.status_code == 429
     assert int(exc.value.headers["Retry-After"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_rate_limiter_handles_missing_last_field(fakeredis) -> None:
+    from otix.lib.rate_limiter import RateLimiter
+    limiter = RateLimiter(fakeredis)
+
+    # Simulate partial Redis state where tokens exists but last is missing/evicted
+    key = limiter._key("test_bucket")
+    await fakeredis.set(f"{key}:tokens", "10")
+    # key:last is intentionally not set
+
+    # Should work without raising redis.exceptions.ResponseError
+    allowed, wait = await limiter.acquire("test_bucket", tokens=1)
+    assert allowed is True
+    assert wait == 0.0
