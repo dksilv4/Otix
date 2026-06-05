@@ -1,7 +1,8 @@
+// TODO: Review this file
 import { useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2, Download, FolderKanban, ScanSearch } from 'lucide-react'
+import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2, Download, FolderKanban, ScanSearch, Monitor } from 'lucide-react'
 import { ExperimentsSection } from '@/features/experiments/organisms/experiments-section'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -16,8 +17,9 @@ import { NotificationsSection } from './settings-sections/notifications'
 import { DownloadsSection } from './settings-sections/downloads-section'
 import { OrganizerSection } from './settings-sections/organizer-section'
 import { ScannersSection } from './settings-sections/scanners-section'
+import { DesktopSection } from './settings-sections/desktop'
 
-type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments' | 'downloads' | 'organizer' | 'scanners'
+type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments' | 'downloads' | 'organizer' | 'scanners' | 'desktop'
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -29,6 +31,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'scanners', label: 'Scanners', icon: ScanSearch },
   { id: 'downloads', label: 'Downloads', icon: Download },
   { id: 'organizer', label: 'Organizer', icon: FolderKanban },
+  { id: 'desktop', label: 'Desktop', icon: Monitor },
   { id: 'experiments', label: 'Experiments', icon: FlaskConical },
 ]
 
@@ -40,7 +43,7 @@ export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
   const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
-  const electronSections = new Set(['downloads', 'organizer', 'scanners'])
+  const electronSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
   const filteredNav = NAV_ITEMS.filter(i => !electronSections.has(i.id) || isElectron)
   const [activeSection, setActiveSection] = useState<Section>(() =>
     isSettingsSection(search.section) && (!electronSections.has(search.section) || isElectron) ? search.section : 'profile',
@@ -189,6 +192,9 @@ export function SettingsPage() {
           )}
           {activeSection === 'scanners' && (
             <ScannersSection />
+          )}
+          {activeSection === 'desktop' && (
+            <DesktopSection />
           )}
           {activeSection === 'experiments' && (
             <ExperimentsSection />

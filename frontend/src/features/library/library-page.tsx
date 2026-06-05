@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
 import { Helmet } from "react-helmet-async"
 import { useInView } from "framer-motion"
@@ -25,6 +26,7 @@ const CORE_TABS: Array<{ id: LibraryTab; icon: React.ReactNode }> = [
   { id: "watched", icon: <CheckCircle2Icon className="h-4 w-4" /> },
   { id: "played", icon: <Gamepad2Icon className="h-4 w-4" /> },
   { id: "listened", icon: <MusicIcon className="h-4 w-4" /> },
+  { id: "owned", icon: <CheckCircle2Icon className="h-4 w-4" /> },
 ]
 
 // ── Helpers ──

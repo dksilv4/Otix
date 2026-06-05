@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useCallback } from 'react'
 import { Link, useRouter, useLocation } from '@tanstack/react-router'
 import { Menu, ArrowLeft } from 'lucide-react'
@@ -11,6 +12,8 @@ import { useNotificationToasts } from '@/features/notifications/use-notification
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { NowPlayingView } from '@/features/spotify/now-playing-view'
+import { TitleBar } from '@/features/title-bar/organisms/title-bar'
+import { useElectronPlatform } from '@/lib/electron-platform'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
 
@@ -72,13 +75,15 @@ function AppShell({ children }: { children: ReactNode }) {
   const { navLogo } = usePageMeta()
   const location = useLocation()
   const isPinned = loadPinState()
+  const { isElectron } = useElectronPlatform()
 
   const isHomePage = location.pathname === '/'
   const canGoBack = typeof window !== "undefined" && window.history.length > 1
   const showBackButton = !isHomePage && canGoBack
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
-
+  // On Electron, adjust floating pill positions to clear the title bar
+  const titleBarOffset = isElectron ? 'top-[calc(38px+1rem)]' : 'top-4'
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev)
@@ -91,11 +96,17 @@ function AppShell({ children }: { children: ReactNode }) {
   useNotificationToasts()
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-[100vw]">
+      {/* Custom title bar (Electron only) */}
+      <TitleBar />
+
+      {/* Left floating pill */}
       <div
         className={cn(
           floatingPill,
-          'top-4 left-4 px-2 py-1.5 gap-1 transition-all duration-300',
+          titleBarOffset,
+          'left-3',
+          'px-2 py-1.5 gap-1 transition-all duration-300',
           navLogo && 'pr-4',
         )}
         data-menu-trigger
@@ -116,10 +127,12 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MenuDropdown />
+      {/* Right floating pill */}
       <div
         className={cn(
           floatingPill,
-          'top-4 right-4 px-2 py-1.5 gap-1 transition-all duration-300',
+          titleBarOffset,
+          'right-4 px-2 py-1.5 gap-1 transition-all duration-300',
         )}
       >
         <NowPlayingButton
@@ -133,8 +146,9 @@ function AppShell({ children }: { children: ReactNode }) {
         <UserMenu bare />
       </div>
 
-      <div className="flex min-h-screen">
-        <main className="flex-1 container mx-auto px-4 pt-20 pb-24">{children}</main>
+      {/* Main content — top padding is structural to clear the floating pills; pages manage their own bottom/horizontal padding */}
+      <div className={cn('flex min-h-screen pt-20', isElectron && 'pt-[calc(var(--title-bar-height)+5rem)]')}>
+        <main className="flex-1 px-4">{children}</main>
         <NowPlayingView open={isSidebarOpen} onClose={handleCloseSidebar} />
       </div>
 
