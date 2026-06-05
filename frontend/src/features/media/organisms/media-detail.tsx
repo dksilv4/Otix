@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
@@ -15,7 +16,6 @@ import { MusicSection } from './music-section'
 import { ArtistAlbumsSection } from './artist-albums-section'
 import { SimilarSection } from './similar-section'
 import { RecommendationsSection } from './recommendations-section'
-import { usePlexAlbumTracks } from '@/features/library/library-queries'
 import { CastCrewList } from './cast-crew-list'
 import { CollectionSection } from './collection-section'
 import { DeferredSection } from '@ui/molecules/deferred-section'
@@ -576,7 +576,6 @@ export function MediaDetail() {
   const mediaId = params.mediaId || ''
 
   const { data, isLoading, isError } = useMediaDetail(mediaId)
-  const isMusicType = data?.mediaType === 'music'
   const isShowDetail = data?.mediaType === 'show'
   const episodeInteractions = useEpisodeInteractions(mediaId, { enabled: isShowDetail })
   const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
@@ -588,7 +587,6 @@ export function MediaDetail() {
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading')
 
   const { user } = useAuth()
-  const { data: plexData } = usePlexAlbumTracks(isMusicType ? mediaId : undefined)
 
   useEffect(() => {
     if (isLoading) {
@@ -679,7 +677,7 @@ export function MediaDetail() {
           mediaType={displayType}
           title={detail.title}
           backdropUrl={detail.backdropUrl}
-          posterUrl={detail.posterUrl || plexData?.albumThumbUrl || null}
+          posterUrl={detail.posterUrl}
           logoUrl={detail.logoUrl}
           textlessPosterUrl={detail.textlessPosterUrl}
           releaseDate={detail.releaseDate}
