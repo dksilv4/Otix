@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate as useNavigateRouter } from '@tanstack/react-router'
@@ -42,7 +43,7 @@ function cardTransform(dist: number, cardOffset: number): string {
   return `translateX(-50%) translateX(${dist * cardOffset}px) translateY(calc(-50% + ${translateY}px)) scale(${scale}) rotate(${rotate}deg)`
 }
 
-const CARD_TRANSITION = 'transform 600ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 500ms ease-out, filter 500ms ease-out'
+const CARD_TRANSITION = 'transform 600ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 500ms ease-out'
 
 function getSlideAnimation(id: string) {
   let hash = 0
@@ -102,7 +103,7 @@ function DiscoverHeroCard({
   const absDist = Math.abs(dist)
   const isFar = absDist >= 3
 
-  // Mouse tilt motion values
+  // Tilt motion values (based on cursor, touch, or gyroscope)
   const x = useMotionValue(0)
   const y = useMotionValue(0)
 
@@ -119,21 +120,25 @@ function DiscoverHeroCard({
   const tiltZ = useMotionValue(0)
   const springTiltZ = useSpring(tiltZ, springConfig)
 
+  // Track whether a finger is currently on the card (disables gyro during touch)
+  const isTouchingRef = useRef(false)
+
+  const setTiltFromPos = (clientX: number, clientY: number, rect: DOMRect) => {
+    const relX = (clientX - rect.left) / rect.width - 0.5
+    const relY = (clientY - rect.top) / rect.height - 0.5
+    x.set(relX)
+    y.set(relY)
+  }
+
+  // ── Mouse tilt ──
   const handleMouseMove = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (isFar) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    const width = rect.width
-    const height = rect.height
-    // Calculate cursor position relative to card center (-0.5 to 0.5)
-    const mouseX = (event.clientX - rect.left) / width - 0.5
-    const mouseY = (event.clientY - rect.top) / height - 0.5
-    x.set(mouseX)
-    y.set(mouseY)
+    setTiltFromPos(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect())
   }
 
   const handleMouseEnter = () => {
     if (isFar) return
-    tiltZ.set(24) // push card forward slightly in Z space on hover
+    tiltZ.set(24)
   }
 
   const handleMouseLeave = () => {
@@ -141,6 +146,50 @@ function DiscoverHeroCard({
     y.set(0)
     tiltZ.set(0)
   }
+
+  // ── Touch tilt (finger follows card surface) ──
+  const handleTouchStart = (event: React.TouchEvent<HTMLButtonElement>) => {
+    if (isFar) return
+    isTouchingRef.current = true
+    tiltZ.set(24)
+    setTiltFromPos(event.touches[0].clientX, event.touches[0].clientY, event.currentTarget.getBoundingClientRect())
+  }
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLButtonElement>) => {
+    if (isFar || !isTouchingRef.current) return
+    setTiltFromPos(event.touches[0].clientX, event.touches[0].clientY, event.currentTarget.getBoundingClientRect())
+  }
+
+  const handleTouchEnd = () => {
+    isTouchingRef.current = false
+    x.set(0)
+    y.set(0)
+    tiltZ.set(0)
+  }
+
+  // ── Gyroscope tilt (phone orientation, when not touching) ──
+  useEffect(() => {
+    const isMobile = typeof window !== 'undefined' &&
+      ('ontouchstart' in window || (navigator as any).maxTouchPoints > 0)
+    if (!isMobile || isFar) return
+
+    let active = true
+    const handler = (event: DeviceOrientationEvent) => {
+      if (!active || isTouchingRef.current || event.gamma == null || event.beta == null) return
+      // gamma = left-right tilt (-90 to 90), beta = front-back tilt (-180 to 180)
+      // Map to a subtle -0.3 to 0.3 range
+      const gx = Math.max(-0.3, Math.min(0.3, (event.gamma / 90) * 0.25))
+      const gy = Math.max(-0.3, Math.min(0.3, (event.beta / 90) * 0.18))
+      x.set(gx)
+      y.set(gy)
+    }
+
+    window.addEventListener('deviceorientation', handler)
+    return () => {
+      active = false
+      window.removeEventListener('deviceorientation', handler)
+    }
+  }, [isFar])
 
   // Card image source (prefer textlessPosterUrl, fallback to poster)
   const itemFallback = item.posterUrl || null
@@ -152,6 +201,9 @@ function DiscoverHeroCard({
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className={cn(
         'absolute left-1/2 top-1/2 outline-none will-change-transform cursor-pointer',
         'w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px]',
@@ -160,12 +212,12 @@ function DiscoverHeroCard({
         left: '50%',
         top: '50%',
         transform: cardTransform(dist, cardOffset),
-        filter: `blur(${absDist * 2.5}px)`,
-        opacity: isFar ? 0 : Math.max(0, 1 - absDist * 0.35),
+        opacity: 1,
         zIndex: Math.max(0, 10 - absDist * 2),
         transition: CARD_TRANSITION,
         pointerEvents: isFar ? 'none' : 'auto',
         perspective: '1200px', // perspective for 3D card tilt effect
+        touchAction: 'manipulation',
       }}
       aria-label={isActive ? `View details for ${item.title}` : `Go to slide ${item.title}`}
     >
@@ -242,12 +294,20 @@ function DiscoverHeroCard({
             <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-black" />
           )}
 
-          {/* Inside inactive slide preview — show text title at bottom left */}
+          {/* Darkening/lightening overlay for non-focused cards — uses page
+              background color so it darkens in dark mode and lightens in
+              light mode. Opacity increases per layer to reduce distraction. */}
           {!isActive && (
-            <div className="absolute bottom-4 left-6 z-10 max-w-[80%]">
-              <p className="text-sm font-bold text-white/90 truncate drop-shadow-md">{item.title}</p>
-            </div>
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: 'var(--background)',
+                opacity: Math.min(0.30 + absDist * 0.25, 0.90),
+                transition: 'opacity 500ms ease-out',
+              }}
+            />
           )}
+
         </div>
 
         {/* Inside active card — show media logo or title text zoomed larger from the center, overflowing the card width */}
@@ -407,6 +467,34 @@ export function DiscoverHero({ className }: { className?: string }) {
     navigateTo((activeIndex + 1) % Math.max(1, items.length))
   }, [activeIndex, items.length, navigateTo])
 
+  const tickBack = useCallback(() => {
+    navigateTo((activeIndex - 1 + Math.max(1, items.length)) % items.length)
+  }, [activeIndex, items.length, navigateTo])
+
+  // ── Touch swipe support ──
+  const touchStartXRef = useRef(0)
+  const touchStartYRef = useRef(0)
+  const SWIPE_THRESHOLD = 50
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX
+    touchStartYRef.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current
+
+    // Horizontal swipe (ignore vertical scrolling)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+      if (deltaX < 0) {
+        tick()
+      } else {
+        tickBack()
+      }
+    }
+  }, [tick, tickBack])
+
   useEffect(() => {
     if (items.length <= 1 || isPaused) return
     intervalRef.current = setInterval(tick, AUTOPLAY_INTERVAL)
@@ -445,10 +533,11 @@ export function DiscoverHero({ className }: { className?: string }) {
         const d_new = circularDist(i, activeIndex, total)
         
         let dist = d_new
+
         if (isTransitioning) {
           const step = circularDist(activeIndex, prevActiveIndex, total)
           const linear_diff = d_new - d_prev
-          
+
           // Wrap condition: index crosses the circular boundary
           if (step > 0 && linear_diff > 0) {
             dist = d_prev - step  // slide off-screen left
@@ -480,7 +569,11 @@ export function DiscoverHero({ className }: { className?: string }) {
       onMouseLeave={handleMouseLeave}
     >
       {/* ── Slide stack container ── */}
-      <div className="relative w-full h-[320px] sm:h-[425px] md:h-[515px] z-10 overflow-visible">
+      <div
+        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         
         {/* Loading skeleton */}
         {isLoading && (
