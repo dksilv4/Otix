@@ -47,6 +47,7 @@ interface DisplayGame {
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch'
   exePath?: string
   installDir?: string
+  isInstalled?: boolean
   otixMediaId?: string
   rawGame?: DetectedGame
 }
@@ -110,6 +111,14 @@ export function LauncherHomePage() {
   const { toast } = useToast()
 
   const [localGames, setLocalGames] = useState<DetectedGame[]>(() => getScannedGames())
+  // Detect OS for ISO install hint
+  const osName = useMemo(() => {
+    const p = typeof navigator !== 'undefined' ? navigator.platform.toLowerCase() : ''
+    if (p.includes('mac')) return 'macOS'
+    if (p.includes('win')) return 'Windows'
+    if (p.includes('linux')) return 'Linux'
+    return 'PC'
+  }, [])
   // Re-sync from cache after DB loads or when games are updated elsewhere
   useEffect(() => {
     const reload = () => setLocalGames(getScannedGames())
@@ -181,6 +190,7 @@ export function LauncherHomePage() {
           platform: g.platform,
           exePath: g.exePath,
           installDir: g.installDir,
+          isInstalled: !!g.exePath,
           otixMediaId: g.otixMediaId || undefined,
           rawGame: g
         }
@@ -207,10 +217,23 @@ export function LauncherHomePage() {
   }, [localGames, popularGames])
 
   // Picker sidebar: show local games (matched or not), or fallback to catalog
+  // Sort: installed first, then matched, then unmatched
   const pickerGames = useMemo<DisplayGame[]>(
-    () => localGames.length > 0
-      ? displayGames  // all local games, matched or not
-      : displayGames.filter((g) => !!g.otixMediaId),  // catalog: only matched
+    () => {
+      const games = localGames.length > 0
+        ? displayGames
+        : displayGames.filter((g) => !!g.otixMediaId)
+      return [...games].sort((a, b) => {
+        // Installed games first
+        if (a.isInstalled && !b.isInstalled) return -1
+        if (!a.isInstalled && b.isInstalled) return 1
+        // Matched before unmatched
+        if (a.otixMediaId && !b.otixMediaId) return -1
+        if (!a.otixMediaId && b.otixMediaId) return 1
+        // Then by original order
+        return 0
+      })
+    },
     [displayGames, localGames.length],
   )
 
@@ -487,7 +510,7 @@ export function LauncherHomePage() {
                     ? "border-white shadow-[0_0_12px_rgba(255,255,255,0.25)] scale-105"
                     : "border-transparent opacity-50 hover:opacity-100 hover:border-white/20"
                 )}
-                title={game.title}
+                title={`${game.title}${game.isInstalled ? ' ● Installed' : ''}`}
               >
                 {(() => {
                   if (game.posterUrl || game.iconUrl) {
@@ -499,18 +522,25 @@ export function LauncherHomePage() {
                     </div>
                   )
                 })()}
+                {/* Installed indicator */}
+                {game.isInstalled && (
+                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" />
+                )}
+                {!game.isInstalled && game.platform === 'iso' && (
+                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500/60 border border-black/30 shadow-sm" title={`Can install on ${osName}`} />
+                )}
               </button>
             )
           })}
         </div>
 
-        {/* Bottom Search Icon (absolute) */}
+        {/* Bottom Library button (absolute) */}
         <button
           onClick={goToLibrary}
           className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)]"
           title="Browse All Games"
         >
-          <Search size={16} />
+          <Gamepad2 size={16} />
         </button>
       </aside>
 
@@ -553,8 +583,8 @@ export function LauncherHomePage() {
           {/* Bottom elements of the Hero screen */}
           <div className="absolute inset-0 z-10 pointer-events-none">
 
-            {/* Stats (Bottom Left) — playtime from Steam integration */}
-            <div className="absolute bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
+            {/* Stats (Bottom Left) — playtime + installed status */}
+            <div className="absolute bottom-8 flex gap-3 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
               <div className="bg-white/[0.04] border border-white/[0.06] backdrop-blur-2xl rounded-3xl px-6 py-4 min-w-[160px] shadow-2xl hover:bg-white/[0.07] hover:border-white/[0.10] transition-all flex flex-col justify-between">
                 <p className="text-2xl font-black text-white tracking-tight leading-none mb-2 flex items-center gap-2">
                   {activeGameDetail?.steamPlaytimeForever != null
@@ -572,6 +602,27 @@ export function LauncherHomePage() {
                   Time Played
                 </p>
               </div>
+              {activeGame && (
+                <div className="flex items-center">
+                  <div className={cn(
+                    "bg-white/[0.04] border border-white/[0.06] backdrop-blur-2xl rounded-3xl px-5 py-4 shadow-2xl transition-all flex flex-col justify-between",
+                    activeGame.isInstalled ? "hover:bg-emerald-500/10 hover:border-emerald-500/20" : "hover:bg-white/[0.07] hover:border-white/[0.10]"
+                  )}>
+                    <p className="text-lg font-black text-white tracking-tight leading-none mb-2 flex items-center gap-2">
+                      {activeGame.isInstalled ? (
+                        <><span className="text-emerald-400">●</span> Installed</>
+                      ) : activeGame.platform === 'iso' ? (
+                        <><span className="text-amber-400">○</span> ISO — install on {osName}</>
+                      ) : (
+                        <><span className="text-white/30">○</span> Not Installed</>
+                      )}
+                    </p>
+                    <p className="text-[9px] font-black text-white/30 tracking-widest uppercase">
+                      {activeGame.isInstalled ? 'Ready to play' : activeGame.installDir ? `At ${activeGame.installDir}` : 'Local game'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Developer / Publisher (Bottom Right) */}
