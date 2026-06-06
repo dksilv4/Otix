@@ -193,7 +193,7 @@ export function LauncherHomePage() {
           platform: g.platform,
           exePath: g.exePath,
           installDir: g.installDir,
-          isInstalled: !!g.exePath,
+          isInstalled: !!g.exePath && !(g.platform === 'iso' && osName !== 'Windows'),
           otixMediaId: g.otixMediaId || undefined,
           rawGame: g
         }
@@ -539,8 +539,8 @@ export function LauncherHomePage() {
                 {game.isInstalled && (
                   <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" />
                 )}
-                {!game.isInstalled && game.platform === 'iso' && (
-                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-amber-500/60 border border-black/30 shadow-sm" title={`Can install on ${osName}`} />
+                {!game.isInstalled && game.platform === 'iso' && osName !== 'Windows' && (
+                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Windows-only — incompatible with macOS" />
                 )}
               </button>
             )
@@ -639,14 +639,20 @@ export function LauncherHomePage() {
                     <p className="text-lg font-black text-white tracking-tight leading-none mb-2 flex items-center gap-2">
                       {activeGame.isInstalled ? (
                         <><span className="text-emerald-400">●</span> Installed</>
-                      ) : activeGame.platform === 'iso' ? (
-                        <><span className="text-amber-400">○</span> ISO — install on {osName}</>
+                      ) : activeGame.platform === 'iso' && osName !== 'Windows' ? (
+                        <><span className="text-red-400/70">✕</span> Incompatible</>
                       ) : (
                         <><span className="text-white/30">○</span> Not Installed</>
                       )}
                     </p>
                     <p className="text-[9px] font-black text-white/30 tracking-widest uppercase">
-                      {activeGame.isInstalled ? 'Ready to play' : activeGame.installDir ? `At ${activeGame.installDir}` : 'Local game'}
+                      {activeGame.isInstalled
+                        ? 'Ready to play'
+                        : activeGame.platform === 'iso' && osName !== 'Windows'
+                          ? `ISO needs Windows — running ${osName}`
+                          : activeGame.installDir
+                            ? `At ${activeGame.installDir}`
+                            : 'Local game'}
                     </p>
                   </div>
                 </div>
