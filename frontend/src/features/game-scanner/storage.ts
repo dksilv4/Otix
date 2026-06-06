@@ -85,6 +85,35 @@ export function hasElectronAPI(): boolean {
   );
 }
 
+/** Alias for `hasElectronAPI` -- preferred name used by consumers */
+export const hasDesktopAPI = hasElectronAPI;
+
+/** Whether the storage module has been initialised (cache populated from localStorage) */
+export let storageReady = true;
+
+/** Returns true if the in-memory cache was populated (i.e. we can read games synchronously) */
+export function isStorageReady(): boolean {
+  return storageReady;
+}
+
+const _lastScanKey = "otix_last_scan_time";
+
+export function getLastScanTime(): string | null {
+  try {
+    return localStorage.getItem(_lastScanKey);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastScanTime(time: string): void {
+  try {
+    localStorage.setItem(_lastScanKey, time);
+  } catch {
+    // silently ignore
+  }
+}
+
 // ── Initialise cache from localStorage (fast, for immediate reads) ──
 
 if (typeof window !== "undefined") {
@@ -225,6 +254,11 @@ export function setScannedGames(games: DetectedGame[]): void {
     (window as any).electronAPI.saveScannedGames(deduped).catch((err: any) => {
       console.error("Failed to save scanned games to SQLite:", err);
     });
+  }
+
+  // Notify listeners that cached game data has changed
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("games:updated", { detail: deduped }));
   }
 }
 
