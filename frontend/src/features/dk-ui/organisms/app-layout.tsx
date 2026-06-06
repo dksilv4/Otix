@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useCallback } from 'react'
 import { Link, useRouter, useLocation } from '@tanstack/react-router'
 import { Menu, ArrowLeft } from 'lucide-react'
@@ -12,10 +11,11 @@ import { useNotificationToasts } from '@/features/notifications/use-notification
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { NowPlayingView } from '@/features/spotify/now-playing-view'
-import { TitleBar } from '@/features/title-bar/organisms/title-bar'
-import { useElectronPlatform } from '@/lib/electron-platform'
+
+import { useDesktopPlatform } from '@/lib/desktop-platform'
 import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
+import './app-layout.scss'
 
 const PIN_KEY = 'otix_spotify_player_pinned'
 
@@ -27,16 +27,6 @@ function loadPinState(): boolean {
   }
 }
 
-
-
-const floatingPill = cn(
-  'fixed z-[9999]',
-  'flex items-center rounded-[2rem]',
-  'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-  'backdrop-blur-lg',
-  'shadow-[var(--dk-shadow-glass)]',
-)
-
 function MenuToggle() {
   const { toggle } = useNavigation()
   return (
@@ -44,10 +34,10 @@ function MenuToggle() {
       variant="ghost"
       size="sm"
       onClick={toggle}
-      className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
+      className="dk-nav-btn"
       aria-label="Toggle menu"
     >
-      <Menu className="h-5 w-5" />
+      <Menu className="dk-nav-btn__icon" />
     </DkButton>
   )
 }
@@ -63,10 +53,10 @@ function BackButton() {
       variant="ghost"
       size="sm"
       onClick={() => router.history.back()}
-      className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
+      className="dk-nav-btn"
       aria-label="Go back"
     >
-      <ArrowLeft className="h-5 w-5" />
+      <ArrowLeft className="dk-nav-btn__icon" />
     </DkButton>
   )
 }
@@ -75,7 +65,7 @@ function AppShell({ children }: { children: ReactNode }) {
   const { navLogo } = usePageMeta()
   const location = useLocation()
   const isPinned = loadPinState()
-  const { isElectron } = useElectronPlatform()
+  const { isDesktop } = useDesktopPlatform()
 
   const isHomePage = location.pathname === '/'
   const canGoBack = typeof window !== "undefined" && window.history.length > 1
@@ -83,7 +73,7 @@ function AppShell({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // On Electron, adjust floating pill positions to clear the title bar
-  const titleBarOffset = isElectron ? 'top-[calc(38px+1rem)]' : 'top-4'
+  const titleBarOffset = isDesktop ? 'dk-floating-pill--offset-default' : 'dk-floating-pill--offset-default'
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev)
@@ -96,44 +86,36 @@ function AppShell({ children }: { children: ReactNode }) {
   useNotificationToasts()
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-[100vw]">
-      {/* Custom title bar (Electron only) */}
-      <TitleBar />
+    <div className="dk-app-shell">
+      {/* Invisible drag bar — lets user move the window on frameless desktop */}
+      {isDesktop && <div className="fixed top-0 left-0 right-0 h-2.5 z-[99999]" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />}
 
-      {/* Left floating pill */}
-      <div
-        className={cn(
-          floatingPill,
-          titleBarOffset,
-          'left-3',
-          'px-2 py-1.5 gap-1 transition-all duration-300',
-          navLogo && 'pr-4',
-        )}
-        data-menu-trigger
-      >
-        {showBackButton && <BackButton />}
-        <MenuToggle />
-        {navLogo ? (
-          <img
-            src={navLogo}
-            alt=""
-            className="h-7 max-w-[120px] object-contain"
-          />
-        ) : (
-          <Link to="/" className="flex items-center pr-2">
-            <DkLogo />
-          </Link>
-        )}
-      </div>
+      {/* Left floating pill — hidden in game launcher (it has its own picker) */}
+      {!location.pathname.startsWith('/games') && (
+        <div
+          className={cn('dk-floating-pill dk-floating-pill--left', titleBarOffset, navLogo && 'dk-floating-pill--left-w-logo')}
+          data-menu-trigger
+        >
+          {showBackButton && <BackButton />}
+          <MenuToggle />
+          {navLogo ? (
+            <img
+              src={navLogo}
+              alt=""
+              className="dk-nav-logo-img"
+            />
+          ) : (
+            <Link to="/" className="flex items-center pr-2">
+              <DkLogo />
+            </Link>
+          )}
+        </div>
+      )}
 
       <MenuDropdown />
       {/* Right floating pill */}
       <div
-        className={cn(
-          floatingPill,
-          titleBarOffset,
-          'right-4 px-2 py-1.5 gap-1 transition-all duration-300',
-        )}
+        className={cn('dk-floating-pill dk-floating-pill--right', titleBarOffset)}
       >
         <NowPlayingButton
           bare
@@ -147,8 +129,8 @@ function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {/* Main content — top padding is structural to clear the floating pills; pages manage their own bottom/horizontal padding */}
-      <div className={cn('flex min-h-screen pt-20', isElectron && 'pt-[calc(var(--title-bar-height)+5rem)]')}>
-        <main className="flex-1 px-4">{children}</main>
+      <div className={cn('dk-main-content', isDesktop && 'dk-main-content--desktop')}>
+        <main className="dk-main-content__inner">{children}</main>
         <NowPlayingView open={isSidebarOpen} onClose={handleCloseSidebar} />
       </div>
 
