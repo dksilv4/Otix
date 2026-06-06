@@ -540,7 +540,7 @@ export function LauncherHomePage() {
                   <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" />
                 )}
                 {!game.isInstalled && game.platform === 'iso' && osName !== 'Windows' && (
-                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Windows-only — incompatible with macOS" />
+                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Can't install this on macOS" />
                 )}
               </button>
             )
@@ -640,7 +640,7 @@ export function LauncherHomePage() {
                       {activeGame.isInstalled ? (
                         <><span className="text-emerald-400">●</span> Installed</>
                       ) : activeGame.platform === 'iso' && osName !== 'Windows' ? (
-                        <><span className="text-red-400/70">✕</span> Incompatible</>
+                        <><span className="text-red-400/70">✕</span> Can't install on macOS</>
                       ) : (
                         <><span className="text-white/30">○</span> Not Installed</>
                       )}
@@ -649,7 +649,7 @@ export function LauncherHomePage() {
                       {activeGame.isInstalled
                         ? 'Ready to play'
                         : activeGame.platform === 'iso' && osName !== 'Windows'
-                          ? `ISO needs Windows — running ${osName}`
+                          ? 'Windows-only disc image'
                           : activeGame.installDir
                             ? `At ${activeGame.installDir}`
                             : 'Local game'}
