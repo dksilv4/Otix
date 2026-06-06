@@ -579,12 +579,12 @@ export function LauncherHomePage() {
               >
                 {/* Primary backdrop — covers the area */}
                 <div
-                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                  className="absolute inset-0 bg-cover bg-[55%_center] bg-no-repeat"
                   style={{ backgroundImage: `url(${backdropUrl})` }}
                 />
                 {/* Overflow blur layer — fills gaps when image aspect doesn't match */}
                 <div
-                  className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
+                  className="absolute -inset-[20%] bg-cover bg-[55%_center] bg-no-repeat"
                   style={{
                     backgroundImage: `url(${backdropUrl})`,
                     filter: 'blur(60px)',
