@@ -496,20 +496,20 @@ export function LauncherHomePage() {
         style={{
           left: '1rem',
           top: '6.5rem',
-          maxHeight: 'calc(100vh - 7.5rem)',
+          bottom: '1rem',
         }}
       >
         {/* Menu button — access main nav from game launcher */}
         <button
           onClick={toggleNav}
-          className="w-full h-10 flex items-center justify-center shrink-0 hover:bg-white/5 transition-colors cursor-pointer border-b border-white/5"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mt-3"
           title="Main Menu"
         >
-          <Menu size={16} className="text-white/50" />
+          <Menu size={16} />
         </button>
 
         {/* Game Cover Thumbnails Stack */}
-        <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-4 pb-20">
+        <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-4 pb-4">
           {pickerGames.map((game) => {
             const isActive = game.id === activeGame.id
             return (
