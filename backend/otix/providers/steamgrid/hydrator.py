@@ -1,3 +1,4 @@
+# TODO: Review this file
 """SteamGridDB asset hydration.
 
 After an IGDB game has platform store IDs, this hydrator looks up the game on
@@ -195,6 +196,12 @@ class SteamGridDBHydrator:
             if logo and isinstance(logo.get("url"), str):
                 media_item.logo_url = logo["url"]
 
+        # Icons → icon_url (prefer official style, prefer PNG over ICO)
+        if not media_item.icon_url:
+            icon = self._pick_icon(icons)
+            if icon and isinstance(icon.get("url"), str):
+                media_item.icon_url = icon["url"]
+
         # Heroes → backdrop. Avoid alternate heroes because they commonly include logo/title text.
         # Promote a text-safe SGDB hero even if IGDB already supplied a backdrop.
         hero = self._pick_hero(heroes)
@@ -323,6 +330,29 @@ class SteamGridDBHydrator:
                 best_rank = rank
                 best_score = score
                 best = logo
+
+        return best
+
+    def _pick_icon(self, icons: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
+        """Pick the best icon, preferring PNG over ICO and official over custom."""
+        if not icons:
+            return None
+
+        style_rank = {"official": 0, "custom": 1}
+        best = None
+        best_rank = 999
+        best_score = -1
+        for icon in icons:
+            url = icon.get("url", "")
+            is_png = isinstance(url, str) and url.lower().endswith(".png")
+            rank = style_rank.get(icon.get("style"), 2)
+            score = icon.get("score", 0) or 0
+            # PNG preferred: subtract 0.5 from rank so it beats same-style ICO
+            effective_rank = rank - 0.5 if is_png else rank
+            if effective_rank < best_rank or (effective_rank == best_rank and score > best_score):
+                best_rank = effective_rank
+                best_score = score
+                best = icon
 
         return best
 

@@ -11,6 +11,7 @@ export interface CatalogGame {
   posterUrl?: string | null
   textlessPosterUrl?: string | null
   logoUrl?: string | null
+  iconUrl?: string | null
   backdropUrl?: string | null
   releaseDate?: string | null
   popularity: number
@@ -34,6 +35,8 @@ export interface CatalogGameDetail extends CatalogGame {
   releaseStatus?: string | null
   website?: string | null
   steamAppId?: number | null
+  steamPlaytimeForever?: number | null
+  steamPlaytime2weeks?: number | null
   isFree: boolean
   hasMultiplayer: boolean
   youtubeVideoId?: string | null

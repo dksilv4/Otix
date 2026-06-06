@@ -22,6 +22,8 @@ export interface DetectedGame {
   otixConfidence?: number;
   otixPosterUrl?: string | null;
   otixTextlessPosterUrl?: string | null;
+  otixBackdropUrl?: string | null;
+  otixIconUrl?: string | null;
   otixLogoUrl?: string | null;
   otixMatchSuggestion?: {
     mediaId: string;

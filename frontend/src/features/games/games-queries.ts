@@ -2,52 +2,55 @@ import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import type { CatalogGame, CatalogGameDetail } from "./types"
 
-// ── Raw API response shapes (snake_case from backend) ──────────────
+// ── Raw API response shapes (snake_case from backend → camelCase by axios interceptor) ──
 
 interface MediaItemSummaryResponse {
   id: string
-  media_type: string
+  mediaType: string
   title: string
   slug: string
-  poster_url?: string | null
-  textless_poster_url?: string | null
-  logo_url?: string | null
-  backdrop_url?: string | null
-  release_date?: string | null
+  posterUrl?: string | null
+  textlessPosterUrl?: string | null
+  logoUrl?: string | null
+  iconUrl?: string | null
+  backdropUrl?: string | null
+  releaseDate?: string | null
   popularity: number
-  avg_rating?: number | null
-  rating_count: number
-  is_adult: boolean
+  avgRating?: number | null
+  ratingCount: number
+  isAdult: boolean
 }
 
 interface MediaItemListResponse {
   items: MediaItemSummaryResponse[]
-  has_more: boolean
+  hasMore: boolean
   total?: number | null
-  next_cursor?: string | null
+  nextCursor?: string | null
 }
 
 interface MediaItemDetailResponse extends MediaItemSummaryResponse {
   overview?: string | null
-  original_language?: string | null
+  originalLanguage?: string | null
   genres: { id: string; name: string; slug: string }[]
-  involved_companies: {
+  involvedCompanies: {
     id: string
-    company: { id: string; name: string; slug: string; logo_url?: string | null }
+    company: { id: string; name: string; slug: string; logoUrl?: string | null }
     developer: boolean
     publisher: boolean
   }[]
   platforms: { id: string; platform: { id: string; name: string; slug: string } }[]
-  game_modes: { id: string; game_mode: { id: string; name: string; slug: string } }[]
+  gameModes: { id: string; gameMode: { id: string; name: string; slug: string } }[]
   game?: {
-    release_status?: string | null
+    releaseStatus?: string | null
     website?: string | null
-    steam_app_id?: number | null
-    is_free: boolean
-    has_multiplayer: boolean
+    steamAppId?: number | null
+    isFree: boolean
+    hasMultiplayer: boolean
   } | null
-  youtube_video_id?: string | null
-  youtube_channel_title?: string | null
+  steamPlaytimeForever?: number | null
+  steamPlaytime2weeks?: number | null
+  youtubeVideoId?: string | null
+  youtubeChannelTitle?: string | null
 }
 
 // ── Map response to camelCase types ────────────────────────────────
@@ -55,18 +58,19 @@ interface MediaItemDetailResponse extends MediaItemSummaryResponse {
 function toCatalogGame(item: MediaItemSummaryResponse): CatalogGame {
   return {
     id: item.id,
-    mediaType: item.media_type,
+    mediaType: item.mediaType,
     title: item.title,
     slug: item.slug,
-    posterUrl: item.poster_url,
-    textlessPosterUrl: item.textless_poster_url,
-    logoUrl: item.logo_url,
-    backdropUrl: item.backdrop_url,
-    releaseDate: item.release_date,
+    posterUrl: item.posterUrl,
+    textlessPosterUrl: item.textlessPosterUrl,
+    logoUrl: item.logoUrl,
+    iconUrl: item.iconUrl,
+    backdropUrl: item.backdropUrl,
+    releaseDate: item.releaseDate,
     popularity: item.popularity,
-    avgRating: item.avg_rating,
-    ratingCount: item.rating_count,
-    isAdult: item.is_adult,
+    avgRating: item.avgRating,
+    ratingCount: item.ratingCount,
+    isAdult: item.isAdult,
   }
 }
 
@@ -74,48 +78,51 @@ function toCatalogGameDetail(item: MediaItemDetailResponse): CatalogGameDetail {
   return {
     ...toCatalogGame(item),
     overview: item.overview,
-    originalLanguage: item.original_language,
+    originalLanguage: item.originalLanguage,
     genres: item.genres ?? [],
-    involvedCompanies: (item.involved_companies ?? []).map((c) => ({
+    involvedCompanies: (item.involvedCompanies ?? []).map((c) => ({
       ...c,
       company: {
         ...c.company,
-        logoUrl: c.company.logo_url,
+        logoUrl: c.company.logoUrl,
       },
     })),
     platforms: item.platforms ?? [],
-    gameModes: (item.game_modes ?? []).map((gm) => ({
+    gameModes: (item.gameModes ?? []).map((gm) => ({
       id: gm.id,
       gameMode: {
-        id: gm.game_mode.id,
-        name: gm.game_mode.name,
-        slug: gm.game_mode.slug,
+        id: gm.gameMode.id,
+        name: gm.gameMode.name,
+        slug: gm.gameMode.slug,
       },
     })),
-    releaseStatus: item.game?.release_status ?? null,
+    releaseStatus: item.game?.releaseStatus ?? null,
     website: item.game?.website ?? null,
-    steamAppId: item.game?.steam_app_id ?? null,
-    isFree: item.game?.is_free ?? false,
-    hasMultiplayer: item.game?.has_multiplayer ?? false,
-    youtubeVideoId: item.youtube_video_id,
-    youtubeChannelTitle: item.youtube_channel_title,
+    steamAppId: item.game?.steamAppId ?? null,
+    steamPlaytimeForever: item.steamPlaytimeForever ?? null,
+    steamPlaytime2weeks: item.steamPlaytime2weeks ?? null,
+    isFree: item.game?.isFree ?? false,
+    hasMultiplayer: item.game?.hasMultiplayer ?? false,
+    youtubeVideoId: item.youtubeVideoId,
+    youtubeChannelTitle: item.youtubeChannelTitle,
   }
 }
 
-// ── Query keys ─────────────────────────────────────────────────────
+// ── Query key factory ──────────────────────────────────────────────
 
 export const gameKeys = {
-  all: () => ["games"] as const,
-  detail: (id: string) => [...gameKeys.all(), "detail", id] as const,
-  genres: () => [...gameKeys.all(), "genres"] as const,
-  suggestions: (query: string) => [...gameKeys.all(), "suggestions", query] as const,
+  all: ["games"] as const,
+  popular: () => [...gameKeys.all, "popular"] as const,
+  detail: (id: string) => [...gameKeys.all, "detail", id] as const,
+  suggestions: (query: string) => [...gameKeys.all, "suggestions", query] as const,
+  genres: () => [...gameKeys.all, "genres"] as const,
 }
 
-// ── Catalog queries ────────────────────────────────────────────────
+// ── Query option factories ────────────────────────────────────────
 
 export const popularGamesOptions = () =>
   queryOptions({
-    queryKey: [...gameKeys.all(), "popular"],
+    queryKey: gameKeys.popular(),
     queryFn: async (): Promise<CatalogGame[]> => {
       const { data } = await apiClient.get<MediaItemListResponse>("/media/", {
         params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
@@ -186,25 +193,3 @@ export function useGameSuggestions(query: string) {
 export function useGameGenres() {
   return useQuery(gameGenresOptions())
 }
-
-// ── Seed game titles from desktop scan ──────────────────────────────
-
-interface SeedFromTitlesResponse {
-  accepted: boolean
-  total_titles: number
-  task_id: string | null
-}
-
-export function useSeedFromTitles() {
-  return useMutation({
-    mutationFn: async (titles: string[]): Promise<SeedFromTitlesResponse> => {
-      const { data } = await apiClient.post<SeedFromTitlesResponse>(
-        "/media/seed-from-titles",
-        { titles },
-      )
-      return data
-    },
-    retry: 1,
-  })
-}
-

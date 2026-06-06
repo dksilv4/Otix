@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -50,6 +51,7 @@ class MediaItem(Base, TimestampMixin):
     textless_poster_url: Mapped[str | None] = mapped_column(String(2000))
     backdrop_url: Mapped[str | None] = mapped_column(String(2000))
     logo_url: Mapped[str | None] = mapped_column(String(2000))
+    icon_url: Mapped[str | None] = mapped_column(String(2000))
     release_date: Mapped[date | None] = mapped_column()
     popularity: Mapped[float] = mapped_column(Float, default=0.0)
     original_language: Mapped[str | None] = mapped_column(String(10))
@@ -508,3 +510,31 @@ class UserPlexItem(Base, TimestampMixin):
     raw: Mapped[dict | None] = mapped_column(JSONB)
 
     __table_args__ = (UniqueConstraint("server_id", "rating_key", name="uq_user_plex_item"),)
+
+
+class UserLocalGame(Base, TimestampMixin):
+    """Games detected on the user's desktop machine via the game scanner.
+
+    Synced from the Electron app after each scan. Used to persist match state
+    server-side so it survives client-side storage clears.
+    """
+
+    __tablename__ = "user_local_games"
+
+    id: Mapped[otix_pk]
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(1000), nullable=False)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    media_item_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
+    match_suggestion_media_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "title", "platform", name="uq_user_local_game"),
+    )
