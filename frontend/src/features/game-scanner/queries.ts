@@ -11,7 +11,9 @@ interface MatchResult {
     slug: string;
     posterUrl?: string | null;
     textlessPosterUrl?: string | null;
+    backdropUrl?: string | null;
     logoUrl?: string | null;
+    iconUrl?: string | null;
   } | null;
   confidence: number;
 }
@@ -26,10 +28,13 @@ export function useMatchLocalGames() {
       const unmatched = games.filter((g) => !g.otixMediaId);
       if (unmatched.length === 0) return games;
 
-      const titles = unmatched.map((g) => g.title);
+      const gameEntries = unmatched.map((g) => ({
+        title: g.title,
+        platform: g.platform,
+      }));
       const { data } = await apiClient.post<MatchResponse>(
         "/media/match-local-games",
-        { titles },
+        { games: gameEntries },
       );
 
       const matchMap = new Map(
@@ -51,6 +56,8 @@ export function useMatchLocalGames() {
               otixConfidence: match.confidence,
               otixPosterUrl: media.posterUrl,
               otixTextlessPosterUrl: media.textlessPosterUrl,
+              otixBackdropUrl: media.backdropUrl,
+              otixIconUrl: media.iconUrl,
               otixLogoUrl: media.logoUrl,
             };
           }
@@ -60,6 +67,8 @@ export function useMatchLocalGames() {
             otixConfidence: match.confidence,
             otixPosterUrl: media.posterUrl,
             otixTextlessPosterUrl: media.textlessPosterUrl,
+            otixBackdropUrl: media.backdropUrl,
+            otixIconUrl: media.iconUrl,
             otixLogoUrl: media.logoUrl,
             otixMatchSuggestion: {
               mediaId: media.id,

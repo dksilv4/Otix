@@ -19,7 +19,7 @@ services:
       -c wal_buffers=64MB
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
-      -c idle_in_transaction_session_timeout=30000
+      -c idle_in_transaction_session_timeout=120000
       -c idle_session_timeout=600000
       -c max_wal_size=4GB
       -c min_wal_size=1GB
@@ -87,14 +87,14 @@ services:
       AUTH_TYPE: scram-sha-256
       SERVER_IDLE_TIMEOUT: "300"
       CLIENT_IDLE_TIMEOUT: "600"
-      QUERY_TIMEOUT: "30"
+      QUERY_TIMEOUT: "300"
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
-      interval: 5s
-      retries: 5
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "pgbouncer"]
+      interval: 10s
+      retries: 3
 
   api:
     build:

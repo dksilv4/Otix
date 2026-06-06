@@ -11,8 +11,6 @@ import {
   Plus,
   Search,
   ChevronRight,
-  User,
-  Trophy,
   Sparkles
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -72,6 +70,30 @@ function WebPreviewBanner() {
         <span><strong>Web Preview:</strong> Scans, play actions, and storage details are simulated. Run in the desktop app for native folder launching.</span>
       </div>
     </div>
+  )
+}
+
+/* ── GamePickerThumb — loads icon first, falls back to poster on error ── */
+
+function GamePickerThumb({ icon, poster, alt }: { icon?: string | null; poster?: string | null; alt: string }) {
+  const [usePoster, setUsePoster] = useState(!icon)
+  const src = usePoster ? poster : icon
+  if (!src) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-white/5">
+        <Gamepad2 size={14} className="opacity-30" />
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover"
+      onError={() => {
+        if (!usePoster) setUsePoster(true)
+      }}
+    />
   )
 }
 
@@ -136,10 +158,11 @@ export function LauncherHomePage() {
           id: g.id,
           title: g.otixMediaTitle || g.title,
           posterUrl: g.otixPosterUrl || g.posterUrl || null,
-          iconUrl: g.iconUrl || undefined,
+          backdropUrl: g.otixBackdropUrl || undefined,
+          iconUrl: g.otixIconUrl || g.iconUrl || undefined,
           logoUrl: g.otixLogoUrl || undefined,
           badge: `${platformLabel} · ${matchLabel}`,
-          playtime: '—',   // real playtime comes from Steam integration, not available locally
+          playtime: '—',
           achievements: isMatched ? 'Owned' : '—',
           isDefault: false,
           platform: g.platform,
@@ -157,6 +180,7 @@ export function LauncherHomePage() {
         posterUrl: p.posterUrl || null,
         backdropUrl: p.backdropUrl || undefined,
         logoUrl: p.logoUrl || undefined,
+        iconUrl: p.iconUrl || undefined,
         badge: p.avgRating
           ? `★ ${p.avgRating.toFixed(1)} · ${p.ratingCount.toLocaleString()} ratings`
           : p.popularity > 200 ? 'Popular' : 'Featured',
@@ -169,18 +193,28 @@ export function LauncherHomePage() {
     }
   }, [localGames, popularGames])
 
-  // Select first game automatically if activeGameId is null
-  useEffect(() => {
-    if (!activeGameId && displayGames.length > 0) {
-      setActiveGameId(displayGames[0].id)
-    }
-  }, [displayGames, activeGameId])
+  // Picker sidebar: only matched/verified games for a cleaner look
+  const pickerGames = useMemo<DisplayGame[]>(
+    () => displayGames.filter((g) => !!g.otixMediaId),
+    [displayGames],
+  )
 
-  // Find active game details
+  // Select first game automatically if activeGameId is null or unlisted
+  useEffect(() => {
+    if (!activeGameId && pickerGames.length > 0) {
+      setActiveGameId(pickerGames[0].id)
+    }
+    // Fall back to picker[0] if active game was removed (e.g. after matching)
+    if (activeGameId && pickerGames.length > 0 && !pickerGames.find((g) => g.id === activeGameId)) {
+      setActiveGameId(pickerGames[0].id)
+    }
+  }, [pickerGames, activeGameId])
+
+  // Find active game details — look across full display set for the active ID
   const activeGame = useMemo<DisplayGame | null>(() => {
-    if (!activeGameId) return displayGames[0] || null
-    return displayGames.find((g) => g.id === activeGameId) || displayGames[0] || null
-  }, [displayGames, activeGameId])
+    if (!activeGameId) return pickerGames[0] || null
+    return displayGames.find((g) => g.id === activeGameId) || pickerGames[0] || null
+  }, [displayGames, pickerGames, activeGameId])
 
   // Query details for active game from backend
   const { data: activeGameDetail } = useGameDetail(activeGame?.otixMediaId)
@@ -194,6 +228,7 @@ export function LauncherHomePage() {
       posterUrl: p.posterUrl || null,
       backdropUrl: p.backdropUrl || undefined,
       logoUrl: p.logoUrl || undefined,
+      iconUrl: p.iconUrl || undefined,
       badge: p.avgRating
         ? `★ ${p.avgRating.toFixed(1)} · ${p.ratingCount.toLocaleString()} ratings`
         : p.popularity > 200 ? 'Popular' : 'Featured',
@@ -353,11 +388,21 @@ export function LauncherHomePage() {
     return gb >= 1 ? `${gb.toFixed(0)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`
   }
 
+  // Upscale images for hero-sized rendering
+  function heroImage(url: string): string {
+    return url
+      .replace(/\/w185\//, '/w1280/')
+      .replace(/\/w342\//, '/w1280/')
+      .replace(/\/w500\//, '/w1280/')
+      .replace(/\/w780\//, '/w1280/')
+      .replace(/t_cover_big/, 't_1080p')
+      .replace(/t_screenshot_big/, 't_1080p')
+  }
+
   // Fallback backdrop if none from query or scanned model
   const backdropUrl = useMemo(() => {
     if (!activeGame) return ''
-    // Prioritize catalog detail backdrop, then poster, then display game data
-    return (
+    const raw = (
       activeGameDetail?.backdropUrl ||
       activeGameDetail?.posterUrl ||
       activeGameDetail?.textlessPosterUrl ||
@@ -365,6 +410,7 @@ export function LauncherHomePage() {
       activeGame.posterUrl ||
       ''
     )
+    return raw ? heroImage(raw) : ''
   }, [activeGame, activeGameDetail])
 
   // Dynamic genres / badge — use catalog detail name, fall back to display badge
@@ -414,7 +460,7 @@ export function LauncherHomePage() {
       >
         {/* Game Cover Thumbnails Stack */}
         <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-4 pb-20">
-          {displayGames.map((game) => {
+          {pickerGames.map((game) => {
             const isActive = game.id === activeGame.id
             return (
               <button
@@ -429,14 +475,10 @@ export function LauncherHomePage() {
                 title={game.title}
               >
                 {(() => {
-                  const thumbSrc = game.posterUrl || game.iconUrl
-                  return thumbSrc ? (
-                    <img
-                      src={thumbSrc}
-                      alt={game.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
+                  if (game.iconUrl || game.posterUrl) {
+                    return <GamePickerThumb icon={game.iconUrl} poster={game.posterUrl} alt={game.title} />
+                  }
+                  return (
                     <div className="w-full h-full flex items-center justify-center bg-white/5">
                       <Gamepad2 size={14} className="opacity-30" />
                     </div>
@@ -468,15 +510,17 @@ export function LauncherHomePage() {
 
           {/* Animated Background Art */}
           <AnimatePresence mode="wait">
-            <motion.div
-              key={activeGame.id}
-              initial={{ opacity: 0, scale: 1.01 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.35 }}
-              className="absolute inset-0 z-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${backdropUrl})` }}
-            />
+            {backdropUrl ? (
+              <motion.div
+                key={activeGame.id}
+                initial={{ opacity: 0, scale: 1.01 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35 }}
+                className="absolute inset-0 z-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${backdropUrl})` }}
+              />
+            ) : null}
           </AnimatePresence>
 
           {/* Gradients overlay for legibility */}
@@ -494,31 +538,42 @@ export function LauncherHomePage() {
           {/* Bottom elements of the Hero screen */}
           <div className="absolute inset-0 z-10 pointer-events-none">
 
-            {/* Stats (Bottom Left) — real data from catalog */}
-            <div className="absolute bottom-8 flex gap-4 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
-              <div className="bg-[#0e0e12]/60 border border-white/5 backdrop-blur-xl rounded-2xl px-5 py-3.5 min-w-[130px] shadow-xl hover:border-white/10 hover:bg-[#0e0e12]/75 transition-all flex flex-col justify-between">
-                <p className="text-2xl font-black text-white tracking-tight leading-none mb-2 flex items-center gap-1.5">
-                  {activeGameDetail?.avgRating != null
-                    ? `${(activeGameDetail.avgRating * 10).toFixed(0)}%`
+            {/* Stats (Bottom Left) — playtime from Steam integration */}
+            <div className="absolute bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
+              <div className="bg-white/[0.04] border border-white/[0.06] backdrop-blur-2xl rounded-3xl px-6 py-4 min-w-[160px] shadow-2xl hover:bg-white/[0.07] hover:border-white/[0.10] transition-all flex flex-col justify-between">
+                <p className="text-2xl font-black text-white tracking-tight leading-none mb-2 flex items-center gap-2">
+                  {activeGameDetail?.steamPlaytimeForever != null
+                    ? (() => {
+                        const hours = Math.round(activeGameDetail.steamPlaytimeForever! / 60)
+                        const mins = activeGameDetail.steamPlaytimeForever! % 60
+                        return hours >= 1
+                          ? `${hours}h ${mins}m`
+                          : `${mins}m`
+                      })()
                     : '—'}
-                  <Trophy size={16} className="text-yellow-500/80" />
+                  <Play size={14} className="text-emerald-400/80" fill="currentColor" />
                 </p>
-                <p className="text-[9px] font-black text-white/35 tracking-widest uppercase">
-                  Avg. Rating
-                </p>
-              </div>
-              <div className="bg-[#0e0e12]/60 border border-white/5 backdrop-blur-xl rounded-2xl px-5 py-3.5 min-w-[130px] shadow-xl hover:border-white/10 hover:bg-[#0e0e12]/75 transition-all flex flex-col justify-between">
-                <p className="text-2xl font-black text-white tracking-tight leading-none mb-2 flex items-center gap-1.5">
-                  {activeGameDetail?.ratingCount != null
-                    ? activeGameDetail.ratingCount.toLocaleString()
-                    : '—'}
-                  <User size={16} className="text-white/60" />
-                </p>
-                <p className="text-[9px] font-black text-white/35 tracking-widest uppercase">
-                  Ratings
+                <p className="text-[9px] font-black text-white/30 tracking-widest uppercase">
+                  Time Played
                 </p>
               </div>
             </div>
+
+            {/* Developer / Publisher (Bottom Right) */}
+            {activeGameDetail?.involvedCompanies?.length > 0 && (
+              <div className="absolute bottom-8 right-8 pointer-events-auto">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end max-w-xs">
+                  {["developer", "publisher"].filter(r => activeGameDetail!.involvedCompanies.some(c => (c as any)[r])).map((role) => (
+                    <span key={role} className="text-[10px] text-white/35">
+                      <span className="uppercase tracking-wider">{role}</span>{' '}
+                      <span className="text-white/60">
+                        {activeGameDetail!.involvedCompanies.filter(c => (c as any)[role]).map(c => c.company.name).join(", ")}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Game Info & Action Buttons (Center Right) */}
             <div className="absolute right-8 top-1/2 -translate-y-[35%] flex flex-col items-end text-right max-w-sm pointer-events-auto">
@@ -572,31 +627,6 @@ export function LauncherHomePage() {
                   </span>
                 ))}
               </div>
-
-              {/* Developer / Publisher */}
-              {activeGameDetail?.involvedCompanies?.length > 0 && (
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end max-w-xs mb-4">
-                  {["developer", "publisher"].filter(r => activeGameDetail!.involvedCompanies.some(c => (c as any)[r])).map((role) => (
-                    <span key={role} className="text-[10px] text-white/35">
-                      <span className="uppercase tracking-wider">{role}</span>{' '}
-                      <span className="text-white/60">
-                        {activeGameDetail!.involvedCompanies.filter(c => (c as any)[role]).map(c => c.company.name).join(", ")}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Platforms */}
-              {activeGameDetail?.platforms?.length > 0 && (
-                <div className="flex flex-wrap gap-1 justify-end max-w-xs mb-4">
-                  {activeGameDetail.platforms.map((p) => (
-                    <span key={p.id} className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-white/35">
-                      {p.platform.name}
-                    </span>
-                  ))}
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2.5 items-center justify-end">

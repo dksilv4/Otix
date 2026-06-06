@@ -1,7 +1,10 @@
+// TODO: Review this file
+import './scanners-section.scss'
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Disc, Monitor, Gamepad2, Folder, Check, X } from "lucide-react"
-import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, getScannedGames, setScannedGames, hasElectronAPI, rejectSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
+import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, getScannedGames, setScannedGames, getLastScanTime, setLastScanTime, hasDesktopAPI, rejectSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
+import { useClaimGame } from "@/features/library/library-queries"
 import { apiClient } from "@/lib/api-client"
 import type { DetectedGame } from "@/features/game-scanner/types"
 
@@ -16,19 +19,16 @@ export function ScannersSection() {
   const [scanning, setScanning] = useState(false)
   const [scannedGames, setScannedGamesState] = useState<DetectedGame[]>(() => getScannedGames())
   const [gameCount, setGameCount] = useState(() => scannedGames.length)
-  const [showBreakdown, setShowBreakdown] = useState(false)
+  const [showAutoBreakdown, setShowAutoBreakdown] = useState(false)
+  const [showUnmatchedBreakdown, setShowUnmatchedBreakdown] = useState(false)
   const [matchingGameId, setMatchingGameId] = useState<string | null>(null)
   const [matchSearch, setMatchSearch] = useState("")
   const [matchResults, setMatchResults] = useState<{ id: string; title: string; slug?: string; posterUrl?: string | null }[] | null>(null)
   const [searching, setSearching] = useState(false)
   const matchSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [lastScan, setLastScan] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("otix_last_scan_time")
-    } catch { return null }
-  })
+  const [lastScan, setLastScan] = useState<string | null>(() => getLastScanTime())
 
-  const isElectron = hasElectronAPI()
+  const isDesktop = hasDesktopAPI()
 
   // Keep game count and scanned list in sync
   useEffect(() => {
@@ -41,14 +41,14 @@ export function ScannersSection() {
   }, [])
 
   const handleAddGamePath = useCallback(async () => {
-    if (!isElectron) return
-    const api = (window as any).electronAPI
+    if (!isDesktop) return
+    const api = (window as any).desktopAPI
     const dir = await api.selectDirectory()
     if (!dir) return
     const updated = [...gamePaths, dir]
     setGamePathsState(updated)
     setScanPaths(updated)
-  }, [gamePaths, isElectron])
+  }, [gamePaths, isDesktop])
 
   const handleRemoveGamePath = useCallback((path: string) => {
     const updated = gamePaths.filter((p) => p !== path)
@@ -57,14 +57,14 @@ export function ScannersSection() {
   }, [gamePaths])
 
   const handleAddIsoPath = useCallback(async () => {
-    if (!isElectron) return
-    const api = (window as any).electronAPI
+    if (!isDesktop) return
+    const api = (window as any).desktopAPI
     const dir = await api.selectDirectory()
     if (!dir) return
     const updated = [...isoPaths, dir]
     setIsoPathsState(updated)
     setIsoPaths(updated)
-  }, [isoPaths, isElectron])
+  }, [isoPaths, isDesktop])
 
   const handleRemoveIsoPath = useCallback((path: string) => {
     const updated = isoPaths.filter((p) => p !== path)
@@ -75,6 +75,7 @@ export function ScannersSection() {
   // ── Match / unmatch ─────────────────────────────────────────────────
 
   const matchMutation = useMatchLocalGames()
+  const claimMutation = useClaimGame()
   const [matching, setMatching] = useState(false)
 
   const handleMatchAll = useCallback(async () => {
@@ -93,14 +94,20 @@ export function ScannersSection() {
   }, [scannedGames, matchMutation])
 
   const handleVerifyAll = useCallback(() => {
-    const updated = scannedGames.map((g) =>
-      g.otixMediaId && !g.otixMatchVerified
-        ? { ...g, otixMatchVerified: true }
-        : g,
-    )
-    setScannedGames(updated)
-    setScannedGamesState(updated)
-  }, [scannedGames])
+    const newlyClaimed: string[] = []
+    const withClaimed = scannedGames.map((g) => {
+      if (!g.otixMediaId || g.otixMatchVerified) return g
+      newlyClaimed.push(g.otixMediaId)
+      return { ...g, otixMatchVerified: true, otixClaimed: true }
+    })
+    setScannedGames(withClaimed)
+    setScannedGamesState(withClaimed)
+
+    // Claim each newly verified game on the backend (fire-and-forget).
+    for (const mediaId of newlyClaimed) {
+      claimMutation.mutate(mediaId)
+    }
+  }, [scannedGames, claimMutation])
 
   const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
     if (!game.otixMatchSuggestion) return
@@ -121,9 +128,17 @@ export function ScannersSection() {
           }
         : g,
     )
-    setScannedGames(updated)
-    setScannedGamesState(updated)
-  }, [scannedGames])
+    // Claim the game on the backend (fire-and-forget), mark claimed locally
+    const final = !game.otixClaimed
+      ? updated.map((g) => (g.id === game.id ? { ...g, otixClaimed: true } : g))
+      : updated
+    setScannedGames(final)
+    setScannedGamesState(final)
+
+    if (!game.otixClaimed) {
+      claimMutation.mutate(sug.mediaId)
+    }
+  }, [scannedGames, claimMutation])
 
   const handleUnmatch = useCallback((game: DetectedGame) => {
     const updated = scannedGames.map((g) =>
@@ -152,10 +167,10 @@ export function ScannersSection() {
     setMatchSearch(game.title)
     setMatchResults(null)
     // Auto-search with the game title
-    apiClient.get<{ items: { id: string; title: string; slug?: string; poster_url?: string | null }[] }>("/media/search", {
+    apiClient.get<{ items: { id: string; title: string; slug?: string; posterUrl?: string | null }[] }>("/media/search", {
       params: { q: game.title, media_type: "game", page_size: 8 },
     }).then(({ data }) => {
-      setMatchResults((data.items ?? []).map((item) => ({ id: item.id, title: item.title, slug: item.slug || "", posterUrl: item.poster_url })))
+      setMatchResults((data.items ?? []).map((item) => ({ id: item.id, title: item.title, slug: item.slug || "", posterUrl: item.posterUrl })))
     }).catch(() => {})
   }, [])
 
@@ -165,10 +180,10 @@ export function ScannersSection() {
     if (!query.trim()) { setMatchResults(null); return }
     setSearching(true)
     matchSearchTimer.current = setTimeout(() => {
-      apiClient.get<{ items: { id: string; title: string; slug?: string; poster_url?: string | null }[] }>("/media/search", {
+      apiClient.get<{ items: { id: string; title: string; slug?: string; posterUrl?: string | null }[] }>("/media/search", {
         params: { q: query, media_type: "game", page_size: 8 },
       }).then(({ data }) => {
-        setMatchResults((data.items ?? []).map((item) => ({ id: item.id, title: item.title, slug: item.slug || "", posterUrl: item.poster_url })))
+        setMatchResults((data.items ?? []).map((item) => ({ id: item.id, title: item.title, slug: item.slug || "", posterUrl: item.posterUrl })))
         setSearching(false)
       }).catch(() => { setSearching(false) })
     }, 300)
@@ -194,13 +209,23 @@ export function ScannersSection() {
     setMatchingGameId(null)
     setMatchResults(null)
     setMatchSearch("")
-  }, [scannedGames])
+
+    // Claim the game on the backend (fire-and-forget), skip if already claimed
+    if (!scannedGames.find((g) => g.id === gameId)?.otixClaimed) {
+      claimMutation.mutate(media.id)
+      const withClaimed = updated.map((g) =>
+        g.id === gameId ? { ...g, otixClaimed: true } : g,
+      )
+      setScannedGames(withClaimed)
+      setScannedGamesState(withClaimed)
+    }
+  }, [scannedGames, claimMutation])
 
   const handleScan = useCallback(async () => {
-    if (!isElectron) return
+    if (!isDesktop) return
     setScanning(true)
     try {
-      const api = (window as any).electronAPI
+      const api = (window as any).desktopAPI
       const scanned = await api.scanPaths(gamePaths, isoPaths)
       if (scanned && scanned.length > 0) {
         setScannedGames(scanned)
@@ -209,13 +234,7 @@ export function ScannersSection() {
       }
       const now = new Date().toLocaleString()
       setLastScan(now)
-      localStorage.setItem("otix_last_scan_time", now)
-
-      // Seed backend with scanned game titles (fire-and-forget)
-      if (scanned && scanned.length > 0) {
-        const titles = [...new Set(scanned.map((g: any) => g.title))]
-        apiClient.post("/media/seed-from-titles", { titles }).catch(() => {})
-      }
+      setLastScanTime(now)
 
       // Auto-match against catalog
       if (scanned && scanned.length > 0) {
@@ -234,15 +253,14 @@ export function ScannersSection() {
     } finally {
       setScanning(false)
     }
-  }, [gamePaths, isoPaths, isElectron, matchMutation])
+  }, [gamePaths, isoPaths, isDesktop, matchMutation])
 
   const handleDeleteAllGames = useCallback(async () => {
     setScannedGames([])
     setScannedGamesState([])
     setGameCount(0)
-    localStorage.removeItem("otix_scanned_games")
-    if (hasElectronAPI()) {
-      (window as any).electronAPI.saveScannedGames([]).catch(() => {})
+    if (hasDesktopAPI()) {
+      (window as any).desktopAPI.saveScannedGames([]).catch(() => {})
     }
   }, [])
 
@@ -304,10 +322,10 @@ export function ScannersSection() {
     }
   }
 
-  if (!isElectron) {
+  if (!isDesktop) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="dk-settings-scanners__notice">
+        <p className="dk-settings-scanners__notice-text">
           Scan directory management is only available in the Otix desktop app.
         </p>
       </div>
@@ -315,49 +333,49 @@ export function ScannersSection() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="dk-settings-scanners__body">
       <div>
-        <h2 className="text-lg font-bold tracking-[-0.02em]">Scanners</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="dk-settings-scanners__header-title">Scanners</h2>
+        <p className="dk-settings-scanners__header-desc">
           Manage directories where Otix scans for games and ISO files.
         </p>
       </div>
 
       {/* Game scan directories */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="dk-settings-scanners__section">
+        <div className="dk-settings-scanners__section-header">
           <div>
-            <h3 className="text-sm font-semibold">Game Directories</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h3 className="dk-settings-scanners__section-label">Game Directories</h3>
+            <p className="dk-settings-scanners__section-desc">
               Folders containing installed games (Steam, GOG, Epic, PC executables)
             </p>
           </div>
           <button
             onClick={handleAddGamePath}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+            className="dk-settings-scanners__ghost-btn dk-settings-scanners__ghost-btn--add"
           >
             + Add Folder
           </button>
         </div>
 
         {gamePaths.length === 0 ? (
-          <div className="rounded-xl p-6 text-center">
-            <p className="text-xs text-muted-foreground/50">No game directories configured</p>
+          <div className="dk-settings-scanners__empty">
+            <p className="dk-settings-scanners__empty-text">No game directories configured</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="dk-settings-scanners__path-list">
             {gamePaths.map((path) => (
               <div
                 key={path}
-                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+                className="dk-settings-scanners__path-row"
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="dk-settings-scanners__path-row-content">
                   <Folder className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate">{path}</span>
+                  <span className="dk-settings-scanners__path-text">{path}</span>
                 </div>
                 <button
                   onClick={() => handleRemoveGamePath(path)}
-                  className="text-muted-foreground/40 hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                  className="dk-settings-scanners__path-remove"
                   title="Remove directory"
                 >
                   ✕
@@ -369,40 +387,40 @@ export function ScannersSection() {
       </div>
 
       {/* ISO directories */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="dk-settings-scanners__section">
+        <div className="dk-settings-scanners__section-header">
           <div>
-            <h3 className="text-sm font-semibold">ISO Directories</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <h3 className="dk-settings-scanners__section-label">ISO Directories</h3>
+            <p className="dk-settings-scanners__section-desc">
               Folders containing ISO disc images for installation
             </p>
           </div>
           <button
             onClick={handleAddIsoPath}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all"
+            className="dk-settings-scanners__ghost-btn dk-settings-scanners__ghost-btn--add"
           >
             + Add Folder
           </button>
         </div>
 
         {isoPaths.length === 0 ? (
-          <div className="rounded-xl p-6 text-center">
-            <p className="text-xs text-muted-foreground/50">No ISO directories configured</p>
+          <div className="dk-settings-scanners__empty">
+            <p className="dk-settings-scanners__empty-text">No ISO directories configured</p>
           </div>
         ) : (
-          <div className="space-y-1.5">
+          <div className="dk-settings-scanners__path-list">
             {isoPaths.map((path) => (
               <div
                 key={path}
-                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
+                className="dk-settings-scanners__path-row"
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="dk-settings-scanners__path-row-content">
                   <Disc className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate">{path}</span>
+                  <span className="dk-settings-scanners__path-text">{path}</span>
                 </div>
                 <button
                   onClick={() => handleRemoveIsoPath(path)}
-                  className="text-muted-foreground/40 hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                  className="dk-settings-scanners__path-remove"
                   title="Remove directory"
                 >
                   ✕
@@ -414,10 +432,10 @@ export function ScannersSection() {
       </div>
 
       {/* Scan action */}
-      <div className="flex items-center justify-between rounded-xl bg-emerald-500/5 p-4">
+      <div className="dk-settings-scanners__scan-banner">
         <div>
-          <p className="text-sm font-medium">Ready to Scan</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="dk-settings-scanners__scan-banner-title">Ready to Scan</p>
+          <p className="dk-settings-scanners__scan-banner-desc">
             {gameCount} games currently in library
             {lastScan && ` · Last scan: ${lastScan}`}
           </p>
@@ -425,7 +443,7 @@ export function ScannersSection() {
         <button
           onClick={handleScan}
           disabled={scanning || (gamePaths.length === 0 && isoPaths.length === 0)}
-          className="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-400 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="dk-settings-scanners__scan-btn"
         >
           {scanning ? "Scanning..." : "Scan Now"}
         </button>
@@ -433,36 +451,36 @@ export function ScannersSection() {
 
       {/* ── Library overview ── */}
       {scannedGames.length > 0 && (
-        <div className="space-y-4">
+        <div className="dk-settings-scanners__library">
           {/* Summary bar */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="font-semibold text-white/70">Library</span>
-              <span className="text-emerald-400/60">{verifiedMatched.length} verified</span>
-              <span className="text-emerald-400/30">{autoMatched.length} auto</span>
-              <span className="text-blue-400/60">{suggestedGames.length} suggestions</span>
-              <span className="text-muted-foreground/40">{unmatchedGames.length} unmatched</span>
-              <span className="text-muted-foreground/30">·</span>
-              <span className="text-muted-foreground/30">{scannedGames.length} total</span>
+          <div className="dk-settings-scanners__summary">
+            <div className="dk-settings-scanners__summary-stats">
+              <span className="dk-settings-scanners__summary-label">Library</span>
+              <span className="dk-settings-scanners__summary-stat--verified">{verifiedMatched.length} verified</span>
+              <span className="dk-settings-scanners__summary-stat--auto">{autoMatched.length} auto</span>
+              <span className="dk-settings-scanners__summary-stat--suggestions">{suggestedGames.length} suggestions</span>
+              <span className="dk-settings-scanners__summary-stat--unmatched">{unmatchedGames.length} unmatched</span>
+              <span className="dk-settings-scanners__summary-stat--total">·</span>
+              <span className="dk-settings-scanners__summary-stat--total">{scannedGames.length} total</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="dk-settings-scanners__summary-actions">
               <button
                 onClick={handleMatchAll}
                 disabled={matching}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="dk-settings-scanners__ghost-btn dk-settings-scanners__ghost-btn--action"
               >
                 {matching ? "Matching..." : "Match All"}
               </button>
               <button
                 onClick={handleVerifyAll}
                 disabled={autoMatched.length === 0}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="dk-settings-scanners__ghost-btn dk-settings-scanners__ghost-btn--add"
               >
                 Verify{autoMatched.length > 0 ? ` ${autoMatched.length}` : ""}
               </button>
               <button
                 onClick={handleDeleteAllGames}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                className="dk-settings-scanners__ghost-btn dk-settings-scanners__ghost-btn--danger"
               >
                 Delete All
               </button>
@@ -470,78 +488,78 @@ export function ScannersSection() {
           </div>
 
           {/* Platform chips */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="dk-settings-scanners__chips">
             {platformBreakdown.map(([platform, count]) => (
               <span
                 key={platform}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] bg-white/[0.04] text-muted-foreground/60"
+                className="dk-settings-scanners__chip"
               >
                 <PlatformIcon platform={platform} />
                 {platformLabels[platform] || platform}
-                <span className="font-medium ml-0.5 text-muted-foreground/40">{count}</span>
+                <span className="dk-settings-scanners__chip-count">{count}</span>
               </span>
             ))}
           </div>
 
           {/* ── Suggestions (most actionable) ── */}
           {suggestedGames.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-blue-400/70 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400/60" />
+            <div className="dk-settings-scanners__suggestions">
+              <h4 className="dk-settings-scanners__suggestions-header">
+                <span className="dk-settings-scanners__toggle-dot dk-settings-scanners__toggle-dot--blue" />
                 Suggestions — review and accept or reject
               </h4>
-              <div className="space-y-2">
+              <div className="dk-settings-scanners__suggestions-list">
                 {suggestedGames.map((game) => {
                   const suggestion = game.otixMatchSuggestion
                   const posterUrl = game.otixPosterUrl
                   return (
                     <div
                       key={game.id}
-                      className="flex items-stretch gap-3 rounded-lg bg-blue-500/[0.04] p-2.5"
+                      className="dk-settings-scanners__suggestion-card"
                     >
                       {/* Suggested media poster */}
-                      <div className="flex-shrink-0 w-10 rounded overflow-hidden bg-white/[0.04]">
+                      <div className="dk-settings-scanners__suggestion-poster">
                         {posterUrl ? (
                           <img
                             src={posterUrl}
                             alt=""
-                            className="w-10 h-14 object-cover"
+                            className="dk-settings-scanners__suggestion-poster-img"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                           />
                         ) : (
-                          <div className="w-10 h-14 flex items-center justify-center text-[10px] font-bold text-muted-foreground/20">
+                          <div className="dk-settings-scanners__suggestion-poster-placeholder">
                             ?
                           </div>
                         )}
                       </div>
 
                       {/* Game vs suggestion text */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium truncate">{game.title}</span>
+                      <div className="dk-settings-scanners__suggestion-info">
+                        <div className="dk-settings-scanners__suggestion-title-row">
+                          <span className="dk-settings-scanners__suggestion-game-title">{game.title}</span>
                           <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
-                          <span className="text-muted-foreground/30">→</span>
-                          <span className="font-medium text-blue-400/70 truncate">{suggestion?.title || "?"}</span>
-                          <span className="text-blue-400/40 font-semibold ml-auto">
+                        <div className="dk-settings-scanners__suggestion-match-row">
+                          <span className="dk-settings-scanners__suggestion-match-arrow">→</span>
+                          <span className="dk-settings-scanners__suggestion-match-title">{suggestion?.title || "?"}</span>
+                          <span className="dk-settings-scanners__suggestion-confidence">
                             {Math.round((game.otixConfidence ?? 0) * 100)}%
                           </span>
                         </div>
                         {/* Confidence bar */}
-                        <div className="w-full h-1 rounded-full bg-white/5 overflow-hidden mt-0.5 max-w-[120px]">
+                        <div className="dk-settings-scanners__confidence-bar">
                           <div
-                            className="h-full rounded-full bg-blue-400/60"
+                            className="dk-settings-scanners__confidence-bar-fill"
                             style={{ width: `${Math.min(100, Math.round((game.otixConfidence ?? 0) * 100))}%` }}
                           />
                         </div>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0 min-w-[72px]">
+                      <div className="dk-settings-scanners__suggestion-actions">
                         <button
                           onClick={() => handleAcceptSuggestion(game)}
-                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-all"
+                          className="dk-settings-scanners__suggest-btn dk-settings-scanners__suggest-btn--accept"
                         >
                           <Check size={12} /> Accept
                         </button>
@@ -554,7 +572,7 @@ export function ScannersSection() {
                             setScannedGames(updated)
                             setScannedGamesState(updated)
                           }}
-                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                          className="dk-settings-scanners__suggest-btn dk-settings-scanners__suggest-btn--deny"
                         >
                           <X size={12} /> Deny
                         </button>
@@ -568,38 +586,38 @@ export function ScannersSection() {
 
           {/* ── Verified matched games ── */}
           {verifiedMatched.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400/70">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
+            <div className="dk-settings-scanners__section">
+              <div className="dk-settings-scanners__toggle dk-settings-scanners__toggle--verified">
+                <span className="dk-settings-scanners__toggle-dot dk-settings-scanners__toggle-dot--verified" />
                 Verified ({verifiedMatched.length})
               </div>
-              <div className="space-y-1.5">
+              <div className="dk-settings-scanners__section-content">
                 {verifiedMatched.map((game) => (
                   <div
                     key={game.id}
-                    className="flex items-stretch gap-3 rounded-lg bg-emerald-500/[0.03] p-2.5 hover:bg-emerald-500/[0.05] transition-colors"
+                    className="dk-settings-scanners__game-card dk-settings-scanners__game-card--verified"
                   >
-                    <div className="flex-shrink-0 w-8 rounded overflow-hidden bg-white/[0.04]">
+                    <div className="dk-settings-scanners__game-poster">
                       {game.otixPosterUrl ? (
-                        <img src={game.otixPosterUrl} alt="" className="w-8 h-11 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        <img src={game.otixPosterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                       ) : (
-                        <div className="w-8 h-11 flex items-center justify-center text-[8px] font-bold text-muted-foreground/20">?</div>
+                        <div className="dk-settings-scanners__game-poster-placeholder">?</div>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium truncate">{game.title}</span>
+                    <div className="dk-settings-scanners__game-info">
+                      <div className="dk-settings-scanners__game-title-row">
+                        <span className="dk-settings-scanners__game-title">{game.title}</span>
                         <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
-                        <span className="text-emerald-400/60">→</span>
-                        <span className="font-medium text-emerald-400/70 truncate">{game.otixMediaTitle || "?"}</span>
+                      <div className="dk-settings-scanners__game-match-row">
+                        <span className="dk-settings-scanners__game-match-arrow">→</span>
+                        <span className="dk-settings-scanners__game-match-title">{game.otixMediaTitle || "?"}</span>
                         {game.otixConfidence != null && (
-                          <span className="text-muted-foreground/30 ml-auto">{Math.round(game.otixConfidence * 100)}%</span>
+                          <span className="dk-settings-scanners__game-confidence">{Math.round(game.otixConfidence * 100)}%</span>
                         )}
                       </div>
                     </div>
-                    <button onClick={() => handleUnmatch(game)} className="flex-shrink-0 self-center text-[10px] text-muted-foreground/30 hover:text-red-400 transition-colors px-1.5 py-1">Unmatch</button>
+                    <button onClick={() => handleUnmatch(game)} className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--unmatch">Unmatch</button>
                   </div>
                 ))}
               </div>
@@ -608,42 +626,42 @@ export function ScannersSection() {
 
           {/* ── Auto-matched games ── */}
           {autoMatched.length > 0 && (
-            <div className="space-y-2">
+            <div className="dk-settings-scanners__section">
               <button
-                onClick={() => setShowBreakdown(!showBreakdown)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-emerald-400/40 hover:text-emerald-400/60 transition-colors"
+                onClick={() => setShowAutoBreakdown(!showAutoBreakdown)}
+                className="dk-settings-scanners__toggle dk-settings-scanners__toggle--auto"
               >
-                <span className={`transition-transform ${showBreakdown ? "rotate-90" : ""}`}>▸</span>
+                <span className={`dk-settings-scanners__toggle-arrow ${showAutoBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>▸</span>
                 Auto-Matched ({autoMatched.length}) — review and verify
               </button>
-              {showBreakdown && (
-                <div className="space-y-1.5">
+              {showAutoBreakdown && (
+                <div className="dk-settings-scanners__section-content">
                   {autoMatched.map((game) => (
                     <div
                       key={game.id}
-                      className="flex items-stretch gap-3 rounded-lg bg-white/[0.02] p-2.5 hover:bg-white/[0.04] transition-colors"
+                      className="dk-settings-scanners__game-card dk-settings-scanners__game-card--auto"
                     >
-                      <div className="flex-shrink-0 w-8 rounded overflow-hidden bg-white/[0.04]">
+                      <div className="dk-settings-scanners__game-poster">
                         {game.otixPosterUrl ? (
-                          <img src={game.otixPosterUrl} alt="" className="w-8 h-11 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                          <img src={game.otixPosterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                         ) : (
-                          <div className="w-8 h-11 flex items-center justify-center text-[8px] font-bold text-muted-foreground/20">?</div>
+                          <div className="dk-settings-scanners__game-poster-placeholder">?</div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium truncate">{game.title}</span>
+                      <div className="dk-settings-scanners__game-info">
+                        <div className="dk-settings-scanners__game-title-row">
+                          <span className="dk-settings-scanners__game-title">{game.title}</span>
                           <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/50">
-                          <span className="text-emerald-400/60">→</span>
-                          <span className="font-medium text-emerald-400/70 truncate">{game.otixMediaTitle || "?"}</span>
+                        <div className="dk-settings-scanners__game-match-row">
+                          <span className="dk-settings-scanners__game-match-arrow">→</span>
+                          <span className="dk-settings-scanners__game-match-title">{game.otixMediaTitle || "?"}</span>
                           {game.otixConfidence != null && (
-                            <span className="text-muted-foreground/30 ml-auto">{Math.round(game.otixConfidence * 100)}%</span>
+                            <span className="dk-settings-scanners__game-confidence">{Math.round(game.otixConfidence * 100)}%</span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="dk-settings-scanners__game-actions">
                         <button
                           onClick={() => {
                             const updated = scannedGames.map((g) =>
@@ -651,12 +669,20 @@ export function ScannersSection() {
                             )
                             setScannedGames(updated)
                             setScannedGamesState(updated)
+                            if (game.otixMediaId && !game.otixClaimed) {
+                              claimMutation.mutate(game.otixMediaId)
+                              const claimed = updated.map((g) =>
+                                g.id === game.id ? { ...g, otixClaimed: true } : g,
+                              )
+                              setScannedGames(claimed)
+                              setScannedGamesState(claimed)
+                            }
                           }}
-                          className="text-[10px] font-medium text-emerald-400/60 hover:text-emerald-400 transition-colors px-1.5 py-1"
+                          className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--verify"
                         >
                           Verify
                         </button>
-                        <button onClick={() => handleUnmatch(game)} className="text-[10px] text-muted-foreground/30 hover:text-red-400 transition-colors px-1.5 py-1">Unmatch</button>
+                        <button onClick={() => handleUnmatch(game)} className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--unmatch">Unmatch</button>
                       </div>
                     </div>
                   ))}
@@ -667,30 +693,30 @@ export function ScannersSection() {
 
           {/* ── Unmatched games ── */}
           {unmatchedGames.length > 0 && (
-            <div className="space-y-2">
+            <div className="dk-settings-scanners__section">
               <button
-                onClick={() => setShowBreakdown(!showBreakdown)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+                onClick={() => setShowUnmatchedBreakdown(!showUnmatchedBreakdown)}
+                className="dk-settings-scanners__toggle dk-settings-scanners__toggle--unmatched"
               >
-                <span className={`transition-transform ${showBreakdown ? "rotate-90" : ""}`}>▸</span>
+                <span className={`dk-settings-scanners__toggle-arrow ${showUnmatchedBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>▸</span>
                 Unmatched ({unmatchedGames.length})
               </button>
-              {showBreakdown && (
-                <div className="space-y-1 max-h-80 overflow-y-auto">
+              {showUnmatchedBreakdown && (
+                <div className="dk-settings-scanners__section-content--scroll">
                   {unmatchedGames.map((game) => (
                     <div key={game.id}>
-                      <div className="flex items-center justify-between rounded-lg bg-white/[0.02] px-3 py-2 hover:bg-white/[0.04] transition-colors">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div className="dk-settings-scanners__unmatched-row">
+                        <div className="dk-settings-scanners__unmatched-content">
                           <PlatformIcon platform={game.platform} className="w-3 h-3 text-muted-foreground/30 flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground/70 truncate">{game.title}</span>
+                          <span className="dk-settings-scanners__unmatched-title">{game.title}</span>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                          <span className="text-[10px] text-muted-foreground/20 uppercase tracking-wider">
+                        <div className="dk-settings-scanners__unmatched-meta">
+                          <span className="dk-settings-scanners__unmatched-platform">
                             {platformLabels[game.platform] || game.platform}
                           </span>
                           <button
                             onClick={() => handleOpenMatchSearch(game)}
-                            className="text-[10px] font-medium text-blue-400/60 hover:text-blue-400 transition-colors"
+                            className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--find"
                           >
                             Find Match
                           </button>
@@ -699,40 +725,40 @@ export function ScannersSection() {
 
                       {/* Inline match search panel */}
                       {matchingGameId === game.id && (
-                        <div className="ml-5 mt-1 mb-2 p-2.5 rounded-lg bg-white/[0.03] space-y-2">
+                        <div className="dk-settings-scanners__search">
                           <input
                             type="text"
                             value={matchSearch}
                             onChange={(e) => handleMatchSearchChange(e.target.value)}
                             placeholder="Search Otix catalog..."
-                            className="w-full bg-white/[0.06] rounded px-2.5 py-1.5 text-xs text-white/70 placeholder:text-muted-foreground/30 outline-none focus:bg-white/[0.08] transition-colors"
+                            className="dk-settings-scanners__search-input"
                             autoFocus
                           />
                           {searching && (
-                            <p className="text-[10px] text-muted-foreground/30 text-center py-2">Searching...</p>
+                            <p className="dk-settings-scanners__search-status">Searching...</p>
                           )}
                           {matchResults && matchResults.length === 0 && !searching && (
-                            <p className="text-[10px] text-muted-foreground/30 text-center py-2">No results found</p>
+                            <p className="dk-settings-scanners__search-status">No results found</p>
                           )}
                           {matchResults && matchResults.length > 0 && !searching && (
-                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                            <div className="dk-settings-scanners__section-content--results">
                               {matchResults.map((result) => (
                                 <div
                                   key={result.id}
-                                  className="flex items-center gap-2.5 rounded bg-white/[0.03] px-2 py-1.5 hover:bg-white/[0.06] transition-colors cursor-pointer"
+                                  className="dk-settings-scanners__result"
                                   onClick={() => handleManualMatch(game.id, result)}
                                 >
-                                  <div className="w-6 h-8 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
+                                  <div className="dk-settings-scanners__result-poster">
                                     {result.posterUrl ? (
-                                      <img src={result.posterUrl} alt="" className="w-full h-full object-cover" />
+                                      <img src={result.posterUrl} alt="" className="dk-settings-scanners__result-poster-img" />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-[8px] text-muted-foreground/20">?</div>
+                                      <div className="dk-settings-scanners__result-poster-placeholder">?</div>
                                     )}
                                   </div>
-                                  <span className="text-[11px] text-white/70 truncate">{result.title}</span>
+                                  <span className="dk-settings-scanners__result-title">{result.title}</span>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleManualMatch(game.id, result) }}
-                                    className="ml-auto text-[10px] font-medium text-emerald-400/70 hover:text-emerald-400 flex-shrink-0"
+                                    className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--match"
                                   >
                                     Match
                                   </button>
@@ -742,7 +768,7 @@ export function ScannersSection() {
                           )}
                           <button
                             onClick={() => { setMatchingGameId(null); setMatchResults(null); setMatchSearch("") }}
-                            className="text-[10px] text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors"
+                            className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--cancel"
                           >
                             Cancel
                           </button>

@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -5,8 +6,8 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from otix.api.schemas.common import PaginatedResponse
-from otix.api.schemas.interaction import UserInteractionState
+from otix.schemas.common import PaginatedResponse
+from otix.schemas.interaction import UserInteractionState
 
 
 # ── Nested relation schemas ──────────────────────────────────────
@@ -93,6 +94,7 @@ class MediaItemSummary(BaseModel):
     textless_poster_url: str | None = None
     backdrop_url: str | None = None
     logo_url: str | None = None
+    icon_url: str | None = None
     release_date: date | None = None
     popularity: float
     avg_rating: float | None = None
@@ -116,6 +118,7 @@ class MediaItemSummary(BaseModel):
     album_musicbrainz_release_group_id: str | None = None
     revenue: int | None = None
     budget: int | None = None
+    model_config = {"from_attributes": True}
 
     model_config = {"from_attributes": True}
 
@@ -249,8 +252,15 @@ class SteamWishlistListResponse(PaginatedResponse):
 # ── Local game matching ───────────────────────────────────────────
 
 
+class MatchGameEntry(BaseModel):
+    """A single game from the desktop scanner, with optional context for matching."""
+    title: str
+    platform: str | None = None
+    steam_app_id: int | None = None
+
+
 class LocalGameMatchRequest(BaseModel):
-    titles: list[str]
+    games: list[MatchGameEntry]
 
 
 class LocalGameMatch(BaseModel):
@@ -268,8 +278,15 @@ class LocalGameMatchResponse(BaseModel):
 # ── Seed game titles from desktop scan ──────────────────────────
 
 
+class SeedGameEntry(BaseModel):
+    """A single game from the desktop scanner, with optional context for IGDB seeding."""
+    title: str
+    platform: str | None = None
+    steam_app_id: int | None = None
+
+
 class SeedFromTitlesRequest(BaseModel):
-    titles: list[str]
+    games: list[SeedGameEntry]
 
 
 class SeedFromTitlesResponse(BaseModel):
@@ -347,6 +364,12 @@ class CompanyOut(BaseModel):
     user_rating: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class CompanyRatingBody(BaseModel):
+    """Request body for rating a company."""
+
+    score: int = Field(..., ge=1, le=5)
 
 
 class InvolvedCompanyOut(BaseModel):
@@ -544,3 +567,48 @@ class MediaItemDetail(BaseModel):
         return data
 
 
+# ── Local game sync (desktop → backend) ─────────────────────────────
+
+
+class SyncedLocalGame(BaseModel):
+    title: str
+    platform: str
+    otix_media_id: str | None = None
+    match_suggestion_media_id: str | None = None
+
+
+class SyncLocalGamesRequest(BaseModel):
+    games: list[SyncedLocalGame]
+
+
+class SyncLocalGamesResponse(BaseModel):
+    upserted: int = 0
+    deleted: int = 0
+
+
+# ── Installed games response (for /library/installed) ───────────────
+
+
+class InstalledGameSummary(BaseModel):
+    """A game installed on the user's desktop, enriched with catalog data."""
+
+    id: str  # UserLocalGame.id
+    title: str
+    platform: str
+    media_item_id: str | None = None
+    match_suggestion_media_id: str | None = None
+    last_seen_at: str | None = None
+    # Enriched catalog fields (null if unmatched)
+    catalog_title: str | None = None
+    catalog_slug: str | None = None
+    catalog_poster_url: str | None = None
+    catalog_textless_poster_url: str | None = None
+    catalog_logo_url: str | None = None
+    catalog_avg_rating: float | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class InstalledGamesResponse(BaseModel):
+    games: list[InstalledGameSummary]
+    total: int = 0
