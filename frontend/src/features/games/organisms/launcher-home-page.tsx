@@ -73,27 +73,32 @@ function WebPreviewBanner() {
   )
 }
 
-/* ── GamePickerThumb — loads icon first, falls back to poster on error ── */
+/* ── GamePickerThumb — renders both icon and poster, icon shown first ── */
 
 function GamePickerThumb({ icon, poster, alt }: { icon?: string | null; poster?: string | null; alt: string }) {
-  const [usePoster, setUsePoster] = useState(!icon)
-  const src = usePoster ? poster : icon
-  if (!src) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-white/5">
-        <Gamepad2 size={14} className="opacity-30" />
-      </div>
-    )
-  }
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="w-full h-full object-cover"
-      onError={() => {
-        if (!usePoster) setUsePoster(true)
-      }}
-    />
+    <div className="w-full h-full relative">
+      {poster && (
+        <img
+          src={poster}
+          alt={alt}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+      {icon && (
+        <img
+          src={icon}
+          alt={alt}
+          className="absolute inset-0 w-full h-full object-cover z-10"
+          onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
+        />
+      )}
+      {!icon && !poster && (
+        <div className="w-full h-full flex items-center justify-center bg-white/5">
+          <Gamepad2 size={14} className="opacity-30" />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -475,7 +480,7 @@ export function LauncherHomePage() {
                 title={game.title}
               >
                 {(() => {
-                  if (game.iconUrl || game.posterUrl) {
+                  if (game.posterUrl || game.iconUrl) {
                     return <GamePickerThumb icon={game.iconUrl} poster={game.posterUrl} alt={game.title} />
                   }
                   return (
