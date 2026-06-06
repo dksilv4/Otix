@@ -1,0 +1,39 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Collection Section ──────────────────────────────── */
+
+.dk-media-collection {
+  @apply space-y-4;
+}
+
+.dk-media-collection__header {
+  @apply flex items-baseline gap-3;
+}
+
+.dk-media-collection__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-media-collection__count {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-media-collection__overview {
+  @apply max-w-2xl text-sm text-muted-foreground line-clamp-2;
+}
+
+.dk-media-collection__scroll {
+  @apply -mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8;
+}
+
+.dk-media-collection__inner {
+  @apply flex gap-3;
+}
+
+.dk-media-collection__card {
+  @apply w-36 shrink-0 -mt-2 rounded-lg;
+}
+
+.dk-media-collection__card--current {
+  @apply ring-2 ring-primary;
+}

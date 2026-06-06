@@ -1429,19 +1429,39 @@ export async function getScannedGamesFromDb(): Promise<any[]> {
     otixMediaSlug: r.otix_media_slug || undefined,
     otixConfidence: r.otix_confidence != null ? Number(r.otix_confidence) : undefined,
     otixMatchSuggestion: r.otix_match_suggestion ? JSON.parse(r.otix_match_suggestion) : undefined,
+    seeded: r.seeded === 1,
   }));
 }
 
 export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   await ensureDb();
-  _run('DELETE FROM scanned_games');
+
+  // Preserve `seeded` flag for games that were already in the DB.
+  // The DELETE-then-INSERT pattern would lose it, so we snapshot first.
+  const existingSeeded = new Map<string, number>();
+  const existingRows = _all('SELECT id, seeded FROM scanned_games');
+  for (const r of existingRows) {
+    existingSeeded.set(r.id, r.seeded as number);
+  }
+
+  // Delete games that are no longer present in this scan batch
+  const newIds = [...new Set(games.map((g) => g.id))];
+  if (newIds.length > 0) {
+    const placeholders = newIds.map(() => '?').join(',');
+    _run(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`, newIds);
+  } else {
+    _run('DELETE FROM scanned_games');
+  }
+
+  // Upsert each game, restoring the seeded flag when the game already existed
   for (const g of games) {
+    const seeded = existingSeeded.get(g.id) ?? 0;
     _run(`
       INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
         update_files, otix_media_id, otix_media_title, otix_media_slug,
-        otix_confidence, otix_match_suggestion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        otix_confidence, otix_match_suggestion, seeded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       g.id,
       g.title,
@@ -1457,6 +1477,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
       g.otixMediaSlug || null,
       g.otixConfidence != null ? g.otixConfidence : null,
       g.otixMatchSuggestion ? JSON.stringify(g.otixMatchSuggestion) : null,
+      seeded,
     ]);
   }
 }
@@ -1476,6 +1497,64 @@ export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'i
   for (const p of paths) {
     _run('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)', [p.path, p.type]);
   }
+}
+
+// ── Seed tracking — local DB is the source of truth for which titles have
+//    already been sent to the backend for IGDB seeding. The desktop IPC layer
+//    is the ONLY caller of seed-from-titles; frontend components must NOT call
+//    it independently (avoids HTTP/1.1 connection pool exhaustion). ─────────
+
+export interface UnseededGame {
+  title: string;
+  platform: string | null;
+  steam_app_id: number | null;
+}
+
+/** Return unseeded games from scanned_games, grouped by normalized title.
+ *  For Steam games, extracts the numeric Steam App ID from the game's id. */
+export function getUnseededGames(): UnseededGame[] {
+  const rows = _all(
+    'SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0'
+  ) as Array<{ id: string; title: string; platform: string }>;
+
+  // Group by normalized title, preferring Steam entries (which have an app ID)
+  const byTitle = new Map<string, UnseededGame>();
+  for (const row of rows) {
+    const key = row.title.toLowerCase().trim();
+    const existing = byTitle.get(key);
+    // Keep the Steam entry if we already have one
+    if (existing && existing.steam_app_id !== null) continue;
+
+    const steamAppId =
+      row.platform === 'steam' ? parseInt(row.id, 10) : null;
+    byTitle.set(key, {
+      title: row.title,
+      platform: row.platform,
+      steam_app_id: isNaN(steamAppId as number) ? null : steamAppId,
+    });
+  }
+
+  return Array.from(byTitle.values());
+}
+
+/** Mark the given games as seeded in scanned_games (matches by title). */
+export function markGamesAsSeeded(games: UnseededGame[]): void {
+  if (!games.length) return;
+  const titles = games.map(g => g.title);
+  const placeholders = titles.map(() => '?').join(',');
+  _run(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`, titles);
+}
+
+/** @deprecated Use getUnseededGames() instead. */
+export function getUnseededTitles(): string[] {
+  return getUnseededGames().map(g => g.title);
+}
+
+/** @deprecated Use markGamesAsSeeded() instead. */
+export function markTitlesAsSeeded(titles: string[]): void {
+  if (!titles.length) return;
+  const placeholders = titles.map(() => '?').join(',');
+  _run(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`, titles);
 }
 
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {

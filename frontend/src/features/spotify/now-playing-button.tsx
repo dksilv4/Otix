@@ -7,26 +7,20 @@ import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { cn } from '@/lib/utils'
+import './now-playing-button.scss'
 
 interface PlexSessionsResponse {
   sessions: PlexSession[]
 }
 
-const pillBase = cn(
-  'flex items-center rounded-[2rem]',
-  'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-  'backdrop-blur-lg',
-  'shadow-[var(--dk-shadow-glass)]',
-)
-
 function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
   return (
-    <div className="flex items-end gap-[1.5px] h-4 w-4">
+    <div className="dk-spotify__equalizer">
       {[0, 1, 2].map((i) => (
         <span
           key={i}
           className={cn(
-            'w-[3px] rounded-full bg-primary',
+            'dk-spotify__equalizer-bar',
             isPlaying && 'animate-equalizer',
           )}
           style={{
@@ -57,7 +51,7 @@ export function NowPlayingButton({
   const { data: plexSessions = [] } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
-      const { data } = await apiClient.get<PlexSessionsResponse>('/auth/integrations/plex/sessions')
+      const { data } = await apiClient.get<PlexSessionsResponse>('/integrations/plex/sessions')
       return data.sessions ?? []
     },
     refetchInterval: 15000,
@@ -88,13 +82,11 @@ export function NowPlayingButton({
         data-now-playing-trigger
         onClick={handleClick}
         className={cn(
-          !bare && pillBase,
-          !bare && 'p-1.5',
-          'relative gap-1 transition-all flex items-center justify-center rounded-full',
-          !isPinned && 'cursor-pointer',
-          isSidebarOpen && 'ring-1 ring-purple-400/50 bg-purple-400/[0.06]',
-          !hasLocalPlayback && hasPlex && 'ring-1 ring-[#e5a00d]/40',
-          bare && 'w-8 h-8 hover:bg-white/[0.06]',
+          'dk-spotify__button',
+          isPinned && 'dk-spotify__button--pinned',
+          isSidebarOpen && 'dk-spotify__button--sidebar',
+          !hasLocalPlayback && hasPlex && 'dk-spotify__button--plex',
+          bare && 'dk-spotify__button--bare',
         )}
         aria-label="Activity"
       >
@@ -104,7 +96,7 @@ export function NowPlayingButton({
               src={currentTrack.albumArt}
               alt=""
               className={cn(
-                'h-6 w-6 rounded-full object-cover',
+                'dk-spotify__album-art',
                 isPlaying && 'animate-spin-slow',
               )}
               style={{ animationDuration: '8s' }}
@@ -113,9 +105,9 @@ export function NowPlayingButton({
             <EqualizerBars isPlaying={isPlaying} />
           )
         ) : hasDownloads ? (
-          <div className="relative">
+          <div className="dk-spotify__download-wrapper">
             <Download className="h-5 w-5 text-blue-400" />
-            <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500 px-[3px] text-[9px] font-bold text-black leading-none">
+            <span className="dk-spotify__badge dk-spotify__badge--download">
               {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
             </span>
           </div>
@@ -125,12 +117,12 @@ export function NowPlayingButton({
           <Music className="h-5 w-5 text-muted-foreground" />
         )}
         {hasPlex && !hasLocalPlayback && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e5a00d] px-1 text-[10px] font-bold text-black leading-none">
+          <span className="dk-spotify__badge dk-spotify__badge--plex">
             {plexCount > 9 ? '9+' : plexCount}
           </span>
         )}
         {hasLocalPlayback && hasDownloads && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500 px-[3px] text-[9px] font-bold text-black leading-none">
+          <span className="dk-spotify__badge dk-spotify__badge--download">
             {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
           </span>
         )}

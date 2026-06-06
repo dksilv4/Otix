@@ -1,0 +1,81 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-review-composer {
+  @apply flex flex-col gap-5;
+
+  &__rating {
+    @apply flex flex-col items-center gap-1;
+  }
+
+  &__rating-caption {
+    @apply text-[11px] text-muted-foreground;
+  }
+
+  &__content-wrapper {
+    @apply relative;
+  }
+
+  &__textarea {
+    @apply w-full min-h-[140px] rounded-2xl px-4 py-3 text-sm resize-y transition-colors;
+    background: var(--dk-surface-field);
+
+    &::placeholder {
+      color: hsl(var(--muted-foreground) / 0.5);
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--dk-border-accent);
+      box-shadow: 0 0 0 1px var(--dk-border-accent);
+    }
+
+    &:disabled {
+      @apply cursor-not-allowed opacity-50;
+    }
+  }
+
+  &__char-count {
+    @apply absolute bottom-2.5 right-3 text-[11px] tabular-nums;
+    color: hsl(var(--muted-foreground) / 0.4);
+
+    &--warning {
+      color: #f59e0b;
+    }
+
+    &--danger {
+      color: hsl(var(--destructive));
+    }
+  }
+
+  &__toggle {
+    @apply flex items-center gap-2.5 cursor-pointer select-none;
+
+    &--locked {
+      @apply cursor-not-allowed opacity-50;
+    }
+  }
+
+  &__toggle-text {
+    @apply text-sm text-muted-foreground transition-colors;
+
+    .dk-review-composer__toggle:hover & {
+      @apply text-foreground;
+    }
+  }
+
+  &__notice {
+    @apply flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm;
+
+    &--lock {
+      @apply bg-amber-500/10 text-amber-400;
+    }
+
+    &--error {
+      @apply bg-destructive/10 text-destructive;
+    }
+  }
+
+  &__actions {
+    @apply flex items-center gap-3 pt-1;
+  }
+}

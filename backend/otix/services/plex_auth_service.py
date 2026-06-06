@@ -1,5 +1,7 @@
+# TODO: Review this file
 from __future__ import annotations
 
+import json
 import secrets
 import urllib.parse
 
@@ -46,8 +48,14 @@ def _build_auth_url(code: str, state: str) -> str:
     return f"{PLEX_AUTH_URL}#?{urllib.parse.urlencode(params)}"
 
 
-async def build_plex_link_url() -> tuple[str, str, str]:
-    """Create a Plex PIN and return (auth_url, state, pin_id)."""
+async def build_plex_link_url(user_id: str | None = None) -> tuple[str, str, str]:
+    """Create a Plex PIN and return (auth_url, state, pin_id).
+
+    If *user_id* is provided it is stored alongside the PIN in Redis so
+    that the callback endpoint can look up the user without requiring a
+    JWT token — necessary when the callback page runs in a different
+    browser context (e.g. Electron openExternal).
+    """
     state = secrets.token_urlsafe(32)
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -69,20 +77,36 @@ async def build_plex_link_url() -> tuple[str, str, str]:
         raise HTTPException(status_code=502, detail="Plex returned an invalid linking response. Please try again.")
 
     redis = await get_redis()
-    await redis.set(_state_key(state), pin_id, ex=PIN_TTL)
+    payload = {"pin_id": pin_id}
+    if user_id:
+        payload["user_id"] = user_id
+    await redis.set(_state_key(state), json.dumps(payload), ex=PIN_TTL)
     return _build_auth_url(code, state), state, pin_id
 
 
-async def _consume_state(state: str, pin_id: str | None = None) -> str:
+async def _consume_state(state: str, pin_id: str | None = None) -> tuple[str, str | None]:
+    """Return (resolved_pin_id, user_id_or_None) for a given OAuth state.
+
+    The stored value is a JSON object ``{"pin_id": ..., "user_id": ...}``.
+    """
     redis = await get_redis()
     key = _state_key(state)
-    stored_pin_id = await redis.get(key)
-    if not stored_pin_id:
+    raw = await redis.get(key)
+    if not raw:
         raise HTTPException(status_code=400, detail="Plex linking session expired. Please try again.")
+    await redis.delete(key)
+
+    try:
+        payload = json.loads(raw) if isinstance(raw, str) else {}
+    except (json.JSONDecodeError, TypeError):
+        # Legacy format — just a pin_id string
+        payload = {"pin_id": str(raw)}
+
+    stored_pin_id = payload.get("pin_id", "")
     if pin_id and str(stored_pin_id) != str(pin_id):
         raise HTTPException(status_code=400, detail="Invalid Plex linking session. Please try again.")
-    await redis.delete(key)
-    return str(stored_pin_id)
+
+    return str(stored_pin_id), payload.get("user_id")
 
 
 async def _get_pin_auth_token(pin_id: str) -> str:
@@ -118,11 +142,35 @@ async def get_plex_user_info(token: str) -> dict | None:
         return None
 
 
-async def link_plex_to_user(session: AsyncSession, user: User, state: str, pin_id: str | None = None) -> None:
-    if user.plex_id is not None:
+async def link_plex_to_user(
+    session: AsyncSession,
+    user: User | None = None,
+    state: str = "",
+    pin_id: str | None = None,
+) -> None:
+    """Link a Plex account to an Otix user.
+
+    The user can be provided directly or looked up from the OAuth state
+    stored in Redis (which records the user_id from the initiate phase).
+    """
+    resolved_pin_id, state_user_id = await _consume_state(state, pin_id)
+
+    # Resolve the user: prefer the explicit parameter, fall back to state
+    resolved_user = user
+    if resolved_user is None and state_user_id:
+        resolved_user = await session.scalar(
+            select(User).where(User.id == state_user_id)
+        )
+
+    if resolved_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please sign in and try again.",
+        )
+
+    if resolved_user.plex_id is not None:
         raise HTTPException(status_code=400, detail="Plex account already linked")
 
-    resolved_pin_id = await _consume_state(state, pin_id)
     token = await _get_pin_auth_token(resolved_pin_id)
     profile = await get_plex_user_info(token)
     if not profile:
@@ -133,16 +181,16 @@ async def link_plex_to_user(session: AsyncSession, user: User, state: str, pin_i
         raise HTTPException(status_code=502, detail="Plex returned an invalid account profile. Please try again.")
 
     existing = await session.scalar(select(User).where(User.plex_id == plex_id))
-    if existing is not None and existing.id != user.id:
+    if existing is not None and existing.id != resolved_user.id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This Plex account is already linked to another Otix account.")
 
-    user.plex_id = plex_id
-    user.plex_username = profile.get("username") or profile.get("title")
-    user.plex_email = profile.get("email")
-    user.plex_thumb = profile.get("thumb")
-    user.plex_auth_token = token
+    resolved_user.plex_id = plex_id
+    resolved_user.plex_username = profile.get("username") or profile.get("title")
+    resolved_user.plex_email = profile.get("email")
+    resolved_user.plex_thumb = profile.get("thumb")
+    resolved_user.plex_auth_token = token
     await session.flush()
-    logger.info("plex account linked", user_id=user.id, plex_id=plex_id)
+    logger.info("plex account linked", user_id=resolved_user.id, plex_id=plex_id)
 
 
 async def unlink_plex_from_user(session: AsyncSession, user: User) -> None:
@@ -156,3 +204,41 @@ async def unlink_plex_from_user(session: AsyncSession, user: User) -> None:
     user.plex_auth_token = None
     await session.flush()
     logger.info("plex account unlinked", user_id=user.id, plex_id=plex_id)
+
+
+async def unlink_plex_quietly(session: AsyncSession, user: User) -> None:
+    """Unlink Plex from the user without raising on already-unlinked.
+
+    Intended for auto-disconnect on external revocation.
+    Sends a notification to the user about the disconnect.
+    """
+    if user.plex_id is None:
+        return
+    plex_id = user.plex_id
+    user.plex_id = None
+    user.plex_username = None
+    user.plex_email = None
+    user.plex_thumb = None
+    user.plex_auth_token = None
+    try:
+        await session.flush()
+        from otix.services.notification_service import NotificationService
+
+        nsvc = NotificationService(session)
+        await nsvc.create(
+            user_id=user.id,
+            type_="integration_disconnected",
+            title="Plex disconnected",
+            body="Your Plex account was disconnected because access was revoked externally. "
+            "Re-link your account in Settings to continue syncing.",
+            metadata_json={"provider": "plex", "reason": "external_revocation"},
+        )
+        await session.commit()
+        logger.info(
+            "plex auto-disconnected due to external revocation",
+            user_id=user.id,
+            plex_id=plex_id,
+        )
+    except Exception:
+        await session.rollback()
+        logger.exception("plex auto-disconnect failed", user_id=user.id, plex_id=plex_id)

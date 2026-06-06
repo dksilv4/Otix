@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useQuery } from '@tanstack/react-query'
 import { MediaCard } from '@ui/molecules/media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
+import './artist-albums-section.scss'
 
 interface ArtistAlbumsSectionProps {
   artistPersonId: string
@@ -41,18 +43,18 @@ export function ArtistAlbumsSection({
   if (isLoading || albums.length === 0) return null
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-lg font-semibold">More by {artistName}</h2>
-        <span className="text-sm text-muted-foreground">
+    <section className={cn('dk-media-artist-albums-section', className)}>
+      <div className="dk-media-artist-albums-section__header">
+        <h2 className="dk-media-artist-albums-section__title">More by {artistName}</h2>
+        <span className="dk-media-artist-albums-section__count">
           {albums.length} album{albums.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex gap-3">
+      <div className="dk-media-artist-albums-section__scroll-area">
+        <div className="dk-media-artist-albums-section__list">
           {albums.map((album) => (
-            <div key={album.id} className="w-36 shrink-0 -mt-2 rounded-lg">
+            <div key={album.id} className="dk-media-artist-albums-section__item">
               <MediaCard
                 id={album.id}
                 mediaType="music"

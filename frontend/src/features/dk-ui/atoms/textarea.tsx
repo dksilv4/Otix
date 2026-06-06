@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils'
+import './textarea.scss'
 
 interface DkTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string
@@ -15,11 +17,11 @@ const DkTextarea = forwardRef<HTMLTextAreaElement, DkTextareaProps>(
     const hintId = `${textareaId}-hint`
 
     return (
-      <div className="space-y-1.5">
+      <div className="dk-textarea">
         {label && (
-          <label htmlFor={textareaId} className="text-sm font-medium text-foreground">
+          <label htmlFor={textareaId} className="dk-textarea__label">
             {label}
-            {required && <span className="ml-0.5 text-destructive">*</span>}
+            {required && <span className="dk-textarea__required">*</span>}
           </label>
         )}
         <textarea
@@ -31,26 +33,20 @@ const DkTextarea = forwardRef<HTMLTextAreaElement, DkTextareaProps>(
             error ? errorId : hint ? hintId : undefined
           }
           className={cn(
-            'flex min-h-[80px] w-full rounded-xl bg-[var(--dk-surface-glass)] px-4 py-3 text-base backdrop-blur-md',
-            'transition-all duration-[var(--dk-duration-fast)]',
-            'placeholder:text-muted-foreground/50',
-            'hover:bg-[var(--dk-surface-glass-hover)]',
-            'focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1',
-            'resize-vertical',
-            error &&
-              'ring-2 ring-destructive/40 focus:ring-destructive/40',
-            props.disabled && 'opacity-40 cursor-not-allowed',
+            'dk-textarea__field',
+            error && 'dk-textarea__field--error',
+            props.disabled && 'dk-textarea__field--disabled',
             className,
           )}
           {...props}
         />
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted-foreground">
+          <p id={hintId} className="dk-textarea__hint">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="dk-textarea__error">
             {error}
           </p>
         )}

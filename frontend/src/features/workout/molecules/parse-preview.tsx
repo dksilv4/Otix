@@ -1,8 +1,9 @@
+// TODO: Review this file
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { DkButton } from '@/features/dk-ui/atoms/button'
-import { cn } from '@/lib/utils'
 import type { ParsedExercise } from '../lib/parser'
 import type { MatchResult } from '../lib/matcher'
+import './parse-preview.scss'
 
 export interface MatchedExercise {
   parsed: ParsedExercise
@@ -19,14 +20,14 @@ export function ParsePreview({ matched, onConfirm, isSubmitting }: ParsePreviewP
   const allMatched = matched.every((m) => m.match.exercise != null)
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-1.5">
-        <div className="h-px flex-1 bg-[var(--dk-border)]" />
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/40">parsed</span>
-        <div className="h-px flex-1 bg-[var(--dk-border)]" />
+    <div className="dk-parse-preview">
+      <div className="dk-parse-preview__divider">
+        <div className="dk-parse-preview__divider-line" />
+        <span className="dk-parse-preview__divider-label">parsed</span>
+        <div className="dk-parse-preview__divider-line" />
       </div>
 
-      <div className="space-y-1.5">
+      <div className="dk-parse-preview__list">
         {matched.map((m, i) => {
           const exercise = m.match.exercise
           const matched = exercise != null
@@ -34,31 +35,28 @@ export function ParsePreview({ matched, onConfirm, isSubmitting }: ParsePreviewP
           return (
             <div
               key={i}
-              className={cn(
-                'flex items-center gap-2 rounded-xl px-3 py-2 text-sm',
-                matched ? 'bg-emerald-500/5' : 'bg-red-500/5',
-              )}
+              className={`dk-parse-preview__row dk-parse-preview__row--${matched ? 'matched' : 'unmatched'}`}
             >
               {matched ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                <CheckCircle2 className="dk-parse-preview__icon dk-parse-preview__icon--matched" />
               ) : (
-                <XCircle className="h-4 w-4 shrink-0 text-red-400" />
+                <XCircle className="dk-parse-preview__icon dk-parse-preview__icon--unmatched" />
               )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium truncate">
+              <div className="dk-parse-preview__content">
+                <div className="dk-parse-preview__header">
+                  <span className="dk-parse-preview__name">
                     {exercise?.name ?? m.parsed.name}
                   </span>
                   {exercise?.category && (
-                    <span className="text-[10px] text-muted-foreground/50 uppercase">
+                    <span className="dk-parse-preview__category">
                       {exercise.category.replace('_', ' ')}
                     </span>
                   )}
                   {!matched && (
-                    <span className="text-[10px] text-red-400/70">unrecognized</span>
+                    <span className="dk-parse-preview__unrecognized">unrecognized</span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground/60">
+                <div className="dk-parse-preview__sets">
                   {m.parsed.sets.length} × {m.parsed.sets[0]?.reps}
                   {m.parsed.sets[0]?.weightKg != null
                     ? ` @ ${m.parsed.sets[0].weightKg}kg`
@@ -70,8 +68,8 @@ export function ParsePreview({ matched, onConfirm, isSubmitting }: ParsePreviewP
         })}
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground/40">
+      <div className="dk-parse-preview__footer">
+        <span className="dk-parse-preview__status">
           {allMatched ? 'Ready to save' : 'Fix unrecognized exercises'}
         </span>
         <DkButton

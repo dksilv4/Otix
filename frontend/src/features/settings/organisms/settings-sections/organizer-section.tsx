@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './organizer-section.scss'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { DkButton } from '@/features/dk-ui/atoms/button'
@@ -25,7 +27,7 @@ const TOKEN_DOCS = [
 ]
 
 export function OrganizerSection() {
-  const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const isDesktop = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
   const { user } = useAuth()
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
 
@@ -53,12 +55,12 @@ export function OrganizerSection() {
   // Preview template on change
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!isElectron || !window.electronAPI?.downloadsPreviewNamingTemplate) {
+      if (!isDesktop || !window.desktopAPI?.downloadsPreviewNamingTemplate) {
         setPreviewResult(namingTemplate.replace(/\{(\w+)\}/g, 'sample'))
         return
       }
       try {
-        const res = await window.electronAPI.downloadsPreviewNamingTemplate(namingTemplate, 'Stellar.Blade.REPACK-DELUSION')
+        const res = await window.desktopAPI.downloadsPreviewNamingTemplate(namingTemplate, 'Stellar.Blade.REPACK-DELUSION')
         if (res.valid) {
           setPreviewResult(res.result ?? namingTemplate)
           setValidTemplate(true)
@@ -71,7 +73,7 @@ export function OrganizerSection() {
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [namingTemplate, isElectron])
+  }, [namingTemplate, isDesktop])
 
   const handlePresetChange = (presetId: string) => {
     const preset = NAMING_PRESETS.find(p => p.id === presetId)
@@ -97,23 +99,23 @@ export function OrganizerSection() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  if (!isElectron) return null
+  if (!isDesktop) return null
 
   return (
-    <div className="space-y-4">
+    <div className="dk-settings-organizer">
       <div>
-        <h2 className="text-lg font-semibold tracking-[-0.01em]">Game Organizer</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="dk-settings-organizer__title">Game Organizer</h2>
+        <p className="dk-settings-organizer__description">
           Auto-rename and organize downloaded games into structured library folders (like Radarr/Sonarr).
         </p>
       </div>
 
       {/* Enable toggle */}
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-md)] p-5 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="dk-settings-organizer__card">
+        <div className="dk-settings-organizer__row">
           <div>
-            <p className="text-sm font-semibold">Auto-organize downloads</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="dk-settings-organizer__label">Auto-organize downloads</p>
+            <p className="dk-settings-organizer__hint">
               Automatically rename and move completed downloads to your library
             </p>
           </div>
@@ -122,23 +124,23 @@ export function OrganizerSection() {
       </div>
 
       {/* Presets */}
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-md)] p-5 space-y-4">
-        <h3 className="text-sm font-semibold">Naming Template</h3>
-        <p className="text-xs text-muted-foreground -mt-2">
+      <div className="dk-settings-organizer__card">
+        <h3 className="dk-settings-organizer__section-title">Naming Template</h3>
+        <p className="dk-settings-organizer__section-hint">
           How organized files and folders should be named.
         </p>
 
         {/* Preset pills */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="dk-settings-organizer__preset-group">
           {NAMING_PRESETS.map(p => (
             <button
               key={p.id}
               onClick={() => handlePresetChange(p.id)}
               className={cn(
-                'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                'dk-settings-organizer__preset-pill',
                 activePreset === p.id
-                  ? 'bg-primary/20 text-primary ring-1 ring-primary/30'
-                  : 'bg-[var(--dk-surface-raised)] text-muted-foreground hover:bg-[var(--dk-surface-glass)] ring-1 ring-border/20',
+                  ? 'dk-settings-organizer__preset-pill--active'
+                  : 'dk-settings-organizer__preset-pill--inactive',
               )}
             >
               {p.label}
@@ -148,19 +150,21 @@ export function OrganizerSection() {
 
         {/* Template editor */}
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Template</label>
+          <label className="dk-settings-organizer__template-label">Template</label>
           <textarea
             value={namingTemplate}
             onChange={e => handleTemplateChange(e.target.value)}
             rows={3}
             className={cn(
-              'mt-1 w-full rounded-lg bg-[var(--dk-surface-raised)] px-3 py-2 text-xs font-mono outline-none ring-1 transition-all',
-              validTemplate ? 'ring-border/30 focus:ring-primary/40' : 'ring-red-500/50 focus:ring-red-500/70',
+              'dk-settings-organizer__template-input',
+              validTemplate
+                ? 'dk-settings-organizer__template-input--valid'
+                : 'dk-settings-organizer__template-input--invalid',
             )}
             placeholder="{Title} ({Year}) [{Platform}]/{Title} ({Year}) [{Platform}].{ext}"
           />
           {!validTemplate && (
-            <p className="text-xs text-red-400 mt-1">Template contains unknown tokens or missing {`{Title}`}</p>
+            <p className="dk-settings-organizer__error">Template contains unknown tokens or missing {`{Title}`}</p>
           )}
         </div>
 
@@ -168,14 +172,14 @@ export function OrganizerSection() {
         <div>
           <button
             onClick={() => setShowTokens(!showTokens)}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-settings-organizer__token-toggle"
           >
             {showTokens ? 'Hide' : 'Show'} available tokens &rarr;
           </button>
           {showTokens && (
-            <div className="mt-2 space-y-0.5 bg-[var(--dk-surface-raised)] rounded-lg p-3">
+            <div className="dk-settings-organizer__token-list">
               {TOKEN_DOCS.map((doc, i) => (
-                <p key={i} className="text-[11px] font-mono text-muted-foreground">{doc}</p>
+                <p key={i} className="dk-settings-organizer__token-item">{doc}</p>
               ))}
             </div>
           )}
@@ -184,11 +188,11 @@ export function OrganizerSection() {
         {/* Preview */}
         {previewResult && (
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Preview</p>
-            <p className="mt-1 text-xs font-mono bg-[var(--dk-surface-raised)] rounded-lg p-2.5 break-all text-foreground/80">
+            <p className="dk-settings-organizer__preview-label">Preview</p>
+            <p className="dk-settings-organizer__preview-result">
               {previewResult}
             </p>
-            <p className="text-[11px] text-muted-foreground/60 mt-1">
+            <p className="dk-settings-organizer__preview-hint">
               Sample: <code>Stellar.Blade.REPACK-DELUSION</code>
             </p>
           </div>
@@ -196,9 +200,9 @@ export function OrganizerSection() {
       </div>
 
       {/* Save */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="dk-settings-organizer__save-bar">
         {saved && (
-          <span className="flex items-center gap-1 text-xs text-green-400">
+          <span className="dk-settings-organizer__saved-indicator">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Saved
           </span>

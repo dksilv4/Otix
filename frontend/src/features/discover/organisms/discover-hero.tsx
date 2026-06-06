@@ -8,6 +8,7 @@ import { mediaQueries } from '@media/media-queries'
 import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { cn } from '@/lib/utils'
+import './discover-hero.scss'
 import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL } from '@/constants/media'
 
 const AUTOPLAY_INTERVAL = 8000
@@ -20,9 +21,14 @@ const CONTENT_FADE = {
   transition: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
 } as const
 
-// Upscale TMDB images from w500 to w1280 for hero-sized rendering.
+// Upscale images for hero-sized rendering.
+// TMDB: /w500/ → /w1280/
+// IGDB: t_cover_big → t_1080p
 function heroImage(url: string): string {
-  return url.replace(/\/w500\//, '/w1280/')
+  return url
+    .replace(/\/w500\//, '/w1280/')
+    .replace(/t_cover_big/, 't_1080p')
+    .replace(/t_screenshot_big/, 't_1080p')
 }
 
 function circularDist(index: number, target: number, total: number): number {
@@ -204,10 +210,7 @@ function DiscoverHeroCard({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={cn(
-        'absolute left-1/2 top-1/2 outline-none will-change-transform cursor-pointer',
-        'w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px]',
-      )}
+      className={cn('dk-discover-hero__card')}
       style={{
         left: '50%',
         top: '50%',
@@ -223,7 +226,7 @@ function DiscoverHeroCard({
     >
       {/* 3D Tilt Wrapper */}
       <motion.div
-        className="relative w-full h-full"
+        className="dk-discover-hero__card-tilt"
         style={{
           rotateX: springRotateX,
           rotateY: springRotateY,
@@ -234,10 +237,8 @@ function DiscoverHeroCard({
         {/* Card Content (rounded with overflow-hidden to crop background) */}
         <div
           className={cn(
-            'relative h-full w-full overflow-hidden rounded-[2rem] transition-all duration-300',
-            'ring-1 ring-white/[0.08]',
-            isActive ? 'shadow-[0_24px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.15)]' : 'shadow-[0_12px_32px_rgba(0,0,0,0.55)]',
-            !isActive && 'hover:ring-white/[0.2]',
+            'dk-discover-hero__card-inner',
+            isActive ? 'dk-discover-hero__card-inner--active' : 'dk-discover-hero__card-inner--inactive',
           )}
           style={{
             transform: 'translateZ(0px)', // hardware acceleration
@@ -248,7 +249,7 @@ function DiscoverHeroCard({
             const anim = getSlideAnimation(activeId)
             return (
               <motion.div
-                className="absolute inset-0"
+                className="dk-discover-hero__card-backdrop"
                 style={{ y: yScroll }}
               >
                 <motion.div
@@ -262,7 +263,7 @@ function DiscoverHeroCard({
                     y: { duration: AUTOPLAY_INTERVAL / 1000, ease: 'linear' },
                     opacity: { duration: 0.6 },
                   }}
-                  className="absolute inset-0 bg-cover bg-center"
+                  className="dk-discover-hero__card-bg-image"
                   style={{
                     backgroundImage: `url(${bgImage})`,
                     top: -80,
@@ -279,11 +280,11 @@ function DiscoverHeroCard({
               <img
                 src={heroImage(coverSrc)}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
+                className="dk-discover-hero__card-poster"
                 loading="lazy"
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
+              <div className="dk-discover-hero__card-fallback">
                 <span className="text-3xl font-bold text-white/20">{item.title[0]}</span>
               </div>
             )
@@ -291,7 +292,7 @@ function DiscoverHeroCard({
 
           {/* Fallback gradient if no cover image is loaded */}
           {!coverSrc && !bgImage && (
-            <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-black" />
+            <div className="dk-discover-hero__card-gradient" />
           )}
 
           {/* Darkening/lightening overlay for non-focused cards — uses page
@@ -299,7 +300,7 @@ function DiscoverHeroCard({
               light mode. Opacity increases per layer to reduce distraction. */}
           {!isActive && (
             <div
-              className="absolute inset-0"
+              className="dk-discover-hero__card-overlay"
               style={{
                 backgroundColor: 'var(--background)',
                 opacity: Math.min(0.30 + absDist * 0.25, 0.90),
@@ -314,7 +315,7 @@ function DiscoverHeroCard({
         {/* We place it in preserve-3d context with Z-translation to float in front of the card */}
         {isActive && (
           <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[115%] flex justify-center pointer-events-none"
+            className="dk-discover-hero__card-title-layer"
             style={{
               transformStyle: 'preserve-3d',
             }}
@@ -325,7 +326,7 @@ function DiscoverHeroCard({
                 z: 60, // translateZ lift in 3D space
                 transformStyle: 'preserve-3d',
               }}
-              className="w-full flex justify-center"
+              className="dk-discover-hero__card-title-inner"
             >
               <AnimatePresence mode="wait">
                 {detail?.logoUrl ? (
@@ -337,7 +338,7 @@ function DiscoverHeroCard({
                     transition={{ duration: 0.45, ease: [0.34, 1.3, 0.64, 1] }}
                     src={detail.logoUrl}
                     alt={detail.title}
-                    className="w-full max-h-[120px] object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.95)]"
+                    className="dk-discover-hero__card-logo"
                     style={{ transform: 'translateZ(15px)' }}
                   />
                 ) : (
@@ -347,7 +348,7 @@ function DiscoverHeroCard({
                     animate={{ opacity: 1, scale: 1.15, y: 0 }}
                     exit={{ opacity: 0, scale: 0.8, y: -15 }}
                     transition={{ duration: 0.45, ease: [0.34, 1.3, 0.64, 1] }}
-                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white text-center leading-tight drop-shadow-[0_6px_20px_rgba(0,0,0,0.9)] w-full px-4"
+                    className="dk-discover-hero__card-title-text"
                     style={{
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
@@ -517,9 +518,8 @@ export function DiscoverHero({ className }: { className?: string }) {
     }
   }, [isTransitioning, navigate, detail?.mediaType, navigateRouter])
 
-  // Active poster source (prefer textlessPosterUrl, fallback to poster)
-  const fallback = activeItem?.posterUrl || null
-  const bgImageRaw = activeItem?.textlessPosterUrl || fallback
+  // Active hero background: prefer backdrop (cinematic), then textless poster, then poster
+  const bgImageRaw = activeItem?.backdropUrl || activeItem?.textlessPosterUrl || activeItem?.posterUrl || null
   const bgImage = bgImageRaw ? heroImage(bgImageRaw) : null
 
   // Build visible stacked card previews with wrapping path calculation
@@ -563,21 +563,21 @@ export function DiscoverHero({ className }: { className?: string }) {
   return (
     <div
       ref={containerRef}
-      className={cn('relative w-full flex flex-col items-center justify-center pb-12', className)}
+      className={cn('dk-discover-hero', className)}
       style={{ overflow: 'visible' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* ── Slide stack container ── */}
       <div
-        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible"
+        className="dk-discover-hero__slides"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         
         {/* Loading skeleton */}
         {isLoading && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px] z-30 flex flex-col justify-end p-6 rounded-[2rem] bg-black/40 backdrop-blur-sm shadow-xl">
+          <div className="dk-discover-hero__skeleton">
             <Skeleton className="h-6 w-2/3 mb-2" />
             <Skeleton className="h-4 w-full mb-1" />
             <Skeleton className="h-4 w-3/4 mb-3" />
@@ -613,19 +613,19 @@ export function DiscoverHero({ className }: { className?: string }) {
       </div>
 
       {/* ── Active slide details below the card stack ── */}
-      <div className="relative w-full z-15 flex flex-col items-center mt-6 min-h-[110px] px-6 text-center">
+      <div className="dk-discover-hero__details">
         <AnimatePresence mode="wait">
           {activeItem && (
             <motion.div
               key={activeItem.id}
               {...CONTENT_FADE}
-              className="flex flex-col items-center max-w-2xl"
+              className="dk-discover-hero__details-inner"
             >
 
 
               {/* Meta row */}
               {detail && (
-                <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+                <div className="dk-discover-hero__meta">
                   <Badge
                     className={cn(
                       'text-white border-none text-[11px]',
@@ -636,7 +636,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                   </Badge>
 
                   {detail.avgRating != null && detail.ratingCount > 0 && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400" title={`Based on ${detail.ratingCount} community ratings`}>
+                    <span className="dk-discover-hero__rating" title={`Based on ${detail.ratingCount} community ratings`}>
                       <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                       </svg>
@@ -661,7 +661,7 @@ export function DiscoverHero({ className }: { className?: string }) {
               {/* Overview */}
               {detail?.overview && (
                 <p
-                  className="text-sm text-white/85 max-w-xl text-center line-clamp-2 mb-0"
+                  className="dk-discover-hero__overview"
                   style={{ textShadow: '0 2px 16px rgba(0,0,0,0.7)' }}
                 >
                   {detail.overview}
@@ -676,7 +676,7 @@ export function DiscoverHero({ className }: { className?: string }) {
 
       {/* ── Slide indicators and integrated View Details ── */}
       {items.length > 1 && (
-        <div className="mt-4 flex items-center gap-4 px-5 py-2.5 rounded-full bg-black/35 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.35)] transition-all duration-300 hover:bg-black/45">
+        <div className="dk-discover-hero__indicators">
           <div className="flex items-center gap-2.5">
             {items.map((item, i) => {
               const isActive = i === activeIndex
@@ -685,8 +685,8 @@ export function DiscoverHero({ className }: { className?: string }) {
                   key={item.id}
                   onClick={() => navigate(i)}
                   className={cn(
-                    "relative h-1.5 rounded-full bg-white/20 overflow-hidden cursor-pointer transition-all duration-300",
-                    isActive ? "w-8" : "w-1.5 hover:w-3 hover:bg-white/40"
+                    'dk-discover-hero__indicator',
+                    isActive ? 'dk-discover-hero__indicator--active' : 'dk-discover-hero__indicator--inactive',
                   )}
                   aria-label={`Slide ${i + 1}`}
                 >
@@ -697,7 +697,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                       animate={{ scaleX: 1 }}
                       transition={{ duration: AUTOPLAY_INTERVAL / 1000, ease: 'linear' }}
                       style={{ originX: 0 }}
-                      className="absolute inset-0 bg-white rounded-full shadow-[0_0_8px_#ffffff]"
+                      className="dk-discover-hero__indicator-progress"
                     />
                   )}
                 </button>
@@ -705,7 +705,7 @@ export function DiscoverHero({ className }: { className?: string }) {
             })}
           </div>
 
-          <div className="h-3.5 w-[1px] bg-white/20" />
+          <div className="dk-discover-hero__indicator-separator" />
 
           {activeItem && (
             <Link
@@ -715,7 +715,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                 mediaId: activeItem.id,
               }}
             >
-              <button className="text-[11px] font-bold text-white/80 hover:text-white transition-colors duration-150 flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none">
+              <button className="dk-discover-hero__view-details">
                 View Details
                 <svg className="h-3 w-3 opacity-85" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />

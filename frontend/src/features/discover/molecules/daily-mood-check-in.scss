@@ -1,0 +1,74 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ──────────────────────────────────────────────
+   DailyMoodCheckIn — discover molecule
+   ────────────────────────────────────────────── */
+
+.dk-discover-checkin {
+  @apply w-full max-w-3xl;
+}
+
+.dk-discover-checkin__wrapper {
+  @apply flex flex-col items-center gap-2;
+}
+
+.dk-discover-checkin__mood-list {
+  @apply flex w-full flex-wrap items-center justify-center gap-1.5 text-xs;
+}
+
+.dk-discover-checkin__mood-btn {
+  @apply inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 font-medium;
+  transition: all 150ms;
+  background-color: rgba(255, 255, 255, 0.04);
+  color: hsl(var(--muted-foreground));
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: hsl(var(--foreground));
+  }
+
+  &--selected {
+    @apply bg-primary/15 text-primary ring-1 ring-primary/45;
+  }
+}
+
+.dk-discover-checkin__skip-btn {
+  @apply h-8 rounded-full px-2.5 text-xs font-medium;
+  color: hsl(var(--muted-foreground));
+  transition: color 150ms, background-color 150ms;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: hsl(var(--foreground));
+  }
+
+  &:disabled {
+    @apply pointer-events-none;
+    opacity: 0.4;
+  }
+}
+
+.dk-discover-checkin__feeling-list {
+  @apply flex w-full flex-wrap items-center justify-center gap-1.5;
+}
+
+.dk-discover-checkin__feeling-btn {
+  @apply h-7 rounded-full px-2.5 text-[11px] font-medium;
+  transition: all 150ms;
+  background-color: rgba(255, 255, 255, 0.03);
+  color: hsl(var(--muted-foreground));
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+    color: hsl(var(--foreground));
+  }
+
+  &--selected {
+    @apply bg-primary/15 text-primary ring-1 ring-primary/40;
+  }
+}
+
+.dk-discover-checkin__error {
+  @apply text-sm;
+  color: hsl(var(--destructive));
+}

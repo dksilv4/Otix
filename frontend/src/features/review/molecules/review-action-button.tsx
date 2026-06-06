@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { ReviewComposer } from './review-composer'
 import { reviewQueries, type ReviewOut } from '../review-queries'
 import { ratingQueries, type MediaRatingOut } from '../rating-queries'
+import './review-action-button.scss'
 
 interface ReviewActionButtonProps {
   mediaId: string
@@ -39,22 +40,18 @@ export function ReviewActionButton({ mediaId, className }: ReviewActionButtonPro
       <button
         type="button"
         onClick={() => setComposerOpen(true)}
-        className={cn(
-          'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-[var(--dk-surface-base)] px-3 py-3 transition-all duration-150',
-          'hover:bg-[var(--dk-surface-glass)]',
-          className,
-        )}
+        className={cn('dk-review-action-button', className)}
       >
         {(hasRating || hasReview) && (
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,var(--tw-gradient-from),transparent_70%)] from-amber-500/15 opacity-30" />
+          <div className="dk-review-action-button__glow" />
         )}
         <Icon
           className={cn(
-            'relative h-5 w-5 transition-colors',
-            (hasRating || hasReview) ? 'fill-current text-amber-400' : 'text-muted-foreground',
+            'dk-review-action-button__icon',
+            (hasRating || hasReview) ? 'dk-review-action-button__icon--active' : 'dk-review-action-button__icon--muted',
           )}
         />
-        <span className="relative text-[11px] font-medium text-muted-foreground">
+        <span className="dk-review-action-button__label">
           {hasRating || hasReview ? 'Review' : 'Rate'}
         </span>
       </button>

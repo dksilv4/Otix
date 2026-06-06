@@ -1,0 +1,131 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-download-card {
+  @apply flex items-center gap-4 rounded-xl p-4;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+/* ── Icon ── */
+
+.dk-download-card__icon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/20;
+}
+
+.dk-download-card__icon--queued {
+  @apply text-amber-400;
+}
+
+.dk-download-card__icon--downloading {
+  @apply text-blue-400;
+}
+
+.dk-download-card__icon--processing {
+  @apply text-purple-400;
+}
+
+.dk-download-card__icon--completed {
+  @apply text-green-400;
+}
+
+.dk-download-card__icon--failed {
+  @apply text-red-400;
+}
+
+.dk-download-card__icon--deleted {
+  @apply text-muted-foreground;
+}
+
+/* ── Info ── */
+
+.dk-download-card__info {
+  @apply min-w-0 flex-1;
+}
+
+.dk-download-card__title {
+  @apply text-sm font-medium truncate;
+}
+
+.dk-download-card__title--link {
+  @apply block hover:text-primary transition-colors;
+}
+
+.dk-download-card__subtitle {
+  @apply text-xs text-muted-foreground truncate mt-0.5;
+}
+
+.dk-download-card__meta {
+  @apply flex items-center gap-2 mt-0.5;
+}
+
+.dk-download-card__status {
+  @apply text-xs font-medium;
+}
+
+.dk-download-card__status--queued {
+  @apply text-amber-400;
+}
+
+.dk-download-card__status--downloading {
+  @apply text-blue-400;
+}
+
+.dk-download-card__status--processing {
+  @apply text-purple-400;
+}
+
+.dk-download-card__status--completed {
+  @apply text-green-400;
+}
+
+.dk-download-card__status--failed {
+  @apply text-red-400;
+}
+
+.dk-download-card__status--deleted {
+  @apply text-muted-foreground;
+}
+
+.dk-download-card__percentage {
+  @apply text-xs text-muted-foreground tabular-nums;
+}
+
+.dk-download-card__size {
+  @apply text-xs text-muted-foreground;
+}
+
+.dk-download-card__date {
+  @apply text-xs text-muted-foreground;
+}
+
+/* ── Progress ── */
+
+.dk-download-card__progress {
+  @apply mt-1.5 h-1.5 w-full rounded-full overflow-hidden;
+  background-color: var(--dk-surface-raised);
+}
+
+.dk-download-card__progress-bar {
+  @apply h-full rounded-full bg-blue-500;
+  transition: all 700ms;
+}
+
+/* ── Error ── */
+
+.dk-download-card__error {
+  @apply text-xs text-red-400 mt-1 line-clamp-2;
+}
+
+/* ── Actions ── */
+
+.dk-download-card__actions {
+  @apply flex items-center gap-1 shrink-0;
+}
+
+.dk-download-card__action-btn {
+  @apply flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors;
+}
+
+.dk-download-card__action-btn--primary {
+  @apply hover:bg-primary/10 hover:text-primary;
+}

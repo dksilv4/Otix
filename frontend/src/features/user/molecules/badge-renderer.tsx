@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './badge-renderer.scss'
 import { useMemo } from 'react'
 import {
  MessageSquare,
@@ -86,12 +88,6 @@ export function BadgeRenderer({
 }: Omit<BadgeRendererProps, 'label' | 'description' | 'earnedAt'>) {
  const IconComponent = ICON_MAP[icon] ?? Award
  const colors = TIER_COLORS[tier] ?? TIER_COLORS.bronze
-
- const sizeClasses = {
- sm: 'w-12 h-12',
- md: 'w-20 h-20',
- lg: 'w-28 h-28',
- }[size]
 
  const iconSizes = {
  sm: 'h-5 w-5',
@@ -202,7 +198,7 @@ export function BadgeRenderer({
 
  return (
  <div
- className={`relative flex items-center justify-center select-none group transition-all duration-300 ${sizeClasses}`}
+ className={`dk-user-badge dk-user-badge--${size}`}
  style={{
  filter: earned ? 'none' : 'grayscale(0.9) contrast(0.85) brightness(0.55)',
  opacity: earned ? 1 : 0.35,
@@ -211,7 +207,7 @@ export function BadgeRenderer({
  {/* Outer ambient glow on hover (if earned) */}
  {earned && (
  <div
- className="absolute inset-0 rounded-full scale-95 opacity-0 group-hover:opacity-100 group-hover:scale-105 blur-xl transition-all duration-500 pointer-events-none"
+ className="dk-user-badge__glow"
  style={{
  backgroundColor: colors.glow,
  boxShadow: `0 0 40px ${colors.glow}`,
@@ -220,12 +216,12 @@ export function BadgeRenderer({
  )}
 
  {/* SVG Container */}
- <div className="absolute inset-0 w-full h-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+ <div className="dk-user-badge__svg-container">
  {shapeSvg}
  </div>
 
  {/* Inner Icon & Title overlay */}
- <div className="relative z-10 flex flex-col items-center justify-center transition-all duration-300 group-hover:scale-110">
+ <div className="dk-user-badge__icon">
  <IconComponent
  className={iconSizes}
  style={{
@@ -237,33 +233,22 @@ export function BadgeRenderer({
 
  {/* Rarity sparkles (Platinum & Special only, on hover) */}
  {earned && (tier === 'platinum' || tier === 'special') && (
- <div className="absolute inset-0 pointer-events-none overflow-hidden scale-95 group-hover:scale-110 transition-transform duration-300">
- <div
- className="absolute top-1/4 left-1/4 w-1.5 h-1.5 rounded-full bg-white opacity-0 group-hover:opacity-100 animate-ping"
- style={{ animationDuration: '1.2s' }}
- />
- <div
- className="absolute bottom-1/4 right-1/4 w-1 h-1 rounded-full bg-white opacity-0 group-hover:opacity-100 animate-ping"
- style={{ animationDuration: '0.8s', animationDelay: '0.3s' }}
- />
+ <div className="dk-user-badge__sparkles">
+ <div className="dk-user-badge__sparkle dk-user-badge__sparkle--1" />
+ <div className="dk-user-badge__sparkle dk-user-badge__sparkle--2" />
  </div>
  )}
 
  {/* Shimmer flare effect (Platinum & Special only) */}
  {earned && (tier === 'platinum' || tier === 'special') && (
- <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none scale-[0.8]">
- <div
- className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12 translate-x-[-150%]"
- style={{
- animation: 'xpShimmer 3s ease-in-out infinite',
- }}
- />
+ <div className="dk-user-badge__shimmer">
+ <div className="dk-user-badge__shimmer-strip" />
  </div>
  )}
 
  {/* Locked Lock Icon Badge */}
  {!earned && (
- <div className="absolute bottom-0 right-0 p-1 bg-neutral-950/80 rounded-full shadow-md z-20">
+ <div className="dk-user-badge__lock">
  <Lock className="h-3 w-3 text-muted-foreground/60" />
  </div>
  )}

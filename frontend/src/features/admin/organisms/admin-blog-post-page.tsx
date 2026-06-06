@@ -1,4 +1,5 @@
 // TODO: Review this file
+import './admin-blog-post-page.scss'
 import { Link, useParams } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { ArrowLeft, Calendar } from 'lucide-react'
@@ -112,7 +113,7 @@ function renderInline(text: string) {
     } else if (match[3] !== undefined) {
       // `code`
       parts.push(
-        <code key={key++} className="bg-muted/50 text-[0.9em] px-1 py-0.5 rounded font-mono">
+        <code key={key++} className="dk-admin-blog-post__code">
           {match[3]}
         </code>,
       )
@@ -132,21 +133,21 @@ function renderBlock(block: Block, key: number) {
   switch (block.kind) {
     case 'h2':
       return (
-        <h2 key={key} className="mt-8 mb-3 text-lg font-semibold border-b border-border/30 pb-2">
+        <h2 key={key} className="dk-admin-blog-post__heading--2">
           {renderInline(block.text)}
         </h2>
       )
     case 'h3':
       return (
-        <h3 key={key} className="mt-6 mb-2 text-base font-semibold">
+        <h3 key={key} className="dk-admin-blog-post__heading--3">
           {renderInline(block.text)}
         </h3>
       )
     case 'ul':
       return (
-        <ul key={key} className="mb-4 space-y-1 pl-5 text-sm text-muted-foreground leading-relaxed">
+        <ul key={key} className="dk-admin-blog-post__list--unordered">
           {block.items.map((item, j) => (
-            <li key={j} className="list-disc marker:text-muted-foreground/40">
+            <li key={j}>
               {renderInline(item)}
             </li>
           ))}
@@ -154,7 +155,7 @@ function renderBlock(block: Block, key: number) {
       )
     case 'ol':
       return (
-        <ol key={key} className="mb-4 space-y-1 pl-5 text-sm text-muted-foreground leading-relaxed list-decimal marker:text-muted-foreground/40">
+        <ol key={key} className="dk-admin-blog-post__list--ordered">
           {block.items.map((item, j) => (
             <li key={j}>{renderInline(item)}</li>
           ))}
@@ -162,7 +163,7 @@ function renderBlock(block: Block, key: number) {
       )
     case 'p':
       return (
-        <p key={key} className="mb-4 text-sm text-muted-foreground leading-relaxed">
+        <p key={key} className="dk-admin-blog-post__paragraph">
           {renderInline(block.text)}
         </p>
       )
@@ -179,19 +180,19 @@ export function AdminBlogPostPage() {
 
   if (!post) {
     return (
-      <div className="mx-auto max-w-3xl pb-16">
+      <div className="dk-admin-blog-post">
         <Helmet>
           <title>Not Found - Admin - Otix</title>
         </Helmet>
         <Link
           to="/admin"
-          className="inline-flex items-center gap-1.5 mb-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="dk-admin-blog-post__back-link"
         >
           <ArrowLeft className="h-4 w-4" />
           Admin
         </Link>
-        <h1 className="text-2xl font-bold">Post not found</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="dk-admin-blog-post__not-found-title">Post not found</h1>
+        <p className="dk-admin-blog-post__not-found-message">
           The blog post "{slug}" does not exist.
         </p>
       </div>
@@ -199,27 +200,27 @@ export function AdminBlogPostPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl pb-16">
+    <div className="dk-admin-blog-post">
       <Helmet>
         <title>{post.title} - Admin - Otix</title>
       </Helmet>
 
       <Link
         to="/admin"
-        className="inline-flex items-center gap-1.5 mb-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="dk-admin-blog-post__back-link"
       >
         <ArrowLeft className="h-4 w-4" />
         Admin
       </Link>
 
-      <h1 className="mb-2 text-2xl font-bold tracking-[-0.02em]">{post.title}</h1>
+      <h1 className="dk-admin-blog-post__title">{post.title}</h1>
 
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground/60">
+      <div className="dk-admin-blog-post__meta">
+        <span className="dk-admin-blog-post__meta-date">
           <Calendar className="h-3 w-3" />
           {formatDate(post.date)}
         </span>
-        <span className="text-xs text-muted-foreground/60">by {post.author}</span>
+        <span className="dk-admin-blog-post__meta-author">by {post.author}</span>
         {post.tags.map((tag) => (
           <DkBadge key={tag} variant="muted" size="sm">
             {tag}
@@ -227,7 +228,7 @@ export function AdminBlogPostPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
+      <div className="dk-admin-blog-post__content">
         {renderBody(post.body)}
       </div>
     </div>

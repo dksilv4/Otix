@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import json
@@ -209,3 +210,44 @@ async def unlink_tmdb_from_user(session: AsyncSession, user: User) -> None:
     user.tmdb_avatar_hash = None
     await session.flush()
     logger.info("tmdb account unlinked", user_id=user.id, tmdb_account_id=account_id)
+
+
+async def unlink_tmdb_quietly(session: AsyncSession, user: User) -> None:
+    """Unlink TMDb from the user without raising on already-unlinked.
+
+    Intended for auto-disconnect on external revocation.
+    Sends a notification to the user about the disconnect.
+    """
+    if user.tmdb_session_id is None:
+        return
+    account_id = user.tmdb_account_id
+    user.tmdb_session_id = None
+    user.tmdb_account_id = None
+    user.tmdb_username = None
+    user.tmdb_avatar_hash = None
+    try:
+        await session.flush()
+        from otix.services.notification_service import NotificationService
+
+        nsvc = NotificationService(session)
+        await nsvc.create(
+            user_id=user.id,
+            type_="integration_disconnected",
+            title="TMDb disconnected",
+            body="Your TMDb account was disconnected because access was revoked externally. "
+            "Re-link your account in Settings to continue syncing.",
+            metadata_json={"provider": "tmdb", "reason": "external_revocation"},
+        )
+        await session.commit()
+        logger.info(
+            "tmdb auto-disconnected due to external revocation",
+            user_id=user.id,
+            tmdb_account_id=account_id,
+        )
+    except Exception:
+        await session.rollback()
+        logger.exception(
+            "tmdb auto-disconnect failed",
+            user_id=user.id,
+            tmdb_account_id=account_id,
+        )

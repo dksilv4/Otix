@@ -1,3 +1,4 @@
+// TODO: Review this file
 import Fuse from 'fuse.js'
 import { EXERCISE_CATALOG, type ExerciseEntry } from './exercises'
 

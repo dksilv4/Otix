@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Provider → Otix asset type mapping.
 
 Each provider uses its own vocabulary for asset types (IGDB calls posters

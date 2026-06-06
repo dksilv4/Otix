@@ -1,0 +1,292 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ── Downloads Section ──────────────────────────────────── */
+/* Component: DownloadsSection                               */
+/* Prefix:   dk-settings-downloads                           */
+
+/* ── Section spacing ───────────────────────────────────── */
+
+.dk-settings-downloads__body {
+  @apply space-y-4;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+
+.dk-settings-downloads__title {
+  @apply text-lg font-semibold;
+  letter-spacing: -0.01em;
+}
+
+.dk-settings-downloads__desc {
+  @apply mt-1 text-sm text-muted-foreground;
+}
+
+/* ── Card container (expandable & static) ───────────────── */
+
+.dk-settings-downloads__card {
+  @apply rounded-2xl overflow-hidden;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-md);
+}
+
+.dk-settings-downloads__card--padded {
+  @apply p-5 space-y-3;
+}
+
+/* ── Card trigger (clickable header) ────────────────────── */
+
+.dk-settings-downloads__card-trigger {
+  @apply flex w-full items-center gap-4 px-5 py-4 text-left transition-colors cursor-pointer select-none;
+
+  &:hover,
+  &:active {
+    background-color: var(--dk-surface-glass);
+  }
+}
+
+.dk-settings-downloads__card-icon {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl;
+}
+
+.dk-settings-downloads__card-content {
+  @apply min-w-0 flex-1;
+}
+
+.dk-settings-downloads__card-title {
+  @apply text-sm font-semibold;
+}
+
+.dk-settings-downloads__card-title-row {
+  @apply flex items-center gap-2;
+}
+
+.dk-settings-downloads__status-dot {
+  @apply h-1.5 w-1.5 rounded-full bg-green-500 shrink-0;
+}
+
+.dk-settings-downloads__card-subtitle {
+  @apply text-xs text-muted-foreground mt-0.5 line-clamp-1;
+}
+
+/* ── Chevron ────────────────────────────────────────────── */
+
+.dk-settings-downloads__chevron {
+  @apply h-4 w-4 shrink-0 transition-transform;
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-settings-downloads__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ── Expanded card body ─────────────────────────────────── */
+
+.dk-settings-downloads__card-body {
+  @apply border-t;
+  border-color: hsl(var(--border) / 0.2);
+}
+
+/* ── Section within a card body ─────────────────────────── */
+
+.dk-settings-downloads__section {
+  @apply px-5 py-4 space-y-4;
+}
+
+.dk-settings-downloads__section--bordered {
+  @apply px-5 py-4 space-y-4 border-t;
+  border-color: hsl(var(--border) / 0.2);
+}
+
+.dk-settings-downloads__section-header {
+  @apply flex items-center justify-between border-b pb-2;
+  border-color: hsl(var(--border) / 0.1);
+}
+
+.dk-settings-downloads__section-title {
+  @apply text-xs font-semibold uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+
+.dk-settings-downloads__section-desc {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+  @apply mt-0.5;
+}
+
+/* ── Form elements ──────────────────────────────────────── */
+
+.dk-settings-downloads__label {
+  @apply text-xs font-medium;
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-settings-downloads__input {
+  @apply mt-1 w-full h-9 rounded-lg px-3 text-sm outline-none;
+  background-color: var(--dk-surface-raised);
+  box-shadow: 0 0 0 1px hsl(var(--border) / 0.3);
+
+  &:focus {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4);
+  }
+}
+
+.dk-settings-downloads__input--narrow {
+  @apply h-9 rounded-lg px-3 text-sm outline-none;
+  background-color: var(--dk-surface-raised);
+  box-shadow: 0 0 0 1px hsl(var(--border) / 0.3);
+
+  &:focus {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4);
+  }
+}
+
+.dk-settings-downloads__input-group {
+  @apply grid grid-cols-1 gap-3;
+
+  @media (width >= 48rem) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dk-settings-downloads__input-group--2col {
+  @apply grid grid-cols-1 gap-4;
+
+  @media (width >= 48rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dk-settings-downloads__ssl-row {
+  @apply h-9 flex items-center justify-between px-1;
+}
+
+.dk-settings-downloads__switch-text {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-settings-downloads__footnote {
+  @apply mt-1 leading-normal;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+/* ── Switch card (e.g. post-process toggle) ─────────────── */
+
+.dk-settings-downloads__switch-card {
+  @apply flex items-center justify-between p-3 rounded-xl;
+  background-color: color-mix(in srgb, var(--dk-surface-raised) 30%, transparent);
+}
+
+.dk-settings-downloads__switch-card-label {
+  @apply text-xs font-semibold;
+  color: hsl(var(--foreground) / 0.8);
+}
+
+.dk-settings-downloads__switch-card-desc {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Custom Path Mappings ───────────────────────────────── */
+
+.dk-settings-downloads__mapping-list {
+  @apply space-y-1.5 overflow-y-auto pr-1;
+  max-height: 150px;
+}
+
+.dk-settings-downloads__mapping-row {
+  @apply flex items-center justify-between gap-3 p-2.5 rounded-lg text-xs;
+  background-color: var(--dk-surface-raised);
+}
+
+.dk-settings-downloads__mapping-path {
+  @apply min-w-0 flex-1 space-y-0.5;
+}
+
+.dk-settings-downloads__mapping-path-text {
+  @apply truncate font-mono;
+  font-size: 11px;
+  color: hsl(var(--muted-foreground) / 0.95);
+}
+
+.dk-settings-downloads__mapping-empty {
+  @apply text-xs italic py-1;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dk-settings-downloads__mapping-form {
+  @apply flex items-center gap-2 p-2 rounded-xl;
+  background-color: color-mix(in srgb, var(--dk-surface-raised) 15%, transparent);
+}
+
+.dk-settings-downloads__mapping-input {
+  @apply flex-1 h-8 rounded-lg px-2 text-xs outline-none;
+  background-color: var(--dk-surface-base);
+  box-shadow: 0 0 0 1px hsl(var(--border) / 0.2);
+
+  &:focus {
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3);
+  }
+}
+
+.dk-settings-downloads__mapping-arrow {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* ── Card footer (test / save buttons) ──────────────────── */
+
+.dk-settings-downloads__footer {
+  @apply border-t px-5 py-3 flex items-center gap-2;
+  border-color: hsl(var(--border) / 0.2);
+}
+
+/* ── Row layout helper ──────────────────────────────────── */
+
+.dk-settings-downloads__row {
+  @apply flex items-center justify-between;
+}
+
+.dk-settings-downloads__row-label {
+  @apply text-sm font-medium;
+}
+
+.dk-settings-downloads__row-desc {
+  @apply text-xs;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Download History ───────────────────────────────────── */
+
+.dk-settings-downloads__history-header {
+  @apply px-5 py-4 border-b;
+  border-color: hsl(var(--border) / 0.2);
+}
+
+.dk-settings-downloads__history-list {
+  @apply divide-y overflow-y-auto;
+  max-height: 16rem;
+}
+
+.dk-settings-downloads__history-list > * + * {
+  border-color: hsl(var(--border) / 0.1);
+}
+
+.dk-settings-downloads__history-item {
+  @apply flex items-center gap-3 px-5 py-3 text-xs;
+}
+
+.dk-settings-downloads__history-info {
+  @apply min-w-0 flex-1;
+}
+
+.dk-settings-downloads__history-title {
+  @apply font-medium truncate;
+}
+
+.dk-settings-downloads__history-meta {
+  @apply mt-0.5;
+  color: hsl(var(--muted-foreground));
+}

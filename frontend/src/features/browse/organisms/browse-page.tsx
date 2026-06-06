@@ -1,4 +1,5 @@
 // TODO: Review this file
+import './browse-page.scss'
 import { useMemo, useRef, useEffect } from 'react'
 import { useParams, useSearch, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
@@ -63,7 +64,7 @@ function BrowseSkeleton() {
   return (
     <MediaGrid>
       {Array.from({ length: 24 }).map((_, i) => (
-        <Skeleton key={i} className="aspect-[2/3] rounded-2xl" />
+        <Skeleton key={i} className="dk-browse-page__skeleton-item" />
       ))}
     </MediaGrid>
   )
@@ -191,7 +192,7 @@ export function BrowsePage() {
   )
 
   return (
-    <div className="pb-16">
+    <div className="dk-browse-page">
       <Helmet>
         <title>{companyInfo ? `${companyInfo.name} ${typeLabel} - Otix` : `Browse ${typeLabel} - Otix`}</title>
         <meta name="description" content={companyInfo ? `Browse ${companyInfo.name} ${typeLabel} on Otix.` : `Browse ${typeLabel} on Otix — discover new movies, shows, games, and music.`} />
@@ -202,33 +203,31 @@ export function BrowsePage() {
       </Helmet>
 
       {/* Header */}
-      <div className="mb-8 space-y-6">
+      <div className="dk-browse-page__header">
         {/* Company logo header */}
         {companyInfo && (
-          <div className="flex items-center gap-4">
+          <div className="dk-browse-page__company-header">
             {companyInfo.logoUrl && (
               <img
                 src={companyInfo.logoUrl}
                 alt={companyInfo.name}
-                className="h-12 max-w-[200px] object-contain"
+                className="dk-browse-page__company-logo"
               />
             )}
-            <h1 className="text-2xl font-bold">{companyInfo.name}</h1>
+            <h1 className="dk-browse-page__company-name">{companyInfo.name}</h1>
           </div>
         )}
 
         {/* Type tabs */}
-        <div className="flex items-center gap-2">
+        <div className="dk-browse-page__tabs">
           {BROWSE_TYPES.map(({ value, label, Icon }) => (
             <Link
               key={value}
               to={`/browse/$type`}
               params={{ type: value }}
               className={cn(
-                'inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
-                mediaType === value
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
+                'dk-browse-page__tab',
+                mediaType === value ? 'dk-browse-page__tab--active' : 'dk-browse-page__tab--inactive',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -238,8 +237,8 @@ export function BrowsePage() {
         </div>
 
         {/* Filters bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="dk-browse-page__filters-bar">
+          <div className="dk-browse-page__filters-group">
             <DkDropdown
               variant="filter"
               label="Sort"
@@ -257,19 +256,19 @@ export function BrowsePage() {
               />
             )}
           </div>
-          <span className="text-xs text-muted-foreground shrink-0">
+          <span className="dk-browse-page__total-count">
             {total.toLocaleString()} {typeLabel.toLowerCase()}
           </span>
         </div>
 
         {/* Genre Pill Bar */}
         {genres && genres.length > 0 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="dk-browse-page__genres">
             {/* Fade overlays for smooth horizontal scroll edges */}
-            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-background to-transparent z-10 hidden md:block" />
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 hidden md:block" />
-            
-            <div className="flex gap-2 overflow-x-auto scrollbar-none py-2 scroll-smooth -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="dk-browse-page__genres-fade--left" />
+            <div className="dk-browse-page__genres-fade--right" />
+
+            <div className="dk-browse-page__genres-scroll">
               {genreOptions.map((g) => {
                 const isActive = (search.genre || '') === g.value
                 return (
@@ -277,16 +276,14 @@ export function BrowsePage() {
                     key={g.value}
                     onClick={() => handleGenreChange(g.value)}
                     className={cn(
-                      "relative px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors duration-200",
-                      isActive
-                        ? "text-primary-foreground font-bold"
-                        : "text-muted-foreground bg-[var(--dk-surface-glass)] hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)]"
+                      "dk-browse-page__genre-pill",
+                      isActive ? "dk-browse-page__genre-pill--active" : "dk-browse-page__genre-pill--inactive",
                     )}
                   >
                     {isActive && (
                       <motion.div
                         layoutId="activeGenrePill"
-                        className="absolute inset-0 bg-primary rounded-full -z-10 shadow-lg shadow-primary/20"
+                        className="dk-browse-page__genre-pill-bg"
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     )}
@@ -303,8 +300,8 @@ export function BrowsePage() {
       {isLoading ? (
         <BrowseSkeleton />
       ) : items.length === 0 ? (
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="dk-browse-page__empty">
+          <p className="dk-browse-page__empty-text">
             No {typeLabel.toLowerCase()} found{search.genre ? ' for this genre' : ''}{initialCompany ? ' for this company' : ''}.
           </p>
         </div>
@@ -336,15 +333,15 @@ export function BrowsePage() {
             {(hasNextPage || isFetchingNextPage) &&
               Array.from({ length: 12 }).map((_, i) => (
                 <div key={`prefetch-${i}`} ref={i === 0 ? sentinelRef : undefined}>
-                  <Skeleton className="aspect-[2/3] rounded-2xl w-full h-full" />
+                  <Skeleton className="dk-browse-page__skeleton-card" />
                 </div>
               ))}
           </MediaGrid>
 
           {/* End-of-list marker */}
           {!hasNextPage && items.length > 0 && (
-            <div className="flex items-center justify-center py-10">
-              <p className="text-xs text-muted-foreground">
+            <div className="dk-browse-page__end-marker">
+              <p className="dk-browse-page__end-text">
                 All {total.toLocaleString()} {typeLabel.toLowerCase()} loaded
               </p>
             </div>

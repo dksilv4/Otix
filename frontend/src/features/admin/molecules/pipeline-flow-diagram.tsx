@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './pipeline-flow-diagram.scss'
 import { CheckCircle, MinusCircle, XCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PipelineStage, CriterionStatus } from '@/features/experiments/experiments-admin.types'
@@ -5,17 +7,17 @@ import type { PipelineStage, CriterionStatus } from '@/features/experiments/expe
 const STATUS_STYLE: Record<CriterionStatus, { icon: typeof CheckCircle; badge: string; iconColor: string }> = {
   done: {
     icon: CheckCircle,
-    badge: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30',
+    badge: 'dk-admin-pipeline-flow__badge--done',
     iconColor: 'text-green-500',
   },
   partial: {
     icon: MinusCircle,
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    badge: 'dk-admin-pipeline-flow__badge--partial',
     iconColor: 'text-amber-500',
   },
   missing: {
     icon: XCircle,
-    badge: 'bg-muted-foreground/10 text-muted-foreground/50 border-muted-foreground/15',
+    badge: 'dk-admin-pipeline-flow__badge--missing',
     iconColor: 'text-muted-foreground/25',
   },
 }
@@ -36,51 +38,49 @@ export function PipelineFlowDiagram({ stages }: { stages: PipelineStage[] }) {
   // and avoids sub-pixel rendering.
 
   return (
-    <div className="relative pl-7">
+    <div className="dk-admin-pipeline-flow">
       {/* Full backbone: connects first dot to last dot */}
       <div
-        className="absolute left-[7px] w-px bg-muted-foreground/15"
+        className="dk-admin-pipeline-flow__backbone"
         style={{ top: '12px', bottom: '12px' }}
       />
 
-      <div className="space-y-0">
+      <div className="dk-admin-pipeline-flow__list">
         {stages.map((stage, i) => {
           const { icon: Icon, badge, iconColor } = STATUS_STYLE[stage.status] ?? STATUS_STYLE.missing
           const isMissing = stage.status === 'missing'
 
           return (
-            <div key={i} className="pb-3 last:pb-0">
-              <div className="flex items-start gap-2.5">
+            <div key={i} className="dk-admin-pipeline-flow__stage">
+              <div className="dk-admin-pipeline-flow__stage-row">
                 {/* Dot column: covers the backbone line */}
-                <div className="relative z-10 flex-shrink-0 mt-1 rounded-full bg-[var(--dk-surface-base)] p-0.5">
+                <div className="dk-admin-pipeline-flow__dot">
                   <Icon className={cn('h-3.5 w-3.5', iconColor)} />
                 </div>
 
                 {/* Stage card */}
                 <div
                   className={cn(
-                    'flex-1 rounded-lg border px-3 py-2',
-                    isMissing
-                      ? 'bg-muted/10 border-muted-foreground/10'
-                      : 'bg-[var(--dk-surface-raised)] border-border/30',
+                    'dk-admin-pipeline-flow__card',
+                    isMissing && 'dk-admin-pipeline-flow__card--missing',
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="dk-admin-pipeline-flow__card-header">
+                    <div className="dk-admin-pipeline-flow__label-group">
                       <span
                         className={cn(
-                          'text-xs font-semibold',
-                          isMissing ? 'text-muted-foreground/40' : 'text-foreground',
+                          'dk-admin-pipeline-flow__label',
+                          isMissing && 'dk-admin-pipeline-flow__label--missing',
                         )}
                       >
                         {stage.label}
                       </span>
-                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium border', badge)}>
+                      <span className={cn('dk-admin-pipeline-flow__badge', badge)}>
                         {STATUS_LABEL[stage.status]}
                       </span>
                     </div>
                     {stage.schedule && (
-                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground/50 flex-shrink-0">
+                      <span className="dk-admin-pipeline-flow__schedule">
                         <Clock className="h-2.5 w-2.5" />
                         {stage.schedule}
                       </span>
@@ -89,8 +89,8 @@ export function PipelineFlowDiagram({ stages }: { stages: PipelineStage[] }) {
                   {stage.note && (
                     <p
                       className={cn(
-                        'mt-1 text-[11px] leading-relaxed',
-                        isMissing ? 'text-muted-foreground/30' : 'text-muted-foreground/60',
+                        'dk-admin-pipeline-flow__note',
+                        isMissing && 'dk-admin-pipeline-flow__note--missing',
                       )}
                     >
                       {stage.note}

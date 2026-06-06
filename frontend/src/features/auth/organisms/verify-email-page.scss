@@ -1,0 +1,86 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Wrapper ── */
+
+.dk-auth-verify-wrapper {
+  @apply fixed inset-0 flex items-center justify-center p-4;
+}
+
+.dk-auth-verify-bg-image {
+  @apply absolute inset-0 bg-cover bg-center bg-no-repeat;
+}
+
+.dk-auth-verify-bg-gradient {
+  @apply absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70;
+}
+
+/* ── Card ── */
+
+.dk-auth-verify-card {
+  @apply relative z-10 w-full max-w-[440px] flex flex-col items-center
+         px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem] backdrop-blur-xl;
+  background-color: var(--dk-surface-overlay);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+/* ── Content area ── */
+
+.dk-auth-verify-content {
+  @apply mt-4 w-full space-y-4;
+}
+
+/* ── Status (verifying / success / error) ── */
+
+.dk-auth-verify-status {
+  @apply flex flex-col items-center gap-3 py-6;
+}
+
+.dk-auth-verify-status__icon-wrapper {
+  @apply flex h-14 w-14 items-center justify-center rounded-full;
+}
+
+.dk-auth-verify-status__icon-wrapper--success {
+  @apply bg-green-500/10;
+}
+
+.dk-auth-verify-status__icon-wrapper--error {
+  @apply bg-destructive/10;
+}
+
+.dk-auth-verify-status__title {
+  @apply text-base font-semibold;
+}
+
+.dk-auth-verify-status__message {
+  @apply text-sm text-muted-foreground;
+}
+
+/* ── Buttons ── */
+
+.dk-auth-verify-btn--primary {
+  @apply flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold
+         transition-all bg-primary text-primary-foreground;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+  &:hover {
+    @apply bg-primary/90;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.dk-auth-verify-btn--ghost {
+  @apply flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all;
+  background-color: var(--dk-surface-ghost-hover);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:hover {
+    background-color: var(--dk-surface-ghost-active);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

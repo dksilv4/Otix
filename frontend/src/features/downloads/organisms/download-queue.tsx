@@ -8,6 +8,7 @@ import { useDownloads } from '../use-downloads';
 import { DownloadCard } from '../molecules/download-card';
 import { DkButton } from '@/features/dk-ui/atoms/button';
 import { cn } from '@/lib/utils';
+import './download-queue.scss';
 
 export function DownloadQueuePage() {
   const { user } = useAuth();
@@ -16,27 +17,27 @@ export function DownloadQueuePage() {
   const { downloads, loading, pollQueue, cancelDownload } = useDownloads(userId);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'deleted'>('all');
 
-  const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
+  const isDesktop = typeof window !== 'undefined' && !!window.desktopAPI;
 
   // Admin + experiment gate
   if (!user?.isAdmin || !downloadsEnabled) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="dk-downloads__gate">
         <Download className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <h1 className="text-xl font-bold tracking-[-0.02em]">Downloads</h1>
-        <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+        <h1 className="dk-downloads__gate-heading">Downloads</h1>
+        <p className="dk-downloads__gate-desc">
           This feature is not available.
         </p>
       </div>
     );
   }
 
-  if (!isElectron) {
+  if (!isDesktop) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="dk-downloads__gate">
         <Download className="h-12 w-12 text-muted-foreground/30 mb-4" />
-        <h1 className="text-xl font-bold tracking-[-0.02em]">Downloads</h1>
-        <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+        <h1 className="dk-downloads__gate-heading">Downloads</h1>
+        <p className="dk-downloads__gate-desc">
           Download management is only available in the Otix desktop app.
         </p>
       </div>
@@ -54,7 +55,7 @@ export function DownloadQueuePage() {
   const activeCount = downloads.filter(d => d.status === 'queued' || d.status === 'downloading').length;
 
   return (
-    <div className="mx-auto max-w-3xl pb-16">
+    <div className="dk-downloads__page">
       <Helmet>
         <title>Downloads - Otix</title>
         <meta name="description" content="Manage your downloads on Otix." />
@@ -62,11 +63,11 @@ export function DownloadQueuePage() {
       </Helmet>
 
       {/* Header */}
-      <div className="flex items-center justify-between mt-6 mb-6">
+      <div className="dk-downloads__header">
         <div>
-          <h1 className="text-2xl font-bold tracking-[-0.02em]">Downloads</h1>
+          <h1 className="dk-downloads__heading">Downloads</h1>
           {activeCount > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">{activeCount} active</p>
+            <p className="dk-downloads__active-count">{activeCount} active</p>
           )}
         </div>
         <DkButton size="sm" variant="ghost" onClick={pollQueue} loading={loading} className="shadow-none">
@@ -76,16 +77,16 @@ export function DownloadQueuePage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="dk-downloads__filters">
         {(['all', 'active', 'completed', 'deleted'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={cn(
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              'dk-downloads__filter-btn',
               filter === f
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]',
+                ? 'dk-downloads__filter-btn--active'
+                : 'dk-downloads__filter-btn--inactive',
             )}
           >
             {f === 'all' ? 'All' : f === 'active' ? 'Active' : f === 'completed' ? 'Completed' : 'Deleted'}
@@ -95,15 +96,15 @@ export function DownloadQueuePage() {
 
       {/* Download list */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-center rounded-2xl bg-[var(--dk-surface-base)]">
+        <div className="dk-downloads__empty">
           <Download className="h-8 w-8 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium">No downloads yet</p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="dk-downloads__empty-text">No downloads yet</p>
+          <p className="dk-downloads__empty-sub">
             Browse a game and click Download to queue your first ISO.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="dk-downloads__list">
           {filtered.map((dl) => (
             <DownloadCard
               key={dl.id}

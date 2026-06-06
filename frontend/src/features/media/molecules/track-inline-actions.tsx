@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { StarInput } from '@/features/review/molecules/star-input'
+import './track-inline-actions.scss'
 
 interface TrackInlineActionsProps {
   spotifyId?: string | null
@@ -31,9 +33,9 @@ export function TrackInlineActions({
   if (!canSaveSpotify && !canRate) return null
 
   return (
-    <div className={cn('flex items-center justify-end gap-2', className)}>
+    <div className={cn('dk-media-track-inline-actions', className)}>
       {canRate && (
-        <div onClick={(event) => event.stopPropagation()}>
+        <div className="dk-media-track-inline-actions__rating" onClick={(event) => event.stopPropagation()}>
           <StarInput
             size="sm"
             value={myRating ?? null}
@@ -53,11 +55,11 @@ export function TrackInlineActions({
             if (spotifyId) onSaveSpotify?.(spotifyId)
           }}
           className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-full transition-colors',
+            'dk-media-track-inline-actions__spotify-btn',
             spotifyLiked
-              ? 'bg-[#1DB954]/15 text-[#1DB954]'
-              : 'bg-white/[0.035] text-muted-foreground hover:bg-[#1DB954]/14 hover:text-[#1DB954]',
-            (savingSpotify || spotifyLiked) && 'cursor-default',
+              ? 'dk-media-track-inline-actions__spotify-btn--liked'
+              : 'dk-media-track-inline-actions__spotify-btn--unliked',
+            (savingSpotify || spotifyLiked) && 'dk-media-track-inline-actions__spotify-btn--disabled',
           )}
           aria-label={spotifyLiked ? 'Saved to Spotify liked songs' : 'Add to Spotify liked songs'}
           title={spotifyLiked ? 'Saved to Spotify liked songs' : 'Add to Spotify liked songs'}

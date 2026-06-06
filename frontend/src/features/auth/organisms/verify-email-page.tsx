@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Check, Loader2, Mail, ShieldAlert } from 'lucide-react'
@@ -12,6 +13,7 @@ import authBg3 from '@/assets/auth-bg-3.png'
 import authBg4 from '@/assets/auth-bg-4.png'
 import authBg5 from '@/assets/auth-bg-5.png'
 import { apiClient } from '@/lib/api-client'
+import './verify-email-page.scss'
 
 const bgImages = [authBg1, authBg2, authBg3, authBg4, authBg5]
 
@@ -68,21 +70,14 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth-verify-wrapper">
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="dk-auth-verify-bg-image"
         style={{ backgroundImage: `url(${bgImage})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
+      <div className="dk-auth-verify-bg-gradient" />
 
-      <div
-        className={cn(
-          'relative z-10 w-full max-w-[440px] flex flex-col items-center',
-          'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-          'bg-[var(--dk-surface-overlay)] backdrop-blur-xl',
-          'shadow-[var(--dk-shadow-glass)]',
-        )}
-      >
+      <div className="dk-auth-verify-card">
         <Logo className="h-16" />
 
         <AuthHeader
@@ -90,15 +85,15 @@ export function VerifyEmailPage() {
           subtitle="Verify your email to unlock all features"
         />
 
-        <div className="w-full space-y-4 mt-4">
+        <div className="dk-auth-verify-content">
           {state === 'verifying' && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center gap-3 py-6"
+              className="dk-auth-verify-status"
             >
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Verifying your email...</p>
+              <p className="dk-auth-verify-status__message">Verifying your email...</p>
             </motion.div>
           )}
 
@@ -106,24 +101,19 @@ export function VerifyEmailPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-3 py-6"
+              className="dk-auth-verify-status"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10">
+              <div className="dk-auth-verify-status__icon-wrapper dk-auth-verify-status__icon-wrapper--success">
                 <Check className="h-7 w-7 text-green-500" />
               </div>
-              <p className="text-base font-semibold">Email Verified</p>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="dk-auth-verify-status__title">Email Verified</p>
+              <p className="dk-auth-verify-status__message text-center">
                 Your email has been verified successfully.
               </p>
               <button
                 type="button"
                 onClick={() => navigate({ to: isAuthenticated ? '/' : '/auth/login' })}
-                className={cn(
-                  'flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold transition-all mt-2',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                )}
+                className={cn('dk-auth-verify-btn--primary', 'mt-2')}
               >
                 {isAuthenticated ? 'Continue to Home' : 'Go to Sign In'}
               </button>
@@ -134,24 +124,20 @@ export function VerifyEmailPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-3 py-6"
+              className="dk-auth-verify-status"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+              <div className="dk-auth-verify-status__icon-wrapper dk-auth-verify-status__icon-wrapper--error">
                 <ShieldAlert className="h-7 w-7 text-destructive" />
               </div>
-              <p className="text-base font-semibold">Verification Failed</p>
+              <p className="dk-auth-verify-status__title">Verification Failed</p>
               {errorMessage && (
-                <p className="text-sm text-muted-foreground text-center">{errorMessage}</p>
+                <p className="dk-auth-verify-status__message text-center">{errorMessage}</p>
               )}
               {isAuthenticated && (
                 <button
                   type="button"
                   onClick={handleResend}
-                  className={cn(
-                    'flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition-all mt-2',
-                    'border border-white/10 bg-[var(--dk-surface-ghost-hover)]',
-                    'hover:bg-[var(--dk-surface-ghost-active)] active:scale-[0.98]',
-                  )}
+                  className={cn('dk-auth-verify-btn--ghost', 'mt-2')}
                 >
                   <Mail className="h-4 w-4" />
                   Resend Verification Email
@@ -160,12 +146,7 @@ export function VerifyEmailPage() {
               <button
                 type="button"
                 onClick={() => navigate({ to: '/auth/login' })}
-                className={cn(
-                  'flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold transition-all',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                )}
+                className="dk-auth-verify-btn--primary"
               >
                 Go to Sign In
               </button>

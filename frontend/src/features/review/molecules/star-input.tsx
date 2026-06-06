@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { InteractiveStar } from "../atoms/interactive-star"
+import "./star-input.scss"
 
 interface StarInputProps {
   value: number | null
@@ -97,21 +98,21 @@ function StarInput({ value, onChange, size = "md", disabled = false, className }
   return (
     <div
       className={cn(
-        "relative inline-flex flex-col items-center gap-1.5",
-        disabled && "opacity-50 pointer-events-none",
+        "dk-review-star-input",
+        disabled && "dk-review-star-input--disabled",
         className,
       )}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
     >
       {isHolding && (
-        <div className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-foreground px-3 py-1.5 text-sm font-semibold text-background shadow-lg z-20">
+        <div className="dk-review-star-input__tooltip">
           {tooltipScore}/10
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-foreground rotate-45" />
+          <div className="dk-review-star-input__tooltip-arrow" />
         </div>
       )}
 
-      <div className="flex items-center gap-1">
+      <div className="dk-review-star-input__stars">
         {[0, 1, 2, 3, 4].map((i) => (
           <InteractiveStar
             key={i}
@@ -129,23 +130,23 @@ function StarInput({ value, onChange, size = "md", disabled = false, className }
       {label && (
         <span
           className={cn(
-            "text-xs font-semibold tabular-nums select-none transition-colors",
+            "dk-review-star-input__label",
             displayScore >= 8
-              ? "text-emerald-400"
+              ? "dk-review-star-input__label--high"
               : displayScore >= 6
-                ? "text-sky-400"
+                ? "dk-review-star-input__label--medium"
                 : displayScore >= 4
-                  ? "text-amber-400"
+                  ? "dk-review-star-input__label--low"
                   : displayScore > 0
-                    ? "text-red-400"
-                    : "text-muted-foreground",
+                    ? "dk-review-star-input__label--critical"
+                    : "dk-review-star-input__label--muted",
           )}
         >
           {label}
         </span>
       )}
       {!label && (
-        <span className="text-xs font-semibold invisible" aria-hidden>
+        <span className="dk-review-star-input__placeholder" aria-hidden>
           0/10
         </span>
       )}

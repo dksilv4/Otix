@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useEffect, useState } from 'react'
 
 interface ExtractedPalette {

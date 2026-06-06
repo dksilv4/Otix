@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { Film, Tv, Gamepad2, Music, type LucideIcon } from 'lucide-react'
 
 export type MediaType = 'movie' | 'show' | 'game' | 'music'

@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Clock, TrendingUp, Calendar } from 'lucide-react'
 import { userQueries } from '../user-queries'
 import { Skeleton } from '@ui/atoms/skeleton'
+import './profile-library-breakdown-section.scss'
 
 const MEDIA_TYPE_COLORS: Record<string, string> = {
   movie: '#ef4444',
@@ -35,25 +37,25 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="dk-user-library__header">
         <BarChart3 className="h-4 w-4 text-muted-foreground/60" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Library</h2>
+        <h2 className="dk-user-library__heading">Library</h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="dk-user-library__grid">
         {/* Total items with media type breakdown */}
         <div
-          className="col-span-2 rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]"
+          className="dk-user-library__card dk-user-library__card--wide"
         >
-          <div className="flex items-center gap-2 mb-3">
+          <div className="dk-user-library__card-heading">
             <BarChart3 className="h-3.5 w-3.5" style={{ color: CARD_ACCENTS.items.color }} />
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Items</p>
+            <p className="dk-user-library__card-label">Items</p>
           </div>
-          <p className="text-3xl font-bold tabular-nums">{s.totalItems.toLocaleString()}</p>
+          <p className="dk-user-library__card-value dk-user-library__card-value--3xl">{s.totalItems.toLocaleString()}</p>
 
           {/* Bar chart */}
           {hasData && (
-            <div className="mt-3 flex gap-1 h-3 rounded-full overflow-hidden">
+            <div className="dk-user-library__bar">
               {Object.entries(MEDIA_TYPE_LABELS).map(([type, label]) => {
                 const count = s.byMediaType[type] || 0
                 if (count === 0) return null
@@ -61,7 +63,7 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
                 return (
                   <div
                     key={type}
-                    className="h-full transition-all"
+                    className="dk-user-library__bar-segment"
                     style={{ width: `${pct}%`, backgroundColor: MEDIA_TYPE_COLORS[type] }}
                     title={`${label}: ${count}`}
                   />
@@ -70,13 +72,13 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
             </div>
           )}
           {hasData && (
-            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+            <div className="dk-user-library__legend">
               {Object.entries(MEDIA_TYPE_LABELS).map(([type, label]) => {
                 const count = s.byMediaType[type] || 0
                 if (count === 0) return null
                 return (
-                  <span key={type} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: MEDIA_TYPE_COLORS[type] }} />
+                  <span key={type} className="dk-user-library__legend-item">
+                    <span className="dk-user-library__legend-dot" style={{ backgroundColor: MEDIA_TYPE_COLORS[type] }} />
                     {label} {count}
                   </span>
                 )
@@ -87,42 +89,42 @@ export function LibraryBreakdownSection({ username }: { username: string }) {
 
         {/* Watch time */}
         <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]"
+          className="dk-user-library__card"
           style={{ borderLeft: `3px solid ${CARD_ACCENTS.time.color}44` }}
         >
           <Clock className="h-3.5 w-3.5 mb-2" style={{ color: CARD_ACCENTS.time.color }} />
-          <p className="text-2xl font-bold tabular-nums">
+          <p className="dk-user-library__card-value">
             {s.totalWatchTimeMinutes > 0
               ? `${Math.round(s.totalWatchTimeMinutes / 60).toLocaleString()}h`
               : '—'}
           </p>
-          <p className="text-[10px] text-muted-foreground/50 mt-0.5">Watch time</p>
+          <p className="dk-user-library__card-subtitle">Watch time</p>
         </div>
 
         {/* Completion rate */}
         <div
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]"
+          className="dk-user-library__card"
           style={{ borderLeft: `3px solid ${CARD_ACCENTS.completion.color}44` }}
         >
           <TrendingUp className="h-3.5 w-3.5 mb-2" style={{ color: CARD_ACCENTS.completion.color }} />
-          <p className="text-2xl font-bold tabular-nums">
+          <p className="dk-user-library__card-value">
             {s.completionRate > 0 ? `${Math.round(s.completionRate * 100)}%` : '—'}
           </p>
-          <p className="text-[10px] text-muted-foreground/50 mt-0.5">Completion rate</p>
+          <p className="dk-user-library__card-subtitle">Completion rate</p>
         </div>
 
         {/* Most active */}
-        <div className="col-span-2">
+        <div className="dk-user-library__grid-span">
           {s.mostActiveDay && (
             <div
-              className="rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]"
+              className="dk-user-library__card"
               style={{ borderLeft: `3px solid ${CARD_ACCENTS.active.color}44` }}
             >
               <Calendar className="h-3.5 w-3.5 mb-2" style={{ color: CARD_ACCENTS.active.color }} />
-              <p className="text-lg font-bold">
+              <p className="dk-user-library__card-value dk-user-library__card-value--lg">
                 {s.mostActiveDay}{s.mostActiveHour != null ? ` ${formatHour(s.mostActiveHour)}` : ''}
               </p>
-              <p className="text-[10px] text-muted-foreground/50 mt-0.5">Most active</p>
+              <p className="dk-user-library__card-subtitle">Most active</p>
             </div>
           )}
         </div>
@@ -142,7 +144,7 @@ function LibraryBreakdownSkeleton() {
   return (
     <section>
       <Skeleton className="h-4 w-28 mb-4" />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="dk-user-library__grid">
         <Skeleton className="col-span-2 h-28 rounded-2xl" />
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-24 rounded-2xl" />

@@ -1,0 +1,84 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Admin Actions Menu ────────────────────────── */
+
+.dk-admin-actions {
+  @apply flex flex-col items-center;
+}
+
+.dk-admin-actions__menu {
+  @apply relative;
+}
+
+.dk-admin-actions__trigger {
+  @apply relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl px-3 py-3;
+  background-color: rgba(245, 158, 11, 0.15);
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background-color: rgba(245, 158, 11, 0.25);
+  }
+}
+
+.dk-admin-actions__label {
+  @apply relative flex items-center gap-0.5 text-[11px] font-medium;
+  color: rgba(252, 211, 77, 0.8);
+}
+
+.dk-admin-actions__dropdown {
+  @apply absolute bottom-full left-1/2 mb-2 w-48 rounded-2xl p-1.5;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-dialog);
+  z-index: var(--dk-z-modal);
+  transform: translateX(-50%);
+}
+
+.dk-admin-actions__dropdown-item {
+  @apply flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm;
+  color: var(--foreground);
+  transition: colors 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background-color: var(--dk-surface-base);
+  }
+
+  &:disabled {
+    @apply opacity-50;
+  }
+}
+
+.dk-admin-actions__log {
+  @apply fixed bottom-4 right-4 w-72 rounded-xl p-3;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-dialog);
+  z-index: var(--dk-z-modal);
+}
+
+.dk-admin-actions__log-header {
+  @apply mb-1.5 flex items-center justify-between;
+}
+
+.dk-admin-actions__log-title {
+  @apply text-[11px] font-semibold uppercase tracking-wide;
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-admin-actions__log-close {
+  @apply rounded-lg p-0.5;
+  color: hsl(var(--muted-foreground));
+  transition: colors 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background-color: var(--dk-surface-ghost-hover);
+    color: var(--foreground);
+  }
+}
+
+.dk-admin-actions__log-entries {
+  @apply max-h-40 space-y-0.5 overflow-y-auto;
+}
+
+.dk-admin-actions__log-entry {
+  @apply text-xs font-mono;
+  color: hsl(var(--muted-foreground));
+}

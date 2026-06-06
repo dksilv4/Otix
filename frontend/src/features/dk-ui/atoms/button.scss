@@ -1,0 +1,74 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Base ── */
+.dk-btn {
+  @apply inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium;
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+
+  &:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: var(--dk-ring-color);
+  }
+
+  &:disabled {
+    @apply pointer-events-none;
+    opacity: 0.4;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ── Variants ── */
+.dk-btn--primary {
+  @apply bg-primary text-primary-foreground;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  &:hover { background-color: color-mix(in srgb, var(--primary) 90%, transparent); }
+}
+
+.dk-btn--secondary {
+  @apply bg-secondary text-secondary-foreground;
+  &:hover { background-color: color-mix(in srgb, var(--secondary) 80%, transparent); }
+}
+
+.dk-btn--ghost {
+  &:hover { background-color: var(--dk-surface-ghost-hover); }
+  &:active { background-color: var(--dk-surface-ghost-active); }
+}
+
+.dk-btn--destructive {
+  @apply bg-destructive text-destructive-foreground shadow-sm;
+  &:hover { background-color: color-mix(in srgb, var(--destructive) 90%, transparent); }
+}
+
+.dk-btn--glass {
+  backdrop-filter: blur(12px);
+  box-shadow: var(--dk-shadow-glass);
+  &:hover { background-color: var(--dk-surface-glass-hover); }
+}
+
+.dk-btn--outline {
+  box-shadow: inset 0 0 0 1px var(--dk-separator);
+  &:hover { background-color: var(--dk-surface-ghost-hover); }
+}
+
+.dk-btn--link {
+  @apply text-primary;
+  text-underline-offset: 4px;
+  &:hover { text-decoration: underline; }
+}
+
+/* ── Sizes ── */
+.dk-btn--xs   { @apply h-7 rounded-lg px-2.5 text-xs; gap: 0.375rem; }
+.dk-btn--sm   { @apply h-8 rounded-lg px-3 text-xs; gap: 0.375rem; }
+.dk-btn--md   { @apply h-10 rounded-xl px-4 text-sm; }
+.dk-btn--lg   { @apply h-12 rounded-xl px-6 text-base; }
+.dk-btn--xl   { @apply h-14 rounded-2xl px-8 text-base font-bold tracking-wide uppercase; }
+.dk-btn--icon { @apply h-10 w-10 rounded-xl; }
+
+/* ── Elements ── */
+.dk-btn__spinner {
+  @apply h-4 w-4;
+  animation: spin 1s linear infinite;
+}

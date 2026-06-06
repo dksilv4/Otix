@@ -1,0 +1,146 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-settings-page {
+  @apply mx-auto pb-16;
+  max-width: 64rem;
+
+  &__layout {
+    @apply mt-6;
+
+    @media (min-width: 768px) {
+      @apply flex gap-8;
+    }
+  }
+
+  // ── Mobile menu ──
+
+  &__mobile-menu {
+    @media (min-width: 768px) {
+      @apply hidden;
+    }
+
+    &--hidden {
+      display: none;
+    }
+  }
+
+  &__mobile-title {
+    @apply mb-6 text-2xl font-bold;
+    letter-spacing: -0.02em;
+  }
+
+  &__mobile-nav {
+    @apply space-y-1;
+  }
+
+  &__nav-btn {
+    @apply flex w-full items-center gap-4 rounded-xl px-4 py-4 text-base font-medium;
+    transition: all 0.15s;
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:hover {
+      background-color: var(--dk-surface-glass);
+    }
+  }
+
+  &__mobile-user {
+    @apply mt-8 px-4 pt-6 border-t;
+    border-color: hsl(var(--border) / 0.4);
+  }
+
+  // ── Desktop sidebar ──
+
+  &__sidebar {
+    @apply hidden w-56 shrink-0;
+
+    @media (min-width: 768px) {
+      @apply block;
+    }
+  }
+
+  &__sidebar-inner {
+    @apply sticky top-24 space-y-1;
+  }
+
+  &__sidebar-title {
+    @apply px-3 mb-4 text-lg font-bold;
+    letter-spacing: -0.02em;
+  }
+
+  &__sidebar-nav {
+    @apply space-y-0.5;
+  }
+
+  &__sidebar-btn {
+    @apply flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium;
+    transition: all 0.15s;
+
+    &--active {
+      background-color: hsl(var(--primary) / 0.1);
+      color: hsl(var(--primary));
+    }
+
+    &--inactive {
+      color: hsl(var(--muted-foreground));
+
+      &:hover {
+        color: hsl(var(--foreground));
+        background-color: var(--dk-surface-glass);
+      }
+    }
+  }
+
+  &__sidebar-user {
+    @apply mt-8 px-3 pt-6 border-t;
+    border-color: hsl(var(--border) / 0.4);
+  }
+
+  // ── Shared user info ──
+
+  &__user-card {
+    @apply flex items-center gap-3;
+  }
+
+  &__user-details {
+    @apply min-w-0;
+  }
+
+  &__user-name {
+    @apply text-sm font-medium truncate;
+  }
+
+  &__user-email {
+    @apply text-xs text-muted-foreground truncate;
+  }
+
+  // ── Content area ──
+
+  &__content {
+    @apply flex-1 min-w-0;
+
+    &--menu-shown {
+      display: none;
+
+      @media (min-width: 768px) {
+        display: block;
+      }
+    }
+  }
+
+  &__back-btn {
+    @apply flex items-center gap-2 mb-6 text-sm font-medium;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.15s;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+
+    @media (min-width: 768px) {
+      @apply hidden;
+    }
+  }
+}

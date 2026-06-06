@@ -1,3 +1,4 @@
+// TODO: Review this file
 /** Shared types for the downloads feature. Mirrors @desktop/preload-api. */
 
 export interface NZBResult {

@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './daily-mood-check-in.scss'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CloudRain, Frown, Laugh, Meh, Smile } from 'lucide-react'
@@ -201,11 +203,11 @@ export function DailyMoodCheckIn({
   return (
     <section
       aria-label="Daily mood check-in"
-      className="w-full max-w-3xl"
+      className="dk-discover-checkin"
     >
-      <div className="flex flex-col items-center gap-2">
+      <div className="dk-discover-checkin__wrapper">
         {isPromptDue && !selectedMood && (
-          <div className="flex w-full flex-wrap items-center justify-center gap-1.5 text-xs">
+          <div className="dk-discover-checkin__mood-list">
             {moodOptions.map(({ value, label, Icon }) => {
               const isSelected = selectedMood === value
               return (
@@ -214,10 +216,8 @@ export function DailyMoodCheckIn({
                   type="button"
                   onClick={() => handleMoodSelect({ value, label, Icon })}
                   className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 font-medium transition-all',
-                    isSelected
-                      ? 'bg-primary/15 text-primary ring-1 ring-primary/45'
-                      : 'bg-white/[0.04] text-muted-foreground hover:bg-white/[0.08] hover:text-foreground',
+                    'dk-discover-checkin__mood-btn',
+                    isSelected && 'dk-discover-checkin__mood-btn--selected',
                   )}
                   aria-pressed={isSelected}
                 >
@@ -230,7 +230,7 @@ export function DailyMoodCheckIn({
               type="button"
               onClick={handleDismiss}
               disabled={isBusy}
-              className="h-8 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              className="dk-discover-checkin__skip-btn"
             >
               {dismissMutation.isPending ? 'Skipping...' : 'Skip'}
             </button>
@@ -238,7 +238,7 @@ export function DailyMoodCheckIn({
         )}
 
         {isPromptDue && selectedMood && (
-          <div className="flex w-full flex-wrap items-center justify-center gap-1.5">
+          <div className="dk-discover-checkin__feeling-list">
             {feelingOptions.map(({ value, label }) => {
               const isSelected = selectedFeeling === value
               return (
@@ -247,10 +247,8 @@ export function DailyMoodCheckIn({
                   type="button"
                   onClick={() => handleFeelingSelect(value)}
                   className={cn(
-                    'h-7 rounded-full px-2.5 text-[11px] font-medium transition-all',
-                    isSelected
-                      ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
-                      : 'bg-white/[0.03] text-muted-foreground hover:bg-white/[0.07] hover:text-foreground',
+                    'dk-discover-checkin__feeling-btn',
+                    isSelected && 'dk-discover-checkin__feeling-btn--selected',
                   )}
                   aria-pressed={isSelected}
                 >
@@ -261,7 +259,7 @@ export function DailyMoodCheckIn({
           </div>
         )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="dk-discover-checkin__error">{error}</p>}
       </div>
     </section>
   )

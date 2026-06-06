@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './person-timeline-filters.scss'
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 
 const MEDIA_TYPE_OPTIONS = [
@@ -32,7 +34,7 @@ export function PersonTimelineFilters({
   onRoleChange,
 }: PersonTimelineFiltersProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="dk-person-timeline-filters">
       <DkDropdown
         variant="filter"
         label="Type"

@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { useDeepLink } from '@/lib/use-deep-link'
 import type { User, AuthState, TwoFactorChallenge, LoginResponse } from './types'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
@@ -18,17 +20,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
 
+  // ── Helpers ──────────────────────────────────────────────────────
+
+  /**
+   * Merge integration fields (plex_id, steam_id, spotify_id, etc.) into a user
+   * object returned by /auth/me. Non-critical — ignores fetch errors.
+   */
+  async function mergeIntegrations(user: User): Promise<void> {
+    try {
+      const intRes = await apiClient.get('/auth/me/integrations')
+      Object.assign(user, intRes.data)
+    } catch {
+      // Non-critical — user still has core profile
+    }
+  }
+
+  async function loadUser(token: string): Promise<User | null> {
+    try {
+      const meRes = await apiClient.get('/auth/me')
+      const user = meRes.data as User
+      await mergeIntegrations(user)
+      return user
+    } catch {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      return null
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) {
       setIsLoading(false)
       return
     }
-    apiClient
-      .get('/auth/me')
-      .then((res) => setUser(res.data))
-      .catch(() => localStorage.removeItem(ACCESS_TOKEN_KEY))
-      .finally(() => setIsLoading(false))
+    loadUser(token).then((user) => {
+      setUser(user)
+      setIsLoading(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -45,6 +73,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:sessionExpired', handler)
   }, [])
 
+  // Handle otix:// deep links (OAuth return from system browser)
+  useDeepLink(
+    useCallback(
+      (data) => {
+        // otix://auth/steam/callback?accessToken=xxx
+        if (data.action === 'auth/steam/callback' && data.params.accessToken) {
+          localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
+          loadUser(data.params.accessToken).then(setUser)
+        }
+
+        // otix://auth/steam/connect/callback — refresh integrations
+        if (data.action === 'auth/steam/connect/callback') {
+          queryClient.invalidateQueries({ queryKey: ['integrations'] })
+        }
+
+        // otix://refocus — no-op, just brought app to foreground
+      },
+      [],
+    ),
+  )
+
   const login = useCallback(async (identity: string, password: string) => {
     const res = await apiClient.post('/auth/login', { identity, password })
     const data = res.data as LoginResponse
@@ -59,7 +108,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // become enabled and refetch naturally based on staleTime. Clearing here
     // would force every mounted query to refetch simultaneously (request storm).
     const me = await apiClient.get('/auth/me')
-    setUser(me.data)
+    const user = me.data as User
+    await mergeIntegrations(user)
+    setUser(user)
   }, [])
 
   const verifyTwoFactor = useCallback(async (code: string) => {
@@ -73,7 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTwoFactorChallenge(null)
     // Don't clear cache — same rationale as login handler.
     const me = await apiClient.get('/auth/me')
-    setUser(me.data)
+    const user = me.data as User
+    await mergeIntegrations(user)
+    setUser(user)
   }, [twoFactorChallenge])
 
   const cancelTwoFactor = useCallback(() => {
@@ -85,7 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
     // Don't clear cache on register — new user, no stale data to remove.
     const me = await apiClient.get('/auth/me')
-    setUser(me.data)
+    const user = me.data as User
+    await mergeIntegrations(user)
+    setUser(user)
   }, [])
 
   const logout = useCallback(async () => {
@@ -103,8 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshUser = useCallback(async () => {
-    const res = await apiClient.get('/auth/me')
-    setUser(res.data)
+    const me = await apiClient.get('/auth/me')
+    const user = me.data as User
+    await mergeIntegrations(user)
+    setUser(user)
   }, [])
 
   return (

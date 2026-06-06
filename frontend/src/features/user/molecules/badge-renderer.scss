@@ -1,0 +1,134 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ─────────────────────────────────────────────
+   Badge Renderer — dk-user-badge
+   Renders the badge shape (shield SVG), icon,
+   and hover effects per tier/earned state.
+   ───────────────────────────────────────────── */
+
+.dk-user-badge {
+  /* ── Layout base ── */
+  @apply relative flex items-center justify-center select-none;
+  @apply transition-all duration-300;
+
+  /* ── Size modifiers ── */
+  &--sm {
+    @apply w-12 h-12;
+  }
+  &--md {
+    @apply w-20 h-20;
+  }
+  &--lg {
+    @apply w-28 h-28;
+  }
+
+  /* ── Ambient glow (on hover, when earned) ── */
+  &__glow {
+    @apply absolute inset-0 rounded-full;
+    @apply blur-xl transition-all duration-500 pointer-events-none;
+    opacity: 0;
+    transform: scale(0.95);
+
+    .dk-user-badge:hover & {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+  }
+
+  /* ── SVG container (the shield shape) ── */
+  &__svg-container {
+    @apply absolute inset-0 w-full h-full;
+    @apply flex items-center justify-center;
+    @apply transition-transform duration-300;
+
+    .dk-user-badge:hover & {
+      transform: scale(1.05);
+    }
+  }
+
+  /* ── Inner icon overlay ── */
+  &__icon {
+    @apply relative z-10 flex flex-col items-center justify-center;
+    @apply transition-all duration-300;
+
+    .dk-user-badge:hover & {
+      transform: scale(1.1);
+    }
+  }
+
+  /* ── Rarity sparkles (platinum / special, on hover) ── */
+  &__sparkles {
+    @apply absolute inset-0 pointer-events-none overflow-hidden;
+    transform: scale(0.95);
+    @apply transition-transform duration-300;
+
+    .dk-user-badge:hover & {
+      transform: scale(1.1);
+    }
+  }
+
+  &__sparkle {
+    @apply rounded-full bg-white;
+    opacity: 0;
+
+    .dk-user-badge:hover & {
+      opacity: 1;
+    }
+
+    &--1 {
+      @apply absolute top-1/4 left-1/4 w-1.5 h-1.5;
+      animation: dk-user-badge-ping 1.2s ease-in-out infinite;
+    }
+
+    &--2 {
+      @apply absolute bottom-1/4 right-1/4 w-1 h-1;
+      animation: dk-user-badge-ping 0.8s ease-in-out infinite 0.3s;
+    }
+  }
+
+  /* ── Shimmer flare (platinum / special) ── */
+  &__shimmer {
+    @apply absolute inset-0 rounded-full overflow-hidden pointer-events-none;
+    transform: scale(0.8);
+  }
+
+  &__shimmer-strip {
+    @apply absolute inset-y-0 w-1/2;
+    transform: skewX(-12deg) translateX(-150%);
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
+    animation: dk-user-badge-shimmer 3s ease-in-out infinite;
+  }
+
+  /* ── Lock badge (unearned) ── */
+  &__lock {
+    @apply absolute bottom-0 right-0 p-1;
+    @apply bg-neutral-950/80 rounded-full shadow-md z-20;
+  }
+}
+
+/* ── Keyframes ── */
+
+@keyframes dk-user-badge-ping {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes dk-user-badge-shimmer {
+  0%,
+  100% {
+    transform: skewX(-12deg) translateX(-150%);
+  }
+  50% {
+    transform: skewX(-12deg) translateX(200%);
+  }
+}

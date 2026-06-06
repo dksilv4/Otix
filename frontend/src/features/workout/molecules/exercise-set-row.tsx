@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { Badge } from '@ui/atoms/badge'
 import type { SetData } from '../workout-queries'
+import './exercise-set-row.scss'
 
 interface ExerciseSetRowProps {
   name: string
@@ -15,14 +17,14 @@ function formatWeight(kg: number | null): string {
 
 export function ExerciseSetRow({ name, category, sets }: ExerciseSetRowProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 py-1">
-      <span className="text-sm font-semibold">{name}</span>
+    <div className="dk-exercise-set-row">
+      <span className="dk-exercise-set-row__name">{name}</span>
       {category && (
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+        <Badge variant="secondary" className="dk-exercise-set-row__badge">
           {category.replace('_', ' ')}
         </Badge>
       )}
-      <span className="text-xs text-muted-foreground/60">
+      <span className="dk-exercise-set-row__info">
         {sets.length} × {sets[0]?.reps ?? '?'}
         {sets[0]?.weightKg != null ? ` @ ${formatWeight(sets[0].weightKg)}` : ''}
       </span>

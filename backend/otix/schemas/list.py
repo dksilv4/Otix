@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from otix.api.schemas.media import MediaItemSummary
+from otix.schemas.media import MediaItemSummary
 
 
 class UserListCreate(BaseModel):

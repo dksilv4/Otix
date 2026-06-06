@@ -1,0 +1,292 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Media Detail Page ── */
+
+/* Root */
+.dk-media-detail {
+  @apply animate-fade-in space-y-12 pb-16;
+}
+
+.dk-media-detail__content {
+  @apply mx-auto space-y-12 px-4 sm:px-6 lg:max-w-7xl lg:px-8;
+}
+
+.dk-media-detail__footer {
+  @apply border-t border-border pt-6 text-xs text-muted-foreground;
+}
+
+.dk-media-detail__footer-meta {
+  @apply flex flex-wrap gap-x-4 gap-y-1;
+}
+
+/* Game action row */
+.dk-media-detail__game-actions {
+  @apply flex flex-wrap items-center gap-4;
+}
+
+/* Sync message (music without album) */
+.dk-media-detail__sync-msg {
+  @apply text-center text-sm text-muted-foreground;
+}
+
+/* Companies */
+.dk-media-detail__companies {
+  @apply space-y-3;
+}
+
+.dk-media-detail__companies-title {
+  @apply text-lg font-semibold;
+}
+
+.dk-media-detail__companies-list {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.dk-media-detail__badge-company {
+  @apply gap-1.5 border-white/10 bg-white/5 transition-colors hover:bg-white/10;
+}
+
+.dk-media-detail__badge-company-roles {
+  @apply text-[10px] text-muted-foreground;
+}
+
+/* ── Section Skeleton (deferred load placeholder) ── */
+.dk-media-detail__section-skeleton {
+  @apply rounded-2xl border border-white/[0.06];
+}
+
+/* ── DetailSkeleton ── */
+.dk-media-detail__skeleton {
+  @apply space-y-12;
+}
+
+.dk-media-detail__skeleton-hero {
+  @apply relative flex min-h-[65vh] items-end overflow-hidden rounded-3xl border border-white/[0.06] lg:min-h-[75vh];
+}
+
+.dk-media-detail__skeleton-hero-bg {
+  @apply pointer-events-none absolute inset-0 z-0;
+}
+
+.dk-media-detail__skeleton-hero-shimmer {
+  @apply h-full w-full animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.06];
+}
+
+.dk-media-detail__skeleton-hero-overlay {
+  @apply absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20;
+}
+
+.dk-media-detail__skeleton-hero-content {
+  @apply relative z-10 mx-auto w-full px-4 pb-12 pt-24 sm:px-6 lg:max-w-7xl lg:px-8;
+}
+
+.dk-media-detail__skeleton-hero-flex {
+  @apply flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12;
+}
+
+.dk-media-detail__skeleton-hero-poster {
+  @apply w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64;
+}
+
+.dk-media-detail__skeleton-hero-info {
+  @apply flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left;
+}
+
+.dk-media-detail__skeleton-hero-badges {
+  @apply flex gap-2;
+}
+
+.dk-media-detail__skeleton-hero-overview {
+  @apply mt-1 w-full max-w-2xl space-y-2;
+}
+
+.dk-media-detail__skeleton-hero-genres {
+  @apply flex gap-1.5;
+}
+
+.dk-media-detail__skeleton-actions {
+  @apply mx-auto px-4 sm:px-6 lg:max-w-7xl lg:px-8;
+}
+
+.dk-media-detail__skeleton-actions-grid {
+  @apply grid gap-3 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.dk-media-detail__skeleton-cast {
+  @apply mx-auto px-4 sm:px-6 lg:max-w-7xl lg:px-8;
+}
+
+.dk-media-detail__skeleton-cast-scroll {
+  @apply flex gap-4 overflow-hidden;
+}
+
+.dk-media-detail__skeleton-cast-item {
+  @apply w-24 shrink-0 text-center;
+}
+
+/* ── ErrorState ── */
+.dk-media-detail__error {
+  @apply flex min-h-[50vh] items-center justify-center px-4;
+}
+
+.dk-media-detail__error-card {
+  @apply max-w-sm space-y-3 text-center;
+}
+
+.dk-media-detail__error-icon {
+  @apply mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10;
+}
+
+.dk-media-detail__error-title {
+  @apply text-lg font-semibold;
+}
+
+.dk-media-detail__error-desc {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-media-detail__error-link {
+  @apply inline-block text-sm text-primary hover:underline;
+}
+
+/* ── DownloadGameButton — Installed / Play ── */
+.dk-media-detail__dl-row {
+  @apply flex items-center gap-3;
+}
+
+.dk-media-detail__dl-btn-play {
+  @apply inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-95;
+}
+
+.dk-media-detail__dl-meta {
+  @apply text-xs text-muted-foreground;
+}
+
+/* ── DownloadGameButton — Downloading status ── */
+.dk-media-detail__dl-status-group {
+  @apply space-y-2;
+}
+
+.dk-media-detail__dl-status-text {
+  @apply flex items-center gap-2 text-xs font-medium;
+}
+
+.dk-media-detail__dl-status-icon {
+  @apply h-4 w-4;
+}
+
+.dk-media-detail__dl-status-label {
+  @apply max-w-[200px] truncate text-muted-foreground;
+}
+
+.dk-media-detail__dl-status-pct {
+  @apply tabular-nums ml-1;
+}
+
+.dk-media-detail__dl-progress {
+  @apply h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[var(--dk-surface-raised)];
+}
+
+.dk-media-detail__dl-progress-bar {
+  @apply h-full rounded-full bg-blue-500 transition-all duration-700;
+}
+
+.dk-media-detail__dl-actions {
+  @apply flex items-center gap-2;
+}
+
+.dk-media-detail__dl-btn-refresh {
+  @apply text-xs text-muted-foreground transition-colors hover:text-foreground;
+}
+
+.dk-media-detail__dl-btn-cancel {
+  @apply text-xs text-red-400 transition-colors hover:text-red-300;
+}
+
+/* ── DownloadGameButton — ISO Available ── */
+.dk-media-detail__dl-iso-group {
+  @apply space-y-2;
+}
+
+.dk-media-detail__dl-iso-status {
+  @apply flex items-center gap-2 text-xs font-medium text-green-400;
+}
+
+.dk-media-detail__dl-iso-path {
+  @apply max-w-[250px] truncate text-muted-foreground text-[10px];
+}
+
+.dk-media-detail__dl-iso-actions {
+  @apply flex items-center gap-2;
+}
+
+.dk-media-detail__dl-btn-install {
+  @apply inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-600/25 transition-all duration-200 hover:bg-green-500 active:scale-95;
+}
+
+.dk-media-detail__dl-btn-move {
+  @apply inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-raised)] px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--dk-surface-glass)] disabled:opacity-50;
+}
+
+.dk-media-detail__dl-btn-redownload {
+  @apply block text-xs text-muted-foreground transition-colors hover:text-foreground;
+}
+
+/* ── DownloadGameButton — Failed ── */
+.dk-media-detail__dl-failed-group {
+  @apply space-y-2;
+}
+
+.dk-media-detail__dl-failed-status {
+  @apply flex items-center gap-2 text-xs font-medium text-red-400;
+}
+
+.dk-media-detail__dl-failed-msg {
+  @apply text-xs text-red-400;
+}
+
+.dk-media-detail__dl-btn-retry {
+  @apply text-xs text-blue-400 transition-colors hover:text-blue-300;
+}
+
+/* ── DownloadGameButton — Download Available ── */
+.dk-media-detail__dl-dl-row {
+  @apply flex items-center gap-3;
+}
+
+.dk-media-detail__dl-btn-download {
+  @apply inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:bg-blue-400 active:scale-95 disabled:opacity-50;
+}
+
+.dk-media-detail__dl-error {
+  @apply text-xs text-red-400;
+}
+
+/* ── DownloadGameButton — Hypervisor dialog ── */
+.dk-media-detail__dl-hv-dialog {
+  @apply space-y-4;
+}
+
+.dk-media-detail__dl-hv-text {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-media-detail__dl-hv-countdown {
+  @apply text-xs text-muted-foreground;
+}
+
+.dk-media-detail__dl-hv-countdown-num {
+  @apply font-mono font-bold text-foreground;
+}
+
+.dk-media-detail__dl-hv-actions {
+  @apply flex gap-3 pt-2;
+}
+
+.dk-media-detail__dl-hv-btn-confirm {
+  @apply flex-1 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-400 active:scale-95;
+}
+
+.dk-media-detail__dl-hv-btn-skip {
+  @apply flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--dk-surface-glass)];
+}

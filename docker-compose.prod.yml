@@ -1,10 +1,10 @@
 # Otix — production compose file
 x-otix-env: &otix-env
-  # ── Database ──
-  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-  DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-otix}
-  DB_POOL_SIZE: ${DB_POOL_SIZE:-1}
-  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-2}
+  # ── Database (via pgbouncer pooler) ──
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-otix}
+  DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-otix}:${POSTGRES_PASSWORD}@pgbouncer:6432/${POSTGRES_DB:-otix}
+  DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+  DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-5}
   REDIS_URL: redis://redis:6379/1
   CELERY_BROKER_URL: redis://redis:6379/0
   # ── App ──
@@ -58,7 +58,18 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-otix}
       POSTGRES_USER: ${POSTGRES_USER:-otix}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    command: postgres -c jit=off
+    command: >
+      postgres
+      -c jit=off
+      -c shared_buffers=384MB
+      -c effective_cache_size=1GB
+      -c work_mem=16MB
+      -c default_statistics_target=500
+      -c maintenance_work_mem=256MB
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c max_wal_size=2GB
+      -c min_wal_size=512MB
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -71,6 +82,39 @@ services:
       resources:
         limits:
           memory: 1500M
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-otix}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:-otix}
+      LISTEN_ADDR: "0.0.0.0"
+      LISTEN_PORT: "6432"
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: "25"
+      MAX_CLIENT_CONN: "150"
+      MIN_POOL_SIZE: "5"
+      RESERVE_POOL_SIZE: "5"
+      AUTH_TYPE: scram-sha-256
+      SERVER_IDLE_TIMEOUT: "300"
+      CLIENT_IDLE_TIMEOUT: "600"
+      QUERY_TIMEOUT: "300"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "pgbouncer"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
   redis:
     image: redis:7-alpine
@@ -104,8 +148,8 @@ services:
       retries: 3
       start_period: 15s
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     volumes:
@@ -125,8 +169,8 @@ services:
     environment:
       <<: *otix-env
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -151,8 +195,8 @@ services:
     environment:
       <<: *otix-env
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -177,8 +221,8 @@ services:
     environment:
       <<: *otix-env
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -203,8 +247,8 @@ services:
     environment:
       <<: *otix-env
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -229,8 +273,8 @@ services:
     environment:
       <<: *otix-env
     depends_on:
-      db:
-        condition: service_healthy
+      pgbouncer:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped

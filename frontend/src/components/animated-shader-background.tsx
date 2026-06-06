@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './animated-shader-background.scss'
 import { useEffect, useRef, useState } from 'react'
 import { Scene, OrthographicCamera, WebGLRenderer, ShaderMaterial, Vector2, PlaneGeometry, Mesh } from 'three'
 import { useShaderQuality } from '@/lib/shader-quality'
@@ -313,11 +315,11 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
   }, [mode, shaderQuality, useFallback])
 
   return (
-    <div ref={containerRef} className="fixed inset-0 h-full w-full overflow-hidden" aria-hidden="true">
+    <div ref={containerRef} className="dk-shader-bg__container" aria-hidden="true">
       {useFallback && (
         <div
           aria-hidden="true"
-          className="absolute inset-0"
+          className="dk-shader-bg__fallback"
           style={{
             background: [
               'radial-gradient(circle at 18% 18%, rgba(99, 123, 255, 0.28), transparent 42%)',

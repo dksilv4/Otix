@@ -1,0 +1,232 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ─── Admin Edit Modal ─── */
+.dk-admin-edit-modal {
+  @apply max-w-2xl;
+
+  &__content {
+    @apply space-y-5;
+  }
+
+  /* ─── Tabs ─── */
+  &__tablist {
+    @apply w-full;
+  }
+
+  &__tab {
+    @apply flex-1;
+  }
+
+  /* ─── Fields tab ─── */
+  &__fields {
+    @apply space-y-3;
+  }
+
+  /* ─── Images tab ─── */
+  &__images {
+    @apply space-y-4;
+  }
+
+  &__images-desc {
+    @apply text-xs text-muted-foreground;
+  }
+
+  &__filter {
+    @apply flex gap-2;
+  }
+
+  &__filter-select {
+    @apply h-10 text-sm;
+  }
+
+  &__loading {
+    @apply flex items-center justify-center py-8;
+  }
+
+  &__empty {
+    @apply flex flex-col items-center gap-2 py-8 text-center;
+  }
+
+  &__empty-text {
+    @apply text-sm text-muted-foreground;
+  }
+
+  &__empty-hint {
+    @apply text-xs;
+    color: hsl(var(--muted-foreground) / 0.6);
+  }
+
+  /* ─── Asset grid ─── */
+  &__grid {
+    @apply grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1;
+  }
+
+  &__asset {
+    @apply relative w-full overflow-hidden rounded-xl;
+    background-color: rgb(0 0 0 / 0.2);
+    transition: all 150ms ease;
+
+    &:not(&--selected) {
+      @apply ring-1 ring-white/10;
+
+      &:hover {
+        @apply ring-primary/50;
+      }
+    }
+
+    &--selected {
+      @apply ring-2 ring-primary;
+    }
+  }
+
+  &__asset-image {
+    @apply w-full h-auto object-contain p-1;
+  }
+
+  &__asset-check {
+    @apply absolute inset-0 flex items-center justify-center;
+    background-color: hsl(var(--primary) / 0.3);
+  }
+
+  /* ─── Asset badges ─── */
+  &__badge-position {
+    @apply absolute top-1 left-1 flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[9px] font-medium text-white;
+    background-color: hsl(var(--primary) / 0.8);
+  }
+
+  &__badge-lang {
+    @apply absolute top-1 left-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium text-white;
+    background-color: rgb(0 0 0 / 0.6);
+  }
+
+  &__badge-provider {
+    @apply absolute bottom-1 right-1 rounded-md px-1.5 py-0.5 text-[9px];
+    background-color: rgb(0 0 0 / 0.6);
+    color: rgb(255 255 255 / 0.7);
+  }
+
+  /* ─── Selected overrides ─── */
+  &__overrides {
+    @apply space-y-2;
+  }
+
+  &__overrides-header {
+    @apply text-xs font-medium;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__override-list {
+    @apply space-y-1.5;
+  }
+
+  &__override {
+    @apply flex items-center gap-3 rounded-xl p-2;
+    background-color: var(--dk-surface-ghost);
+    outline: 1px solid rgb(255 255 255 / 0.1);
+  }
+
+  &__override-image {
+    @apply h-12 w-9 shrink-0 rounded-lg object-cover;
+  }
+
+  &__override-info {
+    @apply min-w-0 flex-1;
+  }
+
+  &__override-title {
+    @apply text-xs font-medium;
+    color: hsl(var(--foreground));
+  }
+
+  &__override-subtitle {
+    @apply truncate text-[10px];
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__override-delete {
+    @apply shrink-0 rounded-lg p-1.5;
+    transition: color 150ms ease, background-color 150ms ease;
+    color: hsl(var(--muted-foreground));
+
+    &:hover {
+      background-color: hsl(var(--destructive) / 0.1);
+      color: hsl(var(--destructive));
+    }
+  }
+
+  /* ─── Preview tab ─── */
+  &__preview {
+    @apply space-y-3;
+  }
+
+  &__preview-empty {
+    @apply text-center text-sm py-4;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__preview-section {
+    @apply space-y-2;
+  }
+
+  &__preview-header {
+    @apply text-xs font-medium;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__preview-content {
+    @apply rounded-xl p-3;
+    background-color: var(--dk-surface-ghost);
+    outline: 1px solid rgb(255 255 255 / 0.1);
+  }
+
+  &__preview-row {
+    @apply flex gap-2 py-1 text-sm;
+  }
+
+  &__preview-label {
+    @apply w-36 shrink-0 font-medium;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__preview-value {
+    @apply text-emerald-400;
+  }
+
+  &__preview-image-overrides {
+    @apply space-y-1.5;
+  }
+
+  &__preview-override {
+    @apply flex items-center gap-3 rounded-xl p-2;
+    background-color: var(--dk-surface-ghost);
+    outline: 1px solid rgb(255 255 255 / 0.1);
+  }
+
+  &__preview-override-image {
+    @apply h-12 w-9 shrink-0 rounded-lg object-cover;
+  }
+
+  &__preview-override-info {
+    @apply min-w-0 text-sm;
+  }
+
+  &__preview-override-name {
+    @apply font-medium;
+  }
+
+  &__preview-override-lang {
+    @apply text-muted-foreground;
+  }
+
+  /* ─── Submit ─── */
+  &__submit {
+    @apply flex justify-end gap-2 pt-2;
+  }
+
+  /* ─── Position overlay ─── */
+  &__overlay {
+    @apply fixed inset-0 flex items-center justify-center;
+    z-index: calc(var(--dk-z-modal) + 1);
+    background-color: rgb(0 0 0 / 0.6);
+  }
+}

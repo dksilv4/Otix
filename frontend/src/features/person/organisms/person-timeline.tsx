@@ -1,8 +1,10 @@
+// TODO: Review this file
 import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
 import type { MediaType } from '@/constants/media'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR_TINTED } from '@/constants/media'
 import type { PersonCredit } from '../person-queries'
+import './person-timeline.scss'
 
 interface EpisodeRef {
  episodeNumber: number
@@ -52,7 +54,7 @@ function expandCredits(credits: PersonCredit[]): GroupedCredit[] {
  }
  }
 
- // No episodes with dates â†’ upcoming/announced season
+ // No episodes with dates = upcoming/announced season
  if (byYear.size === 0) {
  result.push({
  mediaId: c.mediaItem.id,
@@ -197,7 +199,7 @@ function formatDateRange(start: string | null, end: string | null, isSeason: boo
  const monthDay = (d: string) =>
  new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
  if (!end || start === end) return monthDay(start)
- return `${monthDay(start)} â€“ ${monthDay(end)}`
+ return `${monthDay(start)} – ${monthDay(end)}`
 }
 
 function formatRole(role: string): string {
@@ -236,32 +238,32 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
 
  if (groups.length === 0) {
  return (
- <div className="py-16 text-center text-sm text-muted-foreground">
+ <div className="dk-person-timeline__empty">
  No credits match the selected filters.
  </div>
  )
  }
 
  return (
- <div className="relative">
+ <div className="dk-person-timeline">
  {/* Main vertical timeline line */}
  <div
- className="absolute left-[23px] top-4 bottom-4 w-px bg-border"
+ className="dk-person-timeline__line"
  aria-hidden="true"
  />
 
- <div className="space-y-10">
+ <div className="dk-person-timeline__groups">
  {groups.map((group) => (
  <div key={group.year}>
- {/* Year marker — sticky */}
- <div className="sticky top-0 z-20 -mt-4 pt-4 pb-2 mb-3 bg-background/80 backdrop-blur-sm">
- <div className="relative flex items-center gap-5">
- <div className="relative z-10 flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-card ring-2 ring-border">
- <div className="h-3 w-3 rounded-full bg-primary" />
+ {/* Year marker -- sticky */}
+ <div className="dk-person-timeline__year">
+ <div className="dk-person-timeline__year-container">
+ <div className="dk-person-timeline__year-dot-wrapper">
+ <div className="dk-person-timeline__year-dot" />
  </div>
- <h3 className={`text-lg font-bold tracking-tight ${
- group.year === 'Upcoming' ? 'text-emerald-400' :
- group.year === 'Announced' ? 'text-amber-400' : ''
+ <h3 className={`dk-person-timeline__year-label${
+ group.year === 'Upcoming' ? ' dk-person-timeline__year-label--upcoming' :
+ group.year === 'Announced' ? ' dk-person-timeline__year-label--announced' : ''
  }`}>
  {group.year}
  </h3>
@@ -269,7 +271,7 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  </div>
 
  {/* Media nodes */}
- <div className="space-y-3 pl-[69px]">
+ <div className="dk-person-timeline__credits">
  {group.credits.map((credit) => {
  const isSeason = credit.seasonNumber != null
  const displayTitle = isSeason
@@ -283,7 +285,7 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  return (
  <div key={`${credit.mediaId}-S${credit.seasonNumber ?? '-'}-${credit.releaseDate ?? '?'}`}>
  {/* Media node with connector from main timeline */}
- <div className="relative">
+ <div className="dk-person-timeline__media">
  <svg
  className="absolute top-0 pointer-events-none"
  style={{ width: '46px', left: '-46px', height: '28px', overflow: 'visible' }}
@@ -301,9 +303,9 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  <Link
  to="/media/$mediaType/$mediaId"
  params={{ mediaType: credit.mediaType, mediaId: credit.mediaId }}
- className="inline-flex items-start gap-3 rounded-xl /60 bg-card/40 p-3 hover:border-border hover:bg-card/80 transition-colors group max-w-lg"
+ className="dk-person-timeline__card"
  >
- <div className="h-[68px] w-[45px] shrink-0 overflow-hidden rounded-md ring-1 ring-border/50">
+ <div className="dk-person-timeline__poster">
  <Image
  src={credit.posterUrl ?? undefined}
  alt={credit.title}
@@ -316,16 +318,16 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  />
  </div>
 
- <div className="min-w-0 flex-1">
- <div className="flex items-center gap-2 flex-wrap">
- <span className="text-sm font-medium group-hover:text-primary transition-colors truncate">
+ <div className="dk-person-timeline__info">
+ <div className="dk-person-timeline__title-row">
+ <span className="dk-person-timeline__title">
  {displayTitle}
  </span>
  {(() => {
  const mt = credit.mediaType as MediaType
  return (
  <span
- className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ring-1 ring-inset ${MEDIA_TYPE_COLOR_TINTED[mt] ?? 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/20'}`}
+ className={`dk-person-timeline__badge ${MEDIA_TYPE_COLOR_TINTED[mt] ?? 'bg-zinc-500/10 text-zinc-400 ring-zinc-500/20'}`}
  >
  {MEDIA_TYPE_LABEL[mt] ?? credit.mediaType}
  </span>
@@ -335,26 +337,26 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
 
  {dateLabel && (
  <span
- className={`mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium ${
+ className={`dk-person-timeline__date-badge ${
  upcoming
- ? 'bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20'
+ ? 'dk-person-timeline__date-badge--upcoming'
  : dateLabel === 'Announced'
- ? 'bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20'
- : 'text-muted-foreground/60'
+ ? 'dk-person-timeline__date-badge--announced'
+ : 'dk-person-timeline__date-badge--past'
  }`}
  >
  {dateLabel}
  </span>
  )}
- <div className="mt-1.5 flex flex-wrap items-center gap-1">
+ <div className="dk-person-timeline__roles">
  {credit.roles.map((r, i) => (
- <span key={i} className="inline-flex items-center gap-1">
- {i > 0 && <span className="text-muted-foreground/40">·</span>}
- <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-white/5 text-white/60">
+ <span key={i} className="dk-person-timeline__role-item">
+ {i > 0 && <span className="dk-person-timeline__role-separator">·</span>}
+ <span className="dk-person-timeline__role-badge">
  {formatRole(r.role)}
  </span>
  {r.characterName && (
- <span className="text-[11px] text-muted-foreground">
+ <span className="dk-person-timeline__character">
  as {r.characterName}
  </span>
  )}
@@ -367,12 +369,12 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
 
  {/* Episode sub-nodes */}
  {credit.episodes.length > 0 && (
- <div className="relative ml-10">
- <div className="absolute left-[10px] -top-1 bottom-0 w-px bg-border/40" aria-hidden="true" />
+ <div className="dk-person-timeline__episodes">
+ <div className="dk-person-timeline__episodes-line" aria-hidden="true" />
 
- <div className="space-y-0">
+ <div className="dk-person-timeline__episodes-list">
  {credit.episodes.map((ep) => (
- <div key={ep.episodeNumber} className="relative flex items-center gap-1.5 pl-6 py-0.5">
+ <div key={ep.episodeNumber} className="dk-person-timeline__episode">
  <svg
  className="absolute left-[10px] top-1/2 pointer-events-none -translate-y-1/2"
  style={{ width: '14px', height: '8px', overflow: 'visible' }}
@@ -386,14 +388,14 @@ export function PersonTimeline({ credits, mediaTypeFilter, roleFilter }: PersonT
  strokeWidth="1"
  />
  </svg>
- <span className="text-[10px] font-medium text-muted-foreground/60 w-8 shrink-0 tabular-nums text-right">
+ <span className="dk-person-timeline__episode-number">
  {ep.episodeNumber}
  </span>
- <span className="text-[11px] text-muted-foreground/80 truncate">
+ <span className="dk-person-timeline__episode-name">
  {ep.name || `Episode ${ep.episodeNumber}`}
  </span>
  {ep.airDate && (
- <span className="text-[10px] text-muted-foreground/40 shrink-0">
+ <span className="dk-person-timeline__episode-date">
  {new Date(ep.airDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
  </span>
  )}

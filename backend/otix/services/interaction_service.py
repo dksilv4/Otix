@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,13 +13,14 @@ from otix.domain.media import MediaItem
 from otix.infrastructure.celery import app
 from otix.lib.xp import INTERACTION_LIKE_WATCHLIST_STARTED, INTERACTION_WATCHED_PLAYED
 
-_TYPE_TO_COLUMN: dict[str, str] = {
+_TYPE_TO_COLUMN: dict[str, str | None] = {
     "liked": "like_count",
     "watchlisted": "watchlist_count",
     "watched": "watched_count",
     "played": "played_count",
     "started": "started_count",
     "listened": "listened_count",
+    "owned": None,  # ownership is private — no public count column
 }
 
 _VALID_TYPES = frozenset(_TYPE_TO_COLUMN)
@@ -27,6 +29,21 @@ _VALID_TYPES = frozenset(_TYPE_TO_COLUMN)
 class InteractionService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_youtube_liked_interaction(
+        self, user_id: str, media_item_id: str
+    ) -> UserMediaInteraction | None:
+        """Return a YouTube liked-video interaction for a user+media combination, if any."""
+        return await self.session.scalar(
+            select(UserMediaInteraction)
+            .where(
+                UserMediaInteraction.user_id == user_id,
+                UserMediaInteraction.media_item_id == media_item_id,
+                UserMediaInteraction.interaction_type == "listened",
+                UserMediaInteraction.extra_data["source"].as_string() == "youtube_liked_videos",
+            )
+            .limit(1)
+        )
 
     async def get_user_interactions(
         self, user_id: str, media_item_id: str

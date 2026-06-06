@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils'
+import './input.scss'
 
 interface DkInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -15,11 +17,11 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
     const hintId = `${inputId}-hint`
 
     return (
-      <div className="space-y-1.5">
+      <div className="dk-input">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+          <label htmlFor={inputId} className="dk-input__label">
             {label}
-            {required && <span className="ml-0.5 text-destructive">*</span>}
+            {required && <span className="dk-input__required">*</span>}
           </label>
         )}
         <input
@@ -31,25 +33,20 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
             error ? errorId : hint ? hintId : undefined
           }
           className={cn(
-            'flex h-12 w-full rounded-xl bg-[var(--dk-surface-glass)] px-4 text-base backdrop-blur-md',
-            'transition-all duration-[var(--dk-duration-fast)]',
-            'placeholder:text-muted-foreground/50',
-            'hover:bg-[var(--dk-surface-glass-hover)]',
-            'focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1',
-            error &&
-              'ring-2 ring-destructive/40 focus:ring-destructive/40',
-            props.disabled && 'opacity-40 cursor-not-allowed',
+            'dk-input__field',
+            error && 'dk-input__field--error',
+            props.disabled && 'dk-input__field--disabled',
             className,
           )}
           {...props}
         />
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted-foreground">
+          <p id={hintId} className="dk-input__hint">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="dk-input__error">
             {error}
           </p>
         )}

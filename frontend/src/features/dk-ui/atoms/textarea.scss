@@ -1,0 +1,57 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-textarea {
+  @apply space-y-1.5;
+}
+
+.dk-textarea__label {
+  @apply text-sm font-medium;
+  color: var(--foreground);
+}
+
+.dk-textarea__required {
+  @apply ml-0.5;
+  color: var(--destructive);
+}
+
+.dk-textarea__field {
+  @apply flex min-h-[80px] w-full rounded-xl px-4 py-3 text-base;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(12px);
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+  resize: vertical;
+
+  &::placeholder {
+    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  }
+
+  &:hover {
+    background-color: var(--dk-surface-glass-hover);
+  }
+
+  &:focus {
+    @apply outline-none ring-2 ring-offset-1;
+    --tw-ring-color: var(--dk-ring-color);
+  }
+}
+
+.dk-textarea__field--error {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--destructive) 40%, transparent);
+  &:focus {
+    --tw-ring-color: color-mix(in srgb, var(--destructive) 40%, transparent);
+  }
+}
+
+.dk-textarea__field--disabled {
+  @apply opacity-40 cursor-not-allowed;
+}
+
+.dk-textarea__hint {
+  @apply text-xs;
+  color: var(--muted-foreground);
+}
+
+.dk-textarea__error {
+  @apply text-xs;
+  color: var(--destructive);
+}

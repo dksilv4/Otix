@@ -1,0 +1,13 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-review-interactive-star {
+  @apply relative inline-block touch-none select-none px-0.5;
+}
+
+.dk-review-interactive-star__hit--left {
+  @apply absolute inset-0 z-10 w-1/2;
+}
+
+.dk-review-interactive-star__hit--right {
+  @apply absolute inset-0 left-1/2 z-10 w-1/2;
+}

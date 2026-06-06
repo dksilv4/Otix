@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import httpx
@@ -7,6 +8,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from sqlalchemy import Integer as SAInteger
+from sqlalchemy import func as safunc
+
 from otix.domain.media import ExternalID, Game, MediaItem, UserSteamGame, UserSteamWishlist
 from otix.domain.user import User
 from otix.infrastructure.config import settings
@@ -14,6 +18,47 @@ from otix.infrastructure.config import settings
 logger = structlog.get_logger()
 
 STEAM_API_BASE = "https://api.steampowered.com"
+
+
+async def get_steam_game_seed_ids(session: AsyncSession, user_id: str, limit: int = 40) -> list[str]:
+    """Get media_item_ids from a user's Steam games, sorted by playtime."""
+    result = await session.execute(
+        select(UserSteamGame.media_item_id)
+        .where(
+            UserSteamGame.user_id == user_id,
+            UserSteamGame.media_item_id.isnot(None),
+        )
+        .order_by(UserSteamGame.playtime_forever.desc())
+        .limit(limit)
+    )
+    return [row[0] for row in result if row[0]]
+
+
+async def get_steam_playtime(session: AsyncSession, user_id: str, media_id: str) -> dict | None:
+    """Fetch Steam playtime for a user+media combination."""
+    steam_game = await session.scalar(
+        select(UserSteamGame).where(
+            UserSteamGame.user_id == user_id,
+            UserSteamGame.steam_app_id
+            == safunc.cast(
+                select(ExternalID.external_id)
+                .where(
+                    ExternalID.provider == "steam",
+                    ExternalID.entity_type == "media_item",
+                    ExternalID.entity_id == media_id,
+                )
+                .scalar_subquery(),
+                SAInteger,
+            ),
+        )
+    )
+    if steam_game is None:
+        return None
+    return {
+        "playtime_forever": steam_game.playtime_forever,
+        "playtime_2weeks": steam_game.playtime_2weeks,
+        "rtime_last_played": steam_game.rtime_last_played,
+    }
 
 
 async def _fetch_owned_games(steam_id: str) -> list[dict]:

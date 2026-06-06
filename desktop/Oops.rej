@@ -1,0 +1,9 @@
+@@ -89,7 +89,7 @@
+ 	recv->InstanceTemplate()->SetNativeDataProperty(
+ 		InternalizedFromLatin1(isolate, name),
+ 		func,
+-		0,
++		nullptr,
+ 		data
+ 	);
+ }

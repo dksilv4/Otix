@@ -1,0 +1,50 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-review-star-input {
+  @apply relative inline-flex flex-col items-center gap-1.5;
+
+  &--disabled {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  &__tooltip {
+    @apply absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl bg-foreground px-3 py-1.5 text-sm font-semibold text-background shadow-lg z-20;
+  }
+
+  &__tooltip-arrow {
+    @apply absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-foreground rotate-45;
+  }
+
+  &__stars {
+    @apply flex items-center gap-1;
+  }
+
+  &__label {
+    @apply text-xs font-semibold tabular-nums select-none;
+    transition: color 0.15s ease;
+
+    &--high {
+      @apply text-emerald-400;
+    }
+
+    &--medium {
+      @apply text-sky-400;
+    }
+
+    &--low {
+      @apply text-amber-400;
+    }
+
+    &--critical {
+      @apply text-red-400;
+    }
+
+    &--muted {
+      @apply text-muted-foreground;
+    }
+  }
+
+  &__placeholder {
+    @apply text-xs font-semibold invisible;
+  }
+}

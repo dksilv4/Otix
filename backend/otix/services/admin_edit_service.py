@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from sqlalchemy import func, select
@@ -35,6 +36,21 @@ _ALLOWED_FIELDS = {
 class AdminEditService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_media_item(self, media_id: str) -> MediaItem | None:
+        """Return a media item or None if not found."""
+        return await self.session.scalar(select(MediaItem).where(MediaItem.id == media_id))
+
+    async def list_media_assets(self, media_id: str) -> list:
+        """List all assets for a media item, ordered by type/lang/score."""
+        from otix.domain.asset import MediaAsset
+
+        assets = await self.session.scalars(
+            select(MediaAsset)
+            .where(MediaAsset.media_item_id == media_id)
+            .order_by(MediaAsset.asset_type, MediaAsset.lang, MediaAsset.score.desc())
+        )
+        return list(assets)
 
     async def create_proposal(
         self,

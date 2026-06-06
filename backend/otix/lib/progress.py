@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Redis-backed atomic progress counters for worker observability.
 
 Uses HINCRBY on a fixed key. snapshot_and_reset() atomically reads and

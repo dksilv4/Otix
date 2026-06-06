@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { Link } from '@tanstack/react-router';
 import { Loader2, CheckCircle2, XCircle, Clock, FolderOpen, X, Trash2, ArchiveX } from 'lucide-react';
 import type { Download as DownloadType } from '../types';
 import { cn } from '@/lib/utils';
+import './download-card.scss';
 
 const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   queued: Clock,
@@ -10,15 +12,6 @@ const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   completed: CheckCircle2,
   failed: XCircle,
   deleted: ArchiveX,
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  queued: 'text-amber-400',
-  downloading: 'text-blue-400',
-  processing: 'text-purple-400',
-  completed: 'text-green-400',
-  failed: 'text-red-400',
-  deleted: 'text-muted-foreground',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -47,69 +40,68 @@ interface DownloadCardProps {
 
 export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: DownloadCardProps) {
   const StatusIcon = STATUS_ICONS[download.status] ?? Clock;
-  const colorClass = STATUS_COLORS[download.status] ?? 'text-muted-foreground';
   const isActive = download.status === 'queued' || download.status === 'downloading';
   const gameTitle = download.mediaItemTitle ?? download.nzbName ?? 'Unknown';
   const hasMediaLink = !!download.mediaItemId;
 
   return (
-    <div className="flex items-center gap-4 rounded-xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]">
+    <div className="dk-download-card">
       {/* Icon */}
-      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/20', colorClass)}>
+      <div className={cn('dk-download-card__icon', `dk-download-card__icon--${download.status}`)}>
         <StatusIcon className={cn('h-5 w-5', download.status === 'downloading' && 'animate-spin')} />
       </div>
 
       {/* Info */}
-      <div className="min-w-0 flex-1">
+      <div className="dk-download-card__info">
         {hasMediaLink ? (
           <Link
             to="/media/$mediaType/$mediaId"
             params={{ mediaType: 'game', mediaId: download.mediaItemId! }}
-            className="text-sm font-medium truncate block hover:text-primary transition-colors"
+            className="dk-download-card__title dk-download-card__title--link"
           >
             {gameTitle}
           </Link>
         ) : (
-          <p className="text-sm font-medium truncate">{gameTitle}</p>
+          <p className="dk-download-card__title">{gameTitle}</p>
         )}
         {download.mediaItemTitle && download.nzbName && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{download.nzbName}</p>
+          <p className="dk-download-card__subtitle">{download.nzbName}</p>
         )}
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={cn('text-xs font-medium', colorClass)}>
+        <div className="dk-download-card__meta">
+          <span className={cn('dk-download-card__status', `dk-download-card__status--${download.status}`)}>
             {STATUS_LABELS[download.status] ?? download.status}
           </span>
           {isActive && download.percentage != null && (
-            <span className="text-xs text-muted-foreground tabular-nums">{download.percentage}%</span>
+            <span className="dk-download-card__percentage">{download.percentage}%</span>
           )}
           {download.nzbSize && (
-            <span className="text-xs text-muted-foreground">{formatSize(download.nzbSize)}</span>
+            <span className="dk-download-card__size">{formatSize(download.nzbSize)}</span>
           )}
           {download.completedAt && (
-            <span className="text-xs text-muted-foreground">
+            <span className="dk-download-card__date">
               {new Date(download.completedAt).toLocaleString()}
             </span>
           )}
         </div>
         {isActive && download.percentage != null && (
-          <div className="mt-1.5 h-1.5 w-full rounded-full bg-[var(--dk-surface-raised)] overflow-hidden">
+          <div className="dk-download-card__progress">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-700"
+              className="dk-download-card__progress-bar"
               style={{ width: `${download.percentage}%` }}
             />
           </div>
         )}
         {download.errorMessage && (
-          <p className="text-xs text-red-400 mt-1 line-clamp-2">{download.errorMessage}</p>
+          <p className="dk-download-card__error">{download.errorMessage}</p>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="dk-download-card__actions">
         {isActive && onCancel && (
           <button
             onClick={() => onCancel(download.id)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="dk-download-card__action-btn"
             title="Cancel download"
           >
             <X className="h-4 w-4" />
@@ -118,7 +110,7 @@ export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: Dow
         {!isActive && onDelete && (
           <button
             onClick={() => onDelete(download.id)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            className="dk-download-card__action-btn"
             title="Delete download"
           >
             <Trash2 className="h-4 w-4" />
@@ -127,7 +119,7 @@ export function DownloadCard({ download, onCancel, onDelete, onOpenFolder }: Dow
         {download.status === 'completed' && download.isoPath && onOpenFolder && (
           <button
             onClick={() => onOpenFolder(download.isoPath!)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+            className="dk-download-card__action-btn dk-download-card__action-btn--primary"
             title="Open folder"
           >
             <FolderOpen className="h-4 w-4" />

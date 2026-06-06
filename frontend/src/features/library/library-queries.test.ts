@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
@@ -112,33 +113,42 @@ describe('Library Query Hooks', () => {
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(apiClient.post).toHaveBeenCalledWith('/auth/integrations/steam/scan')
+    expect(apiClient.post).toHaveBeenCalledWith('/integrations/steam/scan')
     expect(result.current.data).toEqual(mockResponse)
   })
 
   it('usePlexLibraryScan triggers plex sync mutation', async () => {
-    // Step 1: POST returns a task ID (202 response)
-    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: { taskId: 'task-abc' } })
+    // The POST creation and SSE stream are now handled by connectTaskSseStream
+    // using fetch() directly (not apiClient).
+
+    // Step 1: POST to create the sync task returns a task ID
+    const postResponse = new Response(JSON.stringify({ taskId: 'task-abc' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
 
     // Step 2: GET SSE stream returns a sync_complete event then closes
     const sseBody = 'data: {"type":"sync_complete","total":20,"matched":10,"seeded":5,"servers":1,"libraries":2}\n\n'
     const encoder = new TextEncoder()
-    const readable = new ReadableStream({
+    const sseStream = new ReadableStream({
       start(controller) {
         controller.enqueue(encoder.encode(sseBody))
         controller.close()
       }
     })
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      body: readable,
+    const streamResponse = new Response(sseStream, {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
     })
+
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(postResponse)
+      .mockResolvedValueOnce(streamResponse)
 
     const { result } = renderHook(() => usePlexLibraryScan(), { wrapper: createWrapper() })
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 3000 })
-    expect(apiClient.post).toHaveBeenCalledWith('/auth/integrations/plex/sync')
     expect(result.current.data).toEqual({ total: 20, matched: 10, seeded: 5, servers: 1, libraries: 2 })
   })
 
@@ -195,7 +205,7 @@ describe('Library Query Hooks', () => {
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(apiClient.post).toHaveBeenCalledWith('/auth/integrations/spotify/sync')
+    expect(apiClient.post).toHaveBeenCalledWith('/integrations/spotify/sync')
     expect(result.current.data).toEqual(mockResponse)
   })
 
@@ -241,7 +251,7 @@ describe('Library Query Hooks', () => {
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(apiClient.post).toHaveBeenCalledWith('/auth/integrations/steam/wishlist/scan')
+    expect(apiClient.post).toHaveBeenCalledWith('/integrations/steam/wishlist/scan')
     expect(result.current.data).toEqual(mockResponse)
   })
 })

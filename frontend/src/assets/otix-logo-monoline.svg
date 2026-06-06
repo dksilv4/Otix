@@ -1,0 +1,60 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 2048 2048">
+  <!-- Corner guides to maintain viewBox dimensions -->
+  <path d="M0 0 L2 0 L2 2 L0 2 Z" fill="transparent" />
+  <path d="M2046 0 L2048 0 L2048 2 L2046 2 Z" fill="transparent" />
+  <path d="M0 2046 L2 2046 L2 2048 L0 2048 Z" fill="transparent" />
+  <path d="M2046 2046 L2048 2046 L2048 2048 L2046 2048 Z" fill="transparent" />
+
+  <!-- 1. Infinity Symbol (Modern Circular) -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M 1024 1024
+    C 1124 850, 1200 699, 1353 699
+    A 325 325 0 0 1 1678 1024
+    A 325 325 0 0 1 1353 1349
+    C 1200 1349, 1124 1198, 1024 1024
+    C 924 850, 848 699, 695 699
+    A 325 325 0 0 0 370 1024
+    A 325 325 0 0 0 695 1349
+    C 848 1349, 924 1198, 1024 1024 Z
+
+    M 635 819
+    A 205 205 0 1 0 635 1229
+    A 205 205 0 1 0 635 819 Z
+
+    M 1413 819
+    A 205 205 0 1 0 1413 1229
+    A 205 205 0 1 0 1413 819 Z
+  " />
+
+  <!-- 2. The Letter 'O' (inside left loop) -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M 635 919
+    A 105 105 0 1 0 635 1129
+    A 105 105 0 1 0 635 919 Z
+
+    M 635 949
+    A 75 75 0 1 1 635 1099
+    A 75 75 0 1 1 635 949 Z
+  " />
+
+  <!-- 3. The Letter 'X' (inside right loop) -->
+  <path fill="currentColor" fill-rule="evenodd" d="
+    M 1343 954 L 1453 1094 L 1483 1094 L 1373 954 Z
+    M 1373 1094 L 1483 954 L 1453 954 L 1343 1094 Z
+  " />
+
+  <!-- 4. The Letter 'I' (top bar and dot) -->
+  <path fill="currentColor" d="
+    M 588 643 H 989 V 673 H 588 Z
+    M 1059 643 H 1461 V 673 H 1059 Z
+    M 1009 540 H 1039 V 673 H 1009 Z
+    M 1024 455 A 30 30 0 1 0 1024 515 A 30 30 0 1 0 1024 455 Z
+  " />
+
+  <!-- 5. The Letter 'T' (bottom bar and stem) -->
+  <path fill="currentColor" d="
+    M 588 1375 H 1461 V 1405 H 588 Z
+    M 1009 1405 H 1039 V 1575 H 1009 Z
+    M 974 1575 H 1074 V 1605 H 974 Z
+  " />
+</svg>

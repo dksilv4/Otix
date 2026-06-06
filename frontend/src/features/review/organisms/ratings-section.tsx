@@ -1,3 +1,4 @@
+import "./ratings-section.scss"
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import logoSvg from "@/assets/otix-logo.svg?raw"
@@ -26,20 +27,20 @@ interface RatingsSectionProps {
   className?: string
 }
 
-function scoreColor(score: number): { text: string; glow: string } {
-  if (score >= 8) return { text: "text-emerald-400", glow: "from-emerald-500/15" }
-  if (score >= 6) return { text: "text-sky-400", glow: "from-sky-500/15" }
-  if (score >= 4) return { text: "text-amber-400", glow: "from-amber-500/15" }
-  return { text: "text-red-400", glow: "from-red-500/15" }
+function scoreColor(score: number): { scoreClass: string; glowClass: string } {
+  if (score >= 8) return { scoreClass: "dk-review-ratings__score--positive", glowClass: "dk-review-ratings__glow--positive" }
+  if (score >= 6) return { scoreClass: "dk-review-ratings__score--medium", glowClass: "dk-review-ratings__glow--medium" }
+  if (score >= 4) return { scoreClass: "dk-review-ratings__score--low", glowClass: "dk-review-ratings__glow--low" }
+  return { scoreClass: "dk-review-ratings__score--critical", glowClass: "dk-review-ratings__glow--critical" }
 }
 
 function StarRow({ count, filled }: { count: number; filled: number }) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="dk-review-ratings__stars">
       {Array.from({ length: count }).map((_, i) => {
         const fill = Math.min(1, Math.max(0, filled - i))
         return (
-          <span key={i} className="relative inline-block">
+          <span key={i} className="dk-review-ratings__star">
             <Star className="w-5 h-5 text-white/[0.06]" fill="currentColor" />
             {fill > 0 && (
               <Star
@@ -58,30 +59,28 @@ function StarRow({ count, filled }: { count: number; filled: number }) {
 }
 
 interface ProviderTheme {
-  bg: string
-  text: string
-  star: string
-  score: string
+  badge: string
+  scoreClass: string
   logoInvert?: boolean
 }
 
 function providerTheme(provider: string): ProviderTheme {
   const themes: Record<string, ProviderTheme> = {
-    imdb:             { bg: 'bg-[#f5c518]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    metacritic:       { bg: 'bg-[#1c1c1c]', text: 'text-white', star: 'text-[#66cc33]', score: 'text-[#66cc33]' },
-    steam_metacritic: { bg: 'bg-[#1c1c1c]', text: 'text-white', star: 'text-[#66cc33]', score: 'text-[#66cc33]' },
-    rotten_tomatoes:  { bg: 'bg-[#fa320a]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    letterboxd:       { bg: 'bg-[#00e054]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    plex:             { bg: 'bg-[#e5a00d]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    steam_user:       { bg: 'bg-[#1a9fff]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
-    tmdb:             { bg: 'bg-[#01b4e4]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
-    igdb_critic:      { bg: 'bg-[#c8943e]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
-    igdb_user:        { bg: 'bg-[#5450d5]', text: 'text-white', star: 'text-white', score: 'text-white', logoInvert: true },
-    spotify:          { bg: 'bg-[#1DB954]', text: 'text-black', star: 'text-black', score: 'text-black' },
-    lastfm:           { bg: 'bg-[#d51007]', text: 'text-white', star: 'text-white', score: 'text-white' },
-    musicbrainz:      { bg: 'bg-[#ba478f]', text: 'text-white', star: 'text-white', score: 'text-white' },
+    imdb:             { badge: 'dk-review-ratings__badge--imdb', scoreClass: 'dk-review-ratings__badge-score--imdb' },
+    metacritic:       { badge: 'dk-review-ratings__badge--metacritic', scoreClass: 'dk-review-ratings__badge-score--metacritic' },
+    steam_metacritic: { badge: 'dk-review-ratings__badge--steam-metacritic', scoreClass: 'dk-review-ratings__badge-score--steam-metacritic' },
+    rotten_tomatoes:  { badge: 'dk-review-ratings__badge--rotten-tomatoes', scoreClass: 'dk-review-ratings__badge-score--rotten-tomatoes' },
+    letterboxd:       { badge: 'dk-review-ratings__badge--letterboxd', scoreClass: 'dk-review-ratings__badge-score--letterboxd' },
+    plex:             { badge: 'dk-review-ratings__badge--plex', scoreClass: 'dk-review-ratings__badge-score--plex' },
+    steam_user:       { badge: 'dk-review-ratings__badge--steam-user', scoreClass: 'dk-review-ratings__badge-score--steam-user', logoInvert: true },
+    tmdb:             { badge: 'dk-review-ratings__badge--tmdb', scoreClass: 'dk-review-ratings__badge-score--tmdb', logoInvert: true },
+    igdb_critic:      { badge: 'dk-review-ratings__badge--igdb-critic', scoreClass: 'dk-review-ratings__badge-score--igdb-critic', logoInvert: true },
+    igdb_user:        { badge: 'dk-review-ratings__badge--igdb-user', scoreClass: 'dk-review-ratings__badge-score--igdb-user', logoInvert: true },
+    spotify:          { badge: 'dk-review-ratings__badge--spotify', scoreClass: 'dk-review-ratings__badge-score--spotify' },
+    lastfm:           { badge: 'dk-review-ratings__badge--lastfm', scoreClass: 'dk-review-ratings__badge-score--lastfm' },
+    musicbrainz:      { badge: 'dk-review-ratings__badge--musicbrainz', scoreClass: 'dk-review-ratings__badge-score--musicbrainz' },
   }
-  return themes[provider] ?? { bg: 'bg-muted', text: 'text-muted-foreground', star: 'text-amber-400', score: 'text-foreground' }
+  return themes[provider] ?? { badge: 'dk-review-ratings__badge--default', scoreClass: 'dk-review-ratings__badge-score--default' }
 }
 
 function providerLogo(key: string): string | null {
@@ -119,24 +118,26 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
   const hasExternalRatings = externalRatings && externalRatings.length > 0
   const otixScore = avgRating ?? 0
   const otixCount = ratingCount ?? 0
-  const colors = hasOtixRating ? scoreColor(otixScore) : { text: "text-muted-foreground/30", glow: "from-primary/10" }
+  const colors = hasOtixRating
+    ? scoreColor(otixScore)
+    : { scoreClass: "dk-review-ratings__score--muted", glowClass: "dk-review-ratings__glow--muted" }
 
   return (
     <section className={cn(className)}>
-      <div className="space-y-4">
+      <div className="dk-review-ratings__inner">
         {/* ── Otix Community Rating — always shown ── */}
-        <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)]">
+        <div className="dk-review-ratings__card">
           {/* Ambient glow */}
           <div
             className={cn(
-              "absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,var(--tw-gradient-from),transparent_70%)]",
-              colors.glow,
+              "dk-review-ratings__glow",
+              colors.glowClass,
             )}
           />
 
           {/* Oversized Otix logo watermark */}
           <div
-            className="absolute -inset-[30%] pointer-events-none select-none flex items-center justify-center opacity-[0.05]"
+            className="dk-review-ratings__watermark"
             style={{ color: "var(--foreground)" }}
             dangerouslySetInnerHTML={{
               __html: logoSvg.replace(
@@ -146,31 +147,30 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
             }}
           />
 
-          <div className="relative p-6 sm:p-8">
-            <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-8">
+          <div className="dk-review-ratings__body">
+            <div className="dk-review-ratings__row">
               {/* Big score */}
-              <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="dk-review-ratings__score-section">
                 <span
                   className={cn(
-                    "text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight",
-                    colors.text,
+                    "dk-review-ratings__score",
+                    colors.scoreClass,
                   )}
-                  style={{ fontFamily: "var(--dk-font-mono)" }}
                 >
                   {hasOtixRating ? (otixScore * 10).toFixed(0) : "—"}
                 </span>
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                <span className="dk-review-ratings__score-label">
                   out of 100
                 </span>
               </div>
 
               {/* Stars + meta */}
-              <div className="flex flex-col items-center sm:items-start gap-3 min-w-0">
+              <div className="dk-review-ratings__meta">
                 <StarRow count={5} filled={hasOtixRating ? otixScore / 2 : 0} />
 
-                <div className="flex flex-col items-center sm:items-start gap-1">
-                  <span className="text-sm font-semibold">Otix Community</span>
-                  <span className="text-xs text-muted-foreground">
+                <div className="dk-review-ratings__meta-text">
+                  <span className="dk-review-ratings__label">Otix Community</span>
+                  <span className="dk-review-ratings__count">
                     {hasOtixRating
                       ? `Based on ${otixCount.toLocaleString()} ${otixCount === 1 ? "rating" : "ratings"}`
                       : "No ratings yet"}
@@ -183,7 +183,7 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
 
         {/* ── External Ratings — compact row ── */}
         {hasExternalRatings && (
-          <div className="flex flex-wrap gap-2">
+          <div className="dk-review-ratings__externals">
             {externalRatings.map((r) => {
               const theme = providerTheme(r.provider)
               const logo = providerLogo(r.provider)
@@ -192,9 +192,8 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                 <div
                   key={r.id}
                   className={cn(
-                    'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold',
-                    theme.bg,
-                    theme.text,
+                    "dk-review-ratings__badge",
+                    theme.badge,
                   )}
                   title={`${r.score}/${r.maxScore} → ${normalized}/100${r.voteCount ? ` · ${r.voteCount.toLocaleString()} votes` : ''}`}
                 >
@@ -207,16 +206,16 @@ function RatingsSection({ avgRating, ratingCount, externalRatings, className }: 
                       src={logo}
                       alt=""
                       className={cn(
-                        'h-4 w-auto max-w-[4rem] object-contain opacity-90 shrink-0',
-                        theme.logoInvert && 'invert brightness-0',
+                        "dk-review-ratings__badge-logo",
+                        theme.logoInvert && "dk-review-ratings__badge-logo--invert",
                       )}
                     />
                   ) : (
-                    <span className="text-[11px] font-semibold uppercase tracking-wider opacity-80">
+                    <span className="dk-review-ratings__badge-label">
                       {providerLabel(r.provider)}
                     </span>
                   )}
-                  <span className={cn('tabular-nums text-base', theme.score)}>
+                  <span className={cn("dk-review-ratings__badge-score", theme.scoreClass)}>
                     {normalized}
                   </span>
                 </div>

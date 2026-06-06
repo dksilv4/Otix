@@ -1,0 +1,103 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-nav-search {
+  @apply flex items-center relative;
+  @apply transition-all duration-300;
+
+  &--collapsed {
+    @apply w-8 h-8 justify-center;
+  }
+
+  &--expanded {
+    @apply w-56 px-2.5 py-0.5;
+  }
+
+  &__input {
+    @apply w-full bg-transparent border-0 outline-none shadow-none;
+    @apply text-sm;
+    @apply ring-0 focus:ring-0 focus:ring-offset-0;
+    color: var(--foreground);
+
+    &::placeholder {
+      color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+    }
+  }
+
+  &__trigger {
+    @apply rounded-full w-8 h-8 flex items-center justify-center transition-colors cursor-pointer;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  &__dropdown {
+    @apply absolute right-0;
+    @apply w-80 max-h-[22rem] overflow-y-auto p-2 rounded-2xl;
+    @apply flex flex-col gap-0.5;
+    z-index: 9999;
+    top: calc(100% + 0.75rem);
+    background-color: var(--dk-surface-overlay);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--dk-shadow-glass);
+  }
+
+  &__item {
+    @apply flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer;
+    @apply transition-all duration-150;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    &--active {
+      background-color: rgba(255, 255, 255, 0.08);
+      scale: 1.01;
+    }
+  }
+
+  &__poster {
+    @apply w-9 h-12 rounded object-cover shrink-0 shadow-md;
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  &__poster-placeholder {
+    @apply w-9 h-12 rounded flex items-center justify-center shrink-0;
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  &__info {
+    @apply min-w-0 flex-1;
+  }
+
+  &__title {
+    @apply text-sm font-semibold truncate leading-tight;
+    color: var(--foreground);
+  }
+
+  &__badge {
+    @apply text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border;
+
+    &--movie {
+      @apply bg-rose-500/10 text-rose-400 border-rose-500/10;
+    }
+
+    &--show {
+      @apply bg-indigo-500/10 text-indigo-400 border-indigo-500/10;
+    }
+
+    &--game {
+      @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/10;
+    }
+
+    &--music {
+      @apply bg-purple-500/10 text-purple-400 border-purple-500/10;
+    }
+  }
+
+  &__year {
+    @apply text-xs;
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  }
+}

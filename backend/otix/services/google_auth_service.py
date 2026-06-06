@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Google OAuth2 service: authorization-code grant, token refresh, link/unlink.
 
 Uses OpenID Connect. Docs: https://developers.google.com/identity/protocols/oauth2
@@ -5,19 +6,23 @@ Uses OpenID Connect. Docs: https://developers.google.com/identity/protocols/oaut
 
 from __future__ import annotations
 
+import json
 import secrets
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 
 import httpx
 import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -34,6 +39,14 @@ SCOPES = [
 ]
 
 
+class TokenRevokedError(Exception):
+    """Raised when the OAuth provider indicates the user has revoked access.
+
+    Callers that have a DB session available should auto-unlink the
+    integration via ``get_user_google_access_token(user, session=session)``.
+    """
+
+
 def _state_key(state: str) -> str:
     return f"google_oauth:state:{state}"
 
@@ -42,11 +55,18 @@ def _build_callback_url() -> str:
     return f"{settings.frontend_base_url}/auth/google/connect/callback"
 
 
-async def build_google_link_url() -> tuple[str, str]:
-    """Build the Google OAuth2 authorization URL and return (url, state)."""
+async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
+    """Build the Google OAuth2 authorization URL and return (url, state).
+
+    If *user_id* is provided it is stored alongside the state in Redis so
+    the callback can resolve the user without a JWT (Electron openExternal).
+    """
     state = secrets.token_urlsafe(32)
     redis = await get_redis()
-    await redis.set(_state_key(state), "1", ex=STATE_TTL)
+    payload = {"v": "1"}
+    if user_id:
+        payload["user_id"] = user_id
+    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
 
     callback = _build_callback_url()
     params = {
@@ -95,7 +115,13 @@ async def exchange_code_for_tokens(code: str) -> dict:
 
 
 async def refresh_google_token(refresh_token: str) -> dict:
-    """Refresh an expired access token. Returns tokens dict or raises."""
+    """Refresh an expired access token. Returns tokens dict or raises.
+
+    Raises:
+        TokenRevokedError — the user revoked access on Google's side.
+        HTTPException(401) — session expired / needs re-link.
+        HTTPException(502) — network / transient error.
+    """
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
@@ -109,10 +135,13 @@ async def refresh_google_token(refresh_token: str) -> dict:
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             data = resp.json()
+            if resp.status_code == 400 and data.get("error") == "invalid_grant":
+                logger.warning("google token revoked externally")
+                raise TokenRevokedError("Google access was revoked externally")
             if resp.status_code != 200:
                 logger.warning("google token refresh failed", status=resp.status_code)
                 raise HTTPException(status_code=401, detail="Google session expired. Please reconnect your account.")
-    except HTTPException:
+    except (HTTPException, TokenRevokedError):
         raise
     except Exception as err:
         logger.exception("google token refresh request failed")
@@ -136,21 +165,46 @@ async def get_google_user_profile(access_token: str) -> dict | None:
         return None
 
 
-async def consume_state(state: str) -> None:
-    """Validate and consume an OAuth state parameter."""
+async def consume_state(state: str) -> str | None:
+    """Validate and consume an OAuth state parameter. Returns user_id if stored."""
     redis = await get_redis()
     key = _state_key(state)
-    if not await redis.get(key):
+    raw = await redis.get(key)
+    if not raw:
         raise HTTPException(status_code=400, detail="Google linking session expired. Please try again.")
     await redis.delete(key)
 
+    try:
+        payload = json.loads(raw) if isinstance(raw, str) else {}
+        return payload.get("user_id")
+    except (json.JSONDecodeError, TypeError):
+        return None
 
-async def link_google_to_user(session: AsyncSession, user: User, code: str, state: str) -> None:
-    """Link a Google account to an existing user via OAuth code + state."""
-    if user.google_id is not None:
+
+async def link_google_to_user(session: AsyncSession, user: User | None = None, code: str = "", state: str = "") -> None:
+    """Link a Google account to an existing user via OAuth code + state.
+
+    The user can be provided directly or looked up from the OAuth state
+    stored in Redis (set during the initiate phase).
+    """
+    state_user_id = await consume_state(state)
+
+    resolved_user = user
+    if resolved_user is None and state_user_id:
+        resolved_user = await session.scalar(
+            select(User).where(User.id == state_user_id)
+        )
+
+    if resolved_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please sign in and try again.",
+        )
+
+    if resolved_user.google_id is not None:
         raise HTTPException(status_code=400, detail="Google account already linked")
 
-    await consume_state(state)
+    user = resolved_user  # keep using `user` alias below
 
     tokens = await exchange_code_for_tokens(code)
 
@@ -202,10 +256,18 @@ async def unlink_google_from_user(session: AsyncSession, user: User) -> None:
     logger.info("google account unlinked", user_id=user.id, google_id=google_id)
 
 
-async def get_user_google_access_token(user: User) -> str | None:
+async def get_user_google_access_token(
+    user: User,
+    session: AsyncSession | None = None,
+) -> str | None:
     """Get a valid access token for the user, refreshing if expired.
 
-    Returns the access token, or None if the user has no Google link.
+    When *session* is provided and the token has been revoked externally,
+    the integration is automatically unlinked so the UI shows the
+    correct disconnected state.
+
+    Returns the access token, or None if the user has no Google link
+    or the token could not be obtained.
     """
     if not user.google_refresh_token:
         return None
@@ -217,6 +279,14 @@ async def get_user_google_access_token(user: User) -> str | None:
 
     try:
         tokens = await refresh_google_token(user.google_refresh_token)
+    except TokenRevokedError:
+        logger.warning(
+            "google token revoked externally — auto-disconnecting",
+            user_id=user.id,
+        )
+        if session is not None:
+            await _unlink_google_quietly(session, user)
+        return None
     except Exception:
         return None
 
@@ -229,3 +299,46 @@ async def get_user_google_access_token(user: User) -> str | None:
     user.google_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
 
     return new_access
+
+
+async def _unlink_google_quietly(session: AsyncSession, user: User) -> None:
+    """Unlink Google from the user without raising on already-unlinked.
+
+    Sends a notification to the user about the disconnect.
+    """
+    if user.google_id is None:
+        return
+    google_id = user.google_id
+    user.google_id = None
+    user.google_email = None
+    user.google_name = None
+    user.google_avatar_url = None
+    user.google_access_token = None
+    user.google_refresh_token = None
+    user.google_token_expires_at = None
+    try:
+        await session.flush()
+        from otix.services.notification_service import NotificationService
+
+        nsvc = NotificationService(session)
+        await nsvc.create(
+            user_id=user.id,
+            type_="integration_disconnected",
+            title="Google disconnected",
+            body="Your Google account was disconnected because access was revoked externally. "
+            "Re-link your account in Settings to continue syncing.",
+            metadata_json={"provider": "google", "reason": "external_revocation"},
+        )
+        await session.commit()
+        logger.info(
+            "google auto-disconnected due to external revocation",
+            user_id=user.id,
+            google_id=google_id,
+        )
+    except Exception:
+        await session.rollback()
+        logger.exception(
+            "google auto-disconnect failed",
+            user_id=user.id,
+            google_id=google_id,
+        )

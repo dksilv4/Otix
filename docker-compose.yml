@@ -14,7 +14,8 @@ services:
       postgres
       -c shared_buffers=2GB
       -c effective_cache_size=5GB
-      -c work_mem=16MB
+      -c work_mem=32MB
+      -c default_statistics_target=500
       -c maintenance_work_mem=256MB
       -c wal_buffers=64MB
       -c random_page_cost=1.1

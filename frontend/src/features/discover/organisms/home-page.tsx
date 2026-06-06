@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,7 @@ import { WorkoutHeatmap } from '@/features/workout/molecules/workout-heatmap'
 import { Logo } from '@ui/atoms/logo'
 import { Dumbbell, Flame, RotateCcw, CheckCircle2, Weight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './home-page.scss'
 
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 import { MediaSection } from './media-section'
@@ -99,20 +101,20 @@ function WorkoutHomeContent({
   if (!isAuthenticated) return null
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-6 space-y-6">
+    <div className="dk-discover-home-page__workout-content">
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04] p-4 text-center">
-          <div className="text-2xl font-extrabold tabular-nums">{weeklyStats.weekWorkouts}</div>
-          <div className="text-xs text-muted-foreground/60 mt-0.5">This week</div>
+      <div className="dk-discover-home-page__workout-stats">
+        <div className="dk-discover-home-page__stat-card">
+          <div className="dk-discover-home-page__stat-card-value">{weeklyStats.weekWorkouts}</div>
+          <div className="dk-discover-home-page__stat-card-label">This week</div>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04] p-4 text-center">
-          <div className="text-2xl font-extrabold tabular-nums">{workoutStreak}</div>
-          <div className="text-xs text-muted-foreground/60 mt-0.5">Day streak</div>
+        <div className="dk-discover-home-page__stat-card">
+          <div className="dk-discover-home-page__stat-card-value">{workoutStreak}</div>
+          <div className="dk-discover-home-page__stat-card-label">Day streak</div>
         </div>
-        <div className="rounded-2xl bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04] p-4 text-center">
-          <div className="text-2xl font-extrabold tabular-nums">{weeklyStats.weekSets}</div>
-          <div className="text-xs text-muted-foreground/60 mt-0.5">Sets</div>
+        <div className="dk-discover-home-page__stat-card">
+          <div className="dk-discover-home-page__stat-card-value">{weeklyStats.weekSets}</div>
+          <div className="dk-discover-home-page__stat-card-label">Sets</div>
         </div>
       </div>
 
@@ -120,21 +122,21 @@ function WorkoutHomeContent({
       <WorkoutHeatmap weeks={52} />
 
       {/* History */}
-      <div className="space-y-6">
-        <h2 className="text-sm font-semibold text-muted-foreground/60 uppercase tracking-wider">
+      <div className="dk-discover-home-page__workout-history">
+        <h2 className="dk-discover-home-page__workout-history-title">
           Recent Workouts
         </h2>
 
         {isLoading && (
-          <div className="flex justify-center py-12">
+          <div className="dk-discover-home-page__workout-loading">
             <div className="h-6 w-6 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
           </div>
         )}
 
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+          <div className="dk-discover-home-page__workout-empty">
             <Dumbbell className="h-10 w-10 text-muted-foreground/20" />
-            <p className="text-sm text-muted-foreground/50">
+            <p className="dk-discover-home-page__workout-empty-text">
               No workouts yet. Check in above to start your streak.
             </p>
           </div>
@@ -142,9 +144,9 @@ function WorkoutHomeContent({
 
         {dayGroups.map((group) => (
           <div key={group.date} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">{group.label}</span>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground/50">
+            <div className="dk-discover-home-page__workout-day-header">
+              <span className="dk-discover-home-page__workout-day-label">{group.label}</span>
+              <div className="dk-discover-home-page__workout-day-stats">
                 {group.estimatedKcal > 0 && (
                   <span className="flex items-center gap-1">
                     <Flame className="h-3 w-3" />
@@ -172,9 +174,9 @@ function WorkoutHomeContent({
         ))}
 
         {hasMore && (
-          <div className="flex justify-center pt-2">
+          <div className="dk-discover-home-page__workout-load-more">
             <button
-              className="text-sm text-primary hover:underline"
+              className="dk-discover-home-page__workout-load-more-btn"
               onClick={onLoadMore}
               disabled={isFetchingMore}
             >
@@ -208,7 +210,8 @@ function HomeExperience() {
   const scrollToSection = useCallback((id: string) => {
     const el = document.getElementById(`section-${id}`)
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const top = el.getBoundingClientRect().top + window.scrollY - 100
+      window.scrollTo({ behavior: 'smooth', top })
     }
   }, [])
 
@@ -229,13 +232,6 @@ function HomeExperience() {
   })
   const searchInputRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  // Redirect new users to onboarding
-  useEffect(() => {
-    if (isAuthenticated && user && !user.onboardingCompleted) {
-      navigate({ to: '/onboarding', replace: true })
-    }
-  }, [isAuthenticated, user, navigate])
 
   // Navigate to search page when a query is entered
   useEffect(() => {
@@ -325,12 +321,21 @@ function HomeExperience() {
 
   const { data: sections = [] } = useQuery(discoverQueries.sections())
 
+  // Merge hero, search, and API sections into a single nav list
+  const navSections = useMemo(() => {
+    const fixed: { id: string; title: string; mediaType?: string }[] = [
+      { id: 'search', title: 'Search' },
+      { id: 'slides', title: 'Slides' },
+    ]
+    return [...fixed, ...sections]
+  }, [sections])
+
   useEffect(() => {
-    if (sections.length === 0) return
+    if (navSections.length === 0) return
 
     const observerOptions = {
       root: null,
-      rootMargin: '-40% 0px -40% 0px',
+      rootMargin: '-30% 0px -30% 0px',
       threshold: 0,
     }
 
@@ -338,7 +343,7 @@ function HomeExperience() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const id = entry.target.id.replace('section-', '')
-          const idx = sections.findIndex((s) => s.id === id)
+          const idx = navSections.findIndex((s) => s.id === id)
           if (idx !== -1) {
             setActiveSectionIndex(idx)
           }
@@ -346,7 +351,7 @@ function HomeExperience() {
       })
     }, observerOptions)
 
-    sections.forEach((section) => {
+    navSections.forEach((section) => {
       const el = document.getElementById(`section-${section.id}`)
       if (el) observer.observe(el)
     })
@@ -354,7 +359,7 @@ function HomeExperience() {
     return () => {
       observer.disconnect()
     }
-  }, [sections])
+  }, [navSections])
 
   // Rotate placeholder text
   useEffect(() => {
@@ -441,7 +446,7 @@ function HomeExperience() {
   }, [handleKeyDown])
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)]">
+    <div className="dk-discover-home-page">
       <Helmet>
         <title>Otix — Your media command center</title>
         <meta name="description" content="Discover movies, shows, games, and music. Track your workouts, build your library, and find your next obsession with Otix." />
@@ -457,10 +462,10 @@ function HomeExperience() {
         <AnimatedShaderBackground mode="idle" />
       </Suspense>
 
-      <div className="relative z-10 flex flex-col items-center px-4 pb-16 w-full">
+      <div className="dk-discover-home-page__content">
         {/* Logo hero */}
         <div
-          className="h-[40vh] flex items-center justify-center w-full relative"
+          className="dk-discover-home-page__hero"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -471,7 +476,7 @@ function HomeExperience() {
               scale: isHovered ? 1.03 : 1,
             }}
             transition={{ type: 'spring', stiffness: 150, damping: 20 }}
-            className="relative z-10 select-none group cursor-default"
+            className="dk-discover-home-page__logo-wrapper"
           >
             <Logo
               className="h-28 md:h-40 filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
@@ -481,12 +486,10 @@ function HomeExperience() {
         </div>
 
         <div
-          className={cn(
-            'flex flex-col items-center w-full gap-6',
-          )}
+          className="dk-discover-home-page__body"
         >
-          <div ref={searchInputRef} className="w-full max-w-3xl flex flex-col items-center py-6 md:py-10">
-            <p className="text-muted-foreground text-sm md:text-base font-medium mb-3">
+          <div id="section-search" ref={searchInputRef} className="dk-discover-home-page__search">
+            <p className="dk-discover-home-page__greeting">
               {isMoodPromptVisible ? `${greeting}, how are you feeling today?` : greeting}
             </p>
             <div className="mb-3 w-full">
@@ -499,26 +502,21 @@ function HomeExperience() {
             {activeMode === 'workout' && !isMoodNoteMode ? (
               <div className="w-full max-w-3xl">
                 <div
-                  className={cn(
-                    'relative rounded-[2rem]',
-                    'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-                    'backdrop-blur-xl shadow-[var(--dk-shadow-glass)]',
-                    'ring-1 ring-white/[0.04]',
-                  )}
+                  className="dk-discover-home-page__workout-panel"
                 >
                   {isAuthenticated ? (
-                    <div className="flex items-center gap-3 px-5 pt-5 pb-2">
+                    <div className="dk-discover-home-page__workout-panel-header">
                       <Flame className="h-5 w-5 shrink-0 text-primary/50" />
-                      <div className="flex-1 min-w-0 h-12 md:h-14 flex items-center text-lg md:text-xl text-muted-foreground/60">
+                      <div className="dk-discover-home-page__workout-panel-message">
                         {todayWorkoutQuery.isLoading
                           ? 'Loading...'
                           : isCheckedIn
                             ? "You've worked out today!"
                             : 'Tap to log today\'s workout'}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="dk-discover-home-page__workout-panel-actions">
                         {isCheckedIn && !todayWorkoutQuery.isLoading && (
-                          <div className="flex items-center gap-1 text-sm font-semibold text-primary">
+                          <div className="dk-discover-home-page__workout-panel-streak">
                             <Flame className="h-4 w-4" />
                             {workoutStreak}d streak
                           </div>
@@ -528,11 +526,8 @@ function HomeExperience() {
                             onClick={handleWorkoutUndo}
                             disabled={undoCheckInMutation.isPending || todayWorkoutQuery.isLoading}
                             className={cn(
-                              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                              'bg-muted/20 text-muted-foreground',
-                              'hover:bg-muted/30 hover:scale-105',
-                              'active:scale-95',
-                              'transition-all duration-200',
+                              'dk-discover-home-page__workout-btn',
+                              'dk-discover-home-page__workout-btn--undo',
                             )}
                             aria-label="Undo workout check-in"
                           >
@@ -547,11 +542,8 @@ function HomeExperience() {
                             onClick={handleWorkoutCheckIn}
                             disabled={checkInMutation.isPending || todayWorkoutQuery.isLoading}
                             className={cn(
-                              'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                              'bg-primary/20 text-primary',
-                              'hover:bg-primary/30 hover:scale-105',
-                              'active:scale-95',
-                              'transition-all duration-200',
+                              'dk-discover-home-page__workout-btn',
+                              'dk-discover-home-page__workout-btn--checkin',
                             )}
                             aria-label="Log workout"
                           >
@@ -565,32 +557,24 @@ function HomeExperience() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3 px-5 pt-5 pb-2">
+                    <div className="dk-discover-home-page__workout-panel-header">
                       <Flame className="h-5 w-5 shrink-0 text-muted-foreground/40" />
-                      <div className="flex-1 min-w-0 h-12 md:h-14 flex items-center text-lg md:text-xl text-muted-foreground/40">
+                      <div className="dk-discover-home-page__workout-panel-message--muted">
                         Sign in to track your workouts
                       </div>
                     </div>
                   )}
                   {/* Mode tags */}
-                  <div className="flex items-center gap-2 px-5 pb-4">
+                  <div className="dk-discover-home-page__workout-panel-modes">
                     <button
                       onClick={() => handleModeChange('discover')}
-                      className={cn(
-                        'px-3 py-1.5 rounded-full text-xs font-medium',
-                        'transition-all duration-200',
-                        'bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
-                      )}
+                      className="dk-discover-home-page__mode-btn dk-discover-home-page__mode-btn--discover"
                     >
                       Discover
                     </button>
                     <button
                       onClick={() => handleModeChange('workout')}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-                        'transition-all duration-200',
-                        'bg-primary/15 text-primary ring-1 ring-primary/20',
-                      )}
+                      className="dk-discover-home-page__mode-btn dk-discover-home-page__mode-btn--workout"
                     >
                       <Dumbbell className="h-3.5 w-3.5" />
                       Workout
@@ -656,19 +640,21 @@ function HomeExperience() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full flex flex-col items-center gap-6"
+                className="dk-discover-home-page__discover-sections"
               >
                 {/* DiscoverHero carousel */}
-                <DiscoverHero className="w-full max-w-[1400px]" />
+                <div id="section-slides" className="w-full">
+                  <DiscoverHero className="w-full max-w-[1400px]" />
+                </div>
 
                 {/* Discover sections vertically stacked layout */}
-                <div className="w-full flex flex-col gap-12 mt-6">
+                <div className="dk-discover-home-page__sections">
                   <QueryErrorBoundary>
                     {sections.map((section) => (
                       <div
                         key={section.id}
                         id={`section-${section.id}`}
-                        className="w-full px-4 lg:px-8 scroll-mt-24"
+                        className="dk-discover-home-page__section"
                       >
                         <MediaSection
                           title={section.title}
@@ -690,17 +676,17 @@ function HomeExperience() {
       </div>
 
       {/* Floating Vertical Navigation Dots on the Side */}
-      {activeMode === 'discover' && sections.length > 1 && (
-        <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-4 bg-black/20 backdrop-blur-md px-3 py-5 rounded-full shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04]">
-          {sections.map((section, idx) => {
+      {activeMode === 'discover' && navSections.length > 1 && (
+        <div className="dk-discover-home-page__nav-dots">
+          {navSections.map((section, idx) => {
             const isActive = idx === activeSectionIndex
             const mType = section.mediaType
             const colorConfig = mType ? MEDIA_DOT_COLORS[mType] : null
 
             return (
-              <div key={section.id} className="group relative flex items-center justify-end">
+              <div key={section.id} className="dk-discover-home-page__nav-dot-item group">
                 <span className={cn(
-                  "absolute right-8 text-[11px] font-bold text-white/90 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 opacity-0 scale-90 origin-right group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-md",
+                  "dk-discover-home-page__nav-dot-tooltip",
                   colorConfig?.text
                 )}>
                   {section.title}
@@ -708,10 +694,10 @@ function HomeExperience() {
                 <button
                   onClick={() => scrollToSection(section.id)}
                   className={cn(
-                    "rounded-full cursor-pointer transition-all duration-300 outline-none",
-                    isActive 
-                      ? cn("w-2.5 h-6", colorConfig?.active || "bg-primary shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]") 
-                      : cn("w-2.5 h-2.5 hover:scale-110", colorConfig?.inactive || "bg-white/20 hover:bg-white/50")
+                    "dk-discover-home-page__nav-dot",
+                    isActive
+                      ? cn("dk-discover-home-page__nav-dot--active", colorConfig?.active || "bg-primary shadow-[0_0_12px_rgba(var(--primary-rgb),0.5)]")
+                      : cn("dk-discover-home-page__nav-dot--inactive", colorConfig?.inactive || "bg-white/20 hover:bg-white/50")
                   )}
                   aria-label={`Scroll to ${section.title}`}
                 />

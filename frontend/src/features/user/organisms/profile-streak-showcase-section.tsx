@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { Flame, PenLine } from 'lucide-react'
+import './profile-streak-showcase-section.scss'
 
 interface StreakShowcaseProps {
   loginStreak: number
@@ -27,12 +29,12 @@ export function StreakShowcaseSection({
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="dk-user-streaks__header">
         <Flame className="h-4 w-4 text-muted-foreground/60" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Streaks</h2>
+        <h2 className="dk-user-streaks__heading">Streaks</h2>
       </div>
 
-      <div className="flex gap-3">
+      <div className="dk-user-streaks__pills">
         <StreakPill
           icon={<Flame className="h-4 w-4" />}
           iconColor="#f59e0b"
@@ -72,27 +74,27 @@ function StreakPill({
   const progress = Math.min(1, value / milestone)
 
   return (
-    <div className="flex-1 rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="dk-user-streaks__pill">
+      <div className="dk-user-streaks__pill-header">
         <span style={{ color: iconColor }}>{icon}</span>
-        <span className="text-[10px] text-muted-foreground/50 uppercase tracking-wider">{unit}s</span>
+        <span className="dk-user-streaks__pill-unit">{unit}s</span>
       </div>
-      <p className="text-2xl font-bold tabular-nums" style={{ color: iconColor }}>
+      <p className="dk-user-streaks__pill-value" style={{ color: iconColor }}>
         {value}
       </p>
-      <p className="text-[10px] text-muted-foreground/40 mt-0.5">best: {best}</p>
+      <p className="dk-user-streaks__pill-best">best: {best}</p>
 
       {/* Progress bar to next milestone */}
-      <div className="mt-3 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+      <div className="dk-user-streaks__pill-bar">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="dk-user-streaks__pill-bar-fill"
           style={{
             width: `${progress * 100}%`,
             backgroundColor: iconColor,
           }}
         />
       </div>
-      <p className="text-[9px] text-muted-foreground/30 mt-1">
+      <p className="dk-user-streaks__pill-next">
         {milestone - value} to {milestone} {unit}s
       </p>
     </div>

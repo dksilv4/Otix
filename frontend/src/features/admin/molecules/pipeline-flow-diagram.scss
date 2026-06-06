@@ -1,0 +1,88 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-admin-pipeline-flow {
+  @apply relative pl-7;
+
+  &__backbone {
+    @apply absolute w-px bg-muted-foreground/15;
+    left: 7px;
+  }
+
+  &__list {
+    @apply space-y-0;
+  }
+
+  &__stage {
+    @apply pb-3;
+
+    &:last-child {
+      @apply pb-0;
+    }
+  }
+
+  &__stage-row {
+    @apply flex items-start gap-2.5;
+  }
+
+  &__dot {
+    @apply relative z-10 shrink-0 mt-1 rounded-full p-0.5;
+    background-color: var(--dk-surface-base);
+  }
+
+  &__card {
+    @apply flex-1 rounded-lg border px-3 py-2;
+    background-color: var(--dk-surface-raised);
+    border-color: hsla(var(--dk-border) / 0.3);
+
+    &--missing {
+      @apply bg-muted/10;
+      border-color: hsla(var(--dk-muted-foreground) / 0.1);
+    }
+  }
+
+  &__card-header {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  &__label-group {
+    @apply flex items-center gap-2 min-w-0;
+  }
+
+  &__label {
+    @apply text-xs font-semibold text-foreground;
+
+    &--missing {
+      color: hsla(var(--dk-muted-foreground) / 0.4);
+    }
+  }
+
+  &__badge {
+    @apply text-[10px] px-1.5 py-0.5 rounded font-medium border;
+
+    &--done {
+      @apply bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30;
+    }
+
+    &--partial {
+      @apply bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30;
+    }
+
+    &--missing {
+      @apply bg-muted-foreground/10 text-muted-foreground/50 border-muted-foreground/15;
+    }
+  }
+
+  &__schedule {
+    @apply flex items-center gap-1 text-[10px] shrink-0;
+    color: hsla(var(--dk-muted-foreground) / 0.5);
+  }
+
+  &__note {
+    @apply mt-1 text-[11px] leading-relaxed;
+    color: hsla(var(--dk-muted-foreground) / 0.6);
+
+    &--missing {
+      color: hsla(var(--dk-muted-foreground) / 0.3);
+    }
+  }
+}

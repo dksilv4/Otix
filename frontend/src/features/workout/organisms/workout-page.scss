@@ -1,0 +1,77 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-workout-page {
+  @apply mx-auto lg:max-w-2xl px-4 py-8 space-y-6;
+}
+
+.dk-workout-page__title {
+  @apply text-2xl font-extrabold tracking-tight;
+}
+
+.dk-workout-page__subtitle {
+  @apply text-sm text-muted-foreground/60 mt-1;
+}
+
+.dk-workout-page__input-area {
+  @apply space-y-3;
+}
+
+.dk-workout-page__history {
+  @apply space-y-6;
+}
+
+.dk-workout-page__history-heading {
+  @apply text-sm font-semibold text-muted-foreground/60 uppercase tracking-wider;
+}
+
+.dk-workout-page__loading {
+  @apply flex justify-center py-12;
+}
+
+.dk-workout-page__spinner {
+  @apply h-6 w-6;
+}
+
+.dk-workout-page__empty {
+  @apply flex flex-col items-center justify-center py-12 text-center space-y-3;
+}
+
+.dk-workout-page__empty-icon {
+  @apply h-10 w-10 text-muted-foreground/20;
+}
+
+.dk-workout-page__empty-text {
+  @apply text-sm text-muted-foreground/50;
+}
+
+.dk-workout-page__day-group {
+  @apply space-y-2;
+}
+
+.dk-workout-page__day-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-workout-page__day-label {
+  @apply text-sm font-semibold;
+}
+
+.dk-workout-page__day-stats {
+  @apply flex items-center gap-3 text-xs text-muted-foreground/50;
+}
+
+.dk-workout-page__stat-item {
+  @apply flex items-center gap-1;
+}
+
+.dk-workout-page__stat-icon {
+  @apply h-3 w-3;
+}
+
+.dk-workout-page__load-more {
+  @apply flex justify-center pt-2;
+}
+
+.dk-workout-page__load-more-btn {
+  @apply text-sm text-primary hover:underline;
+}

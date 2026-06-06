@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './badge-showcase.scss'
 import {
   MessageSquare,
   Play,
@@ -58,17 +60,17 @@ interface BadgeShowcaseProps {
 
 export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+    <div className="dk-user-badge-showcase__grid">
       {badges.map((badge) => {
         const color = TIER_COLORS[badge.tier] ?? '#6b7280'
         return (
           <div
             key={badge.badge_key}
-            className="flex flex-col items-center gap-1.5 group"
+            className="dk-user-badge-showcase__card"
             title={`${badge.label}${badge.earned ? '' : ' — Locked'}\n${badge.description}`}
           >
             <div
-              className="relative flex items-center justify-center w-14 h-14 rounded-full transition-all"
+              className="dk-user-badge-showcase__icon-wrapper"
               style={{
                 border: `2px solid ${badge.earned ? color : 'rgba(255,255,255,0.08)'}`,
                 backgroundColor: badge.earned ? `${color}10` : 'transparent',
@@ -83,13 +85,13 @@ export function BadgeShowcase({ badges }: BadgeShowcaseProps) {
               />
               {badge.earned && (
                 <div
-                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background"
+                  className="dk-user-badge-showcase__earned-dot"
                   style={{ backgroundColor: color }}
                 />
               )}
             </div>
             <span
-              className="text-[11px] font-medium text-center leading-tight max-w-[80px] truncate"
+              className="dk-user-badge-showcase__label"
               style={{ color: badge.earned ? 'var(--foreground)' : 'rgba(255,255,255,0.2)' }}
             >
               {badge.label}

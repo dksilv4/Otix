@@ -1,0 +1,41 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Base ── */
+.dk-badge {
+  @apply inline-flex items-center gap-1 text-xs font-semibold;
+  transition: color var(--dk-duration-fast) var(--dk-ease-out),
+              background-color var(--dk-duration-fast) var(--dk-ease-out);
+}
+
+/* ── Variants ── */
+.dk-badge--default     { @apply bg-primary/10 text-primary; }
+.dk-badge--secondary   { @apply bg-secondary text-secondary-foreground; }
+.dk-badge--success     { @apply bg-green-500/10 text-green-600 dark:text-green-400; }
+.dk-badge--warning     { @apply bg-orange-500/10 text-orange-600 dark:text-orange-400; }
+.dk-badge--destructive { @apply bg-destructive/10 text-destructive; }
+.dk-badge--muted       { @apply bg-muted text-muted-foreground; }
+.dk-badge--outline     { @apply border border-input text-foreground; }
+
+/* Media type badges use dynamic inline background-color */
+.dk-badge--movie,
+.dk-badge--show,
+.dk-badge--game,
+.dk-badge--music {
+  @apply text-white shadow-sm;
+}
+
+/* ── Sizes ── */
+.dk-badge--sm { @apply px-2 py-0 text-[0.625rem] rounded-md; }
+.dk-badge--md { @apply px-2.5 py-0.5 text-xs rounded-lg; }
+.dk-badge--lg { @apply px-3 py-1 text-sm rounded-xl; }
+
+/* ── Elements ── */
+.dk-badge__remove {
+  @apply ml-0.5 rounded-full p-0.5;
+  &:hover { background-color: rgba(0, 0, 0, 0.1); }
+  :where([data-theme='dark']) &:hover { background-color: rgba(255, 255, 255, 0.1); }
+}
+
+.dk-badge__close-icon {
+  @apply h-3 w-3;
+}

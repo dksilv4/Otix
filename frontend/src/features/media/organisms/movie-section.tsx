@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { Link } from '@tanstack/react-router'
 import type { MovieDetail } from '../media-queries'
 import { cn } from '@/lib/utils'
+import './movie-section.scss'
 
 interface MovieSectionProps {
   movie: MovieDetail
@@ -26,14 +28,14 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
   const isProfitable = hasProfit && profitAbs > 0
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <h2 className="text-lg font-semibold">Details</h2>
+    <section className={cn('dk-media-movie-section', className)}>
+      <h2 className="dk-media-movie-section__title">Details</h2>
 
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <dl className="dk-media-movie-section__grid">
         {movie.runtime != null && movie.runtime > 0 && (
-          <div className="rounded-xl bg-card p-4">
-            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Runtime</dt>
-            <dd className="mt-1 text-sm font-semibold">{movie.runtime} min</dd>
+          <div className="dk-media-movie-section__card">
+            <dt className="dk-media-movie-section__label">Runtime</dt>
+            <dd className="dk-media-movie-section__value">{movie.runtime} min</dd>
           </div>
         )}
         {movie.budget != null && movie.budget > 0 && (
@@ -41,10 +43,10 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'budget' }}
-            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+            className="dk-media-movie-section__card--link"
           >
-            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</dt>
-            <dd className="mt-1 text-sm font-semibold">{formatCurrency(movie.budget)}</dd>
+            <dt className="dk-media-movie-section__label">Budget</dt>
+            <dd className="dk-media-movie-section__value">{formatCurrency(movie.budget)}</dd>
           </Link>
         )}
         {movie.revenue != null && movie.revenue > 0 && (
@@ -52,13 +54,13 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'revenue' }}
-            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+            className="dk-media-movie-section__card--link"
           >
-            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</dt>
-            <dd className="mt-1 flex items-center gap-2">
-              <span className="text-sm font-semibold">{formatCurrency(movie.revenue)}</span>
+            <dt className="dk-media-movie-section__label">Revenue</dt>
+            <dd className="dk-media-movie-section__value--flex">
+              <span className="dk-media-movie-section__amount">{formatCurrency(movie.revenue)}</span>
               {movie.revenueRank && (
-                <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
+                <span className="dk-media-movie-section__rank dk-media-movie-section__rank--primary">
                   #{movie.revenueRank}
                 </span>
               )}
@@ -70,27 +72,27 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={isProfitable ? { sort: 'profit' } : { sort: 'profit', dir: 'asc' }}
-            className="rounded-xl bg-card p-4 transition-colors hover:bg-card/70"
+            className="dk-media-movie-section__card--link"
           >
-            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <dt className="dk-media-movie-section__label">
               {isProfitable ? 'Profit' : 'Loss'}
             </dt>
-            <dd className="mt-1 flex items-center gap-2">
+            <dd className="dk-media-movie-section__value--flex">
               <span
                 className={cn(
-                  'text-sm font-semibold',
-                  isProfitable ? 'text-emerald-400' : 'text-red-400',
+                  'dk-media-movie-section__amount',
+                  isProfitable ? 'dk-media-movie-section__amount--profit' : 'dk-media-movie-section__amount--loss',
                 )}
               >
                 {isProfitable ? '+' : '-'}{formatCurrency(Math.abs(profitAbs!))}
               </span>
               {isProfitable && movie.profitRank && (
-                <span className="inline-flex items-center rounded-md bg-emerald-400/10 px-1.5 py-0.5 text-[11px] font-bold text-emerald-400">
+                <span className="dk-media-movie-section__rank dk-media-movie-section__rank--profit">
                   #{movie.profitRank}
                 </span>
               )}
               {!isProfitable && movie.lossRank && (
-                <span className="inline-flex items-center rounded-md bg-red-400/10 px-1.5 py-0.5 text-[11px] font-bold text-red-400">
+                <span className="dk-media-movie-section__rank dk-media-movie-section__rank--loss">
                   #{movie.lossRank}
                 </span>
               )}

@@ -1,0 +1,13 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-discover-search-sort-bar {
+  @apply flex items-center justify-between;
+
+  &__filters {
+    @apply flex items-center gap-2;
+  }
+
+  &__count {
+    @apply text-xs text-muted-foreground shrink-0;
+  }
+}

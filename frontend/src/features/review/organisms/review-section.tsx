@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { useState } from "react"
+import "./review-section.scss"
 import { useQuery } from "@tanstack/react-query"
 import { Star, Pencil } from "lucide-react"
 import { useAuth } from "@/features/auth"
@@ -14,11 +16,11 @@ interface ReviewSectionProps {
  className?: string
 }
 
-function scoreColor(score: number): { text: string; glow: string; bg: string } {
- if (score >= 8) return { text: "text-emerald-400", glow: "from-emerald-500/15", bg: "bg-emerald-400/10" }
- if (score >= 6) return { text: "text-sky-400", glow: "from-sky-500/15", bg: "bg-sky-400/10" }
- if (score >= 4) return { text: "text-amber-400", glow: "from-amber-500/15", bg: "bg-amber-400/10" }
- return { text: "text-red-400", glow: "from-red-500/15", bg: "bg-red-400/10" }
+function scoreColor(score: number): { text: string; glow: string } {
+ if (score >= 8) return { text: "dk-review-section__score-value--emerald", glow: "dk-review-section__glow--emerald" }
+ if (score >= 6) return { text: "dk-review-section__score-value--sky", glow: "dk-review-section__glow--sky" }
+ if (score >= 4) return { text: "dk-review-section__score-value--amber", glow: "dk-review-section__glow--amber" }
+ return { text: "dk-review-section__score-value--red", glow: "dk-review-section__glow--red" }
 }
 
 function StarRow({ count, filled, size = "md" }: { count: number; filled: number; size?: "sm" | "md" }) {
@@ -66,12 +68,12 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
 
  if (isLoading) {
    return (
-     <section className={cn(className)}>
-       <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
-       <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8">
-         <div className="flex flex-col items-center gap-4">
-           <div className="h-7 w-48 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
-           <div className="h-10 w-28 animate-pulse rounded-full bg-[var(--dk-surface-glass)]" />
+     <section className={cn("dk-review-section", className)}>
+       <h2 className="dk-review-section__heading">Your Rating</h2>
+       <div className="dk-review-section__card dk-review-section__card--loading">
+         <div className="dk-review-section__loading-inner">
+           <div className="dk-review-section__skeleton dk-review-section__skeleton--title" />
+           <div className="dk-review-section__skeleton dk-review-section__skeleton--button" />
          </div>
        </div>
      </section>
@@ -80,10 +82,10 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
 
  if (isError) {
    return (
-     <section className={cn(className)}>
-       <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
-       <div className="rounded-3xl bg-[var(--dk-surface-base)] p-8 text-center">
-         <p className="text-sm text-muted-foreground mb-3">Failed to load your rating.</p>
+     <section className={cn("dk-review-section", className)}>
+       <h2 className="dk-review-section__heading">Your Rating</h2>
+       <div className="dk-review-section__card dk-review-section__card--error">
+         <p className="dk-review-section__error-text">Failed to load your rating.</p>
          <DkButton variant="outline" size="sm" onClick={() => { myReviewQuery.refetch(); myRatingQuery.refetch() }}>
            Retry
          </DkButton>
@@ -97,73 +99,73 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
  const hasRatingOrReview = !!rating || !!review
 
  return (
-   <section className={cn(className)}>
-     <h2 className="text-lg font-semibold mb-3">Your Rating</h2>
+   <section className={cn("dk-review-section", className)}>
+     <h2 className="dk-review-section__heading">Your Rating</h2>
 
      {hasRatingOrReview ? (
        /* ── Rated/reviewed state — show-off display ── */
-       <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
+       <div className="dk-review-section__card dk-review-section__card--rated">
          {rating && (
            <div
              className={cn(
-               "absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_30%_50%,var(--tw-gradient-from),transparent_70%)]",
+               "dk-review-section__glow",
                scoreColor(rating.score).glow,
              )}
            />
          )}
 
-         <div className="relative p-6 sm:p-8">
-           <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-8">
+         <div className="dk-review-section__content-wrap">
+           <div className="dk-review-section__layout">
              {/* Big score display */}
              {rating ? (
-               <div className="flex flex-col items-center gap-2 shrink-0">
+               <div className="dk-review-section__score-block">
                  <span
                    className={cn(
-                     "text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight",
+                     "dk-review-section__score-value",
                      scoreColor(rating.score).text,
                    )}
                    style={{ fontFamily: "var(--dk-font-mono)" }}
                  >
                    {rating.score}
                  </span>
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                 <span className="dk-review-section__score-label">
                    out of 10
                  </span>
                </div>
              ) : (
-               <div className="flex flex-col items-center gap-2 shrink-0 opacity-30">
+               <div className="dk-review-section__score-block dk-review-section__score-block--empty">
                  <span
-                   className="text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight text-muted-foreground"
+                   className="dk-review-section__score-value dk-review-section__score-value--empty"
                    style={{ fontFamily: "var(--dk-font-mono)" }}
                  >
                    —
                  </span>
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
+                 <span className="dk-review-section__score-label">
                    no rating
                  </span>
                </div>
              )}
 
              {/* Stars + content */}
-             <div className="flex flex-col items-center sm:items-start gap-3 min-w-0">
+             <div className="dk-review-section__content-area">
                {rating && (
                  <StarRow count={5} filled={rating.score / 2} size="md" />
                )}
 
                {review?.title && (
-                 <p className="text-base font-semibold text-center sm:text-left">
+                 <p className="dk-review-section__review-title">
                    {review.title}
                  </p>
                )}
 
                {review?.content && (
-                 <p className="text-sm text-muted-foreground text-center sm:text-left leading-relaxed line-clamp-3">
+                 <p className="dk-review-section__review-content">
                    {review.content}
                  </p>
                )}
 
                {review?.isPrivate && (
-                 <span className="text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-2 py-0.5 rounded-full">
+                 <span className="dk-review-section__private-badge">
                    Private
                  </span>
                )}
@@ -172,7 +174,7 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
                  variant="outline"
                  size="sm"
                  onClick={() => setComposerOpen(true)}
-                 className="mt-1"
+                 className="dk-review-section__action"
                >
                  <Pencil className="w-3.5 h-3.5" />
                  Edit
@@ -183,13 +185,13 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
        </div>
      ) : (
        /* ── Unrated state — inviting prompt ── */
-       <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-base)]">
-         <div className="absolute inset-0 opacity-30 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,var(--primary),transparent_70%)]" />
+       <div className="dk-review-section__card dk-review-section__card--unrated">
+         <div className="dk-review-section__glow dk-review-section__glow--unrated" />
 
-         <div className="relative p-6 sm:p-8 flex flex-col items-center gap-4">
-           <div className="flex flex-col items-center gap-2">
+         <div className="dk-review-section__content-wrap dk-review-section__prompt-area">
+           <div className="dk-review-section__prompt-stars">
              <StarRow count={5} filled={0} size="md" />
-             <p className="text-sm text-muted-foreground">How would you rate this?</p>
+             <p className="dk-review-section__prompt-text">How would you rate this?</p>
            </div>
 
            <DkButton

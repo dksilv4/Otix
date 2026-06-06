@@ -1,0 +1,32 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-star-rating {
+  @apply inline-flex items-center gap-0.5;
+}
+
+.dk-star-rating__star {
+  @apply relative;
+}
+
+.dk-star-rating__star-bg {
+  color: var(--muted-foreground);
+  opacity: 0.3;
+}
+
+.dk-star-rating__star-fill {
+  @apply absolute inset-0;
+}
+
+.dk-star-rating--sm {
+  .dk-star-rating__star-bg,
+  .dk-star-rating__star-fill {
+    @apply w-3.5 h-3.5;
+  }
+}
+
+.dk-star-rating--md {
+  .dk-star-rating__star-bg,
+  .dk-star-rating__star-fill {
+    @apply w-5 h-5;
+  }
+}

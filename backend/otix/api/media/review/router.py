@@ -1,19 +1,17 @@
+# TODO: Review this file
 from __future__ import annotations
-
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_user, get_db, get_optional_user
-from otix.api.schemas.media_rating import MediaRatingAggregateOut, MediaRatingCreate, MediaRatingOut
-from otix.api.schemas.review import (
+from otix.api._utils import get_current_user, get_db, get_optional_user
+from otix.schemas.media_rating import MediaRatingAggregateOut, MediaRatingCreate, MediaRatingOut
+from otix.schemas.review import (
     ReviewCreate,
     ReviewOut,
     ReviewUpdate,
     ReviewWithUserOut,
 )
-from otix.domain.media import MediaItem
 from otix.domain.user import User
 from otix.services.media_rating_service import MediaRatingService
 from otix.services.review_service import ReviewService
@@ -60,19 +58,13 @@ async def update_review(
     current_user: User = Depends(get_current_user),
 ) -> ReviewOut:
     service = ReviewService(db)
-    existing = await service.get_my_review(user_id=current_user.id, media_item_id=media_id)
+    existing = await service.update_review(
+        user_id=current_user.id,
+        media_item_id=media_id,
+        update_data=body.model_dump(exclude_unset=True),
+    )
     if existing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
-
-    now = datetime.now(timezone.utc)
-    in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
-
-    update_data = body.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        if in_cooldown:
-            setattr(existing, field, value)
-
-    await db.flush()
     return existing
 
 
@@ -141,16 +133,15 @@ async def upsert_rating(
     current_user: User = Depends(get_current_user),
 ) -> MediaRatingAggregateOut:
     service = MediaRatingService(db)
-    rating = await service.upsert_rating(
+    rating, avg_rating, rating_count = await service.upsert_rating(
         user_id=current_user.id,
         media_item_id=media_id,
         score=body.score,
     )
-    media = await db.get(MediaItem, media_id)
     return MediaRatingAggregateOut(
         score=rating.score,
-        avg_rating=media.avg_rating if media else None,
-        rating_count=media.rating_count if media else 0,
+        avg_rating=avg_rating,
+        rating_count=rating_count,
     )
 
 

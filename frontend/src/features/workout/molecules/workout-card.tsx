@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { Trash2 } from 'lucide-react'
 import { DkCard } from '@/features/dk-ui/molecules/card'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import type { WorkoutListOut } from '../workout-queries'
+import './workout-card.scss'
 
 interface WorkoutCardProps {
   workout: WorkoutListOut
@@ -32,23 +34,23 @@ function formatWeight(kg: number | null): string {
 
 export function WorkoutCard({ workout, onDelete, isDeleting }: WorkoutCardProps) {
   return (
-    <DkCard elevation="sm" className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold tabular-nums">
+    <DkCard elevation="sm" className="dk-workout-card">
+      <div className="dk-workout-card__body">
+        <div className="dk-workout-card__content">
+          <div className="dk-workout-card__header">
+            <span className="dk-workout-card__date">
               {formatDate(workout.startedAt)}
             </span>
-            <span className="text-xs text-muted-foreground/50">
+            <span className="dk-workout-card__set-count">
               {workout.totalSets} set{workout.totalSets !== 1 ? 's' : ''}
             </span>
           </div>
 
-          <div className="space-y-1">
+          <div className="dk-workout-card__exercises">
             {workout.exercises.map((ex, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <span className="font-medium truncate">{ex.exerciseName}</span>
-                <span className="shrink-0 text-xs text-muted-foreground/60 tabular-nums">
+              <div key={i} className="dk-workout-card__exercise">
+                <span className="dk-workout-card__exercise-name">{ex.exerciseName}</span>
+                <span className="dk-workout-card__exercise-sets">
                   {ex.sets.length} × {ex.sets[0]?.reps}
                   {ex.sets[0]?.weightKg != null ? ` ${formatWeight(ex.sets[0].weightKg)}` : ''}
                 </span>
@@ -62,7 +64,7 @@ export function WorkoutCard({ workout, onDelete, isDeleting }: WorkoutCardProps)
           size="icon"
           onClick={() => onDelete(workout.id)}
           disabled={isDeleting}
-          className="h-8 w-8 text-muted-foreground/40 hover:text-destructive shrink-0"
+          className="dk-workout-card__delete-btn"
         >
           <Trash2 className="h-4 w-4" />
         </DkButton>

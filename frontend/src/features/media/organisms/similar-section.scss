@@ -1,0 +1,9 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-media-similar-section {
+  @apply space-y-4;
+}
+
+.dk-media-similar-section__heading {
+  @apply px-4 lg:px-8 text-lg font-semibold;
+}

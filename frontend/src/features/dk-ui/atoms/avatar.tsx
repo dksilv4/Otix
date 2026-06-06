@@ -1,5 +1,6 @@
 import { forwardRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import './avatar.scss'
 
 interface DkAvatarProps {
   src?: string | null
@@ -9,11 +10,11 @@ interface DkAvatarProps {
   icon?: React.ReactNode
 }
 
-const sizeMap = {
-  sm: 'h-8 w-8 text-xs',
-  md: 'h-10 w-10 text-sm',
-  lg: 'h-12 w-12 text-base',
-  xl: 'h-16 w-16 text-lg',
+const sizeClasses: Record<string, string> = {
+  sm: 'dk-avatar--sm',
+  md: 'dk-avatar--md',
+  lg: 'dk-avatar--lg',
+  xl: 'dk-avatar--xl',
 }
 
 function getInitials(name: string): string {
@@ -31,12 +32,12 @@ const DkAvatar = forwardRef<HTMLDivElement, DkAvatarProps>(
 
     if (src && !imgError) {
       return (
-        <div ref={ref} className={cn('relative shrink-0', sizeMap[size], className)}>
+        <div ref={ref} className={cn('dk-avatar', sizeClasses[size], className)}>
           <img
             src={src}
             alt={name}
             onError={() => setImgError(true)}
-            className="h-full w-full rounded-full object-cover shadow-sm"
+            className="dk-avatar__img"
           />
         </div>
       )
@@ -45,12 +46,7 @@ const DkAvatar = forwardRef<HTMLDivElement, DkAvatarProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          'flex shrink-0 items-center justify-center rounded-full font-medium shadow-sm',
-          'bg-primary/10 text-primary',
-          sizeMap[size],
-          className,
-        )}
+        className={cn('dk-avatar__fallback', sizeClasses[size], className)}
         aria-label={name || 'User avatar'}
       >
         {icon ? icon : getInitials(name)}

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Steam and SteamGridDB enrichment tasks."""
 
 from __future__ import annotations
@@ -9,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from otix.domain.base import gen_otix_id
-from otix.domain.media import ExternalID, Game, MediaItem
+from otix.domain.media import Game, MediaItem
+from otix.services.external_id_service import ExternalIDService
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
@@ -87,14 +89,9 @@ async def _sync_steam_seed_app(steam_app_id: int) -> dict | None:
             )
             session.add(game)
 
-            ext_id = ExternalID(
-                provider="steam",
-                external_id=steam_id_str,
-                entity_type="media_item",
-                entity_id=item.id,
-                media_item_id=item.id,
+            ext_id = await ExternalIDService(session).upsert(
+                "steam", steam_id_str, "media_item", item.id,
             )
-            session.add(ext_id)
             await session.flush()
 
         hydrator = SteamHydrator(provider, session)

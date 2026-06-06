@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_user, get_db
-from otix.api.schemas.karma import VoteCountsOut, VoteCreate
+from otix.api._utils import get_current_user, get_db
+from otix.schemas.karma import VoteCountsOut, VoteCreate
 from otix.domain.user import User
 from otix.services.karma_service import KarmaService
 
@@ -35,7 +36,6 @@ async def vote_review(
 
     service = KarmaService(db)
     await service.vote(current_user.id, review_user_id, media_item_id, body.vote_type)
-    await db.commit()
 
 
 @review_vote_router.delete(
@@ -52,7 +52,6 @@ async def remove_vote(
     deleted = await service.remove_vote(current_user.id, review_user_id, media_item_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vote not found")
-    await db.commit()
 
 
 @review_vote_router.get(

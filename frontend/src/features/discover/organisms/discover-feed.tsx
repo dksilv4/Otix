@@ -1,3 +1,4 @@
+import './discover-feed.scss'
 import { DiscoverHero } from '@discover/organisms/discover-hero'
 import { MediaSection } from '@discover/organisms/media-section'
 
@@ -10,7 +11,7 @@ const sections = [
 
 export function DiscoverFeed() {
   return (
-    <div className="space-y-16">
+    <div className="dk-discover-feed">
       <DiscoverHero />
       {sections.map((section) => (
         <MediaSection key={section.mediaType} {...section} />

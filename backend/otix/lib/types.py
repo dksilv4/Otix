@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Shared type aliases.
 
 Avoids typing.Any in favour of precise, narrow types.

@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { PauseIcon, PlayIcon } from "lucide-react"
 import { cn, formatDuration } from "@/lib/utils"
 import type { SpotifyPlaylistTrack } from "../types"
+import "./playlist-track-row.scss"
 
 interface PlaylistTrackRowProps {
   track: SpotifyPlaylistTrack
@@ -20,38 +22,37 @@ export function PlaylistTrackRow({ track, index, isPlaying, onPlay, className }:
   return (
     <div
       className={cn(
-        "group grid grid-cols-[auto_1fr_auto] gap-3 items-center px-3 py-2 rounded-lg transition-colors",
-        "hover:bg-[var(--dk-surface-glass)]",
-        isPlaying && "bg-primary/5",
+        "dk-playlist-track-row",
+        isPlaying && "dk-playlist-track-row--playing",
         className,
       )}
     >
       <button
         onClick={() => onPlay(t.uri)}
-        className="relative flex items-center justify-center w-8 h-8 shrink-0"
+        className="dk-playlist-track-row__play-btn"
         title={`Play ${t.name}`}
       >
-        <span className="group-hover:hidden text-sm text-muted-foreground w-4 text-right">
+        <span className="dk-playlist-track-row__index">
           {index + 1}
         </span>
-        <span className="hidden group-hover:flex items-center justify-center w-full h-full text-foreground">
+        <span className="dk-playlist-track-row__icon">
           {isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
         </span>
       </button>
 
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="dk-playlist-track-row__info">
         {image && (
-          <img src={image} alt="" className="h-10 w-10 rounded object-cover shrink-0" />
+          <img src={image} alt="" className="dk-playlist-track-row__album-art" />
         )}
-        <div className="min-w-0">
-          <p className={cn("text-sm font-medium truncate", isPlaying && "text-primary")}>
+        <div className="dk-playlist-track-row__details">
+          <p className={cn("dk-playlist-track-row__name", isPlaying && "dk-playlist-track-row__name--playing")}>
             {t.name}
           </p>
-          <p className="text-xs text-muted-foreground truncate">{artists}</p>
+          <p className="dk-playlist-track-row__artist">{artists}</p>
         </div>
       </div>
 
-      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+      <span className="dk-playlist-track-row__duration">
         {t.duration_ms ? formatDuration(t.duration_ms) : "—"}
       </span>
     </div>

@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Dumbbell, Flame, Weight } from 'lucide-react'
@@ -14,6 +15,7 @@ import {
   useCreateWorkout,
   useDeleteWorkout,
 } from '../workout-queries'
+import './workout-page.scss'
 
 function WorkoutPageInner() {
   const { toast } = useToast()
@@ -76,15 +78,15 @@ function WorkoutPageInner() {
   const isEmpty = !workoutsQuery.isLoading && workouts.length === 0
 
   return (
-    <div className="mx-auto lg:max-w-2xl px-4 py-8 space-y-6">
+    <div className="dk-workout-page">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Workout</h1>
-        <p className="text-sm text-muted-foreground/60 mt-1">
+        <h1 className="dk-workout-page__title">Workout</h1>
+        <p className="dk-workout-page__subtitle">
           Log your training with natural language
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="dk-workout-page__input-area">
         <WorkoutInput
           value={inputValue}
           onChange={setInputValue}
@@ -100,41 +102,41 @@ function WorkoutPageInner() {
         )}
       </div>
 
-      <div className="space-y-6">
-        <h2 className="text-sm font-semibold text-muted-foreground/60 uppercase tracking-wider">
+      <div className="dk-workout-page__history">
+        <h2 className="dk-workout-page__history-heading">
           History
         </h2>
 
         {workoutsQuery.isLoading && (
-          <div className="flex justify-center py-12">
-            <DkSpinner className="h-6 w-6" />
+          <div className="dk-workout-page__loading">
+            <DkSpinner className="dk-workout-page__spinner" />
           </div>
         )}
 
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-            <Dumbbell className="h-10 w-10 text-muted-foreground/20" />
-            <p className="text-sm text-muted-foreground/50">
+          <div className="dk-workout-page__empty">
+            <Dumbbell className="dk-workout-page__empty-icon" />
+            <p className="dk-workout-page__empty-text">
               Log your first workout
             </p>
           </div>
         )}
 
         {dayGroups.map((group) => (
-          <div key={group.date} className="space-y-2">
+          <div key={group.date} className="dk-workout-page__day-group">
             {/* Day header with stats */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">{group.label}</span>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground/50">
+            <div className="dk-workout-page__day-header">
+              <span className="dk-workout-page__day-label">{group.label}</span>
+              <div className="dk-workout-page__day-stats">
                 {group.estimatedKcal > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Flame className="h-3 w-3" />
+                  <span className="dk-workout-page__stat-item">
+                    <Flame className="dk-workout-page__stat-icon" />
                     ~{group.estimatedKcal.toLocaleString()} kcal
                   </span>
                 )}
                 {group.totalVolumeKg > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Weight className="h-3 w-3" />
+                  <span className="dk-workout-page__stat-item">
+                    <Weight className="dk-workout-page__stat-icon" />
                     {formatVolume(group.totalVolumeKg)}
                   </span>
                 )}
@@ -153,9 +155,9 @@ function WorkoutPageInner() {
         ))}
 
         {workoutsQuery.hasNextPage && (
-          <div className="flex justify-center pt-2">
+          <div className="dk-workout-page__load-more">
             <button
-              className="text-sm text-primary hover:underline"
+              className="dk-workout-page__load-more-btn"
               onClick={() => workoutsQuery.fetchNextPage()}
               disabled={workoutsQuery.isFetchingNextPage}
             >

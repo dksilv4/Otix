@@ -1,0 +1,67 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Movie Section ── */
+.dk-media-movie-section {
+  @apply space-y-4;
+}
+
+.dk-media-movie-section__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-media-movie-section__grid {
+  @apply grid grid-cols-2 gap-4 sm:grid-cols-3;
+}
+
+.dk-media-movie-section__card {
+  @apply rounded-xl bg-card p-4;
+}
+
+.dk-media-movie-section__card--link {
+  @apply rounded-xl bg-card p-4;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    @apply bg-card/70;
+  }
+}
+
+.dk-media-movie-section__label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-media-movie-section__value {
+  @apply mt-1 text-sm font-semibold;
+}
+
+.dk-media-movie-section__value--flex {
+  @apply mt-1 flex items-center gap-2;
+}
+
+.dk-media-movie-section__amount {
+  @apply text-sm font-semibold;
+}
+
+.dk-media-movie-section__amount--profit {
+  @apply text-emerald-400;
+}
+
+.dk-media-movie-section__amount--loss {
+  @apply text-red-400;
+}
+
+.dk-media-movie-section__rank {
+  @apply inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold;
+}
+
+.dk-media-movie-section__rank--primary {
+  @apply bg-primary/10 text-primary;
+}
+
+.dk-media-movie-section__rank--profit {
+  @apply bg-emerald-400/10 text-emerald-400;
+}
+
+.dk-media-movie-section__rank--loss {
+  @apply bg-red-400/10 text-red-400;
+}

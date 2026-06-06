@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { useState } from 'react'
+import './admin-proposals-page.scss'
 import { Helmet } from 'react-helmet-async'
 import { Navigate } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -115,26 +117,26 @@ export function AdminProposalsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="dk-admin-proposals">
       <Helmet>
         <title>Edit Proposals — Otix Admin</title>
       </Helmet>
 
-      <div className="mb-8 space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Edit Proposals</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="dk-admin-proposals__header">
+        <h1 className="dk-admin-proposals__title">Edit Proposals</h1>
+        <p className="dk-admin-proposals__subtitle">
           Review and manage media edit proposals across all content
         </p>
       </div>
 
       {/* Status filter tabs */}
-      <div className="mb-6 flex gap-1 rounded-xl bg-[var(--dk-surface-ghost)] p-1">
+      <div className="dk-admin-proposals__tabs">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.label}
             type="button"
             onClick={() => { setStatusFilter(tab.value); setOffset(0) }}
-            className="flex-1 rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors"
+            className="dk-admin-proposals__tab"
             style={{
               background: statusFilter === tab.value ? 'var(--dk-surface-base)' : 'transparent',
               color: statusFilter === tab.value ? 'var(--foreground)' : 'var(--muted-foreground)',
@@ -148,24 +150,24 @@ export function AdminProposalsPage() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
+        <div className="dk-admin-proposals__loading">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
+        <div className="dk-admin-proposals__error">
           <AlertTriangle className="h-8 w-8 text-amber-400" />
-          <p className="text-sm text-muted-foreground">Failed to load proposals</p>
+          <p className="dk-admin-proposals__error-text">Failed to load proposals</p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+            className="dk-admin-proposals__retry-btn"
           >
             Retry
           </button>
         </div>
       ) : !data || data.items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="dk-admin-proposals__empty">
+          <p className="dk-admin-proposals__empty-text">
             {statusFilter
               ? `No ${statusFilter} proposals`
               : 'No proposals yet'}
@@ -173,7 +175,7 @@ export function AdminProposalsPage() {
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="dk-admin-proposals__list">
             {data.items.map((proposal) => (
               <ProposalCard
                 key={proposal.id}
@@ -195,23 +197,23 @@ export function AdminProposalsPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center gap-4">
+            <div className="dk-admin-proposals__pagination">
               <button
                 type="button"
                 onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                 disabled={offset === 0}
-                className="rounded-lg bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--dk-surface-ghost-hover)] disabled:opacity-30 transition-colors"
+                className="dk-admin-proposals__page-btn"
               >
                 Previous
               </button>
-              <span className="text-xs text-muted-foreground">
+              <span className="dk-admin-proposals__page-info">
                 Page {currentPage} of {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setOffset(offset + PAGE_SIZE)}
                 disabled={offset + PAGE_SIZE >= total}
-                className="rounded-lg bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--dk-surface-ghost-hover)] disabled:opacity-30 transition-colors"
+                className="dk-admin-proposals__page-btn"
               >
                 Next
               </button>

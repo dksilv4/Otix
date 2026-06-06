@@ -9,8 +9,8 @@ from datetime import date, datetime, timezone, timedelta
 from jose import jwt
 from otix.domain.user import User, RefreshToken, AuthActionToken, AuthActionType
 from otix.infrastructure.config import settings
-from otix.services.auth_service import AuthService, hash_password
-from otix.services.two_factor_service import TwoFactorService
+from otix.services.auth.auth_service import AuthService, hash_password
+from otix.services.auth.two_factor_service import TwoFactorService
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ class TestAuthRegistration:
 
 
 class TestAuthLogin:
-    @patch("otix.services.auth_service.verify_password", return_value=True)
+    @patch("otix.services.auth.auth_service.verify_password", return_value=True)
     @patch("otix.services.session_service.SessionService.create_session", new_callable=AsyncMock)
     async def test_login_success(
         self,
@@ -92,7 +92,7 @@ class TestAuthLogin:
         result = await auth_service.login("nonexistent@example.com", "password")
         assert result is None
 
-    @patch("otix.services.auth_service.verify_password", return_value=False)
+    @patch("otix.services.auth.auth_service.verify_password", return_value=False)
     async def test_login_wrong_password(
         self,
         mock_verify: MagicMock,
@@ -105,7 +105,7 @@ class TestAuthLogin:
         result = await auth_service.login("test@example.com", "wrongpass")
         assert result is None
 
-    @patch("otix.services.auth_service.verify_password", return_value=True)
+    @patch("otix.services.auth.auth_service.verify_password", return_value=True)
     async def test_login_2fa_enabled_challenge(
         self,
         mock_verify: MagicMock,
@@ -220,7 +220,7 @@ class TestEmailVerification:
         ]
 
         # Token mock helper
-        with patch("otix.services.auth_service.hash_token", return_value="hash-123"):
+        with patch("otix.services.auth.auth_service.hash_token", return_value="hash-123"):
             res = await auth_service.verify_email("token-val")
             assert res is True
             assert user.is_verified is True
@@ -238,7 +238,7 @@ class TestPasswordReset:
         ]
         mock_db_session.execute.return_value = MagicMock(scalars=MagicMock(return_value=[]))
 
-        with patch("otix.services.auth_service.hash_token", return_value="hash-123"):
+        with patch("otix.services.auth.auth_service.hash_token", return_value="hash-123"):
             res = await auth_service.reset_password("token-val", "newpassword")
             assert res is True
             assert user.hashed_password != "hashed"
@@ -255,7 +255,7 @@ class TestTwoFactorService:
         assert "qr_code_svg" in result
         assert user.two_factor_secret == result["secret"]
 
-    @patch("otix.services.two_factor_service.verify_totp", return_value=True)
+    @patch("otix.services.auth.two_factor_service.verify_totp", return_value=True)
     async def test_enable_success(self, mock_verify: MagicMock, two_factor_service: TwoFactorService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
         user.two_factor_secret = "secret-123"
@@ -264,7 +264,7 @@ class TestTwoFactorService:
         assert res is True
         assert user.two_factor_enabled is True
 
-    @patch("otix.services.two_factor_service.verify_password", return_value=True)
+    @patch("otix.services.auth.two_factor_service.verify_password", return_value=True)
     async def test_disable_success(self, mock_verify_pw: MagicMock, two_factor_service: TwoFactorService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
         user.two_factor_enabled = True
@@ -280,7 +280,7 @@ class TestTwoFactorService:
         res = await two_factor_service.enable(user, "123456")
         assert res is False
 
-    @patch("otix.services.two_factor_service.verify_totp", return_value=False)
+    @patch("otix.services.auth.two_factor_service.verify_totp", return_value=False)
     async def test_enable_wrong_code(self, mock_verify: MagicMock, two_factor_service: TwoFactorService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
         user.two_factor_secret = "secret-123"
@@ -292,7 +292,7 @@ class TestTwoFactorService:
         res = await two_factor_service.disable(user, "password")
         assert res is False
 
-    @patch("otix.services.two_factor_service.verify_password", return_value=False)
+    @patch("otix.services.auth.two_factor_service.verify_password", return_value=False)
     async def test_disable_wrong_password(self, mock_verify_pw: MagicMock, two_factor_service: TwoFactorService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
         user.two_factor_enabled = True

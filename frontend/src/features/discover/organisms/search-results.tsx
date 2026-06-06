@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './search-results.scss'
 import { useRef, useMemo, useEffect } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
@@ -27,7 +29,7 @@ function SearchSkeleton({ count = 12 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+          className="dk-discover-search-results__skeleton"
         />
       ))}
     </MediaGrid>
@@ -37,10 +39,10 @@ function SearchSkeleton({ count = 12 }: { count?: number }) {
 function SearchEmpty({ query, type }: { query: string; type: string }) {
   const typeLabel = type === 'all' ? '' : TYPE_OPTIONS.find((t) => t.value === type)?.label?.toLowerCase()
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-lg font-semibold text-foreground">No results found</p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Nothing matches "{query}"{typeLabel ? ` in ${typeLabel}` : ''}. Try a different search.
+    <div className="dk-discover-search-results__empty">
+      <p className="dk-discover-search-results__empty-heading">No results found</p>
+      <p className="dk-discover-search-results__empty-text">
+        Nothing matches &quot;{query}&quot;{typeLabel ? ` in ${typeLabel}` : ''}. Try a different search.
       </p>
     </div>
   )
@@ -48,9 +50,9 @@ function SearchEmpty({ query, type }: { query: string; type: string }) {
 
 function SearchError() {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-lg font-semibold text-foreground">Something went wrong</p>
-      <p className="mt-1 text-sm text-muted-foreground">Please try again in a moment.</p>
+    <div className="dk-discover-search-results__error">
+      <p className="dk-discover-search-results__error-heading">Something went wrong</p>
+      <p className="dk-discover-search-results__error-text">Please try again in a moment.</p>
     </div>
   )
 }
@@ -158,7 +160,7 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
   const hasError = (!isPeopleOnly && !isUsersOnly && isError) || (includePeople && isPeopleError) || (includeUsers && isUsersError)
 
   return (
-    <div className="space-y-6">
+    <div className="dk-discover-search-results">
       {isInitialLoading ? (
         <SearchSkeleton />
       ) : hasError ? (
@@ -168,14 +170,14 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
       ) : (
         <>
           {includeUsers && users.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Users</h2>
-                <span className="text-xs text-muted-foreground">
+            <section className="dk-discover-search-results__section">
+              <div className="dk-discover-search-results__header">
+                <h2 className="dk-discover-search-results__heading">Users</h2>
+                <span className="dk-discover-search-results__count">
                   {users.length.toLocaleString()} result{users.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="dk-discover-search-results__scroll">
                 {users.map((user, i) => (
                   <motion.div
                     key={user.id}
@@ -186,32 +188,32 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
                     <Link
                       to="/u/$username"
                       params={{ username: user.username }}
-                      className="group relative h-48 w-28 shrink-0 overflow-hidden rounded-lg bg-muted shadow-[0_4px_16px_rgb(0_0_0/0.2)] transition-[transform,box-shadow] duration-300 ease-out hover:scale-[1.02] hover:shadow-[0_20px_40px_rgb(0_0_0/0.35)] active:scale-[1.01] sm:h-52 sm:w-32 block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="dk-discover-search-results__user-card"
                     >
                       {user.avatarUrl ? (
                         <Image
                           src={user.avatarUrl}
                           alt={user.username}
-                          className="absolute inset-0 h-full w-full rounded-lg transition-transform duration-500 ease-out group-hover:scale-[1.08]"
+                          className="dk-discover-search-results__user-card-avatar"
                           fallback={
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45">
+                            <div className="dk-discover-search-results__user-card-avatar-placeholder">
                               <UserRound className="h-10 w-10" aria-hidden="true" />
                             </div>
                           }
                         />
                       ) : (
-                        <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45 transition-transform duration-500 ease-out group-hover:scale-[1.08]">
+                        <div className="dk-discover-search-results__user-card-avatar dk-discover-search-results__user-card-avatar-placeholder">
                           <UserRound className="h-10 w-10" aria-hidden="true" />
                         </div>
                       )}
-                      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-t from-black/90 via-black/45 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-95" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 text-white">
+                      <div className="dk-discover-search-results__user-card-overlay" />
+                      <div className="dk-discover-search-results__user-card-info">
                         {user.levelTitle && (
-                          <p className="mb-1 text-[11px] font-medium uppercase leading-tight text-white/75 truncate">
+                          <p className="dk-discover-search-results__user-card-level">
                             {user.levelTitle}
                           </p>
                         )}
-                        <h3 className="truncate text-sm font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.75)] sm:text-base">
+                        <h3 className="dk-discover-search-results__user-card-name">
                           {user.username}
                         </h3>
                       </div>
@@ -223,14 +225,14 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
           )}
 
           {includePeople && people.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Artists</h2>
-                <span className="text-xs text-muted-foreground">
+            <section className="dk-discover-search-results__section">
+              <div className="dk-discover-search-results__header">
+                <h2 className="dk-discover-search-results__heading">Artists</h2>
+                <span className="dk-discover-search-results__count">
                   {people.length.toLocaleString()} result{people.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="dk-discover-search-results__scroll">
                 {people.map((person, i) => (
                   <motion.div
                     key={person.id}
@@ -251,14 +253,14 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
           )}
 
           {tracks.length > 0 && (
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Tracks</h2>
-                <span className="text-xs text-muted-foreground">
+            <section className="dk-discover-search-results__section">
+              <div className="dk-discover-search-results__header">
+                <h2 className="dk-discover-search-results__heading">Tracks</h2>
+                <span className="dk-discover-search-results__count">
                   {tracks.length.toLocaleString()} result{tracks.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="dk-discover-search-results__scroll">
                 {tracks.map((track, i) => (
                   <motion.div
                     key={track.id}
@@ -269,29 +271,29 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
                     <Link
                       to="/media/$mediaType/$mediaId"
                       params={{ mediaType: 'music', mediaId: track.albumId }}
-                      className="group relative flex h-20 w-72 shrink-0 items-center gap-3 overflow-hidden rounded-lg bg-[var(--dk-surface-glass)] p-2 transition-[transform,box-shadow] duration-300 ease-out hover:scale-[1.02] hover:shadow-[0_8px_24px_rgb(0_0_0/0.25)] active:scale-[1.01] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      className="dk-discover-search-results__track-card"
                     >
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <div className="dk-discover-search-results__track-thumb">
                         {track.albumPosterUrl ? (
                           <Image
                             src={track.albumPosterUrl}
                             alt={track.albumTitle}
-                            className="h-full w-full object-cover"
+                            className="dk-discover-search-results__track-thumb-image"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
+                          <div className="dk-discover-search-results__track-thumb-fallback">
                             <Music className="h-6 w-6" />
                           </div>
                         )}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-medium text-foreground">{track.title}</h3>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {track.albumArtistName || 'Unknown Artist'} — {track.albumTitle}
+                      <div className="dk-discover-search-results__track-info">
+                        <h3 className="dk-discover-search-results__track-title">{track.title}</h3>
+                        <p className="dk-discover-search-results__track-artist">
+                          {track.albumArtistName || 'Unknown Artist'} &mdash; {track.albumTitle}
                         </p>
                       </div>
                       {track.durationMs != null && (
-                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                        <span className="dk-discover-search-results__track-duration">
                           {formatTrackDuration(track.durationMs)}
                         </span>
                       )}
@@ -303,7 +305,7 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
           )}
 
           {total !== undefined && (
-            <p className="text-xs text-muted-foreground">
+            <p className="dk-discover-search-results__total">
               {total.toLocaleString()} result{total !== 1 ? 's' : ''}
             </p>
           )}
@@ -324,7 +326,7 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
           {isFetchingNextPage && <SearchSkeleton count={remainingCount} />}
         </>
       )}
-      <div ref={sentinelRef} className="h-1" />
+      <div ref={sentinelRef} className="dk-discover-search-results__sentinel" />
     </div>
   )
 }

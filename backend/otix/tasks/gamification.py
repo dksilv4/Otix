@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Celery tasks for gamification: streaks, badges, and karma."""
 
 from __future__ import annotations

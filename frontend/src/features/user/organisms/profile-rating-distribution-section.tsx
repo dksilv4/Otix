@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useQuery } from '@tanstack/react-query'
 import { Star, BarChart3 } from 'lucide-react'
 import { userQueries } from '../user-queries'
 import { Skeleton } from '@ui/atoms/skeleton'
+import './profile-rating-distribution-section.scss'
 
 const MEDIA_TYPE_COLORS: Record<string, string> = {
   movie: '#ef4444',
@@ -33,34 +35,34 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
   const maxBarTotal = Math.max(...distribution.map((d) => d.movie + d.show + d.game + d.music), 1)
 
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-4">
+    <section className="dk-user-rating-distribution">
+      <div className="dk-user-rating-distribution__header">
         <BarChart3 className="h-4 w-4 text-muted-foreground/60" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Rating Distribution</h2>
+        <h2 className="dk-user-rating-distribution__title">Rating Distribution</h2>
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-4 sm:p-6 shadow-[var(--dk-shadow-sm)]">
+      <div className="dk-user-rating-distribution__card">
         {/* Legend */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-5">
+        <div className="dk-user-rating-distribution__legend">
           {MEDIA_TYPES.map((type) => (
-            <span key={type} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: MEDIA_TYPE_COLORS[type] }} />
+            <span key={type} className="dk-user-rating-distribution__legend-item">
+              <span className="dk-user-rating-distribution__legend-swatch" style={{ backgroundColor: MEDIA_TYPE_COLORS[type] }} />
               {MEDIA_TYPE_LABELS[type]}
             </span>
           ))}
         </div>
 
         {/* Bars */}
-        <div className="flex items-end gap-1.5 sm:gap-2 min-h-[180px]">
+        <div className="dk-user-rating-distribution__bars">
           {distribution.map((item) => {
             const total = item.movie + item.show + item.game + item.music
             if (total === 0) {
               return (
-                <div key={item.score} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <div className="w-full flex flex-col justify-end" style={{ height: '160px' }}>
-                    <div className="w-full rounded-t-sm bg-white/[0.03] h-full" />
+                <div key={item.score} className="dk-user-rating-distribution__bar-group">
+                  <div className="dk-user-rating-distribution__bar-wrapper--empty" style={{ height: '160px' }}>
+                    <div className="dk-user-rating-distribution__bar-empty-fill" />
                   </div>
-                  <span className="text-[10px] font-medium tabular-nums text-muted-foreground/40">{item.score}</span>
+                  <span className="dk-user-rating-distribution__label-score dk-user-rating-distribution__label-score--empty">{item.score}</span>
                 </div>
               )
             }
@@ -74,22 +76,22 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
             }))
 
             return (
-              <div key={item.score} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+              <div key={item.score} className="dk-user-rating-distribution__bar-group">
                 {/* Percentage label */}
-                <span className="text-[9px] font-bold tabular-nums text-muted-foreground/30">
+                <span className="dk-user-rating-distribution__label-pct">
                   {Math.round((total / totalRatings) * 100)}%
                 </span>
 
                 {/* Stacked bar */}
                 <div
-                  className="w-full rounded-t-sm overflow-hidden flex flex-col-reverse relative"
+                  className="dk-user-rating-distribution__bar-wrapper"
                   style={{ height: `clamp(20px, ${pct}%, 180px)`, minHeight: total > 0 ? '4px' : '0' }}
                 >
                   {segments.map((seg) =>
                     seg.count > 0 ? (
                       <div
                         key={seg.type}
-                        className="w-full transition-all duration-300 hover:brightness-125"
+                        className="dk-user-rating-distribution__segment"
                         style={{
                           height: `${seg.pctOfBar * 100}%`,
                           backgroundColor: MEDIA_TYPE_COLORS[seg.type],
@@ -101,18 +103,18 @@ export function ProfileRatingDistributionSection({ username }: { username: strin
                 </div>
 
                 {/* Score label */}
-                <span className="text-[10px] font-medium tabular-nums text-muted-foreground/60">{item.score}</span>
+                <span className="dk-user-rating-distribution__label-score">{item.score}</span>
 
                 {/* Count below score (tiny) */}
-                <span className="text-[8px] tabular-nums text-muted-foreground/30">{total}</span>
+                <span className="dk-user-rating-distribution__label-count">{total}</span>
               </div>
             )
           })}
         </div>
 
         {/* Summary */}
-        <div className="mt-5 pt-3 border-t border-white/[0.04] flex items-center gap-4 text-[11px] text-muted-foreground/50">
-          <span className="inline-flex items-center gap-1">
+        <div className="dk-user-rating-distribution__summary">
+          <span className="dk-user-rating-distribution__summary-item">
             <Star className="h-3 w-3 text-amber-400" />
             {totalRatings} rating{totalRatings !== 1 ? 's' : ''}
           </span>
@@ -137,10 +139,10 @@ function RatingDistributionSkeleton() {
   return (
     <section>
       <Skeleton className="h-4 w-36 mb-4" />
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
-        <div className="flex items-end gap-2 h-[180px]">
+      <div className="dk-user-rating-distribution__skeleton-card">
+        <div className="dk-user-rating-distribution__skeleton-bars">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div key={i} className="dk-user-rating-distribution__skeleton-group">
               <Skeleton className="w-full flex-1 rounded-t-sm" style={{ height: `${30 + Math.random() * 70}%` }} />
               <Skeleton className="h-3 w-4" />
             </div>

@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { UserPlus, UserCheck } from 'lucide-react'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { useAuth } from '@/features/auth/auth-provider'
 import { useFollowUser, useUnfollowUser } from '../user-queries'
+import './follow-button.scss'
 
 interface FollowButtonProps {
   username: string
@@ -20,6 +22,7 @@ export function FollowButton({ username, isFollowing }: FollowButtonProps) {
       <DkButton
         variant="secondary"
         size="xs"
+        className="dk-user-follow-button"
         onClick={() => unfollow.mutate()}
         loading={unfollow.isPending}
       >
@@ -33,6 +36,7 @@ export function FollowButton({ username, isFollowing }: FollowButtonProps) {
     <DkButton
       variant="glass"
       size="xs"
+      className="dk-user-follow-button"
       onClick={() => follow.mutate()}
       loading={follow.isPending}
     >

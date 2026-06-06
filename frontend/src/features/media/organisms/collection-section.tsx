@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './collection-section.scss'
 import { MediaCard } from '@ui/molecules/media-card'
 import { cn } from '@/lib/utils'
 
@@ -27,22 +29,22 @@ export function CollectionSection({ collection, currentMediaId, className }: Col
   if (collection.movies.length === 0) return null
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-lg font-semibold">{collection.name}</h2>
-        <span className="text-sm text-muted-foreground">
+    <section className={cn('dk-media-collection', className)}>
+      <div className="dk-media-collection__header">
+        <h2 className="dk-media-collection__title">{collection.name}</h2>
+        <span className="dk-media-collection__count">
           {collection.movies.length} movie{collection.movies.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {collection.overview && (
-        <p className="max-w-2xl text-sm text-muted-foreground line-clamp-2">
+        <p className="dk-media-collection__overview">
           {collection.overview}
         </p>
       )}
 
-      <div className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex gap-3">
+      <div className="dk-media-collection__scroll">
+        <div className="dk-media-collection__inner">
           {collection.movies.map((movie) => {
             const isCurrent = movie.id === currentMediaId
 
@@ -50,8 +52,8 @@ export function CollectionSection({ collection, currentMediaId, className }: Col
               <div
                 key={movie.id}
                 className={cn(
-                  'w-36 shrink-0 -mt-2 rounded-lg',
-                  isCurrent && 'ring-2 ring-primary',
+                  'dk-media-collection__card',
+                  isCurrent && 'dk-media-collection__card--current',
                 )}
               >
                 <MediaCard

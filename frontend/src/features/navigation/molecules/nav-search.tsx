@@ -1,3 +1,4 @@
+import './nav-search.scss'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from '@tanstack/react-router'
 import { Search, Film, Tv, Gamepad2, Music } from 'lucide-react'
@@ -130,8 +131,8 @@ export function NavSearch() {
  <div
  ref={containerRef}
  className={cn(
- 'flex items-center transition-all duration-300 relative',
- expanded ? 'w-56 px-2.5 py-0.5' : 'w-8 h-8 justify-center',
+  'dk-nav-search',
+  expanded ? 'dk-nav-search--expanded' : 'dk-nav-search--collapsed',
  )}
  >
  {expanded ? (
@@ -143,11 +144,7 @@ export function NavSearch() {
  onChange={handleInputChange}
  onKeyDown={handleKeyDown}
  placeholder="Search..."
- className={cn(
- 'w-full bg-transparent border-0 outline-none',
- 'shadow-none ring-0 focus:ring-0 focus:ring-offset-0',
- 'text-sm text-foreground placeholder:text-muted-foreground/50',
- )}
+ className="dk-nav-search__input"
  />
 
  <AnimatePresence>
@@ -157,14 +154,7 @@ export function NavSearch() {
  animate={{ opacity: 1, y: 0, scale: 1 }}
  exit={{ opacity: 0, y: -8, scale: 0.96 }}
  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
- className={cn(
- 'absolute right-0 top-[calc(100%+0.75rem)] z-[9999]',
- 'w-80 max-h-[22rem] overflow-y-auto p-2 rounded-2xl',
- 'bg-[var(--dk-surface-overlay)] ',
- 'backdrop-blur-xl',
- 'shadow-[var(--dk-shadow-glass)]',
- 'flex flex-col gap-0.5',
- )}
+ className="dk-nav-search__dropdown"
  role="listbox"
  >
  {suggestions.map((item, idx) => {
@@ -175,14 +165,6 @@ export function NavSearch() {
  : item.mediaType === 'game'
  ? Gamepad2
  : Music
-
- const badgeColor = item.mediaType === 'movie'
- ? 'bg-rose-500/10 text-rose-400 border border-rose-500/10'
- : item.mediaType === 'show'
- ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/10'
- : item.mediaType === 'game'
- ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/10'
- : 'bg-purple-500/10 text-purple-400 border border-purple-500/10'
 
  const typeName = item.mediaType === 'movie'
  ? 'Movie'
@@ -201,8 +183,8 @@ export function NavSearch() {
  to={`/media/${item.mediaType}/${item.id}` as any}
  onClick={() => collapse()}
  className={cn(
- 'flex items-center gap-3 p-2 rounded-xl transition-all duration-150 select-none text-left w-full cursor-pointer',
- idx === activeIndex ? 'bg-white/[0.08] scale-[1.01]' : 'hover:bg-white/[0.04]',
+  'dk-nav-search__item',
+  idx === activeIndex && 'dk-nav-search__item--active',
  )}
  role="option"
  aria-selected={idx === activeIndex}
@@ -211,23 +193,23 @@ export function NavSearch() {
  <img
  src={item.posterUrl}
  alt=""
- className="w-9 h-12 rounded object-cover bg-white/[0.04] shrink-0 shadow-md"
+ className="dk-nav-search__poster"
  />
  ) : (
- <div className="w-9 h-12 rounded bg-white/[0.04] flex items-center justify-center shrink-0 ">
+ <div className="dk-nav-search__poster-placeholder">
  <Icon className="w-5 h-5 text-muted-foreground" />
  </div>
  )}
- <div className="min-w-0 flex-1">
- <h4 className="text-sm font-semibold truncate text-foreground leading-tight">
+ <div className="dk-nav-search__info">
+ <h4 className="dk-nav-search__title">
  {item.title}
  </h4>
  <div className="flex items-center gap-1.5 mt-1">
- <span className={cn('text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border', badgeColor)}>
+ <span className={cn('dk-nav-search__badge', `dk-nav-search__badge--${item.mediaType}`)}>
  {typeName}
  </span>
  {year && (
- <span className="text-xs text-muted-foreground/60">
+ <span className="dk-nav-search__year">
  &middot; {year}
  </span>
  )}
@@ -243,7 +225,7 @@ export function NavSearch() {
  ) : (
  <button
  onClick={() => setExpanded(true)}
- className="rounded-full w-8 h-8 flex items-center justify-center hover:bg-white/[0.06] transition-colors cursor-pointer"
+ className="dk-nav-search__trigger"
  aria-label="Search"
  >
  <Search className="h-4 w-4 text-muted-foreground" />

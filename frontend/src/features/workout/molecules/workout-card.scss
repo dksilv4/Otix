@@ -1,0 +1,45 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-workout-card {
+  @apply p-4;
+}
+
+.dk-workout-card__body {
+  @apply flex items-start justify-between gap-3;
+}
+
+.dk-workout-card__content {
+  @apply min-w-0 flex-1 space-y-2;
+}
+
+.dk-workout-card__header {
+  @apply flex items-center gap-2;
+}
+
+.dk-workout-card__date {
+  @apply text-sm font-semibold tabular-nums;
+}
+
+.dk-workout-card__set-count {
+  @apply text-xs text-muted-foreground/50;
+}
+
+.dk-workout-card__exercises {
+  @apply space-y-1;
+}
+
+.dk-workout-card__exercise {
+  @apply flex items-center gap-2 text-sm;
+}
+
+.dk-workout-card__exercise-name {
+  @apply font-medium truncate;
+}
+
+.dk-workout-card__exercise-sets {
+  @apply shrink-0 text-xs text-muted-foreground/60 tabular-nums;
+}
+
+.dk-workout-card__delete-btn {
+  @apply h-8 w-8 text-muted-foreground/40 hover:text-destructive shrink-0;
+}

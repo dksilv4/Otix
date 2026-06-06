@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { DkButton } from "@/features/dk-ui/atoms/button"
@@ -8,6 +9,7 @@ import { ReviewComposer } from "../molecules/review-composer"
 import { reviewQueries } from "../review-queries"
 import { cn } from "@/lib/utils"
 import type { ReviewWithUserOut } from "../review-queries"
+import "./reviews-list-section.scss"
 
 interface ReviewsListSectionProps {
  mediaId: string
@@ -16,16 +18,16 @@ interface ReviewsListSectionProps {
 
 function ReviewCardSkeleton() {
  return (
- <div className="rounded-2xl bg-[var(--dk-surface-base)] p-5 space-y-3">
- <div className="flex items-center gap-3">
- <div className="h-9 w-9 rounded-full animate-pulse bg-[var(--dk-surface-glass)]" />
- <div className="space-y-1.5">
- <div className="h-3.5 w-24 rounded-full animate-pulse bg-[var(--dk-surface-glass)]" />
- <div className="h-3 w-16 rounded-full animate-pulse bg-[var(--dk-surface-glass)]" />
+ <div className="dk-review__skeleton">
+ <div className="dk-review__skeleton-row">
+ <div className="dk-review__skeleton-avatar" />
+ <div className="dk-review__skeleton-meta">
+ <div className="dk-review__skeleton-line dk-review__skeleton-line--name" />
+ <div className="dk-review__skeleton-line dk-review__skeleton-line--date" />
  </div>
  </div>
- <div className="h-4 w-full rounded-full animate-pulse bg-[var(--dk-surface-glass)]" />
- <div className="h-4 w-2/3 rounded-full animate-pulse bg-[var(--dk-surface-glass)]" />
+ <div className="dk-review__skeleton-line dk-review__skeleton-line--full" />
+ <div className="dk-review__skeleton-line dk-review__skeleton-line--short" />
  </div>
  )
 }
@@ -52,9 +54,9 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
 
  if (isLoading) {
  return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">Reviews</h2>
- <div className="space-y-3">
+ <section className={cn("dk-review", className)}>
+ <h2 className="dk-review__heading">Reviews</h2>
+ <div className="dk-review__list">
  {[0, 1, 2].map((i) => (
  <ReviewCardSkeleton key={i} />
  ))}
@@ -65,10 +67,10 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
 
  if (isError) {
  return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">Reviews</h2>
- <div className="rounded-2xl bg-[var(--dk-surface-base)] p-8 text-center">
- <p className="text-sm text-muted-foreground mb-3">Failed to load reviews.</p>
+ <section className={cn("dk-review", className)}>
+ <h2 className="dk-review__heading">Reviews</h2>
+ <div className="dk-review__placeholder">
+ <p className="dk-review__placeholder-text dk-review__placeholder-text--error">Failed to load reviews.</p>
  <DkButton variant="outline" size="sm" onClick={() => refetch()}>
  Retry
  </DkButton>
@@ -80,24 +82,24 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
  const reviewList = reviews ?? []
 
  return (
- <section className={cn(className)}>
- <h2 className="text-lg font-semibold mb-3">
+ <section className={cn("dk-review", className)}>
+ <h2 className="dk-review__heading">
  Reviews
  {reviewList.length > 0 && (
- <span className="text-sm font-normal text-muted-foreground">
+ <span className="dk-review__count">
  ({reviewList.length})
  </span>
  )}
  </h2>
 
  {reviewList.length === 0 ? (
- <div className="rounded-2xl bg-[var(--dk-surface-base)] p-8 text-center">
- <p className="text-sm text-muted-foreground">
+ <div className="dk-review__placeholder">
+ <p className="dk-review__placeholder-text">
  No reviews yet. Be the first to share your thoughts!
  </p>
  </div>
  ) : (
- <div className="space-y-3">
+ <div className="dk-review__list">
  {reviewList.map((review) => (
  <ReviewCard
  key={`${review.userId}-${review.createdAt}`}

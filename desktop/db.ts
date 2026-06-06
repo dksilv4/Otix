@@ -228,6 +228,68 @@ function _createTables(): void {
       game_json TEXT NOT NULL
     )
   `);
+
+  // ── Save management tables ──
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS known_save_locations (
+      id TEXT PRIMARY KEY,
+      title_pattern TEXT NOT NULL,
+      os_windows TEXT,
+      os_mac TEXT,
+      os_linux TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS save_profiles (
+      id TEXT PRIMARY KEY,
+      game_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (game_id) REFERENCES scanned_games(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS vault_saves (
+      id TEXT PRIMARY KEY,
+      game_id TEXT NOT NULL,
+      profile_id TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      file_hash TEXT NOT NULL,
+      vault_path TEXT NOT NULL,
+      origin_path TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (game_id) REFERENCES scanned_games(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES save_profiles(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS save_snapshots (
+      id TEXT PRIMARY KEY,
+      profile_id TEXT NOT NULL,
+      name TEXT,
+      snapshot_dir TEXT NOT NULL,
+      file_count INTEGER NOT NULL,
+      total_size INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (profile_id) REFERENCES save_profiles(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS game_save_overrides (
+      game_id TEXT PRIMARY KEY,
+      user_path TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (game_id) REFERENCES scanned_games(id) ON DELETE CASCADE
+    )
+  `);
 }
 
 function _migrateDb(): void {
@@ -243,6 +305,10 @@ function _migrateDb(): void {
   try {
     db.run('ALTER TABLE download_configs ADD COLUMN allow_hypervisor INTEGER NOT NULL DEFAULT 0');
   } catch (_) {}
+  // Migration: add seeded column to scanned_games for seed-once tracking
+  try {
+    db.run('ALTER TABLE scanned_games ADD COLUMN seeded INTEGER NOT NULL DEFAULT 0');
+  } catch (_) { /* column exists */ }
 }
 
 // Ensure DB is initialized before any operation

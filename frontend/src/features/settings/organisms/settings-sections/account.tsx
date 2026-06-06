@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './account.scss'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { apiClient } from '@/lib/api-client'
@@ -79,34 +81,34 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
 
   if (twoFactorEnabled) {
     return (
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+      <div className="dk-settings-account__card">
         <SectionHeader
           title="Two-Factor Authentication"
           description="Your account is protected with an authenticator app."
         />
 
-        <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500/10 text-green-500">
+        <div className="dk-settings-account__row">
+          <div className="dk-settings-account__row-content">
+            <div className="dk-settings-account__icon dk-settings-account__icon--positive">
               <Check className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Enabled</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="dk-settings-account__text--title">Enabled</p>
+              <p className="dk-settings-account__text--desc">
                 You'll need a code from your authenticator app to sign in.
               </p>
             </div>
           </div>
 
           {mode === 'disabling' ? (
-            <div className="flex items-center gap-2">
+            <div className="dk-settings-account__disabling-row">
               <input
                 type="password"
                 value={disablePassword}
                 onChange={(e) => setDisablePassword(e.target.value)}
                 placeholder="Enter password"
                 autoFocus
-                className="h-9 w-40 rounded-lg bg-[var(--dk-surface-ghost-hover)] px-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="dk-settings-account__input--compact"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleDisable()
                   if (e.key === 'Escape') handleCancel()
@@ -131,36 +133,36 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
         </div>
 
         {error && (
-          <p className="mt-3 text-xs text-destructive">{error}</p>
+          <p className="dk-settings-account__text--error dk-settings-account__text--with-margin">{error}</p>
         )}
       </div>
     )
   }
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+    <div className="dk-settings-account__card">
       <SectionHeader
         title="Two-Factor Authentication"
         description="Add an extra layer of security to your account."
       />
 
       {(mode === 'setup' || mode === 'enabling') && setupData ? (
-        <div className="space-y-5">
-          <div className="flex justify-center p-4 bg-white rounded-xl">
+        <div className="dk-settings-account__setup">
+          <div className="dk-settings-account__qrcode">
             <img src={setupData.qrCodeSvg} alt="2FA QR Code" className="h-48 w-48" />
           </div>
 
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">
+          <div className="dk-settings-account__secret-section">
+            <p className="dk-settings-account__text--desc">
               Scan this QR code with your authenticator app, or enter the secret manually:
             </p>
-            <code className="block break-all rounded-lg bg-[var(--dk-surface-raised)] px-3 py-2 text-xs font-mono select-all">
+            <code className="dk-settings-account__secret">
               {setupData.secret}
             </code>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">Verification Code</label>
+          <div className="dk-settings-account__secret-section">
+            <label className="dk-settings-account__verify-label">Verification Code</label>
             <input
               type="text"
               inputMode="numeric"
@@ -170,13 +172,13 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               autoFocus
-              className="flex h-11 w-full rounded-xl bg-[var(--dk-surface-ghost-hover)] px-4 text-center font-mono tracking-[0.3em] placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="dk-settings-account__input"
             />
           </div>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && <p className="dk-settings-account__text--error">{error}</p>}
 
-          <div className="flex items-center gap-3 pt-2">
+          <div className="dk-settings-account__actions">
             <DkButton variant="outline" onClick={handleCancel}>
               Cancel
             </DkButton>
@@ -191,14 +193,14 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+        <div className="dk-settings-account__row">
+          <div className="dk-settings-account__row-content">
+            <div className="dk-settings-account__icon dk-settings-account__icon--warning">
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Not enabled</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="dk-settings-account__text--title">Not enabled</p>
+              <p className="dk-settings-account__text--desc">
                 Protect your account with an authenticator app like Google Authenticator or 1Password.
               </p>
             </div>
@@ -222,7 +224,7 @@ function VerificationCard({
   onSend: () => void
 }) {
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+    <div className="dk-settings-account__card">
       <SectionHeader
         title="Email Verification"
         description={
@@ -232,21 +234,21 @@ function VerificationCard({
         }
       />
 
-      <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
-        <div className="flex items-center gap-3">
+      <div className="dk-settings-account__row">
+        <div className="dk-settings-account__row-content">
           <div
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-xl',
-              isVerified ? 'bg-green-500/10 text-green-500' : 'bg-amber-500/10 text-amber-500',
+              'dk-settings-account__icon',
+              isVerified ? 'dk-settings-account__icon--positive' : 'dk-settings-account__icon--warning',
             )}
           >
             {isVerified ? <Check className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
           </div>
           <div>
-            <p className="text-sm font-medium">
+            <p className="dk-settings-account__text--title">
               {isVerified ? 'Verified' : 'Not verified'}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="dk-settings-account__text--desc">
               {isVerified
                 ? 'You have full access to all features.'
                 : 'Some features may be limited until you verify.'}
@@ -269,7 +271,7 @@ function VerificationCard({
       </div>
 
       {state === 'sent' && (
-        <p className="mt-3 text-xs text-green-500 animate-in fade-in">
+        <p className="dk-settings-account__text--success dk-settings-account__text--with-margin">
           Verification email sent. Check your inbox and follow the link to verify your account.
         </p>
       )}
@@ -360,52 +362,52 @@ function SessionsCard() {
   const otherSessions = sessions.filter((s) => s.sessionKey !== currentKey)
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+    <div className="dk-settings-account__card">
       <SectionHeader
         title="Active Sessions"
         description="Devices where your account is currently signed in."
       />
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+        <div className="dk-settings-account__loading">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading sessions...
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="dk-settings-account__session-list">
           {sessions.map((session) => {
             const isCurrent = session.sessionKey === currentKey
             return (
               <div
                 key={session.sessionKey}
                 className={cn(
-                  'flex items-center justify-between rounded-xl px-4 py-3',
+                  'dk-settings-account__session',
                   isCurrent
-                    ? 'bg-primary/5 border border-primary/15'
-                    : 'bg-[var(--dk-surface-raised)]',
+                    ? 'dk-settings-account__session--current'
+                    : 'dk-settings-account__session--inactive',
                 )}
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="dk-settings-account__row-content--wide">
                   <div
                     className={cn(
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      isCurrent ? 'bg-primary/10 text-primary' : 'bg-[var(--dk-surface-overlay)] text-muted-foreground',
+                      'dk-settings-account__session-icon',
+                      isCurrent ? 'dk-settings-account__session-icon--current' : 'dk-settings-account__session-icon--inactive',
                     )}
                   >
                     <Monitor className="h-5 w-5" />
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">
+                  <div className="dk-settings-account__session-details">
+                    <div className="dk-settings-account__session-header">
+                      <p className="dk-settings-account__session-name">
                         {formatUA(session.userAgent)}
                       </p>
                       {isCurrent && (
-                        <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="dk-settings-account__badge">
                           Current
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="dk-settings-account__text--desc">
                       {session.ipAddress ?? 'Unknown IP'}
                       {session.lastSeenAt && (
                         <> &middot; {formatTime(session.lastSeenAt)}</>
@@ -429,15 +431,15 @@ function SessionsCard() {
           })}
 
           {sessions.length === 0 && (
-            <p className="py-4 text-sm text-muted-foreground">No active sessions found.</p>
+            <p className="dk-settings-account__text--empty">No active sessions found.</p>
           )}
         </div>
       )}
 
-      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+      {error && <p className="dk-settings-account__text--error dk-settings-account__text--with-margin">{error}</p>}
 
       {otherSessions.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-border/30">
+        <div className="dk-settings-account__revoke-all">
           <DkButton
             variant="outline"
             size="sm"
@@ -482,16 +484,16 @@ export function AccountSection({
 
   if (!isAuthenticated) {
     return (
-      <div className="space-y-4 rounded-2xl bg-[var(--dk-surface-base)] p-12 text-center shadow-[var(--dk-shadow-sm)]">
+      <div className="dk-settings-account__card--centered">
         <Shield className="h-8 w-8 mx-auto text-muted-foreground/40" />
         <div>
-          <p className="text-sm font-medium">Sign in required</p>
-          <p className="text-xs text-muted-foreground mt-1">Sign in to manage your account settings.</p>
+          <p className="dk-settings-account__text--title">Sign in required</p>
+          <p className="dk-settings-account__text--desc dk-settings-account__text--small-margin">Sign in to manage your account settings.</p>
         </div>
         <Link
           to="/auth/login"
           search={{ redirect: location.href }}
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.97] rounded-xl px-5 py-2.5 text-sm bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] hover:bg-primary/90"
+          className="dk-settings-account__signin-link"
         >
           Sign In
         </Link>
@@ -525,11 +527,11 @@ export function AccountSection({
     dailyMoodCheckinsEnabled !== (user?.dailyMoodCheckinsEnabled ?? true)
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+    <div className="dk-settings-account__body">
+      <div className="dk-settings-account__card">
         <SectionHeader title="Identity" description="Your core account details." />
 
-        <div className="space-y-5">
+        <div className="dk-settings-account__form">
           <DkInput
             label="Email"
             type="email"
@@ -551,11 +553,11 @@ export function AccountSection({
           />
         </div>
 
-        <div className="mt-6 border-t border-border/30 pt-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Daily mood check-in</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+        <div className="dk-settings-account__divider">
+          <div className="dk-settings-account__row--compact">
+            <div className="dk-settings-account__mood-text">
+              <p className="dk-settings-account__mood-title">Daily mood check-in</p>
+              <p className="dk-settings-account__text--desc dk-settings-account__text--small-margin">
                 Show the mood scale on the home page once per UTC day.
               </p>
             </div>
@@ -566,11 +568,11 @@ export function AccountSection({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mt-6 pt-5 border-t border-border/30">
+        <div className="dk-settings-account__actions--bar">
           <DkButton variant="primary" onClick={handleSave} loading={saving} disabled={!hasChanges}>
             Save Changes
           </DkButton>
-          {saved && <span className="text-xs text-green-500 animate-in fade-in">Saved</span>}
+          {saved && <span className="dk-settings-account__text--success">Saved</span>}
         </div>
       </div>
 
@@ -592,9 +594,9 @@ export function AccountSection({
 
       <SessionsCard />
 
-      <div className="rounded-2xl bg-[var(--dk-surface-raised)] p-6 shadow-[var(--dk-shadow-md)]">
+      <div className="dk-settings-account__card--raised">
         <SectionHeader title="Danger Zone" description="Account lifecycle operations." />
-        <p className="text-sm text-muted-foreground">
+        <p className="dk-settings-account__text--body">
           Account deactivation and deletion are not yet available. Coming soon.
         </p>
       </div>

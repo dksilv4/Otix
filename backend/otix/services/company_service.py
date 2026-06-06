@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from sqlalchemy import func, select
@@ -7,6 +8,15 @@ from otix.domain.company import Company, CompanyRating, UserCompanyFollow
 
 
 class CompanyService:
+    @staticmethod
+    async def get_by_id_or_slug(session: AsyncSession, id: str | None = None, slug: str | None = None) -> Company | None:
+        """Simple lookup by ID or slug. Returns None if not found."""
+        if id:
+            return await session.get(Company, id)
+        elif slug:
+            return await session.scalar(select(Company).where(Company.slug == slug))
+        return None
+
     def __init__(self, session: AsyncSession):
         self.session = session
 

@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { describe, expect, it, beforeEach } from "vitest"
 import { registerPlatform, getPlatform, getAllPlatforms, getConnectedPlatforms, getPlatformTabs, clearRegistry } from "./registry"
 import type { PlatformDefinition } from "./types"

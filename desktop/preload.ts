@@ -1,9 +1,51 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { DetectedGame } from './preload-api';
 
-contextBridge.exposeInMainWorld('electronAPI', {
+// Resolves once the main process has registered all IPC handlers.
+let _resolveIpcReady: (() => void) | null = null;
+const _ipcReady = new Promise<void>((resolve) => { _resolveIpcReady = resolve; });
+ipcRenderer.on('main:ipc-ready', () => _resolveIpcReady?.());
+
+contextBridge.exposeInMainWorld('desktopAPI', {
+  /** Wait for the main process to finish registering all IPC handlers. */
+  onMainIpcReady: () => _ipcReady,
+
+  // ── Platform info ──
+  platform: process.platform,
+
+  // ── Desktop settings ──
+  getDesktopSettings: () => ipcRenderer.invoke('desktop-settings:get'),
+  setDesktopSettings: (settings: any) =>
+    ipcRenderer.invoke('desktop-settings:set', settings),
+
+  // ── Window controls ──
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  unmaximizeWindow: () => ipcRenderer.invoke('window:unmaximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+  setAlwaysOnTop: (value: boolean) =>
+    ipcRenderer.invoke('window:set-always-on-top', value),
+  getAlwaysOnTop: () => ipcRenderer.invoke('window:get-always-on-top'),
+  onMaximizedChanged: (callback: (maximized: boolean) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, maximized: boolean) =>
+      callback(maximized);
+    ipcRenderer.on('window:maximized-changed', handler);
+    return () => ipcRenderer.removeListener('window:maximized-changed', handler);
+  },
+
+  // ── General ──
+  openPath: (filePath: string) => ipcRenderer.invoke('shell:open-path', filePath),
   ping: () => ipcRenderer.invoke('ping'),
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
+
+  // ── Deep link (OAuth return) ──
+  onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => {
+    const handler = (_event: any, data: { action: string; params: Record<string, string> }) => callback(data);
+    ipcRenderer.on('deep-link', handler);
+    return () => ipcRenderer.removeListener('deep-link', handler);
+  },
   scanPaths: (paths: string[], isoPaths: string[]) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
   launchGame: (game: DetectedGame) => ipcRenderer.invoke('launcher:launch-game', game),
@@ -93,4 +135,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('downloads:preview-naming-template', template, sampleName),
   downloadsValidateNamingTemplate: (template: string) =>
     ipcRenderer.invoke('downloads:validate-naming-template', template),
+
+  // ── Save Management ──
+  saveGetKnownLocations: () => ipcRenderer.invoke('save:get-known-locations'),
+  saveDiscoverForGame: (gameId: string, gameTitle: string) =>
+    ipcRenderer.invoke('save:discover-for-game', gameId, gameTitle),
+  saveBackupToVault: (gameId: string, originPaths: string[]) =>
+    ipcRenderer.invoke('save:backup-to-vault', gameId, originPaths),
+  saveRestoreFromVault: (gameId: string, options: any) =>
+    ipcRenderer.invoke('save:restore-from-vault', gameId, options),
+  saveGetProfiles: (gameId: string) => ipcRenderer.invoke('save:get-profiles', gameId),
+  saveCreateProfile: (gameId: string, name: string) =>
+    ipcRenderer.invoke('save:create-profile', gameId, name),
+  saveDeleteProfile: (profileId: string) => ipcRenderer.invoke('save:delete-profile', profileId),
+  saveSetActiveProfile: (profileId: string) =>
+    ipcRenderer.invoke('save:set-active-profile', profileId),
+  saveGetSnapshots: (profileId: string) => ipcRenderer.invoke('save:get-snapshots', profileId),
+  saveCreateSnapshot: (profileId: string, name?: string) =>
+    ipcRenderer.invoke('save:create-snapshot', profileId, name),
+  saveDeleteSnapshot: (snapshotId: string) => ipcRenderer.invoke('save:delete-snapshot', snapshotId),
+  saveGetOverride: (gameId: string) => ipcRenderer.invoke('save:get-override', gameId),
+  saveSetOverride: (gameId: string, userPath: string) =>
+    ipcRenderer.invoke('save:set-override', gameId, userPath),
+  saveClearOverride: (gameId: string) => ipcRenderer.invoke('save:clear-override', gameId),
+  saveGetVaultStatus: () => ipcRenderer.invoke('save:get-vault-status'),
+  saveExportSaves: (gameId: string, targetDir: string) =>
+    ipcRenderer.invoke('save:export-saves', gameId, targetDir),
+  saveImportSaves: (gameId: string, sourceDir: string) =>
+    ipcRenderer.invoke('save:import-saves', gameId, sourceDir),
+  saveGetVaultPath: () => ipcRenderer.invoke('save:get-vault-path'),
+  saveSetVaultPath: (newPath: string) => ipcRenderer.invoke('save:set-vault-path', newPath),
+  saveSelectExportDir: () => ipcRenderer.invoke('save:select-export-dir'),
+  saveSelectImportDir: () => ipcRenderer.invoke('save:select-import-dir'),
+  saveSelectOverridePath: () => ipcRenderer.invoke('save:select-override-path'),
+
+  // ── Storage ──
+  getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),
 });

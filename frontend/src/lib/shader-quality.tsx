@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 export type ShaderQualityPreference = 'auto' | 'low' | 'medium' | 'high' | 'ultra'

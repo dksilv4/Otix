@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { BellRing } from 'lucide-react'
+import './notification-bell.scss'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -8,13 +10,6 @@ import { notificationQueries, useMarkRead, useMarkAllRead, type Notification } f
 import { apiClient } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
-
-const pillBase = cn(
-  'flex items-center rounded-[2rem]',
-  'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-  'backdrop-blur-lg',
-  'shadow-[var(--dk-shadow-glass)]',
-)
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -164,21 +159,19 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
   if (!isAuthenticated) return null
 
   return (
-    <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
+    <div className={cn('dk-notification-bell', bare && 'dk-notification-bell--bare')}>
       <button
         type="button"
         data-notification-trigger
         onClick={() => setOpen(!open)}
         className={cn(
-          !bare && pillBase,
-          !bare && 'p-1.5',
-          'cursor-pointer relative flex items-center justify-center rounded-full',
-          bare && 'w-8 h-8 hover:bg-white/[0.06] transition-colors',
+          'dk-notification-bell__trigger',
+          bare ? 'dk-notification-bell__trigger--bare' : 'dk-notification-bell__trigger--pill',
         )}
       >
         <BellRing className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground leading-none">
+          <span className="dk-notification-bell__badge">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -192,21 +185,14 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              'absolute right-0 top-full mt-2 z-[9999]',
-              'w-80 max-h-[28rem] overflow-y-auto p-3 rounded-[1.5rem]',
-              'bg-[var(--dk-surface-overlay)]',
-              'backdrop-blur-xl',
-              'shadow-[var(--dk-shadow-glass)]',
-              'flex flex-col gap-1',
-            )}
+            className="dk-notification-bell__dropdown"
           >
-            <div className="flex items-center justify-between px-2 py-1">
-              <p className="text-sm font-semibold">Notifications</p>
+            <div className="dk-notification-bell__dropdown-header">
+              <p className="dk-notification-bell__dropdown-title">Notifications</p>
               {unreadCount > 0 && (
                 <button
                   type="button"
-                  className="text-xs text-primary hover:underline"
+                  className="dk-notification-bell__mark-all"
                   onClick={() => markAllRead.mutate()}
                   disabled={markAllRead.isPending}
                 >
@@ -216,7 +202,7 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
             </div>
 
             {!notifications || notifications.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
+              <p className="dk-notification-bell__empty">
                 No notifications
               </p>
             ) : (
@@ -225,8 +211,8 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
                   <div
                     key={n.id}
                     className={cn(
-                      'flex items-start gap-3 p-2 rounded-xl',
-                      !n.isRead && 'bg-primary/[0.04]',
+                      'dk-notification-bell__item',
+                      !n.isRead && 'dk-notification-bell__item--unread',
                     )}
                   >
                     <DkAvatar
@@ -234,28 +220,28 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
                       size="sm"
                       className="shrink-0 mt-0.5"
                     />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium">{n.title}</p>
+                    <div className="dk-notification-bell__item-content">
+                      <p className="dk-notification-bell__item-title">{n.title}</p>
                       {n.body && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        <p className="dk-notification-bell__item-body">
                           {n.body}
                         </p>
                       )}
-                      <p className="text-[10px] text-muted-foreground/50 mt-1">
+                      <p className="dk-notification-bell__item-time">
                         {formatTimeAgo(n.createdAt)}
                       </p>
                       {n.type === 'friend_request' && (
-                        <div className="flex gap-2 mt-2">
+                        <div className="dk-notification-bell__item-actions">
                           <button
                             type="button"
-                            className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                            className="dk-notification-bell__action-btn--accept"
                             onClick={() => handleAction(n, 'accept')}
                           >
                             Accept
                           </button>
                           <button
                             type="button"
-                            className="rounded-lg bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+                            className="dk-notification-bell__action-btn--decline"
                             onClick={() => handleAction(n, 'reject')}
                           >
                             Decline
@@ -263,17 +249,17 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
                         </div>
                       )}
                       {n.type === 'list_invitation' && (
-                        <div className="flex gap-2 mt-2">
+                        <div className="dk-notification-bell__item-actions">
                           <button
                             type="button"
-                            className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                            className="dk-notification-bell__action-btn--accept"
                             onClick={() => handleListAction(n, 'accept')}
                           >
                             Accept
                           </button>
                           <button
                             type="button"
-                            className="rounded-lg bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+                            className="dk-notification-bell__action-btn--decline"
                             onClick={() => handleListAction(n, 'decline')}
                           >
                             Decline
@@ -284,17 +270,17 @@ export function NotificationBell({ bare }: { bare?: boolean }) {
                     {!n.isRead && (
                       <button
                         type="button"
-                        className="shrink-0 mt-0.5"
+                        className="dk-notification-bell__unread-btn"
                         onClick={() => markRead.mutate(n.id)}
                       >
-                        <span className="block h-2 w-2 rounded-full bg-primary" />
+                        <span className="dk-notification-bell__unread-dot" />
                       </button>
                     )}
                   </div>
                 ))}
                 <Link
                   to="/notifications"
-                  className="block w-full rounded-xl bg-[var(--dk-surface-glass)] py-2.5 text-center text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all mt-2"
+                  className="dk-notification-bell__view-all"
                   onClick={() => setOpen(false)}
                 >
                   View all

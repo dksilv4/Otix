@@ -1,4 +1,9 @@
-# TODO: Review this file
-from otix.api.company.router import company_router
+from __future__ import annotations
 
-__all__ = ["company_router"]
+from fastapi import APIRouter
+
+from otix.api.company.detail import router as detail_router
+
+company_router = APIRouter(prefix="/company", tags=["company"])
+
+company_router.include_router(detail_router)

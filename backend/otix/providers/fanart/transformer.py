@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Fanart JSON → MediaAsset domain models.
 
 Stateless pure functions. Each category of Fanart images maps to a standardized

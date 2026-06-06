@@ -1,0 +1,29 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-media-track-inline-actions {
+  @apply flex items-center justify-end gap-2;
+
+  &__rating {
+    /* stopPropagation container - no visual styles needed */
+  }
+
+  &__spotify-btn {
+    @apply flex h-7 w-7 items-center justify-center rounded-full transition-colors;
+
+    &--liked {
+      @apply bg-[#1DB954]/15 text-[#1DB954] cursor-default;
+    }
+
+    &--unliked {
+      @apply bg-white/[0.035] text-muted-foreground;
+
+      &:hover {
+        @apply bg-[#1DB954]/14 text-[#1DB954];
+      }
+    }
+
+    &--disabled {
+      @apply cursor-default;
+    }
+  }
+}

@@ -1,27 +1,28 @@
 import { Helmet } from "react-helmet-async"
 import { useSpotifyPlaylists } from "../api/spotify-playlists-api"
 import { PlaylistList } from "../organisms/playlist-list"
+import "./spotify-playlists-page.scss"
 
 export function SpotifyPlaylistsPage() {
   const { data, isLoading, error } = useSpotifyPlaylists()
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="dk-playlists-page">
       <Helmet>
         <title>Spotify Playlists — Otix</title>
       </Helmet>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Spotify Playlists</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+      <div className="dk-playlists-page__header">
+        <h1 className="dk-playlists-page__title">Spotify Playlists</h1>
+        <p className="dk-playlists-page__description">
           Browse your Spotify playlists and import them into Otix
         </p>
       </div>
 
       {error ? (
-        <div className="rounded-xl bg-destructive/10 p-6 text-destructive text-center">
-          <p className="font-medium">Failed to load playlists</p>
-          <p className="text-sm mt-1">Make sure your Spotify account is linked in Settings.</p>
+        <div className="dk-playlists-page__error">
+          <p className="dk-playlists-page__error-title">Failed to load playlists</p>
+          <p className="dk-playlists-page__error-description">Make sure your Spotify account is linked in Settings.</p>
         </div>
       ) : (
         <PlaylistList

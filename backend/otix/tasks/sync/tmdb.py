@@ -1,3 +1,4 @@
+# TODO: Review this file
 """TMDB provider tasks: movie, show, person, collection, company, keyword sync."""
 
 from __future__ import annotations
@@ -283,12 +284,13 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                         ext_id.entity_id = item.id
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(
-                            provider="tmdb", external_id=tmdb_id_str,
-                            entity_type="media_item", entity_id=item.id,
-                            media_item_id=item.id, is_adult=raw.get("adult", False),
+                        eid_svc = ExternalIDService(session)
+                        ext_id = await eid_svc.upsert(
+                            "tmdb", tmdb_id_str,
+                            "media_item", item.id,
                         )
-                        session.add(ext_id)
+                        if raw.get("adult", False):
+                            ext_id.is_adult = True
                     session.add(movie)
             else:
                 show = to_show(raw)
@@ -360,12 +362,13 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                         ext_id.entity_id = item.id
                         ext_id.media_item_id = item.id
                     else:
-                        ext_id = ExternalID(
-                            provider="tmdb", external_id=tmdb_id_str,
-                            entity_type="media_item", entity_id=item.id,
-                            media_item_id=item.id, is_adult=raw.get("adult", False),
+                        eid_svc = ExternalIDService(session)
+                        ext_id = await eid_svc.upsert(
+                            "tmdb", tmdb_id_str,
+                            "media_item", item.id,
                         )
-                        session.add(ext_id)
+                        if raw.get("adult", False):
+                            ext_id.is_adult = True
                     _seasons = list(show.seasons)
                     session.add(show)
                     await session.flush()

@@ -1,0 +1,77 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-settings-position-modal {
+  @apply flex flex-col rounded-2xl bg-black/90 p-5 shadow-2xl backdrop-blur-2xl;
+  width: 28rem;
+  max-width: calc(100vw - 2rem);
+
+  &__header {
+    @apply flex items-center gap-3 mb-4 shrink-0;
+  }
+
+  &__header-icon {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg;
+    background-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+
+  &__header-text {
+    @apply min-w-0;
+  }
+
+  &__header-title {
+    @apply text-sm font-semibold text-white;
+  }
+
+  &__header-subtitle {
+    @apply text-white/40;
+    font-size: 11px;
+  }
+
+  &__close {
+    @apply ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg;
+    background-color: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 150ms, background-color 150ms;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  &__cropper {
+    @apply relative flex-1 min-h-0 rounded-xl overflow-hidden;
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  &__footer {
+    @apply mt-4 pt-4 border-t flex items-center justify-between gap-2 shrink-0;
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  &__footer-hint {
+    @apply text-white/25;
+    font-size: 11px;
+  }
+
+  &__footer-actions {
+    @apply flex items-center gap-2;
+  }
+
+  &__cancel-btn {
+    @apply text-white/60;
+
+    &:hover {
+      @apply text-white;
+    }
+  }
+
+  &__apply--applied {
+    @apply bg-emerald-500 text-white;
+
+    &:hover {
+      @apply bg-emerald-500;
+    }
+  }
+}

@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from sqlalchemy import delete, func, select
@@ -14,6 +15,42 @@ from otix.lib.xp import EPISODE_WATCHED, SEASON_COMPLETED_BONUS, SHOW_COMPLETED_
 class EpisodeInteractionService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    async def get_show(self, show_id: str) -> Show:
+        """Return the show or raise ValueError if not found."""
+        show = await self.session.get(Show, show_id)
+        if show is None:
+            raise ValueError("Show not found")
+        return show
+
+    async def get_episode(self, episode_id: str) -> Episode:
+        """Return the episode or raise ValueError if not found."""
+        episode = await self.session.get(Episode, episode_id)
+        if episode is None:
+            raise ValueError("Episode not found")
+        return episode
+
+    async def get_season_by_show_and_number(self, show_id: str, season_number: int) -> Season:
+        """Return the season for a given show and season number, or raise ValueError."""
+        season = (
+            await self.session.execute(
+                select(Season).where(
+                    Season.show_id == show_id,
+                    Season.season_number == season_number,
+                ).limit(1)
+            )
+        ).scalar()
+        if season is None:
+            raise ValueError("Season not found")
+        return season
+
+    async def validate_episode_in_show(self, episode_id: str, show_id: str) -> Episode:
+        """Validate an episode exists and belongs to the given show. Returns the episode."""
+        episode = await self.get_episode(episode_id)
+        season = await self.session.get(Season, episode.season_id)
+        if season is None or season.show_id != show_id:
+            raise ValueError("Episode does not belong to this show")
+        return episode
 
     async def get_episode_interactions(
         self, user_id: str, show_id: str

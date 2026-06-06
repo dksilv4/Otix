@@ -1,14 +1,15 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import get_session
 from otix.lib.geoip import resolve_country_from_request
-from otix.services.auth_service import decode_token
+from otix.lib.tokens import decode_token
+from otix.services.auth.auth_service import AuthService
 
 
 async def get_db() -> AsyncSession:
@@ -27,11 +28,11 @@ async def get_current_user(
 
 
 def _extract_token_from_request(request: Request) -> str | None:
-    """Extract Bearer token from Authorization header or ?token= query param."""
+    """Extract Bearer token from the Authorization header."""
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header.removeprefix("Bearer ")
-    return request.query_params.get("token")
+    return None
 
 
 async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
@@ -47,7 +48,7 @@ async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    user = await db.get(User, user_id)
+    user = await AuthService.get_user_by_id(db, user_id)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 

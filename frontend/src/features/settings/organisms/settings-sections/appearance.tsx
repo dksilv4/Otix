@@ -1,10 +1,14 @@
+// TODO: Review this file
 import { useState, useEffect } from 'react'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/motion-preference'
+import { useLogoPreference, LOGO_VARIANTS, type LogoVariant } from '@/lib/logo-preference'
 import type { ThemeSetting } from '@/lib/theme'
 import { cn } from '@/lib/utils'
-import { Moon, Sun, Monitor, Plus } from 'lucide-react'
+import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
+import { Logo } from '@/features/dk-ui/atoms/logo'
 import { SectionHeader } from './profile'
+import './appearance.scss'
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -57,6 +61,7 @@ function applyAccentColor(color: string) {
 export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; onSetTheme: (t: ThemeSetting) => void }) {
   const { shaderQuality, setShaderQuality } = useShaderQuality()
   const { motionPreference, setMotionPreference } = useMotionPreference()
+  const { variant, setVariant } = useLogoPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
   useEffect(() => {
@@ -77,35 +82,33 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
   const isActive = (color: string) => accent === color
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+    <div className="dk-settings-appearance__body">
+      <div className="dk-settings-appearance__card">
         <SectionHeader title="Theme" description="Choose how Otix looks on your device." />
 
-        <div className="flex items-center justify-between rounded-xl bg-[var(--dk-surface-raised)] px-4 py-4 shadow-[var(--dk-shadow-xs)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <div className="dk-settings-appearance__theme-row">
+          <div className="dk-settings-appearance__theme-info">
+            <div className="dk-settings-appearance__theme-icon">
               {theme === 'dark' ? <Moon className="h-5 w-5" /> : theme === 'light' ? <Sun className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
             </div>
             <div>
-              <p className="text-sm font-medium">
+              <p className="dk-settings-appearance__theme-name">
                 {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="dk-settings-appearance__theme-desc">
                 {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
               </p>
             </div>
           </div>
-          <div className="flex rounded-lg bg-[var(--dk-surface-base)] p-1 gap-0.5">
+          <div className="dk-settings-appearance__toggle-group">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => onSetTheme(t)}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                  theme === t
-                    ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-xs)]'
-                    : 'text-muted-foreground hover:text-foreground',
+                  'dk-settings-appearance__toggle-btn',
+                  theme === t && 'dk-settings-appearance__toggle-btn--active',
                 )}
               >
                 {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
@@ -115,26 +118,26 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
         </div>
       </div>
 
-      <div className="relative rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+      <div className="dk-settings-appearance__card">
         <SectionHeader title="Accent" description="Pick a color accent for the interface." />
 
-        <div className="flex flex-wrap gap-3">
+        <div className="dk-settings-appearance__accent-grid">
           {ACCENTS.map((a) => (
             <button
               key={a.id}
               type="button"
               onClick={() => setAccent(a.primary)}
-              className="relative h-7 w-7 rounded-full transition-transform hover:scale-110 active:scale-95"
+              className="dk-settings-appearance__accent-swatch"
               style={{ backgroundColor: a.primary }}
             >
               {isActive(a.primary) && (
-                <span className="absolute inset-0 rounded-full ring-2 ring-foreground/20 ring-offset-2 ring-offset-[var(--dk-surface-base)]" />
+                <span className="dk-settings-appearance__accent-ring" />
               )}
             </button>
           ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3 pt-4 border-t border-border/30">
+        <div className="dk-settings-appearance__accent-customs">
           {Array.from({ length: 16 }).map((_, i) => {
             const color = customAccents[i] || ''
             const hasColor = color.length > 0
@@ -143,8 +146,8 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
               <label
                 key={i}
                 className={cn(
-                  'relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95',
-                  hasColor ? '' : 'bg-[var(--dk-surface-raised)]',
+                  'dk-settings-appearance__accent-slot',
+                  !hasColor && 'dk-settings-appearance__accent-slot--empty',
                 )}
                 style={hasColor ? { backgroundColor: color } : undefined}
                 onClick={(e) => {
@@ -156,13 +159,13 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
               >
                 {!hasColor && <Plus className="h-3.5 w-3.5 text-muted-foreground/30 pointer-events-none" />}
                 {active && (
-                  <span className="absolute inset-0 rounded-full ring-2 ring-foreground/20 ring-offset-2 ring-offset-[var(--dk-surface-base)] pointer-events-none" />
+                  <span className="dk-settings-appearance__accent-ring" />
                 )}
                 <input
                   type="color"
                   value={color || '#000000'}
                   onChange={(e) => setCustomSlot(i, e.target.value)}
-                  className="absolute -left-1.5 top-0 bottom-0 right-0 opacity-0"
+                  className="dk-settings-appearance__color-picker"
                 />
               </label>
             )
@@ -170,14 +173,57 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
         </div>
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+      <div className="dk-settings-appearance__card">
+        <SectionHeader
+          title="Logo"
+          description="Choose which Otix logo variant to display around the app."
+        />
+
+        <div className="dk-settings-appearance__logo-grid">
+          {LOGO_VARIANTS.map((option) => {
+            const isSelected = variant === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setVariant(option.value as LogoVariant)}
+                className={cn(
+                  'dk-settings-appearance__logo-card',
+                  isSelected && 'dk-settings-appearance__logo-card--selected',
+                )}
+              >
+                {/* Preview */}
+                <div className={cn(
+                  'dk-settings-appearance__logo-visual',
+                  isSelected && 'dk-settings-appearance__logo-visual--selected',
+                )}>
+                  <Logo variant={option.value as LogoVariant} className="h-full" />
+                </div>
+                {/* Label */}
+                <div className="dk-settings-appearance__logo-info">
+                  <p className="dk-settings-appearance__logo-name">{option.label}</p>
+                  <p className="dk-settings-appearance__logo-desc">{option.description}</p>
+                </div>
+                {/* Selected checkmark */}
+                {isSelected && (
+                  <div className="dk-settings-appearance__logo-badge">
+                    <Check className="h-3 w-3" />
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="dk-settings-appearance__card">
         <SectionHeader
           title="Motion"
           description="Control animations and transitions across the app."
         />
 
-        <div className="rounded-xl bg-[var(--dk-surface-raised)] p-2 shadow-[var(--dk-shadow-xs)]">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <div className="dk-settings-appearance__option-group">
+          <div className="dk-settings-appearance__option-grid--motion">
             {MOTION_OPTIONS.map((option) => {
               const isActive = motionPreference === option.value
               return (
@@ -186,17 +232,15 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
                   type="button"
                   onClick={() => setMotionPreference(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-                      : 'bg-[var(--dk-surface-overlay)] text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
+                    'dk-settings-appearance__option-btn',
+                    isActive && 'dk-settings-appearance__option-btn--active',
                   )}
                 >
-                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p className="dk-settings-appearance__option-label">{option.label}</p>
                   <p
                     className={cn(
-                      'mt-1 text-xs',
-                      isActive ? 'text-primary-foreground/80' : 'text-muted-foreground',
+                      'dk-settings-appearance__option-desc',
+                      isActive && 'dk-settings-appearance__option-desc--active',
                     )}
                   >
                     {option.description}
@@ -208,14 +252,14 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
         </div>
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-md)]">
+      <div className="dk-settings-appearance__card">
         <SectionHeader
           title="Home Background Quality"
           description="Control the animated shader quality on the homepage, or let Otix choose automatically."
         />
 
-        <div className="rounded-xl bg-[var(--dk-surface-raised)] p-2 shadow-[var(--dk-shadow-xs)]">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <div className="dk-settings-appearance__option-group">
+          <div className="dk-settings-appearance__option-grid--shader">
             {SHADER_QUALITY_OPTIONS.map((option) => {
               const isActive = shaderQuality === option.value
               return (
@@ -224,17 +268,15 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
                   type="button"
                   onClick={() => setShaderQuality(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all',
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-                      : 'bg-[var(--dk-surface-overlay)] text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
+                    'dk-settings-appearance__option-btn',
+                    isActive && 'dk-settings-appearance__option-btn--active',
                   )}
                 >
-                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p className="dk-settings-appearance__option-label">{option.label}</p>
                   <p
                     className={cn(
-                      'mt-1 text-xs',
-                      isActive ? 'text-primary-foreground/80' : 'text-muted-foreground',
+                      'dk-settings-appearance__option-desc',
+                      isActive && 'dk-settings-appearance__option-desc--active',
                     )}
                   >
                     {option.description}

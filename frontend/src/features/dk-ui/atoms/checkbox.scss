@@ -1,0 +1,50 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-checkbox {
+  @apply inline-flex items-center gap-3;
+}
+
+.dk-checkbox--disabled {
+  @apply opacity-40;
+}
+
+.dk-checkbox__box-wrap {
+  @apply relative flex h-5 w-5 shrink-0 items-center justify-center;
+}
+
+.dk-checkbox__input {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.dk-checkbox__box {
+  @apply absolute inset-0 rounded-md;
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+  box-shadow: inset 0 0 0 1px var(--dk-separator);
+  background-color: var(--dk-surface-glass);
+
+  .dk-checkbox__input:focus-visible ~ & {
+    box-shadow: 0 0 0 2px var(--dk-ring-color);
+  }
+
+  .dk-checkbox__input:hover ~ & {
+    background-color: var(--dk-surface-glass-hover);
+  }
+}
+
+.dk-checkbox__box--checked {
+  @apply bg-primary;
+  --tw-ring-color: var(--primary);
+}
+
+.dk-checkbox__check {
+  @apply relative z-10 h-3.5 w-3.5;
+  color: var(--primary-foreground);
+  stroke-width: 3;
+}
+
+.dk-checkbox__label {
+  @apply text-sm;
+}

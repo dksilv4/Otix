@@ -1,0 +1,102 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-person-card {
+  background: hsl(var(--muted));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 300ms ease-out, box-shadow 300ms ease-out;
+
+  @apply relative h-48 w-28 shrink-0 overflow-hidden rounded-lg;
+
+  @media (min-width: 640px) {
+    @apply h-52 w-32;
+  }
+
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+
+    .dk-person-card__media,
+    .dk-person-card__no-media {
+      transform: scale(1.08);
+    }
+
+    .dk-person-card__overlay {
+      opacity: 0.95;
+    }
+
+    .dk-person-card__content {
+      transform: translateY(0);
+    }
+  }
+
+  &:active {
+    transform: scale(1.01);
+  }
+}
+
+.dk-person-card__link {
+  @apply absolute inset-0 rounded-lg outline-none;
+
+  &:focus-visible {
+    @apply ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+.dk-person-card__media {
+  @apply absolute inset-0 h-full w-full rounded-lg;
+  transition: transform 500ms ease-out;
+}
+
+.dk-person-card__media-fallback {
+  @apply flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45;
+}
+
+.dk-person-card__no-media {
+  @apply absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45;
+  transition: transform 500ms ease-out;
+}
+
+.dk-person-card__overlay {
+  @apply pointer-events-none absolute inset-0 rounded-lg opacity-90;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.45), transparent);
+  transition: opacity 300ms ease-out;
+}
+
+.dk-person-card__content {
+  @apply pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3 text-white;
+  transition: transform 300ms ease-out;
+}
+
+.dk-person-card__meta {
+  @apply mb-1 flex min-w-0 items-center gap-2;
+}
+
+.dk-person-card__role {
+  @apply min-w-0 truncate text-[11px] font-medium uppercase leading-tight text-white/75;
+}
+
+.dk-person-card__badge {
+  @apply shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dk-person-card__name {
+  @apply truncate text-sm font-semibold leading-tight text-white sm:text-base;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.75));
+}
+
+.dk-person-card__favorite-btn {
+  @apply absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-500;
+  transition: transform 200ms ease-out;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &:focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+  }
+}

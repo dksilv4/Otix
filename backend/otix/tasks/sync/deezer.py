@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Deezer album seeding task — Tier 1 fast ingestion.
 
 Seed an album from the Deezer API (10 rps, free, no auth), then chain
@@ -95,6 +96,13 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
         # Tracks are stored on _tracks (not album.tracks) to avoid
         # SQLAlchemy relationship back-population that interferes with FK assignment.
         tracks_for_hydrator = list(getattr(album, "_tracks", []))
+
+        # Set popularity from Deezer fan count (0-1M+ scale, capped at reasonable max)
+        fans = raw.get("fans")
+        if isinstance(fans, (int, float)) and fans > 0:
+            item.popularity = min(fans, 10_000_000) / 10_000.0  # 0-1000 scale
+        elif not item.popularity:
+            item.popularity = 1.0  # Small baseline for recently charted items
 
         # 1. Insert MediaItem
         session.add(item)

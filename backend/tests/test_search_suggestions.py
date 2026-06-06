@@ -70,7 +70,7 @@ def mock_redis():
 @pytest.fixture
 def app():
     app = _make_app()
-    from otix.api import deps
+    from otix.api import _utils as deps
 
     async def override_get_db():
         yield _mock_db()

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Fanart.tv API client.
 
 Auth: API key query parameter (?api_key=...).

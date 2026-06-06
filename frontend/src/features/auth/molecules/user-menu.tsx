@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
 import { LogOut, User, Shield } from 'lucide-react'
@@ -5,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
+import './user-menu.scss'
 
 export function UserMenu({ bare }: { bare?: boolean }) {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
@@ -39,17 +41,10 @@ export function UserMenu({ bare }: { bare?: boolean }) {
     }
   }, [open, handleKeyDown, handleClickOutside])
 
-  const pillBase = cn(
-    'flex items-center rounded-[2rem]',
-    'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-    'backdrop-blur-lg',
-    'shadow-[var(--dk-shadow-glass)]',
-  )
-
   // Show placeholder while loading so layout never jumps
   if (isLoading) {
     return (
-      <div className={cn(!bare && pillBase, !bare && 'p-1.5')}>
+      <div className={cn(!bare && 'dk-auth-user-menu__pill dk-auth-user-menu__pill--padded')}>
         <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
       </div>
     )
@@ -57,14 +52,13 @@ export function UserMenu({ bare }: { bare?: boolean }) {
 
   if (!isAuthenticated) {
     return (
-      <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
+      <div className={cn('dk-auth-user-menu', bare && 'dk-auth-user-menu--bare')}>
         <Link
           to="/auth/login"
           className={cn(
-            !bare && pillBase,
-            !bare && 'p-1.5',
-            'flex items-center justify-center rounded-full transition-all',
-            bare && 'w-8 h-8 hover:bg-white/[0.06]',
+            !bare && 'dk-auth-user-menu__pill dk-auth-user-menu__pill--padded',
+            'dk-auth-user-menu__unauth-link',
+            bare && 'dk-auth-user-menu__unauth-link--bare',
           )}
         >
           <DkAvatar icon={<User className="h-4 w-4" />} name="" size="sm" />
@@ -76,16 +70,15 @@ export function UserMenu({ bare }: { bare?: boolean }) {
   const avatarUrl = user?.avatarUrl
 
   return (
-    <div className={cn('relative', bare && 'flex items-center justify-center w-8 h-8')}>
+    <div className={cn('dk-auth-user-menu', bare && 'dk-auth-user-menu--bare')}>
       <button
         type="button"
         data-user-menu-trigger
         onClick={() => setOpen(!open)}
         className={cn(
-          !bare && pillBase,
-          !bare && 'p-1.5',
-          'cursor-pointer rounded-full flex items-center justify-center transition-all',
-          bare && 'w-8 h-8 hover:opacity-85 active:scale-95',
+          !bare && 'dk-auth-user-menu__pill dk-auth-user-menu__pill--padded',
+          'dk-auth-user-menu__trigger',
+          bare && 'dk-auth-user-menu__trigger--bare',
         )}
       >
         <DkAvatar src={avatarUrl} name={user?.username || ''} size="sm" />
@@ -99,35 +92,28 @@ export function UserMenu({ bare }: { bare?: boolean }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              'absolute right-0 top-full mt-2 z-[9999]',
-              'w-56 p-3 rounded-[1.5rem]',
-              'bg-[var(--dk-surface-overlay)]',
-              'backdrop-blur-xl',
-              'shadow-[var(--dk-shadow-glass)]',
-              'flex flex-col gap-0.5',
-            )}
+            className="dk-auth-user-menu__dropdown"
           >
             {/* User info */}
             <Link
               to="/u/$username"
               params={{ username: user?.username || '' }}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-150"
+              className="dk-auth-user-menu__user-link"
             >
               <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
               <div className="min-w-0">
-                <p className="text-sm font-semibold truncate">
+                <p className="dk-auth-user-menu__username">
                   {user?.username}
                   {user?.isAdmin && (
                     <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                <p className="dk-auth-user-menu__email">{user?.email}</p>
               </div>
             </Link>
 
-            <div className="my-1 border-t border-white/[0.06]" />
+            <div className="dk-auth-user-menu__divider" />
 
             {/* Sign out */}
             <button
@@ -136,7 +122,7 @@ export function UserMenu({ bare }: { bare?: boolean }) {
                 setOpen(false)
                 logout()
               }}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-150"
+              className="dk-auth-user-menu__action"
             >
               <LogOut className="h-4 w-4" />
               Sign Out

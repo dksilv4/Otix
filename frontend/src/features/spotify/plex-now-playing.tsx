@@ -6,6 +6,8 @@ import { apiClient } from '@/lib/api-client'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/auth-provider'
+import { useDesktopPlatform } from '@/lib/desktop-platform'
+import './plex-now-playing.scss'
 
 export interface PlexSession {
   session_id: string
@@ -110,30 +112,24 @@ function SessionCard({ s }: { s: PlexSession }) {
   const streamBadge = transcodeLabel(s.video_decision, s.audio_decision, s.throttled)
 
   return (
-    <div
-      className={cn(
-        'flex gap-3 p-3 rounded-2xl transition-all',
-        'bg-white/[0.02] hover:bg-white/[0.05]',
-        'ring-1 ring-white/[0.04]',
-      )}
-    >
+    <div className="dk-plex__card">
       {/* poster */}
-      <div className="shrink-0 relative">
+      <div className="dk-plex__card-poster">
         {s.thumb && !imgError ? (
           <img
             src={s.thumb}
             alt=""
             onError={() => setImgError(true)}
             className={cn(
-              'rounded-lg object-cover bg-white/[0.04]',
-              s.media_type === 'track' ? 'h-14 w-14' : 'h-[5rem] w-[3.75rem]',
+              'dk-plex__card-poster-img',
+              s.media_type === 'track' ? 'dk-plex__card-poster-img--track' : 'dk-plex__card-poster-img--video',
             )}
           />
         ) : (
           <div
             className={cn(
-              'rounded-lg bg-white/[0.04] flex items-center justify-center',
-              s.media_type === 'track' ? 'h-14 w-14' : 'h-[5rem] w-[3.75rem]',
+              'dk-plex__card-poster-fallback',
+              s.media_type === 'track' ? 'dk-plex__card-poster-fallback--track' : 'dk-plex__card-poster-fallback--video',
             )}
           >
             <Icon className="h-5 w-5 text-muted-foreground/30" />
@@ -143,10 +139,8 @@ function SessionCard({ s }: { s: PlexSession }) {
         {/* state dot overlay */}
         <div
           className={cn(
-            'absolute -bottom-0.5 -right-0.5',
-            'h-[1.15rem] w-[1.15rem] rounded-full flex items-center justify-center',
-            'ring-2 ring-black/90',
-            isPlaying ? 'bg-[#e5a00d]' : 'bg-muted-foreground/50',
+            'dk-plex__card-state-dot',
+            isPlaying ? 'dk-plex__card-state-dot--playing' : 'dk-plex__card-state-dot--paused',
           )}
         >
           {isPlaying ? (
@@ -158,37 +152,37 @@ function SessionCard({ s }: { s: PlexSession }) {
       </div>
 
       {/* info */}
-      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+      <div className="dk-plex__card-info">
         {/* meta chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/40">
+        <div className="dk-plex__card-meta">
+          <span className="dk-plex__card-meta-chip">
             {mediaTypeIcon(s.media_type).label}
           </span>
           {s.year && (
-            <span className="text-[10px] text-muted-foreground/40 tabular-nums">{s.year}</span>
+            <span className="dk-plex__card-meta-year">{s.year}</span>
           )}
           {s.content_rating && (
-            <span className="text-[10px] px-1 rounded-sm bg-white/[0.06] text-muted-foreground/50 font-medium">
+            <span className="dk-plex__card-meta-rating">
               {s.content_rating}
             </span>
           )}
           {s.library_section && (
-            <span className="text-[10px] text-muted-foreground/30 truncate max-w-[120px]">
+            <span className="dk-plex__card-meta-section">
               {s.library_section}
             </span>
           )}
         </div>
 
         {/* title */}
-        <p className="text-sm font-semibold leading-snug truncate">
+        <p className="dk-plex__card-title">
           {formatTitle(s)}
         </p>
 
         {/* episode subtitle */}
         {s.media_type === 'episode' && s.title && (
-          <p className="text-[11px] text-muted-foreground/60 truncate leading-tight">
+          <p className="dk-plex__card-subtitle">
             {formatEpisodeMeta(s) && (
-              <span className="text-muted-foreground/40 tabular-nums mr-1">{formatEpisodeMeta(s)}</span>
+              <span className="dk-plex__card-subtitle-ep">{formatEpisodeMeta(s)}</span>
             )}
             {s.title}
           </p>
@@ -196,16 +190,16 @@ function SessionCard({ s }: { s: PlexSession }) {
 
         {/* movie summary (expandable) */}
         {s.summary && s.media_type === 'movie' && (
-          <div className="mt-0.5">
+          <div className="dk-plex__card-summary-wrap">
             <button
               type="button"
               onClick={() => setShowSummary(!showSummary)}
-              className="text-[10px] text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+              className="dk-plex__card-summary-toggle"
             >
               {showSummary ? 'Hide' : 'Summary'}
             </button>
             {showSummary && (
-              <p className="text-[10px] text-muted-foreground/50 leading-relaxed mt-0.5 line-clamp-3">
+              <p className="dk-plex__card-summary">
                 {s.summary}
               </p>
             )}
@@ -213,23 +207,23 @@ function SessionCard({ s }: { s: PlexSession }) {
         )}
 
         {/* user + server + device */}
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+        <div className="dk-plex__card-meta-row">
           {s.user_thumb ? (
-            <img src={s.user_thumb} alt="" className="h-4 w-4 rounded-full object-cover" />
+            <img src={s.user_thumb} alt="" className="dk-plex__card-meta-avatar" />
           ) : (
-            <div className="h-4 w-4 rounded-full bg-white/[0.06] flex items-center justify-center">
+            <div className="dk-plex__card-meta-avatar-fallback">
               <User className="h-2.5 w-2.5 text-muted-foreground/40" />
             </div>
           )}
-          <span className="text-[11px] text-muted-foreground/70 truncate">{s.user_name}</span>
-          <span className="text-[10px] text-muted-foreground/25">on</span>
+          <span className="dk-plex__card-meta-name">{s.user_name}</span>
+          <span className="dk-plex__card-meta-label">on</span>
           <HardDrive className="h-2.5 w-2.5 text-muted-foreground/25 shrink-0" />
-          <span className="text-[11px] text-muted-foreground/40 truncate">{s.server_name}</span>
+          <span className="dk-plex__card-meta-server">{s.server_name}</span>
           {(s.player_device || s.player_platform) && (
             <>
-              <span className="text-[10px] text-muted-foreground/25">·</span>
+              <span className="dk-plex__card-meta-label">·</span>
               <Monitor className="h-2.5 w-2.5 text-muted-foreground/25 shrink-0" />
-              <span className="text-[10px] text-muted-foreground/30 truncate">
+              <span className="dk-plex__card-meta-device">
                 {s.player_device || s.player_platform}
               </span>
             </>
@@ -238,57 +232,57 @@ function SessionCard({ s }: { s: PlexSession }) {
 
         {/* progress */}
         {pct != null && (
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="dk-plex__card-progress">
+            <div className="dk-plex__card-progress-track">
               <motion.div
                 className={cn(
-                  'h-full rounded-full',
-                  isPlaying ? 'bg-[#e5a00d]' : 'bg-muted-foreground/30',
+                  'dk-plex__card-progress-fill',
+                  isPlaying ? 'dk-plex__card-progress-fill--playing' : 'dk-plex__card-progress-fill--paused',
                 )}
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
               />
             </div>
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums font-mono shrink-0 min-w-[2.5rem] text-right">
+            <span className="dk-plex__card-progress-label">
               {pct}%
             </span>
           </div>
         )}
 
         {/* stream details */}
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+        <div className="dk-plex__card-stream">
           {s.video_resolution && (
-            <span className="text-[10px] font-medium text-muted-foreground/60">
+            <span className="dk-plex__card-stream-chip dk-plex__card-stream-chip--emph">
               {s.video_resolution === '4k' ? '4K' : s.video_resolution + 'p'}
             </span>
           )}
           {s.video_codec && (
-            <span className="text-[10px] text-muted-foreground/40 uppercase">{s.video_codec}</span>
+            <span className="dk-plex__card-stream-chip dk-plex__card-stream-chip--codec">{s.video_codec}</span>
           )}
           {s.audio_channels != null && (
-            <span className="text-[10px] text-muted-foreground/40">
+            <span className="dk-plex__card-stream-chip">
               {formatChannelLabel(s.audio_channels)}
             </span>
           )}
           {s.audio_codec && (
-            <span className="text-[10px] text-muted-foreground/40 uppercase">{s.audio_codec}</span>
+            <span className="dk-plex__card-stream-chip dk-plex__card-stream-chip--codec">{s.audio_codec}</span>
           )}
           {formatBitrate(s.bitrate) && (
-            <span className="text-[10px] text-muted-foreground/30">{formatBitrate(s.bitrate)}</span>
+            <span className="dk-plex__card-stream-chip dk-plex__card-stream-chip--dim">{formatBitrate(s.bitrate)}</span>
           )}
           {streamBadge && (
             <span
               className={cn(
-                'text-[10px] px-1.5 py-px rounded-full font-medium',
-                streamBadge === 'Direct Play' ? 'bg-emerald-500/10 text-emerald-400/70' : 'bg-amber-500/10 text-amber-400/70',
+                'dk-plex__card-stream-badge',
+                streamBadge === 'Direct Play' ? 'dk-plex__card-stream-badge--direct' : 'dk-plex__card-stream-badge--transcoded',
               )}
             >
               {streamBadge}
             </span>
           )}
           {s.transcode_reason && (
-            <span className="text-[10px] text-muted-foreground/30 italic truncate max-w-[140px]">
+            <span className="dk-plex__card-stream-reason">
               {s.transcode_reason}
             </span>
           )}
@@ -303,14 +297,14 @@ function SessionCard({ s }: { s: PlexSession }) {
 export function PlexSessionList({ sessions }: { sessions: PlexSession[] }) {
   if (sessions.length === 0) {
     return (
-      <p className="px-2 py-6 text-center text-xs text-muted-foreground/50">
+      <p className="dk-plex__empty">
         No active sessions
       </p>
     )
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="dk-plex__session-list">
       {sessions.map((s, i) => (
         <motion.div
           key={s.session_id}
@@ -330,13 +324,14 @@ export function PlexSessionList({ sessions }: { sessions: PlexSession[] }) {
 export function PlexNowPlaying() {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const { isDesktop } = useDesktopPlatform()
 
   const { user: currentUser } = useAuth()
 
   const { data } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
-      const { data } = await apiClient.get<PlexSessionsResponse>('/auth/integrations/plex/sessions')
+      const { data } = await apiClient.get<PlexSessionsResponse>('/integrations/plex/sessions')
       return data.sessions ?? []
     },
     refetchInterval: 15000,
@@ -379,17 +374,14 @@ export function PlexNowPlaying() {
         data-plex-trigger
         onClick={() => setOpen(!open)}
         className={cn(
-          'flex items-center rounded-[2rem] p-1.5 relative cursor-pointer',
-          'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-          'backdrop-blur-lg',
-          'shadow-[var(--dk-shadow-glass)]',
-          count > 0 && 'ring-1 ring-[#e5a00d]/40',
+          'dk-plex__trigger',
+          count > 0 && 'dk-plex__trigger--active',
         )}
         aria-label="Plex now playing"
       >
         <PlexIcon className={cn('h-5 w-5', count > 0 ? 'text-[#e5a00d]' : 'text-muted-foreground')} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e5a00d] px-1 text-[10px] font-bold text-black leading-none">
+          <span className="dk-plex__badge">
             {count > 9 ? '9+' : count}
           </span>
         )}
@@ -404,15 +396,11 @@ export function PlexNowPlaying() {
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'fixed top-[4.5rem] right-4 z-[9999]',
-              'w-80 max-h-[32rem] overflow-y-auto p-3 rounded-[1.5rem]',
-              'bg-[var(--dk-surface-overlay)]',
-              'backdrop-blur-xl',
-              'shadow-[var(--dk-shadow-glass)]',
-              'flex flex-col gap-2',
+              'dk-plex__dropdown',
+              isDesktop ? 'dk-plex__dropdown--desktop' : 'dk-plex__dropdown--mobile',
             )}
           >
-            <p className="px-2 text-sm font-semibold">Plex Sessions</p>
+            <p className="dk-plex__dropdown-title">Plex Sessions</p>
             <PlexSessionList sessions={sessions} />
           </motion.div>
         )}

@@ -7,6 +7,8 @@ import { ADMIN_BLOG_POSTS } from '../admin-blog.types'
 import { EXPERIMENTS } from '@/features/experiments/experiments.types'
 import { EXPERIMENTS_ADMIN, getReadinessStats, PIPELINE_EFFICIENCY, MEDIA_TYPES, getEfficiencyScore } from '@/features/experiments/experiments-admin.types'
 
+import './admin-home-page.scss'
+
 const SUBPAGES = [
   {
     to: '/admin/dashboard',
@@ -73,58 +75,58 @@ export function AdminHomePage() {
   const stats = computeQuickStats()
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
+    <div className="dk-admin-home-page">
       <Helmet>
         <title>Admin - Otix</title>
       </Helmet>
 
-      <h1 className="mb-8 text-2xl font-bold tracking-[-0.02em]">Admin</h1>
+      <h1 className="dk-admin-home-page__title">Admin</h1>
 
       {/* Quick stats */}
-      <section className="mb-8 grid gap-3 grid-cols-2 sm:grid-cols-5">
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Alpha</p>
-          <p className="text-lg font-bold text-red-400 tabular-nums">{stats.alphaCount}</p>
+      <section className="dk-admin-home-page__stats">
+        <div className="dk-admin-home-page__stat-card">
+          <p className="dk-admin-home-page__stat-label">Alpha</p>
+          <p className="dk-admin-home-page__stat-value dk-admin-home-page__stat-value--alpha">{stats.alphaCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Beta</p>
-          <p className="text-lg font-bold text-amber-400 tabular-nums">{stats.betaCount}</p>
+        <div className="dk-admin-home-page__stat-card">
+          <p className="dk-admin-home-page__stat-label">Beta</p>
+          <p className="dk-admin-home-page__stat-value dk-admin-home-page__stat-value--beta">{stats.betaCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Production</p>
-          <p className="text-lg font-bold text-green-400 tabular-nums">{stats.prodCount}</p>
+        <div className="dk-admin-home-page__stat-card">
+          <p className="dk-admin-home-page__stat-label">Production</p>
+          <p className="dk-admin-home-page__stat-value dk-admin-home-page__stat-value--production">{stats.prodCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Readiness</p>
-          <p className="text-lg font-bold tabular-nums">{stats.readinessPct}%</p>
+        <div className="dk-admin-home-page__stat-card">
+          <p className="dk-admin-home-page__stat-label">Readiness</p>
+          <p className="dk-admin-home-page__stat-value">{stats.readinessPct}%</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg Pipeline</p>
-          <p className="text-lg font-bold tabular-nums">{stats.avgPipeline}%</p>
+        <div className="dk-admin-home-page__stat-card">
+          <p className="dk-admin-home-page__stat-label">Avg Pipeline</p>
+          <p className="dk-admin-home-page__stat-value">{stats.avgPipeline}%</p>
         </div>
       </section>
 
       {/* Subpage links */}
-      <section className="mb-10">
-        <h2 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <section className="dk-admin-home-page__subpages">
+        <h2 className="dk-admin-home-page__section-heading">
           Tools
         </h2>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="dk-admin-home-page__subpage-grid">
           {SUBPAGES.map((page) => {
             const Icon = page.icon
             return (
               <Link
                 key={page.to}
                 to={page.to}
-                className="group rounded-2xl bg-[var(--dk-surface-base)] p-5 shadow-[var(--dk-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--dk-shadow-md)]"
+                className="dk-admin-home-page__subpage-card"
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <div className="dk-admin-home-page__subpage-icon">
                   <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="mb-1 text-sm font-semibold group-hover:text-primary transition-colors">
+                <h3 className="dk-admin-home-page__subpage-title">
                   {page.label}
                 </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="dk-admin-home-page__subpage-desc">
                   {page.description}
                 </p>
               </Link>
@@ -135,27 +137,27 @@ export function AdminHomePage() {
 
       {/* Blog / internal docs */}
       <section>
-        <h2 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        <h2 className="dk-admin-home-page__section-heading">
           Documentation
         </h2>
-        <div className="space-y-4">
+        <div className="dk-admin-home-page__blog-list">
           {ADMIN_BLOG_POSTS.map((post) => (
             <Link
               key={post.slug}
               to="/admin/blog/$slug"
               params={{ slug: post.slug }}
-              className="block rounded-2xl bg-[var(--dk-surface-base)] p-5 shadow-[var(--dk-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--dk-shadow-md)]"
+              className="dk-admin-home-page__blog-card"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h3 className="mb-1 text-sm font-semibold group-hover:text-primary transition-colors">
+              <div className="dk-admin-home-page__blog-inner">
+                <div className="dk-admin-home-page__blog-text">
+                  <h3 className="dk-admin-home-page__blog-title">
                     {post.title}
                   </h3>
-                  <p className="mb-2 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                  <p className="dk-admin-home-page__blog-summary">
                     {post.summary}
                   </p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                  <div className="dk-admin-home-page__blog-meta">
+                    <span className="dk-admin-home-page__blog-date">
                       <Calendar className="h-3 w-3" />
                       {formatDate(post.date)}
                     </span>

@@ -1,14 +1,15 @@
+// TODO: Review this file
 /**
  * Hooks for SABnzbd + NZBPlanet download integration.
- * All calls go through window.electronAPI (Electron IPC).
+ * All calls go through window.desktopAPI (Electron IPC).
  * Falls back gracefully when not running in Electron.
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry, HypervisorConfirmResponse } from './types';
 
-function isElectron(): boolean {
-  return typeof window !== 'undefined' && !!window.electronAPI;
+function isDesktop(): boolean {
+  return typeof window !== 'undefined' && !!window.desktopAPI;
 }
 
 // ── Config ──
@@ -18,10 +19,10 @@ export function useDownloadConfig(userId: string | undefined) {
   const [loading, setLoading] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!userId || !isElectron()) return;
+    if (!userId || !isDesktop()) return;
     setLoading(true);
     try {
-      const c = await window.electronAPI!.downloadsGetConfig(userId);
+      const c = await window.desktopAPI!.downloadsGetConfig(userId);
       setConfig(c);
     } catch (err) {
       console.error('Failed to fetch download config:', err);
@@ -31,8 +32,8 @@ export function useDownloadConfig(userId: string | undefined) {
   }, [userId]);
 
   const saveConfig = useCallback(async (cfg: Omit<DownloadConfig, 'id'> & { id?: string }) => {
-    if (!isElectron()) throw new Error('Not in Electron');
-    const saved = await window.electronAPI!.downloadsSaveConfig(cfg);
+    if (!isDesktop()) throw new Error('Not in Electron');
+    const saved = await window.desktopAPI!.downloadsSaveConfig(cfg);
     setConfig(saved);
     return saved;
   }, []);
@@ -52,12 +53,12 @@ export function useNzbSearch() {
   const [bestPick, setBestPick] = useState<NZBResult | null>(null);
 
   const search = useCallback(async (query: string, apiKey: string, allowHypervisor?: boolean) => {
-    if (!isElectron()) return [];
+    if (!isDesktop()) return [];
     setSearching(true);
     try {
-      const r = await window.electronAPI!.downloadsSearch(query, apiKey);
+      const r = await window.desktopAPI!.downloadsSearch(query, apiKey);
       setResults(r);
-      const best = await window.electronAPI!.downloadsAutoPick(r, allowHypervisor);
+      const best = await window.desktopAPI!.downloadsAutoPick(r, allowHypervisor);
       setBestPick(best);
       return r;
     } catch (err) {
@@ -79,13 +80,13 @@ export function useDownloads(userId: string | undefined) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchDownloads = useCallback(async () => {
-    console.log('[useDownloads] fetchDownloads called, userId:', userId, 'isElectron:', isElectron());
-    if (!userId || !isElectron()) {
+    console.log('[useDownloads] fetchDownloads called, userId:', userId, 'isDesktop:', isDesktop());
+    if (!userId || !isDesktop()) {
       console.log('[useDownloads] fetchDownloads skipped — no userId or not Electron');
       return;
     }
     try {
-      const d = await window.electronAPI!.downloadsGetUserDownloads(userId);
+      const d = await window.desktopAPI!.downloadsGetUserDownloads(userId);
       console.log('[useDownloads] fetched', d.length, 'downloads:', d.map(x => ({ id: x.id, mediaItemId: x.mediaItemId, status: x.status })));
       setDownloads(d);
     } catch (err) {
@@ -99,10 +100,10 @@ export function useDownloads(userId: string | undefined) {
     gameName: string,
     allowHypervisor?: boolean,
   ): Promise<{ download: Download } | { error: string } | HypervisorConfirmResponse> => {
-    if (!isElectron()) return { error: 'Not in Electron' };
+    if (!isDesktop()) return { error: 'Not in Electron' };
     setLoading(true);
     try {
-      const result = await window.electronAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor);
+      const result = await window.desktopAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor);
       await fetchDownloads();
       return result;
     } catch (err: any) {
@@ -113,9 +114,9 @@ export function useDownloads(userId: string | undefined) {
   }, [fetchDownloads]);
 
   const pollQueue = useCallback(async () => {
-    if (!userId || !isElectron()) return;
+    if (!userId || !isDesktop()) return;
     try {
-      await window.electronAPI!.downloadsPollQueue(userId);
+      await window.desktopAPI!.downloadsPollQueue(userId);
       await fetchDownloads();
     } catch (err) {
       console.error('Poll failed:', err);
@@ -123,8 +124,8 @@ export function useDownloads(userId: string | undefined) {
   }, [userId, fetchDownloads]);
 
   const cancelDownload = useCallback(async (id: string) => {
-    if (!isElectron()) return;
-    await window.electronAPI!.downloadsDelete(id);
+    if (!isDesktop()) return;
+    await window.desktopAPI!.downloadsDelete(id);
     await fetchDownloads();
   }, [fetchDownloads]);
 
@@ -159,9 +160,9 @@ export function useWishlistDownloads(userId: string | undefined) {
   const [scanning, setScanning] = useState(false);
 
   const fetchTracking = useCallback(async () => {
-    if (!userId || !isElectron()) return;
+    if (!userId || !isDesktop()) return;
     try {
-      const t = await window.electronAPI!.downloadsGetWishlistTracking(userId);
+      const t = await window.desktopAPI!.downloadsGetWishlistTracking(userId);
       setTracking(t);
     } catch (err) {
       console.error('Failed to fetch wishlist tracking:', err);
@@ -169,10 +170,10 @@ export function useWishlistDownloads(userId: string | undefined) {
   }, [userId]);
 
   const scanWishlist = useCallback(async (games: { id: string; title: string }[]) => {
-    if (!userId || !isElectron()) return [];
+    if (!userId || !isDesktop()) return [];
     setScanning(true);
     try {
-      const r = await window.electronAPI!.downloadsScanWishlist(userId, games);
+      const r = await window.desktopAPI!.downloadsScanWishlist(userId, games);
       await fetchTracking();
       return r;
     } catch (err) {
@@ -184,8 +185,8 @@ export function useWishlistDownloads(userId: string | undefined) {
   }, [userId, fetchTracking]);
 
   const skipItem = useCallback(async (mediaItemId: string) => {
-    if (!userId || !isElectron()) return;
-    await window.electronAPI!.downloadsSkipWishlistItem(userId, mediaItemId);
+    if (!userId || !isDesktop()) return;
+    await window.desktopAPI!.downloadsSkipWishlistItem(userId, mediaItemId);
     await fetchTracking();
   }, [userId, fetchTracking]);
 
@@ -203,25 +204,25 @@ export function useConnectionTest() {
   const [testingNzbplanet, setTestingNzbplanet] = useState(false);
 
   const testSabnzbd = useCallback(async (host: string, port: number, apiKey: string, useSsl: boolean) => {
-    if (!isElectron()) return false;
+    if (!isDesktop()) return false;
     setTestingSabnzbd(true);
     try {
-      return await window.electronAPI!.downloadsTestSabnzbd(host, port, apiKey, useSsl);
+      return await window.desktopAPI!.downloadsTestSabnzbd(host, port, apiKey, useSsl);
     } finally {
       setTestingSabnzbd(false);
     }
   }, []);
 
   const testNzbplanet = useCallback(async (apiKey: string) => {
-    console.log('[useConnectionTest] testNzbplanet called, apiKey length:', apiKey?.length ?? 0, 'isElectron:', isElectron());
-    if (!isElectron()) {
-      console.error('[useConnectionTest] NOT in Electron — window.electronAPI is', typeof window !== 'undefined' ? (window as any).electronAPI : 'window undefined');
+    console.log('[useConnectionTest] testNzbplanet called, apiKey length:', apiKey?.length ?? 0, 'isDesktop:', isDesktop());
+    if (!isDesktop()) {
+      console.error('[useConnectionTest] NOT in Electron — window.desktopAPI is', typeof window !== 'undefined' ? (window as any).desktopAPI : 'window undefined');
       return false;
     }
     setTestingNzbplanet(true);
     try {
-      console.log('[useConnectionTest] calling window.electronAPI.downloadsTestNzbplanet...');
-      const result = await window.electronAPI!.downloadsTestNzbplanet(apiKey);
+      console.log('[useConnectionTest] calling window.desktopAPI.downloadsTestNzbplanet...');
+      const result = await window.desktopAPI!.downloadsTestNzbplanet(apiKey);
       console.log('[useConnectionTest] result:', result);
       return result;
     } catch (err: any) {

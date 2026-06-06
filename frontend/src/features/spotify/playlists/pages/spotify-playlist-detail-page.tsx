@@ -1,3 +1,5 @@
+// TODO: Review this file
+import "./spotify-playlist-detail-page.scss"
 import { useState } from "react"
 import { Helmet } from "react-helmet-async"
 import { useParams, useNavigate } from "@tanstack/react-router"
@@ -20,9 +22,9 @@ export function SpotifyPlaylistDetailPage() {
 
   if (error || !playlist) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="rounded-xl bg-destructive/10 p-6 text-destructive text-center">
-          <p className="font-medium">Failed to load playlist</p>
+      <div className="dk-spotify-playlist-detail-page">
+        <div className="dk-spotify-playlist-detail-page__error">
+          <p className="dk-spotify-playlist-detail-page__error-text">Failed to load playlist</p>
         </div>
       </div>
     )
@@ -48,14 +50,14 @@ export function SpotifyPlaylistDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="dk-spotify-playlist-detail-page">
       <Helmet>
         <title>{playlist.name} — Spotify Playlists — Otix</title>
       </Helmet>
 
       <button
         onClick={() => navigate({ to: "/library/spotify/playlists" })}
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        className="dk-spotify-playlist-detail-page__back-button"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to playlists

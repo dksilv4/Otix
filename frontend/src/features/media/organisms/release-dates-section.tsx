@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { Calendar, Clock, Download, Film, Globe, Monitor, Star, Tv } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { cn } from '@/lib/utils'
+import './release-dates-section.scss'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -97,7 +99,7 @@ function getCountryDisplay(code: string): string {
 function CountdownBadge({ days }: { days: number }) {
   if (days === 0) {
     return (
-      <Badge variant="default" className="animate-pulse gap-1 bg-emerald-600 text-xs">
+      <Badge variant="default" className="dk-media-countdown-badge--today">
         <Clock className="h-3 w-3" />
         Today!
       </Badge>
@@ -105,14 +107,14 @@ function CountdownBadge({ days }: { days: number }) {
   }
   if (days <= 7) {
     return (
-      <Badge variant="default" className="gap-1 bg-amber-600 text-xs">
+      <Badge variant="default" className="dk-media-countdown-badge--soon">
         <Clock className="h-3 w-3" />
         {days}d left
       </Badge>
     )
   }
   return (
-    <Badge variant="secondary" className="gap-1 border-0 bg-white/10 text-xs">
+    <Badge variant="secondary" className="dk-media-countdown-badge--later">
       <Clock className="h-3 w-3" />
       {days}d left
     </Badge>
@@ -173,18 +175,18 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
   const someUpcoming = entries.some((e) => getDaysUntil(e.release.releaseDate!) !== null)
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center gap-2">
-        <h2 className="text-lg font-semibold">Release Dates</h2>
+    <section className="dk-media-release-dates">
+      <div className="dk-media-release-dates__header">
+        <h2 className="dk-media-release-dates__heading">Release Dates</h2>
         {hasUserCountry && (
-          <Badge variant="secondary" className="gap-1 border-0 bg-white/10 text-[10px] font-normal">
+          <Badge variant="secondary" className="dk-media-release-dates__country-badge">
             <Globe className="h-3 w-3" />
             {getCountryDisplay(primaryCc)}
           </Badge>
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="dk-media-release-dates__grid">
         {entries.map(({ type, config, release: r }) => {
           const Icon = config.icon
           const days = getDaysUntil(r.releaseDate!)
@@ -194,22 +196,22 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
             <div
               key={type}
               className={cn(
-                'rounded-xl border p-4 transition-colors',
+                'dk-media-release-dates__card',
                 config.important
-                  ? 'border-cyan-500/30 bg-cyan-950/20'
+                  ? 'dk-media-release-dates__card--important'
                   : days !== null
-                    ? 'border-amber-500/20 bg-amber-950/10'
-                    : 'border-white/[0.06] bg-white/[0.02]',
+                    ? 'dk-media-release-dates__card--upcoming'
+                    : 'dk-media-release-dates__card--default',
               )}
             >
               {/* Header */}
-              <div className="mb-3 flex items-center gap-2">
+              <div className="dk-media-release-dates__card-header">
                 <Icon className={cn('h-4 w-4', config.color)} />
-                <h3 className={cn('text-sm font-semibold', config.color)}>{config.label}</h3>
+                <h3 className={cn('dk-media-release-dates__card-heading', config.color)}>{config.label}</h3>
                 {config.important && (
                   <Badge
                     variant="default"
-                    className="ml-auto bg-cyan-600 px-2 py-0 text-[10px] font-bold uppercase"
+                    className="dk-media-release-dates__card-important-badge"
                   >
                     Important
                   </Badge>
@@ -217,25 +219,20 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
               </div>
 
               {/* Entry */}
-              <div
-                className={cn(
-                  'flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm',
-                  'hover:bg-white/[0.03]',
-                )}
-              >
+              <div className="dk-media-release-dates__entry">
                 {/* Country indicator */}
                 {isFallback ? (
-                  <span className="shrink-0 text-[10px] font-medium text-muted-foreground" title={getCountryDisplay(r.countryCode)}>
+                  <span className="dk-media-release-dates__country--fallback" title={getCountryDisplay(r.countryCode)}>
                     {r.countryCode.toUpperCase()}
                   </span>
                 ) : (
-                  <span className="shrink-0 text-xs font-semibold text-foreground">
+                  <span className="dk-media-release-dates__country">
                     {r.countryCode.toUpperCase()}
                   </span>
                 )}
 
                 {/* Date */}
-                <span className="flex items-center gap-1.5 font-medium">
+                <span className="dk-media-release-dates__entry-date">
                   <Calendar className="h-3 w-3 text-muted-foreground" />
                   {formatDate(r.releaseDate!)}
                 </span>
@@ -244,7 +241,7 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
                 {r.certification && (
                   <Badge
                     variant="secondary"
-                    className="ml-auto shrink-0 border-0 bg-white/10 px-1.5 py-0 text-[10px]"
+                    className="dk-media-release-dates__entry-cert"
                   >
                     {r.certification}
                   </Badge>
@@ -252,7 +249,7 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
 
                 {/* Countdown */}
                 {days !== null && (
-                  <div className="shrink-0">
+                  <div className="dk-media-release-dates__entry-countdown">
                     <CountdownBadge days={days} />
                   </div>
                 )}
@@ -260,7 +257,7 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
 
               {/* Fallback note */}
               {isFallback && (
-                <p className="mt-1.5 text-[10px] text-muted-foreground">
+                <p className="dk-media-release-dates__fallback-note">
                   No {config.label.toLowerCase()} release date for {getCountryDisplay(primaryCc)} — showing {getCountryDisplay(r.countryCode)} date
                 </p>
               )}
@@ -270,7 +267,7 @@ export function ReleaseDatesSection({ releases, userCountry }: ReleaseDatesSecti
       </div>
 
       {someUpcoming && (
-        <p className="text-xs text-muted-foreground">
+        <p className="dk-media-release-dates__footnote">
           Countdown shows days until release. Times are approximate.
         </p>
       )}
@@ -300,10 +297,10 @@ function AllCountriesView({ valid }: { valid: MediaRelease[] }) {
   const someUpcoming = entries.some((e) => e.releases.some((r) => getDaysUntil(r.releaseDate!) !== null))
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold">Release Dates</h2>
+    <section className="dk-media-release-dates">
+      <h2 className="dk-media-release-dates__heading">Release Dates</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="dk-media-release-dates__grid">
         {entries.map(({ type, config, releases }) => {
           const Icon = config.icon
 
@@ -311,20 +308,20 @@ function AllCountriesView({ valid }: { valid: MediaRelease[] }) {
             <div
               key={type}
               className={cn(
-                'rounded-xl border p-4 transition-colors',
+                'dk-media-release-dates__card',
                 config.important
-                  ? 'border-cyan-500/30 bg-cyan-950/20'
-                  : 'border-white/[0.06] bg-white/[0.02]',
+                  ? 'dk-media-release-dates__card--important'
+                  : 'dk-media-release-dates__card--default',
               )}
             >
               {/* Header */}
-              <div className="mb-3 flex items-center gap-2">
+              <div className="dk-media-release-dates__card-header">
                 <Icon className={cn('h-4 w-4', config.color)} />
-                <h3 className={cn('text-sm font-semibold', config.color)}>{config.label}</h3>
+                <h3 className={cn('dk-media-release-dates__card-heading', config.color)}>{config.label}</h3>
                 {config.important && (
                   <Badge
                     variant="default"
-                    className="ml-auto bg-cyan-600 px-2 py-0 text-[10px] font-bold uppercase"
+                    className="dk-media-release-dates__card-important-badge"
                   >
                     Important
                   </Badge>
@@ -332,20 +329,20 @@ function AllCountriesView({ valid }: { valid: MediaRelease[] }) {
               </div>
 
               {/* All countries */}
-              <div className="space-y-1.5">
+              <div className="dk-media-release-dates__all-list">
                 {releases.map((r, i) => {
                   const days = getDaysUntil(r.releaseDate!)
 
                   return (
                     <div
                       key={`${r.countryCode}-${i}`}
-                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm hover:bg-white/[0.03]"
+                      className="dk-media-release-dates__entry"
                     >
-                      <span className="shrink-0 text-xs font-semibold text-foreground">
+                      <span className="dk-media-release-dates__country">
                         {r.countryCode.toUpperCase()}
                       </span>
 
-                      <span className="flex items-center gap-1.5 font-medium">
+                      <span className="dk-media-release-dates__entry-date">
                         <Calendar className="h-3 w-3 text-muted-foreground" />
                         {formatDate(r.releaseDate!)}
                       </span>
@@ -353,14 +350,14 @@ function AllCountriesView({ valid }: { valid: MediaRelease[] }) {
                       {r.certification && (
                         <Badge
                           variant="secondary"
-                          className="ml-auto shrink-0 border-0 bg-white/10 px-1.5 py-0 text-[10px]"
+                          className="dk-media-release-dates__entry-cert"
                         >
                           {r.certification}
                         </Badge>
                       )}
 
                       {days !== null && (
-                        <div className="shrink-0">
+                        <div className="dk-media-release-dates__entry-countdown">
                           <CountdownBadge days={days} />
                         </div>
                       )}

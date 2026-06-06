@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
 import { ArrowRight, Dumbbell, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './chat-search-input.scss'
 
 export interface ModeDef {
   id: string
@@ -25,13 +27,13 @@ const MEDIA_TYPE_LABEL: Record<string, string> = {
   users: 'User',
 }
 
-const MEDIA_TYPE_COLOR: Record<string, string> = {
-  movie: 'text-rose-400 bg-rose-400/10 border-rose-400/20 hover:bg-rose-400/20',
-  show: 'text-violet-400 bg-violet-400/10 border-violet-400/20 hover:bg-violet-400/20',
-  game: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20 hover:bg-emerald-400/20',
-  music: 'text-amber-400 bg-amber-400/10 border-amber-400/20 hover:bg-amber-400/20',
-  people: 'text-blue-400 bg-blue-400/10 border-blue-400/20 hover:bg-blue-400/20',
-  users: 'text-teal-400 bg-teal-400/10 border-teal-400/20 hover:bg-teal-400/20',
+const MEDIA_TYPE_CLASS: Record<string, string> = {
+  movie: 'dk-discover-chat-input__tag--movie',
+  show: 'dk-discover-chat-input__tag--show',
+  game: 'dk-discover-chat-input__tag--game',
+  music: 'dk-discover-chat-input__tag--music',
+  people: 'dk-discover-chat-input__tag--people',
+  users: 'dk-discover-chat-input__tag--users',
 }
 
 interface ChatSearchInputProps {
@@ -164,34 +166,24 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   const ResolvedIcon = leadingIcon ?? activeModeDef?.icon ?? Sparkles
 
   return (
-    <div className={cn('relative w-full max-w-3xl', className)}>
-      <div
-        className={cn(
-          'relative rounded-[2rem]',
-          'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-          'backdrop-blur-xl shadow-[var(--dk-shadow-glass)]',
-          'ring-1 ring-white/[0.04]',
-          'transition-all duration-300',
-          'focus-within:scale-[1.01] focus-within:ring-primary/20',
-        )}
-      >
+    <div className={cn('dk-discover-chat-input', className)}>
+      <div className="dk-discover-chat-input__card">
         {/* Input row */}
-        <div className="flex items-center gap-3 px-6 pt-6 pb-2.5">
+        <div className="dk-discover-chat-input__input-row">
           <ResolvedIcon className="h-5 w-5 shrink-0 text-primary/50" />
 
           {/* Media type tag */}
           {displayType && (
             <span
               className={cn(
-                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0',
-                'animate-in fade-in slide-in-from-left-2 duration-200',
-                MEDIA_TYPE_COLOR[displayType],
+                'dk-discover-chat-input__tag',
+                MEDIA_TYPE_CLASS[displayType],
               )}
             >
               {MEDIA_TYPE_LABEL[displayType]}
               <button
                 onClick={handleRemoveType}
-                className="rounded-full p-0.5 hover:bg-white/10 transition-colors"
+                className="dk-discover-chat-input__tag-remove"
                 aria-label={`Remove ${MEDIA_TYPE_LABEL[displayType]} filter`}
               >
                 <X className="h-3 w-3" />
@@ -208,25 +200,13 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
             placeholder={displayType ? `Search ${MEDIA_TYPE_LABEL[displayType].toLowerCase()}...` : placeholder}
             disabled={disabled}
             className={cn(
-              'flex-1 min-w-0 h-14 md:h-16',
-              'text-lg md:text-xl',
-              'bg-transparent border-0 outline-none',
-              'shadow-none ring-0 focus:ring-0 focus:ring-offset-0',
-              'appearance-none',
-              'placeholder:text-muted-foreground/40',
-              'text-foreground',
+              'dk-discover-chat-input__input',
             )}
           />
           {(inputValue || showSubmitWhenEmpty) && (
             <button
               onClick={inputValue ? flushAndSubmit : (onSubmit || handleClear)}
-              className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
-                'bg-primary/20 text-primary',
-                'hover:bg-primary/30 hover:scale-105',
-                'active:scale-95',
-                'transition-all duration-200',
-              )}
+              className="dk-discover-chat-input__submit"
               aria-label={submitLabel}
             >
               <ArrowRight className="h-5 w-5" />
@@ -235,7 +215,7 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
         </div>
 
         {/* Tools row */}
-        <div className="flex items-center gap-2 px-6 pb-5">
+        <div className="dk-discover-chat-input__tools">
           {MODES.map((mode) => {
             const isActive = mode.id === activeMode
             return (
@@ -243,11 +223,8 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
                 key={mode.id}
                 onClick={() => onModeChange?.(mode.id)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-                  'transition-all duration-200',
-                  isActive
-                    ? 'bg-primary/15 text-primary ring-1 ring-primary/20'
-                    : 'bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground',
+                  'dk-discover-chat-input__mode-btn',
+                  isActive && 'dk-discover-chat-input__mode-btn--active',
                 )}
               >
                 <mode.icon className="h-3.5 w-3.5" strokeWidth={1.8} />

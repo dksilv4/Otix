@@ -1,4 +1,5 @@
 import { useId } from "react"
+import "./line-chart.scss"
 
 interface DataPoint {
   label: string
@@ -24,7 +25,7 @@ export function LineChart({ data, color = "var(--primary)", height = 180 }: Line
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)] text-xs text-muted-foreground"
+        className="dk-admin-line-chart__empty"
         style={{ height }}
       >
         No data yet
@@ -51,7 +52,7 @@ export function LineChart({ data, color = "var(--primary)", height = 180 }: Line
 
   return (
     <div
-      className="relative rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] overflow-hidden"
+      className="dk-admin-line-chart"
       style={{ height }}
     >
       <svg
@@ -127,13 +128,13 @@ export function LineChart({ data, color = "var(--primary)", height = 180 }: Line
 
       {/* X-axis labels overlay */}
       <div
-        className="absolute bottom-1 flex justify-between"
+        className="dk-admin-line-chart__x-labels"
         style={{ left: `${(PAD_LEFT / VIEWBOX_W) * 100}%`, right: `${(PAD_RIGHT / VIEWBOX_W) * 100}%` }}
       >
         {xLabels.map((d, i) => (
           <span
             key={i}
-            className="text-[9px] text-muted-foreground/60 tabular-nums leading-none whitespace-nowrap"
+            className="dk-admin-line-chart__x-label"
           >
             {formatLabel(d.label, data)}
           </span>

@@ -1,3 +1,4 @@
+// TODO: Review this file
 export function PlexIcon({ className }: { className?: string }) {
   return (
     <svg

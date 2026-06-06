@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.user import User
 from otix.lib.totp import generate_qr_svg, generate_totp_secret, totp_provisioning_uri, verify_totp
-from otix.services.auth_service import verify_password
+from otix.services.auth.auth_service import verify_password
 
 
 class TwoFactorService:

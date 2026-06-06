@@ -1,0 +1,602 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ── Scanners Section ────────────────────────────────── */
+/* Component: ScannersSection                            */
+/* Prefix:   dk-settings-scanners                        */
+
+/* ── Body (root container) ──────────────────────────── */
+
+.dk-settings-scanners__body {
+  @apply space-y-8;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.dk-settings-scanners__header-title {
+  @apply text-lg font-bold;
+  letter-spacing: -0.02em;
+}
+
+.dk-settings-scanners__header-desc {
+  @apply mt-1 text-sm text-muted-foreground;
+}
+
+/* ── Subsection ─────────────────────────────────────── */
+
+.dk-settings-scanners__section {
+  @apply space-y-3;
+}
+
+.dk-settings-scanners__section-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-settings-scanners__section-label {
+  @apply text-sm font-semibold;
+}
+
+.dk-settings-scanners__section-desc {
+  @apply mt-0.5 text-xs text-muted-foreground;
+}
+
+/* ── Path list ──────────────────────────────────────── */
+
+.dk-settings-scanners__path-list {
+  @apply space-y-1.5;
+}
+
+.dk-settings-scanners__path-row {
+  @apply flex items-center justify-between rounded-lg px-3 py-2;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dk-settings-scanners__path-row-content {
+  @apply flex items-center gap-2 min-w-0;
+}
+
+.dk-settings-scanners__path-text {
+  @apply text-xs text-muted-foreground truncate;
+}
+
+.dk-settings-scanners__path-remove {
+  @apply flex-shrink-0 ml-2;
+  color: rgba(156, 163, 175, 0.4);
+  transition: color 150ms;
+}
+
+.dk-settings-scanners__path-remove:hover {
+  color: rgb(248, 113, 113);
+}
+
+/* ── Empty state ────────────────────────────────────── */
+
+.dk-settings-scanners__empty {
+  @apply rounded-xl p-6 text-center;
+}
+
+.dk-settings-scanners__empty-text {
+  @apply text-xs;
+  color: rgba(156, 163, 175, 0.5);
+}
+
+/* ── Ghost action buttons ───────────────────────────── */
+
+.dk-settings-scanners__ghost-btn {
+  @apply px-3 py-1.5 rounded-lg text-xs font-medium;
+  transition: all 150ms;
+}
+
+.dk-settings-scanners__ghost-btn:disabled {
+  @apply opacity-30 cursor-not-allowed;
+}
+
+.dk-settings-scanners__ghost-btn--add {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: rgb(52, 211, 153);
+}
+
+.dk-settings-scanners__ghost-btn--add:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
+.dk-settings-scanners__ghost-btn--action {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(96, 165, 250);
+}
+
+.dk-settings-scanners__ghost-btn--action:hover:not(:disabled) {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.dk-settings-scanners__ghost-btn--danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(248, 113, 113);
+}
+
+.dk-settings-scanners__ghost-btn--danger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Scan button (solid green) ──────────────────────── */
+
+.dk-settings-scanners__scan-btn {
+  @apply px-4 py-2 rounded-lg text-xs font-bold;
+  background-color: rgb(16, 185, 129);
+  color: white;
+  transition: all 150ms;
+}
+
+.dk-settings-scanners__scan-btn:hover:not(:disabled) {
+  background-color: rgb(52, 211, 153);
+}
+
+.dk-settings-scanners__scan-btn:disabled {
+  @apply opacity-30 cursor-not-allowed;
+}
+
+/* ── Accept / Deny suggestion buttons ───────────────── */
+
+.dk-settings-scanners__suggest-btn {
+  @apply inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-md text-[11px] font-semibold;
+  transition: all 150ms;
+}
+
+.dk-settings-scanners__suggest-btn--accept {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: rgb(52, 211, 153);
+}
+
+.dk-settings-scanners__suggest-btn--accept:hover {
+  background-color: rgba(16, 185, 129, 0.25);
+}
+
+.dk-settings-scanners__suggest-btn--deny {
+  @apply font-medium;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(248, 113, 113);
+}
+
+.dk-settings-scanners__suggest-btn--deny:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Text action buttons ────────────────────────────── */
+
+.dk-settings-scanners__text-btn {
+  @apply text-[10px];
+  transition: color 150ms;
+}
+
+.dk-settings-scanners__text-btn--verify {
+  @apply font-medium;
+  color: rgba(52, 211, 153, 0.6);
+}
+
+.dk-settings-scanners__text-btn--verify:hover {
+  color: rgb(52, 211, 153);
+}
+
+.dk-settings-scanners__text-btn--unmatch {
+  color: rgba(156, 163, 175, 0.3);
+}
+
+.dk-settings-scanners__text-btn--unmatch:hover {
+  color: rgb(248, 113, 113);
+}
+
+.dk-settings-scanners__text-btn--find {
+  @apply font-medium;
+  color: rgba(96, 165, 250, 0.6);
+}
+
+.dk-settings-scanners__text-btn--find:hover {
+  color: rgb(96, 165, 250);
+}
+
+.dk-settings-scanners__text-btn--match {
+  @apply font-medium flex-shrink-0;
+  color: rgba(52, 211, 153, 0.7);
+}
+
+.dk-settings-scanners__text-btn--match:hover {
+  color: rgb(52, 211, 153);
+}
+
+.dk-settings-scanners__text-btn--cancel {
+  color: rgba(156, 163, 175, 0.3);
+}
+
+.dk-settings-scanners__text-btn--cancel:hover {
+  color: rgba(156, 163, 175, 0.6);
+}
+
+/* ── Scan banner ────────────────────────────────────── */
+
+.dk-settings-scanners__scan-banner {
+  @apply flex items-center justify-between rounded-xl p-4;
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.dk-settings-scanners__scan-banner-title {
+  @apply text-sm font-medium;
+}
+
+.dk-settings-scanners__scan-banner-desc {
+  @apply mt-0.5 text-xs text-muted-foreground;
+}
+
+/* ── Library overview ───────────────────────────────── */
+
+.dk-settings-scanners__library {
+  @apply space-y-4;
+}
+
+/* ── Summary bar ────────────────────────────────────── */
+
+.dk-settings-scanners__summary {
+  @apply flex items-center justify-between;
+}
+
+.dk-settings-scanners__summary-stats {
+  @apply flex items-center gap-3 text-xs text-muted-foreground;
+}
+
+.dk-settings-scanners__summary-label {
+  @apply font-semibold;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dk-settings-scanners__summary-stat--verified {
+  color: rgba(52, 211, 153, 0.6);
+}
+
+.dk-settings-scanners__summary-stat--auto {
+  color: rgba(52, 211, 153, 0.3);
+}
+
+.dk-settings-scanners__summary-stat--suggestions {
+  color: rgba(96, 165, 250, 0.6);
+}
+
+.dk-settings-scanners__summary-stat--unmatched {
+  color: rgba(156, 163, 175, 0.4);
+}
+
+.dk-settings-scanners__summary-stat--total {
+  color: rgba(156, 163, 175, 0.3);
+}
+
+.dk-settings-scanners__summary-actions {
+  @apply flex items-center gap-2;
+}
+
+/* ── Platform chips ─────────────────────────────────── */
+
+.dk-settings-scanners__chips {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.dk-settings-scanners__chip {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px];
+  background-color: rgba(255, 255, 255, 0.04);
+  color: rgba(156, 163, 175, 0.6);
+}
+
+.dk-settings-scanners__chip-count {
+  @apply font-medium ml-0.5;
+  color: rgba(156, 163, 175, 0.4);
+}
+
+/* ── Collapsible section toggle ─────────────────────── */
+
+.dk-settings-scanners__toggle {
+  @apply flex items-center gap-1.5 text-xs font-semibold;
+  transition: color 150ms;
+}
+
+.dk-settings-scanners__toggle--verified {
+  color: rgba(52, 211, 153, 0.7);
+}
+
+.dk-settings-scanners__toggle--auto {
+  color: rgba(52, 211, 153, 0.4);
+}
+
+.dk-settings-scanners__toggle--auto:hover {
+  color: rgba(52, 211, 153, 0.6);
+}
+
+.dk-settings-scanners__toggle--unmatched {
+  color: rgba(156, 163, 175, 0.5);
+}
+
+.dk-settings-scanners__toggle--unmatched:hover {
+  color: rgba(156, 163, 175, 0.7);
+}
+
+.dk-settings-scanners__toggle-arrow {
+  transition: transform 150ms;
+}
+
+.dk-settings-scanners__toggle-arrow--open {
+  transform: rotate(90deg);
+}
+
+.dk-settings-scanners__toggle-dot {
+  @apply w-1.5 h-1.5 rounded-full;
+}
+
+.dk-settings-scanners__toggle-dot--verified {
+  background-color: rgba(52, 211, 153, 0.6);
+}
+
+.dk-settings-scanners__toggle-dot--blue {
+  background-color: rgba(96, 165, 250, 0.6);
+}
+
+/* ── Section content (collapsible) ──────────────────── */
+
+.dk-settings-scanners__section-content {
+  @apply space-y-1.5;
+}
+
+.dk-settings-scanners__section-content--scroll {
+  @apply space-y-1 max-h-80 overflow-y-auto;
+}
+
+.dk-settings-scanners__section-content--results {
+  @apply space-y-1 max-h-40 overflow-y-auto;
+}
+
+/* ── Suggestions section ────────────────────────────── */
+
+.dk-settings-scanners__suggestions {
+  @apply space-y-2;
+}
+
+.dk-settings-scanners__suggestions-header {
+  @apply text-xs font-semibold flex items-center gap-1.5;
+  color: rgba(96, 165, 250, 0.7);
+}
+
+/* ── Suggestion card ────────────────────────────────── */
+
+.dk-settings-scanners__suggestion-card {
+  @apply flex items-stretch gap-3 rounded-lg p-2.5;
+  background-color: rgba(59, 130, 246, 0.04);
+}
+
+.dk-settings-scanners__suggestion-poster {
+  @apply flex-shrink-0 w-10 rounded overflow-hidden;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-settings-scanners__suggestion-poster-img {
+  @apply w-10 h-14 object-cover;
+}
+
+.dk-settings-scanners__suggestion-poster-placeholder {
+  @apply w-10 h-14 flex items-center justify-center text-[10px] font-bold;
+  color: rgba(156, 163, 175, 0.2);
+}
+
+.dk-settings-scanners__suggestion-info {
+  @apply flex-1 min-w-0 flex flex-col justify-center gap-0.5;
+}
+
+.dk-settings-scanners__suggestion-title-row {
+  @apply flex items-center gap-2;
+}
+
+.dk-settings-scanners__suggestion-game-title {
+  @apply text-xs font-medium truncate;
+}
+
+.dk-settings-scanners__suggestion-match-row {
+  @apply flex items-center gap-1.5 text-[10px];
+  color: rgba(156, 163, 175, 0.5);
+}
+
+.dk-settings-scanners__suggestion-match-arrow {
+  color: rgba(156, 163, 175, 0.3);
+}
+
+.dk-settings-scanners__suggestion-match-title {
+  @apply font-medium truncate;
+  color: rgba(96, 165, 250, 0.7);
+}
+
+.dk-settings-scanners__suggestion-confidence {
+  @apply font-semibold ml-auto;
+  color: rgba(96, 165, 250, 0.4);
+}
+
+.dk-settings-scanners__suggestion-actions {
+  @apply flex flex-col items-stretch gap-1.5 flex-shrink-0 min-w-[72px];
+}
+
+/* ── Confidence bar ─────────────────────────────────── */
+
+.dk-settings-scanners__confidence-bar {
+  @apply w-full h-1 rounded-full overflow-hidden mt-0.5 max-w-[120px];
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dk-settings-scanners__confidence-bar-fill {
+  @apply h-full rounded-full;
+  background-color: rgba(96, 165, 250, 0.6);
+}
+
+/* ── Game card (reusable) ────────────────────────────── */
+
+.dk-settings-scanners__game-card {
+  @apply flex items-stretch gap-3 rounded-lg p-2.5;
+  transition: background-color 150ms;
+}
+
+.dk-settings-scanners__game-card--verified {
+  background-color: rgba(16, 185, 129, 0.03);
+}
+
+.dk-settings-scanners__game-card--verified:hover {
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.dk-settings-scanners__game-card--auto {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dk-settings-scanners__game-card--auto:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-settings-scanners__game-poster {
+  @apply flex-shrink-0 w-8 rounded overflow-hidden;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-settings-scanners__game-poster-img {
+  @apply w-8 h-11 object-cover;
+}
+
+.dk-settings-scanners__game-poster-placeholder {
+  @apply w-8 h-11 flex items-center justify-center text-[8px] font-bold;
+  color: rgba(156, 163, 175, 0.2);
+}
+
+.dk-settings-scanners__game-info {
+  @apply flex-1 min-w-0 flex flex-col justify-center gap-0.5;
+}
+
+.dk-settings-scanners__game-title-row {
+  @apply flex items-center gap-2;
+}
+
+.dk-settings-scanners__game-title {
+  @apply text-xs font-medium truncate;
+}
+
+.dk-settings-scanners__game-match-row {
+  @apply flex items-center gap-1.5 text-[10px];
+  color: rgba(156, 163, 175, 0.5);
+}
+
+.dk-settings-scanners__game-match-arrow {
+  color: rgba(52, 211, 153, 0.6);
+}
+
+.dk-settings-scanners__game-match-title {
+  @apply font-medium truncate;
+  color: rgba(52, 211, 153, 0.7);
+}
+
+.dk-settings-scanners__game-confidence {
+  color: rgba(156, 163, 175, 0.3);
+  @apply ml-auto;
+}
+
+.dk-settings-scanners__game-actions {
+  @apply flex items-center gap-1.5 flex-shrink-0;
+}
+
+/* ── Unmatched row ───────────────────────────────────── */
+
+.dk-settings-scanners__unmatched-list {
+  @apply space-y-1;
+}
+
+.dk-settings-scanners__unmatched-row {
+  @apply flex items-center justify-between rounded-lg px-3 py-2;
+  background-color: rgba(255, 255, 255, 0.02);
+  transition: background-color 150ms;
+}
+
+.dk-settings-scanners__unmatched-row:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-settings-scanners__unmatched-content {
+  @apply flex items-center gap-2 min-w-0;
+}
+
+.dk-settings-scanners__unmatched-title {
+  @apply text-xs truncate;
+  color: rgba(156, 163, 175, 0.7);
+}
+
+.dk-settings-scanners__unmatched-meta {
+  @apply flex items-center gap-2 flex-shrink-0 ml-2;
+}
+
+.dk-settings-scanners__unmatched-platform {
+  @apply text-[10px] uppercase tracking-wider;
+  color: rgba(156, 163, 175, 0.2);
+}
+
+/* ── Match search panel ─────────────────────────────── */
+
+.dk-settings-scanners__search {
+  @apply ml-5 mt-1 mb-2 p-2.5 rounded-lg space-y-2;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.dk-settings-scanners__search-input {
+  @apply w-full rounded px-2.5 py-1.5 text-xs outline-none;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  transition: background-color 150ms;
+}
+
+.dk-settings-scanners__search-input::placeholder {
+  color: rgba(156, 163, 175, 0.3);
+}
+
+.dk-settings-scanners__search-input:focus {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dk-settings-scanners__search-status {
+  @apply text-[10px] text-center py-2;
+  color: rgba(156, 163, 175, 0.3);
+}
+
+/* ── Match search result ────────────────────────────── */
+
+.dk-settings-scanners__result {
+  @apply flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer;
+  background-color: rgba(255, 255, 255, 0.03);
+  transition: background-color 150ms;
+}
+
+.dk-settings-scanners__result:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.dk-settings-scanners__result-poster {
+  @apply w-6 h-8 rounded overflow-hidden flex-shrink-0;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-settings-scanners__result-poster-img {
+  @apply w-full h-full object-cover;
+}
+
+.dk-settings-scanners__result-poster-placeholder {
+  @apply w-full h-full flex items-center justify-center text-[8px];
+  color: rgba(156, 163, 175, 0.2);
+}
+
+.dk-settings-scanners__result-title {
+  @apply text-[11px] truncate;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Non-desktop notice ─────────────────────────────── */
+
+.dk-settings-scanners__notice {
+  @apply p-6 text-center;
+}
+
+.dk-settings-scanners__notice-text {
+  @apply text-sm text-muted-foreground;
+}

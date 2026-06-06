@@ -1,42 +1,24 @@
-"""Redis pub/sub progress publisher for Plex sync SSE streams."""
+"""Thin delegation wrapper — delegates to ``otix.lib.redis_progress.plex_progress``.
+
+All four progress modules now funnel through the single
+:class:`otix.lib.redis_progress.RedisProgress` class.  These stubs remain
+for backward compatibility during migration.
+"""
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-import structlog
-
-from otix.infrastructure.redis import get_redis
-
-_CHANNEL_TPL = "plex:sync:{}:events"
-_RESULT_TPL = "plex:sync:{}:result"
-_RESULT_TTL = 300  # 5 minutes
-
-logger = structlog.get_logger()
+from otix.lib.redis_progress import plex_progress
 
 
 async def publish_progress(task_id: str, event_type: str, **data: Any) -> None:
-    """Publish a progress event to the task's Redis pub/sub channel."""
-    redis = await get_redis()
-    channel = _CHANNEL_TPL.format(task_id)
-    payload = json.dumps({"type": event_type, **data})
-    logger.debug("plex progress publish", event_type=event_type, payload_len=len(payload), key_fields=list(data.keys()))
-    await redis.publish(channel, payload)
+    await plex_progress.publish(task_id, event_type, **data)
 
 
-async def store_result(task_id: str, result: dict) -> None:
-    """Store the final sync result so the SSE endpoint can replay it."""
-    redis = await get_redis()
-    key = _RESULT_TPL.format(task_id)
-    await redis.set(key, json.dumps(result), ex=_RESULT_TTL)
+async def store_result(task_id: str, result: dict[str, Any]) -> None:
+    await plex_progress.store_result(task_id, result)
 
 
-async def get_stored_result(task_id: str) -> dict | None:
-    """Check for a pre-existing result (task finished before SSE connected)."""
-    redis = await get_redis()
-    key = _RESULT_TPL.format(task_id)
-    raw = await redis.get(key)
-    if raw:
-        return json.loads(raw)
-    return None
+async def get_stored_result(task_id: str) -> dict[str, Any] | None:
+    return await plex_progress.get_stored_result(task_id)

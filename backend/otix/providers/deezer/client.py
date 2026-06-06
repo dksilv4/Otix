@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Deezer API client.
 
 Public API, no authentication required.

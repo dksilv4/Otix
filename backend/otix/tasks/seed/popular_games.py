@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Seed the most popular Steam games into Otix.
 
 Runs inline (not via Celery) for each Steam app ID. Games already in the

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """IGDB JSON → domain models.
 
 Stateless pure functions. Converts IGDB API v4 responses to Game, MediaItem,

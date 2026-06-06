@@ -1,19 +1,18 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import json
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db, get_optional_user
-from otix.api.schemas.interaction import UserInteractionState
-from otix.api.schemas.media import (
+from otix.api._utils import get_db, get_optional_user
+from otix.schemas.interaction import UserInteractionState
+from otix.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
 )
-from otix.domain.media import MediaItem
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
@@ -103,7 +102,7 @@ async def get_recommendations(
     service = MediaService(db)
 
     # Look up media_type from the source item (lightweight query).
-    item_media_type = await db.scalar(select(MediaItem.media_type).where(MediaItem.id == media_id))
+    item_media_type = await service.get_media_type(media_id)
     if item_media_type is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 

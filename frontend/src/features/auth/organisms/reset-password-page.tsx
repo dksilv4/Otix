@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useMemo, type FormEvent } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Loader2, Check, ShieldAlert, ArrowLeft } from 'lucide-react'
@@ -6,13 +7,13 @@ import { AuthHeader } from '../molecules/auth-header'
 import { PasswordField } from '../molecules/password-field'
 import { PasswordStrengthBar } from '../atoms/password-strength-bar'
 import { Logo } from '@ui/atoms/logo'
-import { cn } from '@/lib/utils'
 import authBg1 from '@/assets/auth-bg-1.png'
 import authBg2 from '@/assets/auth-bg-2.png'
 import authBg3 from '@/assets/auth-bg-3.png'
 import authBg4 from '@/assets/auth-bg-4.png'
 import authBg5 from '@/assets/auth-bg-5.png'
 import { apiClient } from '@/lib/api-client'
+import './reset-password-page.scss'
 
 const bgImages = [authBg1, authBg2, authBg3, authBg4, authBg5]
 
@@ -31,35 +32,23 @@ export function ResetPasswordPage() {
 
   if (!search.token) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center p-4">
+      <div className="dk-auth-reset__page">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          className="dk-auth-reset__bg-image"
           style={{ backgroundImage: `url(${bgImage})` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
+        <div className="dk-auth-reset__bg-gradient" />
 
-        <div
-          className={cn(
-            'relative z-10 w-full max-w-[440px] flex flex-col items-center',
-            'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-            'bg-[var(--dk-surface-overlay)] backdrop-blur-xl',
-            'shadow-[var(--dk-shadow-glass)]',
-          )}
-        >
+        <div className="dk-auth-reset__card">
           <Logo className="h-16" />
           <AuthHeader
             title="Invalid Link"
             subtitle="This password reset link is missing a valid token."
           />
-          <div className="w-full mt-4">
+          <div className="dk-auth-reset__form-wrapper">
             <Link
               to="/auth/forgot-password"
-              className={cn(
-                'flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold transition-all',
-                'bg-primary text-primary-foreground',
-                'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                'hover:bg-primary/90 active:scale-[0.98]',
-              )}
+              className="dk-auth-reset__button--primary"
             >
               Request a New Link
             </Link>
@@ -110,21 +99,14 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth-reset__page">
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="dk-auth-reset__bg-image"
         style={{ backgroundImage: `url(${bgImage})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
+      <div className="dk-auth-reset__bg-gradient" />
 
-      <div
-        className={cn(
-          'relative z-10 w-full max-w-[440px] flex flex-col items-center',
-          'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-          'bg-[var(--dk-surface-overlay)] backdrop-blur-xl',
-          'shadow-[var(--dk-shadow-glass)]',
-        )}
-      >
+      <div className="dk-auth-reset__card">
         <Logo className="h-16" />
 
         <AuthHeader
@@ -132,40 +114,35 @@ export function ResetPasswordPage() {
           subtitle="Choose a strong new password for your account"
         />
 
-        <div className="w-full space-y-4 mt-4">
+        <div className="dk-auth-reset__form-wrapper">
           {state === 'success' ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-3 py-6"
+              className="dk-auth-reset__success"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10">
+              <div className="dk-auth-reset__success-icon">
                 <Check className="h-7 w-7 text-green-500" />
               </div>
-              <p className="text-base font-semibold">Password Reset</p>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="dk-auth-reset__success-title">Password Reset</p>
+              <p className="dk-auth-reset__success-description">
                 Your password has been reset successfully. You can now sign in with your new password.
               </p>
               <button
                 type="button"
                 onClick={() => navigate({ to: '/auth/login' })}
-                className={cn(
-                  'flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold transition-all mt-2',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                )}
+                className="dk-auth-reset__button--primary mt-2"
               >
                 Go to Sign In
               </button>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="w-full space-y-4">
+            <form onSubmit={handleSubmit} className="dk-auth-reset__form">
               {state === 'error' && errorMessage && (
                 <motion.div
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-destructive"
+                  className="dk-auth-reset__error-banner"
                 >
                   <ShieldAlert className="h-4 w-4 shrink-0" />
                   {errorMessage}
@@ -198,13 +175,7 @@ export function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={state === 'submitting'}
-                className={cn(
-                  'flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold uppercase tracking-wider transition-all',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
+                className="dk-auth-reset__button--submit"
               >
                 {state === 'submitting' ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -215,10 +186,10 @@ export function ResetPasswordPage() {
           )}
         </div>
 
-        <div className="mt-6">
+        <div className="dk-auth-reset__back-link">
           <Link
             to="/auth/login"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-auth-reset__back-link-anchor"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to sign in

@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
+import "./interactive-star.scss"
 
 interface InteractiveStarProps {
   starIndex: number       // 0-4
@@ -37,13 +39,13 @@ function InteractiveStar({
   const fullScore = starMin + 2  // e.g. star 0 → score 2
 
   return (
-    <span className={cn("relative inline-block touch-none select-none px-0.5")}>
+    <span className="dk-review-interactive-star">
       {/* Background empty star */}
       <Star className={cn(iconSize, "text-muted-foreground/25")} fill="currentColor" />
 
       {/* Left half hit area */}
       <span
-        className="absolute inset-0 z-10 w-1/2"
+        className="dk-review-interactive-star__hit--left"
         style={{ touchAction: "none" }}
         onPointerDown={(e) => { e.preventDefault(); onPointerDown(halfScore) }}
         onPointerEnter={(e) => { e.preventDefault(); onPointerEnter(halfScore) }}
@@ -52,7 +54,7 @@ function InteractiveStar({
 
       {/* Right half hit area */}
       <span
-        className="absolute inset-0 left-1/2 z-10 w-1/2"
+        className="dk-review-interactive-star__hit--right"
         style={{ touchAction: "none" }}
         onPointerDown={(e) => { e.preventDefault(); onPointerDown(fullScore) }}
         onPointerEnter={(e) => { e.preventDefault(); onPointerEnter(fullScore) }}

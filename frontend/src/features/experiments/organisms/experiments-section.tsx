@@ -1,9 +1,11 @@
+// TODO: Review this file
 import { useExperiments } from '../experiments-provider'
-import { MATURITY_LABELS, MATURITY_COLORS, MATURITY_BADGE_VARIANT } from '../experiments.types'
+import { MATURITY_LABELS, MATURITY_BADGE_VARIANT } from '../experiments.types'
 import type { Maturity } from '../experiments.types'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { DkBadge } from '@/features/dk-ui/atoms/badge'
 import { cn } from '@/lib/utils'
+import './experiments-section.scss'
 
 export function ExperimentsSection() {
   const { isEnabled, setEnabled, experiments } = useExperiments()
@@ -19,31 +21,28 @@ export function ExperimentsSection() {
   const order: Maturity[] = ['alpha', 'beta', 'production']
 
   return (
-    <div className="space-y-8">
+    <div className="dk-experiments">
       {order.map((maturity) => {
         const items = grouped[maturity]
         if (!items?.length) return null
 
         return (
           <div key={maturity}>
-            <h3 className={cn('mb-3 text-sm font-semibold uppercase tracking-wider', MATURITY_COLORS[maturity])}>
+            <h3 className={cn('dk-experiments__heading', `dk-experiments__heading--${maturity}`)}>
               {MATURITY_LABELS[maturity]}
             </h3>
-            <div className="space-y-3">
+            <div className="dk-experiments__list">
               {items.map((exp) => (
-                <div
-                  key={exp.key}
-                  className="rounded-2xl bg-[var(--dk-surface-base)] p-5 shadow-[var(--dk-shadow-sm)]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-semibold">{exp.name}</h4>
+                <div key={exp.key} className="dk-experiments__card">
+                  <div className="dk-experiments__card-body">
+                    <div className="dk-experiments__card-content">
+                      <div className="dk-experiments__card-header">
+                        <h4 className="dk-experiments__card-name">{exp.name}</h4>
                         <DkBadge variant={MATURITY_BADGE_VARIANT[exp.maturity]} size="sm">
                           {MATURITY_LABELS[exp.maturity]}
                         </DkBadge>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="dk-experiments__card-description">
                         {exp.description}
                       </p>
                     </div>
@@ -59,7 +58,7 @@ export function ExperimentsSection() {
         )
       })}
       {experiments.length === 0 && (
-        <p className="text-sm text-muted-foreground">No experiments available.</p>
+        <p className="dk-experiments__empty">No experiments available.</p>
       )}
     </div>
   )

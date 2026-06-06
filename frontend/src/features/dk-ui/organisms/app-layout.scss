@@ -1,0 +1,65 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-app-shell {
+  @apply min-h-screen w-full;
+  max-width: 100vw;
+  background-color: var(--background);
+}
+
+/* ── Floating pill ── */
+.dk-floating-pill {
+  @apply fixed z-[9999] flex items-center rounded-[2rem] gap-1;
+  background: linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover));
+  backdrop-filter: blur(16px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-floating-pill--left {
+  @apply left-3 px-2 py-1.5;
+  transition: all 300ms var(--dk-ease-out);
+}
+
+.dk-floating-pill--left-w-logo {
+  @apply pr-4;
+}
+
+.dk-floating-pill--right {
+  @apply right-4 px-2 py-1.5;
+  transition: all 300ms var(--dk-ease-out);
+}
+
+/* ── Title bar offset variations ── */
+.dk-floating-pill--offset-default {
+  top: 3rem;
+}
+
+.dk-floating-pill--offset-desktop {
+  top: 3rem;
+}
+
+/* ── Menu toggle and back button ── */
+.dk-nav-btn {
+  @apply w-8 h-8 rounded-full p-0 flex items-center justify-center;
+}
+
+.dk-nav-btn__icon {
+  @apply h-5 w-5;
+}
+
+/* ── Logo ── */
+.dk-nav-logo-img {
+  @apply h-7 object-contain;
+  max-width: 120px;
+}
+
+/* ── Main content ── */
+.dk-main-content {
+  @apply flex min-h-screen;
+}
+
+.dk-main-content--desktop {
+}
+
+.dk-main-content__inner {
+  @apply flex-1;
+}

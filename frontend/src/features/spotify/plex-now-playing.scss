@@ -1,0 +1,344 @@
+@reference "../../_tailwind-ref.css";
+
+/* ──────────────────────────────────────────────
+   PlexNowPlaying — plex session pill + dropdown
+   ────────────────────────────────────────────── */
+
+/* Trigger pill button */
+.dk-plex__trigger {
+  @apply flex items-center p-1.5 relative cursor-pointer;
+  border-radius: 2rem;
+  background: linear-gradient(
+    to bottom right,
+    var(--dk-surface-glass),
+    var(--dk-surface-glass-hover)
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--dk-shadow-glass);
+
+  &--active {
+    box-shadow: 0 0 0 1px rgba(229, 160, 13, 0.4);
+  }
+}
+
+/* Session count badge */
+.dk-plex__badge {
+  @apply absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold leading-none;
+  background: #e5a00d;
+  font-size: 10px;
+  color: #000;
+}
+
+/* Dropdown panel */
+.dk-plex__dropdown {
+  @apply fixed right-4 z-[9999] w-80 max-h-[32rem] overflow-y-auto p-3 flex flex-col gap-2;
+  border-radius: 1.5rem;
+  background: var(--dk-surface-overlay);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--dk-shadow-glass);
+
+  &--desktop {
+    top: calc(38px + 4.5rem);
+  }
+
+  &--mobile {
+    top: 4.5rem;
+  }
+}
+
+/* Dropdown heading */
+.dk-plex__dropdown-title {
+  @apply px-2 text-sm font-semibold;
+}
+
+/* Empty state */
+.dk-plex__empty {
+  @apply px-2 py-6 text-center;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+
+/* Session list container */
+.dk-plex__session-list {
+  @apply flex flex-col gap-2;
+}
+
+/* ── Session Card ── */
+
+.dk-plex__card {
+  @apply flex gap-3 p-3;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: all 150ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Poster wrapper */
+.dk-plex__card-poster {
+  @apply shrink-0 relative;
+}
+
+/* Poster image */
+.dk-plex__card-poster-img {
+  @apply rounded-lg object-cover;
+  background: rgba(255, 255, 255, 0.04);
+
+  &--track {
+    @apply h-14 w-14;
+  }
+
+  &--video {
+    height: 5rem;
+    width: 3.75rem;
+  }
+}
+
+/* Poster fallback placeholder */
+.dk-plex__card-poster-fallback {
+  @apply rounded-lg flex items-center justify-center;
+  background: rgba(255, 255, 255, 0.04);
+
+  &--track {
+    @apply h-14 w-14;
+  }
+
+  &--video {
+    height: 5rem;
+    width: 3.75rem;
+  }
+}
+
+/* Play / pause state dot */
+.dk-plex__card-state-dot {
+  @apply absolute -bottom-0.5 -right-0.5 flex items-center justify-center;
+  height: 1.15rem;
+  width: 1.15rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.9);
+
+  &--playing {
+    background: #e5a00d;
+  }
+
+  &--paused {
+    background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  }
+}
+
+/* Info section */
+.dk-plex__card-info {
+  @apply min-w-0 flex-1 flex flex-col;
+  gap: 0.125rem;
+}
+
+/* Meta chips row (type, year, rating, section) */
+.dk-plex__card-meta {
+  @apply flex items-center gap-1.5 flex-wrap;
+}
+
+/* Media type label */
+.dk-plex__card-meta-chip {
+  font-size: 10px;
+  @apply font-medium uppercase tracking-wider;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+}
+
+/* Year */
+.dk-plex__card-meta-year {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Content rating pill */
+.dk-plex__card-meta-rating {
+  font-size: 10px;
+  @apply px-1 font-medium;
+  border-radius: 0.125rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+
+/* Library section name */
+.dk-plex__card-meta-section {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  @apply truncate;
+  max-width: 120px;
+}
+
+/* Title */
+.dk-plex__card-title {
+  @apply text-sm font-semibold leading-snug truncate;
+}
+
+/* Episode subtitle */
+.dk-plex__card-subtitle {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  @apply truncate leading-tight;
+}
+
+/* Episode metadata prefix (SxxExx) */
+.dk-plex__card-subtitle-ep {
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  font-variant-numeric: tabular-nums;
+  @apply mr-1;
+}
+
+/* Summary wrapper */
+.dk-plex__card-summary-wrap {
+  margin-top: 0.125rem;
+}
+
+/* Summary toggle button */
+.dk-plex__card-summary-toggle {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  transition: color 150ms ease;
+
+  &:hover {
+    color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  }
+}
+
+/* Summary text */
+.dk-plex__card-summary {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  @apply leading-relaxed line-clamp-3;
+  margin-top: 0.125rem;
+}
+
+/* User / server / device row */
+.dk-plex__card-meta-row {
+  @apply flex items-center gap-1.5 mt-1 flex-wrap;
+}
+
+/* User avatar image */
+.dk-plex__card-meta-avatar {
+  @apply h-4 w-4 rounded-full object-cover;
+}
+
+/* User avatar fallback */
+.dk-plex__card-meta-avatar-fallback {
+  @apply h-4 w-4 rounded-full flex items-center justify-center;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* User name */
+.dk-plex__card-meta-name {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+  @apply truncate;
+}
+
+/* Separator label (on, ·) */
+.dk-plex__card-meta-label {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 25%, transparent);
+}
+
+/* Server name */
+.dk-plex__card-meta-server {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  @apply truncate;
+}
+
+/* Device name */
+.dk-plex__card-meta-device {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  @apply truncate;
+}
+
+/* Progress bar container */
+.dk-plex__card-progress {
+  @apply flex items-center gap-2 mt-1;
+}
+
+/* Progress bar track */
+.dk-plex__card-progress-track {
+  @apply flex-1 h-1 rounded-full overflow-hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Progress bar fill */
+.dk-plex__card-progress-fill {
+  @apply h-full rounded-full;
+
+  &--playing {
+    background: #e5a00d;
+  }
+
+  &--paused {
+    background: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  }
+}
+
+/* Progress percentage label */
+.dk-plex__card-progress-label {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  font-variant-numeric: tabular-nums;
+  @apply font-mono shrink-0 text-right;
+  min-width: 2.5rem;
+}
+
+/* Stream details row */
+.dk-plex__card-stream {
+  @apply flex items-center gap-1.5 mt-1 flex-wrap;
+}
+
+/* Individual stream detail chip */
+.dk-plex__card-stream-chip {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+
+  &--emph {
+    @apply font-medium;
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  }
+
+  &--codec {
+    @apply uppercase;
+  }
+
+  &--dim {
+    color: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  }
+}
+
+/* Direct Play / Transcode badge */
+.dk-plex__card-stream-badge {
+  font-size: 10px;
+  @apply px-1.5 font-medium;
+  padding-top: 1px;
+  padding-bottom: 1px;
+  border-radius: 9999px;
+
+  &--direct {
+    background: rgba(16, 185, 129, 0.1);
+    color: rgba(52, 211, 153, 0.7);
+  }
+
+  &--transcoded {
+    background: rgba(245, 158, 11, 0.1);
+    color: rgba(251, 191, 36, 0.7);
+  }
+}
+
+/* Transcode reason text */
+.dk-plex__card-stream-reason {
+  font-size: 10px;
+  @apply italic truncate;
+  color: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  max-width: 140px;
+}

@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
@@ -30,6 +31,7 @@ import { useAuth } from '@/features/auth/auth-provider'
 import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
+import './now-playing-view.scss'
 
 // ── helpers ──
 
@@ -127,7 +129,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
   const { data: plexSessions = [] } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
-      const { data } = await apiClient.get<PlexSessionsResponse>('/auth/integrations/plex/sessions')
+      const { data } = await apiClient.get<PlexSessionsResponse>('/integrations/plex/sessions')
       return data.sessions ?? []
     },
     refetchInterval: 15000,
@@ -294,10 +296,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: PANEL_WIDTH + PANEL_MARGIN, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className={cn(
-            'fixed flex flex-col overflow-y-auto',
-            'space-y-4',
-          )}
+          className="dk-now-playing__panel"
           style={{
             width: PANEL_WIDTH,
             right: PANEL_MARGIN,
@@ -317,13 +316,13 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
           {/* 1. Music Player Container */}
           {currentTrack && (
             <div
-              className="rounded-[2rem] overflow-hidden flex flex-col shadow-[var(--dk-shadow-glass)] backdrop-blur-md shrink-0"
+              className="dk-now-playing__player"
               style={{
                 background: `linear-gradient(160deg, ${backgroundColor} 0%, ${surfaceColor} 56%, ${rgbaCss(palette.accent, 0.18)} 100%)`,
                 transition: 'background 1s ease',
               }}
             >
-              <div ref={scrollRef} className="flex flex-col min-h-0 flex-1 pt-4">
+              <div ref={scrollRef} className="dk-now-playing__player-inner">
                 <AnimatePresence mode="wait">
                   {!showQueue ? (
                     <motion.div
@@ -332,33 +331,33 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       animate={{ x: 0, opacity: 1 }}
                       exit={{ x: -60, opacity: 0 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex flex-col flex-1"
+                      className="dk-now-playing__main-view"
                     >
                       {/* Album art */}
-                      <div className="px-6 pt-2 pb-4 shrink-0">
-                        <div className="relative w-full aspect-square rounded-2xl overflow-hidden">
+                      <div className="dk-now-playing__album">
+                        <div className="dk-now-playing__album-inner">
                           {currentTrack.albumArt ? (
                             <img
                               src={currentTrack.albumArt}
                               alt={currentTrack.albumName}
                               className={cn(
-                                'w-full h-full object-cover rounded-2xl shadow-2xl',
-                                isPlaying && 'shadow-purple-500/10',
+                                'dk-now-playing__album-img',
+                                isPlaying && 'dk-now-playing__album-img--playing',
                               )}
                             />
                           ) : (
-                            <div className="w-full h-full rounded-2xl bg-white/[0.04] flex items-center justify-center">
+                            <div className="dk-now-playing__album-placeholder">
                               <ListMusic className="h-12 w-12 text-muted-foreground/30" />
                             </div>
                           )}
                           {/* Source badge */}
-                          <div className="absolute top-2.5 right-2.5">
+                          <div className="dk-now-playing__badge">
                             <span
                               className={cn(
-                                'inline-flex items-center justify-center rounded-full p-1.5',
+                                'dk-now-playing__badge-chip',
                                 source === 'spotify'
-                                  ? 'bg-[#1DB954]/20 text-[#1DB954]'
-                                  : 'bg-amber-500/20 text-amber-400',
+                                  ? 'dk-now-playing__badge-chip--spotify'
+                                  : 'dk-now-playing__badge-chip--plex',
                               )}
                             >
                               {source === 'spotify' ? (
@@ -372,18 +371,18 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       </div>
 
                       {/* Track info */}
-                      <div className="px-6 pb-3 shrink-0">
-                        <h2 className="text-lg font-semibold leading-tight truncate text-white/95">
+                      <div className="dk-now-playing__track-info">
+                        <h2 className="dk-now-playing__track-title">
                           {currentTrack.title}
                         </h2>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-1 text-sm text-white/55">
+                        <div className="dk-now-playing__track-artists">
                           {artists.map((artist, i) => (
                             <span key={`${artist.uri || artist.name}-${i}`} className="inline-flex items-center">
                               {i > 0 && <span className="mr-1">,</span>}
                               <button
                                 type="button"
                                 onClick={() => handleArtistClick(artist.name)}
-                                className="text-left transition-colors hover:text-white/85 truncate max-w-[180px]"
+                                className="dk-now-playing__artist-btn"
                               >
                                 {artist.name}
                               </button>
@@ -391,25 +390,25 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                           ))}
                         </div>
                         {currentTrack.albumName && (
-                          <p className="mt-0.5 text-xs text-white/40 truncate">
+                          <p className="dk-now-playing__album-label">
                             {currentTrack.albumName}
                           </p>
                         )}
                       </div>
 
                       {/* Progress */}
-                      <div className="px-6 pb-2 shrink-0">
+                      <div className="dk-now-playing__progress">
                         <div
                           ref={progressBarRef}
-                          className="relative h-1.5 w-full cursor-pointer group/progress"
+                          className="dk-now-playing__progress-bar"
                           onMouseDown={handleProgressMouseDown}
                           onMouseMove={handleProgressMouseMove}
                           onMouseUp={handleProgressMouseUp}
                           onMouseLeave={() => setIsDraggingProgress(false)}
                         >
-                          <div className="absolute inset-0 overflow-hidden rounded-full bg-white/[0.08]">
+                          <div className="dk-now-playing__progress-track">
                             <div
-                              className="h-full rounded-full transition-colors"
+                              className="dk-now-playing__progress-fill"
                               style={{
                                 width: `${progress * 100}%`,
                                 backgroundColor: accentColor,
@@ -419,10 +418,8 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                           {(progress > 0.01 || isDraggingProgress) && (
                             <div
                               className={cn(
-                                'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
-                                'h-3.5 w-3.5 rounded-full shadow-lg',
-                                'opacity-0 group-hover/progress:opacity-100 transition-opacity',
-                                isDraggingProgress && 'opacity-100',
+                                'dk-now-playing__progress-thumb',
+                                isDraggingProgress && 'dk-now-playing__progress-thumb--visible',
                               )}
                               style={{
                                 left: `${progress * 100}%`,
@@ -431,7 +428,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                             />
                           )}
                         </div>
-                        <div className="flex justify-between mt-1 text-[11px] font-mono tabular-nums text-white/30">
+                        <div className="dk-now-playing__progress-time">
                           <span>{formatTime(position)}</span>
                           <span>{formatTime(duration)}</span>
                         </div>
@@ -439,13 +436,13 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
                       {/* Controls + Volume */}
                       <div className={cn(
-                        "relative flex items-center justify-center gap-3 px-6 shrink-0",
-                        !(queueItems.length === 0 && prevItems.length === 0) ? "pb-4" : "pb-6"
+                        'dk-now-playing__controls',
+                        !(queueItems.length === 0 && prevItems.length === 0) && 'dk-now-playing__controls--compact',
                       )}>
                         <button
                           type="button"
                           onClick={skipPrevious}
-                          className="h-10 w-10 inline-flex items-center justify-center rounded-full text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+                          className="dk-now-playing__ctrl-btn"
                           title="Previous"
                         >
                           <SkipBack className="h-5 w-5" />
@@ -454,7 +451,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                         <button
                           type="button"
                           onClick={togglePlay}
-                          className="h-14 w-14 inline-flex items-center justify-center rounded-full transition-all active:scale-95"
+                          className="dk-now-playing__play-btn"
                           style={{
                             backgroundColor: accentColor,
                             color: palette.accentText,
@@ -471,18 +468,18 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                         <button
                           type="button"
                           onClick={skipNext}
-                          className="h-10 w-10 inline-flex items-center justify-center rounded-full text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+                          className="dk-now-playing__ctrl-btn"
                           title="Next"
                         >
                           <SkipForward className="h-5 w-5" />
                         </button>
 
                         {/* Volume — icon only, click shows slider */}
-                        <div ref={volumeRef} className="absolute right-6">
+                        <div ref={volumeRef} className="dk-now-playing__volume">
                           <button
                             type="button"
                             onClick={() => setShowVolumeSlider(!showVolumeSlider)}
-                            className="h-9 w-9 inline-flex items-center justify-center rounded-full text-white/35 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                            className="dk-now-playing__volume-btn"
                           >
                             <VolumeIcon className="h-4 w-4" />
                           </button>
@@ -493,14 +490,14 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.92 }}
                                 transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                                className="absolute right-0 bottom-full mb-2 rounded-xl border border-white/[0.08] backdrop-blur-md px-3 py-2.5 shadow-xl"
+                                className="dk-now-playing__volume-popup"
                                 style={{
                                   background: `linear-gradient(135deg, ${rgbaCss(palette.background, 0.98)}, ${rgbaCss(palette.surface, 0.96)})`,
                                 }}
                               >
-                                <div className="relative h-1.5 w-28 cursor-pointer" title="Volume">
+                                <div className="dk-now-playing__volume-slider" title="Volume">
                                   <div
-                                    className="absolute inset-0 rounded-full bg-white/[0.12]"
+                                    className="dk-now-playing__volume-track"
                                     onClick={(e) => {
                                       const rect = e.currentTarget.getBoundingClientRect()
                                       const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
@@ -508,7 +505,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                                     }}
                                   >
                                     <div
-                                      className="h-full rounded-full"
+                                      className="dk-now-playing__volume-fill"
                                       style={{
                                         width: `${volume * 100}%`,
                                         backgroundColor: accentColor,
@@ -524,26 +521,26 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
                       {/* Queue — preview inside player */}
                       {!(queueItems.length === 0 && prevItems.length === 0) && (
-                        <div className="px-6 pb-6 flex-1 flex flex-col min-h-0">
-                          <div className="flex items-center gap-2 mb-2 shrink-0">
+                        <div className="dk-now-playing__queue-inline">
+                          <div className="dk-now-playing__queue-inline-header">
                             <ListMusic className="h-3.5 w-3.5 text-white/40" />
-                            <h3 className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                            <h3 className="dk-now-playing__queue-section-label--normal dk-now-playing__queue-header-label">
                               Up next
                             </h3>
                             {queueItems.length > 0 && (
-                              <span className="text-[10px] text-white/25 ml-auto">
+                              <span className="dk-now-playing__queue-count text-white/25">
                                 {queueItems.length}
                               </span>
                             )}
                           </div>
 
-                          <div ref={queueContainerRef} className="relative overflow-y-auto flex-1 min-h-0 space-y-0.5 max-h-[160px]">
+                          <div ref={queueContainerRef} className="dk-now-playing__queue-inline-list">
                             {/* Previously played */}
                             {prevItems.length > 0 && (
                               <>
-                                <div className="flex items-center gap-2 mb-1 pt-1">
+                                <div className="dk-now-playing__queue-section-header">
                                   <Clock className="h-3 w-3 text-white/25" />
-                                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/25">
+                                  <span className="dk-now-playing__queue-section-label--subtle dk-now-playing__queue-section-label">
                                     Previously played
                                   </span>
                                 </div>
@@ -552,48 +549,48 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                                     key={`prev-${item.id || (item as any).uri}-${i}`}
                                     type="button"
                                     onClick={() => handlePrevItemClick(item)}
-                                    className="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-white/[0.03] transition-colors cursor-pointer group opacity-50 hover:opacity-75"
+                                    className="dk-now-playing__queue-item dk-now-playing__queue-item--prev"
                                   >
                                     {item.albumArt ? (
-                                      <img src={item.albumArt} alt="" className="h-7 w-7 rounded object-cover shrink-0" />
+                                      <img src={item.albumArt} alt="" className="dk-now-playing__queue-item-img" />
                                     ) : (
-                                      <div className="h-7 w-7 rounded bg-white/[0.04] shrink-0" />
+                                      <div className="dk-now-playing__queue-item-placeholder" />
                                     )}
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-medium truncate text-white/60">{'name' in item ? item.name : item.title}</p>
+                                    <div className="dk-now-playing__queue-item-info">
+                                      <p className="dk-now-playing__queue-item-title">{'name' in item ? item.name : item.title}</p>
                                       {'artist' in item && item.artist && (
-                                        <p className="text-[10px] text-white/30 truncate">{item.artist}</p>
+                                        <p className="dk-now-playing__queue-item-artist">{item.artist}</p>
                                       )}
                                     </div>
                                   </button>
                                 ))}
-                                <div className="my-1.5 border-t border-white/[0.04]" />
+                                <div className="dk-now-playing__queue-divider" />
                               </>
                             )}
 
                             {/* Up next */}
-                            <div ref={upNextContainerRef} className="space-y-0.5">
+                            <div ref={upNextContainerRef} className="dk-now-playing__queue-inline-items">
                               {queueItems.map((item, i) => (
                                 <button
                                   key={`${item.id || (item as any).uri}-${i}`}
                                   type="button"
                                   onClick={() => handleQueueItemClick(item, i)}
-                                  className="w-full flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.04] transition-colors cursor-pointer group text-left"
+                                  className="dk-now-playing__queue-item--up-next"
                                 >
                                   {item.albumArt ? (
-                                    <img src={item.albumArt} alt="" className="h-9 w-9 rounded-md object-cover shrink-0" />
+                                    <img src={item.albumArt} alt="" className="dk-now-playing__queue-item-img--lg" />
                                   ) : (
-                                    <div className="h-9 w-9 rounded-md bg-white/[0.04] shrink-0 flex items-center justify-center">
+                                    <div className="dk-now-playing__queue-item-placeholder--lg">
                                       <ListMusic className="h-4 w-4 text-white/10" />
                                     </div>
                                   )}
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-medium truncate text-white/80">{'name' in item ? item.name : item.title}</p>
+                                  <div className="dk-now-playing__queue-item-info">
+                                    <p className="dk-now-playing__queue-item-title--lg">{'name' in item ? item.name : item.title}</p>
                                     {'artist' in item && item.artist && (
-                                      <p className="text-[11px] text-white/35 truncate">{item.artist}</p>
+                                      <p className="dk-now-playing__queue-item-artist--lg">{item.artist}</p>
                                     )}
                                   </div>
-                                  <Play className="h-3 w-3 text-white/15 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  <Play className="dk-now-playing__queue-item-play-icon" />
                                 </button>
                               ))}
                             </div>
@@ -608,49 +605,49 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       animate={{ x: 0, opacity: 1 }}
                       exit={{ x: 60, opacity: 0 }}
                       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                      className="flex flex-col flex-1"
+                      className="dk-now-playing__queue-view"
                     >
                       {/* Queue header — back button only */}
-                      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+                      <div className="dk-now-playing__queue-view-header">
                         <button
                           type="button"
                           onClick={() => setShowQueue(false)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+                          className="dk-now-playing__queue-view-back"
                         >
                           <ChevronLeft className="h-3.5 w-3.5" />
                           Back
                         </button>
-                        <span className="text-[11px] font-medium uppercase tracking-wider text-white/50">
+                        <span className="dk-now-playing__queue-view-title">
                           Queue
                         </span>
-                        <div className="w-[50px]" />
+                        <div className="dk-now-playing__queue-view-spacer" />
                       </div>
 
                       {/* Now playing indicator */}
-                      <div className="px-6 pb-4 shrink-0">
+                      <div className="dk-now-playing__now-playing-section">
                         <div
-                          className="flex items-center gap-3 rounded-xl border px-3 py-2.5"
+                          className="dk-now-playing__now-playing-card"
                           style={{
                             backgroundColor: rgbaCss(palette.surface, 0.5),
                             borderColor: rgbaCss(palette.accent, 0.15),
                           }}
                         >
                           {currentTrack.albumArt ? (
-                            <img src={currentTrack.albumArt} alt="" className="h-9 w-9 rounded-md object-cover shrink-0" />
+                            <img src={currentTrack.albumArt} alt="" className="dk-now-playing__now-playing-card-img" />
                           ) : (
-                            <div className="h-9 w-9 rounded-md bg-white/[0.04] shrink-0" />
+                            <div className="dk-now-playing__now-playing-card-placeholder" />
                           )}
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate text-white/85">{currentTrack.title}</p>
-                            <p className="text-[11px] text-white/40 truncate">{currentTrack.artist}</p>
+                          <div className="dk-now-playing__now-playing-card-info">
+                            <p className="dk-now-playing__now-playing-card-title">{currentTrack.title}</p>
+                            <p className="dk-now-playing__now-playing-card-artist">{currentTrack.artist}</p>
                           </div>
-                          <div className="ml-auto shrink-0">
+                          <div className="dk-now-playing__now-playing-card-eq">
                             {isPlaying ? (
-                              <div className="flex items-end gap-px h-3">
-                                <span className="w-0.5 rounded-full animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '60%', backgroundColor: accentColor }} />
-                                <span className="w-0.5 rounded-full animate-[bounce_0.6s_ease-in-out_0.15s_infinite]" style={{ height: '100%', backgroundColor: accentColor }} />
-                                <span className="w-0.5 rounded-full animate-[bounce_0.6s_ease-in-out_0.3s_infinite]" style={{ height: '40%', backgroundColor: accentColor }} />
-                              </div>
+                              <>
+                                <span className="dk-now-playing__now-playing-card-eq-bar animate-[bounce_0.6s_ease-in-out_infinite]" style={{ height: '60%', backgroundColor: accentColor }} />
+                                <span className="dk-now-playing__now-playing-card-eq-bar animate-[bounce_0.6s_ease-in-out_0.15s_infinite]" style={{ height: '100%', backgroundColor: accentColor }} />
+                                <span className="dk-now-playing__now-playing-card-eq-bar animate-[bounce_0.6s_ease-in-out_0.3s_infinite]" style={{ height: '40%', backgroundColor: accentColor }} />
+                              </>
                             ) : null}
                           </div>
                         </div>
@@ -658,31 +655,31 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
                       {/* Previously played */}
                       {prevItems.length > 0 && (
-                        <div className="px-6 pb-4">
-                          <div className="flex items-center gap-2 mb-2">
+                        <div className="dk-now-playing__queue-prev">
+                          <div className="dk-now-playing__queue-section-header">
                             <Clock className="h-3.5 w-3.5 text-white/25" />
-                            <h3 className="text-[11px] font-medium uppercase tracking-wider text-white/25">
+                            <h3 className="dk-now-playing__queue-section-label--subtle dk-now-playing__queue-section-label">
                               Previously played
                             </h3>
-                            <span className="text-[10px] text-white/15 ml-auto">{prevItems.length}</span>
+                            <span className="dk-now-playing__queue-count text-white/15">{prevItems.length}</span>
                           </div>
-                          <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
+                          <div className="dk-now-playing__queue-prev-list">
                             {prevItems.map((item, i) => (
                               <button
                                 key={`prev-${item.id || (item as any).uri}-${i}`}
                                 type="button"
                                 onClick={() => handlePrevItemClick(item)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-1 hover:bg-white/[0.03] transition-colors cursor-pointer group opacity-50 hover:opacity-80"
+                                className="dk-now-playing__queue-item dk-now-playing__queue-item--prev"
                               >
                                 {item.albumArt ? (
-                                  <img src={item.albumArt} alt="" className="h-7 w-7 rounded object-cover shrink-0" />
+                                  <img src={item.albumArt} alt="" className="dk-now-playing__queue-item-img" />
                                 ) : (
-                                  <div className="h-7 w-7 rounded bg-white/[0.04] shrink-0" />
+                                  <div className="dk-now-playing__queue-item-placeholder" />
                                 )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-medium truncate text-white/60">{'name' in item ? item.name : item.title}</p>
+                                <div className="dk-now-playing__queue-item-info">
+                                  <p className="dk-now-playing__queue-item-title">{'name' in item ? item.name : item.title}</p>
                                   {'artist' in item && item.artist && (
-                                    <p className="text-[10px] text-white/30 truncate">{item.artist}</p>
+                                    <p className="dk-now-playing__queue-item-artist">{item.artist}</p>
                                   )}
                                 </div>
                               </button>
@@ -692,43 +689,43 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       )}
 
                       {/* Up next — full list */}
-                      <div className="px-6 pb-6 flex-1 flex flex-col min-h-0">
-                        <div className="flex items-center gap-2 mb-2 shrink-0">
+                      <div className="dk-now-playing__queue-upnext">
+                        <div className="dk-now-playing__queue-upnext-header">
                           <ListMusic className="h-3.5 w-3.5 text-white/40" />
-                          <h3 className="text-[11px] font-medium uppercase tracking-wider text-white/40">
+                          <h3 className="dk-now-playing__queue-section-label--normal dk-now-playing__queue-header-label">
                             Up next
                           </h3>
                           {queueItems.length > 0 && (
-                            <span className="text-[10px] text-white/25 ml-auto">
+                            <span className="dk-now-playing__queue-count text-white/25">
                               {queueItems.length} track{queueItems.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
                         {queueItems.length === 0 ? (
-                          <p className="text-xs text-white/25 italic">Queue is empty</p>
+                          <p className="dk-now-playing__queue-empty">Queue is empty</p>
                         ) : (
-                          <div className="space-y-0.5 overflow-y-auto flex-1 min-h-0 max-h-[220px]">
+                          <div className="dk-now-playing__queue-upnext-list">
                             {queueItems.map((item, i) => (
                               <button
                                 key={`${item.id || (item as any).uri}-${i}`}
                                 type="button"
                                 onClick={() => handleQueueItemClick(item, i)}
-                                className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                                className="dk-now-playing__queue-item--up-next"
                               >
                                 {item.albumArt ? (
-                                  <img src={item.albumArt} alt="" className="h-9 w-9 rounded-md object-cover shrink-0" />
+                                  <img src={item.albumArt} alt="" className="dk-now-playing__queue-item-img--lg" />
                                 ) : (
-                                  <div className="h-9 w-9 rounded-md bg-white/[0.04] shrink-0 flex items-center justify-center">
+                                  <div className="dk-now-playing__queue-item-placeholder--lg">
                                     <ListMusic className="h-4 w-4 text-white/10" />
                                   </div>
                                 )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium truncate text-white/80">{'name' in item ? item.name : item.title}</p>
+                                <div className="dk-now-playing__queue-item-info">
+                                  <p className="dk-now-playing__queue-item-title--lg">{'name' in item ? item.name : item.title}</p>
                                   {'artist' in item && item.artist && (
-                                    <p className="text-[11px] text-white/35 truncate">{item.artist}</p>
+                                    <p className="dk-now-playing__queue-item-artist--lg">{item.artist}</p>
                                   )}
                                 </div>
-                                <Play className="h-3 w-3 text-white/15 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                <Play className="dk-now-playing__queue-item-play-icon" />
                               </button>
                             ))}
                           </div>
@@ -743,57 +740,57 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
           {/* 2. Downloads Container */}
           {hasDownloads && (
-            <div className="rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-md p-6 shadow-[var(--dk-shadow-glass)] shrink-0 flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <div className="relative flex items-center justify-center">
+            <div className="dk-now-playing__downloads">
+              <div className="dk-now-playing__downloads-header">
+                <div className="dk-now-playing__downloads-icon-wrap">
                   <Download className="h-4 w-4 text-blue-400" />
                   {activeAndRecentDownloads.some(d => d.status === 'downloading') && (
-                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                    <span className="dk-now-playing__ping">
+                      <span className="dk-now-playing__ping-ring"></span>
+                      <span className="dk-now-playing__ping-dot"></span>
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                <span className="dk-now-playing__downloads-title">
                   Downloads
                 </span>
               </div>
-              <div className="space-y-4">
+              <div className="dk-now-playing__downloads-list">
                 {activeAndRecentDownloads.map(d => {
                   const isActive = d.status === 'queued' || d.status === 'downloading' || d.status === 'processing'
                   const pct = d.percentage ?? 0
-                  
+
                   // Status config details (strictly colors)
                   let statusIcon = <Clock className="h-4 w-4 text-amber-400 shrink-0" />
-                  let progressBg = 'bg-amber-500'
+                  let progressBgClass = 'dk-now-playing__downloads-progress-fill--queued'
 
                   if (d.status === 'downloading') {
                     statusIcon = <Loader2 className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
-                    progressBg = 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                    progressBgClass = 'dk-now-playing__downloads-progress-fill--downloading'
                   } else if (d.status === 'processing') {
                     statusIcon = <RefreshCw className="h-4 w-4 text-purple-400 animate-spin shrink-0" />
-                    progressBg = 'bg-purple-500 animate-pulse'
+                    progressBgClass = 'dk-now-playing__downloads-progress-fill--processing'
                   } else if (d.status === 'completed') {
                     statusIcon = <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                    progressBg = 'bg-emerald-500'
+                    progressBgClass = 'dk-now-playing__downloads-progress-fill--completed'
                   } else if (d.status === 'failed') {
                     statusIcon = <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
-                    progressBg = 'bg-rose-500'
+                    progressBgClass = 'dk-now-playing__downloads-progress-fill--failed'
                   }
 
                   return (
-                    <div 
-                      key={d.id} 
-                      className="flex flex-col gap-2"
+                    <div
+                      key={d.id}
+                      className="dk-now-playing__downloads-item"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="dk-now-playing__downloads-item-top">
                         {statusIcon}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold truncate text-white/90" title={d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}>
+                        <div className="dk-now-playing__queue-item-info">
+                          <p className="dk-now-playing__downloads-item-name" title={d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}>
                             {d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}
                           </p>
                           {d.nzbSize ? (
-                            <p className="text-[10px] text-white/35 mt-0.5 font-medium">
+                            <p className="dk-now-playing__downloads-item-size">
                               {formatBytes(d.nzbSize)}
                             </p>
                           ) : null}
@@ -801,11 +798,11 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
                         {/* Action buttons (only cancel button on active downloads) */}
                         {isActive && (
-                          <div className="shrink-0 flex items-center">
+                          <div className="dk-now-playing__downloads-actions">
                             <button
                               type="button"
                               onClick={() => cancelDownload(d.id)}
-                              className="h-7 w-7 flex items-center justify-center rounded-full text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                              className="dk-now-playing__downloads-cancel"
                               title="Cancel Download"
                             >
                               <X className="h-4 w-4" />
@@ -816,21 +813,21 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
                       {/* Error details */}
                       {d.status === 'failed' && d.errorMessage && (
-                        <p className="text-[11px] text-rose-400/80 bg-rose-500/5 rounded-xl px-3 py-2 leading-relaxed break-words font-medium">
+                        <p className="dk-now-playing__downloads-error">
                           {d.errorMessage}
                         </p>
                       )}
 
                       {/* Progress bar */}
                       {isActive && (
-                        <div className="flex items-center gap-3">
-                          <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden flex-1">
+                        <div className="dk-now-playing__downloads-progress">
+                          <div className="dk-now-playing__downloads-progress-track">
                             <div
-                              className={cn("h-full rounded-full transition-all duration-700", progressBg)}
+                              className={cn('dk-now-playing__downloads-progress-fill', progressBgClass)}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="text-[10px] font-mono tabular-nums text-white/40 font-medium">
+                          <span className="dk-now-playing__downloads-progress-pct">
                             {pct}%
                           </span>
                         </div>
@@ -844,10 +841,10 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
           {/* 3. Plex Activity Container */}
           {plexSessions.length > 0 && (
-            <div className="rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-md p-6 shadow-[var(--dk-shadow-glass)] shrink-0">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#e5a00d]" />
-                <span className="text-xs font-semibold text-muted-foreground">
+            <div className="dk-now-playing__plex">
+              <div className="dk-now-playing__plex-header">
+                <span className="dk-now-playing__plex-dot" />
+                <span className="dk-now-playing__plex-title">
                   Plex &middot; {plexSessions.length} streaming
                 </span>
               </div>
@@ -857,8 +854,8 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
 
           {/* 4. Empty/Placeholder State Container */}
           {!currentTrack && !hasDownloads && plexSessions.length === 0 && (
-            <div className="rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-md p-6 flex items-center justify-center shrink-0">
-              <p className="text-sm text-muted-foreground/60 italic text-center">
+            <div className="dk-now-playing__empty">
+              <p className="dk-now-playing__empty-text">
                 No current activity
               </p>
             </div>
@@ -868,4 +865,3 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
     </AnimatePresence>
   )
 }
-

@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import secrets
@@ -123,6 +124,7 @@ async def flush_pending_external_ids(obj, session) -> int:
 
     import structlog
     from sqlalchemy import delete, select
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     from otix.domain.media import ExternalID
 
@@ -195,13 +197,17 @@ async def flush_pending_external_ids(obj, session) -> int:
                             current_entity_id=entity_id,
                         )
                     else:
-                        session.add(ExternalID(
-                            provider=provider,
-                            external_id=str_val,
-                            entity_type=entity_type,
-                            entity_id=entity_id,
-                            media_item_id=entity_id if entity_type == "media_item" else None,
-                        ))
+                        # Use pg_insert ON CONFLICT DO NOTHING to survive
+                        # races with concurrent tasks inserting the same row.
+                        await session.execute(
+                            pg_insert(ExternalID).values(
+                                provider=provider,
+                                external_id=str_val,
+                                entity_type=entity_type,
+                                entity_id=entity_id,
+                                media_item_id=entity_id if entity_type == "media_item" else None,
+                            ).on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                        )
                         count += 1
         elif existing is not None:
             await session.delete(existing)

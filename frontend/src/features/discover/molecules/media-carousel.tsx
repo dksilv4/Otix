@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { memo, useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react'
+import './media-carousel.scss'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 import { DiscoverMediaCard } from './discover-media-card'
 import { Skeleton } from '@ui/atoms/skeleton'
@@ -13,10 +15,6 @@ interface MediaCarouselProps {
 
 const BASE_ITEM_WIDTH = 240
 const BASE_GAP = 20
-const BUTTON_INSET = 40 // button overlap on each side
-
-const SKELETON_CONTAINER_STYLE = { gap: 'var(--carousel-gap, 1.25rem)' } as const
-const SKELETON_ITEM_STYLE = { width: 'var(--card-width, 240px)' } as const
 
 export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, className }: MediaCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -34,19 +32,21 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
       const el = scrollRef.current
       if (!el) return
 
-      const style = getComputedStyle(container)
+      const elStyle = getComputedStyle(el)
       const gap =
-        parseFloat(style.getPropertyValue('--carousel-gap')) || BASE_GAP
-      const containerWidth = container.getBoundingClientRect().width
-      const availableWidth = Math.max(0, containerWidth - BUTTON_INSET * 2)
+        parseFloat(elStyle.getPropertyValue('--carousel-gap')) || BASE_GAP
+      const scrollWidth = el.getBoundingClientRect().width
+      const padLeft = parseFloat(elStyle.paddingLeft) || 0
+      const padRight = parseFloat(elStyle.paddingRight) || 0
+      const contentWidth = Math.max(0, scrollWidth - padLeft - padRight)
 
-      let count = Math.floor((availableWidth + gap) / (BASE_ITEM_WIDTH + gap))
+      let count = Math.floor((contentWidth + gap) / (BASE_ITEM_WIDTH + gap))
       count = Math.max(2, count)
 
-      // Size cards to perfectly fill visible area — no partials
+      // Size cards to perfectly fill visible content area — no partials
       el.style.setProperty(
         '--card-width',
-        `calc((100% - ${BUTTON_INSET * 2}px - ${(count - 1) * gap}px) / ${count})`,
+        `calc((100% - ${(count - 1) * gap}px) / ${count})`,
       )
       setVisibleCount(count)
     }
@@ -92,17 +92,25 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
 
   if (isLoading) {
     return (
-      <div ref={containerRef} className={cn('relative', className)}>
-        <div className="flex overflow-hidden" style={SKELETON_CONTAINER_STYLE}>
+      <div ref={containerRef} className={cn('dk-discover-media-carousel', className)}>
+        <div className="dk-discover-media-carousel__scroll"
+          style={{
+            gap: 'var(--carousel-gap, 1.25rem)',
+            scrollSnapType: 'x mandatory',
+            scrollPaddingInline: `var(--carousel-gap, 1.25rem)`,
+          }}
+        >
           {Array.from({ length: visibleCount }).map((_, i) => (
             <div
               key={i}
-              className="shrink-0 space-y-2"
-              style={SKELETON_ITEM_STYLE}
+              className="dk-discover-media-carousel__item"
+              style={{
+                width: 'var(--card-width, 240px)',
+                aspectRatio: '2 / 3',
+                scrollSnapAlign: 'start',
+              }}
             >
-              <Skeleton className="aspect-[2/3] w-full rounded-lg" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-full w-full rounded-lg" />
             </div>
           ))}
         </div>
@@ -112,42 +120,33 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
 
   if (items.length === 0) return null
 
-  const arrowButton = cn(
-    'absolute top-1/2 -translate-y-1/2 z-10',
-    'flex items-center justify-center w-10 h-10 rounded-full',
-    'bg-[var(--dk-surface-glass)] backdrop-blur-md',
-    'shadow-[var(--dk-shadow-glass)]',
-    'text-foreground/70 hover:text-foreground',
-    'transition-opacity duration-[var(--dk-duration-fast)]',
-  )
+  const arrowBase = 'dk-discover-media-carousel__arrow'
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('dk-discover-media-carousel', className)}>
       <button
         onClick={() => scroll('left')}
         className={cn(
-          arrowButton,
-          'left-0 -translate-x-2',
-          showLeft ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          arrowBase,
+          'dk-discover-media-carousel__arrow--left',
+          !showLeft && 'dk-discover-media-carousel__arrow--hidden',
         )}
         aria-label="Scroll left"
       >
         <ChevronLeftIcon className="h-5 w-5" />
       </button>
 
-      <div
-        ref={scrollRef}
-        className="flex overflow-x-auto scroll-smooth scrollbar-none"
+      <div ref={scrollRef} className="dk-discover-media-carousel__scroll"
         style={{
           gap: 'var(--carousel-gap, 1.25rem)',
           scrollSnapType: 'x mandatory',
-          scrollPaddingInline: `${BUTTON_INSET}px`,
+          scrollPaddingInline: `var(--carousel-gap, 1.25rem)`,
         }}
       >
         {items.map((item) => (
           <div
             key={item.id}
-            className="shrink-0"
+            className="dk-discover-media-carousel__item"
             style={{
               width: 'var(--card-width, 240px)',
               aspectRatio: item.mediaType === 'music' ? '1 / 1' : '2 / 3',
@@ -162,9 +161,9 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
       <button
         onClick={() => scroll('right')}
         className={cn(
-          arrowButton,
-          'right-0 translate-x-2',
-          showRight ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          arrowBase,
+          'dk-discover-media-carousel__arrow--right',
+          !showRight && 'dk-discover-media-carousel__arrow--hidden',
         )}
         aria-label="Scroll right"
       >

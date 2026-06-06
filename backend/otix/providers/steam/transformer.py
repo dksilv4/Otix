@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Steam API response → domain data extraction.
 
 Pure functions. Extracts structured values from Steam store API responses

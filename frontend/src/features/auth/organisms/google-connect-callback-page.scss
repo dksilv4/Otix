@@ -1,0 +1,98 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-auth__wrapper {
+  @apply fixed inset-0 flex items-center justify-center p-4;
+}
+
+.dk-auth__card {
+  @apply relative z-10 w-full flex flex-col items-center;
+
+  max-width: 440px;
+  padding: 2.5rem 2rem;
+  border-radius: 2rem;
+  background: var(--dk-surface-overlay);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--dk-shadow-glass);
+
+  @media (min-width: 640px) {
+    padding: 3rem 2.5rem;
+  }
+}
+
+.dk-auth__icon-wrapper {
+  @apply flex items-center justify-center;
+
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+}
+
+.dk-auth__icon-wrapper--success {
+  background: rgb(34 197 94 / 0.1);
+}
+
+.dk-auth__icon-wrapper--error {
+  background: rgb(239 68 68 / 0.1);
+}
+
+.dk-auth__icon-wrapper--loading {
+  background: rgb(66 133 244 / 0.1);
+}
+
+.dk-auth__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-auth__description {
+  @apply mt-2 text-sm;
+
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-auth__hint {
+  @apply mt-1 text-xs;
+
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dk-auth__error-text {
+  @apply mt-2 text-sm text-center;
+
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-auth__button-group {
+  @apply mt-4 flex gap-2;
+}
+
+.dk-auth__button {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl transition-all;
+}
+
+.dk-auth__button--secondary {
+  height: 2.5rem;
+  padding: 0 1.25rem;
+  @apply text-xs font-semibold;
+
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+
+  &:hover {
+    background: hsl(var(--primary) / 0.2);
+  }
+}
+
+.dk-auth__button--primary {
+  margin-top: 1.5rem;
+  height: 3rem;
+  padding: 0 1.5rem;
+  @apply text-sm font-bold;
+
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+
+  &:hover {
+    background: hsl(var(--primary) / 0.9);
+  }
+}

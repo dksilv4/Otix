@@ -1,3 +1,4 @@
+# TODO: Review this file
 """ExternalID Service — unified cross-entity identity management.
 
 The Problem
@@ -197,6 +198,33 @@ class ExternalIDService:
         entity_type: str,
         entity_id: str,
     ) -> ExternalID:
+        """Idempotent create-or-update.
+
+        Uses a two-step SELECT-then-INSERT/UPDATE pattern because the
+        ``uq_external_id_provider_ext`` constraint includes the nullable
+        ``entity_type`` column.  PostgreSQL treats NULL as distinct in unique
+        constraints, so ON CONFLICT on the full tuple cannot match a legacy row
+        where entity_type IS NULL.  This approach finds *any* row by
+        (provider, external_id) regardless of entity_type, then sets it.
+
+        A concurrent INSERT race is handled by a final INSERT with ON CONFLICT
+        as a safety net.
+        """
+        # ── 1. SELECT — match (provider, external_id) ignoring entity_type ──
+        existing = await self._session.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+            ).limit(1)
+        )
+        if existing is not None:
+            existing.entity_type = entity_type
+            existing.entity_id = entity_id
+            if entity_type == "media_item":
+                existing.media_item_id = entity_id
+            return existing
+
+        # ── 2. INSERT — safe when no row exists; ON CONFLICT catches races ──
         set_values = {"entity_type": entity_type, "entity_id": entity_id}
         insert_values = {
             "provider": provider,
@@ -212,13 +240,36 @@ class ExternalIDService:
             pg_insert(ExternalID)
             .values(**insert_values)
             .on_conflict_do_update(
-                index_elements=["provider", "external_id", "entity_type"],
+                constraint="uq_external_id_provider_ext",
                 set_=set_values,
             )
             .returning(ExternalID)
         )
         result = await self._session.execute(stmt)
-        return result.scalar_one()
+        row = result.scalar_one_or_none()
+        if row is not None:
+            return row
+
+        # ── 3. Last-resort: race where another TX inserted with NULL etype ──
+        # The ON CONFLICT above won't match if a concurrent transaction
+        # inserted a row with a different entity_type (including NULL).  Try
+        # the SELECT one more time.
+        existing = await self._session.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+            ).limit(1)
+        )
+        if existing is not None:
+            existing.entity_type = entity_type
+            existing.entity_id = entity_id
+            if entity_type == "media_item":
+                existing.media_item_id = entity_id
+            return existing
+
+        raise RuntimeError(
+            f"upsert race: {provider=} {external_id=} {entity_type=} {entity_id=}"
+        )
 
     async def delete(
         self, entity_type: str, entity_id: str, provider: str

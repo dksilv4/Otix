@@ -1,12 +1,12 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_admin_user, get_db, get_trusted_or_admin_user
-from otix.api.schemas.admin_edit import (
+from otix.api._utils import get_current_admin_user, get_db, get_trusted_or_admin_user
+from otix.schemas.admin_edit import (
     ApproveRejectRequest,
     MediaAssetList,
     MediaAssetOut,
@@ -16,8 +16,6 @@ from otix.api.schemas.admin_edit import (
     ProposalVoteCreate,
     VoteResponse,
 )
-from otix.domain.asset import MediaAsset
-from otix.domain.media import MediaItem
 from otix.domain.user import User
 from otix.services.admin_edit_service import AdminEditService
 
@@ -35,16 +33,12 @@ async def list_media_assets(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(get_current_admin_user),
 ) -> MediaAssetList:
-    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    service = AdminEditService(db)
+    item = await service.get_media_item(media_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 
-    assets = await db.scalars(
-        select(MediaAsset)
-        .where(MediaAsset.media_item_id == media_id)
-        .order_by(MediaAsset.asset_type, MediaAsset.lang, MediaAsset.score.desc())
-    )
-    asset_list = list(assets)
+    asset_list = await service.list_media_assets(media_id)
     return MediaAssetList(
         items=[MediaAssetOut.model_validate(a) for a in asset_list],
         total=len(asset_list),
@@ -61,11 +55,11 @@ async def create_edit_proposal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_trusted_or_admin_user),
 ) -> MediaEditProposalOut:
-    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    service = AdminEditService(db)
+    item = await service.get_media_item(media_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 
-    service = AdminEditService(db)
     proposal = await service.create_proposal(
         media_item_id=media_id,
         proposer_user_id=current_user.id,
@@ -81,11 +75,12 @@ async def list_edit_proposals(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_trusted_or_admin_user),
 ) -> MediaEditProposalList:
-    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    service = AdminEditService(db)
+    item = await service.get_media_item(media_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 
-    service = AdminEditService(db)
+
     proposals = await service.get_proposals_for_media(media_id)
     vote_map = (
         await service.get_user_votes_for_proposals(current_user.id, [p.id for p in proposals]) if proposals else {}

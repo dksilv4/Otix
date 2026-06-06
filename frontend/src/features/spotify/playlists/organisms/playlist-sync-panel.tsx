@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { RefreshCw, CheckCircle2, Bell, BellOff } from "lucide-react"
 import { cn } from "@/lib/utils"
+import "./playlist-sync-panel.scss"
 
 interface PlaylistSyncPanelProps {
   isSubscribed: boolean
@@ -13,14 +15,13 @@ interface PlaylistSyncPanelProps {
 export function PlaylistSyncPanel({ isSubscribed, isSyncing, onSubscribe, onUnsubscribe, onSync, lastSyncedAt }: PlaylistSyncPanelProps) {
   if (isSubscribed) {
     return (
-      <div className="inline-flex items-center gap-2">
+      <div className="dk-playlist-sync-panel">
         <button
           onClick={onSync}
           disabled={isSyncing}
           className={cn(
-            "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-            "border border-border hover:bg-[var(--dk-surface-glass)]",
-            isSyncing && "opacity-50 cursor-not-allowed",
+            "dk-playlist-sync-panel__sync-btn",
+            isSyncing && "dk-playlist-sync-panel__sync-btn--syncing",
           )}
           title="Sync now"
         >
@@ -29,14 +30,14 @@ export function PlaylistSyncPanel({ isSubscribed, isSyncing, onSubscribe, onUnsu
         </button>
         <button
           onClick={onUnsubscribe}
-          className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          className="dk-playlist-sync-panel__unsub-btn"
           title="Unsubscribe"
         >
           <BellOff className="h-4 w-4" />
           Unsubscribe
         </button>
         {lastSyncedAt && !isSyncing && (
-          <span className="text-xs text-muted-foreground">
+          <span className="dk-playlist-sync-panel__status">
             <CheckCircle2 className="h-3 w-3 inline mr-1" />
             Synced
           </span>
@@ -49,10 +50,7 @@ export function PlaylistSyncPanel({ isSubscribed, isSyncing, onSubscribe, onUnsu
     <button
       onClick={onSubscribe}
       disabled={isSyncing}
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-        "border border-primary/30 text-primary hover:bg-primary/10",
-      )}
+      className="dk-playlist-sync-panel__sub-btn"
     >
       <Bell className="h-4 w-4" />
       Subscribe

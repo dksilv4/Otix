@@ -7,6 +7,7 @@ import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/image-position'
+import './media-card.scss'
 
 interface DkMediaCardProps {
   id: string
@@ -63,28 +64,26 @@ const DkMediaCard = memo(function DkMediaCard({
       params={params}
       onMouseEnter={handlePrefetch}
       className={cn(
-        'group block relative rounded-lg overflow-hidden',
-        mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
+        'dk-media-card',
+        mediaType === 'music' && 'dk-media-card--square',
+        zoomed && 'dk-media-card--zoomed',
         className,
       )}
     >
       <DkImage
         src={cleanSrc}
         alt={title}
-        className={cn(
-          'h-full w-full object-cover transition-transform duration-700 ease-out',
-          zoomed && 'scale-110 group-hover:scale-100',
-        )}
+        className="dk-media-card__image"
         style={position ? { objectPosition: `${position.x}% ${position.y}%` } : undefined}
         fallback={title[0]}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out pointer-events-none" />
+      <div className="dk-media-card__gradient-overlay" />
 
       {subtitle && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+        <div className="dk-media-card__subtitle">
           <span
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold backdrop-blur-sm"
+            className="dk-media-card__subtitle-badge"
             style={{
               color: subtitleColor ?? '#e2e8f0',
               backgroundColor: 'rgba(0,0,0,0.65)',
@@ -96,61 +95,53 @@ const DkMediaCard = memo(function DkMediaCard({
       )}
 
       {showTypeBadge && (
-        <div className="absolute top-2 left-2">
+        <div className="dk-media-card__type-badge">
           <span
             className={cn(
-              'inline-flex items-center p-1.5 rounded-full text-white',
+              'dk-media-card__type-icon',
               MEDIA_TYPE_COLOR[mediaType] ?? 'bg-muted-foreground',
             )}
           >
-            {TypeIcon && <TypeIcon className="h-3 w-3" fill="currentColor" />}
+            {TypeIcon && <TypeIcon className="dk-media-card__type-icon-svg" />}
           </span>
         </div>
       )}
 
       {isAdult && (
-        <div className="absolute top-2 right-2">
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-white bg-red-600">
-            18+
-          </span>
+        <div className="dk-media-card__adult-badge">
+          <span className="dk-media-card__adult-label">18+</span>
         </div>
       )}
 
       {avgRating != null && avgRating > 0 && (
         <div className={cn(
-          'absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ease-out',
-          isAdult ? 'top-8' : 'top-2',
+          'dk-media-card__rating',
+          isAdult && 'dk-media-card__rating--offset',
         )}>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white bg-primary/80 backdrop-blur-sm">
-            <Star className="h-3 w-3 fill-current" />
+          <span className="dk-media-card__rating-pill">
+            <Star className="dk-media-card__star-icon" />
             {avgRating.toFixed(1)}
           </span>
         </div>
       )}
 
       {logoUrl && (
-        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div className="dk-media-card__logo-wrap">
           <img
             src={logoUrl}
             alt={title}
-            className="max-w-[70%] max-h-[50%] object-contain scale-75 group-hover:scale-110 transition-transform duration-700 ease-out drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+            className="dk-media-card__logo-img"
           />
         </div>
       )}
 
-      <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 ease-out pointer-events-none">
-        <p className="text-sm font-semibold text-white text-center leading-tight drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-          {title}
-        </p>
+      <div className="dk-media-card__caption">
+        <p className="dk-media-card__title">{title}</p>
         {artistName && (
-          <p className="text-xs font-semibold text-white/80 text-center mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] truncate">
-            {artistName}
-          </p>
+          <p className="dk-media-card__artist">{artistName}</p>
         )}
         {year && (
-          <p className="text-[11px] font-medium text-white/60 text-center mt-0.5">
-            {year}
-          </p>
+          <p className="dk-media-card__year">{year}</p>
         )}
       </div>
     </Link>
