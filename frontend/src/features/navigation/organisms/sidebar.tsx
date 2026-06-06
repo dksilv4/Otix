@@ -111,7 +111,7 @@ export function MenuDropdown() {
           exit={{ opacity: 0, y: -8, scale: 0.96 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
-            "fixed top-[4.5rem] left-4 z-[9998]",
+            "fixed top-[4.5rem] left-[6rem] z-[9998]",
             "w-[15rem] p-3 rounded-[1.5rem]",
             "bg-[var(--dk-surface-overlay)]",
             "backdrop-blur-xl",
