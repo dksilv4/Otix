@@ -110,6 +110,12 @@ export function LauncherHomePage() {
   const { toast } = useToast()
 
   const [localGames, setLocalGames] = useState<DetectedGame[]>(() => getScannedGames())
+  // Re-sync from cache after DB loads — gives loadFromDatabase() time to complete
+  useEffect(() => {
+    const reload = () => setLocalGames(getScannedGames())
+    const id = setTimeout(reload, 100)
+    return () => clearTimeout(id)
+  }, [])
   const [scanning, setScanning] = useState(false)
   const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null)
 
