@@ -1,0 +1,143 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── LauncherPage — sidebar game list | right side game detail ── */
+/* Component: LauncherPage, Sidebar, GameDetailPage                */
+/* Prefix:   launcher-page                                         */
+
+.dk-launcher-page {
+  @apply flex flex-col min-h-0 overflow-hidden h-screen pt-8 px-4 pb-4;
+  background-color: var(--dk-surface-root);
+}
+
+.dk-launcher-page__expand-handle {
+  @apply fixed left-4 top-1/2 -translate-y-1/2 z-20;
+  @apply w-5 h-12 flex items-center justify-center rounded-r-lg;
+  @apply cursor-pointer;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(12px);
+  transition: background-color 0.15s ease;
+}
+
+.dk-launcher-page__expand-handle:hover {
+  background-color: var(--dk-surface-glass-hover);
+}
+
+.dk-launcher-page__grid {
+  @apply grid flex-1 min-h-0 gap-4;
+  transition: grid-template-columns 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dk-launcher-page__grid--sidebar-open {
+  grid-template-columns: var(--sidebar-width, 280px) 1fr;
+}
+
+.dk-launcher-page__grid--sidebar-closed {
+  grid-template-columns: 0 1fr;
+}
+
+.dk-launcher-page__sidebar {
+  @apply min-h-0 flex flex-col overflow-hidden min-w-0 rounded-xl;
+  background-color: var(--dk-surface-overlay);
+  backdrop-filter: blur(40px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-launcher-page__sidebar--collapsed {
+  @apply overflow-hidden invisible;
+}
+
+.dk-launcher-page__sidebar-header {
+  @apply p-3 flex flex-col gap-2;
+}
+
+.dk-launcher-page__search-bar {
+  @apply flex items-center gap-2 px-2.5 py-1.5 rounded-lg;
+  background-color: var(--dk-surface-glass);
+  transition: background-color 0.15s ease;
+}
+
+.dk-launcher-page__search-bar:focus-within {
+  background-color: var(--dk-surface-glass-hover);
+}
+
+.dk-launcher-page__search-input {
+  @apply flex-1 bg-transparent border-none outline-none text-inherit text-xs;
+}
+
+.dk-launcher-page__search-input::placeholder {
+  color: oklch(0.5 0 0);
+}
+
+.dk-launcher-page__filters {
+  @apply flex gap-1;
+}
+
+.dk-launcher-page__filter-chip {
+  @apply flex-1 px-2 py-1 rounded-md font-medium transition-colors;
+  font-size: 11px;
+}
+
+.dk-launcher-page__filter-chip--active {
+  background-color: var(--dk-surface-ghost-active);
+  color: inherit;
+}
+
+.dk-launcher-page__filter-chip--inactive {
+  color: oklch(0.5 0 0);
+}
+
+.dk-launcher-page__filter-chip--inactive:hover {
+  background-color: var(--dk-surface-glass-hover);
+  color: inherit;
+}
+
+.dk-launcher-page__game-list {
+  @apply flex-1 overflow-y-auto py-1;
+}
+
+.dk-launcher-page__game-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dk-launcher-page__game-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dk-launcher-page__game-list::-webkit-scrollbar-thumb {
+  background: var(--dk-surface-glass);
+  border-radius: 3px;
+}
+
+.dk-launcher-page__empty-state {
+  @apply flex flex-col items-center justify-center h-full text-center px-4;
+}
+
+.dk-launcher-page__empty-text {
+  @apply text-xs;
+}
+
+.dk-launcher-page__footer {
+  @apply p-2 px-3;
+}
+
+.dk-launcher-page__stats {
+  @apply px-1;
+  font-size: 10px;
+}
+
+.dk-launcher-page__detail {
+  @apply min-h-0 overflow-y-auto w-full;
+}
+
+.dk-launcher-page__detail::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dk-launcher-page__detail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dk-launcher-page__detail::-webkit-scrollbar-thumb {
+  background: var(--dk-surface-glass);
+  border-radius: 3px;
+}
