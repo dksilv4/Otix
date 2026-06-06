@@ -25,10 +25,8 @@ interface MatchResponse {
 export function useMatchLocalGames() {
   return useMutation({
     mutationFn: async (games: DetectedGame[]): Promise<DetectedGame[]> => {
-      const unmatched = games.filter((g) => !g.otixMediaId);
-      if (unmatched.length === 0) return games;
-
-      const gameEntries = unmatched.map((g) => ({
+      // Always send all games to refresh catalog data for every title
+      const gameEntries = games.map((g) => ({
         title: g.title,
         platform: g.platform,
       }));
@@ -41,13 +39,15 @@ export function useMatchLocalGames() {
         data.matches.map((m) => [m.queryTitle, m]),
       );
 
-      const AUTO_ACCEPT_THRESHOLD = 0.9;
-
       return games.map((game) => {
         const match = matchMap.get(game.title);
         if (match && match.matchedMedia) {
           const media = match.matchedMedia;
-          if (match.confidence >= AUTO_ACCEPT_THRESHOLD) {
+          const isNewMatch = !game.otixMediaId;
+          const autoAcceptNew = match.confidence >= 0.9;
+
+          // Always refresh data for already-matched games, only auto-match new ones at high confidence
+          if (game.otixMediaId || autoAcceptNew) {
             return {
               ...game,
               otixMediaId: media.id,
@@ -61,7 +61,7 @@ export function useMatchLocalGames() {
               otixLogoUrl: media.logoUrl,
             };
           }
-          // Medium confidence — show as recommendation, needs user confirmation
+          // Medium confidence — show as recommendation for new matches
           return {
             ...game,
             otixConfidence: match.confidence,
