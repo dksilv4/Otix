@@ -577,14 +577,14 @@ export function LauncherHomePage() {
                 transition={{ duration: 0.45 }}
                 className="absolute inset-0 z-0 overflow-hidden"
               >
-                {/* Primary backdrop — covers the area, centered */}
+                {/* Primary backdrop — covers the area, positioned centre-right */}
                 <div
-                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                  className="absolute inset-0 bg-cover bg-[center_right_-4rem] bg-no-repeat"
                   style={{ backgroundImage: `url(${backdropUrl})` }}
                 />
                 {/* Overflow blur layer — fills gaps when image aspect doesn't match */}
                 <div
-                  className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
+                  className="absolute -inset-[20%] bg-cover bg-[center_right_-4rem] bg-no-repeat"
                   style={{
                     backgroundImage: `url(${backdropUrl})`,
                     filter: 'blur(60px)',
