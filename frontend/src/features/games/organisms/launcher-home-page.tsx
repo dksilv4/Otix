@@ -553,7 +553,7 @@ export function LauncherHomePage() {
         {/* SECTION 1: HERO VIEWPORT FOLD (100% of container height) */}
         <section className="w-full h-full relative shrink-0">
 
-          {/* Animated Background Art */}
+          {/* Animated Background Art — cinematic fit with overflow fallback */}
           <AnimatePresence mode="wait">
             {backdropUrl ? (
               <motion.div
@@ -561,16 +561,31 @@ export function LauncherHomePage() {
                 initial={{ opacity: 0, scale: 1.01 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                className="absolute inset-0 z-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${backdropUrl})` }}
-              />
+                transition={{ duration: 0.45 }}
+                className="absolute inset-0 z-0 overflow-hidden"
+              >
+                {/* Primary backdrop — covers the area, centered */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url(${backdropUrl})` }}
+                />
+                {/* Overflow blur layer — fills gaps when image aspect doesn't match */}
+                <div
+                  className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
+                  style={{
+                    backgroundImage: `url(${backdropUrl})`,
+                    filter: 'blur(60px)',
+                    opacity: 0.35,
+                    transform: 'scale(1.1)',
+                  }}
+                />
+              </motion.div>
             ) : null}
           </AnimatePresence>
 
-          {/* Gradients overlay for legibility */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-black/20 z-1 pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-1 pointer-events-none" />
+          {/* Gradients overlay for legibility — lighter sides, stronger bottom */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/10 z-1 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-1 pointer-events-none" />
 
           {/* Glassy Sparkles/Trend Badge overlay */}
           {dynamicBadge && (
