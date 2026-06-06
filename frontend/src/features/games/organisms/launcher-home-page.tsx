@@ -129,17 +129,14 @@ export function LauncherHomePage() {
   const syncMutation = useSyncLocalGames()
   const claimMutation = useClaimGame()
 
-  // Auto-match local games against catalog on mount
+  // Match all local games against catalog on mount — refreshes metadata
   useEffect(() => {
     if (localGames.length === 0) return
-    const needsMatch = localGames.some((g) => !g.otixMediaId && !g.otixMatchSuggestion)
-    if (!needsMatch) return
     matchMutation.mutateAsync(localGames).then((matched) => {
       if (matched?.length) {
         const filtered = filterRejectedSuggestions(matched)
         setLocalGames(filtered)
         setScannedGames(filtered)
-        // Persist match state to backend
         syncMutation.mutate(filtered)
       }
     }).catch(() => { })
