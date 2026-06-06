@@ -495,21 +495,22 @@ export function LauncherHomePage() {
         )}
         style={{
           left: '1rem',
-          top: '6.5rem',
-          bottom: '1rem',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          maxHeight: 'calc(100vh - 6rem)',
         }}
       >
         {/* Menu button — access main nav from game launcher */}
         <button
           onClick={toggleNav}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mt-3"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mt-2"
           title="Main Menu"
         >
           <Menu size={16} />
         </button>
 
         {/* Game Cover Thumbnails Stack */}
-        <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-4 pb-4">
+        <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-3 pb-3">
           {pickerGames.map((game) => {
             const isActive = game.id === activeGame.id
             return (
@@ -546,10 +547,10 @@ export function LauncherHomePage() {
           })}
         </div>
 
-        {/* Bottom Library button (absolute) */}
+        {/* Bottom Library button */}
         <button
           onClick={goToLibrary}
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)]"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mb-2"
           title="Browse All Games"
         >
           <Gamepad2 size={16} />
