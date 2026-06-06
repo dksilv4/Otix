@@ -358,6 +358,16 @@ export function LauncherHomePage() {
     }
   }, [])
 
+  const handleOpenFolder = useCallback(() => {
+    if (!activeGame?.rawGame?.exePath) return
+    const api = (window as any).desktopAPI
+    if (api?.showItemInFolder) {
+      api.showItemInFolder(activeGame.rawGame.exePath).catch(console.error)
+    } else {
+      toast({ title: 'Folder', description: `Located at ${activeGame.rawGame.exePath}`, variant: 'info' })
+    }
+  }, [activeGame, toast])
+
   const handleAddLibrary = useCallback(() => {
     if (!activeGame) return
     const mediaId = activeGame.otixMediaId
@@ -640,7 +650,7 @@ export function LauncherHomePage() {
                       {activeGame.isInstalled ? (
                         <><span className="text-emerald-400">●</span> Installed</>
                       ) : activeGame.platform === 'iso' && osName !== 'Windows' ? (
-                        <><span className="text-red-400/70">✕</span> Can't install on macOS</>
+                        <><span className="text-red-400/70">⚠</span> Incompatible</>
                       ) : (
                         <><span className="text-white/30">○</span> Not Installed</>
                       )}
@@ -649,7 +659,7 @@ export function LauncherHomePage() {
                       {activeGame.isInstalled
                         ? 'Ready to play'
                         : activeGame.platform === 'iso' && osName !== 'Windows'
-                          ? 'Windows-only disc image'
+                          ? "Can't install on macOS"
                           : activeGame.installDir
                             ? `At ${activeGame.installDir}`
                             : 'Local game'}
@@ -728,22 +738,90 @@ export function LauncherHomePage() {
                 ))}
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons — context aware */}
               <div className="flex gap-2.5 items-center justify-end">
-                <button
-                  onClick={handleAddLibrary}
-                  className="px-4.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/95"
-                >
-                  <Plus size={14} />
-                  Add to Library
-                </button>
-                <button
-                  onClick={handleActionClick}
-                  className="px-5.5 py-2.5 bg-white hover:bg-white/90 text-black rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
-                >
-                  {activeGame.isDefault ? <Search size={14} /> : <Play size={14} fill="currentColor" />}
-                  {activeGame.isDefault ? 'View Details' : 'Play Game'}
-                </button>
+                {(() => {
+                  const isIncompatible = activeGame.platform === 'iso' && osName !== 'Windows'
+                  // Installed: Play + Open Folder
+                  if (activeGame.isInstalled) {
+                    return (
+                      <>
+                        <button
+                          onClick={handleOpenFolder}
+                          className="px-3.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/70"
+                        >
+                          <HardDrive size={13} />
+                          Open Folder
+                        </button>
+                        <button
+                          onClick={handleActionClick}
+                          className="px-5.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                        >
+                          <Play size={14} fill="currentColor" />
+                          Play Game
+                        </button>
+                      </>
+                    )
+                  }
+                  // Catalog game: View Details + Add to Library
+                  if (activeGame.isDefault) {
+                    return (
+                      <>
+                        <button
+                          onClick={handleAddLibrary}
+                          className="px-4.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/95"
+                        >
+                          <Plus size={14} />
+                          Add to Library
+                        </button>
+                        <button
+                          onClick={handleActionClick}
+                          className="px-5.5 py-2.5 bg-white hover:bg-white/90 text-black rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                        >
+                          <Search size={14} />
+                          View Details
+                        </button>
+                      </>
+                    )
+                  }
+                  // Incompatible: View Details only
+                  if (isIncompatible) {
+                    return (
+                      <button
+                        onClick={handleActionClick}
+                        className="px-5.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/70"
+                        disabled
+                      >
+                        <span className="text-red-400/70">⚠</span>
+                        Can't install on macOS
+                      </button>
+                    )
+                  }
+                  // Unmatched local game: Match
+                  return (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (activeGame.rawGame) {
+                            matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
+                              if (matched?.length) {
+                                const filtered = filterRejectedSuggestions(matched)
+                                setLocalGames(filtered)
+                                setScannedGames(filtered)
+                                syncMutation.mutate(filtered)
+                                toast({ title: 'Game Matched', description: `"${matched[0]?.otixMediaTitle || matched[0]?.title}" found in catalog.`, variant: 'success' })
+                              }
+                            }).catch(() => {})
+                          }
+                        }}
+                        className="px-5.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                      >
+                        <Search size={14} />
+                        Match Game
+                      </button>
+                    </>
+                  )
+                })()}
               </div>
             </div>
           </div>
