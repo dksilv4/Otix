@@ -198,10 +198,12 @@ export function LauncherHomePage() {
     }
   }, [localGames, popularGames])
 
-  // Picker sidebar: only matched/verified games for a cleaner look
+  // Picker sidebar: show local games (matched or not), or fallback to catalog
   const pickerGames = useMemo<DisplayGame[]>(
-    () => displayGames.filter((g) => !!g.otixMediaId),
-    [displayGames],
+    () => localGames.length > 0
+      ? displayGames  // all local games, matched or not
+      : displayGames.filter((g) => !!g.otixMediaId),  // catalog: only matched
+    [displayGames, localGames.length],
   )
 
   // Select first game automatically if activeGameId is null or unlisted
