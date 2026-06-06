@@ -1,3 +1,4 @@
+// TODO: Review this file
 // Import platform modules so they self-register via registerPlatform()
 import "./spotify"
 import "./steam"

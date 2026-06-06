@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from sqlalchemy import delete, func, select, update
@@ -38,7 +39,8 @@ class MediaRatingService:
             )
         )
 
-    async def upsert_rating(self, user_id: str, media_item_id: str, score: int) -> MediaItemRating:
+    async def upsert_rating(self, user_id: str, media_item_id: str, score: int) -> tuple[MediaItemRating, float | None, int]:
+        """Upsert a rating and return (rating, avg_rating, rating_count)."""
         existing = await self.get_my_rating(user_id, media_item_id)
         is_new = existing is None
 
@@ -58,7 +60,8 @@ class MediaRatingService:
         if is_new:
             app.send_task("xp.award", args=[user_id, RATE_MEDIA])
 
-        return existing
+        media = await self.session.get(MediaItem, media_item_id)
+        return existing, media.avg_rating if media else None, media.rating_count if media else 0
 
     async def delete_rating(self, user_id: str, media_item_id: str) -> bool:
         result = await self.session.execute(

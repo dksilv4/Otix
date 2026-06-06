@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import './google-connect-callback-page.scss'
 import { useNavigate } from '@tanstack/react-router'
 import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
@@ -36,15 +37,8 @@ export function GoogleConnectCallbackPage() {
         if (!code || !state) {
           throw new Error('Google did not return the expected authorization details. Please try linking again.')
         }
-        await apiClient.post('/auth/integrations/google/callback', { code, state })
+        await apiClient.post('/auth/oauth/google/callback', { code, state })
         setSuccess(true)
-        setTimeout(() => {
-          navigate({
-            to: '/settings',
-            search: { section: 'integrations' } as never,
-            replace: true,
-          })
-        }, 1200)
       } catch (err) {
         setError(extractMessage(err))
       }
@@ -52,44 +46,53 @@ export function GoogleConnectCallbackPage() {
   }, [navigate])
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth__wrapper">
       <Helmet>
         <title>Google Link - Otix</title>
       </Helmet>
 
       <div
-        className="relative z-10 w-full max-w-[440px] flex flex-col items-center px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem] bg-[var(--dk-surface-overlay)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)]"
+        className="dk-auth__card"
         style={{ animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {success ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 mb-4">
+            <div className="dk-auth__icon-wrapper dk-auth__icon-wrapper--success">
               <Check className="h-7 w-7 text-green-500" />
             </div>
-            <h2 className="text-lg font-semibold">Google Linked</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Your Google account has been linked. Redirecting...</p>
+            <h2 className="dk-auth__title">Google Linked</h2>
+            <p className="dk-auth__description">Your Google account has been linked successfully.</p>
+            <p className="dk-auth__hint">Close this tab and return to Otix.</p>
+            <div className="dk-auth__button-group">
+              <button
+                onClick={() => navigate({ to: '/settings', search: { section: 'integrations' } as never, replace: true })}
+                className="dk-auth__button dk-auth__button--secondary"
+              >
+                Go to Settings
+              </button>
+            </div>
           </>
         ) : error ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 mb-4">
+            <div className="dk-auth__icon-wrapper dk-auth__icon-wrapper--error">
               <XCircle className="h-7 w-7 text-red-500" />
             </div>
-            <h2 className="text-lg font-semibold">Link Failed</h2>
-            <p className="mt-2 text-sm text-muted-foreground text-center">{error}</p>
+            <h2 className="dk-auth__title">Link Failed</h2>
+            <p className="dk-auth__error-text">{error}</p>
             <button
               onClick={() => navigate({ to: '/settings', search: { section: 'integrations' } as never, replace: true })}
-              className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all"
+              className="dk-auth__button dk-auth__button--primary"
             >
               Back to Settings
             </button>
           </>
         ) : (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#4285F4]/10 mb-4">
+            <div className="dk-auth__icon-wrapper dk-auth__icon-wrapper--loading">
               <Loader2 className="h-7 w-7 text-[#4285F4] animate-spin" />
             </div>
-            <h2 className="text-lg font-semibold">Linking Google Account</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Verifying with Google...</p>
+            <h2 className="dk-auth__title">Linking Google Account</h2>
+            <p className="dk-auth__description">Verifying with Google...</p>
           </>
         )}
       </div>

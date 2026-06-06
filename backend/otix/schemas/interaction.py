@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,6 +13,7 @@ class UserInteractionState(BaseModel):
     played: bool = False
     started: bool = False
     listened: bool = False
+    owned: bool = False
 
 
 class InteractionCounts(BaseModel):

@@ -1,0 +1,77 @@
+@reference "../../../_tailwind-ref.css";
+
+// Gate / unavailable state
+// Shared between the admin+experiment gate and the desktop-app gate.
+.dk-downloads__gate {
+  @apply flex flex-col items-center justify-center py-24 text-center;
+}
+
+.dk-downloads__gate-heading {
+  @apply text-xl font-bold tracking-[-0.02em];
+}
+
+.dk-downloads__gate-desc {
+  @apply text-sm text-muted-foreground mt-2 max-w-sm;
+}
+
+// Page layout
+.dk-downloads__page {
+  @apply mx-auto max-w-3xl pb-16;
+}
+
+// Header row
+.dk-downloads__header {
+  @apply flex items-center justify-between mt-6 mb-6;
+}
+
+.dk-downloads__heading {
+  @apply text-2xl font-bold tracking-[-0.02em];
+}
+
+.dk-downloads__active-count {
+  @apply text-sm text-muted-foreground mt-1;
+}
+
+// Filter tabs
+.dk-downloads__filters {
+  @apply flex gap-2 mb-4;
+}
+
+.dk-downloads__filter-btn {
+  @apply px-3 py-1.5 rounded-lg text-xs font-medium transition-colors;
+}
+
+.dk-downloads__filter-btn--active {
+  @apply bg-primary/10 text-primary;
+}
+
+.dk-downloads__filter-btn--inactive {
+  @apply text-muted-foreground;
+
+  // Use direct CSS for custom properties (var(--dk-*))
+  &:hover {
+    @apply text-foreground;
+    background-color: var(--dk-surface-glass);
+  }
+}
+
+// Empty state
+.dk-downloads__empty {
+  @apply flex flex-col items-center py-16 text-center rounded-2xl;
+
+  // Use direct CSS for custom properties (var(--dk-*))
+  background-color: var(--dk-surface-base);
+}
+
+.dk-downloads__empty-text {
+  @apply text-sm font-medium;
+}
+
+.dk-downloads__empty-sub {
+  @apply text-xs text-muted-foreground mt-1;
+}
+
+// Download list
+.dk-downloads__list {
+  @apply space-y-2;
+}

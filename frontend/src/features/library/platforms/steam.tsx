@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
 import { useNavigate } from "@tanstack/react-router"
@@ -15,6 +16,7 @@ import {
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
 import { registerPlatform } from "./registry"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import "./steam.scss"
 
 function SkeletonGrid() {
   return (
@@ -22,7 +24,7 @@ function SkeletonGrid() {
       {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
-          className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+          className="dk-library-steam__skeleton"
         />
       ))}
     </MediaGrid>
@@ -48,33 +50,32 @@ function formatDaysAgo(unixTimestamp: number): string {
 
 function SteamEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)]">
-        <SteamIcon className="h-8 w-8 opacity-40" />
+    <div className="dk-library-steam__center-col">
+      <div className="dk-library-steam__empty-icon">
+        <SteamIcon className="dk-library-steam__icon--xl dk-library-steam__icon--faded" />
       </div>
-      <p className="text-lg font-semibold text-foreground">Steam library empty</p>
-      <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+      <p className="dk-library-steam__empty-title">Steam library empty</p>
+      <p className="dk-library-steam__empty-desc">
         Scan your Steam library to see your games here.
       </p>
       <button
         onClick={onScan}
         disabled={isScanning}
         className={cn(
-          "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
-          "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
-          isScanning && "opacity-60 pointer-events-none",
+          "dk-library-steam__btn-primary",
+          isScanning && "dk-library-steam__btn-primary--disabled",
         )}
       >
-        <RefreshCw className={cn("h-4 w-4", isScanning && "animate-spin")} />
+        <RefreshCw className={cn("dk-library-steam__icon", isScanning && "dk-library-steam__icon--spinning")} />
         {isScanning ? "Scanning..." : "Scan Library"}
       </button>
       {scanResult && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="dk-library-steam__result-text">
           Found {scanResult.matchedInOtix} matches out of {scanResult.totalInSteam} Steam games.
         </p>
       )}
       {scanError && (
-        <p className="mt-2 text-xs text-destructive">
+        <p className="dk-library-steam__error-text">
           Scan failed. Please try again.
         </p>
       )}
@@ -87,25 +88,25 @@ function SteamEmptyState({ onScan, isScanning, scanResult, scanError }: Platform
 function UnmatchedGrid({ items, hasMore, onLoadMore, loading }: { items: UnmatchedGame[]; hasMore: boolean; onLoadMore: () => void; loading: boolean }) {
   return (
     <>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+      <div className="dk-library-steam__unmatched-grid">
         {items.map((game) => {
           const iconUrl = game.steamImgIconUrl
             ? `https://media.steampowered.com/steamcommunity/public/images/apps/${game.steamAppId}/${game.steamImgIconUrl}.jpg`
             : null
           return (
-            <div key={game.id} className="flex flex-col items-center gap-1.5">
-              <div className="aspect-square w-full rounded-xl bg-[var(--dk-surface-glass)] overflow-hidden flex items-center justify-center">
+            <div key={game.id} className="dk-library-steam__unmatched-item">
+              <div className="dk-library-steam__unmatched-icon">
                 {iconUrl ? (
-                  <img src={iconUrl} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <img src={iconUrl} alt="" className="dk-library-steam__unmatched-img" loading="lazy" />
                 ) : (
-                  <SteamIcon className="h-8 w-8 opacity-30" />
+                  <SteamIcon className="dk-library-steam__unmatched-steam-icon" />
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground text-center leading-tight line-clamp-2">
+              <p className="dk-library-steam__unmatched-name">
                 {game.steamName}
               </p>
               {game.steamPlaytimeForever > 0 && (
-                <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                <span className="dk-library-steam__unmatched-playtime">
                   {formatPlaytime(game.steamPlaytimeForever)}
                 </span>
               )}
@@ -114,13 +115,13 @@ function UnmatchedGrid({ items, hasMore, onLoadMore, loading }: { items: Unmatch
         })}
       </div>
       {hasMore && (
-        <div className="flex justify-center py-4">
+        <div className="dk-library-steam__more-wrap--sm">
           <button
             onClick={onLoadMore}
             disabled={loading}
             className={cn(
-              "text-xs font-medium text-muted-foreground hover:text-foreground transition-colors",
-              loading && "opacity-60 pointer-events-none",
+              "dk-library-steam__btn-link",
+              loading && "dk-library-steam__btn-link--disabled",
             )}
           >
             {loading ? "Loading..." : "Load more"}
@@ -173,8 +174,8 @@ function SteamTabContent() {
   if (isLoading) return <SkeletonGrid />
   if (isError) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-muted-foreground">Failed to load. Please try again.</p>
+      <div className="dk-library-steam__center-wrap">
+        <p className="dk-library-steam__center-text">Failed to load. Please try again.</p>
       </div>
     )
   }
@@ -185,13 +186,13 @@ function SteamTabContent() {
   return (
     <>
       {status && status.gameCount > 0 && (
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="dk-library-steam__status-bar">
+          <p className="dk-library-steam__status-text">
             {status.lastScannedAt
               ? `Last scanned ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
               : `${status.gameCount} games in library`}
           </p>
-          <div className="flex items-center gap-3">
+          <div className="dk-library-steam__actions">
             <button
               onClick={() => {
                 if (!showUnmatched && !unmatchedLoaded) {
@@ -200,22 +201,22 @@ function SteamTabContent() {
                 setShowUnmatched(!showUnmatched)
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-medium transition-colors",
-                showUnmatched ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                "dk-library-steam__btn-filter",
+                showUnmatched && "dk-library-steam__btn-filter--active",
               )}
             >
-              <EyeOffIcon className="h-3.5 w-3.5" />
+              <EyeOffIcon className="dk-library-steam__icon--sm" />
               {showUnmatched ? "Hide unmatched" : "Show unmatched"}
             </button>
             <button
               onClick={() => scan.mutate()}
               disabled={scan.isPending}
               className={cn(
-                "inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors",
-                scan.isPending && "opacity-60 pointer-events-none",
+                "dk-library-steam__btn-ghost",
+                scan.isPending && "dk-library-steam__btn-ghost--disabled",
               )}
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", scan.isPending && "animate-spin")} />
+              <RefreshCw className={cn("dk-library-steam__icon--sm", scan.isPending && "dk-library-steam__icon--spinning")} />
               Rescan
             </button>
           </div>
@@ -224,7 +225,7 @@ function SteamTabContent() {
 
       <MediaGrid>
         {items.map((item) => (
-          <div key={item.id} className="relative">
+          <div key={item.id} className="dk-library-steam__media-item">
             <MediaCard
               id={item.id}
               mediaType={item.mediaType as "movie" | "show" | "game"}
@@ -236,24 +237,24 @@ function SteamTabContent() {
               isAdult={item.isAdult}
             />
             {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
-              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                <SteamIcon className="h-3 w-3 opacity-50 shrink-0" />
-                <span className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="dk-library-steam__playtime-row">
+                <SteamIcon className="dk-library-steam__playtime-icon" />
+                <span className="dk-library-steam__playtime-text">
                   {formatPlaytime(item.steamPlaytimeForever)}
                 </span>
                 {item.steamPlaytime2weeks != null && item.steamPlaytime2weeks > 0 && (
-                  <span className="text-[10px] text-primary/70 tabular-nums">
+                  <span className="dk-library-steam__playtime-recent">
                     +{formatPlaytime(item.steamPlaytime2weeks)} recent
                   </span>
                 )}
                 {item.steamRtimeLastPlayed != null && (() => {
                   const daysAgo = Math.floor((Date.now() / 1000 - item.steamRtimeLastPlayed) / 86400)
                   if (daysAgo <= 14) {
-                    return <span className="text-[10px] text-green-500 font-medium">Recently played</span>
+                    return <span className="dk-library-steam__recently-played">Recently played</span>
                   }
                   const ago = formatDaysAgo(item.steamRtimeLastPlayed)
                   if (ago) {
-                    return <span className="text-[10px] text-muted-foreground">Last played {ago}</span>
+                    return <span className="dk-library-steam__last-played">Last played {ago}</span>
                   }
                   return null
                 })()}
@@ -264,11 +265,11 @@ function SteamTabContent() {
       </MediaGrid>
 
       {showUnmatched && (
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold text-foreground mb-3">
+        <div className="dk-library-steam__unmatched-section">
+          <h3 className="dk-library-steam__unmatched-title">
             Unmatched Steam Games
             {unmatchedQuery.data?.pages[0] && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              <span className="dk-library-steam__unmatched-count">
                 ({unmatchedQuery.data.pages.reduce((sum, p) => sum + p.items.length, 0)} games not yet in Otix)
               </span>
             )}
@@ -276,7 +277,7 @@ function SteamTabContent() {
           {unmatchedQuery.isLoading ? (
             <SkeletonGrid />
           ) : unmatchedItems.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-8 text-center">All your Steam games have matches.</p>
+            <p className="dk-library-steam__unmatched-empty">All your Steam games have matches.</p>
           ) : (
             <UnmatchedGrid
               items={unmatchedItems}
@@ -286,30 +287,30 @@ function SteamTabContent() {
             />
           )}
           {unmatchedQuery.isFetchingNextPage && (
-            <div className="flex justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <div className="dk-library-steam__more-wrap--sm">
+              <div className="dk-library-steam__spinner--sm" />
             </div>
           )}
         </div>
       )}
 
       {scan.data && (
-        <p className="mt-2 text-xs text-muted-foreground text-center">
+        <p className="dk-library-steam__result-centered">
           Found {scan.data.matchedInOtix} matches out of {scan.data.totalInSteam} Steam games.
         </p>
       )}
       {scan.error && (
-        <p className="mt-2 text-xs text-destructive text-center">
+        <p className="dk-library-steam__error-centered">
           Scan failed. Please try again.
         </p>
       )}
 
-      <div ref={loadMoreRef} className="flex justify-center py-8">
+      <div ref={loadMoreRef} className="dk-library-steam__more-wrap">
         {isFetchingNextPage && (
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="dk-library-steam__spinner" />
         )}
         {!hasNextPage && items.length > 0 && (
-          <p className="text-xs text-muted-foreground">End of list</p>
+          <p className="dk-library-steam__end-text">End of list</p>
         )}
       </div>
     </>
@@ -329,21 +330,21 @@ function SteamDashboardSection() {
   if (isLoading || items.length === 0) return null
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="dk-library-steam__section">
+      <div className="dk-library-steam__section-header">
+        <h2 className="dk-library-steam__section-title">
           Steam
         </h2>
         <button
           onClick={() => navigate({ to: "/library/$tab", params: { tab: "steam" } })}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="dk-library-steam__section-link"
         >
           View all
         </button>
       </div>
       <MediaGrid>
         {items.map((item) => (
-          <div key={item.id} className="relative">
+          <div key={item.id} className="dk-library-steam__media-item">
             <MediaCard
               id={item.id}
               mediaType={item.mediaType as "movie" | "show" | "game"}
@@ -355,8 +356,8 @@ function SteamDashboardSection() {
               isAdult={item.isAdult}
             />
             {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
-              <div className="mt-1.5">
-                <span className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="dk-library-steam__dashboard-playtime">
+                <span className="dk-library-steam__playtime-text">
                   {formatPlaytime(item.steamPlaytimeForever)}
                 </span>
               </div>
@@ -373,7 +374,7 @@ function SteamDashboardSection() {
 export const steamPlatform: PlatformDefinition = {
   id: "steam",
   label: "Steam",
-  icon: <SteamIcon className="h-4 w-4" />,
+  icon: <SteamIcon className="dk-library-steam__icon" />,
   requiresConnection: (user) => !!user?.steamId,
   EmptyState: (props) => <SteamEmptyState {...props} />,
   DashboardSection: SteamDashboardSection,

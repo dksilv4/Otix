@@ -1,0 +1,28 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-image {
+  @apply relative overflow-hidden;
+}
+
+.dk-image__fallback {
+  @apply flex items-center justify-center text-xs;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.dk-image__img {
+  @apply h-full w-full object-cover;
+  transition: opacity var(--dk-duration-normal, 300ms) ease;
+}
+
+.dk-image__img--loading {
+  @apply opacity-0;
+}
+
+.dk-image__img--loaded {
+  @apply opacity-100;
+}
+
+.dk-image__skeleton {
+  @apply absolute inset-0;
+}

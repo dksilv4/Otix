@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './auth-page.scss'
 import { useState, useCallback, useRef, useEffect, type FormEvent } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, useNavigate, useRouter, useSearch, useLocation } from '@tanstack/react-router'
@@ -11,6 +13,7 @@ import { PasswordStrengthBar } from '../atoms/password-strength-bar'
 import { Logo } from '@ui/atoms/logo'
 import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { cn } from '@/lib/utils'
+import { openExternal } from '@/lib/open-external'
 
 type FormMode = 'login' | 'register'
 
@@ -81,15 +84,6 @@ function validateRegisterFields(fields: RegisterFields): { errors: FieldErrors; 
   }
   return { errors, valid: Object.keys(errors).length === 0 }
 }
-
-const inputClasses = cn(
-  'flex min-h-[52px] w-full rounded-xl px-5 text-base transition-all duration-200',
-  'bg-[var(--dk-surface-glass)]',
-  'placeholder:text-white/30',
-  'focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)]',
-  'hover:bg-[var(--dk-surface-glass-hover)]',
-  'shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]',
-)
 
 const tabSpring = { type: 'spring' as const, stiffness: 500, damping: 30 }
 
@@ -225,8 +219,9 @@ export function AuthPage() {
   async function handleSteamLogin() {
     setSteamLoading(true)
     try {
-      const { data } = await apiClient.post('/auth/steam/initiate')
-      window.location.href = data.authUrl
+      const isDesktop = !!(window as any).desktopAPI
+      const { data } = await apiClient.post('/auth/steam/initiate', isDesktop ? { source: 'desktop' } : undefined)
+      openExternal(data.authUrl)
     } catch {
       setSteamLoading(false)
     }
@@ -237,18 +232,18 @@ export function AuthPage() {
   const canGoBack = typeof window !== 'undefined' && window.history.length > 1
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 auth-aurora-bg">
+    <div className="dk-auth-page__wrapper">
       <Helmet>
         <title>{isLogin ? 'Sign In - Otix' : 'Create Account - Otix'}</title>
         <meta name="description" content={isLogin ? 'Sign in to Otix to continue your journey.' : 'Create an account on Otix to track movies, shows, games, and music.'} />
         <meta name="robots" content="noindex" />
       </Helmet>
       {canGoBack && (
-        <div className="fixed top-4 left-4 z-[9999] flex items-center rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] backdrop-blur-lg shadow-[var(--dk-shadow-glass)] px-2 py-1.5">
+        <div className="dk-auth-page__back">
           <button
             type="button"
             onClick={() => router.history.back()}
-            className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            className="dk-auth-page__back-btn"
             aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -257,15 +252,10 @@ export function AuthPage() {
       )}
 
       <div
-        className={cn(
-          'relative z-10 w-full max-w-[440px] flex flex-col items-center',
-          'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-          'bg-[var(--dk-surface-glass)] backdrop-blur-2xl',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]',
-        )}
+        className="dk-auth-page__card"
         style={{ animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
-        <div className="mb-2">
+        <div className="dk-auth-page__logo">
           <Logo className="h-20 drop-shadow-[0_0_24px_rgba(255,255,255,0.15)]" />
         </div>
 
@@ -280,13 +270,13 @@ export function AuthPage() {
 
         {/* 2FA Challenge */}
         {twoFactorChallenge && (
-          <form onSubmit={handleVerifyTwoFactor} className="w-full space-y-4">
-            <div className="flex items-center justify-center gap-3 py-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--dk-surface-glass)]">
+          <form onSubmit={handleVerifyTwoFactor} className="dk-auth-page__totp-form">
+            <div className="dk-auth-page__totp-shield">
+              <div className="dk-auth-page__totp-shield-icon">
                 <Shield className="h-7 w-7 text-white/50" />
               </div>
             </div>
-            <p className="text-center text-sm text-white/40">
+            <p className="dk-auth-page__totp-desc">
               Enter the 6-digit code from your authenticator app.
             </p>
 
@@ -294,7 +284,7 @@ export function AuthPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-red-400/20 bg-red-500/8 px-4 py-3 text-sm text-red-300 text-center"
+                className="dk-auth-page__totp-error"
               >
                 {totpError}
               </motion.div>
@@ -309,22 +299,14 @@ export function AuthPage() {
               onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               autoFocus
-              className="w-full rounded-xl bg-[var(--dk-surface-glass)] px-4 py-5 text-center text-2xl font-mono tracking-[0.3em] placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)] transition-all duration-200 shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]"
+              className="dk-auth-page__totp-input"
             />
 
-            <div className="flex justify-center pt-2">
+            <div className="dk-auth-page__totp-submit">
               <button
                 type="submit"
                 disabled={totpCode.length !== 6 || totpSubmitting || showSuccess}
-                className={cn(
-                  'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
-                  'bg-white text-black',
-                  'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                  'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
-                  'active:scale-95',
-                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                  showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
-                )}
+                className={cn('dk-auth-page__submit-btn', showSuccess && 'dk-auth-page__submit-btn--success')}
                 aria-label="Verify code"
               >
                 {showSuccess ? (
@@ -344,7 +326,7 @@ export function AuthPage() {
                 setTotpCode('')
                 setTotpError('')
               }}
-              className="flex items-center justify-center gap-1.5 w-full py-2 text-sm text-white/30 hover:text-white/70 transition-colors"
+              className="dk-auth-page__totp-back-btn"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to sign in
@@ -355,9 +337,9 @@ export function AuthPage() {
         {/* Tabs — hidden during 2FA challenge */}
         {!twoFactorChallenge && (
         <>
-        <div className="relative flex mb-8 p-1 rounded-2xl bg-[var(--dk-surface-glass-hover)] w-full">
+        <div className="dk-auth-page__tabs">
           <motion.div
-            className="absolute top-1 bottom-1 rounded-xl bg-white/[0.10] shadow-[0_1px_3px_rgba(0,0,0,0.2)]"
+            className="dk-auth-page__tabs-slider"
             initial={false}
             animate={{ left: isLogin ? '0.25rem' : '50%', width: 'calc(50% - 0.25rem)' }}
             transition={tabSpring}
@@ -365,10 +347,7 @@ export function AuthPage() {
           <button
             type="button"
             onClick={() => switchMode('login')}
-            className={cn(
-              'relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200',
-              isLogin ? 'text-white/90' : 'text-white/35 hover:text-white/70',
-            )}
+            className={cn('dk-auth-page__tab', isLogin && 'dk-auth-page__tab--active')}
           >
             <LogIn className="h-4 w-4" />
             Sign In
@@ -376,10 +355,7 @@ export function AuthPage() {
           <button
             type="button"
             onClick={() => switchMode('register')}
-            className={cn(
-              'relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200',
-              !isLogin ? 'text-white/90' : 'text-white/35 hover:text-white/70',
-            )}
+            className={cn('dk-auth-page__tab', !isLogin && 'dk-auth-page__tab--active')}
           >
             <UserPlus className="h-4 w-4" />
             Create Account
@@ -395,7 +371,7 @@ export function AuthPage() {
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -8, height: 0 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="w-full mb-5 rounded-2xl border border-red-400/20 bg-red-500/8 px-4 py-3 text-sm text-red-300"
+              className="dk-auth-page__error"
             >
               {authError}
             </motion.div>
@@ -412,9 +388,9 @@ export function AuthPage() {
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               onSubmit={handleLogin}
-              className="w-full space-y-4"
+              className="dk-auth-page__form"
             >
-              <div className="space-y-1.5">
+              <div className="dk-auth-page__input-group">
                 <input
                   ref={firstInputRef}
                   id="identity"
@@ -430,10 +406,10 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.identity}
                   aria-describedby={fieldErrors.identity ? 'identity-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.identity && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
+                  className={cn('dk-auth-page__input', fieldErrors.identity && 'dk-auth-page__input--error')}
                 />
                 {fieldErrors.identity && (
-                  <p id="identity-error" role="alert" className="text-xs text-red-300">
+                  <p id="identity-error" role="alert" className="dk-auth-page__field-error">
                     {fieldErrors.identity}
                   </p>
                 )}
@@ -450,28 +426,20 @@ export function AuthPage() {
                 error={fieldErrors.password}
               />
 
-              <div className="flex justify-end">
+              <div className="dk-auth-page__forgot-wrapper">
                 <Link
                   to="/auth/forgot-password"
-                  className="text-xs text-white/30 hover:text-white/70 transition-colors"
+                  className="dk-auth-page__forgot-link"
                 >
                   Forgot password?
                 </Link>
               </div>
 
-              <div className="flex justify-center pt-2">
+              <div className="dk-auth-page__submit-wrapper">
                 <button
                   type="submit"
                   disabled={isSubmitting || showSuccess}
-                  className={cn(
-                    'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
-                    'bg-white text-black',
-                    'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                    'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
-                    'active:scale-95',
-                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                    showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
-                  )}
+                  className={cn('dk-auth-page__submit-btn', showSuccess && 'dk-auth-page__submit-btn--success')}
                   aria-label={isLogin ? 'Sign in' : 'Create account'}
                 >
                   {showSuccess ? (
@@ -492,9 +460,9 @@ export function AuthPage() {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               onSubmit={handleRegister}
-              className="w-full space-y-4"
+              className="dk-auth-page__form"
             >
-              <div className="space-y-1.5">
+              <div className="dk-auth-page__input-group">
                 <input
                   ref={firstInputRef}
                   id="reg-email"
@@ -507,16 +475,16 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.email}
                   aria-describedby={fieldErrors.email ? 'email-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.email && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
+                  className={cn('dk-auth-page__input', fieldErrors.email && 'dk-auth-page__input--error')}
                 />
                 {fieldErrors.email && (
-                  <p id="email-error" role="alert" className="text-xs text-red-300">
+                  <p id="email-error" role="alert" className="dk-auth-page__field-error">
                     {fieldErrors.email}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="dk-auth-page__input-group">
                 <input
                   id="reg-username"
                   name="username"
@@ -528,16 +496,16 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.username}
                   aria-describedby={fieldErrors.username ? 'username-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.username && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
+                  className={cn('dk-auth-page__input', fieldErrors.username && 'dk-auth-page__input--error')}
                 />
                 {fieldErrors.username && (
-                  <p id="username-error" role="alert" className="text-xs text-red-300">
+                  <p id="username-error" role="alert" className="dk-auth-page__field-error">
                     {fieldErrors.username}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="dk-auth-page__input-group">
                 <input
                   id="reg-dob"
                   name="dateOfBirth"
@@ -548,10 +516,10 @@ export function AuthPage() {
                   required
                   aria-invalid={!!fieldErrors.dateOfBirth}
                   aria-describedby={fieldErrors.dateOfBirth ? 'dob-error' : undefined}
-                  className={cn(inputClasses, fieldErrors.dateOfBirth && '!ring-1 !ring-red-400/50 !focus:ring-red-400/50')}
+                  className={cn('dk-auth-page__input', fieldErrors.dateOfBirth && 'dk-auth-page__input--error')}
                 />
                 {fieldErrors.dateOfBirth && (
-                  <p id="dob-error" role="alert" className="text-xs text-red-300">
+                  <p id="dob-error" role="alert" className="dk-auth-page__field-error">
                     {fieldErrors.dateOfBirth}
                   </p>
                 )}
@@ -580,19 +548,11 @@ export function AuthPage() {
                 error={fieldErrors.confirmPassword}
               />
 
-              <div className="flex justify-center pt-2">
+              <div className="dk-auth-page__submit-wrapper">
                 <button
                   type="submit"
                   disabled={isSubmitting || showSuccess}
-                  className={cn(
-                    'flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300',
-                    'bg-white text-black',
-                    'shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                    'hover:bg-[#e8e0ff] hover:shadow-[0_4px_28px_rgba(96,165,250,0.35)] hover:scale-105',
-                    'active:scale-95',
-                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white disabled:hover:shadow-[0_4px_20px_rgba(139,92,246,0.25)]',
-                    showSuccess && '!bg-green-400 !shadow-[0_0_24px_rgba(34,197,94,0.5)]',
-                  )}
+                  className={cn('dk-auth-page__submit-btn', showSuccess && 'dk-auth-page__submit-btn--success')}
                   aria-label="Create account"
                 >
                   {showSuccess ? (
@@ -608,18 +568,18 @@ export function AuthPage() {
           )}
         </AnimatePresence>
 
-        <div className="mt-6 pt-5 border-t border-white/[0.08] w-full">
-          <p className="text-center text-xs text-white/20 mb-4 tracking-wider uppercase">or continue with</p>
-          <div className="flex justify-center">
+        <div className="dk-auth-page__social">
+          <p className="dk-auth-page__social-label">or continue with</p>
+          <div className="dk-auth-page__social-btn-wrapper">
             <button
               type="button"
               onClick={handleSteamLogin}
               disabled={steamLoading || isSubmitting}
-              className="relative flex h-14 w-14 items-center justify-center rounded-full overflow-hidden text-white/80 hover:text-white hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 group"
+              className="dk-auth-page__social-btn"
               aria-label="Continue with Steam"
               style={{ background: 'linear-gradient(135deg, #1b2838 0%, #1d3f5f 100%)' }}
             >
-              <div className="absolute inset-0 bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="dk-auth-page__social-btn-overlay" />
               {steamLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin relative z-10" />
               ) : (

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Celery application with queue routing and beat schedule.
 
 Queue design — per-provider isolation (prevents starvation), 4 purpose-based workers:
@@ -224,6 +225,11 @@ _beat_schedule: dict = {
         "task": "maintenance.dedupe_people",
         "schedule": crontab(hour="4", minute="13"),
     },
+    # Music poster_url backfill (every 30 min until coverage is good)
+    "backfill-music-poster-url": {
+        "task": "maintenance.backfill_music_poster_url",
+        "schedule": crontab(minute="2,32"),
+    },
 }
 
 # TMDB catalog seeding — disabled in local dev
@@ -390,3 +396,4 @@ import otix.tasks.sync.lrclib  # noqa: F401 — sync.lrclib.*
 import otix.tasks.sync.youtube  # noqa: F401 — sync.youtube.*
 import otix.tasks.sync.media  # noqa: F401 — sync.media.*
 import otix.tasks.sync.search  # noqa: F401 — search.*
+import otix.tasks.maintenance.music_backfill  # noqa: F401 — maintenance.backfill_music_poster_url

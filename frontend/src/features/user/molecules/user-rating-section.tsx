@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './user-rating-section.scss'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
@@ -17,9 +19,9 @@ export function UserRatingSection({ username }: UserRatingSectionProps) {
 
   if (!currentUser) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="dk-user-rating-section__sign-in">
         <Star className="h-3.5 w-3.5 text-primary" />
-        <Link to="/auth/login" search={{ redirect: location.href }} className="text-primary hover:underline">Sign in</Link> to rate
+        <Link to="/auth/login" search={{ redirect: location.href }} className="dk-user-rating-section__link">Sign in</Link> to rate
       </span>
     )
   }

@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -77,6 +78,27 @@ class ReviewService:
                 Review.media_item_id == media_item_id,
             )
         )
+
+    async def update_review(
+        self,
+        user_id: str,
+        media_item_id: str,
+        update_data: dict,
+    ) -> Review | None:
+        """Update review fields from a dict. Respects cooldown. Returns the updated review or None."""
+        existing = await self.get_my_review(user_id, media_item_id)
+        if existing is None:
+            return None
+
+        now = datetime.now(timezone.utc)
+        in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
+
+        for field, value in update_data.items():
+            if in_cooldown:
+                setattr(existing, field, value)
+
+        await self.session.flush()
+        return existing
 
     async def get_reviews_for_media(
         self,

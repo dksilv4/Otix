@@ -1,0 +1,29 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-tab-list {
+  @apply inline-flex gap-1 rounded-2xl p-1;
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.dk-tab {
+  @apply rounded-xl px-4 py-2 text-sm font-medium;
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+}
+
+.dk-tab--active {
+  background-color: var(--dk-surface-base);
+  color: var(--foreground);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+.dk-tab--inactive {
+  color: var(--muted-foreground);
+  &:hover {
+    color: var(--foreground);
+    background-color: var(--dk-surface-ghost-hover);
+  }
+}
+
+.dk-tab-panel {
+  @apply pt-4;
+}

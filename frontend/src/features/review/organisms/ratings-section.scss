@@ -1,0 +1,143 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Ratings Section ──────────────────────────────────── */
+
+.dk-review-ratings__inner {
+  @apply space-y-4;
+}
+
+/* ── Otix Community Rating Card ──────────────────────── */
+
+.dk-review-ratings__card {
+  @apply relative overflow-hidden rounded-3xl;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+.dk-review-ratings__glow {
+  @apply absolute inset-0 opacity-40 pointer-events-none;
+  background-image: radial-gradient(circle at 30% 50%, var(--tw-gradient-from), transparent 70%);
+
+  &--positive { @apply from-emerald-500/15; }
+  &--medium   { @apply from-sky-500/15; }
+  &--low      { @apply from-amber-500/15; }
+  &--critical { @apply from-red-500/15; }
+  &--muted    { @apply from-primary/10; }
+}
+
+.dk-review-ratings__watermark {
+  @apply absolute -inset-[30%] pointer-events-none select-none flex items-center justify-center;
+  opacity: 0.05;
+}
+
+.dk-review-ratings__body {
+  @apply relative p-6 sm:p-8;
+}
+
+.dk-review-ratings__row {
+  @apply flex flex-col items-center gap-5 sm:flex-row sm:gap-8;
+}
+
+/* ── Score block ──────────────────────────────────────── */
+
+.dk-review-ratings__score-section {
+  @apply flex flex-col items-center gap-2 shrink-0;
+}
+
+.dk-review-ratings__score {
+  @apply text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight;
+  font-family: var(--dk-font-mono);
+
+  &--positive { @apply text-emerald-400; }
+  &--medium   { @apply text-sky-400; }
+  &--low      { @apply text-amber-400; }
+  &--critical { @apply text-red-400; }
+  &--muted    { @apply text-muted-foreground/30; }
+}
+
+.dk-review-ratings__score-label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-widest;
+}
+
+/* ── Stars ────────────────────────────────────────────── */
+
+.dk-review-ratings__meta {
+  @apply flex flex-col items-center sm:items-start gap-3 min-w-0;
+}
+
+.dk-review-ratings__stars {
+  @apply flex items-center gap-0.5;
+}
+
+.dk-review-ratings__star {
+  @apply relative inline-block;
+}
+
+.dk-review-ratings__meta-text {
+  @apply flex flex-col items-center sm:items-start gap-1;
+}
+
+.dk-review-ratings__label {
+  @apply text-sm font-semibold;
+}
+
+.dk-review-ratings__count {
+  @apply text-xs text-muted-foreground;
+}
+
+/* ── External Ratings ─────────────────────────────────── */
+
+.dk-review-ratings__externals {
+  @apply flex flex-wrap gap-2;
+}
+
+.dk-review-ratings__badge {
+  @apply inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold;
+
+  /* Provider-specific background + text color combos */
+  &--imdb             { @apply bg-[#f5c518] text-black; }
+  &--metacritic,
+  &--steam-metacritic { @apply bg-[#1c1c1c] text-white; }
+  &--rotten-tomatoes  { @apply bg-[#fa320a] text-white; }
+  &--letterboxd       { @apply bg-[#00e054] text-black; }
+  &--plex             { @apply bg-[#e5a00d] text-black; }
+  &--steam-user       { @apply bg-[#1a9fff] text-white; }
+  &--tmdb             { @apply bg-[#01b4e4] text-white; }
+  &--igdb-critic      { @apply bg-[#c8943e] text-white; }
+  &--igdb-user        { @apply bg-[#5450d5] text-white; }
+  &--spotify          { @apply bg-[#1DB954] text-black; }
+  &--lastfm           { @apply bg-[#d51007] text-white; }
+  &--musicbrainz      { @apply bg-[#ba478f] text-white; }
+  &--default          { @apply bg-muted text-muted-foreground; }
+}
+
+.dk-review-ratings__badge-label {
+  @apply text-[11px] font-semibold uppercase tracking-wider opacity-80;
+}
+
+.dk-review-ratings__badge-score {
+  @apply tabular-nums text-base;
+
+  &--imdb             { @apply text-black; }
+  &--metacritic,
+  &--steam-metacritic { @apply text-[#66cc33]; }
+  &--rotten-tomatoes  { @apply text-white; }
+  &--letterboxd       { @apply text-black; }
+  &--plex             { @apply text-black; }
+  &--steam-user       { @apply text-white; }
+  &--tmdb             { @apply text-white; }
+  &--igdb-critic      { @apply text-white; }
+  &--igdb-user        { @apply text-white; }
+  &--spotify          { @apply text-black; }
+  &--lastfm           { @apply text-white; }
+  &--musicbrainz      { @apply text-white; }
+  &--default          { @apply text-foreground; }
+}
+
+.dk-review-ratings__badge-logo {
+  @apply h-4 w-auto max-w-[4rem] object-contain opacity-90 shrink-0;
+
+  &--invert {
+    @apply invert brightness-0;
+  }
+}

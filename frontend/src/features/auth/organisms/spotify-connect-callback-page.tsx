@@ -1,8 +1,10 @@
+// TODO: Review this file
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { apiClient } from '@/lib/api-client'
+import './spotify-connect-callback-page.scss'
 
 function extractMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -38,15 +40,8 @@ export function SpotifyConnectCallbackPage() {
         if (!code || !state) {
           throw new Error('Spotify did not return the expected authorization details. Please try linking again.')
         }
-        await apiClient.post('/auth/integrations/spotify/callback', { code, state })
+        await apiClient.post('/auth/oauth/spotify/callback', { code, state })
         setSuccess(true)
-        setTimeout(() => {
-          navigate({
-            to: '/settings',
-            search: { section: 'integrations' } as never,
-            replace: true,
-          })
-        }, 1200)
       } catch (err) {
         setError(extractMessage(err))
       }
@@ -54,44 +49,52 @@ export function SpotifyConnectCallbackPage() {
   }, [navigate, location.search])
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth-spotify-connect-callback">
       <Helmet>
         <title>Spotify Link - Otix</title>
       </Helmet>
 
-      <div
-        className="relative z-10 w-full max-w-[440px] flex flex-col items-center px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem] bg-[var(--dk-surface-overlay)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)]"
+      <div className="dk-auth-spotify-connect-callback__card"
         style={{ animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {success ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10 mb-4">
+            <div className="dk-auth-spotify-connect-callback__icon-ring dk-auth-spotify-connect-callback__icon-ring--success">
               <Check className="h-7 w-7 text-green-500" />
             </div>
-            <h2 className="text-lg font-semibold">Spotify Linked</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Your Spotify account has been linked. Redirecting...</p>
+            <h2 className="dk-auth-spotify-connect-callback__title">Spotify Linked</h2>
+            <p className="dk-auth-spotify-connect-callback__description">Your Spotify account has been linked successfully.</p>
+            <p className="dk-auth-spotify-connect-callback__note">Close this tab and return to Otix to see your music.</p>
+            <div className="dk-auth-spotify-connect-callback__actions">
+              <button
+                onClick={() => navigate({ to: '/settings', search: { section: 'integrations' } as never, replace: true })}
+                className="dk-auth-spotify-connect-callback__button dk-auth-spotify-connect-callback__button--ghost"
+              >
+                Go to Settings
+              </button>
+            </div>
           </>
         ) : error ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 mb-4">
+            <div className="dk-auth-spotify-connect-callback__icon-ring dk-auth-spotify-connect-callback__icon-ring--error">
               <XCircle className="h-7 w-7 text-red-500" />
             </div>
-            <h2 className="text-lg font-semibold">Link Failed</h2>
-            <p className="mt-2 text-sm text-muted-foreground text-center">{error}</p>
+            <h2 className="dk-auth-spotify-connect-callback__title">Link Failed</h2>
+            <p className="dk-auth-spotify-connect-callback__description dk-auth-spotify-connect-callback__description--center">{error}</p>
             <button
               onClick={() => navigate({ to: '/settings', search: { section: 'integrations' } as never, replace: true })}
-              className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all"
+              className="dk-auth-spotify-connect-callback__button dk-auth-spotify-connect-callback__button--primary"
             >
               Back to Settings
             </button>
           </>
         ) : (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1db954]/10 mb-4">
+            <div className="dk-auth-spotify-connect-callback__icon-ring dk-auth-spotify-connect-callback__icon-ring--loading">
               <Loader2 className="h-7 w-7 text-[#1db954] animate-spin" />
             </div>
-            <h2 className="text-lg font-semibold">Linking Spotify Account</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Verifying with Spotify...</p>
+            <h2 className="dk-auth-spotify-connect-callback__title">Linking Spotify Account</h2>
+            <p className="dk-auth-spotify-connect-callback__description">Verifying with Spotify...</p>
           </>
         )}
       </div>

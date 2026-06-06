@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -6,6 +7,7 @@ import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { cn } from '@/lib/utils'
 import { Check, Film, Tv, Gamepad2, Music, Loader2 } from 'lucide-react'
+import './preferences.scss'
 
 const MEDIA_TYPES = [
   { value: 'movie', label: 'Movies', Icon: Film, color: 'text-amber-400' },
@@ -100,19 +102,19 @@ export function PreferencesSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dk-settings-preferences__body">
       <div>
-        <h2 className="text-lg font-semibold">Content Preferences</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="dk-settings-preferences__title">Content Preferences</h2>
+        <p className="dk-settings-preferences__desc">
           Manage your media preferences to personalize your home page.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)] space-y-6">
+      <div className="dk-settings-preferences__card">
         {/* Media Types */}
         <div>
-          <p className="text-sm font-medium mb-3">Preferred Media Types</p>
-          <div className="grid grid-cols-2 gap-2">
+          <p className="dk-settings-preferences__section-label">Preferred Media Types</p>
+          <div className="dk-settings-preferences__media-grid">
             {MEDIA_TYPES.map(({ value, label, Icon, color }) => {
               const isSelected = selectedTypes.includes(value)
               return (
@@ -123,10 +125,8 @@ export function PreferencesSection() {
                     prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value],
                   )}
                   className={cn(
-                    'flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-all duration-200',
-                    isSelected
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-[var(--dk-border)] bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                    'dk-settings-preferences__media-btn',
+                    isSelected && 'dk-settings-preferences__media-btn--selected',
                   )}
                 >
                   <Icon className={cn('h-4 w-4', color)} />
@@ -140,15 +140,15 @@ export function PreferencesSection() {
 
         {/* Genres */}
         <div>
-          <p className="text-sm font-medium mb-3">Favorite Genres</p>
+          <p className="dk-settings-preferences__section-label">Favorite Genres</p>
           {genresLoading ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="dk-settings-preferences__genre-list">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-8 w-20 rounded-full bg-[var(--dk-surface-glass)] animate-pulse" />
+                <div key={i} className="dk-settings-preferences__genre-skeleton" />
               ))}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+            <div className="dk-settings-preferences__genre-list">
               {allGenres.map(g => {
                 const isSelected = selectedGenres.includes(g.slug)
                 return (
@@ -159,10 +159,8 @@ export function PreferencesSection() {
                       prev.includes(g.slug) ? prev.filter(gg => gg !== g.slug) : [...prev, g.slug],
                     )}
                     className={cn(
-                      'rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200',
-                      isSelected
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                      'dk-settings-preferences__genre-pill',
+                      isSelected && 'dk-settings-preferences__genre-pill--selected',
                     )}
                   >
                     {g.name}
@@ -175,8 +173,8 @@ export function PreferencesSection() {
 
         {/* Languages */}
         <div>
-          <p className="text-sm font-medium mb-3">Language Preferences</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          <p className="dk-settings-preferences__section-label">Language Preferences</p>
+          <div className="dk-settings-preferences__lang-grid">
             {LANGUAGES.map(({ code, label, flag }) => {
               const isSelected = selectedLangs.includes(code)
               return (
@@ -187,10 +185,8 @@ export function PreferencesSection() {
                     prev.includes(code) ? prev.filter(l => l !== code) : [...prev, code],
                   )}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200',
-                    isSelected
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground',
+                    'dk-settings-preferences__lang-btn',
+                    isSelected && 'dk-settings-preferences__lang-btn--selected',
                   )}
                 >
                   <span className="text-base">{flag}</span>
@@ -202,13 +198,13 @@ export function PreferencesSection() {
         </div>
 
         {/* Save */}
-        <div className="flex items-center gap-3 pt-2">
+        <div className="dk-settings-preferences__save-row">
           <DkButton onClick={handleSave} disabled={isSaving || selectedTypes.length === 0}>
             {isSaving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
             Save Preferences
           </DkButton>
           {saved && (
-            <span className="text-sm text-emerald-400 flex items-center gap-1">
+            <span className="dk-settings-preferences__saved-indicator">
               <Check className="h-3.5 w-3.5" />
               Saved
             </span>
@@ -217,11 +213,11 @@ export function PreferencesSection() {
       </div>
 
       {isAdult && (
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]">
-          <div className="flex items-center justify-between">
+        <div className="dk-settings-preferences__card">
+          <div className="dk-settings-preferences__row">
             <div>
-              <p className="text-sm font-medium">Show 18+ Content</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="dk-settings-preferences__row-label">Show 18+ Content</p>
+              <p className="dk-settings-preferences__row-desc">
                 Include adult-rated media in search results and recommendations.
               </p>
             </div>

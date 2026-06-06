@@ -1,3 +1,5 @@
+// TODO: Review this file
+import "./playlist-detail.scss"
 import { PlayIcon, MusicIcon } from "lucide-react"
 import type { SpotifyPlaylistDetail, SpotifyPlaylistTrack } from "../types"
 import { PlaylistTrackRow } from "../molecules/playlist-track-row"
@@ -31,30 +33,30 @@ export function PlaylistDetail({ playlist, onSubscribe, onUnsubscribe, onSync, i
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dk-spotify__detail">
       {/* Header */}
-      <div className="flex gap-6 items-end">
+      <div className="dk-spotify__header">
         {image ? (
-          <img src={image} alt={playlist.name} className="h-48 w-48 rounded-xl object-cover shadow-lg" />
+          <img src={image} alt={playlist.name} className="dk-spotify__cover" />
         ) : (
-          <div className="h-48 w-48 rounded-xl bg-muted flex items-center justify-center">
+          <div className="dk-spotify__cover dk-spotify__cover--placeholder">
             <MusicIcon className="h-16 w-16 text-muted-foreground" />
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Playlist</p>
-          <h1 className="text-3xl font-bold truncate mt-1">{playlist.name}</h1>
+        <div className="dk-spotify__info">
+          <p className="dk-spotify__label">Playlist</p>
+          <h1 className="dk-spotify__title">{playlist.name}</h1>
           {playlist.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{playlist.description}</p>
+            <p className="dk-spotify__desc">{playlist.description}</p>
           )}
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="dk-spotify__meta">
             {trackCount} track{trackCount !== 1 ? "s" : ""}
             {playlist.owner?.display_name ? ` · ${playlist.owner.display_name}` : ""}
           </p>
-          <div className="flex gap-2 mt-4">
+          <div className="dk-spotify__actions">
             <button
               onClick={handlePlayAll}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="dk-spotify__play-btn"
             >
               <PlayIcon className="h-4 w-4" />
               Play all
@@ -72,7 +74,7 @@ export function PlaylistDetail({ playlist, onSubscribe, onUnsubscribe, onSync, i
       </div>
 
       {/* Track list */}
-      <div className="space-y-1">
+      <div className="dk-spotify__tracklist">
         {tracks.map((track, i) => (
           <PlaylistTrackRow
             key={`${track.track?.id}-${i}`}

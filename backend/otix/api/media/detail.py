@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import asyncio
@@ -7,26 +8,22 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.exceptions import BusyLoadingError
 from redis.exceptions import ConnectionError as RedisConnectionError
-from sqlalchemy import Integer as SAInteger
-from sqlalchemy import func as safunc
-from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db, get_optional_user, resolve_country_code
-from otix.api.schemas.interaction import UserInteractionState
-from otix.api.schemas.media import (
+from otix.api._utils import get_db, get_optional_user, resolve_country_code
+from otix.schemas.interaction import UserInteractionState
+from otix.schemas.media import (
     MediaItemDetail,
     MediaWatchProviderOut,
     WatchProviderOut,
 )
-from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import ExternalID, MediaItem, UserPlexItem, UserSteamGame
 from otix.domain.user import User
-from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.services.admin_edit_service import AdminEditService
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
+from otix.services.plex_sync_service import get_user_plex_item
+from otix.services.steam_library_service import get_steam_playtime
 
 logger = structlog.get_logger()
 
@@ -37,45 +34,6 @@ _MEDIA_DETAIL_TTL = 30
 
 def _media_cache_key(media_id: str, country_code: str) -> str:
     return f"media:detail:{media_id}:{country_code}"
-
-
-async def _increment_view_count(media_id: str) -> None:
-    """Fire-and-forget view count increment using a fresh session."""
-    try:
-        async with async_session() as session:
-            await session.execute(
-                update(MediaItem).where(MediaItem.id == media_id).values(view_count=MediaItem.view_count + 1)
-            )
-            await session.commit()
-    except Exception:
-        pass
-
-
-async def _fetch_steam_playtime(db: AsyncSession, user_id: str, media_id: str) -> dict | None:
-    """Fetch Steam playtime in a single query (joins ExternalID + UserSteamGame)."""
-    steam_game = await db.scalar(
-        select(UserSteamGame).where(
-            UserSteamGame.user_id == user_id,
-            UserSteamGame.steam_app_id
-            == safunc.cast(
-                select(ExternalID.external_id)
-                .where(
-                    ExternalID.provider == "steam",
-                    ExternalID.entity_type == "media_item",
-                    ExternalID.entity_id == media_id,
-                )
-                .scalar_subquery(),
-                SAInteger,
-            ),
-        )
-    )
-    if steam_game is None:
-        return None
-    return {
-        "playtime_forever": steam_game.playtime_forever,
-        "playtime_2weeks": steam_game.playtime_2weeks,
-        "rtime_last_played": steam_game.rtime_last_played,
-    }
 
 
 async def _patch_user_detail(
@@ -90,31 +48,13 @@ async def _patch_user_detail(
     # Launch all independent user-specific lookups concurrently
     interactions_future = asyncio.ensure_future(interaction_service.get_user_interactions(current_user.id, media_id))
     youtube_future = asyncio.ensure_future(
-        db.scalar(
-            select(UserMediaInteraction)
-            .where(
-                UserMediaInteraction.user_id == current_user.id,
-                UserMediaInteraction.media_item_id == media_id,
-                UserMediaInteraction.interaction_type == "listened",
-                UserMediaInteraction.extra_data["source"].as_string() == "youtube_liked_videos",
-            )
-            .limit(1)
-        )
+        interaction_service.get_youtube_liked_interaction(current_user.id, media_id)
     )
     steam_future: asyncio.Task | None = None
     if result.game:
-        steam_future = asyncio.ensure_future(_fetch_steam_playtime(db, current_user.id, media_id))
+        steam_future = asyncio.ensure_future(get_steam_playtime(db, current_user.id, media_id))
     overrides_future = asyncio.ensure_future(AdminEditService(db).get_image_overrides_for_media(media_id))
-    plex_future = asyncio.ensure_future(
-        db.scalar(
-            select(UserPlexItem)
-            .where(
-                UserPlexItem.user_id == current_user.id,
-                UserPlexItem.media_item_id == media_id,
-            )
-            .limit(1)
-        )
-    )
+    plex_future = asyncio.ensure_future(get_user_plex_item(db, current_user.id, media_id))
 
     futures: list[asyncio.Task] = [interactions_future, youtube_future, overrides_future, plex_future]
     if steam_future:
@@ -174,7 +114,7 @@ async def _patch_user_detail(
                 ),
                 country_code="",
                 offering_type="personal",
-                url=None,
+                url=f"/api/integrations/plex/stream/{plex_item.rating_key}",
                 display_priority=-1,
             )
         )
@@ -201,13 +141,13 @@ async def get_media_item(
         result = MediaItemDetail.model_validate(json.loads(cached))
         # Safety net: filter stale credits whose person was deleted after caching
         result.credits = [c for c in result.credits if c.person is not None]
-        asyncio.create_task(_increment_view_count(media_id))
+        asyncio.create_task(MediaService.increment_view_count(media_id))
         if current_user is not None:
             await _patch_user_detail(result, db, current_user, media_id)
         return result
 
     # Cold path: full DB load
-    asyncio.create_task(_increment_view_count(media_id))
+    asyncio.create_task(MediaService.increment_view_count(media_id))
 
     service = MediaService(db)
     item = await service.get_media_item(media_id)

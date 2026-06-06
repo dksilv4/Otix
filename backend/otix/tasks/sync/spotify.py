@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Spotify provider tasks: user library sync, recently played, album seeding.
 
 Spotify is user-only for catalog purposes. Album seeding from Spotify creates
@@ -252,14 +253,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
         await _create_spotify_artist_credits(session, item.id, artists_data)
 
         # Store Spotify ID as ExternalID
-        session.add(
-            ExternalID(
-                provider="spotify",
-                external_id=spotify_id,
-                media_item_id=item.id,
-                media_type="music",
-            )
-        )
+        await eid_svc.upsert("spotify", spotify_id, "media_item", item.id)
 
         # Track ISRCs for downstream MB matching
         isrcs: list[str] = []
@@ -289,14 +283,7 @@ async def _sync_spotify_seed_album(spotify_id: str) -> dict | None:
 
         # Store barcode if available
         if upc:
-            session.add(
-                ExternalID(
-                    provider="barcode",
-                    external_id=upc,
-                    media_item_id=item.id,
-                    media_type="music",
-                )
-            )
+            await eid_svc.upsert("barcode", upc, "media_item", item.id)
 
         await session.commit()
 
@@ -344,7 +331,7 @@ async def _sync_spotify_user_library(user_id: str, task_id: str | None = None) -
         if user is None or user.spotify_id is None:
             return None
 
-        token = await get_user_access_token(user)
+        token = await get_user_access_token(user, session=session)
         if token is None:
             logger.warning("spotify library sync failed, no valid token", user_id=user_id)
             return None
@@ -378,7 +365,7 @@ async def _sync_spotify_recently_played(user_id: str, task_id: str | None = None
         if user is None or user.spotify_id is None:
             return None
 
-        token = await get_user_access_token(user)
+        token = await get_user_access_token(user, session=session)
         if token is None:
             logger.warning("spotify recently played sync failed, no valid token", user_id=user_id)
             return None
@@ -416,7 +403,7 @@ async def _sync_spotify_playlist(
         if user is None or user.spotify_id is None:
             return None
 
-        token = await get_user_access_token(user)
+        token = await get_user_access_token(user, session=session)
         if token is None:
             logger.warning("spotify playlist sync failed, no valid token", user_id=user_id, playlist_id=playlist_id)
             return None
@@ -510,7 +497,7 @@ async def _refresh_all_playlists() -> dict:
                 spotify_token_expires_at=row.spotify_token_expires_at,
             )
 
-            token = await get_user_access_token(user)
+            token = await get_user_access_token(user, session=session)
             if token is None:
                 skipped += 1
                 continue

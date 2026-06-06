@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
@@ -24,7 +25,7 @@ class UserMediaInteraction(Base, TimestampMixin):
 
     __table_args__ = (
         CheckConstraint(
-            "interaction_type IN ('rated', 'watched', 'liked', 'watchlisted', 'played', 'reviewed', 'started', 'listened')",
+            "interaction_type IN ('rated', 'watched', 'liked', 'watchlisted', 'played', 'reviewed', 'started', 'listened', 'owned')",
             name="ck_interaction_type",
         ),
     )

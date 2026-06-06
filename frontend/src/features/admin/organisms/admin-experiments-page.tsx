@@ -25,6 +25,7 @@ import {
   type MediaTypeSupport,
 } from '@/features/experiments/experiments-admin.types'
 import { cn } from '@/lib/utils'
+import './admin-experiments-page.scss'
 import { PipelineFlowDiagram } from '@/features/admin/molecules/pipeline-flow-diagram'
 
 const STATUS_ICON: Record<CriterionStatus, { icon: typeof CheckCircle; className: string }> = {
@@ -98,49 +99,49 @@ export function AdminExperimentsPage() {
   }, [])
 
   return (
-    <div className="mx-auto max-w-5xl pb-16">
+    <div className="dk-admin-exp-page">
       <Helmet>
         <title>Experiments - Admin - Otix</title>
       </Helmet>
 
-      <h1 className="mb-2 text-2xl font-bold tracking-[-0.02em]">Feature Maturity</h1>
-      <p className="mb-8 text-sm text-muted-foreground">
+      <h1 className="dk-admin-exp-page__heading">Feature Maturity</h1>
+      <p className="dk-admin-exp-page__description">
         Readiness checklists, cross-integration, media type coverage, and pipeline efficiency for every experiment.
       </p>
 
       {/* Summary bar */}
-      <div className="mb-8 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total</p>
-          <p className="text-xl font-bold tabular-nums">{experimentKeys.length}</p>
+      <div className="dk-admin-exp-page__summary">
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Total</p>
+          <p className="dk-admin-exp-page__stat-value">{experimentKeys.length}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Alpha</p>
-          <p className="text-xl font-bold tabular-nums text-red-400">{stats.alphaCount}</p>
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Alpha</p>
+          <p className="dk-admin-exp-page__stat-value dk-admin-exp-page__stat-value--alpha">{stats.alphaCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Beta</p>
-          <p className="text-xl font-bold tabular-nums text-amber-400">{stats.betaCount}</p>
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Beta</p>
+          <p className="dk-admin-exp-page__stat-value dk-admin-exp-page__stat-value--beta">{stats.betaCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Production</p>
-          <p className="text-xl font-bold tabular-nums text-green-400">{stats.prodCount}</p>
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Production</p>
+          <p className="dk-admin-exp-page__stat-value dk-admin-exp-page__stat-value--prod">{stats.prodCount}</p>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Readiness</p>
-          <p className="text-xl font-bold tabular-nums">{stats.overallPct}%</p>
-          <div className="mt-1 h-1 w-full rounded-full bg-muted overflow-hidden mx-auto">
-            <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${stats.overallPct}%` }} />
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Readiness</p>
+          <p className="dk-admin-exp-page__stat-value">{stats.overallPct}%</p>
+          <div className="dk-admin-exp-page__progress">
+            <div className="dk-admin-exp-page__progress-bar dk-admin-exp-page__progress-bar--blue" style={{ width: `${stats.overallPct}%` }} />
           </div>
         </div>
-        <div className="rounded-2xl bg-[var(--dk-surface-base)] p-3 shadow-[var(--dk-shadow-sm)] text-center">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pipelines</p>
-          <p className="text-xl font-bold tabular-nums">{stats.avgPipeline}%</p>
-          <div className="mt-1 h-1 w-full rounded-full bg-muted overflow-hidden mx-auto">
+        <div className="dk-admin-exp-page__stat-card">
+          <p className="dk-admin-exp-page__stat-label">Pipelines</p>
+          <p className="dk-admin-exp-page__stat-value">{stats.avgPipeline}%</p>
+          <div className="dk-admin-exp-page__progress">
             <div
               className={cn(
-                'h-full rounded-full transition-all',
-                stats.avgPipeline >= 80 ? 'bg-green-500' : stats.avgPipeline >= 50 ? 'bg-amber-500' : 'bg-red-400',
+                'dk-admin-exp-page__progress-bar',
+                stats.avgPipeline >= 80 ? 'dk-admin-exp-page__progress-bar--high' : stats.avgPipeline >= 50 ? 'dk-admin-exp-page__progress-bar--mid' : 'dk-admin-exp-page__progress-bar--low',
               )}
               style={{ width: `${stats.avgPipeline}%` }}
             />
@@ -149,17 +150,15 @@ export function AdminExperimentsPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="mb-6 flex gap-1 rounded-xl bg-[var(--dk-surface-base)] p-1 shadow-[var(--dk-shadow-sm)]">
+      <div className="dk-admin-exp-page__tabs">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              activeTab === tab.key
-                ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-sm)]'
-                : 'text-muted-foreground hover:text-foreground',
+              'dk-admin-exp-page__tab',
+              activeTab === tab.key && 'dk-admin-exp-page__tab--active',
             )}
           >
             {tab.label}
@@ -170,7 +169,7 @@ export function AdminExperimentsPage() {
       {/* Readiness Checklist */}
       {activeTab === 'readiness' && (
         <section>
-          <div className="space-y-3">
+          <div className="dk-admin-exp-page__section">
             {experimentKeys.map((key) => {
               const exp = EXPERIMENTS.find((e) => e.key === key)
               const meta = EXPERIMENTS_ADMIN[key]
@@ -185,70 +184,70 @@ export function AdminExperimentsPage() {
               return (
                 <div
                   key={key}
-                  className="rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)] overflow-hidden"
+                  className="dk-admin-exp-page__feature"
                 >
                   <button
                     type="button"
                     onClick={() => toggle(key)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
+                    className="dk-admin-exp-page__feature-header"
                   >
                     <ChevronDown
                       className={cn(
-                        'h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform',
-                        isOpen && 'rotate-180',
+                        'dk-admin-exp-page__feature-chevron',
+                        isOpen && 'dk-admin-exp-page__feature-chevron--open',
                       )}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold">{exp.name}</span>
+                    <div className="dk-admin-exp-page__feature-name">
+                      <div className="dk-admin-exp-page__feature-title">
+                        <span className="dk-admin-exp-page__feature-name-text">{exp.name}</span>
                         <DkBadge variant={MATURITY_BADGE_VARIANT[exp.maturity]} size="sm">
                           {MATURITY_LABELS[exp.maturity]}
                         </DkBadge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="dk-admin-exp-page__feature-stats">
                       {/* Progress bar */}
-                      <div className="hidden sm:flex items-center gap-1.5">
-                        <div className="h-2 w-24 rounded-full bg-muted overflow-hidden flex">
+                      <div className="dk-admin-exp-page__feature-progress">
+                        <div className="dk-admin-exp-page__feature-bar">
                           <div
-                            className="h-full bg-green-500 transition-all"
+                            className="dk-admin-exp-page__feature-bar-fill dk-admin-exp-page__feature-bar-fill--done"
                             style={{ width: `${meta.readinessCriteria.length > 0 ? (doneCount / meta.readinessCriteria.length) * 100 : 0}%` }}
                           />
                           <div
-                            className="h-full bg-amber-500 transition-all"
+                            className="dk-admin-exp-page__feature-bar-fill dk-admin-exp-page__feature-bar-fill--partial"
                             style={{ width: `${meta.readinessCriteria.length > 0 ? (partialCount / meta.readinessCriteria.length) * 100 : 0}%` }}
                           />
                         </div>
-                        <span className="text-[11px] text-muted-foreground tabular-nums w-8 text-right">
+                        <span className="dk-admin-exp-page__feature-pct">
                           {featureStats.criteria.pct}%
                         </span>
                       </div>
                       {/* Counts */}
-                      <div className="flex items-center gap-2 text-[10px] tabular-nums">
-                        <span className="text-green-500">{doneCount}</span>
-                        <span className="text-muted-foreground/30">/</span>
-                        <span className="text-amber-500">{partialCount}</span>
-                        <span className="text-muted-foreground/30">/</span>
-                        <span className="text-muted-foreground/40">{missingCount}</span>
+                      <div className="dk-admin-exp-page__feature-counts">
+                        <span className="dk-admin-exp-page__count-done">{doneCount}</span>
+                        <span className="dk-admin-exp-page__count-sep">/</span>
+                        <span className="dk-admin-exp-page__count-partial">{partialCount}</span>
+                        <span className="dk-admin-exp-page__count-sep">/</span>
+                        <span className="dk-admin-exp-page__count-missing">{missingCount}</span>
                       </div>
                     </div>
                   </button>
 
                   {isOpen && (
-                    <div className="px-4 pb-4 border-t border-border/30">
-                      <div className="mt-3 space-y-1.5">
+                    <div className="dk-admin-exp-page__feature-body">
+                      <div className="dk-admin-exp-page__criteria">
                         {meta.readinessCriteria.map((c, i) => {
                           const { icon: Icon, className } = STATUS_ICON[c.status] ?? STATUS_ICON.missing
                           return (
                             <div
                               key={i}
-                              className="flex items-start gap-2.5 rounded-lg px-2.5 py-1.5"
+                              className="dk-admin-exp-page__criterion"
                             >
                               <Icon className={cn('h-4 w-4 mt-0.5 flex-shrink-0', className)} />
                               <div>
-                                <span className="text-sm">{c.label}</span>
+                                <span className="dk-admin-exp-page__criterion-label">{c.label}</span>
                                 {c.note && (
-                                  <p className="text-xs text-muted-foreground/60 mt-0.5">{c.note}</p>
+                                  <p className="dk-admin-exp-page__criterion-note">{c.note}</p>
                                 )}
                               </div>
                             </div>
@@ -267,17 +266,17 @@ export function AdminExperimentsPage() {
       {/* Cross-integration matrix */}
       {activeTab === 'integrations' && (
         <section>
-          <div className="overflow-x-auto rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)]">
-            <table className="w-full text-xs">
+          <div className="dk-admin-exp-page__table-wrapper">
+            <table className="dk-admin-exp-page__table">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-[var(--dk-surface-base)] p-3 text-left font-medium text-muted-foreground min-w-[130px]">
+                  <th className="dk-admin-exp-page__table-header">
                     Feature
                   </th>
                   {experimentKeys.map((key) => {
                     const exp = EXPERIMENTS.find((e) => e.key === key)
                     return (
-                      <th key={key} className="p-2 text-center font-medium whitespace-nowrap min-w-[72px]">
+                      <th key={key} className="dk-admin-exp-page__table-cell dk-admin-exp-page__table-cell--th">
                         <span className="text-[11px] leading-tight">{exp?.name ?? key}</span>
                       </th>
                     )
@@ -289,9 +288,9 @@ export function AdminExperimentsPage() {
                   const rowMeta = EXPERIMENTS_ADMIN[rowKey]
                   const rowExp = EXPERIMENTS.find((e) => e.key === rowKey)
                   return (
-                    <tr key={rowKey} className="border-t border-border/20 hover:bg-[var(--dk-surface-ghost-hover)]">
-                      <td className="sticky left-0 z-10 bg-[var(--dk-surface-base)] p-2 pr-3">
-                        <div className="flex items-center gap-1.5">
+                    <tr key={rowKey} className="dk-admin-exp-page__table-row">
+                      <td className="dk-admin-exp-page__table-label">
+                        <div className="dk-admin-exp-page__table-label-inner">
                           <span className="text-[11px] font-medium leading-tight whitespace-nowrap">
                             {rowExp?.name ?? rowKey}
                           </span>
@@ -300,8 +299,8 @@ export function AdminExperimentsPage() {
                       {experimentKeys.map((colKey) => {
                         if (rowKey === colKey) {
                           return (
-                            <td key={colKey} className="p-2 text-center">
-                              <span className="inline-block w-2 h-2 rounded-full bg-muted/20" />
+                            <td key={colKey} className="dk-admin-exp-page__table-cell">
+                              <span className="dk-admin-exp-page__table-self-badge" />
                             </td>
                           )
                         }
@@ -327,7 +326,7 @@ export function AdminExperimentsPage() {
                         const tooltip = best?.note ?? (status !== 'none' ? INTEGRATION_ICON[status].label : undefined)
 
                         return (
-                          <td key={colKey} className="p-2 text-center">
+                          <td key={colKey} className="dk-admin-exp-page__table-cell">
                             <span title={tooltip} className="cursor-default">
                               <Icon className={cn('h-3.5 w-3.5 inline-block', className)} />
                             </span>
@@ -341,7 +340,7 @@ export function AdminExperimentsPage() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center gap-5 flex-wrap text-xs text-muted-foreground">
+          <div className="dk-admin-exp-page__table-legend">
             {(
               [
                 { status: 'integrated', label: 'Integrated' },
@@ -352,7 +351,7 @@ export function AdminExperimentsPage() {
             ).map(({ status, label }) => {
               const { icon: Icon, className } = INTEGRATION_ICON[status] ?? INTEGRATION_ICON.none
               return (
-                <span key={status} className="inline-flex items-center gap-1.5">
+                <span key={status} className="dk-admin-exp-page__table-legend-item">
                   <Icon className={cn('h-3.5 w-3.5', className)} />
                   {label}
                 </span>
@@ -365,15 +364,15 @@ export function AdminExperimentsPage() {
       {/* Media type coverage matrix */}
       {activeTab === 'media' && (
         <section>
-          <div className="overflow-x-auto rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)]">
-            <table className="w-full text-xs">
+          <div className="dk-admin-exp-page__table-wrapper">
+            <table className="dk-admin-exp-page__table">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-[var(--dk-surface-base)] p-3 text-left font-medium text-muted-foreground min-w-[150px]">
+                  <th className="dk-admin-exp-page__table-header dk-admin-exp-page__table-header--media">
                     Feature
                   </th>
                   {MEDIA_TYPES.map((mt) => (
-                    <th key={mt} className="p-3 text-center font-medium text-muted-foreground min-w-[80px]">
+                    <th key={mt} className="dk-admin-exp-page__table-cell--media-th">
                       {MEDIA_TYPE_LABELS[mt]}
                     </th>
                   ))}
@@ -386,9 +385,9 @@ export function AdminExperimentsPage() {
                   if (!meta) return null
 
                   return (
-                    <tr key={rowKey} className="border-t border-border/20 hover:bg-[var(--dk-surface-ghost-hover)]">
-                      <td className="sticky left-0 z-10 bg-[var(--dk-surface-base)] p-3 font-medium whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
+                    <tr key={rowKey} className="dk-admin-exp-page__table-row">
+                      <td className="dk-admin-exp-page__table-label dk-admin-exp-page__table-label--media">
+                        <div className="dk-admin-exp-page__table-label-inner">
                           <span className="text-xs font-medium">{rowExp?.name ?? rowKey}</span>
                           <DkBadge
                             variant={rowExp ? MATURITY_BADGE_VARIANT[rowExp.maturity] : 'muted'}
@@ -404,7 +403,7 @@ export function AdminExperimentsPage() {
                         const note = coverage?.note
 
                         return (
-                          <td key={mt} className="p-3 text-center">
+                          <td key={mt} className="dk-admin-exp-page__table-cell dk-admin-exp-page__table-cell--media">
                             <span title={note ?? MEDIA_TYPE_SUPPORT_ICON[status].label} className="cursor-default">
                               <CircleDot
                                 className={cn(
@@ -426,7 +425,7 @@ export function AdminExperimentsPage() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center gap-5 flex-wrap text-xs text-muted-foreground">
+          <div className="dk-admin-exp-page__table-legend">
             {(
               [
                 { status: 'full' as MediaTypeSupport, label: 'Full support' },
@@ -434,7 +433,7 @@ export function AdminExperimentsPage() {
                 { status: 'none' as MediaTypeSupport, label: 'None / N/A' },
               ]
             ).map(({ status, label }) => (
-              <span key={status} className="inline-flex items-center gap-1.5">
+              <span key={status} className="dk-admin-exp-page__table-legend-item">
                 <CircleDot
                   className={cn('h-3.5 w-3.5', MEDIA_TYPE_SUPPORT_ICON[status].className)}
                   fill={status === 'none' ? 'transparent' : 'currentColor'}
@@ -450,7 +449,7 @@ export function AdminExperimentsPage() {
       {activeTab === 'pipelines' && (
         <section>
           {/* Summary strip */}
-          <div className="mb-6 grid gap-3 grid-cols-2 sm:grid-cols-4">
+          <div className="dk-admin-exp-page__pipeline-grid">
             {MEDIA_TYPES.map((mt) => {
               const pipeline = PIPELINE_EFFICIENCY[mt]
               const score = getEfficiencyScore(pipeline)
@@ -458,28 +457,28 @@ export function AdminExperimentsPage() {
               const totalProviders = pipeline.providers.length
 
               return (
-                <div key={mt} className="rounded-2xl bg-[var(--dk-surface-base)] p-4 shadow-[var(--dk-shadow-sm)]">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">{MEDIA_TYPE_LABELS[mt]}</p>
+                <div key={mt} className="dk-admin-exp-page__pipeline-card">
+                  <div className="dk-admin-exp-page__pipeline-card-header">
+                    <p className="dk-admin-exp-page__pipeline-card-label">{MEDIA_TYPE_LABELS[mt]}</p>
                     <span
                       className={cn(
-                        'text-sm font-bold tabular-nums',
-                        score >= 80 ? 'text-green-500' : score >= 50 ? 'text-amber-500' : 'text-red-400',
+                        'dk-admin-exp-page__score-text',
+                        score >= 80 ? 'dk-admin-exp-page__score-text--high' : score >= 50 ? 'dk-admin-exp-page__score-text--mid' : 'dk-admin-exp-page__score-text--low',
                       )}
                     >
                       {score}%
                     </span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mb-2">
+                  <div className="dk-admin-exp-page__pipeline-bar">
                     <div
                       className={cn(
-                        'h-full rounded-full transition-all',
-                        score >= 80 ? 'bg-green-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-400',
+                        'dk-admin-exp-page__pipeline-bar-fill',
+                        score >= 80 ? 'dk-admin-exp-page__pipeline-bar-fill--high' : score >= 50 ? 'dk-admin-exp-page__pipeline-bar-fill--mid' : 'dk-admin-exp-page__pipeline-bar-fill--low',
                       )}
                       style={{ width: `${score}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground/60">
+                  <div className="dk-admin-exp-page__pipeline-card-sub">
                     <span>{totalProviders} providers</span>
                     <span>{doneProviders}/{totalProviders} operational</span>
                   </div>
@@ -489,7 +488,7 @@ export function AdminExperimentsPage() {
           </div>
 
           {/* Detail cards */}
-          <div className="grid gap-4">
+          <div className="dk-admin-exp-page__pipeline-detail-list">
             {MEDIA_TYPES.map((mt) => {
               const pipeline = PIPELINE_EFFICIENCY[mt]
               const score = getEfficiencyScore(pipeline)
@@ -497,18 +496,18 @@ export function AdminExperimentsPage() {
               return (
                 <div
                   key={mt}
-                  className="rounded-2xl bg-[var(--dk-surface-base)] p-5 shadow-[var(--dk-shadow-sm)]"
+                  className="dk-admin-exp-page__pipeline-detail"
                 >
-                  <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
+                  <div className="dk-admin-exp-page__pipeline-detail-grid">
                     {/* Left column: metadata */}
                     <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold">{MEDIA_TYPE_LABELS[mt]}</h3>
+                      <div className="dk-admin-exp-page__pipeline-detail-header">
+                        <div className="dk-admin-exp-page__pipeline-detail-title">
+                          <h3 className="dk-admin-exp-page__pipeline-detail-h3">{MEDIA_TYPE_LABELS[mt]}</h3>
                           <span
                             className={cn(
-                              'text-sm font-bold tabular-nums',
-                              score >= 80 ? 'text-green-500' : score >= 50 ? 'text-amber-500' : 'text-red-400',
+                              'dk-admin-exp-page__score-text',
+                              score >= 80 ? 'dk-admin-exp-page__score-text--high' : score >= 50 ? 'dk-admin-exp-page__score-text--mid' : 'dk-admin-exp-page__score-text--low',
                             )}
                           >
                             {score}%
@@ -516,18 +515,18 @@ export function AdminExperimentsPage() {
                         </div>
                       </div>
 
-                      <div className="mb-4 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div className="dk-admin-exp-page__pipeline-bar">
                         <div
                           className={cn(
-                            'h-full rounded-full transition-all',
-                            score >= 80 ? 'bg-green-500' : score >= 50 ? 'bg-amber-500' : 'bg-red-400',
+                            'dk-admin-exp-page__pipeline-bar-fill',
+                            score >= 80 ? 'dk-admin-exp-page__pipeline-bar-fill--high' : score >= 50 ? 'dk-admin-exp-page__pipeline-bar-fill--mid' : 'dk-admin-exp-page__pipeline-bar-fill--low',
                           )}
                           style={{ width: `${score}%` }}
                         />
                       </div>
 
                       {/* Seeding */}
-                      <div className="mb-4 flex items-start gap-2">
+                      <div className="dk-admin-exp-page__pipeline-seeding">
                         {pipeline.seedingStatus === 'done' ? (
                           <CheckCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-green-500" />
                         ) : pipeline.seedingStatus === 'partial' ? (
@@ -536,12 +535,12 @@ export function AdminExperimentsPage() {
                           <XCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-red-400" />
                         )}
                         <div>
-                          <p className="text-xs font-medium">Seeding</p>
-                          <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+                          <p className="dk-admin-exp-page__pipeline-section-title">Seeding</p>
+                          <p className="dk-admin-exp-page__pipeline-seeding-desc">
                             {pipeline.seedingMethod}
                           </p>
                           {pipeline.seedingNote && (
-                            <p className="text-[10px] text-muted-foreground/50 mt-0.5 italic">
+                            <p className="dk-admin-exp-page__pipeline-seeding-note">
                               {pipeline.seedingNote}
                             </p>
                           )}
@@ -549,11 +548,11 @@ export function AdminExperimentsPage() {
                       </div>
 
                       {/* Providers */}
-                      <div className="mb-4">
-                        <p className="text-xs font-medium mb-1.5">
+                      <div className="dk-admin-exp-page__pipeline-providers">
+                        <p className="dk-admin-exp-page__pipeline-section-title dk-admin-exp-page__pipeline-section-title--mb">
                           Providers ({pipeline.providers.filter((p) => p.status === 'done').length}/{pipeline.providers.length})
                         </p>
-                        <div className="space-y-1">
+                        <div className="dk-admin-exp-page__pipeline-provider-list">
                           {pipeline.providers.map((provider, i) => {
                             const isProviderDone = provider.status === 'done'
                             const isProviderMissing = provider.status === 'missing'
@@ -561,8 +560,8 @@ export function AdminExperimentsPage() {
                               <div
                                 key={i}
                                 className={cn(
-                                  'flex items-start gap-1.5 rounded-md px-1.5 py-1',
-                                  isProviderMissing ? 'opacity-40' : '',
+                                  'dk-admin-exp-page__pipeline-provider',
+                                  isProviderMissing && 'dk-admin-exp-page__pipeline-provider--missing',
                                 )}
                               >
                                 {isProviderDone ? (
@@ -572,13 +571,13 @@ export function AdminExperimentsPage() {
                                 ) : (
                                   <MinusCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-amber-500" />
                                 )}
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[11px] font-medium">{provider.name}</span>
-                                    <span className="text-[10px] text-muted-foreground/50">{provider.schedule}</span>
+                                <div className="dk-admin-exp-page__pipeline-provider-info">
+                                  <div className="dk-admin-exp-page__pipeline-provider-header">
+                                    <span className="dk-admin-exp-page__pipeline-provider-name">{provider.name}</span>
+                                    <span className="dk-admin-exp-page__pipeline-provider-schedule">{provider.schedule}</span>
                                   </div>
                                   {provider.note && (
-                                    <p className="text-[10px] text-muted-foreground/60 leading-relaxed">
+                                    <p className="dk-admin-exp-page__pipeline-provider-note">
                                       {provider.note}
                                     </p>
                                   )}
@@ -592,13 +591,13 @@ export function AdminExperimentsPage() {
                       {/* Gaps */}
                       {pipeline.gaps.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium mb-1 text-amber-600 dark:text-amber-400">
+                          <p className="dk-admin-exp-page__pipeline-gap-title">
                             Gaps ({pipeline.gaps.length})
                           </p>
-                          <ul className="space-y-0.5">
+                          <ul className="dk-admin-exp-page__pipeline-gap-list">
                             {pipeline.gaps.map((gap, i) => (
-                              <li key={i} className="text-[11px] text-muted-foreground/70 flex items-start gap-1">
-                                <span className="mt-0.5 w-1 h-1 rounded-full bg-amber-500/50 flex-shrink-0" />
+                              <li key={i} className="dk-admin-exp-page__pipeline-gap">
+                                <span className="dk-admin-exp-page__pipeline-gap-bullet" />
                                 {gap}
                               </li>
                             ))}
@@ -609,7 +608,7 @@ export function AdminExperimentsPage() {
 
                     {/* Right column: flow diagram */}
                     <div>
-                      <p className="text-xs font-medium mb-1.5">Pipeline Flow</p>
+                      <p className="dk-admin-exp-page__pipeline-section-title dk-admin-exp-page__pipeline-section-title--mb">Pipeline Flow</p>
                       <PipelineFlowDiagram stages={pipeline.flow} />
                     </div>
                   </div>

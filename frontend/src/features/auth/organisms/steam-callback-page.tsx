@@ -1,9 +1,11 @@
+// TODO: Review this file
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../auth-provider'
 import { apiClient } from '@/lib/api-client'
+import './steam-callback-page.scss'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -41,6 +43,14 @@ export function SteamCallbackPage() {
       try {
         const { data } = await apiClient.post('/auth/steam/callback', { params: openidParams, rawQuery })
         localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
+
+        // Electron OAuth: redirect via otix:// protocol to bring app to foreground
+        const source = new URLSearchParams(window.location.search).get('source')
+        if (source === 'desktop') {
+          window.location.href = `otix://auth/steam/callback?accessToken=${encodeURIComponent(data.accessToken)}`
+          return
+        }
+
         navigate({ to: '/', replace: true })
       } catch (err) {
         const msg = extractMessage(err)
@@ -56,36 +66,36 @@ export function SteamCallbackPage() {
   }, [isAuthenticated, navigate])
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth-steam-callback">
       <Helmet>
         <title>Steam Sign In - Otix</title>
       </Helmet>
 
       <div
-        className="relative z-10 w-full max-w-[440px] flex flex-col items-center px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem] bg-[var(--dk-surface-overlay)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)]"
+        className="dk-auth-steam-callback__card"
         style={{ animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         {error ? (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 mb-4">
+            <div className="dk-auth-steam-callback__icon dk-auth-steam-callback__icon--error">
               <XCircle className="h-7 w-7 text-red-500" />
             </div>
-            <h2 className="text-lg font-semibold">Sign In Failed</h2>
-            <p className="mt-2 text-sm text-muted-foreground text-center">{error}</p>
+            <h2 className="dk-auth-steam-callback__title">Sign In Failed</h2>
+            <p className="dk-auth-steam-callback__text dk-auth-steam-callback__text--error">{error}</p>
             <button
               onClick={() => navigate({ to: '/auth/login', replace: true })}
-              className="mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all"
+              className="dk-auth-steam-callback__btn"
             >
               Back to Sign In
             </button>
           </>
         ) : (
           <>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mb-4">
+            <div className="dk-auth-steam-callback__icon dk-auth-steam-callback__icon--loading">
               <Loader2 className="h-7 w-7 text-primary animate-spin" />
             </div>
-            <h2 className="text-lg font-semibold">Signing In with Steam</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h2 className="dk-auth-steam-callback__title">Signing In with Steam</h2>
+            <p className="dk-auth-steam-callback__text">
               Verifying your Steam account...
             </p>
           </>

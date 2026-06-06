@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from otix.api.schemas.media_rating import MediaRatingOut
+from otix.schemas.media_rating import MediaRatingOut
 
 
 class ReviewCreate(BaseModel):

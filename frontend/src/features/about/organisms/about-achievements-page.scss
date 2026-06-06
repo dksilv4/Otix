@@ -1,0 +1,230 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ============================================================
+   Achievements About Page
+   File: about-achievements-page.tsx
+   Prefix: dk-about-achievements
+   ============================================================ */
+
+/* -- Page container -- */
+.dk-about-achievements {
+  @apply mx-auto max-w-2xl pb-16;
+}
+
+/* -- Back button -- */
+.dk-about-achievements__back {
+  @apply mb-6 mt-2 flex items-center gap-1.5 text-sm;
+  color: var(--muted-foreground);
+  transition: color var(--dk-duration-fast) var(--dk-ease-out);
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.dk-about-achievements__back-icon {
+  @apply shrink-0;
+  height: 1rem;
+  width: 1rem;
+  transition: transform var(--dk-duration-fast) var(--dk-ease-out);
+
+  .dk-about-achievements__back:hover & {
+    transform: translateX(-0.125rem);
+  }
+}
+
+/* -- Header -- */
+.dk-about-achievements__header {
+  @apply mb-8;
+}
+
+.dk-about-achievements__header-title {
+  @apply text-2xl font-bold;
+  letter-spacing: -0.02em;
+}
+
+.dk-about-achievements__header-desc {
+  @apply mt-2 text-sm leading-relaxed;
+  color: var(--muted-foreground);
+}
+
+/* -- Loading skeleton -- */
+.dk-about-achievements__skeleton {
+  @apply rounded-2xl p-5 sm:p-6 animate-pulse;
+  background-color: var(--dk-surface-base);
+}
+
+.dk-about-achievements__skeleton-icon {
+  @apply rounded-xl;
+  height: 2.25rem;
+  width: 2.25rem;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.dk-about-achievements__skeleton-text {
+  @apply rounded;
+  height: 1rem;
+  width: 8rem;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.dk-about-achievements__skeleton-card {
+  @apply rounded-xl;
+  width: 280px;
+  height: 5rem;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dk-about-achievements__skeleton-list {
+  @apply space-y-4;
+}
+
+.dk-about-achievements__skeleton-header {
+  @apply flex items-center gap-3 mb-4;
+}
+
+.dk-about-achievements__skeleton-cards {
+  @apply flex gap-3;
+}
+
+/* -- Error & empty states -- */
+.dk-about-achievements__error,
+.dk-about-achievements__empty {
+  @apply mt-8 text-sm text-center;
+  color: var(--muted-foreground);
+}
+
+/* -- Sections container -- */
+.dk-about-achievements__sections {
+  @apply space-y-6;
+}
+
+/* -- Section group (with optional title) -- */
+.dk-about-achievements__section-group {
+  @apply rounded-2xl p-5 sm:p-6;
+  background-color: var(--dk-surface-base);
+}
+
+.dk-about-achievements__section-title {
+  @apply mb-4 text-xs font-semibold uppercase;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  letter-spacing: 0.08em;
+}
+
+.dk-about-achievements__section-inner {
+  @apply space-y-4;
+}
+
+.dk-about-achievements__section-group-inner {
+  @apply space-y-4;
+}
+
+/* -- Group item -- */
+.dk-about-achievements__group {
+  /* spacer */
+}
+
+.dk-about-achievements__group-header {
+  @apply flex items-center gap-3 mb-4;
+}
+
+.dk-about-achievements__group-icon {
+  @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl;
+}
+
+.dk-about-achievements__group-icon--rose {
+  @apply text-rose-400 bg-rose-400/10;
+}
+
+.dk-about-achievements__group-icon--sky {
+  @apply text-sky-400 bg-sky-400/10;
+}
+
+.dk-about-achievements__group-icon--indigo {
+  @apply text-indigo-400 bg-indigo-400/10;
+}
+
+.dk-about-achievements__group-icon--emerald {
+  @apply text-emerald-400 bg-emerald-400/10;
+}
+
+.dk-about-achievements__group-icon--orange {
+  @apply text-orange-400 bg-orange-400/10;
+}
+
+.dk-about-achievements__group-icon--amber {
+  @apply text-amber-400 bg-amber-400/10;
+}
+
+.dk-about-achievements__group-icon--red {
+  @apply text-red-400 bg-red-400/10;
+}
+
+.dk-about-achievements__group-icon--pink {
+  @apply text-pink-400 bg-pink-400/10;
+}
+
+.dk-about-achievements__group-icon--teal {
+  @apply text-teal-400 bg-teal-400/10;
+}
+
+.dk-about-achievements__group-icon--violet {
+  @apply text-violet-400 bg-violet-400/10;
+}
+
+.dk-about-achievements__group-icon--blue {
+  @apply text-blue-400 bg-blue-400/10;
+}
+
+.dk-about-achievements__group-label {
+  @apply text-base font-semibold;
+}
+
+/* -- Badge row -- */
+.dk-about-achievements__badge-row {
+  @apply flex gap-3 overflow-x-auto;
+}
+
+/* -- Badge card -- */
+.dk-about-achievements__badge {
+  @apply flex items-center gap-3 rounded-xl px-4 py-3;
+  width: 280px;
+  min-width: 0;
+  flex-shrink: 0;
+  background-color: var(--dk-surface-raised);
+  border-left: 2px solid transparent;
+  transition: background-color var(--dk-duration-fast) var(--dk-ease-out);
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.dk-about-achievements__badge-tier {
+  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold;
+}
+
+.dk-about-achievements__badge-content {
+  @apply min-w-0 flex-1;
+}
+
+.dk-about-achievements__badge-label {
+  @apply text-sm font-medium;
+}
+
+.dk-about-achievements__badge-desc {
+  @apply mt-0.5 text-xs;
+  color: var(--muted-foreground);
+}
+
+.dk-about-achievements__badge-xp {
+  @apply shrink-0 text-right;
+}
+
+.dk-about-achievements__badge-xp-value {
+  @apply text-xs font-semibold;
+}
+
+.dk-about-achievements__badge-tier-tag {
+  @apply mt-0.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider;
+}

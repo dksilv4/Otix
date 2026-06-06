@@ -1,0 +1,60 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Game Section ── */
+.dk-media-game-section {
+  @apply space-y-6;
+}
+
+.dk-media-game-section__section {
+  @apply space-y-2;
+}
+
+.dk-media-game-section__heading {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-media-game-section__tags {
+  @apply flex flex-wrap gap-2;
+}
+
+.dk-media-game-section__modes {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.dk-media-game-section__platform-badge {
+  @apply flex items-center gap-2 rounded-xl px-3 py-2;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-xs);
+}
+
+.dk-media-game-section__platform-name {
+  @apply text-xs font-medium text-muted-foreground;
+}
+
+.dk-media-game-section__stats-grid {
+  @apply grid grid-cols-2 gap-3 sm:grid-cols-3;
+}
+
+.dk-media-game-section__stat-label {
+  @apply text-xs text-muted-foreground;
+}
+
+.dk-media-game-section__stat-value {
+  @apply text-sm font-medium;
+}
+
+.dk-media-game-section__stat-value--positive {
+  @apply text-green-500;
+}
+
+.dk-media-game-section__stat-value--free {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.dk-media-game-section__link {
+  @apply text-primary;
+
+  &:hover {
+    @apply underline;
+  }
+}

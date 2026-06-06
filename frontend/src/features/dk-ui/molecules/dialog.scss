@@ -1,0 +1,59 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-dialog__backdrop {
+  @apply fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4;
+}
+
+.dk-dialog__overlay {
+  @apply absolute inset-0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.dk-dialog__panel {
+  @apply relative w-full max-w-md rounded-3xl p-8;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-dialog);
+  animation: authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dk-dialog__header {
+  @apply mb-5 flex items-start justify-between gap-4;
+}
+
+.dk-dialog__header-text {
+  @apply space-y-1;
+}
+
+.dk-dialog__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-dialog__description {
+  @apply text-sm;
+  color: var(--muted-foreground);
+}
+
+.dk-dialog__close {
+  @apply shrink-0 rounded-xl p-1.5 transition-all;
+  color: var(--muted-foreground);
+
+  &:hover {
+    background-color: var(--dk-surface-ghost-hover);
+    color: var(--foreground);
+  }
+}
+
+.dk-dialog__close--absolute {
+  @apply absolute top-4 right-4 rounded-xl p-1.5 transition-all;
+  color: var(--muted-foreground);
+
+  &:hover {
+    background-color: var(--dk-surface-ghost-hover);
+    color: var(--foreground);
+  }
+}
+
+.dk-dialog__close-icon {
+  @apply h-4 w-4;
+}

@@ -1,16 +1,22 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import hashlib
 import secrets
-import uuid
 from datetime import date, datetime, timedelta, timezone
 
 import bcrypt
 import structlog
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.lib.tokens import (
+    create_access_token,
+    create_challenge_token,
+    create_refresh_token,
+    decode_token,
+)
 from otix.domain.user import AuthActionToken, AuthActionType, RefreshToken, User
 from otix.infrastructure.config import settings
 
@@ -29,63 +35,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
-def create_access_token(user_id: str) -> str:
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": user_id,
-        "type": "access",
-        "iat": now,
-        "exp": now + timedelta(minutes=settings.access_token_lifetime_minutes),
-    }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
-
-
-def create_refresh_token(user_id: str, session_key: str = "") -> tuple[str, str, datetime]:
-    now = datetime.now(timezone.utc)
-    jti = str(uuid.uuid4())
-    exp = now + timedelta(days=settings.refresh_token_lifetime_days)
-    payload = {
-        "sub": user_id,
-        "type": "refresh",
-        "jti": jti,
-        "session_key": session_key,
-        "iat": now,
-        "exp": exp,
-    }
-    token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
-    return token, jti, exp
-
-
-def create_challenge_token(user_id: str) -> str:
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": user_id,
-        "type": "2fa_challenge",
-        "iat": now,
-        "exp": now + timedelta(minutes=5),
-    }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
-
-
-def decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
-
-
-def get_refresh_cookie_config() -> dict:
-    return {
-        "key": settings.auth_refresh_cookie_name,
-        "path": settings.auth_refresh_cookie_path,
-        "domain": settings.auth_refresh_cookie_domain or None,
-        "secure": settings.auth_refresh_cookie_secure,
-        "httponly": settings.auth_refresh_cookie_httponly,
-        "samesite": settings.auth_refresh_cookie_samesite,
-        "max_age": settings.refresh_token_lifetime_days * 86400,
-    }
-
-
 class AuthService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    @staticmethod
+    async def get_user_by_id(session: AsyncSession, user_id: str) -> User | None:
+        """Return a user by ID, or None if not found."""
+        return await session.get(User, user_id)
 
     async def register(self, email: str, username: str, password: str, date_of_birth: date) -> User:
         existing = await self.session.scalar(
@@ -197,59 +154,12 @@ class AuthService:
         return access_token, refresh_token, user
 
     async def refresh(self, refresh_token_str: str) -> tuple[str, str, User] | None:
+        from otix.services.auth.refresh_service import RefreshError, RefreshService
+
         try:
-            payload = decode_token(refresh_token_str)
-        except JWTError:
+            return await RefreshService(self.session).refresh(refresh_token_str)
+        except RefreshError:
             return None
-
-        if payload.get("type") != "refresh":
-            return None
-
-        user_id = payload.get("sub")
-        jti = payload.get("jti")
-        if not user_id or not jti:
-            return None
-
-        # Verify refresh token exists and isn't revoked.
-        rt = await self.session.scalar(
-            select(RefreshToken).where(RefreshToken.jti == jti)
-        )
-        if rt is None or rt.revoked_at is not None:
-            # Possible token reuse — revoke all tokens for this user.
-            if rt is not None:
-                logger.warning("refresh token reuse detected", user_id=user_id)
-                await self._revoke_all_user_tokens(user_id)
-            return None
-
-        user = await self.session.scalar(select(User).where(User.id == user_id))
-        if user is None or not user.is_active:
-            return None
-
-        # Global logout check.
-        if user.global_logout_marker is not None:
-            issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
-            if issued_at < user.global_logout_marker:
-                return None
-
-        # Touch the session if session_key is present in the token.
-        session_key = payload.get("session_key", "")
-        if session_key:
-            from otix.services.session_service import SessionService
-            await SessionService(self.session).touch_session(session_key)
-
-        if settings.rotate_refresh_tokens:
-            # Revoke the current refresh token, issue new pair.
-            rt.revoked_at = datetime.now(timezone.utc)
-            new_access = create_access_token(user.id)
-            new_refresh, new_jti, new_exp = create_refresh_token(user.id, session_key)
-            new_rt = RefreshToken(user_id=user.id, jti=new_jti, expires_at=new_exp)
-            self.session.add(new_rt)
-            await self.session.flush()
-            return new_access, new_refresh, user
-
-        # Non-rotating mode — just issue a new access token.
-        new_access = create_access_token(user.id)
-        return new_access, refresh_token_str, user
 
     async def logout(self, user_id: str) -> None:
         user = await self.session.scalar(select(User).where(User.id == user_id))

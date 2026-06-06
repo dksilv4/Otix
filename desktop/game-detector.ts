@@ -142,6 +142,7 @@ export class GameDetector extends EventEmitter {
     const entry = this.runningGames.get(gameId);
     if (entry) {
       this.endSession(entry);
+      this.runningGames.delete(gameId);
     }
   }
 

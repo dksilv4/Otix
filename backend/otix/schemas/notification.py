@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
 
 from pydantic import BaseModel
 
-from otix.api.schemas.common import PaginatedResponse
+from otix.schemas.common import PaginatedResponse
 
 
 class NotificationOut(BaseModel):

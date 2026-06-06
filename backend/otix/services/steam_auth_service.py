@@ -1,5 +1,7 @@
+# TODO: Review this file
 from __future__ import annotations
 
+import json
 import re
 import secrets
 import urllib.parse
@@ -145,24 +147,33 @@ async def _validate_openid_response(params: dict, raw_query: str | None = None) 
     return match.group(1)
 
 
-async def build_steam_login_url() -> tuple[str, str]:
+async def build_steam_login_url(source: str | None = None) -> tuple[str, str]:
     """Build the Steam OpenID login URL and return (url, state)."""
     state = secrets.token_urlsafe(32)
     redis = await get_redis()
     await redis.set(_state_key(state), "1", ex=STATE_TTL)
 
     return_to = f"{settings.frontend_base_url}/auth/steam/callback"
+    if source:
+        separator = "&" if "?" in return_to else "?"
+        return_to = f"{return_to}{separator}source={source}"
     url = _build_steam_url(return_to, state)
     return url, state
 
 
-async def build_steam_link_url() -> tuple[str, str]:
+async def build_steam_link_url(source: str | None = None, user_id: str | None = None) -> tuple[str, str]:
     """Build the Steam OpenID URL for account linking and return (url, state)."""
     state = secrets.token_urlsafe(32)
     redis = await get_redis()
-    await redis.set(_link_state_key(state), "1", ex=STATE_TTL)
+    payload = {"v": "1"}
+    if user_id:
+        payload["user_id"] = user_id
+    await redis.set(_link_state_key(state), json.dumps(payload), ex=STATE_TTL)
 
     return_to = f"{settings.frontend_base_url}/auth/steam/connect/callback"
+    if source:
+        separator = "&" if "?" in return_to else "?"
+        return_to = f"{return_to}{separator}source={source}"
     url = _build_steam_url(return_to, state)
     return url, state
 
@@ -193,8 +204,8 @@ async def validate_steam_callback(params: dict, raw_query: str | None = None) ->
     return await _validate_openid_response(params, raw_query)
 
 
-async def validate_steam_link_callback(params: dict, raw_query: str | None = None) -> str:
-    """Validate the Steam OpenID link callback and return the Steam ID64.
+async def validate_steam_link_callback(params: dict, raw_query: str | None = None) -> tuple[str, str | None]:
+    """Validate the Steam OpenID link callback and return (steam_id, user_id_or_None).
 
     Raises HTTPException on any validation failure.
     """
@@ -208,7 +219,8 @@ async def validate_steam_link_callback(params: dict, raw_query: str | None = Non
 
     state_key = _link_state_key(str(state))
     redis = await get_redis()
-    if not await redis.get(state_key):
+    raw = await redis.get(state_key)
+    if not raw:
         logger.warning("steam oauth state not found or expired")
         raise HTTPException(
             status_code=400,
@@ -216,7 +228,15 @@ async def validate_steam_link_callback(params: dict, raw_query: str | None = Non
         )
     await redis.delete(state_key)
 
-    return await _validate_openid_response(params, raw_query)
+    # Extract stored user_id (may be None for legacy)
+    try:
+        payload = json.loads(raw) if isinstance(raw, str) else {}
+        state_user_id = payload.get("user_id")
+    except (json.JSONDecodeError, TypeError):
+        state_user_id = None
+
+    steam_id = await _validate_openid_response(params, raw_query)
+    return steam_id, state_user_id
 
 
 async def get_steam_user_info(steam_id: str) -> dict | None:
@@ -271,7 +291,7 @@ async def find_or_create_steam_user(session: AsyncSession, steam_id: str) -> Use
         username = f"{base_username}_{suffix}"
         suffix += 1
 
-    from otix.services.auth_service import hash_password
+    from otix.services.auth.auth_service import hash_password
 
     user = User(
         email=f"steam_{steam_id}@user.otix",
@@ -287,12 +307,33 @@ async def find_or_create_steam_user(session: AsyncSession, steam_id: str) -> Use
     return user
 
 
-async def link_steam_to_user(session: AsyncSession, user: User, steam_id: str) -> None:
-    """Link a Steam ID to an existing user. Raises HTTPException on conflict."""
-    if user.steam_id == steam_id:
+async def link_steam_to_user(
+    session: AsyncSession,
+    user: User | None = None,
+    steam_id: str = "",
+    state_user_id: str | None = None,
+) -> None:
+    """Link a Steam ID to an existing user.
+
+    The user can be passed explicitly or resolved via *state_user_id*
+    from the OAuth state stored in Redis (Electron openExternal flow).
+    """
+    resolved_user = user
+    if resolved_user is None and state_user_id:
+        resolved_user = await session.scalar(
+            select(User).where(User.id == state_user_id)
+        )
+
+    if resolved_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please sign in and try again.",
+        )
+
+    if resolved_user.steam_id == steam_id:
         return  # Already linked to this same account
 
-    if user.steam_id is not None:
+    if resolved_user.steam_id is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Your account is already linked to a different Steam account. Unlink it first.",
@@ -306,7 +347,7 @@ async def link_steam_to_user(session: AsyncSession, user: User, steam_id: str) -
             detail="This Steam account is already linked to another Otix account.",
         )
 
-    user.steam_id = steam_id
+    resolved_user.steam_id = steam_id
     await session.flush()
     logger.info("steam account linked", user_id=user.id, steam_id=steam_id)
 

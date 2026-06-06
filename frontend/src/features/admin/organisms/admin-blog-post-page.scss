@@ -1,0 +1,109 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-admin-blog-post {
+  @apply mx-auto max-w-3xl pb-16;
+
+  // ── Back link ──
+
+  &__back-link {
+    @apply inline-flex items-center gap-1.5 mb-6 text-sm;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.15s;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+  }
+
+  // ── Title ──
+
+  &__title {
+    @apply mb-2 text-2xl font-bold;
+    letter-spacing: -0.02em;
+  }
+
+  // ── Meta bar ──
+
+  &__meta {
+    @apply flex items-center gap-2 mb-6 flex-wrap;
+  }
+
+  &__meta-date {
+    @apply inline-flex items-center gap-1 text-xs;
+    color: hsl(var(--muted-foreground) / 0.6);
+  }
+
+  &__meta-author {
+    @apply text-xs;
+    color: hsl(var(--muted-foreground) / 0.6);
+  }
+
+  // ── Content article ──
+
+  &__content {
+    @apply rounded-2xl p-6;
+    background-color: var(--dk-surface-base);
+    box-shadow: var(--dk-shadow-sm);
+  }
+
+  // ── Rendered body blocks ──
+
+  &__heading {
+    &--2 {
+      @apply mt-8 mb-3 text-lg font-semibold pb-2;
+      border-bottom: 1px solid hsl(var(--border) / 0.3);
+    }
+
+    &--3 {
+      @apply mt-6 mb-2 text-base font-semibold;
+    }
+  }
+
+  &__paragraph {
+    @apply mb-4 text-sm leading-relaxed;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__list {
+    &--unordered {
+      @apply mb-4 space-y-1 pl-5 text-sm leading-relaxed;
+      color: hsl(var(--muted-foreground));
+
+      > li {
+        list-style-type: disc;
+
+        &::marker {
+          color: hsl(var(--muted-foreground) / 0.4);
+        }
+      }
+    }
+
+    &--ordered {
+      @apply mb-4 space-y-1 pl-5 text-sm leading-relaxed list-decimal;
+      color: hsl(var(--muted-foreground));
+
+      > li {
+        &::marker {
+          color: hsl(var(--muted-foreground) / 0.4);
+        }
+      }
+    }
+  }
+
+  &__code {
+    @apply px-1 py-0.5 rounded font-mono;
+    background-color: hsl(var(--muted) / 0.5);
+    font-size: 0.9em;
+  }
+
+  // ── Not-found state ──
+
+  &__not-found-title {
+    @apply text-2xl font-bold;
+  }
+
+  &__not-found-message {
+    @apply mt-2 text-sm;
+    color: hsl(var(--muted-foreground));
+  }
+}

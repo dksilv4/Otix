@@ -1,3 +1,4 @@
+// TODO: Review this file
 export async function getCroppedBlob(
   imageUrl: string,
   pixelCrop: { x: number; y: number; width: number; height: number },

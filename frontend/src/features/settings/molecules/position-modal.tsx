@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useState, useCallback } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
 import { Move, Check, X } from 'lucide-react'
 import { DkButton } from '@/features/dk-ui/atoms/button'
+import './position-modal.scss'
 
 interface PositionModalProps {
   imageUrl: string
@@ -31,29 +33,29 @@ export function PositionModal({
 
   return (
     <div
-      className="flex flex-col rounded-2xl bg-black/90 p-5 shadow-2xl backdrop-blur-2xl w-[28rem] max-w-[calc(100vw-2rem)]"
+      className="dk-settings-position-modal"
       style={{ height: '32rem', maxHeight: 'calc(100vh - 4rem)' }}
     >
       {/* header */}
-      <div className="flex items-center gap-3 mb-4 shrink-0">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/[0.06]">
+      <div className="dk-settings-position-modal__header">
+        <div className="dk-settings-position-modal__header-icon">
           <Move className="h-4 w-4 text-white/60" />
         </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">Position Backdrop</p>
-          <p className="text-[11px] text-white/40">Drag to choose which part shows as poster</p>
+        <div className="dk-settings-position-modal__header-text">
+          <p className="dk-settings-position-modal__header-title">Position Backdrop</p>
+          <p className="dk-settings-position-modal__header-subtitle">Drag to choose which part shows as poster</p>
         </div>
         <button
           type="button"
           onClick={onCancel}
-          className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/70 transition-colors"
+          className="dk-settings-position-modal__close"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* cropper area — pan only, zoom locked to 1 */}
-      <div className="relative flex-1 min-h-0 rounded-xl overflow-hidden bg-white/[0.02]">
+      <div className="dk-settings-position-modal__cropper">
         <Cropper
           image={imageUrl}
           crop={crop}
@@ -72,15 +74,15 @@ export function PositionModal({
       </div>
 
       {/* footer */}
-      <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center justify-between gap-2 shrink-0">
-        <p className="text-[11px] text-white/25">Drag to position.</p>
-        <div className="flex items-center gap-2">
+      <div className="dk-settings-position-modal__footer">
+        <p className="dk-settings-position-modal__footer-hint">Drag to position.</p>
+        <div className="dk-settings-position-modal__footer-actions">
           <DkButton
             type="button"
             size="sm"
             variant="outline"
             onClick={onCancel}
-            className="text-white/60 hover:text-white"
+            className="dk-settings-position-modal__cancel-btn"
           >
             Cancel
           </DkButton>
@@ -90,7 +92,7 @@ export function PositionModal({
             variant="primary"
             onClick={handleApply}
             disabled={applied}
-            className={applied ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}
+            className={applied ? "dk-settings-position-modal__apply--applied" : ""}
           >
             <Check className="h-3.5 w-3.5 mr-1" />
             {applied ? "Applied" : "Apply"}

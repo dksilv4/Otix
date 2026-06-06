@@ -1,9 +1,9 @@
+// TODO: Review this file
 import { useMemo } from 'react'
 import { useHeatmap, type HeatmapDateEntry } from '../workout-queries'
 import { cn } from '@/lib/utils'
+import './workout-heatmap.scss'
 
-const LEGEND_CELL = 'w-3 h-3 rounded-[2px]'
-const CELL = 'size-4 rounded-[2px]'
 const WAVE_MS = 30
 
 function loadingStyle(col: number, row: number): React.CSSProperties {
@@ -13,11 +13,9 @@ function loadingStyle(col: number, row: number): React.CSSProperties {
   }
 }
 
-function cellColor(count: number): string {
-  if (count === 0) return 'bg-white/[0.06] ring-1 ring-white/[0.04]'
-  if (count === 1) return 'bg-primary/30 ring-1 ring-primary/10'
-  if (count === 2) return 'bg-primary/50 ring-1 ring-primary/20'
-  return 'bg-primary/70 ring-1 ring-primary/30'
+function cellClass(count: number, isLoading: boolean): string {
+  if (isLoading) return 'dk-workout-heatmap__cell--loading'
+  return `dk-workout-heatmap__cell--level-${Math.min(count, 3)}`
 }
 
 function tooltip(date: string, count: number): string {
@@ -88,16 +86,16 @@ export function WorkoutHeatmap({ weeks = 52, className }: WorkoutHeatmapProps) {
   }
 
   return (
-    <div className={cn('w-full overflow-x-auto', className)}>
-      <div className="w-fit">
+    <div className={cn('dk-workout-heatmap', className)}>
+      <div className="dk-workout-heatmap__inner">
         {/* Month labels */}
-        <div className="flex gap-0.5 mb-1">
+        <div className="dk-workout-heatmap__months">
           {Array.from({ length: grid.cols }).map((_, col) => {
             const month = grid.monthCols.find((m) => m.col === col)
             return (
-              <div key={col} className={cn(CELL, 'relative')}>
+              <div key={col} className="dk-workout-heatmap__month-cell">
                 {month && (
-                  <span className="absolute -top-4 left-0 text-[10px] text-muted-foreground/50 whitespace-nowrap">
+                  <span className="dk-workout-heatmap__month-label">
                     {month.label}
                   </span>
                 )}
@@ -107,9 +105,9 @@ export function WorkoutHeatmap({ weeks = 52, className }: WorkoutHeatmapProps) {
         </div>
 
         {/* Grid */}
-        <div className="flex gap-0.5">
+        <div className="dk-workout-heatmap__grid">
           {Array.from({ length: grid.cols }).map((_, col) => (
-            <div key={col} className="flex flex-col gap-0.5">
+            <div key={col} className="dk-workout-heatmap__col">
               {Array.from({ length: 7 }).map((_, row) => {
                 const entry = grid.cells[row][col]
                 const count = entry?.count ?? 0
@@ -118,10 +116,8 @@ export function WorkoutHeatmap({ weeks = 52, className }: WorkoutHeatmapProps) {
                   <div
                     key={row}
                     className={cn(
-                      CELL,
-                      isLoading
-                        ? 'animate-pulse bg-muted/20'
-                        : cellColor(count),
+                      'dk-workout-heatmap__cell',
+                      cellClass(count, isLoading),
                     )}
                     style={isLoading ? loadingStyle(col, row) : undefined}
                     title={tooltip(date, count)}
@@ -134,13 +130,13 @@ export function WorkoutHeatmap({ weeks = 52, className }: WorkoutHeatmapProps) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-1 mt-3 justify-end">
-        <span className="text-[10px] text-muted-foreground/40">Less</span>
-        <div className={cn(LEGEND_CELL, 'bg-white/[0.06] ring-1 ring-white/[0.04]')} />
-        <div className={cn(LEGEND_CELL, 'bg-primary/30 ring-1 ring-primary/10')} />
-        <div className={cn(LEGEND_CELL, 'bg-primary/50 ring-1 ring-primary/20')} />
-        <div className={cn(LEGEND_CELL, 'bg-primary/70 ring-1 ring-primary/30')} />
-        <span className="text-[10px] text-muted-foreground/40">More</span>
+      <div className="dk-workout-heatmap__legend">
+        <span className="dk-workout-heatmap__legend-label">Less</span>
+        <div className="dk-workout-heatmap__legend-cell dk-workout-heatmap__cell--level-0" />
+        <div className="dk-workout-heatmap__legend-cell dk-workout-heatmap__cell--level-1" />
+        <div className="dk-workout-heatmap__legend-cell dk-workout-heatmap__cell--level-2" />
+        <div className="dk-workout-heatmap__legend-cell dk-workout-heatmap__cell--level-3" />
+        <span className="dk-workout-heatmap__legend-label">More</span>
       </div>
     </div>
   )

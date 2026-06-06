@@ -1,7 +1,9 @@
+// TODO: Review this file
 import { useNavigate } from "@tanstack/react-router"
 import { CheckCircle2Icon, MusicIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { SpotifyPlaylist } from "../types"
+import "./playlist-card.scss"
 
 interface PlaylistCardProps {
   playlist: SpotifyPlaylist
@@ -17,35 +19,29 @@ export function PlaylistCard({ playlist, className }: PlaylistCardProps) {
   return (
     <button
       onClick={() => navigate({ to: "/library/spotify/playlists/$id", params: { id: playlist.id } })}
-      className={cn(
-        "group relative flex flex-col rounded-xl overflow-hidden transition-all duration-200",
-        "bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-hover)]",
-        "border border-transparent hover:border-primary/20",
-        "text-left",
-        className,
-      )}
+      className={cn("dk-playlist-card", className)}
     >
-      <div className="aspect-square overflow-hidden">
+      <div className="dk-playlist-card__image-wrapper">
         {image ? (
           <img
             src={image}
             alt={playlist.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="dk-playlist-card__image"
           />
         ) : (
-          <div className="h-full w-full flex items-center justify-center bg-muted text-muted-foreground">
+          <div className="dk-playlist-card__placeholder">
             <MusicIcon className="h-12 w-12" />
           </div>
         )}
       </div>
-      <div className="p-3 space-y-1">
-        <h3 className="font-semibold text-sm truncate">{playlist.name}</h3>
-        <p className="text-xs text-muted-foreground truncate">
+      <div className="dk-playlist-card__content">
+        <h3 className="dk-playlist-card__title">{playlist.name}</h3>
+        <p className="dk-playlist-card__description">
           {trackCount} track{trackCount !== 1 ? "s" : ""}
           {playlist.owner?.display_name ? ` · ${playlist.owner.display_name}` : ""}
         </p>
         {isSubscribed && (
-          <span className="inline-flex items-center gap-1 text-xs text-primary">
+          <span className="dk-playlist-card__subscription-badge">
             <CheckCircle2Icon className="h-3 w-3" />
             Subscribed
           </span>

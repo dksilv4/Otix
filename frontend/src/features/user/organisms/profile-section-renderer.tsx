@@ -1,3 +1,5 @@
+// TODO: Review this file
+import './profile-section-renderer.scss'
 import { X } from 'lucide-react'
 import { HallOfFameSection } from './profile-hall-of-fame-section'
 import { LibraryBreakdownSection } from './profile-library-breakdown-section'
@@ -39,16 +41,16 @@ export function ProfileSectionRenderer({
  longestReviewStreak,
 }: ProfileSectionRendererProps) {
  return (
- <div className="space-y-10">
+ <div className="dk-user-section-renderer">
  {sections.map((sectionId) => {
  const Component = SECTION_COMPONENTS[sectionId]
  if (!Component) return null
  return (
- <div key={sectionId} className="relative group/section">
+ <div key={sectionId} className="dk-user-section-renderer__section">
  {isOwner && onRemoveSection && (
  <button
  onClick={() => onRemoveSection(sectionId)}
- className="absolute -top-2 -right-2 z-10 p-1 rounded-full bg-[var(--dk-surface-overlay)] text-muted-foreground/40 hover:text-destructive hover:border-destructive/30 opacity-0 group-hover/section:opacity-100 transition-all"
+ className="dk-user-section-renderer__remove-btn"
  >
  <X className="h-3.5 w-3.5" />
  </button>

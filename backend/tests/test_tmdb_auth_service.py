@@ -36,7 +36,7 @@ class TestTmdbAuthUrl:
 
         url, state = await tmdb_auth_service.build_tmdb_link_url_for_user(
             "user-1",
-            "https://api.example.com/auth/integrations/tmdb/redirect",
+            "https://api.example.com/auth/oauth/tmdb/redirect",
         )
 
         parsed = urllib.parse.urlparse(url)
@@ -49,7 +49,7 @@ class TestTmdbAuthUrl:
         assert parsed.path == "/authenticate/tmdb-request-token"
         assert redirect.scheme == "https"
         assert redirect.netloc == "api.example.com"
-        assert redirect.path == "/auth/integrations/tmdb/redirect"
+        assert redirect.path == "/auth/oauth/tmdb/redirect"
         assert redirect_query == {"state": state}
 
         stored = await fakeredis.get(tmdb_auth_service._state_key(state))

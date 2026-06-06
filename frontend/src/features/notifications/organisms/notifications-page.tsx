@@ -1,4 +1,5 @@
 // TODO: Review this file
+import './notifications-page.scss'
 import { useCallback } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
@@ -122,10 +123,9 @@ function NotificationRow({
  return (
  <div
  className={cn(
- 'group relative flex items-start gap-4 p-4 rounded-2xl transition-colors',
- 'hover:bg-[var(--dk-surface-glass)]',
- !notification.isRead && 'bg-primary/[0.03]',
- linkUrl && 'cursor-pointer',
+ 'dk-notifications__row',
+ !notification.isRead && 'dk-notifications__row--unread',
+ linkUrl && 'dk-notifications__row--clickable',
  )}
  onClick={handleRowClick}
  onKeyDown={(e) => {
@@ -138,46 +138,43 @@ function NotificationRow({
  {!notification.isRead && (
  <button
  type="button"
- className="absolute left-1.5 top-1/2 -translate-y-1/2"
+ className="dk-notifications__dot-btn"
  onClick={(e) => {
  e.stopPropagation()
  onMarkRead(notification.id)
  }}
  aria-label="Mark as read"
  >
- <span className="block h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]" />
+ <span className="dk-notifications__dot" />
  </button>
  )}
 
  {/* Icon */}
  <div
- className={cn(
- 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
- 'bg-[var(--dk-surface-base)] ',
- )}
+ className="dk-notifications__icon"
  >
  <Icon className="h-[18px] w-[18px] text-muted-foreground" />
  </div>
 
  {/* Content */}
- <div className="min-w-0 flex-1">
- <div className="flex items-baseline justify-between gap-2">
- <p className="text-sm font-semibold">{notification.title}</p>
- <span className="shrink-0 text-[11px] text-muted-foreground/50">
+ <div className="dk-notifications__content">
+ <div className="dk-notifications__content-header">
+ <p className="dk-notifications__content-title">{notification.title}</p>
+ <span className="dk-notifications__timestamp">
  {formatTimeAgo(notification.createdAt)}
  </span>
  </div>
  {notification.body && (
- <p className="text-sm text-muted-foreground mt-1 line-clamp-3">
+ <p className="dk-notifications__body">
  {notification.body}
  </p>
  )}
 
  {isFriendRequest && (
- <div className="flex gap-2 mt-3">
+ <div className="dk-notifications__actions">
  <button
  type="button"
- className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+ className="dk-notifications__action dk-notifications__action--accept"
  onClick={(e) => {
  e.stopPropagation()
  handleAction('accept')
@@ -187,7 +184,7 @@ function NotificationRow({
  </button>
  <button
  type="button"
- className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+ className="dk-notifications__action dk-notifications__action--decline"
  onClick={(e) => {
  e.stopPropagation()
  handleAction('reject')
@@ -198,10 +195,10 @@ function NotificationRow({
  </div>
  )}
  {isListInvitation && (
- <div className="flex gap-2 mt-3">
+ <div className="dk-notifications__actions">
  <button
  type="button"
- className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+ className="dk-notifications__action dk-notifications__action--accept"
  onClick={(e) => {
  e.stopPropagation()
  handleListAction('accept')
@@ -211,7 +208,7 @@ function NotificationRow({
  </button>
  <button
  type="button"
- className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors"
+ className="dk-notifications__action dk-notifications__action--decline"
  onClick={(e) => {
  e.stopPropagation()
  handleListAction('decline')
@@ -228,9 +225,9 @@ function NotificationRow({
 
 function NotificationsSkeleton() {
  return (
- <div className="space-y-2">
+ <div className="dk-notifications__skeleton">
  {Array.from({ length: 8 }).map((_, i) => (
- <div key={i} className="flex items-start gap-4 p-4">
+ <div key={i} className="dk-notifications__skeleton-row">
  <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
  <div className="flex-1 space-y-2">
  <Skeleton className="h-4 w-48" />
@@ -285,11 +282,11 @@ export function NotificationsPage() {
 
  if (!isAuthenticated) {
  return (
- <div className="flex min-h-[50vh] items-center justify-center">
- <div className="text-center space-y-3">
+ <div className="dk-notifications__guest">
+ <div className="dk-notifications__guest-inner">
  <Bell className="mx-auto h-10 w-10 text-muted-foreground/40" />
- <h2 className="text-lg font-semibold">Sign in to view notifications</h2>
- <Link to="/auth/login" search={{ redirect: location.href }} className="text-sm text-primary hover:underline">
+ <h2 className="dk-notifications__guest-title">Sign in to view notifications</h2>
+ <Link to="/auth/login" search={{ redirect: location.href }} className="dk-notifications__guest-link">
  Sign in
  </Link>
  </div>
@@ -298,7 +295,7 @@ export function NotificationsPage() {
  }
 
  return (
- <div className="mx-auto lg:max-w-2xl pb-16">
+ <div className="dk-notifications">
  <Helmet>
  <title>Notifications - Otix</title>
  <meta name="description" content="Your notifications on Otix." />
@@ -306,11 +303,11 @@ export function NotificationsPage() {
  </Helmet>
 
  {/* Header */}
- <div className="flex items-center justify-between mb-6">
- <div className="flex items-center gap-3">
- <h1 className="text-2xl font-extrabold tracking-tight">Notifications</h1>
+ <div className="dk-notifications__header">
+ <div className="dk-notifications__header-left">
+ <h1 className="dk-notifications__title">Notifications</h1>
  {unreadCount > 0 && (
- <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+ <span className="dk-notifications__badge">
  {unreadCount} new
  </span>
  )}
@@ -318,7 +315,7 @@ export function NotificationsPage() {
  {unreadCount > 0 && (
  <button
  type="button"
- className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-glass)] px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all"
+ className="dk-notifications__mark-all"
  onClick={() => markAllRead.mutate()}
  disabled={markAllRead.isPending}
  >
@@ -332,14 +329,14 @@ export function NotificationsPage() {
  {isLoading ? (
  <NotificationsSkeleton />
  ) : allItems.length === 0 ? (
- <div className="flex min-h-[40vh] items-center justify-center">
- <div className="text-center space-y-3">
+ <div className="dk-notifications__empty">
+ <div className="dk-notifications__empty-inner">
  <Bell className="mx-auto h-10 w-10 text-muted-foreground/30" />
- <p className="text-sm text-muted-foreground">No notifications yet</p>
+ <p className="dk-notifications__empty-text">No notifications yet</p>
  </div>
  </div>
  ) : (
- <div className="divide-y divide-border/[0.04]">
+ <div className="dk-notifications__list">
  {allItems.map((n, i) => (
  <div
  key={n.id}
@@ -356,8 +353,8 @@ export function NotificationsPage() {
 
  {/* Loading more */}
  {isFetchingNextPage && (
- <div className="flex justify-center py-6">
- <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+ <div className="dk-notifications__spinner">
+ <div className="dk-notifications__spinner-circle" />
  </div>
  )}
  </div>

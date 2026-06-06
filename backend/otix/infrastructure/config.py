@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from pathlib import Path
@@ -156,6 +157,20 @@ class Settings(BaseSettings):
     @property
     def cors_origin_regex(self) -> str:
         return r"https?://(localhost|127\.0\.0\.1):\d+"
+
+    @property
+    def EMAIL_TEMPLATES_DIR(self) -> Path:
+        return Path(__file__).parents[1] / "templates" / "emails"
+
+    def __getattr__(self, name: str):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            if name.isupper():
+                lower_name = name.lower()
+                if hasattr(self, lower_name):
+                    return getattr(self, lower_name)
+            raise
 
 
 settings = Settings()

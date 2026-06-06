@@ -1,6 +1,7 @@
 import { forwardRef, useId } from 'react'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './checkbox.scss'
 
 interface DkCheckboxProps {
   checked: boolean
@@ -15,8 +16,8 @@ const DkCheckbox = forwardRef<HTMLInputElement, DkCheckboxProps>(
     const id = useId()
 
     return (
-      <label htmlFor={id} className={cn('inline-flex items-center gap-3', disabled && 'opacity-40', className)}>
-        <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+      <label htmlFor={id} className={cn('dk-checkbox', disabled && 'dk-checkbox--disabled', className)}>
+        <span className="dk-checkbox__box-wrap">
           <input
             ref={ref}
             id={id}
@@ -24,23 +25,16 @@ const DkCheckbox = forwardRef<HTMLInputElement, DkCheckboxProps>(
             checked={checked}
             disabled={disabled}
             onChange={(e) => onCheckedChange(e.target.checked)}
-            className="peer sr-only"
+            className="dk-checkbox__input"
           />
           <span
-            className={cn(
-              'absolute inset-0 rounded-md transition-all duration-[var(--dk-duration-fast)]',
-              'ring-1 ring-inset ring-[var(--dk-separator)]',
-              'peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--dk-ring-color)]',
-              checked
-                ? 'bg-primary ring-primary'
-                : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)]',
-            )}
+            className={cn('dk-checkbox__box', checked && 'dk-checkbox__box--checked')}
           />
           {checked && (
-            <Check className="relative z-10 h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
+            <Check className="dk-checkbox__check" strokeWidth={3} />
           )}
         </span>
-        {label && <span className="text-sm">{label}</span>}
+        {label && <span className="dk-checkbox__label">{label}</span>}
       </label>
     )
   },

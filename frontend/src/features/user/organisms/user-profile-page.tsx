@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { useEffect, useMemo, useState } from 'react'
+import './user-profile-page.scss'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
@@ -211,13 +213,13 @@ export function UserProfilePage() {
  if (profileQuery.isLoading) return <ProfileSkeleton />
  if (profileQuery.isError || !profileQuery.data) {
  return (
- <div className="flex min-h-[50vh] items-center justify-center">
- <div className="text-center space-y-3">
- <h2 className="text-lg font-semibold">User Not Found</h2>
- <p className="text-sm text-muted-foreground">
+ <div className="dk-user-profile-page__error">
+ <div className="dk-user-profile-page__error-card">
+ <h2 className="dk-user-profile-page__error-title">User Not Found</h2>
+ <p className="dk-user-profile-page__error-text">
  The user "{username}" doesn't exist or has been removed.
  </p>
- <a href="/" className="inline-block text-sm text-primary hover:underline">
+ <a href="/" className="dk-user-profile-page__error-link">
  Go back home
  </a>
  </div>
@@ -230,7 +232,7 @@ export function UserProfilePage() {
  const tier = getLevelTier(gamification.level)
 
  return (
- <div className="pb-16">
+ <div className="dk-user-profile-page">
  <Helmet>
  <title>{`${profile.username} - Otix`}</title>
  <meta name="description" content={`${profile.username}'s profile on Otix — check out their library, lists, and activity.`} />
@@ -241,42 +243,36 @@ export function UserProfilePage() {
  </Helmet>
 
  {/* Hero */}
- <div className="relative flex min-h-[75vh] sm:min-h-[50vh] items-end overflow-hidden rounded-3xl shadow-[var(--dk-shadow-glass)] animate-hero-fade-in">
+ <div className="dk-user-profile-page__hero">
  {/* Backdrop */}
  {profile.backgroundUrl ? (
- <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+ <div className="dk-user-profile-page__hero-backdrop">
  <img
  src={profile.backgroundUrl}
  alt=""
- className="h-full w-full object-cover object-[center_20%]"
+ className="dk-user-profile-page__hero-backdrop-img"
  />
- <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 via-35% to-background/10" />
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
+ <div className="dk-user-profile-page__hero-backdrop-overlay" />
+ <div className="dk-user-profile-page__hero-backdrop-radial-1" />
+ <div className="dk-user-profile-page__hero-backdrop-radial-2" />
  </div>
  ) : (
  <div
- className="pointer-events-none absolute inset-0 z-0"
+ className="dk-user-profile-page__hero-backdrop"
  style={{ background: pickGradient(profile.username) }}
  >
- <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 via-35% to-background/10" />
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,var(--primary)_0%,transparent_40%)] opacity-10" />
- <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,var(--accent)_0%,transparent_40%)] opacity-10" />
- <div
- className="absolute inset-0 opacity-[0.04]"
- style={{
- backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1px)',
- backgroundSize: '20px 20px',
- }}
- />
+ <div className="dk-user-profile-page__hero-backdrop-overlay" />
+ <div className="dk-user-profile-page__hero-backdrop-radial-1" />
+ <div className="dk-user-profile-page__hero-backdrop-radial-2" />
+ <div className="dk-user-profile-page__hero-backdrop-dots" />
  </div>
  )}
 
  {/* Content */}
- <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-8 pt-20 sm:px-6 sm:pb-10 lg:px-8">
- <div className="flex flex-row items-end gap-5 sm:gap-8">
+ <div className="dk-user-profile-page__hero-content">
+ <div className="dk-user-profile-page__hero-row">
  {/* Avatar with XP ring */}
- <div className="shrink-0 animate-hero-scale-in" style={{ animationDelay: '50ms' }}>
+ <div className="dk-user-profile-page__hero-avatar" style={{ animationDelay: '50ms' }}>
  <XPProgressRing progress={gamification.xpProgress} size={120} strokeWidth={4} strokeColor={tier.color}>
  <DkAvatar
  src={profile.avatarUrl}
@@ -288,9 +284,9 @@ export function UserProfilePage() {
  </div>
 
  {/* Info */}
- <div className="flex min-w-0 flex-1 flex-col gap-2.5 pb-1">
+ <div className="dk-user-profile-page__hero-info">
  <h1
- className="text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-4xl animate-hero-slide-up"
+ className="dk-user-profile-page__hero-name"
  style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)', animationDelay: '100ms' }}
  >
  {profile.username}
@@ -303,7 +299,7 @@ export function UserProfilePage() {
  </h1>
 
  {/* Meta */}
- <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-white/55 font-medium animate-hero-slide-up" style={{ animationDelay: '150ms' }}>
+ <div className="dk-user-profile-page__hero-meta" style={{ animationDelay: '150ms' }}>
  {(() => {
  const m = formatMemberSince(profile.createdAt)
  return (
@@ -330,14 +326,14 @@ export function UserProfilePage() {
  </div>
 
  {profile.bio && (
- <p className="max-w-xl text-sm leading-relaxed text-muted-foreground/80 animate-hero-slide-up" style={{ animationDelay: '200ms' }}>
+ <p className="dk-user-profile-page__hero-bio" style={{ animationDelay: '200ms' }}>
  {profile.bio}
  </p>
  )}
 
  {/* Follow + Friend actions */}
  {currentUser && currentUser.username !== username && (
- <div className="mt-3 flex items-center gap-2 animate-hero-slide-up" style={{ animationDelay: '250ms' }}>
+ <div className="dk-user-profile-page__hero-actions" style={{ animationDelay: '250ms' }}>
  <FollowButton
  username={username}
  isFollowing={profile.isFollowing ?? false}
@@ -417,7 +413,7 @@ export function UserProfilePage() {
  </div>
  )}
  {currentUser && currentUser.username === username && (
- <div className="mt-3 animate-hero-slide-up text-xs text-white/30" style={{ animationDelay: '250ms' }}>
+ <div className="dk-user-profile-page__hero-owner-info" style={{ animationDelay: '250ms' }}>
  {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
  {(profile.proposalCount ?? 0) > 0 && (
  <span>
@@ -434,7 +430,7 @@ export function UserProfilePage() {
 
  {/* XP Bar */}
  <div
- className="mt-6 relative h-10 rounded-lg bg-white/[0.04] overflow-hidden ring-1 ring-white/[0.06] animate-hero-reveal-bar"
+ className="dk-user-profile-page__xp-bar"
  style={{
  animationDelay: '300ms',
  boxShadow: tier.hasGlow ? `0 0 20px ${tier.glow}, inset 0 0 12px ${tier.glow}` : undefined,
@@ -442,7 +438,7 @@ export function UserProfilePage() {
  >
  {/* Fill */}
  <div
- className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700 ease-out"
+ className="dk-user-profile-page__xp-bar-fill"
  style={{
  width: `${barProgress * 100}%`,
  background: tier.barColor,
@@ -451,20 +447,20 @@ export function UserProfilePage() {
  {/* Shimmer effect (level 35+) */}
  {tier.hasShimmer && (
  <div
- className="absolute inset-y-0 left-0 rounded-lg overflow-hidden pointer-events-none"
+ className="dk-user-profile-page__xp-bar-shimmer-wrap"
  style={{ width: `${barProgress * 100}%` }}
  >
  <div
- className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+ className="dk-user-profile-page__xp-bar-shimmer"
  style={{ animation: 'xpShimmer 2s ease-in-out infinite' }}
  />
  </div>
  )}
  {/* Subtle top highlight across the whole bar */}
- <div className="absolute inset-y-0 left-0 rounded-lg bg-gradient-to-b from-white/[0.04] to-transparent w-full pointer-events-none" />
+ <div className="dk-user-profile-page__xp-bar-highlight" />
 
  {/* Content overlay */}
- <div className="relative h-full flex items-center justify-between px-5">
+ <div className="dk-user-profile-page__xp-bar-content">
  <div className="flex items-center gap-1.5">
  <span
  className="text-[10px] font-semibold uppercase tracking-widest"
@@ -498,7 +494,7 @@ export function UserProfilePage() {
  </div>
  {/* XP Rank position */}
  {profile.xpRank != null && (
- <div className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground/30 animate-hero-reveal-bar" style={{ animationDelay: '350ms' }}>
+ <div className="dk-user-profile-page__xp-bar-rank" style={{ animationDelay: '350ms' }}>
  <span>#{profile.xpRank.toLocaleString()}</span>
  {profile.xpPercentile != null && (
  <span>· Top {profile.xpPercentile}%</span>
@@ -506,7 +502,7 @@ export function UserProfilePage() {
  </div>
  )}
  {/* Streaks */}
- <div className="mt-2 animate-hero-reveal-bar" style={{ animationDelay: '380ms' }}>
+ <div className="dk-user-profile-page__xp-bar-streaks" style={{ animationDelay: '380ms' }}>
  <StreakDisplay
  loginStreak={profile.currentLoginStreak ?? 0}
  longestLoginStreak={profile.longestLoginStreak ?? 0}
@@ -520,14 +516,14 @@ export function UserProfilePage() {
 
  {/* Platform links — floating below hero */}
  {(profile.steam || profile.plex || profile.tmdbUsername) && (
- <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 -mt-3 animate-hero-slide-up" style={{ animationDelay: '350ms' }}>
- <div className="flex flex-wrap gap-1.5">
+ <div className="dk-user-profile-page__platforms" style={{ animationDelay: '350ms' }}>
+ <div className="dk-user-profile-page__platforms-inner">
  {profile.steam && (
  <a
  href={profile.steam.profileurl ?? '#'}
  target="_blank"
  rel="noopener noreferrer"
- className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[var(--dk-surface-elevated)] hover:text-foreground transition-all"
+ className="dk-user-profile-page__platform-link"
  >
  <SteamIcon className="h-3.5 w-3.5" />
  Steam
@@ -538,7 +534,7 @@ export function UserProfilePage() {
  href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
  target="_blank"
  rel="noopener noreferrer"
- className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[#e5a00d]/15 hover:text-[#e5a00d] transition-all"
+ className="dk-user-profile-page__platform-link dk-user-profile-page__platform-link--plex"
  >
  <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
  Plex
@@ -549,7 +545,7 @@ export function UserProfilePage() {
  href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
  target="_blank"
  rel="noopener noreferrer"
- className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[var(--dk-shadow-sm)] hover:bg-[#01b4e4]/15 hover:text-[#01b4e4] transition-all"
+ className="dk-user-profile-page__platform-link dk-user-profile-page__platform-link--tmdb"
  >
  <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
  TMDb
@@ -560,7 +556,7 @@ export function UserProfilePage() {
  )}
 
  {/* Profile content */}
- <div className="mx-auto w-full lg:max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-10">
+ <div className="dk-user-profile-page__content">
  {(() => {
  const currentSections = profile.profileSections ?? DEFAULT_SECTIONS
  const availableSections = ALL_SECTIONS.filter((s) => !currentSections.includes(s.id))
@@ -631,10 +627,10 @@ function AddSectionButton({
  }
 
  return (
- <div className="relative">
+ <div className="dk-user-profile-page__add-section">
  <button
  onClick={() => setOpen(!open)}
- className="w-full rounded-2xl border-2 border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)] p-6 text-center hover:border-white/[0.15] transition-colors"
+ className="dk-user-profile-page__add-section-trigger"
  >
  <Plus className="h-5 w-5 text-muted-foreground/30 mx-auto mb-1" />
  <p className="text-xs text-muted-foreground/40">Add section</p>
@@ -642,17 +638,17 @@ function AddSectionButton({
 
  {open && (
  <>
- <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
- <div className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-2xl bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] overflow-hidden">
+ <div className="dk-user-profile-page__add-section-overlay" onClick={() => setOpen(false)} />
+ <div className="dk-user-profile-page__add-section-dropdown">
  <div className="p-2">
- <p className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Available Sections</p>
+ <p className="dk-user-profile-page__add-section-label">Available Sections</p>
  {availableSections.map((section) => {
  const Icon = section.icon
  return (
  <button
  key={section.id}
  onClick={() => handleAdd(section.id)}
- className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-[var(--dk-surface-glass)] transition-colors"
+ className="dk-user-profile-page__add-section-item"
  >
  <Icon className="h-4 w-4 text-muted-foreground" />
  <span className="text-sm">{section.label}</span>
@@ -670,10 +666,8 @@ function AddSectionButton({
 
 function ProfileSkeleton() {
  return (
- <div className="pb-16">
- <div className="min-h-[60vh] sm:min-h-[50vh] rounded-3xl overflow-hidden">
- <Skeleton className="h-full w-full rounded-none" />
- </div>
+ <div className="dk-user-profile-page__skeleton">
+ <Skeleton />
  </div>
  )
 }

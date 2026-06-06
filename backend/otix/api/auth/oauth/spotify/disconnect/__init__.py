@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from __future__ import annotations
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from otix.api._utils import get_current_user, get_db
+from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
+from otix.schemas.auth import SpotifyDisconnectResponse
+from otix.domain.user import User
+from otix.services.spotify_auth_service import unlink_spotify_from_user
+
+logger = structlog.get_logger()
+router = APIRouter()
+
+
+@router.delete(
+    "/oauth/spotify/disconnect",
+    response_model=SpotifyDisconnectResponse,
+)
+async def spotify_disconnect(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limiter: AuthRateLimiter = Depends(get_auth_rate_limiter),
+) -> SpotifyDisconnectResponse:
+    ip = client_ip(request)
+    await limiter.check_spotify_disconnect(ip)
+
+    try:
+        await unlink_spotify_from_user(db, current_user)
+    except HTTPException:
+        raise
+    except Exception as err:
+        logger.exception("spotify disconnect failed", user_id=current_user.id, ip=ip)
+        raise
+
+    logger.info("spotify account unlinked", user_id=current_user.id, ip=ip)
+    return SpotifyDisconnectResponse()

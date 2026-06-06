@@ -1,0 +1,107 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ─── Profile Rating Distribution Section ─── */
+.dk-user-rating-distribution {
+  @apply w-full;
+}
+
+.dk-user-rating-distribution__header {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.dk-user-rating-distribution__title {
+  @apply text-sm font-semibold uppercase tracking-wider text-muted-foreground;
+}
+
+.dk-user-rating-distribution__card {
+  @apply rounded-2xl p-4 sm:p-6;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+.dk-user-rating-distribution__legend {
+  @apply flex flex-wrap gap-x-4 gap-y-1 mb-5;
+}
+
+.dk-user-rating-distribution__legend-item {
+  @apply inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/60;
+}
+
+.dk-user-rating-distribution__legend-swatch {
+  @apply w-2.5 h-2.5 rounded-sm shrink-0;
+}
+
+.dk-user-rating-distribution__bars {
+  @apply flex items-end gap-1.5 sm:gap-2 min-h-[180px];
+}
+
+.dk-user-rating-distribution__bar-group {
+  @apply flex-1 flex flex-col items-center gap-1 min-w-0;
+}
+
+.dk-user-rating-distribution__bar-wrapper {
+  @apply w-full rounded-t-sm overflow-hidden flex flex-col-reverse relative;
+}
+
+.dk-user-rating-distribution__bar-wrapper--empty {
+  @apply w-full flex flex-col justify-end;
+}
+
+.dk-user-rating-distribution__bar-empty-fill {
+  @apply w-full rounded-t-sm h-full;
+  background-color: rgb(255 255 255 / 0.03);
+}
+
+.dk-user-rating-distribution__segment {
+  @apply w-full;
+  transition: all 300ms;
+
+  &:hover {
+    filter: brightness(1.25);
+  }
+}
+
+.dk-user-rating-distribution__label-pct {
+  @apply text-[9px] font-bold tabular-nums;
+  color: hsl(var(--muted-foreground) / 0.3);
+}
+
+.dk-user-rating-distribution__label-score {
+  @apply text-[10px] font-medium tabular-nums;
+  color: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dk-user-rating-distribution__label-score--empty {
+  @apply text-[10px] font-medium tabular-nums;
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+.dk-user-rating-distribution__label-count {
+  @apply text-[8px] tabular-nums;
+  color: hsl(var(--muted-foreground) / 0.3);
+}
+
+.dk-user-rating-distribution__summary {
+  @apply mt-5 pt-3 flex items-center gap-4 text-[11px];
+  border-top: 1px solid rgb(255 255 255 / 0.04);
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+.dk-user-rating-distribution__summary-item {
+  @apply inline-flex items-center gap-1;
+}
+
+/* ─── Skeleton variant ─── */
+.dk-user-rating-distribution__skeleton-card {
+  @apply rounded-2xl p-6;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+.dk-user-rating-distribution__skeleton-bars {
+  @apply flex items-end gap-2 h-[180px];
+}
+
+.dk-user-rating-distribution__skeleton-group {
+  @apply flex-1 flex flex-col items-center gap-1;
+}

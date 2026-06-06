@@ -1,0 +1,284 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ─── Admin Dashboard Page ─── */
+.dk-admin-dashboard {
+  @apply w-full;
+  padding-bottom: 4rem;
+}
+
+/* ─── Header ─── */
+.dk-admin-dashboard__header {
+  @apply flex items-center justify-between mb-8;
+}
+
+.dk-admin-dashboard__title {
+  @apply text-2xl font-extrabold tracking-tight;
+}
+
+/* ─── Refresh button ─── */
+.dk-admin-dashboard__refresh-btn {
+  @apply relative flex items-center justify-center w-10 h-10 rounded-full;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+  transition: all 150ms ease;
+}
+
+.dk-admin-dashboard__refresh-btn:hover {
+  background-color: var(--dk-surface-glass-hover);
+}
+
+.dk-admin-dashboard__refresh-btn:disabled {
+  cursor: default;
+}
+
+.dk-admin-dashboard__refresh-progress {
+  @apply absolute inset-0 w-full h-full;
+  transform: rotate(-90deg);
+}
+
+.dk-admin-dashboard__refresh-track {
+  @apply text-white/[0.06];
+}
+
+.dk-admin-dashboard__refresh-indicator {
+  @apply text-primary;
+  transition: stroke-dashoffset 300ms linear;
+}
+
+.dk-admin-dashboard__refresh-btn:disabled .dk-admin-dashboard__refresh-indicator {
+  stroke-dashoffset: 0 !important;
+}
+
+.dk-admin-dashboard__refresh-icon-wrap {
+  @apply relative flex flex-col items-center;
+}
+
+.dk-admin-dashboard__refresh-icon {
+  @apply h-3.5 w-3.5 text-muted-foreground;
+  transition: color 150ms ease;
+}
+
+.dk-admin-dashboard__refresh-btn:hover .dk-admin-dashboard__refresh-icon {
+  @apply text-foreground;
+}
+
+/* CSS-only fallback for isFetching state — JS adds this class */
+.dk-admin-dashboard__refresh-icon--spinning {
+  @apply text-primary;
+  animation: dk-spin 1s linear infinite;
+}
+
+@keyframes dk-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.dk-admin-dashboard__refresh-countdown {
+  @apply text-[9px] font-semibold text-muted-foreground tabular-nums leading-none mt-0.5;
+}
+
+/* ─── Content ─── */
+.dk-admin-dashboard__content {
+  @apply space-y-10;
+}
+
+/* ─── Section ─── */
+.dk-admin-dashboard__section-title {
+  @apply mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-admin-dashboard__subsection-title {
+  @apply mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-admin-dashboard__empty-text {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-admin-dashboard__empty-text--col-span {
+  @apply col-span-full;
+}
+
+/* ─── Error / Loading states ─── */
+.dk-admin-dashboard__error-state {
+  @apply flex min-h-[30vh] items-center justify-center;
+}
+
+.dk-admin-dashboard__error-text {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-admin-dashboard__skeleton {
+  @apply space-y-8;
+}
+
+.dk-admin-dashboard__skeleton-grid {
+  @apply grid grid-cols-2 gap-4 sm:grid-cols-4;
+}
+
+.dk-admin-dashboard__skeleton-list {
+  @apply space-y-3;
+}
+
+/* ─── Stat Card ─── */
+.dk-admin-dashboard__stat-card {
+  @apply rounded-2xl p-5;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-admin-dashboard__stat-label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-admin-dashboard__stat-value {
+  @apply mt-1 text-3xl font-extrabold tracking-tight font-mono;
+}
+
+/* ─── Enrichment Card ─── */
+.dk-admin-dashboard__enrichment-card {
+  @apply rounded-2xl p-4;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-admin-dashboard__enrichment-label {
+  @apply text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3;
+}
+
+.dk-admin-dashboard__enrichment-list {
+  @apply space-y-1.5;
+}
+
+.dk-admin-dashboard__enrichment-row {
+  @apply flex items-center justify-between text-sm;
+}
+
+.dk-admin-dashboard__enrichment-row-label {
+  @apply text-muted-foreground;
+}
+
+.dk-admin-dashboard__enrichment-row-value {
+  @apply font-mono tabular-nums font-medium;
+}
+
+.dk-admin-dashboard__enrichment-row-value--plain {
+  @apply font-mono tabular-nums;
+}
+
+/* ─── Delta Badge ─── */
+.dk-admin-dashboard__delta-badge {
+  @apply ml-1.5 text-[11px] font-medium;
+}
+
+.dk-admin-dashboard__delta-badge--positive {
+  @apply text-emerald-400;
+}
+
+.dk-admin-dashboard__delta-badge--negative {
+  @apply text-red-400;
+}
+
+/* ─── Range Selector ─── */
+.dk-admin-dashboard__range-selector {
+  @apply flex items-center gap-1 flex-wrap;
+}
+
+.dk-admin-dashboard__range-btn {
+  @apply px-2.5 py-1 text-[11px] font-medium rounded-lg text-muted-foreground;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.dk-admin-dashboard__range-btn:hover {
+  @apply text-foreground;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-admin-dashboard__range-btn--active {
+  @apply bg-primary text-primary-foreground;
+}
+
+.dk-admin-dashboard__range-btn--active:hover {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* ─── Grids ─── */
+.dk-admin-dashboard__grid--cols-2-3 {
+  @apply grid grid-cols-2 gap-4 sm:grid-cols-3;
+}
+
+.dk-admin-dashboard__grid--cols-2-4 {
+  @apply grid grid-cols-2 gap-4 sm:grid-cols-4;
+}
+
+.dk-admin-dashboard__grid--cols-1-2-3 {
+  @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.dk-admin-dashboard__chart-section {
+  @apply grid grid-cols-2 gap-4 sm:grid-cols-4;
+}
+
+/* ─── Chart ─── */
+.dk-admin-dashboard__chart-title {
+  @apply mb-1.5 text-[11px] font-medium text-muted-foreground;
+}
+
+/* ─── Table ─── */
+.dk-admin-dashboard__table-wrapper {
+  @apply overflow-hidden rounded-2xl;
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-admin-dashboard__table {
+  @apply w-full text-sm;
+}
+
+.dk-admin-dashboard__table-header {
+  @apply text-left text-xs text-muted-foreground uppercase tracking-wider;
+}
+
+.dk-admin-dashboard__table-header-cell {
+  @apply px-5 py-3 font-medium;
+}
+
+.dk-admin-dashboard__table-header-cell--hidden-sm {
+  @apply px-5 py-3 font-medium hidden sm:table-cell;
+}
+
+.dk-admin-dashboard__table-row {
+  transition: background-color 150ms ease;
+}
+
+.dk-admin-dashboard__table-row:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.dk-admin-dashboard__table-cell {
+  @apply px-5 py-3;
+}
+
+.dk-admin-dashboard__table-cell--bold {
+  @apply px-5 py-3 font-medium;
+}
+
+.dk-admin-dashboard__table-cell--muted {
+  @apply px-5 py-3 text-muted-foreground;
+}
+
+.dk-admin-dashboard__table-cell--hidden-sm {
+  @apply hidden sm:table-cell;
+}
+
+.dk-admin-dashboard__table-cell--bold-hidden-sm {
+  @apply px-5 py-3 font-medium hidden sm:table-cell;
+}
+
+.dk-admin-dashboard__table-cell--muted-hidden-sm {
+  @apply px-5 py-3 text-muted-foreground hidden sm:table-cell;
+}

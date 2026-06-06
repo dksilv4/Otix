@@ -1,10 +1,11 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
-from otix.api.schemas.common import PaginatedResponse
+from otix.schemas.common import PaginatedResponse
 
 
 class EpisodeOut(BaseModel):
@@ -122,3 +123,16 @@ class PersonDetail(BaseModel):
 
 class PersonListResponse(PaginatedResponse):
     items: list[PersonSummary]
+
+
+class PersonRatingBody(BaseModel):
+    """Request body for rating a person."""
+
+    score: int = Field(..., ge=1, le=5)
+
+
+class PersonFollowResponse(BaseModel):
+    """Response for follow/unfollow actions on a person."""
+
+    followed: bool
+    follower_count: int

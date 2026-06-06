@@ -1,137 +1,137 @@
 {
   "/Users/dk/dev/Otix/backend/tests/conftest.py": {
-    "mtime": 1778779851.9320245,
-    "ast_hash": "1247ae9dda6fbe69a3b3e19e18efde3b",
+    "mtime": 1780599721.8276198,
+    "ast_hash": "01e32bc067d42e92f0b31bb07d8c7546",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_steamgrid_hydrator.py": {
-    "mtime": 1779631824.7171464,
-    "ast_hash": "9167b7bc855c94ddc8673dae8a266bae",
+    "mtime": 1780599721.8279529,
+    "ast_hash": "170c175d562822073ff99aeab3fe17d6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_people_service.py": {
-    "mtime": 1779634013.9694674,
+    "mtime": 1780599721.8283272,
     "ast_hash": "7f27352abc7bdd379c3ff06ba59c2c33",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_discover.py": {
-    "mtime": 1779633009.2905164,
-    "ast_hash": "f62d05dc3f4b6d59ef539cdfcf82cb28",
+    "mtime": 1780599721.8286612,
+    "ast_hash": "9412cff18ddf734d212af153344b5b0b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/benchmark_tmdb.py": {
-    "mtime": 1777741098.0387342,
+    "mtime": 1780599721.8291337,
     "ast_hash": "475b8c6c62112743f0b6286b9351919c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_tmdb_seed.py": {
-    "mtime": 1779632072.7821472,
-    "ast_hash": "90e884017e8e369093794e1163d4d685",
+    "mtime": 1780599721.8297613,
+    "ast_hash": "d329cdf825dc85071b3d0e06fdffb5df",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_plex_auth_service.py": {
-    "mtime": 1778358283.1010368,
+    "mtime": 1780599721.8303385,
     "ast_hash": "5e4cb4a0279cf11680a61c674fa15c54",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_catalog_seed.py": {
-    "mtime": 1778971864.6504216,
+    "mtime": 1780599721.8312976,
     "ast_hash": "49ee0435321b2e1ac77877f8187c806a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_spotify_seed_album.py": {
-    "mtime": 1778892518.436226,
-    "ast_hash": "6cbc8f10bb2a9f33239a2eaa9670f9d3",
+    "mtime": 1780599721.832101,
+    "ast_hash": "042f1536efd22581f85101fc649b058e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_people_hydration.py": {
-    "mtime": 1777661451.1066906,
+    "mtime": 1780599721.8325052,
     "ast_hash": "a1a61e7cebb7d6a2e8df24a53d6d7e64",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_lib_helpers.py": {
-    "mtime": 1778522269.8575325,
+    "mtime": 1780599721.8328354,
     "ast_hash": "fbe5392fd4c9bab252bcee106f99640c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/__init__.py": {
-    "mtime": 1777569269.0173795,
+    "mtime": 1780599721.8332407,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_metrics_and_auth_rate_limit.py": {
-    "mtime": 1778348105.9108574,
-    "ast_hash": "5024faaa4e79ab0245a575c3e90a358f",
+    "mtime": 1780599721.8335516,
+    "ast_hash": "dfaacc92693c96f052e176ab23855fe2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_steam.py": {
-    "mtime": 1778347913.2328856,
-    "ast_hash": "dfa697275f73ceedc7be60aa45993d05",
+    "mtime": 1780599721.8342352,
+    "ast_hash": "c00a04ff7fd7833ff79daa64f6d91940",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_tmdb_client.py": {
-    "mtime": 1777622553.764243,
+    "mtime": 1780599721.834628,
     "ast_hash": "9ec820803db944454f82124bb86b26b5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_fanart.py": {
-    "mtime": 1777851841.4302597,
-    "ast_hash": "3b37f9717cfe99804400fd717882f0e4",
+    "mtime": 1780599721.835528,
+    "ast_hash": "fb533571ddfc3285e154514fd721579d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_omdb.py": {
-    "mtime": 1777680202.5082827,
+    "mtime": 1780599721.8366256,
     "ast_hash": "8d2f9471ee28c97fe20b847c63c0768e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_sync_tasks.py": {
-    "mtime": 1778971864.6506226,
-    "ast_hash": "54c98ccc621b65f659867ee0e115df61",
+    "mtime": 1780599721.8376682,
+    "ast_hash": "fb511e62beaa45dff02639f7b45bf175",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_tmdb_transformer.py": {
-    "mtime": 1778522537.900051,
+    "mtime": 1780599721.8383508,
     "ast_hash": "93c38b88f94a8c7d13e5341e180be4b6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_youtube_title_parser.py": {
-    "mtime": 1779129952.5405781,
+    "mtime": 1780599721.8389945,
     "ast_hash": "19bdb06d54795a1c81725c1599ccbcf1",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_sync_pipeline.py": {
-    "mtime": 1777740520.5658429,
+    "mtime": 1780599721.840161,
     "ast_hash": "5503799f84d9d4a2f7dda9e0e47a100b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_tmdb_hydrator.py": {
-    "mtime": 1778522393.4156063,
-    "ast_hash": "a6191f77803fbb25d9ae01081f5c3658",
+    "mtime": 1780599721.8407726,
+    "ast_hash": "efbf4f193d1a82e9a4d53edc75429bcb",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_tmdb_auth_service.py": {
-    "mtime": 1778432327.9768705,
-    "ast_hash": "236ddcbecb9d035793472d2d31e5b9f0",
+    "mtime": 1780601194.0659156,
+    "ast_hash": "3c859d7db17336f3f52df3937c01c323",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_mood_checkins.py": {
-    "mtime": 1778779851.9327087,
-    "ast_hash": "146e29c1716afdcbccc6f370c1751523",
+    "mtime": 1780600022.0289333,
+    "ast_hash": "faf76f436cc694337e65e09f82cc157d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_musicbrainz_transformer.py": {
-    "mtime": 1779125178.9232717,
-    "ast_hash": "189b0657fb4152ab7fb9be942ad46c53",
+    "mtime": 1780599721.8434513,
+    "ast_hash": "a3f6554afb5fa83503e19d2978b18624",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_steam_auth_service.py": {
-    "mtime": 1778353527.24569,
+    "mtime": 1780599721.8440766,
     "ast_hash": "e3bd6b98451e99885f44c2dca86f088b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_igdb.py": {
-    "mtime": 1778522336.6697004,
-    "ast_hash": "773c25b420a2b6e737054822d8a1dd74",
+    "mtime": 1780599721.8452241,
+    "ast_hash": "65b29055bdcde31eaf01c2e62cecb39d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/entrypoints/beat/__init__.py": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/entrypoints/api/main.py": {
-    "mtime": 1779581570.4493449,
-    "ast_hash": "8e8bbbb66eb408b9170d62c37a1b13e3",
+    "mtime": 1780511985.729628,
+    "ast_hash": "cfb478fa24ad0757614dc2bbd7857197",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/entrypoints/worker/__init__.py": {
@@ -165,1063 +165,723 @@
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/alembic/env.py": {
-    "mtime": 1777569569.2811115,
-    "ast_hash": "30833568f808092dc4664bfacede8e95",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/a1c2d3e4f5g6_add_discover_emphases.py": {
-    "mtime": 1779481912.9843493,
-    "ast_hash": "53f96c622e7a5e1001e806ae9afa82b3",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/5841a8068ecf_add_onboarding_prefs.py": {
-    "mtime": 1779354256.0466256,
-    "ast_hash": "9540a46f94f266f4dba579fa34dd7abb",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/9b2c3d4e5f6g_add_tmdb_export_stubs.py": {
-    "mtime": 1778891480.914011,
-    "ast_hash": "d428fa308600ec8f3dcb824f23b4abbf",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/f3b9d6d7f251_add_gamification_tables.py": {
-    "mtime": 1778983314.9753075,
-    "ast_hash": "19561f4b0e634225ab2b80511657303c",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/8d421d0d5005_change_movie_budget_revenue_to_bigint.py": {
-    "mtime": 1778971864.6458278,
-    "ast_hash": "bad343a87c6e7598f44c74fc03a04088",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/8a1b2c3d4e5f_add_track_isrc.py": {
-    "mtime": 1778860013.0155413,
-    "ast_hash": "0667f3983a054d1b5c4ed804c291514f",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/b2c3d4e5f6g7_add_hall_of_fame.py": {
-    "mtime": 1779125012.9677503,
-    "ast_hash": "099a8dab1d645f0075d01bfeff651da4",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/4a5b6c7d8e9f_add_youtube_channel_to_people.py": {
-    "mtime": 1779129378.5151422,
-    "ast_hash": "c3d01b388baf7369e678671d85546ada",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/4841a8068ebf_add_profile_card_sections.py": {
-    "mtime": 1779233556.0271018,
-    "ast_hash": "2bc6fd541d0ed293620805df0cd85b5e",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/fe6b8c45531c_add_episode_interactions.py": {
-    "mtime": 1779548945.8889022,
-    "ast_hash": "e99c785670ba4029d81bab717967febd",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/7f049a1f57db_initial.py": {
-    "mtime": 1778850526.1564858,
-    "ast_hash": "f5b02e54d2a3962a734b7fea74162205",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/a1b2c3d4e5f6_add_spotify_related_crawled_at.py": {
-    "mtime": 1778989999.51655,
-    "ast_hash": "cb1268b182add791f5e3cdd17c57eba7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/6841a8068fcf_add_admin_edit_proposals.py": {
-    "mtime": 1779404698.2916205,
-    "ast_hash": "2aded97c0215dd0809ff3450c0a39a5f",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/29387d9fbb46_add_google_oauth_fields.py": {
-    "mtime": 1779126354.296836,
-    "ast_hash": "f27ca3b89a406571951229487ecbb71c",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/d4e5f6g7h8i9_add_gin_index_search_vector.py": {
-    "mtime": 1779215938.4739988,
-    "ast_hash": "cf118e681a9b09ec067ddabbc88c42cc",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/0a1b2c3d4e5f_add_tmdb_deleted_ids.py": {
-    "mtime": 1778971864.645721,
-    "ast_hash": "68fb243b09456a3bd074894b27b98b40",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/7841a8068ecf_make_proposal_proposer_nullable.py": {
-    "mtime": 1779409297.5974092,
-    "ast_hash": "6ac1e3b0e3c8f2f29358a345092fc405",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/c3d4e5f6g7h8_enable_pg_trgm_and_pgvector.py": {
-    "mtime": 1779226763.9397852,
-    "ast_hash": "96222b443d9a3d6997e51ce1508cb785",
+    "mtime": 1780435219.9576502,
+    "ast_hash": "8891a23e4a5eaba2db2085f01b8793a4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/__init__.py": {
-    "mtime": 1777569232.4833379,
+    "mtime": 1780599661.8357017,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/maintenance.py": {
-    "mtime": 1779963947.0337865,
-    "ast_hash": "53b45668fc78e87a0cb30aef275f9908",
+    "mtime": 1780599661.8612576,
+    "ast_hash": "e97aa917ffa0656b18020e944a855c68",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/__init__.py": {
-    "mtime": 1777572238.8307312,
-    "ast_hash": "6b0117cb9dd25bce3ead86ab25e24111",
+    "mtime": 1780599661.861503,
+    "ast_hash": "9ba5339b23aba27059103b2d3b84439c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/xp.py": {
-    "mtime": 1779982396.220702,
-    "ast_hash": "51df128dad5edbedc70c0a397dd0e4c7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/tasks/manual_artist_sync.py": {
-    "mtime": 1779329749.7700558,
-    "ast_hash": "5eb9e72707045b4026a14ced89498ac6",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/tasks/manual_hydrate.py": {
-    "mtime": 1778887736.8271177,
-    "ast_hash": "5851983ef9c7b50f5b97bea7f6136765",
+    "mtime": 1780599661.861732,
+    "ast_hash": "a18527f61e4eb06c5ef822f84213ecd3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/gamification.py": {
-    "mtime": 1779640013.3893962,
-    "ast_hash": "8d3a51f9b948bd08b2cad5cb61debd62",
+    "mtime": 1780599661.8619778,
+    "ast_hash": "499e55bad649af436780668656574db6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/seed/__init__.py": {
-    "mtime": 1778979267.5172467,
-    "ast_hash": "d487528b3a28cebe7a4ae2ae9c931aae",
+    "mtime": 1780599661.9082098,
+    "ast_hash": "dca3631475d823848b28e8de45708f7b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/seed/catalog_seed.py": {
-    "mtime": 1778971864.649514,
-    "ast_hash": "52aaedf4662df0ca3c7245b30ad7c247",
+    "mtime": 1780599661.9092002,
+    "ast_hash": "874ac3a3ecd761eedafd4d58618e5d33",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/seed/tmdb_seed.py": {
-    "mtime": 1778971864.649827,
-    "ast_hash": "dd726dc2b6d3561c951613d0dff67b33",
+    "mtime": 1780599661.9097037,
+    "ast_hash": "81c1fd4cc4344998d7203872ede33939",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/fanart.py": {
-    "mtime": 1778888129.7665787,
-    "ast_hash": "651dcec4599ccd539e3f12cefa4b552e",
+    "mtime": 1780599661.9134395,
+    "ast_hash": "0796443c0b4dac013e02a80bd115eb97",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/media.py": {
-    "mtime": 1779830013.2227902,
-    "ast_hash": "d40c3075df548dc32e230505359be51e",
+    "mtime": 1780599661.913881,
+    "ast_hash": "97b49b9cea0359a2c2d261616ea576dc",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/youtube.py": {
-    "mtime": 1779129518.0774562,
-    "ast_hash": "1e4fa6705d16b7fa9f6e7113874da290",
+    "mtime": 1780599661.9141333,
+    "ast_hash": "48b22e2d7df8cf82bc8262bc59e0a9b1",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/embedding.py": {
-    "mtime": 1778888713.8235753,
-    "ast_hash": "be0090bf2161989184c4b71c470a902d",
+    "mtime": 1780599661.9144022,
+    "ast_hash": "da85e15a456f3bd6266b8fa9ff50dad4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/lastfm.py": {
-    "mtime": 1778888145.3070335,
-    "ast_hash": "0eaa6e1492d1d13159579d712641dc5a",
+    "mtime": 1780599661.9146383,
+    "ast_hash": "378daf9bd68af19a916a7682164b8efe",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/_common.py": {
-    "mtime": 1778887921.8754478,
-    "ast_hash": "8d538f49f422a191ee5c6b0661abafb7",
+    "mtime": 1780599661.9149468,
+    "ast_hash": "1142e389ea3824bcbbb2f9c9e600c2a8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/musicbrainz.py": {
-    "mtime": 1779130089.6906683,
-    "ast_hash": "0a9b7ca204921c426f12df585a7f06be",
+    "mtime": 1780599661.915394,
+    "ast_hash": "b3b4306217a164836c36e7c62aa3d7e6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/__init__.py": {
-    "mtime": 1778892197.3120162,
-    "ast_hash": "d10a14aebbe34d64c8d02303e5fd03ba",
+    "mtime": 1780599661.9156055,
+    "ast_hash": "c1251aa9d566f4666cee6d64004a0625",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/tmdb.py": {
-    "mtime": 1779984632.606335,
-    "ast_hash": "4054d9eeb1db8908b9d16464b7ff55b3",
+    "mtime": 1780599661.9173946,
+    "ast_hash": "699d18fe629eec001b8ac78eb2e85791",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/omdb.py": {
-    "mtime": 1778888111.505038,
-    "ast_hash": "d1d6a85934d9ae79fb29f34711a3a193",
+    "mtime": 1780599661.9183571,
+    "ast_hash": "7131414464c28c9df6c97e44507000ae",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/search.py": {
-    "mtime": 1778971864.650107,
-    "ast_hash": "d0a41dc847853e0d3848275f4d09de01",
+    "mtime": 1780599661.918773,
+    "ast_hash": "94d6e1339c20e2ca2ce8098ae6f02ce2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/igdb.py": {
-    "mtime": 1779869229.6579816,
-    "ast_hash": "313b5f64d6cf989324b95b715bc3edbe",
+    "mtime": 1780599661.9197052,
+    "ast_hash": "008e956acdf284db971ef7f0ccb686c5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/spotify.py": {
-    "mtime": 1779961405.2462442,
-    "ast_hash": "68980f4af2d89f6844ba7c958bd679e4",
+    "mtime": 1780599661.9203877,
+    "ast_hash": "fe58cab98c75e789f2f88fa6c032235e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/tasks/sync/steam.py": {
-    "mtime": 1778888569.0913568,
-    "ast_hash": "0504c535b66ba31b7a3a24c460547f65",
+    "mtime": 1780599661.9208434,
+    "ast_hash": "4b63302127d75203e02bbeb2b431c8fa",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/__init__.py": {
-    "mtime": 1777569623.4326594,
-    "ast_hash": "da4f8ce40459ee7275a2cc395394f670",
+    "mtime": 1780599661.8622894,
+    "ast_hash": "f35a684f8b1c6b170e1895c308d38bb0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/base.py": {
-    "mtime": 1779580530.156384,
-    "ast_hash": "afe335f060f4012c3f5537f748abc66c",
+    "mtime": 1780599661.862917,
+    "ast_hash": "692e83a18d44b0b4700fda835bcbf471",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/fanart/client.py": {
-    "mtime": 1778779851.9242764,
-    "ast_hash": "e968e723d2c0049be355f0f1a2c951f5",
+    "mtime": 1780599661.922846,
+    "ast_hash": "507a7303c5bf8022c91fe8226c4c39c2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/fanart/__init__.py": {
-    "mtime": 1777681176.1251822,
-    "ast_hash": "2d2e1fc6f5bc52a85ac164b134854993",
+    "mtime": 1780599661.9232366,
+    "ast_hash": "268fbcf733cfd75af767d463d1689e6e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/fanart/hydrator.py": {
-    "mtime": 1779409460.947367,
-    "ast_hash": "0bade457f9dfd469bc93b43a2a728492",
+    "mtime": 1780599661.923783,
+    "ast_hash": "6615843b891b4a6e78f3afba04921974",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/fanart/transformer.py": {
-    "mtime": 1778779851.9245443,
-    "ast_hash": "a3cedf0a306bf8dc8340f4cae6aac012",
+    "mtime": 1780599661.9242537,
+    "ast_hash": "109fe96289710e782460461ed73d6098",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steam/client.py": {
-    "mtime": 1779581588.6676145,
-    "ast_hash": "a85d98369c5654b20401d3fe36ea7e45",
+    "mtime": 1780599661.9262722,
+    "ast_hash": "6925c5cc7a4097ced1b135f1a73cea74",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steam/__init__.py": {
-    "mtime": 1777569245.9732249,
+    "mtime": 1780599661.9265137,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steam/hydrator.py": {
-    "mtime": 1778779851.927839,
-    "ast_hash": "a47d36f4fb5e3bb911006c9af4064003",
+    "mtime": 1780599661.9270122,
+    "ast_hash": "741145eb5227e1c1b6fa1c68ccc2cb1c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steam/transformer.py": {
-    "mtime": 1778102798.581453,
-    "ast_hash": "03adea169a63956b6bed36896a5d2f64",
+    "mtime": 1780599661.927342,
+    "ast_hash": "69921027b9cd81c6324ee6faadcf88b0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/lastfm/client.py": {
-    "mtime": 1778972338.5601811,
-    "ast_hash": "12632cb2d921e3c86e2877ee7b5a30ce",
+    "mtime": 1780599661.9276707,
+    "ast_hash": "be909bcb58757efdcd094df847302579",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/lastfm/__init__.py": {
-    "mtime": 1778779851.9247596,
+    "mtime": 1780599661.9277968,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/lastfm/hydrator.py": {
-    "mtime": 1778779851.925429,
-    "ast_hash": "8177d3c12733806becaea10997bd44b3",
+    "mtime": 1780599661.9281776,
+    "ast_hash": "368c01b8ac459805522b894baf8a1e00",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/lastfm/transformer.py": {
-    "mtime": 1778779851.9264739,
-    "ast_hash": "bfc3e4f0f2f1e208146688f7a58a0597",
+    "mtime": 1780599661.9285026,
+    "ast_hash": "9bc6394670e291d939d5b25bcd61b22f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/spotify/client.py": {
-    "mtime": 1779130089.684617,
-    "ast_hash": "1cc7c8053d59f893c638af9fd8ae45f7",
+    "mtime": 1780599661.9289634,
+    "ast_hash": "e33ddf14abe4e87f22d0e49e736ee0bf",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/spotify/__init__.py": {
-    "mtime": 1778779851.9272046,
+    "mtime": 1780599661.9291651,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
-  "/Users/dk/dev/Otix/backend/otix/providers/spotify/hydrator.py": {
-    "mtime": 1778859951.8415477,
-    "ast_hash": "2cbf43231850a4adae72562d26937da1",
-    "semantic_hash": ""
-  },
   "/Users/dk/dev/Otix/backend/otix/providers/spotify/transformer.py": {
-    "mtime": 1778859885.340373,
-    "ast_hash": "d5618bdba0f6e17c2decc6eee2680776",
+    "mtime": 1780599661.9296236,
+    "ast_hash": "fbf607c343c1eb040a888baaded11f9d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/musicbrainz/client.py": {
-    "mtime": 1779130089.682638,
-    "ast_hash": "8aedd4decca3130186a1df173220dc90",
+    "mtime": 1780599661.9309778,
+    "ast_hash": "26827e828af76941faa953d68b8e7cad",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/musicbrainz/__init__.py": {
-    "mtime": 1778779851.9266057,
+    "mtime": 1780599661.931122,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/musicbrainz/hydrator.py": {
-    "mtime": 1779907902.9586697,
-    "ast_hash": "ecde001f47c8fce1c5958425e187efd2",
+    "mtime": 1780599661.931636,
+    "ast_hash": "f6ba548ce59893883cd415ce8e4abba8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/musicbrainz/transformer.py": {
-    "mtime": 1779130089.683151,
-    "ast_hash": "7a4547faa1e0c62a847e0135c3be0b4e",
+    "mtime": 1780599661.932071,
+    "ast_hash": "4f175ee5d068966308de562923c602fb",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/omdb/client.py": {
-    "mtime": 1777679466.4713264,
-    "ast_hash": "8fc1ebfbb14b6536c81e20d23b6e5800",
+    "mtime": 1780599661.9323363,
+    "ast_hash": "3a7499158a9c3136a175b4c42ecb2b36",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/omdb/__init__.py": {
-    "mtime": 1777679051.8894148,
-    "ast_hash": "1c41d7bd071f21fdaa0d8acd20ed9364",
+    "mtime": 1780599661.9325259,
+    "ast_hash": "ae90177c30f4d9bb8b16371820f69701",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/omdb/hydrator.py": {
-    "mtime": 1777679701.5134685,
-    "ast_hash": "4b27a997cb27a1caeaf597c517453a79",
+    "mtime": 1780599661.9327855,
+    "ast_hash": "d58576a27bdf72044c9d430a651e46c3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/omdb/transformer.py": {
-    "mtime": 1777679763.0472395,
-    "ast_hash": "9d28e40f3e1a89520e54ad912bbcc826",
+    "mtime": 1780599661.9331381,
+    "ast_hash": "60a7a5dbe89d317a0562dabd93c555ad",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/youtube/client.py": {
-    "mtime": 1779581629.1079595,
-    "ast_hash": "12704faed5a3e9db46ff623aa28abb6f",
+    "mtime": 1780599661.933438,
+    "ast_hash": "7246c15c971d7ad8396612f4308243b7",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/youtube/__init__.py": {
-    "mtime": 1779129302.299654,
+    "mtime": 1780599661.933616,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/tmdb/client.py": {
-    "mtime": 1779984582.0497608,
-    "ast_hash": "e8164f12b45f823bf7197e11acc7664f",
+    "mtime": 1780599661.9342968,
+    "ast_hash": "a50f1cdd6866e84baccb09184e305b13",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/tmdb/__init__.py": {
-    "mtime": 1778522104.2367337,
-    "ast_hash": "3f5c358aa0a16b3b7b129ef1314529a7",
+    "mtime": 1780599661.9345365,
+    "ast_hash": "9af483c6c757906284ff3a5dcaab8470",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/tmdb/hydrator.py": {
-    "mtime": 1779984614.432573,
-    "ast_hash": "fb3ed2d2d4105929a93371228f1db31c",
+    "mtime": 1780599661.9352312,
+    "ast_hash": "2043cacf9403c1af0bb2eb065b59e5e9",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/tmdb/transformer.py": {
-    "mtime": 1779636020.4321096,
-    "ast_hash": "a4f86371c671b786b30c55d1ffb6e77c",
+    "mtime": 1780599661.9357674,
+    "ast_hash": "009e1c8fbea125410320858c0de0f7a0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/igdb/client.py": {
-    "mtime": 1779869219.5111465,
-    "ast_hash": "064af5b25dddfe3f1c06401857f854d2",
+    "mtime": 1780599661.9362774,
+    "ast_hash": "18d246b1ef5db5b8432ca6ba8bfe7b85",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/igdb/__init__.py": {
-    "mtime": 1777684306.0008593,
-    "ast_hash": "bc8f7d33a6387835d7f1471ec879cb18",
+    "mtime": 1780599661.936545,
+    "ast_hash": "17725c36c22689a88e22a23aa9e48617",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/igdb/hydrator.py": {
-    "mtime": 1779869508.543484,
-    "ast_hash": "97677b393e40be4a21593fb2cc30adfa",
+    "mtime": 1780599661.9372673,
+    "ast_hash": "008f6987837ab84e86fdbaea3e7a6a9d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/igdb/transformer.py": {
-    "mtime": 1778477396.4520586,
-    "ast_hash": "5a3bc24e29494bbb8064a73f887b1b71",
+    "mtime": 1780599661.9378076,
+    "ast_hash": "84224c74d46fc727fabdaa9ae2ac0390",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/plex/__init__.py": {
-    "mtime": 1777569254.1110902,
+    "mtime": 1780599661.937972,
     "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steamgrid/client.py": {
-    "mtime": 1779586278.1020808,
-    "ast_hash": "eceaa4c0bb6e11bf643e4384d5f1dd8d",
+    "mtime": 1780599661.9400797,
+    "ast_hash": "7c22ec471cc194d864e5cd8b51f4f6f5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steamgrid/__init__.py": {
-    "mtime": 1777944479.0666604,
-    "ast_hash": "d72d68cb0215a57e9921eecafff2c52c",
+    "mtime": 1780599661.9403336,
+    "ast_hash": "3596850f8304bab49c76811219fd4335",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/providers/steamgrid/hydrator.py": {
-    "mtime": 1779409601.959054,
-    "ast_hash": "01e836edfce91b483efdf54fa645098f",
+    "mtime": 1780599661.9407682,
+    "ast_hash": "7db50d434c097ee47846d06ce161d9b5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/totp.py": {
-    "mtime": 1778347829.9544787,
-    "ast_hash": "2b8942132d06e359994002c5a10ab46c",
+    "mtime": 1780599661.8691075,
+    "ast_hash": "61fc51cd0b6441a5c0d8e1146cbe543b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/youtube_progress.py": {
-    "mtime": 1779129612.4722545,
-    "ast_hash": "d0d8fefdac64debe4094d5ff9bc73a20",
+    "mtime": 1780614225.421529,
+    "ast_hash": "fb5eea5af3e623d80d6c2c2cd63e9cb8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/metrics.py": {
-    "mtime": 1777623045.470304,
-    "ast_hash": "c1439c3fee0f8d7daeed233389d29a30",
+    "mtime": 1780599661.8696363,
+    "ast_hash": "5a1025f6ed231dde01c7d5ece73476d6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/plex_progress.py": {
-    "mtime": 1778363615.392823,
-    "ast_hash": "e8bef0997b57a221cb3f9f6d505fa06e",
+    "mtime": 1780614205.9181702,
+    "ast_hash": "d5c3f02108f2da87170f30d0bee90135",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/youtube_title_parser.py": {
-    "mtime": 1779129013.0963244,
-    "ast_hash": "41b237602eac59db9e4387bb0053f107",
+    "mtime": 1780599661.8703613,
+    "ast_hash": "42b640de69ac1187c65b810fc615dd86",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/concurrency.py": {
-    "mtime": 1779586240.123547,
-    "ast_hash": "72890d6ff12de2795b37925dc32cb259",
+    "mtime": 1780615114.752633,
+    "ast_hash": "e9051377e6af5a02a3e623688e61e1d9",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/rate_limiter.py": {
-    "mtime": 1778347829.9586923,
-    "ast_hash": "c772497b91b3cbc757a714f81d159743",
+    "mtime": 1780599661.870841,
+    "ast_hash": "477392181041cef635bf690f1e284db4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/__init__.py": {
-    "mtime": 1777689053.1234713,
-    "ast_hash": "935c938fd338f0affd82d77a8bfbb3fc",
+    "mtime": 1780599661.8710375,
+    "ast_hash": "2ce6d5e13d4c4c21f5ac8f0eae18f182",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/types.py": {
-    "mtime": 1777574581.7090602,
-    "ast_hash": "07f7487e50f6c821c72ac63934401b60",
+    "mtime": 1780599661.8714297,
+    "ast_hash": "129ad3ceeac54ab02403aba20eb9a648",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/spotify_progress.py": {
-    "mtime": 1778779851.9238422,
-    "ast_hash": "f5f320733e383d1c8683a4fe56ebd618",
+    "mtime": 1780614214.0743537,
+    "ast_hash": "79adf83e807df36aee7060e7f35804a6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/xp.py": {
-    "mtime": 1779966975.3187773,
-    "ast_hash": "800547390530e48a478b64180513737d",
+    "mtime": 1780599661.871834,
+    "ast_hash": "10f734a2b35a97a7b89a6799210c6c7d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/media_rehydrate_progress.py": {
-    "mtime": 1778779851.923726,
-    "ast_hash": "3dc81166279e9902eed30cee9fdded3a",
+    "mtime": 1780614229.4701967,
+    "ast_hash": "1262733448423801236aee8ba96eeda5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/circuit_breaker.py": {
-    "mtime": 1777571631.2460477,
-    "ast_hash": "4c9712d456c6b4f5139969d196cf4b21",
+    "mtime": 1780599661.872496,
+    "ast_hash": "09af92f747251a9b4f4805fdc405860c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/badges.py": {
-    "mtime": 1778983077.2940092,
-    "ast_hash": "420fd7d8d87aa91f513ba56b0971934c",
+    "mtime": 1780599661.8732796,
+    "ast_hash": "6a9e7ea2101a161e84390a4eca2c0bc5",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/progress.py": {
-    "mtime": 1778230625.974046,
-    "ast_hash": "9f9ce32eb5eb2b6a2c13c814a4ead5ac",
+    "mtime": 1780599661.8737113,
+    "ast_hash": "cdd1c102be6d5bc711b0129af1a6c354",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/pagination.py": {
-    "mtime": 1777574599.968603,
-    "ast_hash": "ce4bd45e67a07c9257c1636297d2db40",
+    "mtime": 1780599661.8739033,
+    "ast_hash": "cb12511f9cb91050a930cde48d01a65e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/levels.py": {
-    "mtime": 1778985810.5699704,
-    "ast_hash": "e279b6fbc4fef223d78a63c6f6ebc4f2",
+    "mtime": 1780599661.874123,
+    "ast_hash": "a2ed018bfc76002a2a848f19c535193f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/slug.py": {
-    "mtime": 1777689023.970883,
-    "ast_hash": "07788efe6ab27dc1c26b8b9a05d85bd0",
+    "mtime": 1780599661.8743005,
+    "ast_hash": "dd591f017b7bb7ba5898dc9809601d15",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/lib/genres.py": {
-    "mtime": 1778522054.99139,
-    "ast_hash": "fa9da07f48b67bdd3a67cf91a0309613",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/auth.py": {
-    "mtime": 1779967032.2636735,
-    "ast_hash": "9c946ad8c1bc73939a90ed0988906be1",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/metrics.py": {
-    "mtime": 1777676428.4651964,
-    "ast_hash": "0470004bff10a90fccad96b76422cb57",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/user.py": {
-    "mtime": 1779983399.1302147,
-    "ast_hash": "2aad0d631d4d99e484f6e179819b4fd4",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/deps.py": {
-    "mtime": 1779882118.8675225,
-    "ast_hash": "6b9c739df45bce56f321ae5efa970645",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/media.py": {
-    "mtime": 1779984767.6302052,
-    "ast_hash": "29cd5acf84ead78bccce1b81fd445656",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/library.py": {
-    "mtime": 1779903231.1471996,
-    "ast_hash": "738f09825bfa052906d1c1443a9fa0a8",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/list.py": {
-    "mtime": 1778382847.3874114,
-    "ast_hash": "cda4ae7837a588e0c3d66b01136c5d38",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/interaction.py": {
-    "mtime": 1779796857.4998405,
-    "ast_hash": "b74166cdecf80d81292bd674aa6bf63e",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/upload.py": {
-    "mtime": 1778975103.4793756,
-    "ast_hash": "92cb542790b3e2f50bff5ca28e8ae5a0",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/follow.py": {
-    "mtime": 1779914211.1591482,
-    "ast_hash": "aedb74aeae45358a4e83feef36ccddd7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/review_vote.py": {
-    "mtime": 1778984939.8662086,
-    "ast_hash": "223100ed8236f784f327896feef52ab7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/track.py": {
-    "mtime": 1778779851.9203227,
-    "ast_hash": "cd5bf897a2367372f4c35d164d22fbe1",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/notification.py": {
-    "mtime": 1779966510.7299693,
-    "ast_hash": "767c012ef679e53011c7bc30762f3d40",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/onboarding.py": {
-    "mtime": 1779354196.7206006,
-    "ast_hash": "ef720460da7052be78e657e619ca62d7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/workout.py": {
-    "mtime": 1779644685.0289857,
-    "ast_hash": "824dd7a93880c506f71373cc57ee0565",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/discover.py": {
-    "mtime": 1779637446.20771,
-    "ast_hash": "5c01965af10d77b9c243e08901d3ce6f",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/friend.py": {
-    "mtime": 1778370809.8329945,
-    "ast_hash": "0cb96f1af44241338f647c2d9873cfe7",
+    "mtime": 1780599661.8744895,
+    "ast_hash": "cbc72562836b09acc9128b9cc95776b6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/api/__init__.py": {
-    "mtime": 1777569609.4647462,
-    "ast_hash": "846454ce68d8ee58501b8e706ed5a583",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/mood.py": {
-    "mtime": 1778779851.9123998,
-    "ast_hash": "5da49b66f41f5b07a4b1c0d8ff7f5a92",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/review.py": {
-    "mtime": 1779802249.8993418,
-    "ast_hash": "b812d16e7724049daef8319cc66e5015",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/people.py": {
-    "mtime": 1779559324.1804492,
-    "ast_hash": "7fb6a472c55e88f85fff4ab9a165513d",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/episode_interaction.py": {
-    "mtime": 1779549849.5063362,
-    "ast_hash": "5a8ef31aa61b559b5544e3718c2dc204",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/admin.py": {
-    "mtime": 1779587412.5134606,
-    "ast_hash": "5d386de190a0e3f4902f22290a7508fa",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/rate_limit.py": {
-    "mtime": 1778342585.4940605,
-    "ast_hash": "478e0dac79419aabfbdfffdb9f73550e",
+    "mtime": 1780599661.874678,
+    "ast_hash": "0ebdd5c26e65bfc9f72cd28a41aad81b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/api/router.py": {
-    "mtime": 1779549544.378576,
-    "ast_hash": "cefd951fc733fece128e7eac312fbab3",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/auth.py": {
-    "mtime": 1779967026.5159314,
-    "ast_hash": "c0b5157a7aecbfa2901b2a0ba0adbafc",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/user.py": {
-    "mtime": 1779983383.6728547,
-    "ast_hash": "558afc189d9cb468112fb9649096812d",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/media.py": {
-    "mtime": 1779984657.4290342,
-    "ast_hash": "a6383a02e51fc2d03ebe7da6cc9bd837",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/list.py": {
-    "mtime": 1778382642.4324539,
-    "ast_hash": "6fe2e7c86932586151a7db3a52875e9b",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/interaction.py": {
-    "mtime": 1778779851.912965,
-    "ast_hash": "c5f2c1ceb9dc6e0121765f41d82c17e9",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/follow.py": {
-    "mtime": 1779914159.8389394,
-    "ast_hash": "fca4147d120d3e9f8ace1ff933a92f4d",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/track.py": {
-    "mtime": 1778779851.9195883,
-    "ast_hash": "8ae0c6b2bf036148af9d1472a8ab3289",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/notification.py": {
-    "mtime": 1778427595.174138,
-    "ast_hash": "7d0a29860ae2091f112457c999eab846",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/admin_edit.py": {
-    "mtime": 1779412565.3428285,
-    "ast_hash": "409e823281767708d72314d34cb3e629",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/workout.py": {
-    "mtime": 1779641685.7327726,
-    "ast_hash": "69670011b2132c4694b7f4f6f2fb0509",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/discover.py": {
-    "mtime": 1779357986.036539,
-    "ast_hash": "72a5020050706bb5c57c376e8fd1e080",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/friend.py": {
-    "mtime": 1778371364.3200254,
-    "ast_hash": "5721b2e23f168f219e08a3ebcc91e208",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/__init__.py": {
-    "mtime": 1777569612.2459304,
-    "ast_hash": "7167d774b5d6aa1f797eac522afd9f1a",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/mood.py": {
-    "mtime": 1778779851.9132009,
-    "ast_hash": "7d7266f1a71ee7346f868b027743a7be",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/review.py": {
-    "mtime": 1779799107.1230135,
-    "ast_hash": "464c2814332536d1d0a01e7f82694ec3",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/people.py": {
-    "mtime": 1779561378.8922462,
-    "ast_hash": "119c1b106b32c973eb18286be50cdfad",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/episode_interaction.py": {
-    "mtime": 1779549499.5960352,
-    "ast_hash": "c3051c561a0be8b7d7ad93ba952c294c",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/admin.py": {
-    "mtime": 1779581499.871415,
-    "ast_hash": "0b05557c836c6687485254a64043b198",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/common.py": {
-    "mtime": 1778165103.9571068,
-    "ast_hash": "323d331cf6d961b44704c2f2856320ab",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/karma.py": {
-    "mtime": 1778984917.4540968,
-    "ast_hash": "26e2b9b9396e04bd645d1fd2a3e05895",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/user_badge.py": {
-    "mtime": 1778984250.6764503,
-    "ast_hash": "d8b2a487a1ca36710a1206c87a271104",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/api/schemas/user_rating.py": {
-    "mtime": 1778985470.6940694,
-    "ast_hash": "422e9040cf2d2f799f1bb997a1c2b54a",
+    "mtime": 1780616790.3566375,
+    "ast_hash": "643d55ce6d829e00565337dde523182a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/logging.py": {
-    "mtime": 1779481920.5561318,
-    "ast_hash": "d71f0d39109a342a56d8edcf74fa62c6",
+    "mtime": 1780599661.8753333,
+    "ast_hash": "952f6cacf7705a6da740c10418ab2eab",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/config.py": {
-    "mtime": 1779584962.650058,
-    "ast_hash": "d66fb4983937e5084a0bd90fe03523c9",
+    "mtime": 1780599661.8756022,
+    "ast_hash": "27f5737e47c8f8d37f29dbbe423f9c1a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/database.py": {
-    "mtime": 1779639054.0245275,
-    "ast_hash": "02f79afdf8df5fa5e0a2dc673ebfa07d",
+    "mtime": 1780599661.876101,
+    "ast_hash": "cd1136600fe411eff84af685f2360ec2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/__init__.py": {
-    "mtime": 1777569629.4533384,
-    "ast_hash": "69cf6c08206aa43a630c38481863abd5",
+    "mtime": 1780599661.876314,
+    "ast_hash": "115098da3a36086f52328a52d4ece58a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/redis.py": {
-    "mtime": 1777722306.4116652,
-    "ast_hash": "45b60c729063fbed4888e3abf4a32006",
+    "mtime": 1780599661.8765028,
+    "ast_hash": "84e765cf5548b26086adeda1489c4454",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/celery.py": {
-    "mtime": 1779963956.3190072,
-    "ast_hash": "cc6351d1832d4acc7dca47c802c3bd79",
+    "mtime": 1780599661.8769085,
+    "ast_hash": "e9f06bdfad1f5eb175d9a3d3ec468522",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/sync.py": {
-    "mtime": 1777569821.57981,
-    "ast_hash": "9c042648ab93db1155168d5f15348b70",
+    "mtime": 1780599661.8773131,
+    "ast_hash": "536feedaca4e50664c4888e13f4fe834",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/user_streak.py": {
-    "mtime": 1779639978.4195855,
-    "ast_hash": "5024bab84475f780a6a7af61fd048dd3",
+    "mtime": 1780599661.8775308,
+    "ast_hash": "9d5e7ea77305e1846e9a25e96e5ab180",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/user.py": {
-    "mtime": 1779967013.293159,
-    "ast_hash": "a34b2c94e2461dc8c9480255de38b25e",
+    "mtime": 1780599661.87793,
+    "ast_hash": "8425226601a1d321f7d20021251f43ba",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/media.py": {
-    "mtime": 1779984500.2663453,
-    "ast_hash": "861716f11e8a3341ec05c037d8357358",
+    "mtime": 1780599661.878513,
+    "ast_hash": "afdb6d956d71bab934579b69cafd520d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/company.py": {
-    "mtime": 1779829612.6001647,
-    "ast_hash": "72968a42df7063877a3a9d32f254d216",
+    "mtime": 1780599661.8788345,
+    "ast_hash": "b0ddc20dd1009d1d12a0c9b023dc96fe",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/list.py": {
-    "mtime": 1778382562.5000763,
-    "ast_hash": "c6f85fe5fd3b98c5240fb6251316725c",
+    "mtime": 1780599661.87909,
+    "ast_hash": "9085d3c15cca3c85ae4fc1d1e0917fe6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/interaction.py": {
-    "mtime": 1778779851.9210837,
-    "ast_hash": "92fcdf30f3836c4b3b94163844bfd090",
+    "mtime": 1780617625.8755922,
+    "ast_hash": "600d52fce9851f07bcfc3f35a283321c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/follow.py": {
-    "mtime": 1779914076.7842937,
-    "ast_hash": "29c91f39ae1159eb378ff98d3ff56582",
+    "mtime": 1780599661.87955,
+    "ast_hash": "47321f3e2f3b410cca99bf80492abfed",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/asset.py": {
-    "mtime": 1778387013.0627384,
-    "ast_hash": "41e96676cc670545782fbe491014a0a2",
+    "mtime": 1780599661.8797827,
+    "ast_hash": "e8592d2beb3c44424e70f1bf2332c4d3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/review_vote.py": {
-    "mtime": 1778983210.149831,
-    "ast_hash": "9530a994e9ca511e52fcc8defbadd537",
+    "mtime": 1780599661.879987,
+    "ast_hash": "fe08bc965ee8f674bea860054ab7142e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/notification.py": {
-    "mtime": 1779966375.560664,
-    "ast_hash": "816952f72c58e61126c321ce457a3588",
+    "mtime": 1780599661.8802242,
+    "ast_hash": "b03a6395b0e6194f267140ec5d6e7cc4",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/admin_edit.py": {
-    "mtime": 1779409311.255454,
-    "ast_hash": "a34727b299c3aa6d7a3eff9cc60e4c4c",
+    "mtime": 1780599661.8804655,
+    "ast_hash": "5a6eca16aa94c8b7408e7ccfc01fb751",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/workout.py": {
-    "mtime": 1778294097.5997727,
-    "ast_hash": "82fcb4e869e7698e6fa342434c6678b2",
+    "mtime": 1780599661.8806896,
+    "ast_hash": "4f5404daf2ff15aed82bf31e52ccbf06",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/friend.py": {
-    "mtime": 1778370530.296266,
-    "ast_hash": "187c46554dde61e308d85aeb7bc6637e",
+    "mtime": 1780599661.8813133,
+    "ast_hash": "174ab2fa91193c8407eb911a8199f4cc",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/__init__.py": {
-    "mtime": 1779984523.1902072,
-    "ast_hash": "ea2e06bcd560882976eb0c473a36143e",
+    "mtime": 1780599661.8816342,
+    "ast_hash": "ef47ab0edccc65534b2ad9f3010c965d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/mood.py": {
-    "mtime": 1778779851.9213572,
-    "ast_hash": "515f140c90b24973b2984e447339eaef",
+    "mtime": 1780599661.8819118,
+    "ast_hash": "13245063a2f6a53db0365d4bbb3e1c28",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/review.py": {
-    "mtime": 1779799090.6352167,
-    "ast_hash": "69428720b6c17772a606828cff6fb075",
+    "mtime": 1780599661.8821416,
+    "ast_hash": "fe03ebc660e283890f8c4b86e074e29e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/people.py": {
-    "mtime": 1779553038.1697104,
-    "ast_hash": "cdb476273ea95857f385fbb4c51f663f",
+    "mtime": 1780599661.8826225,
+    "ast_hash": "6c41cdfda4ce50b83129d76e8ff6ad1b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/episode_interaction.py": {
-    "mtime": 1779548886.1779509,
-    "ast_hash": "191fc82c147a36b36ffcb7519ca77eed",
+    "mtime": 1780599661.882854,
+    "ast_hash": "70b9848fbdcb5cad4961c445f4a552d8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/collection.py": {
-    "mtime": 1777654548.4858623,
-    "ast_hash": "b542ebdee6440caff2bccce52714c568",
+    "mtime": 1780599661.88308,
+    "ast_hash": "968861e4d7bee6e7cb541bbb0f324e58",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/user_badge.py": {
-    "mtime": 1778982920.6159434,
-    "ast_hash": "42bbbe877b1dbefa9b81ad9f8c6b0b7e",
+    "mtime": 1780599661.8832881,
+    "ast_hash": "91906d66659e83b919a9cff361988c82",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/karma_transaction.py": {
-    "mtime": 1778982948.2612803,
-    "ast_hash": "b638cc121dd8a1ab13f828c09e4b7b73",
+    "mtime": 1780599661.883513,
+    "ast_hash": "4c9bf81c7908dc42c27f127b829f60d0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/genre.py": {
-    "mtime": 1778891516.5983891,
-    "ast_hash": "c114f8ed83c175f8574378209d91d32e",
+    "mtime": 1780599661.8837717,
+    "ast_hash": "f8dbe10e1eaf9d9b5e6d8458169fe0a8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/base.py": {
-    "mtime": 1777572697.7183893,
-    "ast_hash": "cc7af81761f36c5235c77334916ccbb3",
+    "mtime": 1780599661.8841605,
+    "ast_hash": "4acee452ee147d018784870753d6ee72",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/friend_service.py": {
-    "mtime": 1778984384.7611372,
-    "ast_hash": "2958d708ba950ba47ba22372c8353f32",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/services/auth_service.py": {
-    "mtime": 1779637243.4255328,
-    "ast_hash": "8cb2351e81c3fd2dba3c03fb1a8a503f",
+    "mtime": 1780599661.8856783,
+    "ast_hash": "dcdb8b99c9b81a8877a8ac1017a81ab7",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/steam_library_service.py": {
-    "mtime": 1779581562.875562,
-    "ast_hash": "662216eed4a1dd305bac10a0811bd6c6",
+    "mtime": 1780614492.9223256,
+    "ast_hash": "61a9435c13989a00036085a915ecf382",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/admin_edit_service.py": {
-    "mtime": 1779412656.1295154,
-    "ast_hash": "32ab535152c2a6c699c3651d005cb0bf",
+    "mtime": 1780614177.4252098,
+    "ast_hash": "491ea92ddb667dbde4259fb7e16a2744",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/review_service.py": {
-    "mtime": 1779802233.6353545,
-    "ast_hash": "70ea023802ca819b3c1fd252494e4fa3",
+    "mtime": 1780614133.893487,
+    "ast_hash": "6decf48f26849c8ffd71ad01786d60d1",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/spotify_library_service.py": {
-    "mtime": 1779130089.6870084,
-    "ast_hash": "450be2bf3218be20d9250313d900e6fc",
+    "mtime": 1780599661.8879755,
+    "ast_hash": "a7118e7936ae0f15783f6f68e73cacea",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/plex_sync_service.py": {
-    "mtime": 1779907887.6151218,
-    "ast_hash": "5236f9d6c7d34960ef9f57921fb01a81",
+    "mtime": 1780658516.7918422,
+    "ast_hash": "4d6ea43a6e0282d72fdce28ea8a7ab0e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/steam_auth_service.py": {
-    "mtime": 1779581543.0963345,
-    "ast_hash": "e5013d2b5a061a640861294e7ebd240b",
+    "mtime": 1780652201.4777484,
+    "ast_hash": "3d599b87f4d387bdb651b6e088f13e56",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/follow_service.py": {
-    "mtime": 1779966991.3616195,
-    "ast_hash": "25472fb223da3c3978841c2416608207",
+    "mtime": 1780599661.890036,
+    "ast_hash": "759936b27e8d0b436653d54ef7c80f57",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/list_service.py": {
-    "mtime": 1779413509.3625898,
-    "ast_hash": "ba9ff23faa9324df28010763704bd7b5",
+    "mtime": 1780599661.8904972,
+    "ast_hash": "96c7a013feac1d850c758e1b6a36257d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/notification_service.py": {
-    "mtime": 1779966390.1898403,
-    "ast_hash": "939503495654f37b77c2309446375b13",
+    "mtime": 1780599661.890926,
+    "ast_hash": "6bb2bb24313a0683d4a20821e7cee060",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/spotify_auth_service.py": {
-    "mtime": 1779497509.2484782,
-    "ast_hash": "d18d015cfb5e82219ce51e0386b4520e",
+    "mtime": 1780652064.7458298,
+    "ast_hash": "0634fc8fa8d58f7abf11e05c7b440363",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/__init__.py": {
-    "mtime": 1777569615.835322,
-    "ast_hash": "d28437ebf9d1c12dd2faaae8a7ede4b8",
+    "mtime": 1780599661.8961625,
+    "ast_hash": "db3dfcb926edd4a0a6adf90a9b3ccb57",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/embedding_service.py": {
-    "mtime": 1778192384.8837423,
-    "ast_hash": "6253c9ef3fd95db11251911df912ad3f",
+    "mtime": 1780599661.8965578,
+    "ast_hash": "0c6fdf9ea74b9bd1e987dae703b54ef2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/tmdb_auth_service.py": {
-    "mtime": 1778516745.1162636,
-    "ast_hash": "45b0ff1c7eb7ba30f7dd0547f7e74288",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/otix/services/two_factor_service.py": {
-    "mtime": 1778342978.800447,
-    "ast_hash": "b4c34c26a09de5faa3ea16aea3e65068",
+    "mtime": 1780599661.897559,
+    "ast_hash": "79e13e73a5546fb8b31c6f8b65e36b50",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/episode_interaction_service.py": {
-    "mtime": 1779549493.7168207,
-    "ast_hash": "c1c54a01b84df3c4a6986885252abef6",
+    "mtime": 1780614083.500538,
+    "ast_hash": "0197d30b748191b5c819112f79b6348e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/email_service.py": {
-    "mtime": 1778340972.9782152,
-    "ast_hash": "b2fa8dd61bd0c75a7c6e08897401578e",
+    "mtime": 1780599661.898569,
+    "ast_hash": "45c9e1ffeb3934bb4c6bb38bda7c933b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/session_service.py": {
-    "mtime": 1778344740.6311383,
-    "ast_hash": "99296bba6e106e80233f59307c2ad028",
+    "mtime": 1780614057.238957,
+    "ast_hash": "3f67aaa64a1f0b27d028ce53050f016f",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/user_rating_service.py": {
-    "mtime": 1779983374.4619782,
-    "ast_hash": "34e60c590bd73d1d7f0fa2ac9ca4fa66",
+    "mtime": 1780599661.899488,
+    "ast_hash": "f5eb767e37773f758c45548f880f45c8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/workout_service.py": {
-    "mtime": 1779644820.2795563,
-    "ast_hash": "bef4d659a4b09cdb3670b367367d9992",
+    "mtime": 1780599661.900061,
+    "ast_hash": "0af363809112bc76d6681bc205e84ee0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/interaction_service.py": {
-    "mtime": 1778984233.3393762,
-    "ast_hash": "6f3075eafa344914a4a00ea02c81f1ae",
+    "mtime": 1780617638.9053333,
+    "ast_hash": "1a23d5150a9d25059b7e2a9f0eb21cff",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/track_rating_service.py": {
-    "mtime": 1778779851.9303784,
-    "ast_hash": "301a498519a76147363468bfd02b1d9b",
+    "mtime": 1780599661.9016495,
+    "ast_hash": "644f91eb6370e41eb66b86fac739256a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/plex_auth_service.py": {
-    "mtime": 1778358132.639986,
-    "ast_hash": "b9187527d810c8f9dbb3027fde0d9693",
+    "mtime": 1780625951.5136132,
+    "ast_hash": "f8a6f5b1d5388c44edaef150b04a0cff",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/google_auth_service.py": {
-    "mtime": 1779140146.278931,
-    "ast_hash": "14650f890bf000a4b6cf1b9a1ac8f4d8",
+    "mtime": 1780652114.0516973,
+    "ast_hash": "3c57cedb4418da4f5b4df9beec6c3d76",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/media_service.py": {
-    "mtime": 1779984676.4232008,
-    "ast_hash": "aef6b6ce25dea7e65b9c0c2a311fa91f",
+    "mtime": 1780624015.791305,
+    "ast_hash": "d97130f758ff22b0601157972638dd68",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/people_service.py": {
-    "mtime": 1779560824.4873118,
-    "ast_hash": "8ad91721b027cf631b753cb183d50954",
+    "mtime": 1780599661.9037874,
+    "ast_hash": "da945843dd31e2298f9e0c0d6f51d32a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/karma_service.py": {
-    "mtime": 1778984902.0998223,
-    "ast_hash": "0f6b61613879f63bbe0801cbcdf5882a",
+    "mtime": 1780599661.9041588,
+    "ast_hash": "69e77d096c769ef7f56d16fc7c2bac8a",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/tmdb_rating_service.py": {
-    "mtime": 1778892250.2254045,
-    "ast_hash": "7e63d9b7d00c9336ca05f000d123f2de",
+    "mtime": 1780599661.9046214,
+    "ast_hash": "d6f27912cb3a6be8801e64ff5d08862c",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/gamification_service.py": {
-    "mtime": 1779640002.057872,
-    "ast_hash": "bd601ff015e179eec520be8f7efad514",
+    "mtime": 1780599661.9056218,
+    "ast_hash": "1692c577463f6964e4ed335ebe0f85da",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/youtube_sync_service.py": {
-    "mtime": 1779143499.8459613,
-    "ast_hash": "e8bd8e8663f2b28a7af6d478639d41b3",
+    "mtime": 1780599661.9061642,
+    "ast_hash": "7c892f9fc9c7450bd2883956dfb0eba0",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/steam_igdb_resolver.py": {
-    "mtime": 1778892254.269311,
-    "ast_hash": "0af3d9fe576bba4c257f551a62bdaa3f",
+    "mtime": 1780599661.9065163,
+    "ast_hash": "5d308d3fe8bdc591dab10d6f35ad6cc6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/personalization_service.py": {
-    "mtime": 1779415464.5025475,
-    "ast_hash": "1f01e3542d02540790c8c3482bfefb93",
+    "mtime": 1780599661.9073863,
+    "ast_hash": "9c34814314cddd52300f2ce1e7f6dff8",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/RULES.md": {
@@ -1334,164 +994,1349 @@
     "ast_hash": "7f12b5826367a89e3e019df7f71cd736",
     "semantic_hash": ""
   },
-  "/Users/dk/dev/Otix/backend/alembic/versions/a7b8c9d0e1f2_add_user_person_follows.py": {
-    "mtime": 1779553068.9925792,
-    "ast_hash": "9134aa762457a155fbc5416cd2ae3118",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/480c9c19faa5_add_embedding_column_to_media_items.py": {
-    "mtime": 1779587532.5918386,
-    "ast_hash": "506e61c6577b8d3d940cf10e70b586a6",
-    "semantic_hash": ""
-  },
   "/Users/dk/dev/Otix/backend/otix/infrastructure/http_client.py": {
-    "mtime": 1779586268.8661606,
-    "ast_hash": "fb641e6b9a0619d1565aed8abe9e2e44",
+    "mtime": 1780599661.8758333,
+    "ast_hash": "5268455ed65d91b2a6faaf5f781e9894",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_workout_service.py": {
-    "mtime": 1779633479.536402,
+    "mtime": 1780599721.826785,
     "ast_hash": "5554961887c05e85c88cef00656fb271",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_search_api.py": {
-    "mtime": 1779912320.4330132,
-    "ast_hash": "7b0e26f5818e7d941c7840178356c0b2",
+    "mtime": 1780599721.8301024,
+    "ast_hash": "9ba72e62d797be97f5b93e70837c1db2",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_session_service.py": {
-    "mtime": 1779633794.5531352,
-    "ast_hash": "e925a676b7664c0fa4e7b8b14a926672",
+    "mtime": 1780599721.830581,
+    "ast_hash": "d7df539e74d12b1cfdc59b0d5517618d",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_levels.py": {
-    "mtime": 1779633982.2343495,
+    "mtime": 1780599721.8316295,
     "ast_hash": "d0c24787a726f6ee3badb07f33a74216",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_email_service.py": {
-    "mtime": 1779633989.0028148,
+    "mtime": 1780599721.8386142,
     "ast_hash": "7760a5cec353de27936b4fe4dcee4ebe",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_auth_service.py": {
-    "mtime": 1779637661.2469234,
-    "ast_hash": "57e7e5d53739c5ad690c53aefcbe6750",
+    "mtime": 1780599721.8398232,
+    "ast_hash": "c07b80a5c4cdb100dc3f2ee496028ca3",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_friend_service.py": {
-    "mtime": 1779633393.4327846,
+    "mtime": 1780599721.8412306,
     "ast_hash": "668f43219faed780a598ddf51f3968ff",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_list_service.py": {
-    "mtime": 1779633745.8496811,
+    "mtime": 1780599721.8416166,
     "ast_hash": "9c7243d486b41a0d696bd549ba5b8e15",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_notification_service.py": {
-    "mtime": 1779633167.0728912,
+    "mtime": 1780599721.842293,
     "ast_hash": "772bb29046641074c1544e86cc6052c1",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_follow_service.py": {
-    "mtime": 1779633117.1918812,
-    "ast_hash": "ca154af2be03c2cf26939dc178bdb8aa",
+    "mtime": 1780599721.8437862,
+    "ast_hash": "22d688f716ae920b1ef90373b5ba4753",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_media_service.py": {
-    "mtime": 1779912278.333206,
-    "ast_hash": "04855f1d4c1ae508fadeed02fd99749a",
+    "mtime": 1780599721.8444796,
+    "ast_hash": "662ad1119247939d522a98c5895e7a9e",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_review_service.py": {
-    "mtime": 1779802350.0501719,
-    "ast_hash": "39f5f95000a4b61e4dd1433be28f04af",
+    "mtime": 1780599721.8456557,
+    "ast_hash": "5423ca6bb44bf4dd379914a6b2cd5c7b",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/tests/test_karma_service.py": {
-    "mtime": 1779633307.0981812,
+    "mtime": 1780599721.846645,
     "ast_hash": "527d0f7ee27ad9fc670cd0020fe77848",
     "semantic_hash": ""
   },
-  "/Users/dk/dev/Otix/backend/alembic/versions/74565e38747f_add_watch_provider_tables.py": {
-    "mtime": 1779984564.7854023,
-    "ast_hash": "f2af68230cc09cbbc54419e924eab638",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/8e9f0d4c3b2a_add_production_flag_to_involved_companies.py": {
-    "mtime": 1779829604.6272666,
-    "ast_hash": "d411ee0ff537ed579b381143892bea64",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/6e15923c8c1c_add_follow_requests_and_user_is_private.py": {
-    "mtime": 1779914245.974057,
-    "ast_hash": "44aff8367d49689bf0d50cc17812a5c7",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/7a1b2c3d4e5f_add_search_logs.py": {
-    "mtime": 1779963446.6877131,
-    "ast_hash": "9fcf40f6e65dac3bc1670a376d54f75d",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/6c9a83fc54f3_add_workout_streak_columns.py": {
-    "mtime": 1779640042.0344312,
-    "ast_hash": "25c596dad0a637e29669aa70d8624fd6",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/b1c2d3e4f5a6_add_search_performance_indexes.py": {
-    "mtime": 1779638933.006337,
-    "ast_hash": "bda73ed6a433368e72bfcf5af908d21f",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/f26146fe83b3_add_view_count_to_media_items.py": {
-    "mtime": 1779962322.489805,
-    "ast_hash": "5d0987e04703ecb7fb28eeee3453b465",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/8ca40cc38fc5_add_user_dob_and_adult_content_setting.py": {
-    "mtime": 1779637188.9944587,
-    "ast_hash": "688f61a786f221e2d1bab520baae1031",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/7d9e8f3c2a1b_add_review_cooldown.py": {
-    "mtime": 1779799078.557035,
-    "ast_hash": "7da0b78f93b9525afa6a8a8886928bff",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/a7f3c2d1e5b9_add_is_adult_to_media_items.py": {
-    "mtime": 1779636433.7665317,
-    "ast_hash": "bc5016dc461e10dc4beddbe099f42ea9",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/c6b0a5541cb2_add_notification_preferences_to_users.py": {
-    "mtime": 1779967057.8249686,
-    "ast_hash": "c5cf58d7cb284909062a8b0648424f40",
-    "semantic_hash": ""
-  },
-  "/Users/dk/dev/Otix/backend/alembic/versions/9f1a2b3c4d5e_add_user_country.py": {
-    "mtime": 1779841465.448608,
-    "ast_hash": "4c8c0d6de069e9bdd8ea49359a91e274",
-    "semantic_hash": ""
-  },
   "/Users/dk/dev/Otix/backend/otix/lib/task_guard.py": {
-    "mtime": 1779961236.7124639,
-    "ast_hash": "e1205e2f0f15af1b70a993be301255ae",
+    "mtime": 1780599661.872759,
+    "ast_hash": "22e8e22f9bbeedcdd9fe0a59ab2ec574",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/search_log.py": {
-    "mtime": 1779963418.668118,
-    "ast_hash": "2a545d3aff76b6c1b41cd3debbec44cf",
+    "mtime": 1780599661.8811157,
+    "ast_hash": "b89ea8e7e303eba02049b848b12634e6",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/domain/watch_provider.py": {
-    "mtime": 1779984510.1460223,
-    "ast_hash": "a639d475cf5c59d893aadb8662536d3d",
+    "mtime": 1780599661.8846848,
+    "ast_hash": "4ee7364c3881e279bbc309da13293c08",
     "semantic_hash": ""
   },
   "/Users/dk/dev/Otix/backend/otix/services/person_service.py": {
-    "mtime": 1779908217.7028103,
-    "ast_hash": "7b53f204b35f4c3b90022d5aa272e925",
+    "mtime": 1780599661.8851957,
+    "ast_hash": "e99e8ff75aa900bee522a664224c09bd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/run_seed_test.py": {
+    "mtime": 1780057436.1755788,
+    "ast_hash": "1241dc74668d8ad34a813aa69e7ac32d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_igdb_franchise.py": {
+    "mtime": 1780599721.827144,
+    "ast_hash": "47f3baf63ce822800ed60fe755d27b91",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_collection_matcher.py": {
+    "mtime": 1780599721.8331244,
+    "ast_hash": "23c6c06cfcc8ebeb116cf7c448227610",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_musicbrainz_sync.py": {
+    "mtime": 1780599721.83495,
+    "ast_hash": "063a5f5e9d05a1893902e9e4e8d9e230",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_admin_edit_api.py": {
+    "mtime": 1780599721.8360667,
+    "ast_hash": "a93c86cd6131638111038b9f7d922bfa",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_google_auth_api.py": {
+    "mtime": 1780601194.0603528,
+    "ast_hash": "1c27c091d4d51154d45579d3fcc56663",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_badge_claiming.py": {
+    "mtime": 1780599721.8379915,
+    "ast_hash": "16ea39c9edf88fff9d80b5b7f7076ef8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_plex_sync_service.py": {
+    "mtime": 1780657593.7734222,
+    "ast_hash": "14035a4d57c7fcd0d6de12e5ca4c0414",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_google_auth_service.py": {
+    "mtime": 1780599721.8430638,
+    "ast_hash": "ff9a88594289c25fabe2d002b61cfe62",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_admin_edit_service.py": {
+    "mtime": 1780599721.8460407,
+    "ast_hash": "42102e593539acb2e59e6ca974158597",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_search_suggestions.py": {
+    "mtime": 1780599721.8463423,
+    "ast_hash": "275f718521630652e0378de688e5da90",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/tests/test_lib/test_sse.py": {
+    "mtime": 1780614169.0247211,
+    "ast_hash": "60c25e33b58f6fed7b7969950caf9f61",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/scripts/fanart_logo_processor.py": {
+    "mtime": 1780532884.687484,
+    "ast_hash": "1e5d7efb921beb399d1300ea5f5b35bc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/scripts/plex-sync-local.py": {
+    "mtime": 1780657876.2165372,
+    "ast_hash": "95aa556aab1f43329ad5002a16cbea18",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/a448b3e7a613_merge_heads.py": {
+    "mtime": 1780565468.0936706,
+    "ast_hash": "05d4daa70dea89fece6e801ec9dc1c91",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/m1n2o3p4q5r6_consolidated_schema.py": {
+    "mtime": 1780513000.8428664,
+    "ast_hash": "dda055bbaf15af63776830118aa7211f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/7d5be39765fc_add_owned_interaction_type.py": {
+    "mtime": 1780617682.667152,
+    "ast_hash": "d6fbaca277261554c66c781cf14ea97b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/d847197dadc8_initial.py": {
+    "mtime": 1780076827.8307045,
+    "ast_hash": "6b2eb519e1c18578163f15ed1f2316dc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/6c9a83fc54f3_bridge.py": {
+    "mtime": 1780512278.2337692,
+    "ast_hash": "980572ef5180e5cf6a7a97962dc43c9f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/n1o2p3q4r5s6_add_missing_user_columns.py": {
+    "mtime": 1780513006.9991164,
+    "ast_hash": "6e833570cfc503ab51e464d28f743098",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/ce5a6c6b2ee2_add_fallback_url_to_user_plex_servers.py": {
+    "mtime": 1780571168.1597705,
+    "ast_hash": "75d4d715557865100dd8c943d8eb1bcc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/a1b2c3d4e5f6_add_release_type_to_media_releases.py": {
+    "mtime": 1780523980.4414756,
+    "ast_hash": "bc6914bc761fe16d035ae28c6ae90b1a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/alembic/versions/5f930e0f17cc_ensure_missing_initial_tables.py": {
+    "mtime": 1780571458.9510481,
+    "ast_hash": "e991ab528acfbdcda1eefa5ff0327d02",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/release_notifications.py": {
+    "mtime": 1780599661.8600736,
+    "ast_hash": "dcae1c3d7be82ff3e60e61bc24f719fa",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/seed/report_seed.py": {
+    "mtime": 1780599661.9078815,
+    "ast_hash": "b65cef9afc8e402ee78c15c204ff7bd0",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/seed/popular_games.py": {
+    "mtime": 1780599661.908528,
+    "ast_hash": "d7694b9a424040e70558742b63bf305a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/seed/detailed_report.py": {
+    "mtime": 1780599661.910569,
+    "ast_hash": "5c7c7fd3babf3ff79b9a412fe61537ae",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/steam_tasks.py": {
+    "mtime": 1780599661.9109113,
+    "ast_hash": "60aaceaba492844916a04626c7aaca40",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/enrichment.py": {
+    "mtime": 1780599661.9114792,
+    "ast_hash": "62a19daedcaff316fd36e1e3b3fe0922",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/__init__.py": {
+    "mtime": 1780599661.9116852,
+    "ast_hash": "4a765bc908c6b93e601d44766e8bf02c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/feed.py": {
+    "mtime": 1780599661.9119666,
+    "ast_hash": "22e5c6add870fa3e40aba52ea4e25355",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/sync_tasks.py": {
+    "mtime": 1780599661.9123054,
+    "ast_hash": "61acff0def9410f073278e98818f55fb",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/housekeeping.py": {
+    "mtime": 1780599661.9127192,
+    "ast_hash": "4fe2bd7e8537e46cfbaeddee617aa0ee",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/maintenance/people.py": {
+    "mtime": 1780599661.9130938,
+    "ast_hash": "3581c658c48ffb29163dd4d3e67b95e4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/sync/deezer.py": {
+    "mtime": 1780599661.9160998,
+    "ast_hash": "b85efd08360d1cdd22b7a72e91daf843",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/sync/lrclib.py": {
+    "mtime": 1780599661.9179997,
+    "ast_hash": "28394a5c48c0aa581b8b4a802413b611",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/tasks/sync/theaudiodb.py": {
+    "mtime": 1780599661.9190872,
+    "ast_hash": "c57d46124006330d079c29df81461300",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/asset_mapper.py": {
+    "mtime": 1780599661.8625662,
+    "ast_hash": "d98b3e7b21aeb173bbf3bee8e8390cd4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/theaudiodb/client.py": {
+    "mtime": 1780599661.9247034,
+    "ast_hash": "7cf0bf7b40e38c71ad90a94ad2a161d1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/theaudiodb/hydrator.py": {
+    "mtime": 1780599661.9250498,
+    "ast_hash": "1c84ebd0a26975d164ff552f07db3a53",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/lrclib/client.py": {
+    "mtime": 1780599661.925369,
+    "ast_hash": "13011f7fc87f9e800905b3da7ee27a13",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/lrclib/__init__.py": {
+    "mtime": 1780599661.9254968,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/lrclib/hydrator.py": {
+    "mtime": 1780599661.9259112,
+    "ast_hash": "4e3fd62e1b029a859fc0d4bf7e24b6e8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/deezer/client.py": {
+    "mtime": 1780599661.9299648,
+    "ast_hash": "249382fd46bfca8616c1de84034c7f9f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/deezer/hydrator.py": {
+    "mtime": 1780599661.9303443,
+    "ast_hash": "f8ede6699c18e9ab224c56335f875e58",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/deezer/transformer.py": {
+    "mtime": 1780599661.930682,
+    "ast_hash": "3cd3d8bc31c4a72ae5ece80b58ffe3a2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/nzbplanet/client.py": {
+    "mtime": 1780599661.938745,
+    "ast_hash": "f05b77862f4cd2a1839d62483c918690",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/nzbplanet/__init__.py": {
+    "mtime": 1780599661.9389844,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/nzbplanet/hydrator.py": {
+    "mtime": 1780599661.9394288,
+    "ast_hash": "1570196ca2788cc5953ca11c37190582",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/providers/nzbplanet/transformer.py": {
+    "mtime": 1780599661.9397354,
+    "ast_hash": "86a49a2530de2a01edb3430e516f2b19",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/auth.py": {
+    "mtime": 1780599661.8634846,
+    "ast_hash": "2224196af06b0d8ddb6f3a7373d7250f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/user.py": {
+    "mtime": 1780599661.8637698,
+    "ast_hash": "fd40f68dc2dda69e29f2d376b5c9a7e7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/media.py": {
+    "mtime": 1780599661.8642426,
+    "ast_hash": "095b3b56b5b22c418e3789f508fecf84",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/list.py": {
+    "mtime": 1780599661.8645265,
+    "ast_hash": "9a2088c1f3cc6c1699fdcb9f7fbda806",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/interaction.py": {
+    "mtime": 1780617629.0200348,
+    "ast_hash": "3158dc6eb0a7d8e1f72dec45696038c3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/follow.py": {
+    "mtime": 1780599661.8649375,
+    "ast_hash": "ba5d821adcf4815fb155a1db12b95d3f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/track.py": {
+    "mtime": 1780599661.8651178,
+    "ast_hash": "40ed42a0eae3cdf835ae815b04dff89f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/notification.py": {
+    "mtime": 1780599661.865318,
+    "ast_hash": "387193d6bde037745c7e53382f050505",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/admin_edit.py": {
+    "mtime": 1780599661.865587,
+    "ast_hash": "c27ae4103a00896303e119e132198f05",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/workout.py": {
+    "mtime": 1780599661.865878,
+    "ast_hash": "4af350ad23c8c200fa3a4593249364ee",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/discover.py": {
+    "mtime": 1780616806.585966,
+    "ast_hash": "f9f6b80e944a6052d7a3a35e1ca29562",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/friend.py": {
+    "mtime": 1780599661.8663092,
+    "ast_hash": "60636b8652f6fec9911fa0ea8859f4af",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/__init__.py": {
+    "mtime": 1780599661.8665063,
+    "ast_hash": "8e7eb56e374b7d306acc5c7d2573934d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/mood.py": {
+    "mtime": 1780599661.8667781,
+    "ast_hash": "01935840630d92061848c694c3a2d3e7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/review.py": {
+    "mtime": 1780599661.8670175,
+    "ast_hash": "7276fa54530a63ffab896a55fcb07fbc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/media_rating.py": {
+    "mtime": 1780599661.8672128,
+    "ast_hash": "4195caf9d330179f4aea898ae272f01b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/people.py": {
+    "mtime": 1780599661.8675199,
+    "ast_hash": "aa7579fcba5120f2509c20538a616fd4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/episode_interaction.py": {
+    "mtime": 1780599661.8677785,
+    "ast_hash": "15d9fcab6077dcbf83ec6ed40f1db697",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/admin.py": {
+    "mtime": 1780599661.8680475,
+    "ast_hash": "2f81d9e91a62e2d9570dd068068c30e3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/common.py": {
+    "mtime": 1780599661.8682637,
+    "ast_hash": "e198dd5f2ce22badc3298dc200f1dd4a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/karma.py": {
+    "mtime": 1780599661.8684564,
+    "ast_hash": "23702c5ea2d94aaf9c06e3a21ee325b9",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/user_badge.py": {
+    "mtime": 1780599661.8686476,
+    "ast_hash": "057204e3a465074452ac52cc689c328f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/schemas/user_rating.py": {
+    "mtime": 1780599661.868845,
+    "ast_hash": "41a4765b5a637dffa4b1c6fae77aabac",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/geoip.py": {
+    "mtime": 1780599661.8722782,
+    "ast_hash": "7559e06d03ab2d9d5c430d4459e2e858",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/redis_progress.py": {
+    "mtime": 1780613644.9564888,
+    "ast_hash": "2880044b018978eba9011e5ad8af4042",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/collection_matcher.py": {
+    "mtime": 1780599661.8735135,
+    "ast_hash": "811ced0305e97ae3466fd024a1feae10",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/sse/_response.py": {
+    "mtime": 1780613631.5660076,
+    "ast_hash": "b1a54a40e40d3561b43b2f5aa7ba54e2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/sse/__init__.py": {
+    "mtime": 1780613635.0947266,
+    "ast_hash": "eb8a53977b7c9a49e6eb8b71927ef8dd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/sse/_core.py": {
+    "mtime": 1780614130.1704142,
+    "ast_hash": "9a80d4d02d3d816980fbe7a74efcd9af",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/lib/sse/_config.py": {
+    "mtime": 1780613612.62306,
+    "ast_hash": "2a257182d2ae2135e265b80413715d4d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/_utils.py": {
+    "mtime": 1780614489.074848,
+    "ast_hash": "1b9f8915aa200bd5b2de2582a3412f2a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/track/__init__.py": {
+    "mtime": 1780599661.9410276,
+    "ast_hash": "69537a22c9e2fc20a4758c4b85bf813c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/track/rating/__init__.py": {
+    "mtime": 1780599661.9485264,
+    "ast_hash": "34e0c3c0b3a26ef212ffad0768c15de6",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/router_helpers.py": {
+    "mtime": 1780599661.9412842,
+    "ast_hash": "886abcb233ae9dc46a1ea7268600b0b9",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/__init__.py": {
+    "mtime": 1780599661.9414928,
+    "ast_hash": "0cbef16433b8b6686b4d2323137ac748",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/router.py": {
+    "mtime": 1780599661.9416966,
+    "ast_hash": "afc349ba34dfd90fbb33c9a90d289cc7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/sections/__init__.py": {
+    "mtime": 1780599661.9487276,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/sections/router.py": {
+    "mtime": 1780599940.9199457,
+    "ast_hash": "966b9bc8f8a5e0d2baf536f669c052c9",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/hero/__init__.py": {
+    "mtime": 1780599661.949103,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/hero/router.py": {
+    "mtime": 1780599938.5305047,
+    "ast_hash": "6e66349e71f1b37a579d678d0095a744",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/media_type/__init__.py": {
+    "mtime": 1780599661.9495687,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/media_type/list_type/__init__.py": {
+    "mtime": 1780599661.9531386,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/discover/media_type/list_type/router.py": {
+    "mtime": 1780614510.4758632,
+    "ast_hash": "0f318042730abe2a67b35d3f545ba449",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/__init__.py": {
+    "mtime": 1780615397.3885407,
+    "ast_hash": "923b97c1ba9eb416ba63be6579530a53",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/__init__.py": {
+    "mtime": 1780601146.5823238,
+    "ast_hash": "69cd1f454fa30bc2413029e507b6f234",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/steam/__init__.py": {
+    "mtime": 1780652205.726801,
+    "ast_hash": "d18496bc90260fb598bf73d1d0a95457",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/steam/callback/__init__.py": {
+    "mtime": 1780652213.1870492,
+    "ast_hash": "cca1bee67f534823e1f5de20396f0ccc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/steam/disconnect/__init__.py": {
+    "mtime": 1780614015.5265963,
+    "ast_hash": "b8261a704c5a73fe0d94f83361334255",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/steam/login/__init__.py": {
+    "mtime": 1780625218.348781,
+    "ast_hash": "fb9fb9d687d21b0b243214c3c3a52c44",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/steam/login/callback/__init__.py": {
+    "mtime": 1780614061.9848082,
+    "ast_hash": "819410cbfa0de73e0efd24b019b28707",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/google/__init__.py": {
+    "mtime": 1780652118.1440244,
+    "ast_hash": "73c7f5c7aafe7ccfa8918b42d4ea9be6",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/google/callback/__init__.py": {
+    "mtime": 1780652126.842764,
+    "ast_hash": "dcac941a3527a52729bd1e0721e6b2df",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/google/disconnect/__init__.py": {
+    "mtime": 1780614008.529696,
+    "ast_hash": "70c2ebfcf12b3bf9e1faf1b6c5630f0e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/spotify/__init__.py": {
+    "mtime": 1780652071.7851634,
+    "ast_hash": "53b974a58ff92ad15ddece3f7bea210c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/spotify/callback/__init__.py": {
+    "mtime": 1780652082.1677818,
+    "ast_hash": "2157bc4e1de2733f2b6ed513745aa5df",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/spotify/disconnect/__init__.py": {
+    "mtime": 1780614013.4731476,
+    "ast_hash": "e1aeef14f6f654c05f19b15f61fcd8f8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/tmdb/__init__.py": {
+    "mtime": 1780601146.5382705,
+    "ast_hash": "2ebd5506f028adb99c42a733ffeecbe3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/tmdb/redirect/__init__.py": {
+    "mtime": 1780601146.5503438,
+    "ast_hash": "f2aff69ce79d9b617f1b3c9902d370fb",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/tmdb/callback/__init__.py": {
+    "mtime": 1780652137.3462648,
+    "ast_hash": "0c862c6c5cc0e8af041ee72a2252a4c8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/tmdb/disconnect/__init__.py": {
+    "mtime": 1780614028.9091108,
+    "ast_hash": "4b2c8c48b1d6e32a5a341466f666c20d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/plex/__init__.py": {
+    "mtime": 1780625964.6320221,
+    "ast_hash": "b0bb5141838a57aacffd67a8682e80b2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/plex/callback/__init__.py": {
+    "mtime": 1780625960.305283,
+    "ast_hash": "db74993303c9b29732295432ae392c28",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/oauth/plex/disconnect/__init__.py": {
+    "mtime": 1780614026.668233,
+    "ast_hash": "6c31765e7166a419d2977ec336b123d8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/reset_password/__init__.py": {
+    "mtime": 1780614039.8302376,
+    "ast_hash": "489836104d9e0d27019df381d763c71b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/forgot_password/__init__.py": {
+    "mtime": 1780599661.961298,
+    "ast_hash": "701081dd88cc7b44579c5216008c792b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/refresh/__init__.py": {
+    "mtime": 1780625422.436597,
+    "ast_hash": "91ccac7e045deaac3685936716b8ec94",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/two_factor/__init__.py": {
+    "mtime": 1780599661.9623215,
+    "ast_hash": "892b8b71f8ba30b2559b6697547b0612",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/two_factor/enable/__init__.py": {
+    "mtime": 1780599661.9824286,
+    "ast_hash": "646713b860d8631ee1e0fe459b09acd3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/two_factor/disable/__init__.py": {
+    "mtime": 1780599661.9826343,
+    "ast_hash": "ebb3e9433fcc731ca1cea9662ebaa7f2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/two_factor/setup/__init__.py": {
+    "mtime": 1780599661.9829762,
+    "ast_hash": "6fa7729cc22fe1901564c720a9b61ce1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/two_factor/login_verify/__init__.py": {
+    "mtime": 1780599661.9832969,
+    "ast_hash": "22415f73b9f3e9bc6fd8d0d603a7b487",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/logout/__init__.py": {
+    "mtime": 1780614034.244505,
+    "ast_hash": "6d8d28653501d170b6f5aa20587bfff4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/register/__init__.py": {
+    "mtime": 1780599661.9628646,
+    "ast_hash": "0bcea9f4ee3d9ea103bb06c4d0c991d3",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/sessions/revoke_all.py": {
+    "mtime": 1780599661.963124,
+    "ast_hash": "89928ee77ce82df9cdec00d03a5944c1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/sessions/list.py": {
+    "mtime": 1780599661.9633605,
+    "ast_hash": "16f76b71b50ab7d00b81c8680112afc0",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/sessions/__init__.py": {
+    "mtime": 1780599661.963642,
+    "ast_hash": "90d6de36b7f9180b2a986f10c7aa8a20",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/sessions/revoke.py": {
+    "mtime": 1780599661.9639661,
+    "ast_hash": "d8a66f093fd27e0eaaac9000fe8da0ef",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/me/__init__.py": {
+    "mtime": 1780599661.9642475,
+    "ast_hash": "44f1e1374e2a803d27c5af82d3e0e8d2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/me/_utils.py": {
+    "mtime": 1780599661.9644525,
+    "ast_hash": "efdd386125017a9f029d393d9da36505",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/me/preferences/__init__.py": {
+    "mtime": 1780599661.973748,
+    "ast_hash": "043fbc69f5403a6cb9346e66928061d1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/me/integrations/__init__.py": {
+    "mtime": 1780599661.9740858,
+    "ast_hash": "72e78e9fe3a211ab699cb58c148247d4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/verify_email/__init__.py": {
+    "mtime": 1780614038.9498563,
+    "ast_hash": "a714c2ede1218efd6114080f778a59a7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/auth/login/__init__.py": {
+    "mtime": 1780614033.3431876,
+    "ast_hash": "d667696541f04e710588815a660671bd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/__init__.py": {
+    "mtime": 1780599661.942157,
+    "ast_hash": "4bd8a57b38b341db3777c186690e13f5",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/router.py": {
+    "mtime": 1780599661.9423497,
+    "ast_hash": "7a3cbbcf6dc2c5bcdd3763afd0bdd7b0",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/metrics/__init__.py": {
+    "mtime": 1780599661.953885,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/metrics/router.py": {
+    "mtime": 1780614456.6786747,
+    "ast_hash": "88e8a5c2fa24a7669d71d065fca3e90d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/hydration/__init__.py": {
+    "mtime": 1780599661.9546263,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/hydration/router.py": {
+    "mtime": 1780614447.459694,
+    "ast_hash": "2d60c9126a5d7e2a9f402264c8de0c48",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/deleted_tmdb_ids/__init__.py": {
+    "mtime": 1780599661.9557085,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/deleted_tmdb_ids/router.py": {
+    "mtime": 1780614430.35378,
+    "ast_hash": "c095522ee639e6020f29c52e4f1d9018",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/stats/__init__.py": {
+    "mtime": 1780599661.9563096,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/stats/router.py": {
+    "mtime": 1780614470.7646358,
+    "ast_hash": "90cc71b1ff8201a1370efe49cacb2cce",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/edit_proposals/__init__.py": {
+    "mtime": 1780599661.9576848,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/admin/edit_proposals/router.py": {
+    "mtime": 1780600036.9685304,
+    "ast_hash": "f9ae9b53f052ba2e6730701f07a7ebb6",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/library/__init__.py": {
+    "mtime": 1780599661.9425588,
+    "ast_hash": "c6b505d8598c361f5dc99cd8ac369002",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/library/steam/__init__.py": {
+    "mtime": 1780599661.9583805,
+    "ast_hash": "75810c02c4a4822b9aab0e31bc3a5755",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/library/spotify/__init__.py": {
+    "mtime": 1780599661.9588299,
+    "ast_hash": "248c874f7fc1ce7e0fe81c767435bcc6",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/library/tab/__init__.py": {
+    "mtime": 1780617720.5352273,
+    "ast_hash": "92768cb695d1e4e28f8ee440a775ab16",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/library/plex/__init__.py": {
+    "mtime": 1780599661.959809,
+    "ast_hash": "8bd48db8ded64d3b49f080f96e2cea00",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/__init__.py": {
+    "mtime": 1780599747.7433624,
+    "ast_hash": "c8762f9fa4e8f5560e34071b2390ae85",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/metrics/__init__.py": {
+    "mtime": 1780599851.0624213,
+    "ast_hash": "e1773e49763d7c59f763ed60824f4ddc",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/friend/__init__.py": {
+    "mtime": 1780599838.381289,
+    "ast_hash": "116412387791c9b03415edc27e7a2642",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/rating/__init__.py": {
+    "mtime": 1780599777.241353,
+    "ast_hash": "41bd5092103820f61d0939198d5439a4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/notification/__init__.py": {
+    "mtime": 1780614037.2592044,
+    "ast_hash": "9fb4d11107b416620704f396a55f0d1b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/activity/__init__.py": {
+    "mtime": 1780599803.416058,
+    "ast_hash": "0521368e5b7fcfcd3ccbee7daaad22aa",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/follow/__init__.py": {
+    "mtime": 1780599820.0577106,
+    "ast_hash": "33c663df762bf008428827e20910d84a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/meta/__init__.py": {
+    "mtime": 1780599751.2338493,
+    "ast_hash": "4773b0786f349a88a607678efbc08dc2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/karma/__init__.py": {
+    "mtime": 1780599780.3894694,
+    "ast_hash": "e0e9d9a15c242796fa189fbebce84dde",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/detail/__init__.py": {
+    "mtime": 1780599767.6214159,
+    "ast_hash": "609e165165ee6e26d14dd63a58aa796b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/mood/__init__.py": {
+    "mtime": 1780599856.0858028,
+    "ast_hash": "5301fc632976613d3ab6b07c6fa0a4cf",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/badges/__init__.py": {
+    "mtime": 1780599784.4845796,
+    "ast_hash": "3a041543a6ef27a8f1c32e9a5a4caf0f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/user/stats/__init__.py": {
+    "mtime": 1780599795.7112625,
+    "ast_hash": "5e927ef18a249117a8ee5439fcac9a6e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/__init__.py": {
+    "mtime": 1780599661.943908,
+    "ast_hash": "5919f69ff280c40f889258cad47ce15a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/steam/__init__.py": {
+    "mtime": 1780599661.9691784,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/steam/scan/__init__.py": {
+    "mtime": 1780599661.979518,
+    "ast_hash": "08fcd8e77bda58a6e5316e49835b8010",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/steam/resolve_unmatched/__init__.py": {
+    "mtime": 1780599661.9797647,
+    "ast_hash": "8f8fe99d9e66aa386464a842ed2fafa0",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/steam/wishlist/scan/__init__.py": {
+    "mtime": 1780599661.983948,
+    "ast_hash": "56de1b089145245e63798a7373396515",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/spotify/__init__.py": {
+    "mtime": 1780599661.9703429,
+    "ast_hash": "eb43a05d3b7b36cb1f3d286b14650320",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/spotify/playlists/__init__.py": {
+    "mtime": 1780599661.9802191,
+    "ast_hash": "3a78b1d52059c0176d546b32376a898e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/spotify/recently_played/sync/__init__.py": {
+    "mtime": 1780614083.703061,
+    "ast_hash": "f9e051a08050bc4861078d0fd8e05500",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/spotify/sync/__init__.py": {
+    "mtime": 1780614072.7753901,
+    "ast_hash": "40cdc6384e3ae5af2c47fdda34ab4416",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/youtube/__init__.py": {
+    "mtime": 1780599661.9707017,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/youtube/sync/__init__.py": {
+    "mtime": 1780614096.1425064,
+    "ast_hash": "469a8371e9fccc78f3bb51e4c3c100e1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/tmdb/__init__.py": {
+    "mtime": 1780599661.9710112,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/tmdb/rating_sync/__init__.py": {
+    "mtime": 1780599661.9848812,
+    "ast_hash": "ba70e6faf51a0cc3935c874f08bef955",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/tmdb/watchlist_import/__init__.py": {
+    "mtime": 1780599661.985092,
+    "ast_hash": "3109cc803868b8587bba466134689f78",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/__init__.py": {
+    "mtime": 1780599661.971422,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/album_tracks/__init__.py": {
+    "mtime": 1780599661.9853094,
+    "ast_hash": "ca67a83845335a1a85511d37a7578d47",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/webhook/__init__.py": {
+    "mtime": 1780599661.9855118,
+    "ast_hash": "8b3b309026c4794c471c1dd9c7546c4e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/stream/__init__.py": {
+    "mtime": 1780599661.9857132,
+    "ast_hash": "6225d312a0b3e93e604312c2d79572bd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/connect_info/__init__.py": {
+    "mtime": 1780599661.9859157,
+    "ast_hash": "5483a769240e82f5aaa2cdece6ef72f4",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/sessions/__init__.py": {
+    "mtime": 1780599661.986113,
+    "ast_hash": "08d643390807d6b96f1efea599c9f908",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/sync/__init__.py": {
+    "mtime": 1780657308.9341047,
+    "ast_hash": "35522da0097360d65fa4020c0e41c879",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/servers/__init__.py": {
+    "mtime": 1780599661.9865766,
+    "ast_hash": "8779eefcb6eb801fcd55200f1f6fe8f8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/integrations/plex/watchlist/sync/__init__.py": {
+    "mtime": 1780599661.9888935,
+    "ast_hash": "403ff0c6abccbb25173fb9773aec9be1",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/__init__.py": {
+    "mtime": 1780599661.944182,
+    "ast_hash": "714c8baea7a75f3d5200c085ab98d864",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/like/__init__.py": {
+    "mtime": 1780599661.9745054,
+    "ast_hash": "04753d5bddac53aba23113a09acc6884",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/collaborators/__init__.py": {
+    "mtime": 1780599661.974932,
+    "ast_hash": "c1cf2b1ca99a700a4a96b71e1288cc40",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/detail/__init__.py": {
+    "mtime": 1780599661.9753428,
+    "ast_hash": "6b921a5ad9a11d22fdd930d4760d49b8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/item/__init__.py": {
+    "mtime": 1780599661.975835,
+    "ast_hash": "e0be04b949e6c3502c1174e6a6763c19",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/history/__init__.py": {
+    "mtime": 1780599661.976284,
+    "ast_hash": "6081c102bc5a84babd632c49fa857b9c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/list/export/__init__.py": {
+    "mtime": 1780599661.9766314,
+    "ast_hash": "e5181ff31fd2efe688aa5b850ccc1d81",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/rate_limit/__init__.py": {
+    "mtime": 1780599661.9445405,
+    "ast_hash": "8ed9e29fcef10b282e8152d1baf7d41c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/people/__init__.py": {
+    "mtime": 1780599661.9448383,
+    "ast_hash": "0090554708dd3da6cec910c7b2aa88fd",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/people/rating/__init__.py": {
+    "mtime": 1780599661.9770818,
+    "ast_hash": "086127180542ea5e144f6f2ffe0146d8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/people/follow/__init__.py": {
+    "mtime": 1780599661.9774466,
+    "ast_hash": "9f04a972e513e3486edd995ec9bfe0ac",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/people/related/__init__.py": {
+    "mtime": 1780599661.9777386,
+    "ast_hash": "1de65ca83d02d73f56ff861481411573",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/people/detail/__init__.py": {
+    "mtime": 1780599661.978071,
+    "ast_hash": "d6aaf7d7d7a273218e3dc46e2414db8d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/workout/__init__.py": {
+    "mtime": 1780599661.9451675,
+    "ast_hash": "d004ee9d3d7dd151b64d493972271493",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/workout/today/__init__.py": {
+    "mtime": 1780599661.9784517,
+    "ast_hash": "653b7bced1e072b68cba88bbb884bba8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/workout/detail/__init__.py": {
+    "mtime": 1780599661.9787643,
+    "ast_hash": "0a301e7a75ee6d80604b6a88ce9baf22",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/workout/exercises/__init__.py": {
+    "mtime": 1780599661.9790409,
+    "ast_hash": "88a2ea2348a8f74e751db3f794908f5a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/workout/heatmap/__init__.py": {
+    "mtime": 1780599661.979271,
+    "ast_hash": "a783909e7cfa46c48ccdc31158ad03d8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/upload/__init__.py": {
+    "mtime": 1780599661.9454546,
+    "ast_hash": "cd6f5852ed004a55759634f046e41f1c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/company/__init__.py": {
+    "mtime": 1780599661.9456692,
+    "ast_hash": "2ea77fd5fcb065a381c01b45681f850c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/company/detail/__init__.py": {
+    "mtime": 1780599661.949857,
+    "ast_hash": "4ebf91d7091c45300f67d434d53f106a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/company/detail/rating/__init__.py": {
+    "mtime": 1780599661.972216,
+    "ast_hash": "ef49048f3f3668a26a68645dcd4889d2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/company/detail/follow/__init__.py": {
+    "mtime": 1780599661.9728777,
+    "ast_hash": "0390dde250a92f67fc9ec146cd8202f7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/browse.py": {
+    "mtime": 1780614214.5573661,
+    "ast_hash": "65e99ce99e76659afb6e788eae819c86",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/__init__.py": {
+    "mtime": 1780599661.9462166,
+    "ast_hash": "031035423bc9ad7692329f480e9b9a97",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/admin.py": {
+    "mtime": 1780614198.8155642,
+    "ast_hash": "e647aa38528dbc7d0b8b4818ffc0f77b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/detail.py": {
+    "mtime": 1780614270.0805693,
+    "ast_hash": "df7b9a84a0d5f54c92a367876206e103",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/search.py": {
+    "mtime": 1780614378.357678,
+    "ast_hash": "a7bdfcc2cb6bf66d1ba5d7881ff7c03c",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/router.py": {
+    "mtime": 1780599661.9480543,
+    "ast_hash": "c2001fd8079149a73f8de497df4cfaf2",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/_utils.py": {
+    "mtime": 1780599661.948285,
+    "ast_hash": "faaf7df400fdecf408eb80970151744e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/review_vote/__init__.py": {
+    "mtime": 1780599661.9501235,
+    "ast_hash": "75f59fcae1c356895d3f5e9993572eb8",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/review_vote/router.py": {
+    "mtime": 1780614160.055325,
+    "ast_hash": "1254dfa606f90b8ade114b6d59769827",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/__init__.py": {
+    "mtime": 1780599661.9511566,
+    "ast_hash": "aff791b268ee1ba8bbf7a8acb5a851f7",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/router.py": {
+    "mtime": 1780599661.9513862,
+    "ast_hash": "c2c99678127152a10b267a58b4885222",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/__init__.py": {
+    "mtime": 1780599661.97338,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/show_watched/__init__.py": {
+    "mtime": 1780599661.986771,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/show_watched/router.py": {
+    "mtime": 1780614090.713132,
+    "ast_hash": "36e8c996f0a8d572acca0a2194a6ae56",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episode_interactions/__init__.py": {
+    "mtime": 1780599661.98718,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episode_interactions/router.py": {
+    "mtime": 1780614113.2348063,
+    "ast_hash": "74658971fe1806b8d18f4ef9423c2033",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episodes/__init__.py": {
+    "mtime": 1780599661.9876163,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episodes/episode_id/__init__.py": {
+    "mtime": 1780599661.9883358,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episodes/episode_id/watched/__init__.py": {
+    "mtime": 1780599661.9899168,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/episodes/episode_id/watched/router.py": {
+    "mtime": 1780614099.5931067,
+    "ast_hash": "ef4c9b6d9db0a3ceb4118edd90770d2a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/seasons/__init__.py": {
+    "mtime": 1780599661.9878275,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/seasons/season_number/__init__.py": {
+    "mtime": 1780599661.9885924,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/seasons/season_number/watched/__init__.py": {
+    "mtime": 1780599661.989168,
+    "ast_hash": "f5701cfdf67a5dfc02dbeb03a3b8918a",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/episode_interaction/media_id/seasons/season_number/watched/router.py": {
+    "mtime": 1780614107.0831485,
+    "ast_hash": "40032ff26caa7304f702b288ad44db91",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/review/__init__.py": {
+    "mtime": 1780599661.9516268,
+    "ast_hash": "47730d3aa9d9dfbeaee63e1ce64cc64d",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/review/router.py": {
+    "mtime": 1780614153.2960746,
+    "ast_hash": "746d9f5e6f56ad954b66c66ad6b1a873",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/interaction/__init__.py": {
+    "mtime": 1780599661.9523172,
+    "ast_hash": "8fe048e88e39e4f12b70b9570e608c7f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/api/media/interaction/router.py": {
+    "mtime": 1780621893.9686563,
+    "ast_hash": "0043737a9b58352f21c3a6ce99a094ce",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/domain/franchise.py": {
+    "mtime": 1780599661.8809032,
+    "ast_hash": "8a1c1dde054b6b0778f4f2a1cdf99a28",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/domain/media_rating.py": {
+    "mtime": 1780599661.8823564,
+    "ast_hash": "03aa325d2ce2474caee30cbf66c65686",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/media_rating_service.py": {
+    "mtime": 1780614146.3222475,
+    "ast_hash": "2dd982ccd3dbac87d31a2ff0d0a2acfa",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/company_service.py": {
+    "mtime": 1780614304.1063602,
+    "ast_hash": "fd261a5bb0eda9c43eb78a6d20dcc249",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/external_id_service.py": {
+    "mtime": 1780599661.8970597,
+    "ast_hash": "099da0b325012764258e184701f3887b",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/admin_service.py": {
+    "mtime": 1780614423.6812782,
+    "ast_hash": "82aa2d594870e5dcceda026cbd920ff0",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/search_log_service.py": {
+    "mtime": 1780614311.2794185,
+    "ast_hash": "b3e6d93a51a377d2aa581ae2548bb6fb",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/spotify_playlist_service.py": {
+    "mtime": 1780599661.9050033,
+    "ast_hash": "68163f59e152a5315268cfed02341404",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/auth/refresh_service.py": {
+    "mtime": 1780599661.9212253,
+    "ast_hash": "ad5f4c901f31c5acf8360d131ef58790",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/auth/auth_service.py": {
+    "mtime": 1780614482.7983391,
+    "ast_hash": "60b923d470017042269b04d67f8ccf31",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/auth/__init__.py": {
+    "mtime": 1780599661.9219928,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/services/auth/two_factor_service.py": {
+    "mtime": 1780599661.9223785,
+    "ast_hash": "9ccbbfc3c2d564fb8c4869b577c6bd4f",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/otix/templates/emails/verify_email.html": {
+    "mtime": 1780589808.770122,
+    "ast_hash": "3868bbac40d681c88e8b720b72a2812e",
+    "semantic_hash": ""
+  },
+  "/Users/dk/dev/Otix/backend/uploads/56291434f58648bd81f47989436502c8.webp": {
+    "mtime": 1780016265.4309368,
+    "ast_hash": "d078eece57f87052c308fa7ffd37c7d4",
     "semantic_hash": ""
   }
 }

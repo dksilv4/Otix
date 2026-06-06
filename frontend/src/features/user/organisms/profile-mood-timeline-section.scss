@@ -1,0 +1,58 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Mood Timeline Section ────────────────────────────── */
+
+.dk-user-mood-timeline__header {
+  @apply flex items-center gap-2 mb-4;
+}
+
+.dk-user-mood-timeline__title {
+  @apply text-sm font-semibold uppercase tracking-wider text-muted-foreground;
+}
+
+.dk-user-mood-timeline__count {
+  @apply text-[10px] text-muted-foreground/30 ml-auto;
+}
+
+.dk-user-mood-timeline__checkins {
+  @apply flex items-center gap-1 overflow-x-auto pb-2;
+}
+
+.dk-user-mood-timeline__checkin {
+  @apply flex flex-col items-center shrink-0;
+}
+
+.dk-user-mood-timeline__dot {
+  @apply w-3 h-3 rounded-full ring-2 ring-offset-2;
+  --tw-ring-offset-color: var(--dk-surface-root);
+}
+
+.dk-user-mood-timeline__date {
+  @apply text-[9px] text-muted-foreground/40 mt-2 text-center leading-tight;
+}
+
+.dk-user-mood-timeline__legend {
+  @apply mt-3 flex items-center gap-3;
+}
+
+.dk-user-mood-timeline__legend-item {
+  @apply inline-flex items-center gap-1 text-[10px] text-muted-foreground/50;
+}
+
+.dk-user-mood-timeline__legend-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+/* ── Loading skeleton ─────────────────────────────────── */
+
+.dk-user-mood-timeline__skeleton-bar {
+  @apply h-4 w-28 mb-4;
+}
+
+.dk-user-mood-timeline__skeleton-dots {
+  @apply flex gap-1;
+}
+
+.dk-user-mood-timeline__skeleton-dot {
+  @apply w-3 h-3 rounded-full shrink-0;
+}

@@ -8,6 +8,7 @@ import { useAdminStats, useAdminMetrics, REFETCH_INTERVAL } from "@/features/adm
 import type { EnrichmentCounts } from "@/features/admin/admin-queries"
 import { LineChart } from "@/features/admin/molecules/line-chart"
 import { cn } from "@/lib/utils"
+import "./admin-dashboard-page.scss"
 import { Skeleton } from "@ui/atoms/skeleton"
 
 const MEDIA_LABELS: Record<string, string> = {
@@ -52,28 +53,22 @@ function EnrichmentCard({
   const label = MEDIA_LABELS[type] ?? type
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl p-4",
-        "bg-[var(--dk-surface-glass)] backdrop-blur-xl",
-        "shadow-[var(--dk-shadow-glass)]",
-      )}
-    >
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+    <div className="dk-admin-dashboard__enrichment-card">
+      <p className="dk-admin-dashboard__enrichment-label">
         {label}
       </p>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Total</span>
-          <span className="font-mono tabular-nums font-medium">
+      <div className="dk-admin-dashboard__enrichment-list">
+        <div className="dk-admin-dashboard__enrichment-row">
+          <span className="dk-admin-dashboard__enrichment-row-label">Total</span>
+          <span className="dk-admin-dashboard__enrichment-row-value">
             {counts.total.toLocaleString()}
             <DeltaBadge value={delta.total} />
           </span>
         </div>
         {providers.map((provider) => (
-          <div key={provider} className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{PROVIDER_LABELS[provider] ?? provider}</span>
-            <span className="font-mono tabular-nums">
+          <div key={provider} className="dk-admin-dashboard__enrichment-row">
+            <span className="dk-admin-dashboard__enrichment-row-label">{PROVIDER_LABELS[provider] ?? provider}</span>
+            <span className="dk-admin-dashboard__enrichment-row-value--plain">
               {counts[provider as keyof EnrichmentCounts]?.toLocaleString() ?? "0"}
               <DeltaBadge
                 value={(delta[provider as keyof EnrichmentCounts] as number) ?? 0}
@@ -92,8 +87,8 @@ function DeltaBadge({ value }: { value: number | null | undefined }) {
   return (
     <span
       className={cn(
-        "ml-1.5 text-[11px] font-medium",
-        value > 0 ? "text-emerald-400" : "text-red-400",
+        "dk-admin-dashboard__delta-badge",
+        value > 0 ? "dk-admin-dashboard__delta-badge--positive" : "dk-admin-dashboard__delta-badge--negative",
       )}
     >
       {sign}
@@ -106,15 +101,9 @@ const CHART_TYPES = ["movie", "show", "music", "game", "person"] as const
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
-    <div
-      className={cn(
-        "rounded-2xl p-5",
-        "bg-[var(--dk-surface-glass)] backdrop-blur-xl",
-        "shadow-[var(--dk-shadow-glass)]",
-      )}
-    >
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-      <p className="mt-1 text-3xl font-extrabold tracking-tight font-mono">
+    <div className="dk-admin-dashboard__stat-card">
+      <p className="dk-admin-dashboard__stat-label">{label}</p>
+      <p className="dk-admin-dashboard__stat-value">
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
     </div>
@@ -123,13 +112,13 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 
 function AdminSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="dk-admin-dashboard__skeleton">
+      <div className="dk-admin-dashboard__skeleton-grid">
         {Array.from({ length: 8 }).map((_, i) => (
           <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
       </div>
-      <div className="space-y-3">
+      <div className="dk-admin-dashboard__skeleton-list">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-12 rounded-xl" />
         ))}
@@ -146,7 +135,7 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <div className="mx-auto lg:max-w-4xl pb-16">
+    <div className="dk-admin-dashboard">
       <Helmet>
         <title>Admin - Otix</title>
       </Helmet>
@@ -189,25 +178,18 @@ function AdminHeader() {
   }, [refetch])
 
   return (
-    <div className="flex items-center justify-between mb-8">
-      <h1 className="text-2xl font-extrabold tracking-tight">Admin</h1>
+    <div className="dk-admin-dashboard__header">
+      <h1 className="dk-admin-dashboard__title">Admin</h1>
       <button
         type="button"
         onClick={handleRefresh}
         disabled={isFetching}
-        className={cn(
-          "group relative flex items-center justify-center",
-          "w-10 h-10 rounded-full",
-          "bg-[var(--dk-surface-glass)] backdrop-blur-xl",
-          "shadow-[var(--dk-shadow-glass)]",
-          "hover:bg-[var(--dk-surface-glass-hover)]",
-          "transition-all disabled:cursor-default",
-        )}
+        className="dk-admin-dashboard__refresh-btn"
         title={`Refreshes in ${secondsLeft}s`}
       >
         {/* Circular progress track */}
         <svg
-          className="absolute inset-0 w-full h-full -rotate-90"
+          className="dk-admin-dashboard__refresh-progress"
           viewBox={`0 0 ${CIRCLE_VIEWBOX} ${CIRCLE_VIEWBOX}`}
         >
           <circle
@@ -234,14 +216,14 @@ function AdminHeader() {
         </svg>
 
         {/* Icon + countdown */}
-        <div className="relative flex flex-col items-center">
+        <div className="dk-admin-dashboard__refresh-icon-wrap">
           <ArrowPathIcon
             className={cn(
-              "h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors",
-              isFetching && "animate-spin text-primary",
+              "dk-admin-dashboard__refresh-icon",
+              isFetching && "dk-admin-dashboard__refresh-icon--spinning",
             )}
           />
-          <span className="text-[9px] font-semibold text-muted-foreground tabular-nums leading-none mt-0.5">
+          <span className="dk-admin-dashboard__refresh-countdown">
             {secondsLeft}
           </span>
         </div>
@@ -269,7 +251,7 @@ function MetricChart({ metric, title, color, hours }: { metric: string; title: s
 
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">{title}</p>
+      <p className="dk-admin-dashboard__chart-title">{title}</p>
       {isLoading ? (
         <Skeleton className="h-[100px] rounded-2xl" />
       ) : (
@@ -286,8 +268,8 @@ function AdminContent() {
   if (isLoading) return <AdminSkeleton />
   if (isError || !data) {
     return (
-      <div className="flex min-h-[30vh] items-center justify-center">
-        <p className="text-sm text-muted-foreground">Failed to load stats.</p>
+      <div className="dk-admin-dashboard__error-state">
+        <p className="dk-admin-dashboard__error-text">Failed to load stats.</p>
       </div>
     )
   }
@@ -295,7 +277,7 @@ function AdminContent() {
   const mediaEntries = Object.entries(data.mediaCounts).sort(([, a], [, b]) => b - a)
 
   const chartSection = (type: "media" | "stubs") => (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="dk-admin-dashboard__grid--cols-2-4">
       {CHART_TYPES.map((mType) => (
         <MetricChart
           key={mType}
@@ -309,27 +291,27 @@ function AdminContent() {
   )
 
   return (
-    <div className="space-y-10">
+    <div className="dk-admin-dashboard__content">
       {/* Users */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Users</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <h2 className="dk-admin-dashboard__section-title">Users</h2>
+        <div className="dk-admin-dashboard__grid--cols-2-3">
           <StatCard label="Total Users" value={data.totalUsers} />
         </div>
       </section>
 
       {/* Range selector — shared across all metric charts */}
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="dk-admin-dashboard__range-selector">
         {RANGE_OPTIONS.map((opt) => (
           <button
             key={opt.hours}
             type="button"
             onClick={() => setHours(opt.hours)}
             className={cn(
-              "px-2.5 py-1 text-[11px] font-medium rounded-lg transition-colors",
+              "dk-admin-dashboard__range-btn",
               hours === opt.hours
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]",
+                ? "dk-admin-dashboard__range-btn--active"
+                : "",
             )}
           >
             {opt.label}
@@ -339,10 +321,10 @@ function AdminContent() {
 
       {/* Media counts */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Media</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
+        <h2 className="dk-admin-dashboard__section-title">Media</h2>
+        <div className={cn("dk-admin-dashboard__grid--cols-2-4", "mb-6")}>
           {mediaEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground col-span-full">No media yet.</p>
+            <p className={cn("dk-admin-dashboard__empty-text", "dk-admin-dashboard__empty-text--col-span")}>No media yet.</p>
           ) : (
             mediaEntries.map(([type, count]) => (
               <StatCard key={type} label={MEDIA_LABELS[type] ?? type} value={count} />
@@ -353,10 +335,10 @@ function AdminContent() {
         {/* Enrichment breakdown */}
         {data.enrichment && (
           <div className="mb-6">
-            <h3 className="mb-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <h3 className="dk-admin-dashboard__subsection-title">
               Enrichment
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="dk-admin-dashboard__grid--cols-1-2-3">
               {Object.entries(data.enrichment).map(([type, counts]) => (
                 <EnrichmentCard
                   key={type}
@@ -374,11 +356,11 @@ function AdminContent() {
 
       {/* People */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">People</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-6">
+        <h2 className="dk-admin-dashboard__section-title">People</h2>
+        <div className={cn("dk-admin-dashboard__grid--cols-2-3", "mb-6")}>
           <StatCard label="Total People" value={data.peopleCount} />
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="dk-admin-dashboard__grid--cols-2-4">
           <MetricChart metric="media_person" title="People" color="var(--primary)" hours={hours} />
           <MetricChart metric="stubs_person" title="People Stubs" color="var(--primary)" hours={hours} />
         </div>
@@ -386,8 +368,8 @@ function AdminContent() {
 
       {/* Stub counts */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Stubs (unhydrated)</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-6">
+        <h2 className="dk-admin-dashboard__section-title">Stubs (unhydrated)</h2>
+        <div className={cn("dk-admin-dashboard__grid--cols-2-3", "mb-6")}>
           <StatCard label="Total Stubs" value={data.stubCounts.total ?? 0} />
         </div>
         <MetricChart metric="stubs" title="All Stubs" color="var(--primary)" hours={hours} />
@@ -398,25 +380,25 @@ function AdminContent() {
 
       {/* Recent users */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Recent Registrations</h2>
+        <h2 className="dk-admin-dashboard__section-title">Recent Registrations</h2>
         {data.recentUsers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No users yet.</p>
+          <p className="dk-admin-dashboard__empty-text">No users yet.</p>
         ) : (
-          <div className="overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)]">
-            <table className="w-full text-sm">
+          <div className="dk-admin-dashboard__table-wrapper">
+            <table className="dk-admin-dashboard__table">
               <thead>
-                <tr className="text-left text-xs text-muted-foreground uppercase tracking-wider">
-                  <th className="px-5 py-3 font-medium">Username</th>
-                  <th className="px-5 py-3 font-medium hidden sm:table-cell">Email</th>
-                  <th className="px-5 py-3 font-medium hidden sm:table-cell">Joined</th>
+                <tr className="dk-admin-dashboard__table-header">
+                  <th className="dk-admin-dashboard__table-header-cell">Username</th>
+                  <th className="dk-admin-dashboard__table-header-cell--hidden-sm">Email</th>
+                  <th className="dk-admin-dashboard__table-header-cell--hidden-sm">Joined</th>
                 </tr>
               </thead>
               <tbody>
                 {data.recentUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-5 py-3 font-medium">{u.username}</td>
-                    <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{u.email}</td>
-                    <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">
+                  <tr key={u.id} className="dk-admin-dashboard__table-row">
+                    <td className="dk-admin-dashboard__table-cell--bold">{u.username}</td>
+                    <td className="dk-admin-dashboard__table-cell--muted-hidden-sm">{u.email}</td>
+                    <td className="dk-admin-dashboard__table-cell--muted-hidden-sm">
                       {new Date(u.createdAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Embedding generation tasks — produce pgvector embeddings for semantic search."""
 
 from __future__ import annotations

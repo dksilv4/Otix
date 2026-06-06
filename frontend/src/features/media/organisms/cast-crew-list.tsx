@@ -1,8 +1,10 @@
+// TODO: Review this file
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { Image } from '@ui/atoms/image'
 import { Badge } from '@ui/atoms/badge'
 import { PersonCard } from '@person/molecules/person-card'
+import './cast-crew-list.scss'
 
 interface CreditItem {
   id: string
@@ -42,9 +44,9 @@ function KeyCrewCard({ credit }: { credit: CreditItem }) {
     <Link
       to="/person/$personId"
       params={{ personId: credit.person.id }}
-      className="flex items-center gap-3 rounded-xl bg-card p-3 transition-colors hover:bg-card/80"
+      className="dk-media-cast-crew-list__card"
     >
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
+      <div className="dk-media-cast-crew-list__card-avatar">
         <Image
           src={credit.person.photoUrl}
           alt={credit.person.name}
@@ -52,9 +54,9 @@ function KeyCrewCard({ credit }: { credit: CreditItem }) {
           fallback={credit.person.name[0]}
         />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold truncate">{credit.person.name}</p>
-        <Badge variant="secondary" className="mt-0.5 text-[10px]">
+      <div className="dk-media-cast-crew-list__card-info">
+        <p className="dk-media-cast-crew-list__card-name">{credit.person.name}</p>
+        <Badge variant="secondary" className="dk-media-cast-crew-list__card-role">
           {roleLabel[credit.role] ?? credit.role}
         </Badge>
       </div>
@@ -66,13 +68,13 @@ function CreditRow({ label, items }: { label: string; items: CreditItem[] }) {
   if (items.length === 0) return null
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="dk-media-cast-crew-list__row">
+      <h4 className="dk-media-cast-crew-list__row-label">
         {label}
       </h4>
 
       <div
-        className="flex gap-3 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none pb-2"
+        className="dk-media-cast-crew-list__row-list"
         aria-label={`${label} credits`}
       >
         {items.map((c) => (
@@ -96,11 +98,11 @@ export function CastCrewList({ credits, className }: CastCrewListProps) {
   if (credits.length === 0) return null
 
   return (
-    <div className={cn('space-y-8', className)}>
+    <div className={cn('dk-media-cast-crew-list', className)}>
       {keyCrew.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Key Crew</h2>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <h2 className="dk-media-cast-crew-list__title dk-media-cast-crew-list__title--key">Key Crew</h2>
+          <div className="dk-media-cast-crew-list__grid">
             {keyCrew.map((c) => (
               <KeyCrewCard key={c.id} credit={c} />
             ))}
@@ -109,8 +111,8 @@ export function CastCrewList({ credits, className }: CastCrewListProps) {
       )}
 
       {(cast.length > 0 || composers.length > 0 || crew.length > 0) && (
-        <section className="space-y-5">
-          <h2 className="text-lg font-semibold">Cast & Crew</h2>
+        <section className="dk-media-cast-crew-list__section--crew">
+          <h2 className="dk-media-cast-crew-list__title">Cast & Crew</h2>
           <CreditRow label="Cast" items={cast} />
           <CreditRow label="Composers" items={composers} />
           <CreditRow label="Crew" items={crew} />

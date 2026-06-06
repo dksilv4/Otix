@@ -14,6 +14,7 @@ import { MediaGrid } from '@ui/molecules/media-grid'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
+import './company-detail.scss'
 
 const BROWSE_TYPES = [
   { value: 'all', label: 'All', Icon: Building2 },
@@ -28,7 +29,7 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
   const active = hover || value || 0
 
   return (
-    <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(0)}>
+    <div className="dk-company-detail__star-rating" onMouseLeave={() => setHover(0)}>
       {Array.from({ length: 5 }).map((_, i) => {
         const score = i + 1
         const filled = score <= active
@@ -38,8 +39,8 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
             type="button"
             disabled={readonly}
             className={cn(
-              'p-0.5 transition-colors',
-              readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110',
+              'dk-company-detail__star-btn',
+              readonly && 'dk-company-detail__star-btn--readonly',
             )}
             onClick={() => onChange?.(score)}
             onMouseEnter={() => !readonly && setHover(score)}
@@ -53,7 +54,7 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
           </button>
         )
       })}
-      {value != null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
+      {value != null && <span className="dk-company-detail__star-value">{value}/5</span>}
     </div>
   )
 }
@@ -113,10 +114,10 @@ export function CompanyDetail() {
 
   if (isError || (!companyLoading && !company)) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="text-center space-y-3">
+      <div className="dk-company-detail__error-state">
+        <div className="dk-company-detail__error-content">
           <Building2 className="h-12 w-12 mx-auto text-muted-foreground" />
-          <p className="text-lg font-semibold">Company not found</p>
+          <p className="dk-company-detail__error-text">Company not found</p>
         </div>
       </div>
     )
@@ -125,7 +126,7 @@ export function CompanyDetail() {
   const typeLabel = mediaType === 'all' ? 'items' : (BROWSE_TYPES.find((t) => t.value === mediaType)?.label ?? 'movies').toLowerCase()
 
   return (
-    <div className="pb-16">
+    <div className="dk-company-detail">
       <Helmet>
         <title>{company ? `${company.name} - Otix` : `Company - Otix`}</title>
         {company?.description && (
@@ -141,12 +142,12 @@ export function CompanyDetail() {
       </Helmet>
 
       {/* Header */}
-      <div className="mb-8 space-y-6">
-        <div className="flex items-start gap-4">
+      <div className="dk-company-detail__header">
+        <div className="dk-company-detail__header-row">
           {companyLoading ? (
             <>
               <Skeleton className="h-16 w-48 rounded-xl shrink-0" />
-              <div className="min-w-0 space-y-2">
+              <div className="dk-company-detail__skeleton-info">
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-4 w-24" />
               </div>
@@ -157,28 +158,28 @@ export function CompanyDetail() {
                 <img
                   src={company.logoUrl}
                   alt={company.name}
-                  className="h-16 max-w-[240px] object-contain shrink-0"
+                  className="dk-company-detail__logo"
                 />
               ) : (
-                <div className="flex items-center justify-center h-16 w-48 rounded-xl bg-white/5 border border-white/10 shrink-0">
+                <div className="dk-company-detail__logo-placeholder">
                   <Building2 className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
-              <div className="min-w-0 space-y-1.5">
-                <h1 className="text-2xl font-bold">{company.name}</h1>
+              <div className="dk-company-detail__info">
+                <h1 className="dk-company-detail__title">{company.name}</h1>
                 {company.originCountry && (
-                  <p className="text-sm text-muted-foreground">{company.originCountry.toUpperCase()}</p>
+                  <p className="dk-company-detail__meta">{company.originCountry.toUpperCase()}</p>
                 )}
 
                 {/* Stats */}
-                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="dk-company-detail__stats">
                   {company.avgRating != null && (
                     <>
-                      <span className="inline-flex items-center gap-1">
+                      <span className="dk-company-detail__stat">
                         <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                         {company.avgRating}
                       </span>
-                      <span className="text-border">|</span>
+                      <span className="dk-company-detail__divider">|</span>
                     </>
                   )}
                   <span>{company.followerCount.toLocaleString()} followers</span>
@@ -186,12 +187,12 @@ export function CompanyDetail() {
 
                 {/* Follow button + Rating */}
                 {user && (
-                  <div className="flex items-center gap-4 pt-1">
+                  <div className="dk-company-detail__actions">
                     {company.isFollowed ? (
                       <button
                         onClick={() => unfollow.mutate()}
                         disabled={unfollow.isPending}
-                        className="px-4 py-1.5 text-sm font-medium rounded-full bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                        className="dk-company-detail__follow-btn dk-company-detail__follow-btn--following"
                       >
                         Following
                       </button>
@@ -199,12 +200,12 @@ export function CompanyDetail() {
                       <button
                         onClick={() => follow.mutate()}
                         disabled={follow.isPending}
-                        className="px-4 py-1.5 text-sm font-medium rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                        className="dk-company-detail__follow-btn"
                       >
                         Follow
                       </button>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="dk-company-detail__rating-row">
                       <StarRating
                         value={company.userRating}
                         onChange={(score) => rate.mutate(score)}
@@ -212,7 +213,7 @@ export function CompanyDetail() {
                       {company.userRating != null && (
                         <button
                           onClick={() => unrate.mutate()}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="dk-company-detail__clear-btn"
                         >
                           Clear
                         </button>
@@ -226,16 +227,14 @@ export function CompanyDetail() {
         </div>
 
         {/* Type tabs */}
-        <div className="flex items-center gap-2">
+        <div className="dk-company-detail__tabs">
           {BROWSE_TYPES.map(({ value, label, Icon }) => (
             <button
               key={value}
               onClick={() => { setMediaType(value); setSortBy('popularity') }}
               className={cn(
-                'inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
-                mediaType === value
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)]',
+                'dk-company-detail__tab',
+                mediaType === value && 'dk-company-detail__tab--active',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -245,7 +244,7 @@ export function CompanyDetail() {
         </div>
 
         {/* Filters bar */}
-        <div className="flex items-center justify-between">
+        <div className="dk-company-detail__filters">
           <DkDropdown
             variant="filter"
             label="Sort"
@@ -253,7 +252,7 @@ export function CompanyDetail() {
             value={sortBy}
             onChange={setSortBy}
           />
-          <span className="text-xs text-muted-foreground shrink-0">
+          <span className="dk-company-detail__count">
             {total.toLocaleString()} {typeLabel.toLowerCase()}
           </span>
         </div>
@@ -267,8 +266,8 @@ export function CompanyDetail() {
           ))}
         </MediaGrid>
       ) : items.length === 0 ? (
-        <div className="flex min-h-[30vh] items-center justify-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="dk-company-detail__empty-state">
+          <p className="dk-company-detail__empty-text">
             No {typeLabel.toLowerCase()} found for this company.
           </p>
         </div>
@@ -292,7 +291,7 @@ export function CompanyDetail() {
             ))}
 
             {(hasNextPage || isFetchingNextPage) && (
-              <div ref={sentinelRef} className="col-span-full flex justify-center py-8">
+              <div ref={sentinelRef} className="dk-company-detail__sentinel">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <Skeleton key={i} className="aspect-[2/3] rounded-2xl w-full" />
                 ))}

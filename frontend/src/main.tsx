@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
@@ -8,6 +9,7 @@ import { router } from '@/lib/router'
 import { ShaderQualityProvider } from '@/lib/shader-quality'
 import { MotionPreferenceProvider } from '@/lib/motion-preference'
 import { ThemeProvider } from '@/lib/theme'
+import { LogoPreferenceProvider } from '@/lib/logo-preference'
 import { AuthProvider } from '@/features/auth'
 import { ExperimentsProvider } from '@/features/experiments/experiments-provider'
 import { PageMetaProvider } from '@/lib/page-context'
@@ -15,7 +17,14 @@ import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provide
 import { PlexAudioProvider } from '@/features/spotify/plex-audio-provider'
 import { PlayerProvider } from '@/features/spotify/use-player'
 import { DkToastProvider } from '@/features/dk-ui/molecules/toast'
+import { getDesktopPlatform } from '@/lib/desktop-platform'
 import './index.css'
+
+// Set desktop platform attribute for CSS targeting
+const plat = getDesktopPlatform()
+if (plat.isDesktop && plat.platform) {
+  document.documentElement.setAttribute('data-desktop-platform', plat.platform)
+}
 
 // Suppress noisy unhandled rejections from browser/environment that
 // bubble as "Uncaught (in promise)" in the console. These are not
@@ -51,6 +60,7 @@ createRoot(document.getElementById('root')!).render(
         <ShaderQualityProvider>
           <MotionPreferenceProvider>
             <ThemeProvider>
+              <LogoPreferenceProvider>
               <AuthProvider>
                 <ExperimentsProvider>
                   <DkToastProvider>
@@ -66,6 +76,7 @@ createRoot(document.getElementById('root')!).render(
                   </DkToastProvider>
                 </ExperimentsProvider>
               </AuthProvider>
+              </LogoPreferenceProvider>
             </ThemeProvider>
           </MotionPreferenceProvider>
         </ShaderQualityProvider>

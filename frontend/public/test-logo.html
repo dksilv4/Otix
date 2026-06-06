@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Logo Path Inspector</title>
+  <style>
+    body {
+      background-color: #0b0c10;
+      color: #ffffff;
+      font-family: system-ui, sans-serif;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .logo-container {
+      background: #1f2833;
+      padding: 2rem;
+      border-radius: 1rem;
+      margin: 1rem;
+      width: 500px;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #333;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2rem;
+    }
+    .legend {
+      background: #1f2833;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #333;
+      margin-top: 1rem;
+      width: 400px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .color-box {
+      width: 20px;
+      height: 20px;
+      margin-right: 10px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Otix Logo Path Inspector</h1>
+  <div class="grid">
+    <div>
+      <h2>Original / Restored Logo SVG (Color-Coded)</h2>
+      <div class="logo-container" id="color-coded-container">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+    
+    <div>
+      <h2>Redesigned Premium Interlaced Logo (New Design)</h2>
+      <div class="logo-container" style="color: #0be881;">
+        ${JSON.stringify(finalSvg).slice(1, -1)}
+      </div>
+    </div>
+  </div>
+
+  <div class="legend" id="legend">
+    <h3>Path Legend</h3>
+  </div>
+
+  <script>
+    const colors = [
+      '#ff5e57', // Coral Red
+      '#ffdd59', // Yellow
+      '#05c46b', // Green
+      '#00d2d3', // Cyan
+      '#5758bb', // Purple
+      '#ef5777', // Pink
+      '#0be881', // Mint
+      '#ffd32a'  // Amber
+    ];
+
+    fetch('/src/assets/otix-logo.svg')
+      .then(response => response.text())
+      .then(data => {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(data, "image/svg+xml");
+        const svg = xmlDoc.getElementsByTagName("svg")[0];
+        const paths = svg.getElementsByTagName("path");
+        
+        const legend = document.getElementById('legend');
+        
+        // Color code each path
+        for (let i = 0; i < paths.length; i++) {
+          const color = colors[i % colors.length];
+          paths[i].setAttribute('fill', color);
+          
+          // Add to legend
+          const transform = paths[i].getAttribute('transform') || 'none';
+          const d = paths[i].getAttribute('d');
+          const length = d ? d.length : 0;
+          
+          const item = document.createElement('div');
+          item.className = 'legend-item';
+          item.innerHTML = `
+            <div class="color-box" style="background-color: \${color}"></div>
+            <span>Path \${i + 1}: Transform: <code>\${transform}</code> (Length: \${length})</span>
+          `;
+          legend.appendChild(item);
+        }
+        
+        document.getElementById('color-coded-container').appendChild(svg);
+      });
+  </script>
+</body>
+</html>

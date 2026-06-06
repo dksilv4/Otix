@@ -1,11 +1,12 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import datetime
 
 from pydantic import BaseModel
 
-from otix.api.schemas.common import PaginatedResponse
-from otix.api.schemas.friend import FriendshipStatusOut
+from otix.schemas.common import PaginatedResponse
+from otix.schemas.friend import FriendshipStatusOut
 
 
 class SteamIntegrationPublic(BaseModel):

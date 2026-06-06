@@ -1,27 +1,26 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import json
 import re
-import time
 import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import (
+from otix.api._utils import (
     get_current_admin_user,
     get_db,
     get_optional_user,
     resolve_country_code,
 )
 from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key, _embedding_cache_key
-from otix.api.schemas.interaction import UserInteractionState
-from otix.api.schemas.media import (
+from otix.schemas.interaction import UserInteractionState
+from otix.schemas.media import (
     CompanyOut,
     GenreOut,
     ImportGameResponse,
@@ -35,13 +34,10 @@ from otix.api.schemas.media import (
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
+    SyncLocalGamesRequest,
+    SyncLocalGamesResponse,
     TrackSearchResult,
 )
-from otix.domain.asset import MediaRelease
-from otix.domain.company import Company
-from otix.domain.genre import Genre, MediaGenre
-from otix.domain.media import ExternalID, MediaItem
-from otix.domain.search_log import SearchLog
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
@@ -50,8 +46,12 @@ from otix.lib.media_rehydrate_progress import (
     get_latest_progress,
     get_stored_result,
 )
+from otix.lib.sse import SseStreamConfig, create_sse_response
+from otix.services.company_service import CompanyService
+from otix.services.external_id_service import ExternalIDService
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService, should_exclude_adult
+from otix.services.search_log_service import log_search
 from otix.tasks.sync.search import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHOLD
 
 logger = structlog.get_logger()
@@ -73,43 +73,6 @@ async def _call_embed_query(q: str):
     return await _eq(q)
 
 
-async def _log_search(
-    q: str,
-    media_type: str | None,
-    sort_by: str | None,
-    page: int,
-    page_size: int,
-    result_count: int | None,
-    items_returned: int,
-    tracks_returned: int,
-    backfill_triggered: bool,
-    cache_hit: bool,
-    query_embedding_available: bool | None,
-    user_id: str | None,
-    is_bot: bool,
-) -> None:
-    """Fire-and-forget: write a search event to search_logs."""
-    try:
-        async with async_session() as session:
-            log = SearchLog(
-                query=q[:500],
-                media_type=media_type,
-                sort_by=sort_by,
-                page=page,
-                page_size=page_size,
-                result_count=result_count,
-                items_returned=items_returned,
-                tracks_returned=tracks_returned,
-                backfill_triggered=backfill_triggered,
-                cache_hit=cache_hit,
-                query_embedding_available=query_embedding_available,
-                user_id=user_id,
-                is_bot=is_bot,
-            )
-            session.add(log)
-            await session.commit()
-    except Exception:
-        logger.warning("search_log_failed", exc_info=True)
 
 
 @media_router.get("/suggestions", response_model=list[MediaItemSummary])
@@ -218,12 +181,8 @@ async def list_media(
         album_media_ids = [item.id for item in items if item.album]
         if album_media_ids:
             rg_future = asyncio.ensure_future(
-                db.execute(
-                    select(ExternalID.external_id, ExternalID.entity_id).where(
-                        ExternalID.provider == "musicbrainz_release_group",
-                        ExternalID.entity_type == "media_item",
-                        ExternalID.entity_id.in_(album_media_ids),
-                    )
+                ExternalIDService(db).batch_find_by_entity_ids(
+                    "media_item", album_media_ids,
                 )
             )
 
@@ -241,7 +200,10 @@ async def list_media(
         rg_map: dict[str, str] = {}
         if rg_future is not None:
             eid_result = await rg_future
-            rg_map = {row.entity_id: row.external_id for row in eid_result if row.entity_id and row.external_id}
+            for entity_id, pairs in eid_result.items():
+                for provider, external_id in pairs:
+                    if provider == "musicbrainz_release_group":
+                        rg_map[entity_id] = external_id
         for i, summary in enumerate(summaries):
             album = items[i].album
             if album:
@@ -267,18 +229,9 @@ async def list_genres(
     media_type: str | None = Query(None, description="Filter genres to a specific media type"),
     db: AsyncSession = Depends(get_db),
 ) -> list[GenreOut]:
-    query = select(Genre).order_by(Genre.name)
-    if media_type:
-        query = (
-            select(Genre)
-            .distinct()
-            .join(MediaGenre, MediaGenre.genre_id == Genre.id)
-            .join(MediaItem, MediaItem.id == MediaGenre.media_item_id)
-            .where(MediaItem.media_type == media_type)
-            .order_by(Genre.name)
-        )
-    result = await db.scalars(query)
-    return [GenreOut.model_validate(g) for g in result]
+    service = MediaService(db)
+    genres = await service.list_genres(media_type)
+    return [GenreOut.model_validate(g) for g in genres]
 
 
 @media_router.get("/company", response_model=CompanyOut)
@@ -287,12 +240,9 @@ async def get_company_by_slug(
     id: str = Query(None, description="Company ID"),
     db: AsyncSession = Depends(get_db),
 ) -> CompanyOut:
-    if id:
-        result = await db.scalar(select(Company).where(Company.id == id))
-    elif slug:
-        result = await db.scalar(select(Company).where(Company.slug == slug))
-    else:
+    if not id and not slug:
         raise HTTPException(status_code=400, detail="Provide id or slug")
+    result = await CompanyService.get_by_id_or_slug(db, id=id, slug=slug)
     if not result:
         raise HTTPException(status_code=404, detail="Company not found")
     return CompanyOut.model_validate(result)
@@ -304,21 +254,8 @@ async def list_certifications(
     country_code: str = Query("us", description="Country code for certification ratings (e.g. 'us', 'gb')"),
     db: AsyncSession = Depends(get_db),
 ) -> list[str]:
-    query = (
-        select(MediaRelease.certification)
-        .distinct()
-        .join(MediaItem, MediaItem.id == MediaRelease.media_item_id)
-        .where(
-            MediaRelease.country_code == country_code.lower(),
-            MediaRelease.certification.isnot(None),
-            MediaRelease.certification != "",
-        )
-        .order_by(MediaRelease.certification)
-    )
-    if media_type:
-        query = query.where(MediaItem.media_type == media_type)
-    result = await db.scalars(query)
-    return list(result)
+    service = MediaService(db)
+    return await service.list_certifications(country_code=country_code, media_type=media_type)
 
 
 @media_router.get("/search", response_model=MediaItemListResponse)
@@ -350,7 +287,7 @@ async def search_media(
                 state = batch.get(summary.id, {})
                 summary.user_interactions = UserInteractionState(**state)
         asyncio.create_task(
-            _log_search(
+            log_search(
                 q=q,
                 media_type=media_type,
                 sort_by=sort_by,
@@ -412,14 +349,12 @@ async def search_media(
         track_ids = [t.id for t in tracks]
         spotify_id_map: dict[str, str] = {}
         if track_ids:
-            eid_result = await db.execute(
-                select(ExternalID.entity_id, ExternalID.external_id).where(
-                    ExternalID.provider == "spotify",
-                    ExternalID.entity_type == "track",
-                    ExternalID.entity_id.in_(track_ids),
-                )
-            )
-            spotify_id_map = {row.entity_id: row.external_id for row in eid_result if row.entity_id and row.external_id}
+            eid_by_entity = await ExternalIDService(db).batch_find_by_entity_ids("track", track_ids)
+            spotify_id_map = {}
+            for entity_id, pairs in eid_by_entity.items():
+                for provider, external_id in pairs:
+                    if provider == "spotify":
+                        spotify_id_map[entity_id] = external_id
 
         for t in tracks:
             album_item = t.album.media_item
@@ -473,7 +408,7 @@ async def search_media(
 
     # Fire-and-forget search analytics
     asyncio.create_task(
-        _log_search(
+        log_search(
             q=q,
             media_type=media_type,
             sort_by=sort_by,
@@ -512,14 +447,19 @@ async def match_local_games(
 ) -> LocalGameMatchResponse:
     """Fuzzy-match local PC/ISO game titles to Otix catalog entries.
 
-    Accepts a list of raw game titles (from the desktop scanner) and returns
-    the best-matching Otix media item per title using trigram similarity.
+    Accepts a list of games (title + optional platform and Steam App ID) and
+    returns the best-matching Otix media item per entry. Games with a Steam
+    App ID get a direct lookup; the rest fall through to trigram similarity.
     """
     svc = MediaService(db)
     exclude_adult = should_exclude_adult(current_user)
     matches: list[LocalGameMatch] = []
 
-    results = await svc.match_local_games(body.titles)
+    games_data = [
+        {"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id}
+        for g in body.games
+    ]
+    results = await svc.match_local_games(games_data)
 
     for query_title, item, confidence in results:
         summary: LocalGameMatch
@@ -546,19 +486,36 @@ async def seed_from_titles(
 ) -> SeedFromTitlesResponse:
     """Trigger background IGDB seeding for local game titles from a desktop scan.
 
-    When a user runs a desktop game scan, the extracted titles are sent here so
-    the backend can search IGDB for each title and import any missing games into
-    the catalog. This ensures subsequent match-local-games calls can find them.
+    When a user runs a desktop game scan, the extracted titles (with optional
+    platform and Steam App ID) are sent here so the backend can search IGDB or
+    do direct Steam lookups for each game and import any missing games into the
+    catalog. This ensures subsequent match-local-games calls can find them.
 
-    The actual IGDB searches and Celery sync tasks run asynchronously in the
-    background via ``seed.igdb_from_titles``. This endpoint returns immediately
-    with the Celery task ID for optional tracking.
+    The actual IGDB searches / Steam sync tasks run asynchronously via
+    ``seed.igdb_from_titles``. This endpoint returns immediately with the
+    Celery task ID for optional tracking.
     """
-    unique_titles = list(dict.fromkeys([t.strip() for t in body.titles if t.strip()]))
-    if not unique_titles:
+    # Dedup by normalized title, preferring entries with more context
+    deduped: dict[str, SeedGameEntry] = {}
+    for game in body.games:
+        key = game.title.strip().lower()
+        if not key:
+            continue
+        existing = deduped.get(key)
+        if existing is None:
+            deduped[key] = game
+        elif game.steam_app_id and not existing.steam_app_id:
+            deduped[key] = game  # prefer entry with Steam App ID
+
+    unique = list(deduped.values())
+    if not unique:
         return SeedFromTitlesResponse(accepted=True, total_titles=0)
 
-    task = app.send_task("seed.igdb_from_titles", args=[unique_titles])
+    games_data = [
+        {"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id}
+        for g in unique
+    ]
+    task = app.send_task("seed.igdb_from_titles", args=[games_data])
 
     # Track via Redis counter for debugging
     try:
@@ -567,12 +524,12 @@ async def seed_from_titles(
     except Exception:
         pass
 
-    print(f"SEED_FROM_TITLES_HIT: {len(unique_titles)} titles -> task {task.id}", flush=True)
-    logger.info("seed_from_titles_requested", total=len(unique_titles), task_id=task.id)
+    print(f"SEED_FROM_TITLES_HIT: {len(unique)} games -> task {task.id}", flush=True)
+    logger.info("seed_from_titles_requested", total=len(unique), task_id=task.id)
 
     return SeedFromTitlesResponse(
         accepted=True,
-        total_titles=len(unique_titles),
+        total_titles=len(unique),
         task_id=task.id,
     )
 
@@ -610,7 +567,8 @@ async def force_rehydrate_media(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ) -> dict[str, str]:
-    item = await db.scalar(select(MediaItem).where(MediaItem.id == media_id))
+    service = MediaService(db)
+    item = await service.get_media_item_bare(media_id)
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 
@@ -628,61 +586,18 @@ async def force_rehydrate_media(
 async def force_rehydrate_media_stream(
     media_id: str,
     task_id: str,
+    request: Request,
     current_user: User = Depends(get_current_admin_user),
 ):
-    stored = await get_stored_result(task_id)
-    if stored is not None:
-        stored["type"] = "error" if stored.get("error") else "rehydrate_complete"
-        payload = json.dumps(stored)
-
-        async def replay():
-            yield f"data: {payload}\n\n"
-
-        return StreamingResponse(
-            replay(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-
-    latest = await get_latest_progress(task_id)
-    channel = channel_name(task_id)
-
-    async def event_generator():
-        if latest is not None:
-            yield f"data: {json.dumps(latest)}\n\n"
-
-        redis = await _get_redis()
-        pubsub = redis.pubsub()
-        await pubsub.subscribe(channel)
-        try:
-            deadline = time.monotonic() + 300.0
-            while True:
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message is None:
-                    if time.monotonic() > deadline:
-                        break
-                    yield ":keepalive\n\n"
-                    continue
-
-                data = message["data"]
-                yield f"data: {data}\n\n"
-                deadline = time.monotonic() + 300.0
-
-                event = json.loads(data)
-                if event.get("type") in ("rehydrate_complete", "error"):
-                    break
-        finally:
-            await pubsub.unsubscribe(channel)
-            await pubsub.close()
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+    """SSE stream of media rehydration progress events."""
+    return await create_sse_response(
+        SseStreamConfig(
+            channel=channel_name(task_id),
+            terminal_events=("rehydrate_complete", "error"),
+            result_replay=lambda: get_stored_result(task_id),
+            progress_replay=lambda: get_latest_progress(task_id),
+        ),
+        request,
     )
 
 
@@ -778,26 +693,18 @@ async def search_external_games(
     if not igdb_ids:
         return MediaItemListResponse(items=[])
 
-    # Check which IGDB IDs already exist in Otix (single query)
-    existing_eids = (
-        await db.scalars(
-            select(ExternalID).where(
-                ExternalID.provider == "igdb",
-                ExternalID.external_id.in_(igdb_ids),
-            )
-        )
-    ).all()
-    existing_ids: dict[str, str] = {}
-    for eid in existing_eids:
-        media_id = eid.entity_id or eid.media_item_id
-        if media_id:
-            existing_ids[eid.external_id] = media_id
+    # Check which IGDB IDs already exist in Otix
+    ext_id_service = ExternalIDService(db)
+    existing_ids = await ext_id_service.batch_find_entity_ids("igdb", igdb_ids)
 
     # Build summary list from already-imported items
     summaries: list[MediaItemSummary] = []
     if existing_ids:
-        items = (await db.scalars(select(MediaItem).where(MediaItem.id.in_(existing_ids.values())))).all()
-        summaries = [MediaItemSummary.model_validate(item) for item in items]
+        entity_ids = [eid for eid in existing_ids.values() if eid]
+        if entity_ids:
+            media_service = MediaService(db)
+            items = await media_service.get_media_items_by_ids(entity_ids)
+            summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     # Trigger Celery imports for games not yet in the DB.
     missing_ids = [gid for gid in igdb_ids if gid not in existing_ids]
@@ -838,11 +745,8 @@ async def import_igdb_game(
     if result is None:
         # Sync may have skipped — look up existing entry by IGDB ID
         async with async_session() as session:
-            ext_id = await session.scalar(
-                select(ExternalID).where(
-                    ExternalID.provider == "igdb",
-                    ExternalID.external_id == str(igdb_id),
-                )
+            ext_id = await ExternalIDService(session).get_by_provider_ext_id(
+                "igdb", str(igdb_id),
             )
             if ext_id is not None:
                 media_id = ext_id.entity_id or ext_id.media_item_id
@@ -947,3 +851,92 @@ async def search_steamgrid(
         )
 
     return SteamGridSearchResponse(items=items)
+
+
+# ── Sync local games (desktop → backend) ──────────────────────────────
+
+
+@media_router.post("/sync-local-games", response_model=SyncLocalGamesResponse)
+async def sync_local_games(
+    body: SyncLocalGamesRequest,
+    current_user: User = Depends(get_optional_user),
+) -> SyncLocalGamesResponse:
+    """Sync the user's locally detected games to the backend.
+
+    Called from the desktop app after scanning and matching. Upserts games
+    by (user_id, title, platform) so match state survives client-side clears.
+    """
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    from otix.domain.media import UserLocalGame
+
+    async with async_session() as session:
+        user_id = current_user.id
+        upserted = 0
+
+        # Fetch existing games for this user
+        from sqlalchemy import select, delete as sa_delete
+
+        existing = (
+            await session.execute(
+                select(UserLocalGame).where(UserLocalGame.user_id == user_id)
+            )
+        ).scalars().all()
+
+        existing_by_key: dict[tuple[str, str], UserLocalGame] = {}
+        for g in existing:
+            existing_by_key[(g.title.lower(), g.platform)] = g
+
+        incoming_keys: set[tuple[str, str]] = set()
+
+        for game in body.games:
+            key = (game.title.lower(), game.platform)
+            incoming_keys.add(key)
+
+            existing_game = existing_by_key.get(key)
+            if existing_game:
+                # Update existing
+                existing_game.media_item_id = game.otix_media_id or existing_game.media_item_id
+                existing_game.match_suggestion_media_id = (
+                    game.match_suggestion_media_id or existing_game.match_suggestion_media_id
+                )
+                existing_game.last_seen_at = func.now()
+            else:
+                # Insert new
+                new_game = UserLocalGame(
+                    user_id=user_id,
+                    title=game.title,
+                    platform=game.platform,
+                    media_item_id=game.otix_media_id,
+                    match_suggestion_media_id=game.match_suggestion_media_id,
+                )
+                session.add(new_game)
+            upserted += 1
+
+        # Delete games no longer present on the desktop
+        deleted = 0
+        for key, existing_game in existing_by_key.items():
+            if key not in incoming_keys:
+                await session.delete(existing_game)
+                deleted += 1
+
+        # Auto-claim matched games (fire and forget via interaction service)
+        from otix.services.interaction_service import InteractionService
+        interaction_svc = InteractionService(session)
+        for game in body.games:
+            if game.otix_media_id:
+                try:
+                    await interaction_svc.set_interaction(
+                        user_id=user_id,
+                        media_item_id=game.otix_media_id,
+                        interaction_type="owned",
+                    )
+                except Exception:
+                    pass  # best-effort claim
+
+        await session.commit()
+
+    logger.info("sync_local_games_complete", user_id=user_id, upserted=upserted, deleted=deleted)
+
+    return SyncLocalGamesResponse(upserted=upserted, deleted=deleted)

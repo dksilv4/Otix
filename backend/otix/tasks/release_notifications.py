@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Check watchlisted items for newly released media and notify users.
 
 Triggered by an ``after_insert`` SQLAlchemy signal on ``MediaRelease`` —

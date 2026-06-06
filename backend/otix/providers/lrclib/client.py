@@ -1,3 +1,4 @@
+# TODO: Review this file
 """LRCLIB lyrics client.
 
 Free, no-auth REST API for synced and plain lyrics.

@@ -1,0 +1,35 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-list-card {
+  @apply block rounded-3xl p-5;
+  background-color: var(--dk-surface-base);
+  transition: background-color 150ms;
+
+  &:hover {
+    background-color: var(--dk-surface-glass);
+  }
+}
+
+.dk-list-card__title {
+  @apply font-semibold text-foreground truncate;
+}
+
+.dk-list-card__description {
+  @apply mt-1 text-sm text-muted-foreground line-clamp-2;
+}
+
+.dk-list-card__meta {
+  @apply mt-3 flex items-center gap-2 text-xs text-muted-foreground;
+}
+
+.dk-list-card__badge {
+  @apply inline-flex items-center rounded-full px-2 py-0.5;
+}
+
+.dk-list-card__badge--public {
+  @apply bg-emerald-500/10 text-emerald-400;
+}
+
+.dk-list-card__badge--private {
+  @apply bg-muted-foreground/10;
+}

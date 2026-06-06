@@ -125,7 +125,7 @@ def app():
 def client(app):
     """Return an async test client with mocked dependencies that can be set up per test."""
 
-    from otix.api import deps
+    from otix.api import _utils as deps
 
     async def _make(auth_user, scalar_side_effect=None, scalars_result=None, execute_result=None):
         async def override_get_db():

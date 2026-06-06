@@ -1,0 +1,339 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Spotify Platform Tab & Dashboard ── */
+/* Prefix: dk-library-spotify                                      */
+
+/* ── Skeleton ── */
+.dk-library-spotify__skeleton {
+  @apply aspect-[2/3] rounded-lg animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__skeleton-list {
+  @apply flex flex-col gap-3;
+}
+
+.dk-library-spotify__skeleton-row {
+  @apply h-14 rounded-lg animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+/* ── Centered states ── */
+.dk-library-spotify__center-col {
+  @apply flex flex-col items-center justify-center py-24 text-center;
+}
+
+/* ── Empty state ── */
+.dk-library-spotify__empty-icon {
+  @apply mb-4 flex h-16 w-16 items-center justify-center rounded-2xl;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__empty-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+.dk-library-spotify__empty-desc {
+  @apply mt-1 text-sm text-muted-foreground max-w-sm;
+}
+
+.dk-library-spotify__empty-text {
+  @apply text-sm;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Icons ── */
+.dk-library-spotify__icon {
+  @apply h-4 w-4;
+}
+
+.dk-library-spotify__icon--xl {
+  @apply h-8 w-8;
+}
+
+.dk-library-spotify__icon--sm {
+  @apply h-3.5 w-3.5;
+}
+
+@keyframes dk-library-spotify-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dk-library-spotify__icon--spinning {
+  animation: dk-library-spotify-spin 1s linear infinite;
+}
+
+/* ── Primary button ── */
+.dk-library-spotify__btn-primary {
+  @apply mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium;
+  @apply bg-primary text-primary-foreground;
+  transition: opacity 0.15s ease;
+}
+
+.dk-library-spotify__btn-primary:hover {
+  opacity: 0.9;
+}
+
+.dk-library-spotify__btn-primary--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Ghost button ── */
+.dk-library-spotify__btn-ghost {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__btn-ghost:hover {
+  color: inherit;
+}
+
+/* ── Text button ── */
+.dk-library-spotify__btn-text {
+  @apply inline-flex items-center gap-1 text-sm font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__btn-text:hover {
+  color: inherit;
+}
+
+/* ── Result & error text ── */
+.dk-library-spotify__result-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__error-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__muted-text {
+  @apply text-sm;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__detail-error {
+  @apply text-sm;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Overview ── */
+.dk-library-spotify__overview {
+  @apply space-y-8;
+}
+
+/* ── Section ── */
+.dk-library-spotify__section {
+  @apply space-y-4;
+}
+
+.dk-library-spotify__section-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-library-spotify__section-title {
+  @apply text-sm font-semibold uppercase tracking-wider;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__section-link {
+  @apply text-xs transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__section-link:hover {
+  color: inherit;
+}
+
+/* ── Liked card ── */
+.dk-library-spotify__liked-card {
+  @apply flex items-center gap-4 p-4 rounded-2xl w-full text-left transition-colors;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__liked-card:hover {
+  background-color: var(--dk-surface-elevated);
+}
+
+.dk-library-spotify__liked-card-bg {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center shrink-0;
+  background: linear-gradient(135deg, oklch(0.7 0.15 330), oklch(0.55 0.15 330));
+}
+
+.dk-library-spotify__liked-card-icon {
+  @apply h-5 w-5 text-white;
+}
+
+.dk-library-spotify__liked-card-info {
+  @apply min-w-0;
+}
+
+.dk-library-spotify__liked-card-title {
+  @apply text-sm font-semibold;
+}
+
+.dk-library-spotify__liked-card-subtitle {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Track list ── */
+.dk-library-spotify__track-list {
+  @apply flex flex-col;
+}
+
+.dk-library-spotify__track-row {
+  @apply flex items-center gap-3 px-3 py-2 rounded-xl transition-colors cursor-pointer;
+}
+
+.dk-library-spotify__track-row:hover {
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__track-row--current {
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__track-num {
+  @apply w-6 text-right text-xs shrink-0;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Album art ── */
+.dk-library-spotify__album-art-btn {
+  @apply w-10 h-10 rounded overflow-hidden shrink-0 block;
+}
+
+.dk-library-spotify__album-art-btn--clickable {
+  cursor: pointer;
+}
+
+.dk-library-spotify__album-art-img {
+  @apply w-full h-full object-cover;
+}
+
+.dk-library-spotify__album-art-placeholder {
+  @apply w-10 h-10 rounded shrink-0;
+  background-color: var(--dk-surface-glass);
+}
+
+/* ── Track info ── */
+.dk-library-spotify__track-info {
+  @apply flex-1 min-w-0;
+}
+
+.dk-library-spotify__track-name {
+  @apply text-sm font-medium truncate;
+}
+
+.dk-library-spotify__track-artist {
+  @apply text-xs truncate;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__track-artist-btn {
+  @apply text-xs truncate transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__track-artist-btn:hover {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* ── Track actions ── */
+.dk-library-spotify__track-actions {
+  @apply shrink-0;
+}
+
+/* ── Queue button ── */
+.dk-library-spotify__queue-btn {
+  @apply shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__queue-btn:hover {
+  color: inherit;
+  background-color: var(--dk-surface-glass);
+}
+
+@keyframes dk-library-spotify-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.dk-library-spotify__queue-btn--pulse {
+  animation: dk-library-spotify-pulse 1s ease-in-out infinite;
+}
+
+/* ── Track duration ── */
+.dk-library-spotify__track-duration {
+  @apply text-xs shrink-0;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Play indicator ── */
+.dk-library-spotify__play-indicator {
+  @apply shrink-0 flex items-center justify-center w-8 h-8;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__play-indicator--active {
+  color: var(--color-accent, oklch(0.65 0.15 145));
+}
+
+.dk-library-spotify__play-icon {
+  @apply h-4 w-4;
+}
+
+/* ── Liked detail view ── */
+.dk-library-spotify__liked-detail {
+  @apply space-y-4;
+}
+
+.dk-library-spotify__liked-header {
+  @apply flex items-center gap-3 mb-4;
+}
+
+.dk-library-spotify__liked-header-icon {
+  @apply w-10 h-10 rounded-xl flex items-center justify-center;
+  background: linear-gradient(135deg, oklch(0.7 0.15 330), oklch(0.55 0.15 330));
+}
+
+.dk-library-spotify__liked-header-heart {
+  @apply h-5 w-5 text-white;
+}
+
+.dk-library-spotify__liked-header-title {
+  @apply text-lg font-bold;
+}
+
+/* ── More / load more ── */
+.dk-library-spotify__more-wrap {
+  @apply flex justify-center py-8;
+}
+
+.dk-library-spotify__spinner--sm {
+  @apply h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent;
+}
+
+.dk-library-spotify__load-more-btn {
+  @apply text-xs font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__load-more-btn:hover {
+  color: inherit;
+}
+
+.dk-library-spotify__end-text {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Dashboard ── */
+.dk-library-spotify__dashboard {
+  @apply space-y-4;
+}

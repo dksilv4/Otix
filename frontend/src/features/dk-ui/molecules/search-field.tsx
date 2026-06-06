@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Search, X } from 'lucide-react'
 import { DkInput } from '@dk-ui/atoms/input'
 import { cn } from '@/lib/utils'
+import './search-field.scss'
 
 interface DkSearchFieldProps {
   value: string
@@ -34,8 +35,8 @@ function DkSearchField({
   )
 
   return (
-    <div className={cn('relative', className)}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+    <div className={cn('dk-search-field', className)}>
+      <Search className="dk-search-field__icon" />
       <DkInput
         value={localValue}
         onChange={(e) => {
@@ -43,7 +44,7 @@ function DkSearchField({
           debouncedOnChange(e.target.value)
         }}
         placeholder={placeholder}
-        className="[&>input]:pl-9 [&>input]:pr-9"
+        className="dk-search-field__input"
       />
       {localValue && (
         <button
@@ -51,7 +52,7 @@ function DkSearchField({
             setLocalValue('')
             onChange('')
           }}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
+          className="dk-search-field__clear"
         >
           <X className="h-4 w-4" />
         </button>

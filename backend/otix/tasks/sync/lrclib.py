@@ -1,3 +1,4 @@
+# TODO: Review this file
 """LRCLIB lyrics enrichment task — Tier 3 supplementary metadata.
 
 Fetches lyrics for album tracks from the free LRCLIB API.

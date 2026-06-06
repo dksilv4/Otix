@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
@@ -166,7 +167,7 @@ function clearPlaybackState() {
 
 async function fetchAccessToken(): Promise<string | null> {
   try {
-    const { data } = await apiClient.get<{ accessToken: string }>('/auth/integrations/spotify/token')
+    const { data } = await apiClient.get<{ accessToken: string }>('/integrations/spotify/token')
     return data.accessToken
   } catch (e) {
     console.error('Failed to fetch Spotify access token:', e)
@@ -223,8 +224,8 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
   // Are we running in Electron? If so skip Web Playback SDK (no DRM/CDM
   // guarantees) and use the Connect REST API as a remote control instead.
-  const [isElectron] = useState(() => typeof window !== 'undefined' && !!(window as any).electronAPI)
-  const [connectMode] = useState(isElectron)
+  const [isDesktop] = useState(() => typeof window !== 'undefined' && !!(window as any).desktopAPI)
+  const [connectMode] = useState(isDesktop)
   // Mirror availableDevices in a ref so Connect play callbacks can read the
   // latest active device without needing state in their dependency arrays.
   const availableDevicesRef = useRef<Array<{ id: string; name: string; type: string; isActive: boolean }>>([])
@@ -438,7 +439,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   // Load SDK script (browser only — Electron uses Connect REST API)
   // Load SDK script (browser only — Electron uses Connect REST API)
   useEffect(() => {
-    if (!hasSpotify || sdkLoadedRef.current || isElectron) return
+    if (!hasSpotify || sdkLoadedRef.current || isDesktop) return
 
     const existing = document.querySelector(`script[src="${SDK_URL}"]`)
     if (existing) {
@@ -461,7 +462,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   // Create and connect player (browser only — Electron uses Connect REST API)
   useEffect(() => {
   // Create and connect player (browser only — Electron uses Connect REST API)
-    if (!hasSpotify || isElectron) return
+    if (!hasSpotify || isDesktop) return
 
     let player: SpotifyPlayerInstance | null = null
     let disposed = false

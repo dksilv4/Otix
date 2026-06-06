@@ -1,3 +1,4 @@
+# TODO: Review this file
 """SteamGridDB API client (v2).
 
 Auth: API key sent as Bearer token in Authorization header.

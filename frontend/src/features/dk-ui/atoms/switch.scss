@@ -1,0 +1,40 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-switch {
+  @apply inline-flex items-center gap-3;
+}
+
+.dk-switch--disabled {
+  @apply opacity-40;
+}
+
+.dk-switch__track {
+  @apply relative h-6 w-11 rounded-full;
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+
+  &:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: var(--dk-ring-color);
+  }
+}
+
+.dk-switch__track--on {
+  @apply bg-primary;
+}
+
+.dk-switch__track--off {
+  background-color: var(--muted);
+}
+
+.dk-switch__thumb {
+  @apply absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm;
+  transition: all var(--dk-duration-fast) var(--dk-ease-out);
+}
+
+.dk-switch__thumb--on {
+  transform: translateX(1.25rem);
+}
+
+.dk-switch__label {
+  @apply text-sm;
+}

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """TMDB relation hydration.
 
 After the core entity is in the DB, hydrate credits, images, external IDs,
@@ -651,7 +652,9 @@ class TMDBHydrator:
                 if not providers:
                     continue
 
-                for entry in providers:
+                # Sort by provider_id to ensure consistent lock ordering
+                # across concurrent workers, preventing deadlocks.
+                for entry in sorted(providers, key=lambda e: e.get("provider_id", 0)):
                     tmdb_pid = entry.get("provider_id")
                     if not tmdb_pid:
                         continue

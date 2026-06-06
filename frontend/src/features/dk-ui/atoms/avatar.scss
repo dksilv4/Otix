@@ -1,0 +1,31 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-avatar {
+  @apply relative shrink-0;
+}
+
+.dk-avatar__img {
+  @apply h-full w-full rounded-full object-cover shadow-sm;
+}
+
+.dk-avatar--sm {
+  @apply h-8 w-8 text-xs;
+}
+
+.dk-avatar--md {
+  @apply h-10 w-10 text-sm;
+}
+
+.dk-avatar--lg {
+  @apply h-12 w-12 text-base;
+}
+
+.dk-avatar--xl {
+  @apply h-16 w-16 text-lg;
+}
+
+.dk-avatar__fallback {
+  @apply flex shrink-0 items-center justify-center rounded-full font-medium shadow-sm;
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+}

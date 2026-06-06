@@ -1,16 +1,17 @@
+// TODO: Review this file
 import { useState, useMemo, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Mail, Loader2, ArrowLeft, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AuthHeader } from '../molecules/auth-header'
 import { Logo } from '@ui/atoms/logo'
-import { cn } from '@/lib/utils'
 import authBg1 from '@/assets/auth-bg-1.png'
 import authBg2 from '@/assets/auth-bg-2.png'
 import authBg3 from '@/assets/auth-bg-3.png'
 import authBg4 from '@/assets/auth-bg-4.png'
 import authBg5 from '@/assets/auth-bg-5.png'
 import { apiClient } from '@/lib/api-client'
+import './forgot-password-page.scss'
 
 const bgImages = [authBg1, authBg2, authBg3, authBg4, authBg5]
 
@@ -48,20 +49,15 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
+    <div className="dk-auth-forgot-wrapper">
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="dk-auth-forgot-bg"
         style={{ backgroundImage: `url(${bgImage})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background/70" />
+      <div className="dk-auth-forgot-overlay" />
 
       <div
-        className={cn(
-          'relative z-10 w-full max-w-[440px] flex flex-col items-center',
-          'px-8 py-10 sm:px-10 sm:py-12 rounded-[2rem]',
-          'bg-[var(--dk-surface-overlay)] backdrop-blur-xl',
-          'shadow-[var(--dk-shadow-glass)]',
-        )}
+        className="dk-auth-forgot-card"
       >
         <Logo className="h-16" />
 
@@ -74,39 +70,34 @@ export function ForgotPasswordPage() {
           }
         />
 
-        <div className="w-full space-y-4 mt-4">
+        <div className="dk-auth-forgot-content">
           {state === 'sent' ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center gap-3 py-6"
+              className="dk-auth-forgot-sent"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10">
+              <div className="dk-auth-forgot-sent__icon-wrap">
                 <Check className="h-7 w-7 text-green-500" />
               </div>
-              <p className="text-base font-semibold">Email Sent</p>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="dk-auth-forgot-sent__title">Email Sent</p>
+              <p className="dk-auth-forgot-sent__info">
                 If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
               </p>
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="dk-auth-forgot-sent__note">
                 The link expires in 2 hours. Check your spam folder if you don't see it.
               </p>
               <button
                 type="button"
                 onClick={() => navigate({ to: '/auth/login' })}
-                className={cn(
-                  'flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold transition-all mt-2',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                )}
+                className="dk-auth-forgot-sent__button"
               >
                 Return to Sign In
               </button>
             </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="w-full space-y-4">
-              <div className="space-y-1.5">
+            <form onSubmit={handleSubmit} className="dk-auth-forgot-form">
+              <div className="dk-auth-forgot-form__field">
                 <input
                   id="forgot-email"
                   name="email"
@@ -117,12 +108,7 @@ export function ForgotPasswordPage() {
                   autoComplete="email"
                   required
                   autoFocus
-                  className={cn(
-                    'flex h-12 w-full rounded-xl bg-[var(--dk-surface-ghost-hover)] px-4 text-base transition-all',
-                    'placeholder:text-muted-foreground/60',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:bg-[var(--dk-surface-ghost-active)]',
-                    'hover:bg-[var(--dk-surface-ghost-active)]',
-                  )}
+                  className="dk-auth-forgot-input"
                 />
               </div>
 
@@ -130,7 +116,7 @@ export function ForgotPasswordPage() {
                 <motion.p
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-sm text-destructive"
+                  className="dk-auth-forgot-error"
                 >
                   {errorMessage}
                 </motion.p>
@@ -139,13 +125,7 @@ export function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={state === 'sending' || !email.trim()}
-                className={cn(
-                  'flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-bold uppercase tracking-wider transition-all',
-                  'bg-primary text-primary-foreground',
-                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]',
-                  'hover:bg-primary/90 active:scale-[0.98]',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                )}
+                className="dk-auth-forgot-submit"
               >
                 {state === 'sending' ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -158,10 +138,10 @@ export function ForgotPasswordPage() {
           )}
         </div>
 
-        <div className="mt-6">
+        <div className="dk-auth-forgot-back-wrap">
           <Link
             to="/auth/login"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-auth-forgot-back"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to sign in

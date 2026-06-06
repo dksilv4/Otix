@@ -1,0 +1,194 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ─── Company Detail ─────────────────────────────────────────── */
+
+.dk-company-detail {
+  @apply pb-16;
+
+  /* ── Error / Not Found ────────────────────────────────────── */
+
+  &__error-state {
+    @apply flex min-h-[50vh] items-center justify-center;
+  }
+
+  &__error-content {
+    @apply text-center space-y-3;
+  }
+
+  &__error-text {
+    @apply text-lg font-semibold;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+
+  &__header {
+    @apply mb-8 space-y-6;
+  }
+
+  &__header-row {
+    @apply flex items-start gap-4;
+  }
+
+  &__logo {
+    @apply h-16 max-w-[240px] object-contain shrink-0;
+  }
+
+  &__logo-placeholder {
+    @apply flex items-center justify-center h-16 w-48 rounded-xl shrink-0;
+    background: rgb(255 255 255 / 0.05);
+    border: 1px solid rgb(255 255 255 / 0.1);
+  }
+
+  &__skeleton-info {
+    @apply min-w-0 space-y-2;
+  }
+
+  &__info {
+    @apply min-w-0 space-y-1.5;
+  }
+
+  &__title {
+    @apply text-2xl font-bold;
+  }
+
+  &__meta {
+    @apply text-sm;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Stats ────────────────────────────────────────────────── */
+
+  &__stats {
+    @apply flex items-center gap-3 text-sm;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__stat {
+    @apply inline-flex items-center gap-1;
+  }
+
+  &__divider {
+    color: hsl(var(--border));
+  }
+
+  /* ── Actions (Follow + Rating) ────────────────────────────── */
+
+  &__actions {
+    @apply flex items-center gap-4 pt-1;
+  }
+
+  &__follow-btn {
+    @apply px-4 py-1.5 text-sm font-medium rounded-full bg-primary text-primary-foreground;
+    transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+
+    &:hover {
+      @apply bg-primary/90;
+    }
+
+    &--following {
+      @apply bg-primary/20 text-primary;
+
+      &:hover {
+        @apply bg-primary/30;
+      }
+    }
+  }
+
+  &__rating-row {
+    @apply flex items-center gap-2;
+  }
+
+  &__clear-btn {
+    @apply text-xs;
+    color: hsl(var(--muted-foreground));
+    transition: color 0.15s;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+  }
+
+  /* ── Star Rating ──────────────────────────────────────────── */
+
+  &__star-rating {
+    @apply flex items-center gap-0.5;
+  }
+
+  &__star-btn {
+    @apply p-0.5;
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &--readonly {
+      cursor: default;
+
+      &:hover {
+        transform: none;
+      }
+    }
+  }
+
+  &__star-value {
+    @apply ml-1.5 text-xs;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Type Tabs ────────────────────────────────────────────── */
+
+  &__tabs {
+    @apply flex items-center gap-2;
+  }
+
+  &__tab {
+    @apply inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold;
+    background: var(--dk-surface-glass);
+    color: hsl(var(--muted-foreground));
+    transition: all 200ms;
+
+    &:hover {
+      background: var(--dk-surface-glass-hover);
+      color: hsl(var(--foreground));
+    }
+
+    &--active {
+      @apply bg-primary text-primary-foreground;
+      box-shadow: 0 4px 12px hsl(var(--primary) / 0.2);
+
+      &:hover {
+        @apply bg-primary text-primary-foreground;
+      }
+    }
+  }
+
+  /* ── Filters bar ──────────────────────────────────────────── */
+
+  &__filters {
+    @apply flex items-center justify-between;
+  }
+
+  &__count {
+    @apply text-xs shrink-0;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Empty state ──────────────────────────────────────────── */
+
+  &__empty-state {
+    @apply flex min-h-[30vh] items-center justify-center;
+  }
+
+  &__empty-text {
+    @apply text-sm;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Infinite scroll sentinel ─────────────────────────────── */
+
+  &__sentinel {
+    @apply col-span-full flex justify-center py-8;
+  }
+}

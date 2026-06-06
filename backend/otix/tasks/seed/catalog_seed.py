@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Full catalog seeding — concurrent import across four catalogs.
 
 Each seeder runs on its own beat schedule with independent Redis state/lock:

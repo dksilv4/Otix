@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Deezer enrichment: tracks, artist credits, external IDs."""
 
 from __future__ import annotations
@@ -5,9 +6,10 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, ExternalID, MediaItem, Track
+from otix.domain.media import Album, Track
 from otix.domain.people import MediaCredit, Person
 from otix.lib.types import JSONValue
+from otix.services.external_id_service import ExternalIDService
 
 
 class DeezerHydrator:
@@ -44,22 +46,20 @@ class DeezerHydrator:
         # Store Deezer ID as ExternalID
         deezer_id = getattr(album, "_deezer_id", None)
         if deezer_id:
-            self._session.add(ExternalID(
-                provider="deezer",
-                external_id=str(deezer_id),
-                media_item_id=album.media_item_id,
-                media_type="music",
-            ))
+            eid_svc = ExternalIDService(self._session)
+            await eid_svc.upsert(
+                "deezer", str(deezer_id),
+                "media_item", album.media_item_id,
+            )
 
         # Store UPC/EAN barcode as ExternalID
         upc = getattr(album, "_upc", None)
         if upc:
-            self._session.add(ExternalID(
-                provider="barcode",
-                external_id=upc,
-                media_item_id=album.media_item_id,
-                media_type="music",
-            ))
+            eid_svc = ExternalIDService(self._session)
+            await eid_svc.upsert(
+                "barcode", upc,
+                "media_item", album.media_item_id,
+            )
 
         await self._session.flush()
         return isrcs

@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate, useSearch } from '@tanstack/react-router'
@@ -5,6 +6,7 @@ import { ChatSearchInput } from '../molecules/chat-search-input'
 import { TYPE_OPTIONS, SORT_OPTIONS, type SortValue } from '../molecules/search-sort-bar'
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { SearchResults } from './search-results'
+import './search-page.scss'
 
 export interface SearchRouteParams {
   q: string
@@ -78,7 +80,7 @@ export function SearchPage() {
   }, [handleKeyDown])
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)]">
+    <div className="dk-discover-search-page">
       <Helmet>
         <title>{q ? `"${q}" - Search - Otix` : 'Search - Otix'}</title>
         <meta name="description" content={q ? `Search results for "${q}" on Otix — find movies, shows, games, and music.` : 'Search Otix for movies, shows, games, and music.'} />
@@ -87,9 +89,9 @@ export function SearchPage() {
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary" />
       </Helmet>
-      <div className="flex flex-col items-center px-4 pb-16 w-full">
-        <div className="min-h-[25vh] flex flex-col justify-center items-center w-full gap-6">
-          <div className="w-full max-w-3xl flex flex-col items-center">
+      <div className="dk-discover-search-page__content">
+        <div className="dk-discover-search-page__hero">
+          <div className="dk-discover-search-page__search">
             <ChatSearchInput
               ref={inputRef}
               value={q}
@@ -99,7 +101,7 @@ export function SearchPage() {
               placeholder={placeholder}
               debounceMs={150}
             />
-            <div className="flex items-center gap-2 mt-4">
+            <div className="dk-discover-search-page__filters">
               <DkDropdown
                 variant="filter"
                 label="Type"
@@ -119,7 +121,7 @@ export function SearchPage() {
         </div>
 
         {isSearching && (
-          <div className="w-full max-w-[1400px] mt-6">
+          <div className="dk-discover-search-page__results">
             <SearchResults query={q} type={type} sortBy={sort as SortValue} />
           </div>
         )}

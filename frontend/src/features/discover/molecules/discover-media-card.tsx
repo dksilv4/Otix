@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { memo } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
+import './discover-media-card.scss'
 import type { MediaItemSummary } from '@media/media-queries'
 
 interface DiscoverMediaCardProps {

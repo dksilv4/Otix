@@ -1,0 +1,9 @@
+@reference "../_tailwind-ref.css";
+
+.dk-shader-bg__container {
+  @apply fixed inset-0 h-full w-full overflow-hidden;
+}
+
+.dk-shader-bg__fallback {
+  @apply absolute inset-0;
+}

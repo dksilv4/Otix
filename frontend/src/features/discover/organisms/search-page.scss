@@ -1,0 +1,28 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-discover-search-page {
+  @apply relative;
+  min-height: calc(100vh - 5rem);
+
+  &__content {
+    @apply flex flex-col items-center px-4 pb-16 w-full;
+  }
+
+  &__hero {
+    @apply flex flex-col justify-center items-center w-full gap-6;
+    min-height: 25vh;
+  }
+
+  &__search {
+    @apply w-full max-w-3xl flex flex-col items-center;
+  }
+
+  &__filters {
+    @apply flex items-center gap-2 mt-4;
+  }
+
+  &__results {
+    @apply w-full mt-6;
+    max-width: 1400px;
+  }
+}

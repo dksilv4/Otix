@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from otix.api.mood import dismiss_mood_checkin, get_today_mood_checkin, submit_mood_checkin
-from otix.api.schemas.mood import MoodCheckInCreate
+from otix.api.user.mood import dismiss_mood_checkin, get_today_mood_checkin, submit_mood_checkin
+from otix.schemas.mood import MoodCheckInCreate
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.user import User
 from otix.lib.xp import MOOD_CHECKIN
@@ -47,7 +47,7 @@ def mock_session() -> AsyncMock:
 async def test_today_due_when_no_checkin(mock_session: AsyncMock):
     mock_session.scalar.return_value = None
 
-    response = await get_today_mood_checkin(mock_session, make_user())
+    response = await get_today_mood_checkin(MagicMock(), mock_session, make_user())
 
     assert response.due is True
     assert response.checkin is None
@@ -57,7 +57,7 @@ async def test_today_not_due_when_checkin_exists(mock_session: AsyncMock):
     checkin = make_checkin()
     mock_session.scalar.return_value = checkin
 
-    response = await get_today_mood_checkin(mock_session, make_user())
+    response = await get_today_mood_checkin(MagicMock(), mock_session, make_user())
 
     assert response.due is False
     assert response.checkin is not None
@@ -69,7 +69,7 @@ async def test_today_not_due_when_feature_disabled(mock_session: AsyncMock):
     user = make_user()
     user.daily_mood_checkins_enabled = False
 
-    response = await get_today_mood_checkin(mock_session, user)
+    response = await get_today_mood_checkin(MagicMock(), mock_session, user)
 
     assert response.due is False
     assert response.checkin is None
@@ -79,9 +79,10 @@ async def test_today_not_due_when_feature_disabled(mock_session: AsyncMock):
 async def test_submit_creates_today_checkin(mock_session: AsyncMock):
     mock_session.scalar.return_value = None
 
-    with patch("otix.api.mood.app.send_task") as send_task:
+    with patch("otix.api.user.mood.app.send_task") as send_task:
         result = await submit_mood_checkin(
             MoodCheckInCreate(mood="great", feeling="focused", note="  Clear headed  "),
+            MagicMock(),
             mock_session,
             make_user(),
         )
@@ -99,9 +100,10 @@ async def test_submit_updates_existing_today_checkin(mock_session: AsyncMock):
     existing = make_checkin(status="dismissed", mood=None)
     mock_session.scalar.return_value = existing
 
-    with patch("otix.api.mood.app.send_task") as send_task:
+    with patch("otix.api.user.mood.app.send_task") as send_task:
         result = await submit_mood_checkin(
             MoodCheckInCreate(mood="okay", feeling="tired", note=None),
+            MagicMock(),
             mock_session,
             make_user(),
         )
@@ -119,9 +121,10 @@ async def test_submit_updates_existing_submitted_checkin_without_duplicate_xp(mo
     existing = make_checkin(status="submitted", mood="good")
     mock_session.scalar.return_value = existing
 
-    with patch("otix.api.mood.app.send_task") as send_task:
+    with patch("otix.api.user.mood.app.send_task") as send_task:
         result = await submit_mood_checkin(
             MoodCheckInCreate(mood="bad", feeling="heartbroken", note="Updated"),
+            MagicMock(),
             mock_session,
             make_user(),
         )
@@ -137,7 +140,7 @@ async def test_submit_updates_existing_submitted_checkin_without_duplicate_xp(mo
 async def test_dismiss_creates_today_checkin(mock_session: AsyncMock):
     mock_session.scalar.return_value = None
 
-    result = await dismiss_mood_checkin(mock_session, make_user())
+    result = await dismiss_mood_checkin(MagicMock(), mock_session, make_user())
 
     assert result.status == "dismissed"
     assert result.mood is None
@@ -152,7 +155,7 @@ async def test_dismiss_updates_existing_today_checkin(mock_session: AsyncMock):
     existing.note = "Long day"
     mock_session.scalar.return_value = existing
 
-    result = await dismiss_mood_checkin(mock_session, make_user())
+    result = await dismiss_mood_checkin(MagicMock(), mock_session, make_user())
 
     assert result is existing
     assert existing.status == "dismissed"

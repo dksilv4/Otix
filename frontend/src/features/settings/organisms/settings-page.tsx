@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
+import './settings-page.scss'
 import { PreferencesSection } from './settings-sections/preferences'
 import { ProfileSection } from './settings-sections/profile'
 import { AppearanceSection } from './settings-sections/appearance'
@@ -42,11 +43,11 @@ function isSettingsSection(value: unknown): value is Section {
 export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
-  const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
-  const electronSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
-  const filteredNav = NAV_ITEMS.filter(i => !electronSections.has(i.id) || isElectron)
+  const isDesktop = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const desktopSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
+  const filteredNav = NAV_ITEMS.filter(i => !desktopSections.has(i.id) || isDesktop)
   const [activeSection, setActiveSection] = useState<Section>(() =>
-    isSettingsSection(search.section) && (!electronSections.has(search.section) || isElectron) ? search.section : 'profile',
+    isSettingsSection(search.section) && (!desktopSections.has(search.section) || isDesktop) ? search.section : 'profile',
   )
   const [mobileView, setMobileView] = useState<'menu' | 'section'>('menu')
   const { theme, setTheme } = useTheme()
@@ -67,23 +68,23 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto lg:max-w-5xl pb-16">
+    <div className="dk-settings-page">
       <Helmet>
         <title>Settings - Otix</title>
       </Helmet>
 
-      <div className="mt-6 md:flex md:gap-8">
+      <div className="dk-settings-page__layout">
         {/* Mobile menu page */}
-        <div className={cn('md:hidden', mobileView === 'section' && 'hidden')}>
-          <h1 className="mb-6 text-2xl font-bold tracking-[-0.02em]">Settings</h1>
-          <nav className="space-y-1">
+        <div className={cn('dk-settings-page__mobile-menu', mobileView === 'section' && 'dk-settings-page__mobile-menu--hidden')}>
+          <h1 className="dk-settings-page__mobile-title">Settings</h1>
+          <nav className="dk-settings-page__mobile-nav">
             {filteredNav.map((item) => {
               const Icon = item.icon
               return (
                 <button
                   key={item.id}
                   onClick={() => handleSectionChange(item.id)}
-                  className="flex w-full items-center gap-4 rounded-xl px-4 py-4 text-base font-medium transition-all active:scale-[0.98] hover:bg-[var(--dk-surface-glass)]"
+                  className="dk-settings-page__nav-btn"
                 >
                   <Icon className="h-5 w-5 text-muted-foreground" />
                   <span>{item.label}</span>
@@ -94,17 +95,17 @@ export function SettingsPage() {
           </nav>
 
           {user && (
-            <div className="mt-8 px-4 pt-6 border-t border-border/40">
-              <div className="flex items-center gap-3">
+            <div className="dk-settings-page__mobile-user">
+              <div className="dk-settings-page__user-card">
                 <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">
+                <div className="dk-settings-page__user-details">
+                  <p className="dk-settings-page__user-name">
                     {user.username}
                     {user.isAdmin && (
                       <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
                     )}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  <p className="dk-settings-page__user-email">{user.email}</p>
                 </div>
               </div>
             </div>
@@ -112,10 +113,10 @@ export function SettingsPage() {
         </div>
 
         {/* Desktop sidebar */}
-        <aside className="hidden md:block w-56 shrink-0">
-          <div className="sticky top-24 space-y-1">
-            <h1 className="px-3 mb-4 text-lg font-bold tracking-[-0.02em]">Settings</h1>
-            <nav className="space-y-0.5">
+        <aside className="dk-settings-page__sidebar">
+          <div className="dk-settings-page__sidebar-inner">
+            <h1 className="dk-settings-page__sidebar-title">Settings</h1>
+            <nav className="dk-settings-page__sidebar-nav">
               {filteredNav.map((item) => {
                 const Icon = item.icon
                 const isActive = activeSection === item.id
@@ -124,10 +125,8 @@ export function SettingsPage() {
                     key={item.id}
                     onClick={() => handleSectionChange(item.id)}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
-                      isActive
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]',
+                      'dk-settings-page__sidebar-btn',
+                      isActive ? 'dk-settings-page__sidebar-btn--active' : 'dk-settings-page__sidebar-btn--inactive',
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -138,17 +137,17 @@ export function SettingsPage() {
             </nav>
 
             {user && (
-              <div className="mt-8 px-3 pt-6 border-t border-border/40">
-                <div className="flex items-center gap-3">
+              <div className="dk-settings-page__sidebar-user">
+                <div className="dk-settings-page__user-card">
                   <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
+                  <div className="dk-settings-page__user-details">
+                    <p className="dk-settings-page__user-name">
                       {user.username}
                       {user.isAdmin && (
                         <Shield className="h-3.5 w-3.5 inline-block ml-1 text-amber-400/80" />
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    <p className="dk-settings-page__user-email">{user.email}</p>
                   </div>
                 </div>
               </div>
@@ -157,11 +156,11 @@ export function SettingsPage() {
         </aside>
 
         {/* Content area */}
-        <main className={cn('flex-1 min-w-0', mobileView === 'menu' && 'hidden md:block')}>
+        <main className={cn('dk-settings-page__content', mobileView === 'menu' && 'dk-settings-page__content--menu-shown')}>
           {/* Mobile back button */}
           <button
             onClick={handleBackToMenu}
-            className="md:hidden flex items-center gap-2 mb-6 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-settings-page__back-btn"
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
             Settings

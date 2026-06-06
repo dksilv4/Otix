@@ -1,0 +1,73 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-workout-heatmap {
+  @apply w-full overflow-x-auto;
+}
+
+.dk-workout-heatmap__inner {
+  @apply w-fit;
+}
+
+.dk-workout-heatmap__months {
+  @apply flex gap-0.5 mb-1;
+}
+
+.dk-workout-heatmap__month-cell {
+  @apply size-4 rounded-[2px] relative;
+}
+
+.dk-workout-heatmap__month-label {
+  @apply absolute -top-4 left-0 text-[10px] text-muted-foreground/50 whitespace-nowrap;
+}
+
+.dk-workout-heatmap__grid {
+  @apply flex gap-0.5;
+}
+
+.dk-workout-heatmap__col {
+  @apply flex flex-col gap-0.5;
+}
+
+/* ── Cell base ── */
+.dk-workout-heatmap__cell {
+  @apply size-4 rounded-[2px];
+}
+
+.dk-workout-heatmap__cell--loading {
+  @apply animate-pulse;
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+/* ── Cell intensity levels ── */
+.dk-workout-heatmap__cell--level-0 {
+  background-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.dk-workout-heatmap__cell--level-1 {
+  background-color: hsl(var(--primary) / 0.3);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.1);
+}
+
+.dk-workout-heatmap__cell--level-2 {
+  background-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+}
+
+.dk-workout-heatmap__cell--level-3 {
+  background-color: hsl(var(--primary) / 0.7);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.3);
+}
+
+/* ── Legend ── */
+.dk-workout-heatmap__legend {
+  @apply flex items-center gap-1 mt-3 justify-end;
+}
+
+.dk-workout-heatmap__legend-label {
+  @apply text-[10px] text-muted-foreground/40;
+}
+
+.dk-workout-heatmap__legend-cell {
+  @apply w-3 h-3 rounded-[2px];
+}

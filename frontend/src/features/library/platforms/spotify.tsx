@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView } from "framer-motion"
 import { useNavigate, useSearch } from "@tanstack/react-router"
@@ -20,6 +21,7 @@ import { useToast } from "@/features/dk-ui/molecules/toast"
 import { SpotifyIcon } from "@/features/dk-ui/atoms/spotify-icon"
 import { registerPlatform } from "./registry"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import "./spotify.scss"
 
 function SkeletonGrid() {
  return (
@@ -27,7 +29,7 @@ function SkeletonGrid() {
  {Array.from({ length: 12 }).map((_, i) => (
  <div
  key={i}
- className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+ className="dk-library-spotify__skeleton"
  />
  ))}
  </MediaGrid>
@@ -46,33 +48,32 @@ function formatMs(ms: number | null | undefined): string {
 
 function SpotifyEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) {
  return (
- <div className="flex flex-col items-center justify-center py-24 text-center">
- <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)]">
- <SpotifyIcon className="h-8 w-8 opacity-40" />
+ <div className="dk-library-spotify__center-col">
+ <div className="dk-library-spotify__empty-icon">
+ <SpotifyIcon className="dk-library-spotify__icon--xl" />
  </div>
- <p className="text-lg font-semibold text-foreground">Spotify library empty</p>
- <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+ <p className="dk-library-spotify__empty-title">Spotify library empty</p>
+ <p className="dk-library-spotify__empty-desc">
  Sync your Spotify library to see your liked tracks and saved albums here.
  </p>
  <button
  onClick={onScan}
  disabled={isScanning}
  className={cn(
- "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
- "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
- isScanning && "opacity-60 pointer-events-none",
+ "dk-library-spotify__btn-primary",
+ isScanning && "dk-library-spotify__btn-primary--disabled",
  )}
  >
- <RefreshCw className={cn("h-4 w-4", isScanning && "animate-spin")} />
+ <RefreshCw className={cn("dk-library-spotify__icon", isScanning && "dk-library-spotify__icon--spinning")} />
  {isScanning ? "Syncing..." : "Sync Library"}
  </button>
  {scanResult && (
- <p className="mt-2 text-xs text-muted-foreground">
+ <p className="dk-library-spotify__result-text">
  Sync started. Track progress in Settings → Integrations.
  </p>
  )}
  {scanError && (
- <p className="mt-2 text-xs text-destructive">
+ <p className="dk-library-spotify__error-text">
  Sync failed. Please try again.
  </p>
  )}
@@ -148,11 +149,11 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  }
 
  if (tracks.length === 0) {
- return <p className="text-sm text-muted-foreground py-8 text-center">No tracks found.</p>
+ return <p className="dk-library-spotify__empty-text">No tracks found.</p>
  }
 
  return (
- <div className="space-y-0.5">
+ <div className="dk-library-spotify__track-list">
  {tracks.map((t, i) => {
  const isCurrent = currentTrack?.id === t.id
  const subsequentUris = tracks
@@ -198,11 +199,11 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  }
  }}
  className={cn(
- 'group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors cursor-pointer',
- isCurrent ? 'bg-[#1DB954]/10' : 'hover:bg-white/[0.03]',
+ "dk-library-spotify__track-row",
+ isCurrent && "dk-library-spotify__track-row--current",
  )}
  >
- <span className="w-6 text-right text-xs tabular-nums text-muted-foreground/50 shrink-0">
+ <span className="dk-library-spotify__track-num">
  {i + 1}
  </span>
  {t.albumArt ? (
@@ -212,16 +213,16 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  e.stopPropagation()
  if (t.otixAlbumId) navigate({ to: '/media/$mediaType/$mediaId', params: { mediaType: 'music', mediaId: t.otixAlbumId } })
  }}
- className={cn('h-9 w-9 rounded shrink-0 overflow-hidden', t.otixAlbumId ? 'cursor-pointer hover:ring-2 hover:ring-[#1DB954]' : 'cursor-default')}
+ className={cn("dk-library-spotify__album-art-btn", t.otixAlbumId && "dk-library-spotify__album-art-btn--clickable")}
  title={t.otixAlbumId ? `View album: ${t.albumName}` : t.albumName}
  >
- <img src={t.albumArt} alt={t.albumName || ''} className="h-full w-full object-cover" />
+ <img src={t.albumArt} alt={t.albumName || ''} className="dk-library-spotify__album-art-img" />
  </button>
  ) : (
- <div className="h-9 w-9 rounded bg-white/[0.04] shrink-0" />
+ <div className="dk-library-spotify__album-art-placeholder" />
  )}
- <div className="flex-1 min-w-0">
- <p className="text-sm font-medium truncate">{t.name}</p>
+ <div className="dk-library-spotify__track-info">
+ <p className="dk-library-spotify__track-name">{t.name}</p>
  {t.otixArtistId ? (
  <button
  type="button"
@@ -229,12 +230,12 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  e.stopPropagation()
  navigate({ to: '/person/$personId', params: { personId: t.otixArtistId! } })
  }}
- className="text-xs text-muted-foreground truncate hover:text-[#1DB954] transition-colors text-left"
+ className="dk-library-spotify__track-artist-btn"
  >
  {t.artist}
  </button>
  ) : (
- <p className="text-xs text-muted-foreground truncate">{t.artist}</p>
+ <p className="dk-library-spotify__track-artist">{t.artist}</p>
  )}
  </div>
  <TrackInlineActions
@@ -246,7 +247,7 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  ratingPending={ratingTrackId === t.otixTrackId}
  onSaveSpotify={handleSaveSpotify}
  onRate={handleRateTrack}
- className="pointer-events-none hidden shrink-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 lg:flex"
+ className="dk-library-spotify__track-actions"
  />
  {t.uri && (
  <button
@@ -257,35 +258,31 @@ function SpotifyTrackList({ tracks }: { tracks: SpotifyTrack[] }) {
  }}
  disabled={queueSpotifyId === t.id}
  className={cn(
- 'pointer-events-none hidden shrink-0 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 lg:flex items-center justify-center h-7 w-7 rounded-full',
- queueSpotifyId === t.id
- ? 'text-muted-foreground animate-pulse'
- : 'text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06]',
+ "dk-library-spotify__queue-btn",
+ queueSpotifyId === t.id && "dk-library-spotify__queue-btn--pulse",
  )}
  title="Add to queue"
  aria-label="Add to queue"
  >
- <ListPlus className="h-4 w-4" />
+ <ListPlus className="dk-library-spotify__play-icon" />
  </button>
  )}
- <span className="text-xs text-muted-foreground/50 tabular-nums shrink-0">
+ <span className="dk-library-spotify__track-duration">
  {formatMs(t.durationMs)}
  </span>
  {t.uri && (
  <div
  className={cn(
- 'h-8 w-8 inline-flex items-center justify-center rounded-full shrink-0 transition-colors',
- isCurrent
- ? 'bg-[#1DB954] text-black'
- : 'bg-[#1DB954]/15 text-[#1DB954]',
+ "dk-library-spotify__play-indicator",
+ isCurrent && "dk-library-spotify__play-indicator--active",
  )}
  >
  {isCurrent && isPlaying ? (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+ <svg className="dk-library-spotify__play-icon" viewBox="0 0 24 24" fill="currentColor">
  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
  </svg>
  ) : (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+ <svg className="dk-library-spotify__play-icon" viewBox="0 0 24 24" fill="currentColor">
  <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
  </svg>
  )}
@@ -361,19 +358,19 @@ function SpotifyTabContent() {
  const albums = albumsQuery.data?.pages.flatMap((p) => p.items) ?? []
 
  return (
- <div className="space-y-8">
- <div className="space-y-4">
- <div className="flex items-center justify-between">
- <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+ <div className="dk-library-spotify__overview">
+ <div className="dk-library-spotify__section">
+ <div className="dk-library-spotify__section-header">
+ <h2 className="dk-library-spotify__section-title">
  Liked Songs
  </h2>
  {spotifyStatusQuery.data && spotifyStatusQuery.data.trackCount > 0 && (
  <button
  onClick={() => spotifyScan.mutate()}
  disabled={spotifyScan.isPending}
- className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+ className="dk-library-spotify__btn-ghost"
  >
- <RefreshCw className={cn('h-3 w-3', spotifyScan.isPending && 'animate-spin')} />
+ <RefreshCw className={cn("dk-library-spotify__icon--sm", spotifyScan.isPending && "dk-library-spotify__icon--spinning")} />
  Rescan
  </button>
  )}
@@ -382,26 +379,26 @@ function SpotifyTabContent() {
  <button
  type="button"
  onClick={() => setSpotifyView({ type: 'liked' })}
- className="group relative flex flex-col rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden w-full max-w-[200px]"
+ className="dk-library-spotify__liked-card"
  >
- <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
- <HeartIcon className="h-12 w-12 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
+ <div className="dk-library-spotify__liked-card-bg">
+ <HeartIcon className="dk-library-spotify__liked-card-icon" />
  </div>
- <div className="p-3 text-left">
- <p className="text-sm font-semibold truncate">Liked Songs</p>
- <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
+ <div className="dk-library-spotify__liked-card-info">
+ <p className="dk-library-spotify__liked-card-title">Liked Songs</p>
+ <p className="dk-library-spotify__liked-card-subtitle">{likedTotal} tracks</p>
  </div>
  </button>
  </div>
 
- <div className="space-y-4">
- <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+ <div className="dk-library-spotify__section">
+ <h2 className="dk-library-spotify__section-title">
  Albums
  </h2>
  {albumsQuery.isLoading ? (
  <SkeletonGrid />
  ) : albumsQuery.isError ? (
- <p className="text-muted-foreground">Failed to load albums.</p>
+ <p className="dk-library-spotify__muted-text">Failed to load albums.</p>
  ) : albums.length === 0 ? (
  <SpotifyEmptyState onScan={() => spotifyScan.mutate()} isScanning={spotifyScan.isPending} />
  ) : (
@@ -429,52 +426,50 @@ function SpotifyTabContent() {
 
  // Liked tracks detail view
  return (
- <div className="space-y-6">
- <div className="flex items-center gap-4">
+ <div className="dk-library-spotify__liked-detail">
+ <div className="dk-library-spotify__liked-header">
  <button
  type="button"
  onClick={() => setSpotifyView({ type: 'overview' })}
- className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+ className="dk-library-spotify__btn-text"
  >
- <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+ <svg className="dk-library-spotify__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
  <path d="M15 18l-6-6 6-6" />
  </svg>
  Back
  </button>
- <div className="flex items-center gap-3">
- <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#1DB954]/20 to-[#1DB954]/5">
- <HeartIcon className="h-5 w-5 text-[#1DB954]" />
+ <div className="dk-library-spotify__liked-header-icon">
+ <HeartIcon className="dk-library-spotify__liked-header-heart" />
  </div>
- <h2 className="text-lg font-bold">Liked Songs</h2>
- </div>
+ <h2 className="dk-library-spotify__liked-header-title">Liked Songs</h2>
  </div>
 
  {likedTracksQuery.isLoading ? (
- <div className="space-y-2">
+ <div className="dk-library-spotify__skeleton-list">
  {Array.from({ length: 8 }).map((_, i) => (
- <div key={i} className="h-12 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+ <div key={i} className="dk-library-spotify__skeleton-row" />
  ))}
  </div>
  ) : likedTracksQuery.isError ? (
- <p className="text-destructive">Failed to load liked tracks.</p>
+ <p className="dk-library-spotify__detail-error">Failed to load liked tracks.</p>
  ) : (
  <>
  <SpotifyTrackList tracks={likedTracks} />
- <div ref={likedLoadMoreRef} className="flex justify-center py-4">
+ <div ref={likedLoadMoreRef} className="dk-library-spotify__more-wrap">
  {likedTracksQuery.isFetchingNextPage && (
- <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+ <div className="dk-library-spotify__spinner--sm" />
  )}
  {likedTracksQuery.hasNextPage && !likedTracksQuery.isFetchingNextPage && (
  <button
  type="button"
  onClick={() => likedTracksQuery.fetchNextPage()}
- className="rounded-full px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
+ className="dk-library-spotify__load-more-btn"
  >
  Load more
  </button>
  )}
  {!likedTracksQuery.hasNextPage && likedTracks.length > 0 && (
- <p className="text-xs text-muted-foreground">End of list</p>
+ <p className="dk-library-spotify__end-text">End of list</p>
  )}
  </div>
  </>
@@ -491,14 +486,14 @@ function SpotifyDashboardSection() {
  const likedTotal = likedTracksQuery.data?.pages[0]?.total ?? 0
 
  return (
- <div className="space-y-4">
- <div className="flex items-center justify-between">
- <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+ <div className="dk-library-spotify__dashboard">
+ <div className="dk-library-spotify__section-header">
+ <h2 className="dk-library-spotify__section-title">
  Spotify
  </h2>
  <button
  onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" } })}
- className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+ className="dk-library-spotify__section-link"
  >
  View all
  </button>
@@ -506,14 +501,14 @@ function SpotifyDashboardSection() {
  <button
  type="button"
  onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" }, search: { view: "liked" } as never })}
- className="group relative flex flex-col rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 overflow-hidden w-full max-w-[200px]"
+ className="dk-library-spotify__liked-card"
  >
- <div className="aspect-square w-full bg-gradient-to-br from-[#1DB954]/30 via-[#1DB954]/10 to-transparent flex items-center justify-center">
- <HeartIcon className="h-10 w-10 text-[#1DB954] drop-shadow-sm group-hover:scale-110 transition-transform duration-300" />
+ <div className="dk-library-spotify__liked-card-bg">
+ <HeartIcon className="dk-library-spotify__liked-card-icon" />
  </div>
- <div className="p-3 text-left">
- <p className="text-sm font-semibold truncate">Liked Songs</p>
- <p className="text-[11px] text-muted-foreground mt-0.5">{likedTotal} tracks</p>
+ <div className="dk-library-spotify__liked-card-info">
+ <p className="dk-library-spotify__liked-card-title">Liked Songs</p>
+ <p className="dk-library-spotify__liked-card-subtitle">{likedTotal} tracks</p>
  </div>
  </button>
  </div>
@@ -525,7 +520,7 @@ function SpotifyDashboardSection() {
 export const spotifyPlatform: PlatformDefinition = {
  id: "spotify",
  label: "Spotify",
- icon: <SpotifyIcon className="h-4 w-4" />,
+ icon: <SpotifyIcon className="dk-library-spotify__icon" />,
  requiresConnection: (user) => !!user?.spotifyId,
  EmptyState: (props) => <SpotifyEmptyState {...props} />,
  DashboardSection: SpotifyDashboardSection,

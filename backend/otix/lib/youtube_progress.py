@@ -1,51 +1,32 @@
-"""Redis pub/sub progress publisher for YouTube sync SSE streams."""
+"""Thin delegation wrapper — delegates to ``otix.lib.redis_progress.youtube_progress``.
+
+All four progress modules now funnel through the single
+:class:`otix.lib.redis_progress.RedisProgress` class.  These stubs remain
+for backward compatibility during migration.
+"""
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from otix.infrastructure.redis import get_redis
-
-_CHANNEL_TPL = "youtube:sync:{}:events"
-_RESULT_TPL = "youtube:sync:{}:result"
-_PROGRESS_TPL = "youtube:sync:{}:progress"
-_TTL = 300  # 5 minutes
+from otix.lib.redis_progress import youtube_progress
 
 
 async def publish_progress(task_id: str, event_type: str, **data: Any) -> None:
-    redis = await get_redis()
-    channel = _CHANNEL_TPL.format(task_id)
-    payload = json.dumps({"type": event_type, **data})
-    await redis.publish(channel, payload)
+    await youtube_progress.publish(task_id, event_type, **data)
 
 
 async def store_progress(task_id: str, event_type: str, **data: Any) -> None:
-    redis = await get_redis()
-    key = _PROGRESS_TPL.format(task_id)
-    payload = json.dumps({"type": event_type, **data})
-    await redis.set(key, payload, ex=_TTL)
+    await youtube_progress.store_progress(task_id, event_type, **data)
 
 
-async def get_latest_progress(task_id: str) -> dict | None:
-    redis = await get_redis()
-    key = _PROGRESS_TPL.format(task_id)
-    raw = await redis.get(key)
-    if raw:
-        return json.loads(raw)
-    return None
+async def get_latest_progress(task_id: str) -> dict[str, Any] | None:
+    return await youtube_progress.get_latest_progress(task_id)
 
 
-async def store_result(task_id: str, result: dict) -> None:
-    redis = await get_redis()
-    key = _RESULT_TPL.format(task_id)
-    await redis.set(key, json.dumps(result), ex=_TTL)
+async def store_result(task_id: str, result: dict[str, Any]) -> None:
+    await youtube_progress.store_result(task_id, result)
 
 
-async def get_stored_result(task_id: str) -> dict | None:
-    redis = await get_redis()
-    key = _RESULT_TPL.format(task_id)
-    raw = await redis.get(key)
-    if raw:
-        return json.loads(raw)
-    return None
+async def get_stored_result(task_id: str) -> dict[str, Any] | None:
+    return await youtube_progress.get_stored_result(task_id)

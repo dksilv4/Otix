@@ -69,10 +69,18 @@ class TestSessionService:
         sess = _make_session("key-123", "user-123")
         mock_db_session.scalar.return_value = sess
 
-        res = await service.revoke_session("key-123", "logged_out")
+        res = await service.revoke_session("key-123", user_id="user-123", reason="logged_out")
         assert res is True
         assert sess.revoked_at is not None
         assert sess.revoked_reason == "logged_out"
+
+    async def test_revoke_session_ownership_mismatch(self, service: SessionService, mock_db_session: AsyncMock):
+        """Session belongs to a different user — should not revoke."""
+        mock_db_session.scalar.return_value = None
+
+        res = await service.revoke_session("key-123", user_id="other-user")
+        assert res is False
+        mock_db_session.flush.assert_not_called()
 
     async def test_revoke_session_not_found(self, service: SessionService, mock_db_session: AsyncMock):
         mock_db_session.scalar.return_value = None

@@ -1,0 +1,110 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Release Dates Section ────────────────────────────── */
+
+.dk-media-release-dates {
+  @apply space-y-4;
+
+  &__header {
+    @apply flex items-center gap-2;
+  }
+
+  &__heading {
+    @apply text-lg font-semibold;
+  }
+
+  &__country-badge {
+    @apply gap-1 border-0 bg-white/10 text-[10px] font-normal;
+  }
+
+  &__grid {
+    @apply grid gap-3 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  &__card {
+    @apply rounded-xl border p-4;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+
+    &--important {
+      @apply border-cyan-500/30 bg-cyan-950/20;
+    }
+
+    &--upcoming {
+      @apply border-amber-500/20 bg-amber-950/10;
+    }
+
+    &--default {
+      @apply border-white/[0.06] bg-white/[0.02];
+    }
+  }
+
+  &__card-header {
+    @apply mb-3 flex items-center gap-2;
+  }
+
+  &__card-heading {
+    @apply text-sm font-semibold;
+  }
+
+  &__card-important-badge {
+    @apply ml-auto bg-cyan-600 px-2 py-0 text-[10px] font-bold uppercase;
+  }
+
+  &__entry {
+    @apply flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm;
+
+    &:hover {
+      @apply bg-white/[0.03];
+    }
+  }
+
+  &__country {
+    @apply shrink-0 text-xs font-semibold text-foreground;
+
+    &--fallback {
+      @apply shrink-0 text-[10px] font-medium text-muted-foreground;
+    }
+  }
+
+  &__entry-date {
+    @apply flex items-center gap-1.5 font-medium;
+  }
+
+  &__entry-cert {
+    @apply ml-auto shrink-0 border-0 bg-white/10 px-1.5 py-0 text-[10px];
+  }
+
+  &__entry-countdown {
+    @apply shrink-0;
+  }
+
+  &__fallback-note {
+    @apply mt-1.5 text-[10px] text-muted-foreground;
+  }
+
+  &__footnote {
+    @apply text-xs text-muted-foreground;
+  }
+
+  &__all-list {
+    @apply space-y-1.5;
+  }
+}
+
+/* ── Countdown Badge ──────────────────────────────────── */
+
+.dk-media-countdown-badge {
+  &--today {
+    @apply animate-pulse gap-1 bg-emerald-600 text-xs;
+  }
+
+  &--soon {
+    @apply gap-1 bg-amber-600 text-xs;
+  }
+
+  &--later {
+    @apply gap-1 border-0 bg-white/10 text-xs;
+  }
+}

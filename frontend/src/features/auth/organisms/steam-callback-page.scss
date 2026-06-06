@@ -1,0 +1,46 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-auth-steam-callback {
+  @apply fixed inset-0 flex items-center justify-center p-4;
+}
+
+.dk-auth-steam-callback__card {
+  @apply relative z-10 w-full flex flex-col items-center px-8 py-10 sm:px-10 sm:py-12 backdrop-blur-xl;
+  max-width: 440px;
+  border-radius: 2rem;
+  background: var(--dk-surface-overlay);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-auth-steam-callback__icon {
+  @apply flex h-14 w-14 items-center justify-center rounded-full mb-4;
+}
+
+.dk-auth-steam-callback__icon--error {
+  @apply bg-red-500/10;
+}
+
+.dk-auth-steam-callback__icon--loading {
+  @apply bg-primary/10;
+}
+
+.dk-auth-steam-callback__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-auth-steam-callback__text {
+  @apply mt-2 text-sm text-muted-foreground;
+}
+
+.dk-auth-steam-callback__text--error {
+  @apply text-center;
+}
+
+.dk-auth-steam-callback__btn {
+  @apply mt-6 inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-bold text-primary-foreground;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    background: hsl(var(--primary) / 0.9);
+  }
+}

@@ -1,0 +1,34 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-review-action-button {
+  @apply relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl px-3 py-3 transition-all duration-150;
+  isolation: isolate;
+  background-color: var(--dk-surface-base);
+
+  &:hover {
+    background-color: var(--dk-surface-glass);
+  }
+}
+
+.dk-review-action-button__glow {
+  @apply pointer-events-none absolute inset-0 opacity-30;
+  background: radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.15), transparent 70%);
+}
+
+.dk-review-action-button__icon {
+  @apply relative h-5 w-5 transition-colors;
+}
+
+.dk-review-action-button__icon--active {
+  @apply fill-current;
+  color: #fbbf24; /* amber-400 */
+}
+
+.dk-review-action-button__icon--muted {
+  color: hsl(var(--muted-foreground));
+}
+
+.dk-review-action-button__label {
+  @apply relative text-[11px] font-medium;
+  color: hsl(var(--muted-foreground));
+}

@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 import uuid
@@ -6,7 +7,9 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.user import User, UserSession
+from otix.domain.user import RefreshToken, User, UserSession
+
+from otix.domain.user import RefreshToken, User, UserSession
 
 
 class SessionService:
@@ -55,12 +58,15 @@ class SessionService:
             for s in sessions
         ]
 
-    async def revoke_session(self, session_key: str, reason: str = "user_revoked") -> bool:
+    async def revoke_session(self, session_key: str, user_id: str | None = None, reason: str = "user_revoked") -> bool:
+        clauses = [
+            UserSession.session_key == session_key,
+            UserSession.revoked_at.is_(None),
+        ]
+        if user_id is not None:
+            clauses.append(UserSession.user_id == user_id)
         session_record = await self.session.scalar(
-            select(UserSession).where(
-                UserSession.session_key == session_key,
-                UserSession.revoked_at.is_(None),
-            )
+            select(UserSession).where(*clauses)
         )
         if session_record is None:
             return False
@@ -85,3 +91,9 @@ class SessionService:
             count += 1
         await self.session.flush()
         return count
+
+    async def store_refresh_token(self, user_id: str, jti: str, expires_at: datetime) -> None:
+        """Persist a refresh token record."""
+        rt = RefreshToken(user_id=user_id, jti=jti, expires_at=expires_at)
+        self.session.add(rt)
+        await self.session.flush()

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """TheAudioDB enrichment: artwork, cross-platform IDs, metadata gap filling."""
 
 from __future__ import annotations
@@ -5,10 +6,11 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, ExternalID, MediaAsset
+from otix.domain.media import Album, MediaAsset
 from otix.domain.people import MediaCredit, Person
 from otix.lib.types import JSONValue
 from otix.providers.theaudiodb.client import TheAudioDBProvider
+from otix.services.external_id_service import ExternalIDService
 
 
 class TheAudioDBHydrator:
@@ -57,14 +59,13 @@ class TheAudioDBHydrator:
             )).all()
             existing_id_set = set(existing_ids)
 
+            eid_svc = ExternalIDService(self._session)
             for provider_name, val, _ in id_vals:
                 if val not in existing_id_set:
-                    self._session.add(ExternalID(
-                        provider=provider_name,
-                        external_id=val,
-                        media_item_id=album.media_item_id,
-                        media_type="music",
-                    ))
+                    await eid_svc.upsert(
+                        provider_name, val,
+                        "media_item", album.media_item_id,
+                    )
                     external_id_count += 1
 
         # Backfill MusicBrainz release group ID if missing

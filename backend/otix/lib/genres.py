@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Helpers for normalizing genre names from external providers."""
 
 from __future__ import annotations

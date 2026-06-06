@@ -1,3 +1,4 @@
+# TODO: Review this file
 """IGDB relation hydration.
 
 After core game data is saved, hydrate covers, screenshots, artworks, videos,

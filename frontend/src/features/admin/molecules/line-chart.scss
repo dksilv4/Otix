@@ -1,0 +1,23 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-admin-line-chart {
+  @apply relative rounded-2xl overflow-hidden;
+
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-admin-line-chart__empty {
+  @apply flex items-center justify-center rounded-2xl text-xs text-muted-foreground;
+
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-admin-line-chart__x-labels {
+  @apply absolute bottom-1 flex justify-between;
+}
+
+.dk-admin-line-chart__x-label {
+  @apply text-[9px] text-muted-foreground/60 tabular-nums leading-none whitespace-nowrap;
+}

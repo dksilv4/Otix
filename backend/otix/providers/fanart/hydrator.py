@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Fanart image hydration.
 
 After TMDB sync lands core media data, this hydrator adds high-quality artwork

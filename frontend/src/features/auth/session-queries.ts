@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { apiClient } from '@/lib/api-client'
 
 export interface SessionInfo {

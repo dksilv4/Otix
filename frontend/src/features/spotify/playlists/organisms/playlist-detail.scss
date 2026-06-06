@@ -1,0 +1,54 @@
+@reference "../../../../_tailwind-ref.css";
+
+.dk-spotify__detail {
+  @apply space-y-6;
+}
+
+.dk-spotify__header {
+  @apply flex gap-6 items-end;
+}
+
+.dk-spotify__cover {
+  @apply h-48 w-48 rounded-xl object-cover shadow-lg;
+}
+
+.dk-spotify__cover--placeholder {
+  @apply h-48 w-48 rounded-xl bg-muted flex items-center justify-center;
+}
+
+.dk-spotify__info {
+  @apply flex-1 min-w-0;
+}
+
+.dk-spotify__label {
+  @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+}
+
+.dk-spotify__title {
+  @apply text-3xl font-bold truncate mt-1;
+}
+
+.dk-spotify__desc {
+  @apply text-sm text-muted-foreground mt-1 line-clamp-2;
+}
+
+.dk-spotify__meta {
+  @apply text-sm text-muted-foreground mt-2;
+}
+
+.dk-spotify__actions {
+  @apply flex gap-2 mt-4;
+}
+
+.dk-spotify__play-btn {
+  @apply inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2 text-sm font-medium text-primary-foreground;
+  @apply transition-colors;
+
+  &:hover {
+    @apply bg-primary/90;
+  }
+}
+
+.dk-spotify__tracklist {
+  @apply space-y-1;
+}

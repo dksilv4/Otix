@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useMemo, useCallback } from 'react'
 import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { DkInput } from '@/features/dk-ui/atoms/input'
@@ -14,6 +15,7 @@ import { encodePositionInUrl } from '@/lib/image-position'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
 import { Move, Trash2, Check, Image, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './admin-edit-modal.scss'
 
 const LANGUAGES: { code: string; label: string }[] = [
   { code: '*', label: 'All languages' },
@@ -212,19 +214,19 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
       onOpenChange={handleOpen}
       title="Edit Media"
       description="Propose changes to media data and localized images"
-      className="max-w-2xl"
+      className="dk-admin-edit-modal"
     >
-      <div className="space-y-5">
+      <div className="dk-admin-edit-modal__content">
         <DkTabs defaultValue="fields" value={tab} onValueChange={setTab}>
-          <DkTabList className="w-full">
-            <DkTab value="fields" className="flex-1">Fields</DkTab>
-            <DkTab value="images" className="flex-1">Images</DkTab>
-            <DkTab value="preview" className="flex-1">Preview</DkTab>
+          <DkTabList className="dk-admin-edit-modal__tablist">
+            <DkTab value="fields" className="dk-admin-edit-modal__tab">Fields</DkTab>
+            <DkTab value="images" className="dk-admin-edit-modal__tab">Images</DkTab>
+            <DkTab value="preview" className="dk-admin-edit-modal__tab">Preview</DkTab>
           </DkTabList>
 
           {/* Fields tab */}
           <DkTabPanel value="fields">
-            <div className="space-y-3">
+            <div className="dk-admin-edit-modal__fields">
               <DkInput
                 label="Title"
                 value={title}
@@ -289,18 +291,18 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
           {/* Images tab — asset browser */}
           <DkTabPanel value="images">
-            <div className="space-y-4">
-              <p className="text-xs text-muted-foreground">
+            <div className="dk-admin-edit-modal__images">
+              <p className="dk-admin-edit-modal__images-desc">
                 Browse existing media assets and select images per language.
                 Selected overrides apply when users with matching language preferences view this page.
               </p>
 
               {/* Filter bar */}
-              <div className="flex gap-2">
+              <div className="dk-admin-edit-modal__filter">
                 <DkSelect
                   value={browseType}
                   onChange={(e) => setBrowseType(e.target.value)}
-                  className="h-10 text-sm"
+                  className="dk-admin-edit-modal__filter-select"
                 >
                   {IMAGE_TYPES.map((it) => (
                     <option key={it.value} value={it.value}>
@@ -311,7 +313,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                 <DkSelect
                   value={browseLang}
                   onChange={(e) => setBrowseLang(e.target.value)}
-                  className="h-10 text-sm"
+                  className="dk-admin-edit-modal__filter-select"
                 >
                   {LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
@@ -323,19 +325,19 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
               {/* Asset grid */}
               {assetsLoading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="dk-admin-edit-modal__loading">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : filteredAssets.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <div className="dk-admin-edit-modal__empty">
                   <Image className="h-8 w-8 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No assets found for this type.</p>
-                  <p className="text-xs text-muted-foreground/60">
+                  <p className="dk-admin-edit-modal__empty-text">No assets found for this type.</p>
+                  <p className="dk-admin-edit-modal__empty-hint">
                     Try selecting a different image type.
                   </p>
                 </div>
               ) : (
-                <div className="grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                <div className="dk-admin-edit-modal__grid">
                   {filteredAssets.map((asset) => {
                     const selected = isAssetSelected(asset)
                     return (
@@ -345,36 +347,34 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                         onClick={() => selectAsset(asset)}
                         disabled={selected}
                         className={cn(
-                          'relative w-full overflow-hidden rounded-xl transition-all bg-black/20',
-                          selected
-                            ? 'ring-2 ring-primary'
-                            : 'ring-1 ring-white/10 hover:ring-primary/50',
+                          'dk-admin-edit-modal__asset',
+                          selected && 'dk-admin-edit-modal__asset--selected',
                         )}
                       >
                         <img
                           src={asset.url}
                           alt=""
-                          className="w-full h-auto object-contain p-1"
+                          className="dk-admin-edit-modal__asset-image"
                           loading="lazy"
                         />
                         {selected && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-primary/30">
+                          <div className="dk-admin-edit-modal__asset-check">
                             <Check className="h-6 w-6 text-white drop-shadow-lg" />
                           </div>
                         )}
                         {needsPosition(asset) && (
-                          <span className="absolute top-1 left-1 flex items-center gap-0.5 rounded-md bg-primary/80 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                          <span className="dk-admin-edit-modal__badge-position">
                             <Move className="h-2.5 w-2.5" />
                             Position
                           </span>
                         )}
                         {!needsPosition(asset) && asset.lang && (
-                          <span className="absolute top-1 left-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white">
+                          <span className="dk-admin-edit-modal__badge-lang">
                             {asset.lang.toUpperCase()}
                           </span>
                         )}
                         {asset.provider && (
-                          <span className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] text-white/70">
+                          <span className="dk-admin-edit-modal__badge-provider">
                             {asset.provider}
                           </span>
                         )}
@@ -386,33 +386,33 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
               {/* Selected overrides */}
               {imageOverrides.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">
+                <div className="dk-admin-edit-modal__overrides">
+                  <p className="dk-admin-edit-modal__overrides-header">
                     Selected Overrides ({imageOverrides.length})
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="dk-admin-edit-modal__override-list">
                     {imageOverrides.map((item, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2 ring-1 ring-white/10"
+                        className="dk-admin-edit-modal__override"
                       >
                         <img
                           src={item.url}
                           alt=""
-                          className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                          className="dk-admin-edit-modal__override-image"
                         />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-foreground">
+                        <div className="dk-admin-edit-modal__override-info">
+                          <p className="dk-admin-edit-modal__override-title">
                             {typeLabel(item.imageType)}
                           </p>
-                          <p className="truncate text-[10px] text-muted-foreground">
+                          <p className="dk-admin-edit-modal__override-subtitle">
                             {langLabel(item.languageCode)} · {item.url}
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => removeImageOverride(i)}
-                          className="shrink-0 rounded-lg p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                          className="dk-admin-edit-modal__override-delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -426,23 +426,23 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
           {/* Preview tab */}
           <DkTabPanel value="preview">
-            <div className="space-y-3">
+            <div className="dk-admin-edit-modal__preview">
               {!hasChanges ? (
-                <p className="text-center text-sm text-muted-foreground py-4">
+                <p className="dk-admin-edit-modal__preview-empty">
                   No changes to preview.
                 </p>
               ) : (
                 <>
                   {Object.keys(changes).length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Field Changes</p>
-                      <div className="rounded-xl bg-[var(--dk-surface-ghost)] p-3 ring-1 ring-white/10">
+                    <div className="dk-admin-edit-modal__preview-section">
+                      <p className="dk-admin-edit-modal__preview-header">Field Changes</p>
+                      <div className="dk-admin-edit-modal__preview-content">
                         {Object.entries(changes).map(([field, value]) => (
-                          <div key={field} className="flex gap-2 py-1 text-sm">
-                            <span className="w-36 shrink-0 font-medium text-muted-foreground">
+                          <div key={field} className="dk-admin-edit-modal__preview-row">
+                            <span className="dk-admin-edit-modal__preview-label">
                               {field}
                             </span>
-                            <span className="text-emerald-400">
+                            <span className="dk-admin-edit-modal__preview-value">
                               {value === null ? '(clear)' : String(value)}
                             </span>
                           </div>
@@ -451,21 +451,21 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
                     </div>
                   )}
                   {imageOverrides.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Image Overrides</p>
-                      <div className="space-y-1.5">
+                    <div className="dk-admin-edit-modal__preview-section">
+                      <p className="dk-admin-edit-modal__preview-header">Image Overrides</p>
+                      <div className="dk-admin-edit-modal__preview-image-overrides">
                         {imageOverrides.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2 ring-1 ring-white/10">
+                          <div key={i} className="dk-admin-edit-modal__preview-override">
                             <img
                               src={item.url}
                               alt=""
-                              className="h-12 w-9 shrink-0 rounded-lg object-cover"
+                              className="dk-admin-edit-modal__preview-override-image"
                             />
-                            <div className="min-w-0 text-sm">
-                              <span className="font-medium">
+                            <div className="dk-admin-edit-modal__preview-override-info">
+                              <span className="dk-admin-edit-modal__preview-override-name">
                                 {typeLabel(item.imageType)}
                               </span>
-                              <span className="text-muted-foreground">
+                              <span className="dk-admin-edit-modal__preview-override-lang">
                                 {' '}· {langLabel(item.languageCode)}
                               </span>
                             </div>
@@ -481,7 +481,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
         </DkTabs>
 
         {/* Submit */}
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="dk-admin-edit-modal__submit">
           <DkButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
           </DkButton>
@@ -499,7 +499,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
       {/* Position overlay — backdrop → textless poster */}
       {positionAsset && (
-        <div className="fixed inset-0 z-[calc(var(--dk-z-modal)+1)] flex items-center justify-center bg-black/60">
+        <div className="dk-admin-edit-modal__overlay">
           <PositionModal
             imageUrl={positionAsset.url}
             aspect={2 / 3}

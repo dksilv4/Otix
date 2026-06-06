@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Sync a user's YouTube liked music videos into Otix.
 
 Matches music videos to albums and creates 'listened' interactions.
@@ -81,8 +82,16 @@ async def sync_youtube_watch_history(
 
     await _emit("sync_started")
 
-    token = await get_user_google_access_token(user)
+    token = await get_user_google_access_token(user, session=session)
     if not token:
+        if user.google_id is None:
+            # Auto-disconnected due to external revocation
+            logger.warning(
+                "google auto-disconnected during youtube sync",
+                user_id=user.id,
+            )
+        else:
+            logger.warning("youtube sync failed, no valid token", user_id=user.id)
         await _emit("error", message="No valid Google token. Please reconnect your Google account.")
         if task_id:
             await store_result(task_id, {"error": "No valid token"})

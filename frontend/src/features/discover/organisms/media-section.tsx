@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { memo, useMemo, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
@@ -5,7 +6,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import { discoverQueries } from '@discover/discover-queries'
 import { MediaCarousel } from '@discover/molecules/media-carousel'
-import { cn } from '@/lib/utils'
+import './media-section.scss'
 
 const IN_VIEW_OPTIONS = { once: true, margin: '0px 0px 200px 0px' } as const
 
@@ -48,45 +49,33 @@ export const MediaSection = memo(function MediaSection({ title, mediaType, listT
   if (isEmpty) return null
 
   return (
-    <section ref={ref} className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2
-            className={cn(
-              'inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold',
-              'bg-[var(--dk-surface-glass)] backdrop-blur-md',
-              'shadow-[var(--dk-shadow-glass)]',
-              'text-foreground',
-            )}
-          >
+    <section ref={ref} className="dk-discover-section">
+      <div className="dk-discover-section__header">
+        <div className="dk-discover-section__title-wrapper">
+          <h2 className="dk-discover-section__title">
             {title}
             {total != null && (
-              <span className="text-xs font-normal text-muted-foreground">
+              <span className="dk-discover-section__count">
                 {total.toLocaleString()}
               </span>
             )}
           </h2>
-          {reason && (
-            <span className="text-xs text-muted-foreground">{reason}</span>
-          )}
         </div>
         {mediaType && (
           <Link
             to="/browse/$type"
             params={{ type: mediaType }}
             search={search}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-              'text-muted-foreground hover:text-foreground',
-              'bg-[var(--dk-surface-ghost-hover)] hover:bg-[var(--dk-surface-ghost-active)]',
-              'transition-colors duration-[var(--dk-duration-fast)]',
-            )}
+            className="dk-discover-section__view-all"
           >
             View all
             <ArrowRightIcon className="h-3 w-3" />
           </Link>
         )}
       </div>
+      {reason && (
+        <p className="dk-discover-section__reason">{reason}</p>
+      )}
 
       <MediaCarousel items={items} isLoading={showSkeleton} />
     </section>

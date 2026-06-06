@@ -1,6 +1,8 @@
+// TODO: Review this file
 import type { GameDetail } from '../media-queries'
 import { Badge } from '@ui/atoms/badge'
 import { cn } from '@/lib/utils'
+import './game-section.scss'
 
 function PlatformIcon({ slug }: { slug: string }) {
   const cls = 'h-4 w-4 text-muted-foreground shrink-0'
@@ -150,21 +152,21 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
   if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !game.website) return null
 
   return (
-    <section className={cn('space-y-6', className)}>
+    <section className={cn('dk-media-game-section', className)}>
       {/* Platforms */}
       {hasPlatforms && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="dk-media-game-section__section">
+          <h3 className="dk-media-game-section__heading">
             Platforms
           </h3>
-          <div className="flex flex-wrap gap-2">
+          <div className="dk-media-game-section__tags">
             {platforms!.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-2 rounded-xl bg-[var(--dk-surface-base)] px-3 py-2 shadow-[var(--dk-shadow-xs)]"
+                className="dk-media-game-section__platform-badge"
               >
                 <PlatformIcon slug={p.platform.slug} />
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="dk-media-game-section__platform-name">
                   {p.platform.name}
                 </span>
               </div>
@@ -175,11 +177,11 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
 
       {/* Game modes */}
       {hasModes && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="dk-media-game-section__section">
+          <h3 className="dk-media-game-section__heading">
             Game Modes
           </h3>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="dk-media-game-section__modes">
             {gameModes!.map((m) => (
               <Badge key={m.id} variant="outline">
                 {m.gameMode.name}
@@ -191,25 +193,25 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
 
       {/* Your Steam Playtime */}
       {hasPlaytime && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="dk-media-game-section__section">
+          <h3 className="dk-media-game-section__heading">
             Your Steam Playtime
           </h3>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <dl className="dk-media-game-section__stats-grid">
             <div>
-              <dt className="text-xs text-muted-foreground">Total</dt>
-              <dd className="text-sm font-medium">{formatPlaytime(steamPlaytimeForever!)}</dd>
+              <dt className="dk-media-game-section__stat-label">Total</dt>
+              <dd className="dk-media-game-section__stat-value">{formatPlaytime(steamPlaytimeForever!)}</dd>
             </div>
             {steamPlaytime2weeks != null && steamPlaytime2weeks > 0 && (
               <div>
-                <dt className="text-xs text-muted-foreground">Recent (2 weeks)</dt>
-                <dd className="text-sm font-medium text-green-500">{formatPlaytime(steamPlaytime2weeks)}</dd>
+                <dt className="dk-media-game-section__stat-label">Recent (2 weeks)</dt>
+                <dd className={cn('dk-media-game-section__stat-value', 'dk-media-game-section__stat-value--positive')}>{formatPlaytime(steamPlaytime2weeks)}</dd>
               </div>
             )}
             {steamRtimeLastPlayed != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Last Played</dt>
-                <dd className="text-sm font-medium">{formatDaysAgo(steamRtimeLastPlayed)}</dd>
+                <dt className="dk-media-game-section__stat-label">Last Played</dt>
+                <dd className="dk-media-game-section__stat-value">{formatDaysAgo(steamRtimeLastPlayed)}</dd>
               </div>
             )}
           </dl>
@@ -218,56 +220,56 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
 
       {/* Steam stats */}
       {hasSteamStats && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="dk-media-game-section__section">
+          <h3 className="dk-media-game-section__heading">
             Steam Stats
           </h3>
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <dl className="dk-media-game-section__stats-grid">
             {game.currentPlayers != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Current Players</dt>
-                <dd className="text-sm font-medium">
+                <dt className="dk-media-game-section__stat-label">Current Players</dt>
+                <dd className="dk-media-game-section__stat-value">
                   {formatNumber(game.currentPlayers)}
                 </dd>
               </div>
             )}
             {game.recommendations != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Recommendations</dt>
-                <dd className="text-sm font-medium">
+                <dt className="dk-media-game-section__stat-label">Recommendations</dt>
+                <dd className="dk-media-game-section__stat-value">
                   {formatNumber(game.recommendations)}
                 </dd>
               </div>
             )}
             {game.reviewSummary && (
               <div>
-                <dt className="text-xs text-muted-foreground">Reviews</dt>
-                <dd className="text-sm font-medium capitalize">
+                <dt className="dk-media-game-section__stat-label">Reviews</dt>
+                <dd className={cn('dk-media-game-section__stat-value', 'capitalize')}>
                   {game.reviewSummary}
                 </dd>
               </div>
             )}
             {game.isFree && (
               <div>
-                <dt className="text-xs text-muted-foreground">Price</dt>
-                <dd className="text-sm font-medium text-green-600 dark:text-green-400">Free</dd>
+                <dt className="dk-media-game-section__stat-label">Price</dt>
+                <dd className={cn('dk-media-game-section__stat-value', 'dk-media-game-section__stat-value--free')}>Free</dd>
               </div>
             )}
             {game.hasMultiplayer && (
               <div>
-                <dt className="text-xs text-muted-foreground">Multiplayer</dt>
-                <dd className="text-sm font-medium">Yes</dd>
+                <dt className="dk-media-game-section__stat-label">Multiplayer</dt>
+                <dd className="dk-media-game-section__stat-value">Yes</dd>
               </div>
             )}
             {game.website && (
               <div>
-                <dt className="text-xs text-muted-foreground">Website</dt>
+                <dt className="dk-media-game-section__stat-label">Website</dt>
                 <dd className="text-sm">
                   <a
                     href={game.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="dk-media-game-section__link"
                   >
                     Visit
                   </a>

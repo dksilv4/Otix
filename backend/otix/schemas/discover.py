@@ -1,12 +1,7 @@
+# TODO: Review this file
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
-
-class OnboardingRequest(BaseModel):
-    preferred_media_types: list[str] = Field(default_factory=lambda: ["movie", "show", "game", "music"])
-    preferred_genres: list[str] = Field(default_factory=list)
-    preferred_languages: list[str] = Field(default_factory=list)
+from pydantic import BaseModel
 
 
 class PersonalizedSection(BaseModel):

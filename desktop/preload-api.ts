@@ -190,9 +190,43 @@ export interface GameTrackEntry {
   lastUpdateCheck: string | null;
 }
 
-export interface IElectronAPI {
+// ── Desktop settings ──
+
+export interface DesktopSettings {
+  launchOnStartup: boolean;
+  minimizeToTray: boolean;
+  closeToTray: boolean;
+  alwaysOnTop: boolean;
+  startMinimized: boolean;
+}
+
+export interface IDesktopAPI {
+  /** Wait for the main process to finish registering all IPC handlers. */
+  onMainIpcReady: () => Promise<void>;
+
+  // ── Platform info ──
+  platform: string;
+
+  // ── Desktop settings ──
+  getDesktopSettings: () => Promise<DesktopSettings>;
+  setDesktopSettings: (settings: Partial<DesktopSettings>) => Promise<DesktopSettings>;
+
+  // ── Window controls ──
+  minimizeWindow: () => Promise<void>;
+  maximizeWindow: () => Promise<void>;
+  unmaximizeWindow: () => Promise<void>;
+  closeWindow: () => Promise<void>;
+  isWindowMaximized: () => Promise<boolean>;
+  setAlwaysOnTop: (value: boolean) => Promise<void>;
+  getAlwaysOnTop: () => Promise<boolean>;
+  onMaximizedChanged: (callback: (maximized: boolean) => void) => () => void;
+
+  // ── General ──
+  openPath: (filePath: string) => Promise<string>;
   ping: () => Promise<string>;
+  openExternal: (url: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;
+  onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
   scanPaths: (paths: string[], isoPaths: string[]) => Promise<DetectedGame[]>;
   scanLaunchers: () => Promise<LauncherScanResult[]>;
   launchGame: (game: DetectedGame) => Promise<boolean>;
@@ -259,10 +293,37 @@ export interface IElectronAPI {
   // Organizer
   downloadsPreviewNamingTemplate: (template: string, sampleName: string) => Promise<{ valid: boolean; result?: string; error?: string }>;
   downloadsValidateNamingTemplate: (template: string) => Promise<{ valid: boolean; error?: string }>;
+
+  // ── Save Management ──
+  saveGetKnownLocations: () => Promise<any[]>;
+  saveDiscoverForGame: (gameId: string, gameTitle: string) => Promise<any>;
+  saveBackupToVault: (gameId: string, originPaths: string[]) => Promise<any>;
+  saveRestoreFromVault: (gameId: string, options: any) => Promise<number>;
+  saveGetProfiles: (gameId: string) => Promise<any[]>;
+  saveCreateProfile: (gameId: string, name: string) => Promise<any>;
+  saveDeleteProfile: (profileId: string) => Promise<void>;
+  saveSetActiveProfile: (profileId: string) => Promise<void>;
+  saveGetSnapshots: (profileId: string) => Promise<any[]>;
+  saveCreateSnapshot: (profileId: string, name?: string) => Promise<any>;
+  saveDeleteSnapshot: (snapshotId: string) => Promise<void>;
+  saveGetOverride: (gameId: string) => Promise<any>;
+  saveSetOverride: (gameId: string, userPath: string) => Promise<void>;
+  saveClearOverride: (gameId: string) => Promise<void>;
+  saveGetVaultStatus: () => Promise<any>;
+  saveExportSaves: (gameId: string, targetDir: string) => Promise<string>;
+  saveImportSaves: (gameId: string, sourceDir: string) => Promise<string>;
+  saveGetVaultPath: () => Promise<string>;
+  saveSetVaultPath: (newPath: string) => Promise<void>;
+  saveSelectExportDir: () => Promise<string | null>;
+  saveSelectImportDir: () => Promise<string | null>;
+  saveSelectOverridePath: () => Promise<string | null>;
+
+  // ── Storage ──
+  getDiskSpace: () => Promise<Array<{ drive: string; total?: number; used: number; free: number }>>;
 }
 
 declare global {
   interface Window {
-    electronAPI?: IElectronAPI;
+    desktopAPI?: IDesktopAPI;
   }
 }

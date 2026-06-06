@@ -1,5 +1,8 @@
+// TODO: Review this file
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient, API_BASE_URL } from "@/lib/api-client"
+import { apiClient } from "@/lib/api-client"
+import { connectTaskSseStream } from "@/lib/sse-client"
+import { getScannedGames, setScannedGames } from "@/features/game-scanner/storage"
 import { libraryKeys } from "./library-keys"
 
 export interface LibraryResponse {
@@ -22,6 +25,7 @@ export interface LibraryResponse {
       watchlisted: boolean
       watched: boolean
       played: boolean
+      owned: boolean
     } | null
     steamPlaytimeForever?: number | null
     steamPlaytime2weeks?: number | null
@@ -36,7 +40,7 @@ export interface LibraryResponse {
   hasMore: boolean
 }
 
-export const LIBRARY_TABS = ["overview", "games", "watchlist", "like", "watched", "played", "listened", "spotify", "steam", "plex", "wishlist", "lists"] as const
+export const LIBRARY_TABS = ["overview", "games", "watchlist", "like", "watched", "played", "listened", "owned", "spotify", "steam", "plex", "wishlist", "lists"] as const
 export type LibraryTab = (typeof LIBRARY_TABS)[number]
 
 export const TAB_LABELS: Record<LibraryTab, string> = {
@@ -46,6 +50,7 @@ export const TAB_LABELS: Record<LibraryTab, string> = {
   watched: "Watched",
   played: "Played",
   listened: "Listened",
+  owned: "Owned",
   spotify: "Spotify",
   steam: "Steam",
   plex: "Plex",
@@ -75,7 +80,7 @@ export function useSteamLibraryScan() {
   return useMutation({
     mutationFn: async () => {
       const { data } = await apiClient.post<{ totalInSteam: number; matchedInOtix: number }>(
-        "/auth/integrations/steam/scan",
+        "/integrations/steam/scan",
       )
       return data
     },
@@ -95,75 +100,36 @@ export interface PlexSyncResult {
 }
 
 /**
- * Shared helper: POST /plex/sync → open SSE stream → await sync_complete or error.
+ * Shared helper: POST /plex/sync → SSE stream → await sync_complete or error.
  * Resolves with the final PlexSyncResult so callers get meaningful data.
  * Calls `onEvent` for each progress event (optional, for UI feedback).
  */
 export async function streamPlexSync(
   onEvent?: (event: { type: string; [key: string]: unknown }) => void,
 ): Promise<PlexSyncResult> {
-  const { data } = await apiClient.post<{ taskId: string }>("/auth/integrations/plex/sync")
-  const token = localStorage.getItem("otix-access-token")
+  const token = localStorage.getItem("otix-access-token") ?? ""
 
-  const response = await fetch(
-    `${API_BASE_URL}/auth/integrations/plex/sync/${data.taskId}/stream`,
-    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  const terminal = await connectTaskSseStream(
+    {
+      createEndpoint: "/integrations/plex/sync",
+      streamEndpoint: (taskId: string) => `/integrations/plex/sync/${taskId}/stream`,
+      terminalEvents: ["sync_complete", "error"],
+      token,
+    },
+    onEvent as (event: { type: string; [key: string]: unknown }) => void,
   )
 
-  if (!response.ok) {
-    throw new Error(`SSE connection failed: ${response.status}`)
+  if (terminal.type === "error") {
+    throw new Error((terminal.message as string) ?? "Plex sync failed")
   }
 
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  const convertToCamel = (str: string) =>
-    str.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
-
-  const camelCaseKeys = (obj: Record<string, unknown>): Record<string, unknown> =>
-    Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [convertToCamel(k), v]),
-    )
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-    const frames = buffer.split("\n\n")
-    buffer = frames.pop() ?? ""
-
-    for (const frame of frames) {
-      for (const line of frame.split("\n")) {
-        if (!line.startsWith("data: ")) continue
-        // Skip SSE keep-alive comments
-        if (line.trim() === "data:") continue
-        let event: Record<string, unknown>
-        try {
-          event = camelCaseKeys(JSON.parse(line.slice(6)))
-        } catch {
-          continue
-        }
-        onEvent?.(event as { type: string; [key: string]: unknown })
-        if (event.type === "sync_complete") {
-          return {
-            total: (event.total as number) ?? 0,
-            matched: (event.matched as number) ?? 0,
-            seeded: (event.seeded as number) ?? 0,
-            servers: event.servers as number | undefined,
-            libraries: event.libraries as number | undefined,
-          }
-        }
-        if (event.type === "error") {
-          throw new Error((event.message as string) ?? "Plex sync failed")
-        }
-      }
-    }
+  return {
+    total: (terminal.total as number) ?? 0,
+    matched: (terminal.matched as number) ?? 0,
+    seeded: (terminal.seeded as number) ?? 0,
+    servers: terminal.servers as number | undefined,
+    libraries: terminal.libraries as number | undefined,
   }
-
-  // Stream closed without a sync_complete — treat as success with zeros
-  return { total: 0, matched: 0, seeded: 0 }
 }
 
 export function usePlexLibraryScan() {
@@ -278,7 +244,7 @@ export function useSpotifyLibraryScan() {
   return useMutation({
     mutationFn: async () => {
       const { data } = await apiClient.post<{ taskId: string }>(
-        "/auth/integrations/spotify/sync",
+        "/integrations/spotify/sync",
       )
       return data
     },
@@ -376,12 +342,61 @@ export function useSteamWishlistScan() {
   return useMutation({
     mutationFn: async () => {
       const { data } = await apiClient.post<{ total: number; matched: number; private?: boolean }>(
-        "/auth/integrations/steam/wishlist/scan",
+        "/integrations/steam/wishlist/scan",
       )
       return data
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.tab("wishlist") })
+    },
+  })
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function cleanupStaleMediaRef(mediaId: string) {
+  const games = getScannedGames()
+  const updated = games.map((g) => {
+    if (g.otixMediaId === mediaId || g.otixMatchSuggestion?.mediaId === mediaId) {
+      const { otixMediaId, otixMediaTitle, otixMediaSlug, otixPosterUrl, otixTextlessPosterUrl, otixLogoUrl, otixMatchSuggestion, otixConfidence, otixClaimed, otixMatchVerified, ...rest } = g
+      return rest as typeof g
+    }
+    return g
+  })
+  setScannedGames(updated)
+}
+
+// ── Claim / unclaim games (owned) ───────────────────────────────────
+
+export function useClaimGame() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (mediaId: string) => {
+      const { data } = await apiClient.post<{ status: string }>(`/media/${mediaId}/claim`)
+      return data
+    },
+    onSuccess: (_data, mediaId) => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("owned") })
+      queryClient.invalidateQueries({ queryKey: ["games", "detail", mediaId] })
+    },
+    onError: (_err, mediaId) => {
+      // If the media item doesn't exist, clean up stale references from local storage
+      cleanupStaleMediaRef(mediaId)
+    },
+  })
+}
+
+export function useUnclaimGame() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (mediaId: string) => {
+      await apiClient.delete(`/media/${mediaId}/claim`)
+    },
+    onSuccess: (_data, mediaId) => {
+      queryClient.invalidateQueries({ queryKey: libraryKeys.tab("owned") })
+      queryClient.invalidateQueries({ queryKey: ["games", "detail", mediaId] })
     },
   })
 }
@@ -399,7 +414,6 @@ export interface PlexAlbumTrack {
 export interface PlexAlbumTracksResult {
   tracks: PlexAlbumTrack[]
   baseUrl: string
-  baseUrls: string[]
   token: string
   ratingKey: string
   albumThumbUrl: string | null
@@ -410,7 +424,7 @@ export function usePlexAlbumTracks(mediaItemId: string | undefined) {
     queryKey: ["plex", "album-tracks", "v2", mediaItemId],
     queryFn: async () => {
       const { data } = await apiClient.get<PlexAlbumTracksResult>(
-        `/auth/integrations/plex/album-tracks/${mediaItemId}`,
+        `/integrations/plex/album-tracks/${mediaItemId}`,
       )
       return data
     },

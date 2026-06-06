@@ -1,3 +1,4 @@
+# TODO: Review this file
 """MusicBrainz album sync task."""
 
 from __future__ import annotations
@@ -97,11 +98,11 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
         else:
             session.add(item)
             await session.flush()
-            ext_id = ExternalID(
-                provider="musicbrainz", external_id=mbid,
-                media_item_id=item.id, content_hash=content_hash,
+            ext_id = await ExternalIDService(session).upsert(
+                "musicbrainz", str(mbid),
+                "media_item", item.id,
             )
-            session.add(ext_id)
+            ext_id.content_hash = content_hash
 
         album.media_item_id = item.id
 

@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Franchise/collection name normalization for cross-provider matching."""
 
 from __future__ import annotations

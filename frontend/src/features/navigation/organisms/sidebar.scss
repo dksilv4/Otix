@@ -1,0 +1,47 @@
+@reference "../../../_tailwind-ref.css";
+
+// ── MenuDropdown ──────────────────────────────────────
+
+.dk-navigation__dropdown {
+  @apply fixed left-4 z-[9998] w-[15rem] p-3 flex flex-col gap-0.5;
+  top: 4.5rem;
+  border-radius: 1.5rem;
+  background-color: var(--dk-surface-overlay);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+}
+
+.dk-navigation__dropdown--desktop {
+  top: calc(38px + 4.5rem);
+}
+
+// ── NavLink ───────────────────────────────────────────
+
+.dk-navigation__link {
+  @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground select-none;
+  transition: color 0.15s, background-color 0.15s;
+
+  &:hover {
+    @apply text-foreground;
+    background-color: var(--dk-surface-ghost-hover);
+  }
+
+  &--active {
+    @apply text-foreground;
+
+    &:hover {
+      background-color: transparent;
+    }
+  }
+}
+
+// ── NavLink icon wrapper ──────────────────────────────
+
+.dk-navigation__link-icon {
+  @apply flex items-center justify-center w-9 h-9 rounded-full shrink-0;
+  background-color: var(--dk-surface-ghost-active);
+}
+
+.dk-navigation__link-icon--active {
+  @apply bg-primary/15 text-primary;
+}

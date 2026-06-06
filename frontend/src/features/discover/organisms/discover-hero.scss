@@ -1,0 +1,156 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Discover Hero ──────────────────────────────────── */
+
+.dk-discover-hero {
+  @apply relative w-full flex flex-col items-center justify-center pb-12;
+}
+
+.dk-discover-hero__slides {
+  @apply relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8;
+}
+
+/* ── Loading skeleton ───────────────────────────────── */
+
+.dk-discover-hero__skeleton {
+  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px] z-30 flex flex-col justify-end p-6 rounded-[2rem] bg-black/40 backdrop-blur-sm shadow-xl;
+}
+
+/* ── Card (fan stack item) ──────────────────────────── */
+
+.dk-discover-hero__card {
+  @apply absolute left-1/2 top-1/2 outline-none cursor-pointer w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px];
+  will-change: transform;
+}
+
+.dk-discover-hero__card-tilt {
+  @apply relative w-full h-full;
+}
+
+.dk-discover-hero__card-inner {
+  @apply relative h-full w-full overflow-hidden rounded-[2rem] ring-1 ring-white/[0.08];
+  transition: all 300ms;
+
+  &--active {
+    @apply shadow-[0_24px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.15)];
+  }
+
+  &--inactive {
+    @apply shadow-[0_12px_32px_rgba(0,0,0,0.55)];
+
+    &:hover {
+      --tw-ring-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+.dk-discover-hero__card-backdrop {
+  @apply absolute inset-0;
+}
+
+.dk-discover-hero__card-bg-image {
+  @apply absolute inset-0 bg-cover bg-center;
+}
+
+.dk-discover-hero__card-poster {
+  @apply absolute inset-0 h-full w-full object-cover select-none pointer-events-none;
+}
+
+.dk-discover-hero__card-fallback {
+  @apply absolute inset-0 flex items-center justify-center bg-neutral-900;
+}
+
+.dk-discover-hero__card-gradient {
+  @apply absolute inset-0 bg-gradient-to-br from-neutral-900 to-black;
+}
+
+.dk-discover-hero__card-overlay {
+  @apply absolute inset-0;
+}
+
+.dk-discover-hero__card-title-layer {
+  @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[115%] flex justify-center pointer-events-none;
+}
+
+.dk-discover-hero__card-title-inner {
+  @apply w-full flex justify-center;
+}
+
+.dk-discover-hero__card-logo {
+  @apply w-full max-h-[120px] object-contain;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.95));
+}
+
+.dk-discover-hero__card-title-text {
+  @apply text-2xl sm:text-3xl md:text-4xl font-extrabold text-white text-center leading-tight w-full px-4;
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.9));
+}
+
+/* ── Detail section below card stack ────────────────── */
+
+.dk-discover-hero__details {
+  @apply relative w-full z-15 flex flex-col items-center mt-4 min-h-[60px] px-4 md:px-8 text-center;
+}
+
+.dk-discover-hero__details-inner {
+  @apply flex flex-col items-center max-w-2xl;
+}
+
+.dk-discover-hero__meta {
+  @apply flex flex-wrap items-center justify-center gap-2 mb-4;
+}
+
+.dk-discover-hero__rating {
+  @apply inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400;
+}
+
+.dk-discover-hero__overview {
+  @apply text-sm text-white/85 max-w-xl text-center line-clamp-2 mb-0;
+}
+
+/* ── Slide indicators + View Details ────────────────── */
+
+.dk-discover-hero__indicators {
+  @apply mt-4 flex items-center gap-4 px-5 py-2.5 rounded-full bg-black/35 backdrop-blur-md;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  transition: all 300ms;
+
+  &:hover {
+    @apply bg-black/45;
+  }
+}
+
+.dk-discover-hero__indicator {
+  @apply relative h-1.5 rounded-full bg-white/20 overflow-hidden cursor-pointer;
+  transition: all 300ms;
+
+  &--active {
+    @apply w-8;
+  }
+
+  &--inactive {
+    @apply w-1.5;
+
+    &:hover {
+      @apply w-3 bg-white/40;
+    }
+  }
+}
+
+.dk-discover-hero__indicator-progress {
+  @apply absolute inset-0 bg-white rounded-full;
+  box-shadow: 0 0 8px #ffffff;
+}
+
+.dk-discover-hero__indicator-separator {
+  @apply h-3.5 w-[1px] bg-white/20;
+}
+
+.dk-discover-hero__view-details {
+  @apply text-[11px] font-bold text-white/80 flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none;
+  transition: color 150ms;
+
+  &:hover {
+    @apply text-white;
+  }
+}

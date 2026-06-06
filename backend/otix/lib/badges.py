@@ -1,3 +1,4 @@
+# TODO: Review this file
 """Achievement badge definitions.
 
 Badges are code-defined (not stored in the DB). Only earned badges are persisted

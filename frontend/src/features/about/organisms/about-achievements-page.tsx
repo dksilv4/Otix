@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, MessageSquare, MousePointer, List, Dumbbell, Zap, Sparkles, Star, Users, Flame, ThumbsUp, Compass, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { userQueries, type AchievementDef } from "@/features/user/user-queries"
+import "./about-achievements-page.scss"
 
 // ── Tier colors ──
 
@@ -23,24 +24,23 @@ interface GroupConfig {
   label: string
   section?: string
   icon: LucideIcon
-  iconColor: string
-  iconBg: string
+  iconModifier: string
   match: (key: string) => boolean
 }
 
 const GROUP_CONFIGS: GroupConfig[] = [
-  { label: "Review Milestones", icon: MessageSquare, iconColor: "text-rose-400", iconBg: "bg-rose-400/10", match: (k) => k.startsWith("reviews_") || k === "first_review" },
-  { label: "Interaction Milestones", icon: MousePointer, iconColor: "text-sky-400", iconBg: "bg-sky-400/10", match: (k) => k.startsWith("interactions_") },
-  { label: "List Milestones", icon: List, iconColor: "text-indigo-400", iconBg: "bg-indigo-400/10", match: (k) => k.startsWith("lists_") },
-  { label: "Workout Logs", icon: Dumbbell, iconColor: "text-emerald-400", iconBg: "bg-emerald-400/10", section: "Workout", match: (k) => k.startsWith("workouts_") },
-  { label: "Workout Streaks", icon: Flame, iconColor: "text-orange-400", iconBg: "bg-orange-400/10", section: "Workout", match: (k) => k.startsWith("workout_streak_") },
-  { label: "Level Milestones", icon: Zap, iconColor: "text-amber-400", iconBg: "bg-amber-400/10", match: (k) => k.startsWith("level_") },
-  { label: "Login Streaks", icon: Flame, iconColor: "text-red-400", iconBg: "bg-red-400/10", match: (k) => k.startsWith("streak_") },
-  { label: "Review Streaks", icon: Flame, iconColor: "text-pink-400", iconBg: "bg-pink-400/10", match: (k) => k.startsWith("review_streak_") },
-  { label: "Social", icon: Users, iconColor: "text-teal-400", iconBg: "bg-teal-400/10", match: (k) => k.startsWith("friends_") || k === "first_friend" },
-  { label: "Review Quality", icon: ThumbsUp, iconColor: "text-violet-400", iconBg: "bg-violet-400/10", match: (k) => k.startsWith("upvotes_") },
-  { label: "Media Diversity", icon: Compass, iconColor: "text-blue-400", iconBg: "bg-blue-400/10", match: (k) => k.startsWith("media_") },
-  { label: "Special", icon: Sparkles, iconColor: "text-pink-400", iconBg: "bg-pink-400/10", match: (k) => k === "perfect_10" },
+  { label: "Review Milestones", icon: MessageSquare, iconModifier: "rose", match: (k) => k.startsWith("reviews_") || k === "first_review" },
+  { label: "Interaction Milestones", icon: MousePointer, iconModifier: "sky", match: (k) => k.startsWith("interactions_") },
+  { label: "List Milestones", icon: List, iconModifier: "indigo", match: (k) => k.startsWith("lists_") },
+  { label: "Workout Logs", icon: Dumbbell, iconModifier: "emerald", section: "Workout", match: (k) => k.startsWith("workouts_") },
+  { label: "Workout Streaks", icon: Flame, iconModifier: "orange", section: "Workout", match: (k) => k.startsWith("workout_streak_") },
+  { label: "Level Milestones", icon: Zap, iconModifier: "amber", match: (k) => k.startsWith("level_") },
+  { label: "Login Streaks", icon: Flame, iconModifier: "red", match: (k) => k.startsWith("streak_") },
+  { label: "Review Streaks", icon: Flame, iconModifier: "pink", match: (k) => k.startsWith("review_streak_") },
+  { label: "Social", icon: Users, iconModifier: "teal", match: (k) => k.startsWith("friends_") || k === "first_friend" },
+  { label: "Review Quality", icon: ThumbsUp, iconModifier: "violet", match: (k) => k.startsWith("upvotes_") },
+  { label: "Media Diversity", icon: Compass, iconModifier: "blue", match: (k) => k.startsWith("media_") },
+  { label: "Special", icon: Sparkles, iconModifier: "pink", match: (k) => k === "perfect_10" },
 ]
 
 // ── Helpers ──
@@ -53,24 +53,24 @@ function formatXp(n: number): string {
 function renderBadgeRow(badges: AchievementDef[]) {
   const romanNumerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
   return (
-    <div className="flex gap-3 overflow-x-auto">
+    <div className="dk-about-achievements__badge-row">
       {badges.map((b, bi) => {
         const tierColor = TIER_COLORS[b.tier] ?? "#666"
         return (
           <div key={b.badgeKey}
-            className={cn("flex items-center gap-3 rounded-xl px-4 py-3", "bg-[var(--dk-surface-raised)]", "border-l-2 transition-colors hover:bg-white/[0.04]", "w-[280px] shrink-0")}
+            className="dk-about-achievements__badge"
             style={{ borderLeftColor: tierColor }}
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ backgroundColor: tierColor + "18", color: tierColor }}>
+            <span className="dk-about-achievements__badge-tier" style={{ backgroundColor: tierColor + "18", color: tierColor }}>
               {b.tier === "special" ? <Star className="h-3.5 w-3.5" /> : romanNumerals[bi] ?? "?"}
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">{b.label}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{b.description}</p>
+            <div className="dk-about-achievements__badge-content">
+              <p className="dk-about-achievements__badge-label">{b.label}</p>
+              <p className="dk-about-achievements__badge-desc">{b.description}</p>
             </div>
-            <div className="shrink-0 text-right">
-              <p className="text-xs font-semibold" style={{ color: tierColor }}>+{formatXp(b.xpReward)} XP</p>
-              <span className="inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider mt-0.5" style={{ backgroundColor: tierColor + "14", color: tierColor }}>{b.tier}</span>
+            <div className="dk-about-achievements__badge-xp">
+              <p className="dk-about-achievements__badge-xp-value" style={{ color: tierColor }}>+{formatXp(b.xpReward)} XP</p>
+              <span className="dk-about-achievements__badge-tier-tag" style={{ backgroundColor: tierColor + "14", color: tierColor }}>{b.tier}</span>
             </div>
           </div>
         )
@@ -111,22 +111,22 @@ export function AboutAchievementsPage() {
   }, [allBadges])
 
   return (
-    <div className="mx-auto max-w-2xl pb-16">
+    <div className="dk-about-achievements">
       <Helmet>
         <title>Achievements - About - Otix</title>
         <meta name="description" content="All achievements and badges available on Otix." />
       </Helmet>
 
       <button onClick={() => navigate({ to: "/about" })}
-        className="group mb-6 mt-2 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="dk-about-achievements__back"
       >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+        <ArrowLeft className="dk-about-achievements__back-icon" />
         Back to About
       </button>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">Achievements</h1>
-        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+      <div className="dk-about-achievements__header">
+        <h1 className="dk-about-achievements__header-title">Achievements</h1>
+        <p className="dk-about-achievements__header-desc">
           {allBadges?.length
             ? `${allBadges.length} achievements across 12 categories. Each grants a one-time XP bonus.`
             : "Badges are earned by hitting milestones across different activities. Each grants a one-time XP bonus."}
@@ -134,16 +134,16 @@ export function AboutAchievementsPage() {
       </div>
 
       {isLoading && (
-        <div className="space-y-4">
+        <div className="dk-about-achievements__skeleton-list">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl bg-[var(--dk-surface-base)] p-5 sm:p-6 animate-pulse">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-9 w-9 rounded-xl bg-white/[0.06]" />
-                <div className="h-4 w-32 rounded bg-white/[0.06]" />
+            <div key={i} className="dk-about-achievements__skeleton">
+              <div className="dk-about-achievements__skeleton-header">
+                <div className="dk-about-achievements__skeleton-icon" />
+                <div className="dk-about-achievements__skeleton-text" />
               </div>
-              <div className="flex gap-3">
+              <div className="dk-about-achievements__skeleton-cards">
                 {[1, 2, 3].map((j) => (
-                  <div key={j} className="w-[280px] h-20 rounded-xl bg-white/[0.04]" />
+                  <div key={j} className="dk-about-achievements__skeleton-card" />
                 ))}
               </div>
             </div>
@@ -152,32 +152,32 @@ export function AboutAchievementsPage() {
       )}
 
       {!isLoading && isError && (
-        <p className="text-sm text-muted-foreground text-center mt-8">
+        <p className="dk-about-achievements__error">
           Could not load achievements. Make sure the backend is running.
         </p>
       )}
 
       {!isLoading && !isError && allBadges && allBadges.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center mt-8">No achievements found.</p>
+        <p className="dk-about-achievements__empty">No achievements found.</p>
       )}
 
       {sections.length > 0 && (
-        <div className="space-y-6">
+        <div className="dk-about-achievements__sections">
           {sections.map((sec, si) => {
             if (sec.title) {
               return (
-                <div key={sec.title} className="rounded-2xl bg-[var(--dk-surface-base)] p-5 sm:p-6">
-                  <p className="text-xs font-semibold tracking-[0.08em] uppercase text-muted-foreground/40 mb-4">{sec.title}</p>
-                  <div className="space-y-4">
+                <div key={sec.title} className="dk-about-achievements__section-group">
+                  <p className="dk-about-achievements__section-title">{sec.title}</p>
+                  <div className="dk-about-achievements__section-inner">
                     {sec.groups.map((g) => {
                       const Icon = g.config.icon
                       return (
                         <div key={g.config.label}>
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", g.config.iconBg, g.config.iconColor)}>
+                          <div className="dk-about-achievements__group-header">
+                            <div className={cn("dk-about-achievements__group-icon", `dk-about-achievements__group-icon--${g.config.iconModifier}`)}>
                               <Icon className="h-4 w-4" />
                             </div>
-                            <h2 className="text-base font-semibold">{g.config.label}</h2>
+                            <h2 className="dk-about-achievements__group-label">{g.config.label}</h2>
                           </div>
                           {renderBadgeRow(g.badges)}
                         </div>
@@ -188,21 +188,23 @@ export function AboutAchievementsPage() {
               )
             }
             return (
-              <div key={si} className="rounded-2xl bg-[var(--dk-surface-base)] p-5 sm:p-6 space-y-4">
-                {sec.groups.map((g) => {
-                  const Icon = g.config.icon
-                  return (
-                    <div key={g.config.label}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", g.config.iconBg, g.config.iconColor)}>
-                          <Icon className="h-4 w-4" />
+              <div key={si} className="dk-about-achievements__section-group">
+                <div className="dk-about-achievements__section-group-inner">
+                  {sec.groups.map((g) => {
+                    const Icon = g.config.icon
+                    return (
+                      <div key={g.config.label}>
+                        <div className="dk-about-achievements__group-header">
+                          <div className={cn("dk-about-achievements__group-icon", `dk-about-achievements__group-icon--${g.config.iconModifier}`)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <h2 className="dk-about-achievements__group-label">{g.config.label}</h2>
                         </div>
-                        <h2 className="text-base font-semibold">{g.config.label}</h2>
+                        {renderBadgeRow(g.badges)}
                       </div>
-                      {renderBadgeRow(g.badges)}
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             )
           })}

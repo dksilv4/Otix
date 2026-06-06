@@ -1,0 +1,311 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Steam Platform Tab & Dashboard ── */
+/* Prefix: dk-library-steam                                        */
+
+/* ── Skeleton ── */
+.dk-library-steam__skeleton {
+  @apply aspect-[2/3] rounded-lg animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+/* ── Centered states ── */
+.dk-library-steam__center-col {
+  @apply flex flex-col items-center justify-center py-24 text-center;
+}
+
+.dk-library-steam__center-wrap {
+  @apply flex items-center justify-center py-24;
+}
+
+.dk-library-steam__center-text {
+  @apply text-muted-foreground;
+}
+
+/* ── Empty state ── */
+.dk-library-steam__empty-icon {
+  @apply mb-4 flex h-16 w-16 items-center justify-center rounded-2xl;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-steam__empty-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+.dk-library-steam__empty-desc {
+  @apply mt-1 text-sm text-muted-foreground max-w-sm;
+}
+
+/* ── Icons ── */
+.dk-library-steam__icon {
+  @apply h-4 w-4;
+}
+
+.dk-library-steam__icon--xl {
+  @apply h-8 w-8;
+}
+
+.dk-library-steam__icon--faded {
+  opacity: 0.4;
+}
+
+.dk-library-steam__icon--sm {
+  @apply h-3.5 w-3.5;
+}
+
+@keyframes dk-library-steam-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dk-library-steam__icon--spinning {
+  animation: dk-library-steam-spin 1s linear infinite;
+}
+
+/* ── Primary button ── */
+.dk-library-steam__btn-primary {
+  @apply mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium;
+  @apply bg-primary text-primary-foreground;
+  transition: opacity 0.15s ease;
+}
+
+.dk-library-steam__btn-primary:hover {
+  opacity: 0.9;
+}
+
+.dk-library-steam__btn-primary--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Ghost button ── */
+.dk-library-steam__btn-ghost {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__btn-ghost:hover {
+  color: inherit;
+}
+
+.dk-library-steam__btn-ghost--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Link button ── */
+.dk-library-steam__btn-link {
+  @apply text-xs font-medium;
+  color: oklch(0.5 0 0);
+  transition: color 0.15s ease;
+}
+
+.dk-library-steam__btn-link:hover {
+  color: inherit;
+}
+
+.dk-library-steam__btn-link--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Filter button ── */
+.dk-library-steam__btn-filter {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors;
+  color: oklch(0.5 0 0);
+  background-color: transparent;
+}
+
+.dk-library-steam__btn-filter:hover {
+  color: inherit;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-steam__btn-filter--active {
+  @apply text-foreground;
+  background-color: var(--dk-surface-glass);
+}
+
+/* ── Status bar ── */
+.dk-library-steam__status-bar {
+  @apply flex items-center justify-between mb-4;
+}
+
+.dk-library-steam__status-text {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__actions {
+  @apply flex items-center gap-2;
+}
+
+/* ── Result & error text ── */
+.dk-library-steam__result-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__error-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__result-centered {
+  @apply mt-2 text-xs text-center;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__error-centered {
+  @apply mt-2 text-xs text-center;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Media item ── */
+.dk-library-steam__media-item {
+  @apply relative;
+}
+
+/* ── Playtime row ── */
+.dk-library-steam__playtime-row {
+  @apply mt-1.5 flex items-center gap-1;
+}
+
+.dk-library-steam__playtime-icon {
+  @apply h-3 w-3;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__playtime-text {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__playtime-recent {
+  font-size: 11px;
+  color: oklch(0.65 0.03 145);
+}
+
+.dk-library-steam__recently-played {
+  font-size: 11px;
+  @apply font-medium;
+  color: oklch(0.65 0.03 145);
+}
+
+.dk-library-steam__last-played {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Unmatched section ── */
+.dk-library-steam__unmatched-section {
+  @apply mt-8 pt-8 border-t;
+  border-color: oklch(0.2 0 0);
+}
+
+.dk-library-steam__unmatched-title {
+  @apply text-sm font-semibold mb-4;
+}
+
+.dk-library-steam__unmatched-count {
+  @apply ml-1.5 font-normal;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__unmatched-grid {
+  @apply grid gap-3;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.dk-library-steam__unmatched-item {
+  @apply flex flex-col items-center text-center gap-1.5 p-3 rounded-xl;
+  background-color: var(--dk-surface-glass);
+  transition: background-color 0.15s ease;
+}
+
+.dk-library-steam__unmatched-item:hover {
+  background-color: var(--dk-surface-elevated);
+}
+
+.dk-library-steam__unmatched-icon {
+  @apply w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden;
+  background-color: var(--dk-surface-elevated);
+}
+
+.dk-library-steam__unmatched-img {
+  @apply w-full h-full object-cover;
+}
+
+.dk-library-steam__unmatched-steam-icon {
+  @apply h-5 w-5;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__unmatched-name {
+  font-size: 11px;
+  @apply font-medium line-clamp-2;
+}
+
+.dk-library-steam__unmatched-playtime {
+  font-size: 10px;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__unmatched-empty {
+  @apply text-sm;
+  color: oklch(0.5 0 0);
+}
+
+/* ── More / spinner wrappers ── */
+.dk-library-steam__more-wrap {
+  @apply flex justify-center py-8;
+}
+
+.dk-library-steam__more-wrap--sm {
+  @apply flex justify-center py-4;
+}
+
+.dk-library-steam__spinner {
+  @apply h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent;
+}
+
+.dk-library-steam__spinner--sm {
+  @apply h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent;
+}
+
+.dk-library-steam__end-text {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Dashboard section ── */
+.dk-library-steam__section {
+  @apply space-y-4;
+}
+
+.dk-library-steam__section-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-library-steam__section-title {
+  @apply text-sm font-semibold uppercase tracking-wider;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__section-link {
+  @apply text-xs transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-steam__section-link:hover {
+  color: inherit;
+}
+
+.dk-library-steam__dashboard-playtime {
+  @apply mt-1.5;
+}
+
+.dk-library-steam__media-item .dk-library-steam__dashboard-playtime {
+  @apply mt-1.5 flex items-center gap-1;
+}
+
+.dk-library-steam__dashboard-playtime .dk-library-steam__playtime-text {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}

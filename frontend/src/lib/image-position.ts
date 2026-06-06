@@ -1,3 +1,4 @@
+// TODO: Review this file
 /** Encode position percentages into a URL fragment for storage alongside image URLs. */
 export function encodePositionInUrl(url: string, x: number, y: number): string {
   // Round to 1 decimal for compactness; strip existing fragment first

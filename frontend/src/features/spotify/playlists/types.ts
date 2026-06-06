@@ -1,3 +1,4 @@
+// TODO: Review this file
 export interface SpotifyPlaylistImage {
   url: string
   height?: number

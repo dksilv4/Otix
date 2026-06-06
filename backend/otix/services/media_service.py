@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from datetime import date
@@ -43,6 +44,93 @@ def should_exclude_adult(user: User | None) -> bool:
 class MediaService:
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    @staticmethod
+    async def increment_view_count(media_id: str) -> None:
+        """Fire-and-forget view count increment using a fresh session."""
+        from otix.infrastructure.database import async_session
+        from sqlalchemy import update
+
+        try:
+            async with async_session() as session:
+                await session.execute(
+                    update(MediaItem).where(MediaItem.id == media_id).values(
+                        view_count=MediaItem.view_count + 1
+                    )
+                )
+                await session.commit()
+        except Exception:
+            pass
+
+    async def list_deleted_tmdb_ids(
+        self, page: int = 1, page_size: int = 50, media_type: str | None = None,
+    ) -> tuple[list, int]:
+        """List deleted TMDB IDs with pagination. Returns (items, total)."""
+        from otix.domain.media import TMDBDeletedID
+
+        base_query = select(TMDBDeletedID)
+        count_query = select(func.count(TMDBDeletedID.id))
+
+        if media_type:
+            base_query = base_query.where(TMDBDeletedID.media_type == media_type)
+            count_query = count_query.where(TMDBDeletedID.media_type == media_type)
+
+        total = await self.session.scalar(count_query) or 0
+        rows = await self.session.execute(
+            base_query.order_by(TMDBDeletedID.detection_date.desc())
+            .offset((page - 1) * page_size).limit(page_size)
+        )
+        return list(rows.scalars().all()), total
+
+    async def list_genres(self, media_type: str | None = None) -> list[Genre]:
+        """List all genres, optionally filtered by media type."""
+        from otix.domain.genre import Genre, MediaGenre
+
+        query = select(Genre).order_by(Genre.name)
+        if media_type:
+            query = (
+                select(Genre)
+                .distinct()
+                .join(MediaGenre, MediaGenre.genre_id == Genre.id)
+                .join(MediaItem, MediaItem.id == MediaGenre.media_item_id)
+                .where(MediaItem.media_type == media_type)
+                .order_by(Genre.name)
+            )
+        result = await self.session.scalars(query)
+        return list(result)
+
+    async def list_certifications(
+        self, country_code: str = "us", media_type: str | None = None
+    ) -> list[str]:
+        """List distinct certifications for a country, optionally filtered by media type."""
+        from otix.domain.asset import MediaRelease
+
+        query = (
+            select(MediaRelease.certification)
+            .distinct()
+            .join(MediaItem, MediaItem.id == MediaRelease.media_item_id)
+            .where(
+                MediaRelease.country_code == country_code.lower(),
+                MediaRelease.certification.isnot(None),
+                MediaRelease.certification != "",
+            )
+            .order_by(MediaRelease.certification)
+        )
+        if media_type:
+            query = query.where(MediaItem.media_type == media_type)
+        result = await self.session.scalars(query)
+        return list(result)
+
+    async def get_media_item_bare(self, media_id: str) -> MediaItem | None:
+        """Return a media item by ID, or None (no eager loads)."""
+        return await self.session.get(MediaItem, media_id)
+
+    async def get_media_type(self, media_id: str) -> str | None:
+        """Return the media_type for a media item, or None if not found."""
+        result = await self.session.scalar(
+            select(MediaItem.media_type).where(MediaItem.id == media_id)
+        )
+        return result
 
     async def list_media(
         self,
@@ -510,83 +598,182 @@ class MediaService:
 
     async def match_local_games(
         self,
+        games: list[dict],
+        threshold: float = 0.3,
+    ) -> list[tuple[str, MediaItem | None, float]]:
+        """Match local games to Otix catalog entries.
+
+        Each entry is a dict with ``title`` (required), ``platform`` (optional),
+        and ``steam_app_id`` (optional).
+
+        Games with a Steam App ID are matched via direct ``ExternalID`` lookup
+        (confidence 1.0). Remaining entries fall through to PostgreSQL trigram
+        similarity matching against ``MediaItem.title``.
+
+        Results are returned in the original input order.
+        """
+        import re
+
+        if not games:
+            return []
+
+        n = len(games)
+        # Pre-allocate results array so we can fill slots in input order
+        results: list[tuple[str, MediaItem | None, float] | None] = [None] * n
+
+        # ── Phase 1: Steam App ID direct lookups ──────────────────────
+        from otix.services.external_id_service import ExternalIDService
+
+        steam_indices: list[int] = []
+        steam_app_ids: list[str] = []
+        for i, g in enumerate(games):
+            aid = g.get("steam_app_id")
+            if aid is not None:
+                steam_indices.append(i)
+                steam_app_ids.append(str(aid))
+
+        steam_hits: dict[str, str] = {}  # steam_app_id_str -> entity_id
+        if steam_app_ids:
+            eid_svc = ExternalIDService(self.session)
+            steam_hits = await eid_svc.batch_find_entity_ids("steam", steam_app_ids)
+
+        # Fetch MediaItems for found Steam games in one batch
+        steam_items_map: dict[str, MediaItem] = {}
+        if steam_hits:
+            entity_ids = list(steam_hits.values())
+            steam_result = await self.session.execute(
+                select(MediaItem).where(MediaItem.id.in_(entity_ids))
+            )
+            steam_items_map = {item.id: item for item in steam_result.scalars().all()}
+
+        # Fill in Steam results and track which titles still need trigram
+        trigram_titles: list[str] = []
+        trigram_index_map: list[int] = []  # maps trigram position -> original index
+        for i in steam_indices:
+            g = games[i]
+            aid_str = str(g["steam_app_id"])
+            entity_id = steam_hits.get(aid_str)
+            if entity_id and entity_id in steam_items_map:
+                results[i] = (g["title"], steam_items_map[entity_id], 1.0)
+            else:
+                # Steam App ID not in catalog yet — fall back to trigram
+                trigram_titles.append(g["title"])
+                trigram_index_map.append(i)
+
+        # Collect non-Steam entries for trigram matching
+        for i, g in enumerate(games):
+            if g.get("steam_app_id") is None:
+                trigram_titles.append(g["title"])
+                trigram_index_map.append(i)
+
+        # ── Phase 2: Trigram matching for remaining titles ──────────
+        if trigram_titles:
+            trigram_results = await self._match_local_games_by_trigram(
+                trigram_titles, threshold
+            )
+            for pos, (raw_title, item, conf) in enumerate(trigram_results):
+                orig_idx = trigram_index_map[pos]
+                results[orig_idx] = (raw_title, item, conf)
+
+        # Fill any remaining None slots (should not happen, but be safe)
+        for i in range(n):
+            if results[i] is None:
+                results[i] = (games[i]["title"], None, 0.0)
+
+        return results  # type: ignore[return-value]
+
+    async def _match_local_games_by_trigram(
+        self,
         titles: list[str],
         threshold: float = 0.3,
     ) -> list[tuple[str, MediaItem | None, float]]:
-        """Fuzzy-match local game titles to Otix media items via trigram similarity.
+        """Fuzzy-match game titles via PostgreSQL trigram similarity.
 
         Each title is normalized (version strings, group tags, dots/underscores
-        stripped) and compared against the ``MediaItem.title`` column using
-        PostgreSQL ``similarity()``. Returns the best match per input title if
-        the similarity exceeds *threshold*.
+        stripped) before matching. All titles are matched in a single batched
+        SQL query using ``unnest()``.
         """
         import re
 
         if not titles:
             return []
 
-        results: list[tuple[str, MediaItem | None, float]] = []
-
-        for raw_title in titles:
-            # Normalize: strip version numbers, group tags, dots/underscores
-            clean = raw_title
-            # Remove common group/crack tags: -RUNE, -CODEX, -FLT, -PLAZA, -HOODLUM, etc.
+        # ── Normalize all titles up front ────────────────────────────────
+        clean_to_raw: dict[str, str] = {}
+        clean_list: list[str] = []
+        for raw in titles:
+            clean = raw
             clean = re.sub(
-                r"[-.\s](RUNE|CODEX|FLT|PLAZA|HOODLUM|SKIDROW|TENOKE|DODI|ElAmigos|Razor1911|FAIRLIGHT|GOLDBERG|P2P|EMPRESS|FCKDRM|STEAMPUNKS|CPY|RELOADED|PROPHET|TiNYiSO|BAT|ALI213|3DM|GOG|FCK)",
-                "",
-                clean,
-                flags=re.IGNORECASE,
+                r"[-.\s](?:RUNE|CODEX|FLT|PLAZA|HOODLUM|SKIDROW|TENOKE|DODI|"
+                r"ElAmigos|Razor1911|FAIRLIGHT|GOLDBERG|P2P|EMPRESS|FCKDRM|"
+                r"STEAMPUNKS|CPY|RELOADED|PROPHET|TiNYiSO|BAT|ALI213|3DM|GOG|FCK)",
+                "", clean, flags=re.IGNORECASE,
             )
-            # Remove version-like patterns: v1.0, v1.2.3, (v1.0), [v1.0]
             clean = re.sub(r"[\[\(]?\s*v?\d+(?:\.\d+)+(?:\w\d*)?\s*[\]\)]?", "", clean)
-            # Strip edition suffixes (GOTY, Definitive, Special, etc.)
             clean = re.sub(
-                r"\b(goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\s*edition\b",
-                "",
-                clean,
-                flags=re.IGNORECASE,
+                r"(?:\b(?:goty|game of the year|definitive|enhanced|remastered|"
+                r"ultimate|complete|deluxe|collectors|special|legendary|"
+                r"anniversary|vr|directors? cut)\s*edition\b)",
+                "", clean, flags=re.IGNORECASE,
             )
-            # Strip standalone edition/repack tags that may remain after removal
             clean = re.sub(
-                r"\b(goty|remastered|definitive|enhanced|complete|deluxe|legendary|anniversary|repack|multilingual)\b",
-                "",
-                clean,
-                flags=re.IGNORECASE,
+                r"\b(?:goty|remastered|definitive|enhanced|complete|deluxe|"
+                r"legendary|anniversary|repack|multilingual)\b",
+                "", clean, flags=re.IGNORECASE,
             )
-            # Dots and underscores → spaces
             clean = clean.replace(".", " ").replace("_", " ")
-            # Collapse whitespace
             clean = re.sub(r"\s+", " ", clean).strip()
-
-            if not clean:
-                results.append((raw_title, None, 0.0))
+            if not clean or clean in clean_to_raw:
                 continue
+            clean_to_raw[clean] = raw
+            clean_list.append(clean)
 
-            # Trigram similarity search — find best matching game.
-            # Order by similarity then title-length proximity so DLCs/expansions
-            # (which include the base-game name + extra text) don't outrank the
-            # original title just because they share more trigrams.
-            q = (
-                select(MediaItem, func.similarity(MediaItem.title, clean).label("sim"))
-                .where(MediaItem.media_type == "game")
-                .where(MediaItem.title.op("%")(clean))  # GiST index filter
-                .order_by(
-                    func.similarity(MediaItem.title, clean).desc(),
-                    func.abs(func.length(MediaItem.title) - len(clean)).asc(),
-                )
-                .limit(3)
+        if not clean_list:
+            return [(t, None, 0.0) for t in titles]
+
+        # ── Single batched SQL query using unnest + DISTINCT ON ──────────
+        from sqlalchemy import text
+
+        sql = text(f"""
+            SELECT DISTINCT ON (input.clean_title)
+                input.clean_title,
+                mi.{MediaItem.id.key},
+                mi.{MediaItem.title.key},
+                similarity(mi.{MediaItem.title.key}, input.clean_title) AS sim
+            FROM unnest(CAST(:titles AS text[])) AS input(clean_title)
+            JOIN media_items mi ON mi.media_type = 'game'
+                AND mi.{MediaItem.title.key} % input.clean_title
+            ORDER BY input.clean_title, sim DESC
+        """)
+
+        rows = (await self.session.execute(sql, {"titles": clean_list})).all()
+
+        # Build lookup: clean_title -> (media_id, score)
+        match_by_clean: dict[str, tuple[str, float]] = {}
+        for clean_title, media_id, media_title, sim in rows:
+            if clean_title not in match_by_clean or sim > match_by_clean[clean_title][1]:
+                match_by_clean[clean_title] = (media_id, round(sim, 4))
+
+        # Fetch actual MediaItem ORM objects for matched items
+        matched_ids = {v[0] for v in match_by_clean.values()}
+        items_map: dict[str, MediaItem] = {}
+        if matched_ids:
+            result = await self.session.execute(
+                select(MediaItem).where(MediaItem.id.in_(list(matched_ids)))
             )
-            rows = (await self.session.execute(q)).all()
+            items_map = {item.id: item for item in result.scalars().all()}
 
-            if not rows:
-                results.append((raw_title, None, 0.0))
-                continue
-
-            best_item, best_sim = rows[0]
-
-            if best_sim >= threshold:
-                results.append((raw_title, best_item, best_sim))
+        # Build result list in original input order
+        results: list[tuple[str, MediaItem | None, float]] = []
+        for clean in clean_list:
+            raw = clean_to_raw[clean]
+            if clean in match_by_clean:
+                media_id, score = match_by_clean[clean]
+                if score >= threshold and media_id in items_map:
+                    results.append((raw, items_map[media_id], score))
+                else:
+                    results.append((raw, None, score))
             else:
-                results.append((raw_title, None, best_sim))
+                results.append((raw, None, 0.0))
 
         return results

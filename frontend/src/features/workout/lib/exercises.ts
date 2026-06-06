@@ -1,3 +1,4 @@
+// TODO: Review this file
 export interface ExerciseEntry {
   name: string
   category: string

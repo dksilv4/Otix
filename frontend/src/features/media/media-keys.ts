@@ -1,3 +1,4 @@
+// TODO: Review this file
 export interface SearchParams {
   query: string
   type?: string

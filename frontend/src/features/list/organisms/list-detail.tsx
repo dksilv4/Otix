@@ -14,6 +14,7 @@ import {
  UsersIcon,
  GripVerticalIcon,
 } from "lucide-react"
+import "./list-detail.scss"
 import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/api-client"
 import { MediaCard } from "@ui/molecules/media-card"
@@ -110,13 +111,13 @@ export function ListDetail() {
 
  if (isLoading) {
  return (
- <div className="space-y-8">
- <div className="h-8 w-48 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+ <div className="dk-list-detail">
+ <div className="dk-list-detail__skeleton-title" />
  <MediaGrid>
  {Array.from({ length: 6 }).map((_, i) => (
  <div
  key={i}
- className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+ className="dk-list-detail__skeleton-card"
  />
  ))}
  </MediaGrid>
@@ -126,8 +127,8 @@ export function ListDetail() {
 
  if (isError || !list) {
  return (
- <div className="flex items-center justify-center py-24">
- <p className="text-muted-foreground">List not found.</p>
+ <div className="dk-list-detail__error-state">
+ <p className="dk-list-detail__error-text">List not found.</p>
  </div>
  )
  }
@@ -146,7 +147,7 @@ export function ListDetail() {
  }
 
  return (
- <div className="space-y-8">
+ <div className="dk-list-detail">
  <Helmet>
  <title>{`${list.name} - List - Otix`}</title>
  {list.description && <meta name="description" content={list.description.slice(0, 200)} />}
@@ -155,10 +156,10 @@ export function ListDetail() {
  <meta name="twitter:card" content="summary" />
  </Helmet>
  {/* Header */}
- <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+ <div className="dk-list-detail__header">
  <div>
- <div className="flex items-center gap-3">
- <h1 className="text-2xl font-bold text-foreground">{list.name}</h1>
+ <div className="dk-list-detail__title-row">
+ <h1 className="dk-list-detail__title">{list.name}</h1>
  {list.isPublic ? (
  <ShareIcon className="h-4 w-4 text-emerald-400" />
  ) : (
@@ -167,20 +168,16 @@ export function ListDetail() {
  <ListLikeButton list={list} />
  </div>
  {list.description && (
- <p className="mt-2 text-sm text-muted-foreground max-w-xl">
+ <p className="dk-list-detail__description">
  {list.description}
  </p>
  )}
  </div>
 
- <div className="flex gap-2">
+ <div className="dk-list-detail__actions">
  <button
  onClick={() => setShareOpen(true)}
- className={cn(
- "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
- "bg-[var(--dk-surface-base)]",
- "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
- )}
+ className="dk-list-detail__action-btn"
  >
  <ShareIcon className="h-4 w-4" />
  Share
@@ -190,11 +187,7 @@ export function ListDetail() {
  <>
  <button
  onClick={() => setAddingMode(!addingMode)}
- className={cn(
- "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
- "bg-[var(--dk-surface-base)]",
- "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
- )}
+ className="dk-list-detail__action-btn"
  >
  {addingMode ? (
  <>
@@ -210,33 +203,21 @@ export function ListDetail() {
  </button>
  <button
  onClick={() => setComposerOpen(true)}
- className={cn(
- "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
- "bg-[var(--dk-surface-base)]",
- "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
- )}
+ className="dk-list-detail__action-btn"
  >
  <PencilIcon className="h-4 w-4" />
  Edit
  </button>
  <button
  onClick={() => setCollaboratorsOpen(true)}
- className={cn(
- "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
- "bg-[var(--dk-surface-base)]",
- "text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors",
- )}
+ className="dk-list-detail__action-btn"
  >
  <UsersIcon className="h-4 w-4" />
  Collab
  </button>
  <button
  onClick={handleDelete}
- className={cn(
- "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium",
- "bg-red-500/10 text-red-400",
- "hover:bg-red-500/20 transition-colors",
- )}
+ className="dk-list-detail__action-btn--delete"
  >
  <TrashIcon className="h-4 w-4" />
  Delete
@@ -248,8 +229,8 @@ export function ListDetail() {
 
  {/* Search panel */}
  {addingMode && (
- <div className="space-y-6">
- <div className="flex flex-col sm:flex-row gap-4 items-start">
+ <div className="dk-list-detail__search-panel">
+ <div className="dk-list-detail__search-bar">
  <SearchField
  value={searchQuery}
  onChange={setSearchQuery}
@@ -273,7 +254,7 @@ export function ListDetail() {
  </div>
 
  {!searchQuery ? (
- <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+ <div className="dk-list-detail__search-empty">
  <SearchIcon className="h-8 w-8 mb-3 opacity-40" />
  <p className="text-sm">Search for titles to add</p>
  </div>
@@ -282,12 +263,12 @@ export function ListDetail() {
  {Array.from({ length: 6 }).map((_, i) => (
  <div
  key={i}
- className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+ className="dk-list-detail__skeleton-card"
  />
  ))}
  </MediaGrid>
  ) : searchItems.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+ <div className="dk-list-detail__search-empty">
  <p className="text-sm">No results found</p>
  </div>
  ) : (
@@ -295,7 +276,7 @@ export function ListDetail() {
  {searchItems.map((item) => {
  const alreadyAdded = itemIds.has(item.id)
  return (
- <div key={item.id} className="relative group/item">
+ <div key={item.id} className="dk-list-detail__search-item">
  <MediaCard
  id={item.id}
  mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
@@ -308,13 +289,7 @@ export function ListDetail() {
  artistName={item.albumArtistName}
  />
  {alreadyAdded ? (
- <span
- className={cn(
- "absolute top-2 right-2 rounded-full px-2.5 py-1",
- "bg-emerald-500/20 text-emerald-400 text-xs font-medium",
- "backdrop-blur-sm",
- )}
- >
+ <span className="dk-list-detail__added-badge">
  Added
  </span>
  ) : (
@@ -323,12 +298,7 @@ export function ListDetail() {
  e.preventDefault()
  addToList.mutate({ listId, mediaItemId: item.id })
  }}
- className={cn(
- "absolute top-2 right-2 rounded-full p-2",
- "bg-black/70 text-white/70 hover:text-white hover:bg-primary/80",
- "opacity-0 group-hover/item:opacity-100 transition-opacity",
- "backdrop-blur-sm",
- )}
+ className="dk-list-detail__add-button"
  >
  <PlusIcon className="h-4 w-4" />
  </button>
@@ -345,20 +315,17 @@ export function ListDetail() {
  {!addingMode && (
  <>
  {list.items.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-24 text-center">
- <p className="text-lg font-semibold text-foreground">
+ <div className="dk-list-detail__empty">
+ <p className="dk-list-detail__empty-title">
  This list is empty
  </p>
- <p className="mt-1 text-sm text-muted-foreground">
+ <p className="dk-list-detail__empty-text">
  Find media you love and add it to this list.
  </p>
  {isOwner && (
  <button
  onClick={() => setAddingMode(true)}
- className={cn(
- "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
- "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
- )}
+ className="dk-list-detail__empty-add-btn"
  >
  <PlusIcon className="h-4 w-4" />
  Add Items
@@ -368,7 +335,7 @@ export function ListDetail() {
  ) : (
  <>
  {isOwner && list.items.length > 1 && (
- <p className="text-xs text-muted-foreground mb-2">
+ <p className="dk-list-detail__drag-hint">
  Drag items to reorder your list.
  </p>
  )}
@@ -377,9 +344,9 @@ export function ListDetail() {
  <div
  key={item.id}
  className={cn(
- "relative group/item transition-opacity duration-150",
- dragIndex === index && "opacity-50",
- dropIndex === index && dragIndex !== index && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg",
+ "dk-list-detail__item",
+ dragIndex === index && "dk-list-detail__item--dragging",
+ dropIndex === index && dragIndex !== index && "dk-list-detail__item--drop-target",
  )}
  draggable={isOwner}
  onDragStart={() => handleDragStart(index)}
@@ -388,7 +355,7 @@ export function ListDetail() {
  onDragLeave={handleDragLeave}
  >
  {isOwner && (
- <div className="absolute top-2 left-2 z-10 rounded-full p-1 bg-black/70 text-white/50 opacity-0 group-hover/item:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+ <div className="dk-list-detail__drag-handle">
  <GripVerticalIcon className="h-3.5 w-3.5" />
  </div>
  )}
@@ -409,11 +376,7 @@ export function ListDetail() {
  e.preventDefault()
  handleRemoveItem(item.id)
  }}
- className={cn(
- "absolute top-2 right-2 rounded-full p-1.5",
- "bg-black/70 text-white/70 hover:text-red-400",
- "opacity-0 group-hover/item:opacity-100 transition-opacity",
- )}
+ className="dk-list-detail__remove-btn"
  >
  <TrashIcon className="h-3.5 w-3.5" />
  </button>

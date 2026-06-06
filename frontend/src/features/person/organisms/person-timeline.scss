@@ -1,0 +1,144 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Person Timeline ──────────────────────────────────── */
+
+.dk-person-timeline {
+  @apply relative;
+}
+
+.dk-person-timeline__empty {
+  @apply py-16 text-center text-sm text-muted-foreground;
+}
+
+.dk-person-timeline__line {
+  @apply absolute left-[23px] top-4 bottom-4 w-px bg-border;
+}
+
+.dk-person-timeline__groups {
+  @apply space-y-10;
+}
+
+.dk-person-timeline__year {
+  @apply sticky top-0 z-20 -mt-4 pt-4 pb-2 mb-3 bg-background/80 backdrop-blur-sm;
+}
+
+.dk-person-timeline__year-container {
+  @apply relative flex items-center gap-5;
+}
+
+.dk-person-timeline__year-dot-wrapper {
+  @apply relative z-10 flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-card ring-2 ring-border;
+}
+
+.dk-person-timeline__year-dot {
+  @apply h-3 w-3 rounded-full bg-primary;
+}
+
+.dk-person-timeline__year-label {
+  @apply text-lg font-bold tracking-tight;
+
+  &--upcoming {
+    @apply text-emerald-400;
+  }
+
+  &--announced {
+    @apply text-amber-400;
+  }
+}
+
+.dk-person-timeline__credits {
+  @apply space-y-3 pl-[69px];
+}
+
+.dk-person-timeline__media {
+  @apply relative;
+}
+
+.dk-person-timeline__card {
+  @apply inline-flex items-start gap-3 rounded-xl bg-card/40 p-3 hover:border-border hover:bg-card/80 transition-colors max-w-lg;
+  isolation: isolate;
+}
+
+.dk-person-timeline__poster {
+  @apply h-[68px] w-[45px] shrink-0 overflow-hidden rounded-md ring-1 ring-border/50;
+}
+
+.dk-person-timeline__info {
+  @apply min-w-0 flex-1;
+}
+
+.dk-person-timeline__title-row {
+  @apply flex items-center gap-2 flex-wrap;
+}
+
+.dk-person-timeline__title {
+  @apply text-sm font-medium group-hover:text-primary transition-colors truncate;
+}
+
+.dk-person-timeline__badge {
+  @apply shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ring-1 ring-inset;
+}
+
+.dk-person-timeline__date-badge {
+  @apply mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium;
+
+  &--upcoming {
+    @apply bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20;
+  }
+
+  &--announced {
+    @apply bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20;
+  }
+
+  &--past {
+    @apply text-muted-foreground/60;
+  }
+}
+
+.dk-person-timeline__roles {
+  @apply mt-1.5 flex flex-wrap items-center gap-1;
+}
+
+.dk-person-timeline__role-item {
+  @apply inline-flex items-center gap-1;
+}
+
+.dk-person-timeline__role-separator {
+  @apply text-muted-foreground/40;
+}
+
+.dk-person-timeline__role-badge {
+  @apply rounded px-1.5 py-0.5 text-[11px] font-medium bg-white/5 text-white/60;
+}
+
+.dk-person-timeline__character {
+  @apply text-[11px] text-muted-foreground;
+}
+
+.dk-person-timeline__episodes {
+  @apply relative ml-10;
+}
+
+.dk-person-timeline__episodes-line {
+  @apply absolute left-[10px] -top-1 bottom-0 w-px bg-border/40;
+}
+
+.dk-person-timeline__episodes-list {
+  @apply space-y-0;
+}
+
+.dk-person-timeline__episode {
+  @apply relative flex items-center gap-1.5 pl-6 py-0.5;
+}
+
+.dk-person-timeline__episode-number {
+  @apply text-[10px] font-medium text-muted-foreground/60 w-8 shrink-0 tabular-nums text-right;
+}
+
+.dk-person-timeline__episode-name {
+  @apply text-[11px] text-muted-foreground/80 truncate;
+}
+
+.dk-person-timeline__episode-date {
+  @apply text-[10px] text-muted-foreground/40 shrink-0;
+}

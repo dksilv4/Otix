@@ -1,4 +1,6 @@
+// TODO: Review this file
 import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
+import './interaction-buttons.scss'
 import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth'
@@ -154,15 +156,14 @@ function InteractionButton({
  onClick={handleClick}
  disabled={toggle.isPending}
  className={cn(
- 'group relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl bg-[var(--dk-surface-base)] px-3 py-3 transition-all duration-150',
- 'hover:bg-[var(--dk-surface-glass)]',
- toggle.isPending && 'pointer-events-none',
+ 'dk-interaction__btn',
+ toggle.isPending && 'dk-interaction__btn--pending',
  )}
  >
  {isActive && (
  <div
  className={cn(
- 'pointer-events-none absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_50%_50%,var(--tw-gradient-from),transparent_70%)]',
+ 'dk-interaction__glow',
  activeGlow,
  )}
  />
@@ -177,7 +178,7 @@ function InteractionButton({
  )}
  />
 
- <span className="relative text-[11px] font-medium text-muted-foreground">
+ <span className="dk-interaction__label">
  {label}
  </span>
  </button>
@@ -221,10 +222,10 @@ function InteractionSection({
  if (!isAuthenticated) {
  const listLabel = mediaType === 'game' || mediaType === 'music' ? 'wishlist' : 'watchlist'
  return (
- <section className={cn(className)}>
- <div className="rounded-3xl bg-[var(--dk-surface-base)] p-6 text-center">
- <p className="text-sm text-muted-foreground">
- <Link to="/auth/login" search={{ redirect: location.href }} className="font-medium text-primary hover:underline">
+ <section className={cn('dk-interaction', className)}>
+ <div className="dk-interaction__unauthed-card">
+ <p className="dk-interaction__unauthed-text">
+ <Link to="/auth/login" search={{ redirect: location.href }} className="dk-interaction__unauthed-link">
  Sign in
  </Link>{' '}
  to like, {listLabel}, and track this title.
@@ -242,8 +243,8 @@ function InteractionSection({
  })
 
  return (
- <section className={cn(className)}>
- <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3">
+ <section className={cn('dk-interaction', className)}>
+ <div className="dk-interaction__btns">
  {visibleButtons.map((btn) => {
  const isWatchedBtn = btn.type === 'watched' && mediaType === 'show' && onShowWatchedToggle
  return (
@@ -279,10 +280,10 @@ function InteractionSection({
  : "This will mark all episodes in this show as unwatched."
  }
  >
- <div className="flex justify-end gap-3 mt-6">
+ <div className="dk-interaction__dialog-actions">
  <button
  onClick={() => setConfirmOpen(false)}
- className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] transition-colors"
+ className="dk-interaction__dialog-btn dk-interaction__dialog-btn--cancel"
  >
  Cancel
  </button>
@@ -292,8 +293,8 @@ function InteractionSection({
  setConfirmOpen(false)
  }}
  className={cn(
- "px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors",
- confirmAction ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500",
+ "dk-interaction__dialog-btn",
+ confirmAction ? "dk-interaction__dialog-btn--positive" : "dk-interaction__dialog-btn--negative",
  )}
  >
  {confirmAction ? "Mark All Watched" : "Mark All Unwatched"}

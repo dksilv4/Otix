@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
+import './switch.scss'
 
 interface DkSwitchProps {
   checked: boolean
@@ -12,7 +13,7 @@ interface DkSwitchProps {
 const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
   ({ checked, onCheckedChange, disabled, label, className }, ref) => {
     return (
-      <label className={cn('inline-flex items-center gap-3', disabled && 'opacity-40', className)}>
+      <label className={cn('dk-switch', disabled && 'dk-switch--disabled', className)}>
         <button
           ref={ref}
           type="button"
@@ -21,19 +22,15 @@ const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
           disabled={disabled}
           onClick={() => onCheckedChange(!checked)}
           className={cn(
-            'relative h-6 w-11 rounded-full transition-all duration-[var(--dk-duration-fast)]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--dk-ring-color)] focus-visible:ring-offset-2',
-            checked ? 'bg-primary' : 'bg-muted',
+            'dk-switch__track',
+            checked ? 'dk-switch__track--on' : 'dk-switch__track--off',
           )}
         >
           <span
-            className={cn(
-              'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-[var(--dk-duration-fast)]',
-              checked && 'translate-x-5',
-            )}
+            className={cn('dk-switch__thumb', checked && 'dk-switch__thumb--on')}
           />
         </button>
-        {label && <span className="text-sm">{label}</span>}
+        {label && <span className="dk-switch__label">{label}</span>}
       </label>
     )
   },

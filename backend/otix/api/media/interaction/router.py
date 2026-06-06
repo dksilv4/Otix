@@ -1,10 +1,12 @@
+# TODO: Review this file
 from __future__ import annotations
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_current_user, get_db
-from otix.api.schemas.interaction import (
+from otix.api._utils import get_current_user, get_db
+from otix.schemas.interaction import (
     InteractionCounts,
     InteractionCreate,
     InteractionOut,
@@ -14,6 +16,8 @@ from otix.api.schemas.interaction import (
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
+
+logger = structlog.get_logger()
 
 interaction_router = APIRouter(prefix="/media", tags=["interaction"])
 
@@ -97,3 +101,71 @@ async def remove_interaction(
     # Invalidate the media-detail cache so the next GET returns fresh user_interactions
     redis = await get_redis()
     await redis.delete(f"media:detail:{media_id}:{current_user.id}")
+
+
+# ── Claim / unclaim (owned games) ─────────────────────────────────────
+
+
+@interaction_router.post(
+    "/{media_id}/claim",
+    status_code=status.HTTP_201_CREATED,
+)
+async def claim_game(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Record that the current user owns this game."""
+    from sqlalchemy import select
+    from otix.domain.media import MediaItem
+
+    # Ensure the media item exists before claiming
+    existing = await db.execute(select(MediaItem).where(MediaItem.id == media_id))
+    if not existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Media item '{media_id}' not found. Try re-scanning or syncing your library first.",
+        )
+
+    service = InteractionService(db)
+    await service.set_interaction(
+        user_id=current_user.id,
+        media_item_id=media_id,
+        interaction_type="owned",
+    )
+
+    # Invalidate the media-detail cache so the next GET returns fresh user_interactions
+    redis = await get_redis()
+    await redis.delete(f"media:detail:{media_id}:{current_user.id}")
+
+    logger.info("game claimed", user_id=current_user.id, media_item_id=media_id)
+    return {"status": "claimed"}
+
+
+@interaction_router.delete(
+    "/{media_id}/claim",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def unclaim_game(
+    media_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Remove ownership of a game."""
+    service = InteractionService(db)
+    deleted = await service.remove_interaction(
+        user_id=current_user.id,
+        media_item_id=media_id,
+        interaction_type="owned",
+    )
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game not claimed",
+        )
+
+    # Invalidate the media-detail cache so the next GET returns fresh user_interactions
+    redis = await get_redis()
+    await redis.delete(f"media:detail:{media_id}:{current_user.id}")
+
+    logger.info("game unclaimed", user_id=current_user.id, media_item_id=media_id)

@@ -1,7 +1,8 @@
+// TODO: Review this file
 import { useState, useEffect } from "react"
 import { XIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
 import type { UserListOut, UserListCreate } from "../list-queries"
+import "./list-composer.scss"
 
 interface ListComposerProps {
  open: boolean
@@ -39,38 +40,32 @@ export function ListComposer({
  }
 
  return (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+ <div className="dk-list-composer__overlay">
  {/* Backdrop */}
  <div
- className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+ className="dk-list-composer__backdrop"
  onClick={onClose}
  />
 
  {/* Dialog */}
  <div
- className={cn(
- "relative w-full max-w-md rounded-[2rem]",
- "bg-[var(--dk-surface-overlay)] backdrop-blur-xl",
- "shadow-[var(--dk-shadow-glass)]",
- "",
- "p-6"
- )}
+ className="dk-list-composer__dialog"
  >
- <div className="flex items-center justify-between mb-4">
- <h2 className="text-lg font-semibold text-foreground">
+ <div className="dk-list-composer__header">
+ <h2 className="dk-list-composer__title">
  {initial ? "Edit List" : "New List"}
  </h2>
  <button
  onClick={onClose}
- className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors"
+ className="dk-list-composer__close-btn"
  >
  <XIcon className="h-4 w-4" />
  </button>
  </div>
 
- <form onSubmit={handleSubmit} className="space-y-4">
+ <form onSubmit={handleSubmit} className="dk-list-composer__form">
  <div>
- <label className="block text-sm font-medium text-foreground mb-1.5">
+ <label className="dk-list-composer__label">
  Name
  </label>
  <input
@@ -80,16 +75,12 @@ export function ListComposer({
  maxLength={200}
  required
  placeholder="My list name..."
- className={cn(
- "w-full rounded-xl bg-[var(--dk-surface-base)]",
- "px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground",
- "focus:outline-none focus:ring-2 focus:ring-primary/50"
- )}
+ className="dk-list-composer__input"
  />
  </div>
 
  <div>
- <label className="block text-sm font-medium text-foreground mb-1.5">
+ <label className="dk-list-composer__label">
  Description
  </label>
  <textarea
@@ -97,44 +88,32 @@ export function ListComposer({
  onChange={(e) => setDescription(e.target.value)}
  rows={3}
  placeholder="Optional description..."
- className={cn(
- "w-full rounded-xl bg-[var(--dk-surface-base)]",
- "px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground",
- "focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
- )}
+ className="dk-list-composer__textarea"
  />
  </div>
 
- <label className="flex items-center gap-3 cursor-pointer">
+ <label className="dk-list-composer__checkbox-wrap">
  <input
  type="checkbox"
  checked={isPublic}
  onChange={(e) => setIsPublic(e.target.checked)}
- className="rounded border-white/20 bg-[var(--dk-surface-base)]"
+ className="dk-list-composer__checkbox"
  />
- <span className="text-sm text-foreground">Make this list public</span>
+ <span className="dk-list-composer__checkbox-label">Make this list public</span>
  </label>
 
- <div className="flex gap-3 pt-2">
+ <div className="dk-list-composer__actions">
  <button
  type="button"
  onClick={onClose}
- className={cn(
- "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium",
- "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]",
- "transition-colors"
- )}
+ className="dk-list-composer__btn dk-list-composer__btn--cancel"
  >
  Cancel
  </button>
  <button
  type="submit"
  disabled={!name.trim() || isSaving}
- className={cn(
- "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium",
- "bg-primary text-primary-foreground",
- "hover:opacity-90 disabled:opacity-50 transition-opacity"
- )}
+ className="dk-list-composer__btn dk-list-composer__btn--submit"
  >
  {isSaving ? "Saving..." : initial ? "Save" : "Create"}
  </button>

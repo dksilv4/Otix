@@ -1,8 +1,10 @@
+// TODO: Review this file
 import { useState } from 'react'
 import { Check, X, ChevronDown, Bot, Undo2, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ExperimentGuard } from '@/features/experiments/molecules/experiment-guard'
 import type { MediaEditProposal, ImageOverrideItem } from '../admin-edit-queries'
+import './proposal-card.scss'
 
 export const IMAGE_TYPE_LABELS: Record<string, string> = {
  poster: 'Poster',
@@ -129,7 +131,7 @@ export function ProposalCard({
  }
 
  return (
- <div className="rounded-2xl bg-[var(--dk-surface-glass)] overflow-hidden">
+ <div className="dk-admin-proposal-card">
  {/* Header */}
  <div
   role="button"
@@ -141,33 +143,33 @@ export function ProposalCard({
     setExpanded(!expanded)
    }
   }}
-  className="w-full p-4 text-left hover:bg-white/[0.02] transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 select-none"
+  className="dk-admin-proposal-card__header"
  >
- <div className="flex items-start gap-4">
+ <div className="dk-admin-proposal-card__header-inner">
  {/* Media poster thumbnail */}
  {showMediaInfo && (
  proposal.mediaPosterUrl ? (
  <img
  src={proposal.mediaPosterUrl}
  alt=""
- className="h-16 w-12 shrink-0 rounded-lg object-cover bg-black/20"
+ className="dk-admin-proposal-card__thumbnail"
  />
  ) : (
- <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--dk-surface-ghost)]">
- <span className="text-xs text-muted-foreground">—</span>
+ <div className="dk-admin-proposal-card__thumbnail-placeholder">
+ <span className="dk-admin-proposal-card__thumbnail-placeholder-text">—</span>
  </div>
  )
  )}
 
- <div className="min-w-0 flex-1 space-y-1">
+ <div className="dk-admin-proposal-card__content">
  {/* Media title + type badge */}
  {showMediaInfo && (
- <div className="flex items-center gap-2">
- <span className="text-sm font-semibold truncate">
+ <div className="dk-admin-proposal-card__media-title-row">
+ <span className="dk-admin-proposal-card__media-title">
  {proposal.mediaTitle || 'Unknown Media'}
  </span>
  {proposal.mediaType && (
- <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+ <span className="dk-admin-proposal-card__media-type-badge">
  {MEDIA_TYPE_LABELS[proposal.mediaType] ?? proposal.mediaType}
  </span>
  )}
@@ -175,59 +177,57 @@ export function ProposalCard({
  )}
 
  {/* Proposer + status */}
- <div className="flex items-center gap-2">
+ <div className="dk-admin-proposal-card__proposer-row">
  {proposal.proposer ? (
- <span className="text-xs font-medium">
+ <span className="dk-admin-proposal-card__proposer-name">
  {proposal.proposer.username}
  </span>
  ) : (
- <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400">
+ <span className="dk-admin-proposal-card__system-badge">
  <Bot className="h-3 w-3" />
  System
  </span>
  )}
  <span
- className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.bg} ${badge.text}`}
+ className={cn('dk-admin-proposal-card__status-badge', `dk-admin-proposal-card__status-badge--${proposal.status}`)}
  >
  {badge.label}
  </span>
  </div>
 
  {/* Change summary */}
- <p className="text-xs text-muted-foreground truncate">
+ <p className="dk-admin-proposal-card__summary">
  {changeSummary(proposal)}
  </p>
 
  {/* Approver info */}
  {proposal.approver && (
- <p className="text-xs text-muted-foreground">
+ <p className="dk-admin-proposal-card__approver">
  {proposal.status === 'approved' ? 'Approved by' : 'Rejected by'}{' '}
  {proposal.approver.username}
  </p>
  )}
 
- <p className="text-[10px] text-muted-foreground/60">
+ <p className="dk-admin-proposal-card__timestamp">
  {new Date(proposal.createdAt).toLocaleString()}
  </p>
  </div>
 
  {/* Actions */}
- <div className="flex shrink-0 items-center gap-2">
+ <div className="dk-admin-proposal-card__actions">
  {isPending && !isProposer && !rejecting && (
  <>
  {/* Voting buttons — gated behind experiment */}
  {canVote && (
  <ExperimentGuard feature="community_edit_proposals">
- <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+ <div className="dk-admin-proposal-card__vote-group" onClick={(e) => e.stopPropagation()}>
  <button
  type="button"
  onClick={(e) => handleVote(e, 'up')}
  disabled={isVoting}
  className={cn(
- 'inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors',
- proposal.myVote === 'up'
- ? 'bg-emerald-500/20 text-emerald-400'
- : 'text-muted-foreground hover:text-emerald-400',
+ 'dk-admin-proposal-card__vote-btn dk-admin-proposal-card__vote-btn--up',
+ proposal.myVote === 'up' && 'dk-admin-proposal-card__vote-btn--up-active',
  )}
  >
  <ThumbsUp className="h-3 w-3" />
@@ -240,10 +240,8 @@ export function ProposalCard({
  onClick={(e) => handleVote(e, 'down')}
  disabled={isVoting}
  className={cn(
- 'inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-medium transition-colors',
- proposal.myVote === 'down'
- ? 'bg-red-500/20 text-red-400'
- : 'text-muted-foreground hover:text-red-400',
+ 'dk-admin-proposal-card__vote-btn dk-admin-proposal-card__vote-btn--down',
+ proposal.myVote === 'down' && 'dk-admin-proposal-card__vote-btn--down-active',
  )}
  >
  <ThumbsDown className="h-3 w-3" />
@@ -258,7 +256,7 @@ export function ProposalCard({
  type="button"
  onClick={handleApprove}
  disabled={isApproving}
- className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 transition-colors"
+ className="dk-admin-proposal-card__action-approve"
  >
  <Check className="h-3.5 w-3.5" />
  Approve
@@ -266,7 +264,7 @@ export function ProposalCard({
  <button
  type="button"
  onClick={handleRejectClick}
- className="inline-flex items-center gap-1 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+ className="dk-admin-proposal-card__action-reject"
  >
  <X className="h-3.5 w-3.5" />
  Reject
@@ -275,7 +273,7 @@ export function ProposalCard({
  )}
 
  {isPending && isProposer && (
- <span className="text-[10px] text-muted-foreground/60">
+ <span className="dk-admin-proposal-card__awaiting">
  Awaiting review
  </span>
  )}
@@ -285,7 +283,7 @@ export function ProposalCard({
  type="button"
  onClick={handleUndo}
  disabled={isUndoing}
- className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 transition-colors"
+ className="dk-admin-proposal-card__action-undo"
  >
  <Undo2 className="h-3.5 w-3.5" />
  Undo
@@ -294,8 +292,8 @@ export function ProposalCard({
 
  <ChevronDown
  className={cn(
- 'h-4 w-4 text-muted-foreground transition-transform duration-200',
- expanded && 'rotate-180',
+ 'dk-admin-proposal-card__chevron',
+ expanded && 'dk-admin-proposal-card__chevron--expanded',
  )}
  />
  </div>
@@ -304,29 +302,29 @@ export function ProposalCard({
 
  {/* Reject reason input */}
  {rejecting && (
- <div className="px-4 pb-4 space-y-2">
+ <div className="dk-admin-proposal-card__reject-area">
  <input
  type="text"
  value={rejectReason}
  onChange={(e) => setRejectReason(e.target.value)}
  placeholder="Reason for rejection (optional)"
- className="w-full rounded-lg bg-[var(--dk-surface-ghost)] px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-red-500 focus:outline-none"
+ className="dk-admin-proposal-card__reject-input"
  onKeyDown={(e) => { if (e.key === 'Enter') handleRejectConfirm() }}
  autoFocus
  />
- <div className="flex gap-1.5">
+ <div className="dk-admin-proposal-card__reject-actions">
  <button
  type="button"
  onClick={handleRejectConfirm}
  disabled={isRejecting}
- className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+ className="dk-admin-proposal-card__reject-confirm"
  >
  Confirm Reject
  </button>
  <button
  type="button"
  onClick={() => setRejecting(false)}
- className="rounded-lg px-3 py-1 text-xs text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
+ className="dk-admin-proposal-card__reject-cancel"
  >
  Cancel
  </button>
@@ -336,29 +334,29 @@ export function ProposalCard({
 
  {/* Rejection reason display */}
  {proposal.rejectionReason && !rejecting && (
- <div className="px-4 pb-3">
- <p className="text-xs text-red-400">Reason: {proposal.rejectionReason}</p>
+ <div className="dk-admin-proposal-card__rejection-reason">
+ <p className="dk-admin-proposal-card__rejection-reason-text">Reason: {proposal.rejectionReason}</p>
  </div>
  )}
 
  {/* Expanded diff view */}
  {expanded && (
- <div className="border-t border-[var(--dk-border)]">
- <div className="m-3 rounded-xl border-2 border-primary/25 ring-2 ring-primary/5 p-4 space-y-4">
+ <div className="dk-admin-proposal-card__expanded">
+ <div className="dk-admin-proposal-card__diff">
  {/* Field changes */}
  {changedFields.length > 0 && (
- <div className="space-y-2">
- <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+ <div className="dk-admin-proposal-card__fields-section">
+ <h4 className="dk-admin-proposal-card__section-heading">
  Field Changes
  </h4>
- <div className="grid gap-1.5">
+ <div className="dk-admin-proposal-card__fields-grid">
  {changedFields.map((key) => (
- <div key={key} className="flex items-center gap-2 text-xs">
- <span className="w-36 shrink-0 text-muted-foreground">
+ <div key={key} className="dk-admin-proposal-card__field-row">
+ <span className="dk-admin-proposal-card__field-label">
  {FIELD_LABELS[key] ?? key}
  </span>
- <span className="text-primary/60">â†’</span>
- <span className="font-medium text-emerald-400">
+ <span className="dk-admin-proposal-card__field-arrow">→</span>
+ <span className="dk-admin-proposal-card__field-value">
  {String((proposal.changes as Record<string, unknown>)[key])}
  </span>
  </div>
@@ -369,29 +367,29 @@ export function ProposalCard({
 
  {/* Image overrides */}
  {proposal.imageOverrides && proposal.imageOverrides.length > 0 && (
- <div className="space-y-2">
- <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+ <div className="dk-admin-proposal-card__images-section">
+ <h4 className="dk-admin-proposal-card__section-heading">
  Image Overrides
  </h4>
- <div className="grid gap-2">
+ <div className="dk-admin-proposal-card__images-grid">
  {proposal.imageOverrides.map((ov: ImageOverrideItem, i: number) => (
  <div
  key={i}
- className="flex items-center gap-3 rounded-xl bg-[var(--dk-surface-base)] p-2"
+ className="dk-admin-proposal-card__image-item"
  >
  <img
  src={ov.url}
  alt=""
- className="h-16 w-12 shrink-0 rounded-lg object-cover bg-black/30"
+ className="dk-admin-proposal-card__image-img"
  />
- <div className="min-w-0 space-y-0.5">
- <p className="text-xs font-medium text-foreground">
+ <div className="dk-admin-proposal-card__image-info">
+ <p className="dk-admin-proposal-card__image-title">
  {IMAGE_TYPE_LABELS[ov.imageType] ?? ov.imageType}
  </p>
- <p className="text-[11px] text-muted-foreground">
+ <p className="dk-admin-proposal-card__image-lang">
  Language: {ov.languageCode}
  </p>
- <p className="text-[10px] text-muted-foreground/60 truncate">
+ <p className="dk-admin-proposal-card__image-url">
  {ov.url}
  </p>
  </div>
@@ -403,7 +401,7 @@ export function ProposalCard({
 
  {/* No changes */}
  {changedFields.length === 0 && (!proposal.imageOverrides || proposal.imageOverrides.length === 0) && (
- <p className="text-xs text-muted-foreground/60 italic">
+ <p className="dk-admin-proposal-card__no-changes">
  No changes recorded in this proposal.
  </p>
  )}

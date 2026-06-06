@@ -1,0 +1,232 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Plex Platform Tab & Dashboard ── */
+/* Prefix: dk-library-plex                                        */
+
+/* ── Skeleton ── */
+.dk-library-plex__skeleton {
+  @apply aspect-[2/3] rounded-lg animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+/* ── Centered states ── */
+.dk-library-plex__center-col {
+  @apply flex flex-col items-center justify-center py-24 text-center;
+}
+
+.dk-library-plex__center-wrap {
+  @apply flex items-center justify-center py-24;
+}
+
+.dk-library-plex__center-text {
+  @apply text-muted-foreground;
+}
+
+/* ── Empty state ── */
+.dk-library-plex__empty-icon {
+  @apply mb-4 flex h-16 w-16 items-center justify-center rounded-2xl;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-plex__empty-title {
+  @apply text-lg font-semibold text-foreground;
+}
+
+.dk-library-plex__empty-desc {
+  @apply mt-1 text-sm text-muted-foreground max-w-sm;
+}
+
+/* ── Icons ── */
+.dk-library-plex__icon {
+  @apply h-4 w-4;
+}
+
+.dk-library-plex__icon--xl {
+  @apply h-8 w-8;
+}
+
+.dk-library-plex__icon--faded {
+  opacity: 0.4;
+}
+
+.dk-library-plex__icon--sm {
+  @apply h-3.5 w-3.5;
+}
+
+@keyframes dk-library-plex-spin {
+  to { transform: rotate(360deg); }
+}
+
+.dk-library-plex__icon--spinning {
+  animation: dk-library-plex-spin 1s linear infinite;
+}
+
+/* ── Primary button ── */
+.dk-library-plex__btn-primary {
+  @apply mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium;
+  @apply bg-primary text-primary-foreground;
+  transition: opacity 0.15s ease;
+}
+
+.dk-library-plex__btn-primary:hover {
+  opacity: 0.9;
+}
+
+.dk-library-plex__btn-primary--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Ghost button ── */
+.dk-library-plex__btn-ghost {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__btn-ghost:hover {
+  color: inherit;
+}
+
+.dk-library-plex__btn-ghost--disabled {
+  @apply opacity-60 pointer-events-none;
+}
+
+/* ── Result & error text ── */
+.dk-library-plex__result-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__error-text {
+  @apply mt-2 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Top bar (filters + sync area) ── */
+.dk-library-plex__top-bar {
+  @apply flex items-center justify-between mb-4 gap-4 flex-wrap;
+}
+
+.dk-library-plex__filters {
+  @apply flex items-center gap-3 flex-wrap;
+}
+
+.dk-library-plex__status-text {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__sync-area {
+  @apply flex items-center gap-2;
+}
+
+.dk-library-plex__sync-phase {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Progress bar ── */
+.dk-library-plex__progress-wrap {
+  @apply mb-6;
+}
+
+.dk-library-plex__progress-info {
+  @apply flex justify-between text-xs mb-1;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__progress-bar-bg {
+  @apply w-full h-1 rounded-full overflow-hidden;
+  background-color: oklch(0.2 0 0);
+}
+
+.dk-library-plex__progress-bar-fill {
+  @apply h-full rounded-full transition-all duration-300;
+  background-color: var(--primary);
+}
+
+/* ── Media item ── */
+.dk-library-plex__media-item {
+  @apply relative;
+}
+
+.dk-library-plex__artist-name {
+  @apply mt-1 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__track-count {
+  @apply mt-0.5 text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── View row (plays / views) ── */
+.dk-library-plex__view-row {
+  @apply mt-1.5 flex items-center gap-1 flex-wrap;
+}
+
+.dk-library-plex__view-icon {
+  @apply h-3 w-3;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__view-count {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__recent-badge {
+  font-size: 11px;
+  @apply font-medium;
+  color: oklch(0.65 0.03 145);
+}
+
+.dk-library-plex__last-viewed {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}
+
+/* ── More / spinner ── */
+.dk-library-plex__more-wrap {
+  @apply flex justify-center py-8;
+}
+
+.dk-library-plex__spinner {
+  @apply h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent;
+}
+
+.dk-library-plex__end-text {
+  @apply text-xs;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Dashboard section ── */
+.dk-library-plex__section {
+  @apply space-y-4;
+}
+
+.dk-library-plex__section-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-library-plex__section-title {
+  @apply text-sm font-semibold uppercase tracking-wider;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__section-link {
+  @apply text-xs transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-plex__section-link:hover {
+  color: inherit;
+}
+
+.dk-library-plex__dashboard-view {
+  @apply mt-1.5;
+}
+
+.dk-library-plex__dashboard-view .dk-library-plex__view-count {
+  font-size: 11px;
+  color: oklch(0.5 0 0);
+}

@@ -1,5 +1,7 @@
+// TODO: Review this file
 import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
 import { cn } from '@/lib/utils'
+import './search-sort-bar.scss'
 
 export const TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
@@ -43,13 +45,13 @@ export function SearchSortBar({
   className,
 }: SearchSortBarProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <div className="flex items-center gap-2">
+    <div className={cn('dk-discover-search-sort-bar', className)}>
+      <div className="dk-discover-search-sort-bar__filters">
         <DkDropdown variant="filter" label="Type" options={TYPE_OPTIONS} value={typeValue} onChange={onTypeChange} />
         <DkDropdown variant="filter" label="Sort" options={SORT_OPTIONS} value={sortValue} onChange={onSortChange} />
       </div>
       {resultCount !== undefined && (
-        <span className="text-xs text-muted-foreground shrink-0">
+        <span className="dk-discover-search-sort-bar__count">
           {resultCount.toLocaleString()} result{resultCount !== 1 ? 's' : ''}
         </span>
       )}

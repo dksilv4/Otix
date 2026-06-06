@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { forwardRef, useId } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './select.scss'
 
 interface DkSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
@@ -16,14 +18,14 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
     const hintId = `${selectId}-hint`
 
     return (
-      <div className="space-y-1.5">
+      <div className="dk-select">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-foreground">
+          <label htmlFor={selectId} className="dk-select__label">
             {label}
-            {required && <span className="ml-0.5 text-destructive">*</span>}
+            {required && <span className="dk-select__required">*</span>}
           </label>
         )}
-        <div className="relative">
+        <div className="dk-select__wrapper">
           <select
             ref={ref}
             id={selectId}
@@ -33,28 +35,24 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
               error ? errorId : hint ? hintId : undefined
             }
             className={cn(
-              'flex h-12 w-full appearance-none rounded-xl bg-[var(--dk-surface-glass)] px-4 pr-10 text-base backdrop-blur-md',
-              'transition-all duration-[var(--dk-duration-fast)]',
-              'hover:bg-[var(--dk-surface-glass-hover)]',
-              'focus:outline-none focus:ring-2 focus:ring-[var(--dk-ring-color)] focus:ring-offset-1',
-              error &&
-                'ring-2 ring-destructive/40 focus:ring-destructive/40',
-              props.disabled && 'opacity-40 cursor-not-allowed',
+              'dk-select__field',
+              error && 'dk-select__field--error',
+              props.disabled && 'dk-select__field--disabled',
               className,
             )}
             {...props}
           >
             {children}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <ChevronDown className="dk-select__chevron" />
         </div>
         {hint && !error && (
-          <p id={hintId} className="text-xs text-muted-foreground">
+          <p id={hintId} className="dk-select__hint">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="text-xs text-destructive">
+          <p id={errorId} role="alert" className="dk-select__error">
             {error}
           </p>
         )}

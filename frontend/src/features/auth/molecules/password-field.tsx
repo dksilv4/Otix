@@ -1,6 +1,8 @@
+// TODO: Review this file
 import { useState, useId } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import './password-field.scss'
 
 interface PasswordFieldProps {
   id?: string
@@ -33,13 +35,13 @@ export function PasswordField({
   const [visible, setVisible] = useState(false)
 
   return (
-    <div className={cn('space-y-1.5', className)}>
+    <div className={cn('dk-auth-password-field', className)}>
       {label && (
-        <label htmlFor={id} className="text-sm font-medium">
+        <label htmlFor={id} className="dk-auth-password-field__label">
           {label}
         </label>
       )}
-      <div className="relative">
+      <div className="dk-auth-password-field__input-wrap">
         <input
           id={id}
           name={name}
@@ -52,24 +54,21 @@ export function PasswordField({
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           className={cn(
-            'flex min-h-[52px] w-full rounded-xl bg-[var(--dk-surface-glass)] px-5 pr-12 text-base transition-all duration-200 placeholder:text-white/30',
-            'focus:outline-none focus:ring-1 focus:ring-white/25 focus:bg-[var(--dk-surface-glass-hover)]',
-            'hover:bg-[var(--dk-surface-glass-hover)]',
-            'shadow-[inset_0_1px_1px_rgba(0,0,0,0.2)]',
-            error && 'ring-1 ring-red-400/40 focus:ring-red-400/50',
+            'dk-auth-password-field__input',
+            error && 'dk-auth-password-field__input--error',
           )}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-white/25 hover:text-white/60 transition-colors"
+          className="dk-auth-password-field__toggle"
           aria-label={visible ? 'Hide password' : 'Show password'}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
       {error && (
-        <p id={errorId} role="alert" className="text-xs text-red-300">
+        <p id={errorId} role="alert" className="dk-auth-password-field__error">
           {error}
         </p>
       )}

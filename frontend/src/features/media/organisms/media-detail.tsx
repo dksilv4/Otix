@@ -42,6 +42,8 @@ import { useExperiment } from '@/features/experiments/experiments-provider'
 import { getScannedGames, setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
 
+import './media-detail.scss'
+
 
 // ── Skeleton ──
 
@@ -49,7 +51,7 @@ function SectionSkeleton({ height = 200 }: { height?: number }) {
   return (
     <div
       aria-hidden="true"
-      className="rounded-2xl border border-white/[0.06]"
+      className="dk-media-detail__section-skeleton"
       style={{
         minHeight: height,
         background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
@@ -60,43 +62,43 @@ function SectionSkeleton({ height = 200 }: { height?: number }) {
 
 function DetailSkeleton() {
   return (
-    <div className="space-y-12">
+    <div className="dk-media-detail__skeleton">
       {/* Hero skeleton — matches MediaHero layout */}
-      <div className="relative flex min-h-[65vh] items-end overflow-hidden rounded-3xl border border-white/[0.06] lg:min-h-[75vh]">
+      <div className="dk-media-detail__skeleton-hero">
         {/* Backdrop placeholder with subtle shimmer */}
-        <div className="pointer-events-none absolute inset-0 z-0">
-          <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.06]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />
+        <div className="dk-media-detail__skeleton-hero-bg">
+          <div className="dk-media-detail__skeleton-hero-shimmer" />
+          <div className="dk-media-detail__skeleton-hero-overlay" />
         </div>
 
         {/* Content */}
-        <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12">
+        <div className="dk-media-detail__skeleton-hero-content">
+          <div className="dk-media-detail__skeleton-hero-flex">
             {/* Poster */}
-            <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">
+            <div className="dk-media-detail__skeleton-hero-poster">
               <Skeleton className="aspect-[2/3] w-full rounded-2xl" />
             </div>
 
             {/* Info */}
-            <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+            <div className="dk-media-detail__skeleton-hero-info">
               {/* Logo / title */}
               <Skeleton className="mb-2 h-12 w-56 sm:h-14 lg:h-16" />
               {/* Tagline */}
               <Skeleton className="h-4 w-72 sm:h-5 sm:w-80" />
               {/* Badges row */}
-              <div className="flex gap-2">
+              <div className="dk-media-detail__skeleton-hero-badges">
                 <Skeleton className="h-7 w-16 rounded-full" />
                 <Skeleton className="h-7 w-14 rounded-full" />
                 <Skeleton className="h-7 w-20 rounded-full" />
               </div>
               {/* Overview */}
-              <div className="mt-1 w-full max-w-2xl space-y-2">
+              <div className="dk-media-detail__skeleton-hero-overview">
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-11/12" />
                 <Skeleton className="h-3 w-5/6" />
               </div>
               {/* Genre badges */}
-              <div className="flex gap-1.5">
+              <div className="dk-media-detail__skeleton-hero-genres">
                 <Skeleton className="h-5 w-16 rounded-full" />
                 <Skeleton className="h-5 w-14 rounded-full" />
                 <Skeleton className="h-5 w-18 rounded-full" />
@@ -108,8 +110,8 @@ function DetailSkeleton() {
       </div>
 
       {/* Action buttons skeleton */}
-      <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="dk-media-detail__skeleton-actions">
+        <div className="dk-media-detail__skeleton-actions-grid">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-12 rounded-xl" />
           ))}
@@ -117,11 +119,11 @@ function DetailSkeleton() {
       </div>
 
       {/* Cast/crew skeleton */}
-      <div className="mx-auto lg:max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="dk-media-detail__skeleton-cast">
         <Skeleton className="mb-4 h-5 w-32" />
-        <div className="flex gap-4 overflow-hidden">
+        <div className="dk-media-detail__skeleton-cast-scroll">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="w-24 shrink-0 text-center">
+            <div key={i} className="dk-media-detail__skeleton-cast-item">
               <Skeleton className="mx-auto h-20 w-20 rounded-full" />
               <Skeleton className="mx-auto mt-2 h-3 w-16" />
               <Skeleton className="mx-auto mt-1 h-3 w-12" />
@@ -146,9 +148,9 @@ function ErrorState({ mediaType }: { mediaType: string }) {
           : 'Game'
 
   return (
-    <div className="flex min-h-[50vh] items-center justify-center px-4">
-      <div className="max-w-sm space-y-3 text-center">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+    <div className="dk-media-detail__error">
+      <div className="dk-media-detail__error-card">
+        <div className="dk-media-detail__error-icon">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-destructive"
@@ -164,11 +166,11 @@ function ErrorState({ mediaType }: { mediaType: string }) {
             />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold">{typeLabel} Not Found</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="dk-media-detail__error-title">{typeLabel} Not Found</h3>
+        <p className="dk-media-detail__error-desc">
           Could not load details for this {typeLabel.toLowerCase()}. It may have been removed or the ID is incorrect.
         </p>
-        <a href="/" className="inline-block text-sm text-primary hover:underline">
+        <a href="/" className="dk-media-detail__error-link">
           Go back home
         </a>
       </div>
@@ -299,7 +301,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     return () => clearTimeout(timer);
   }, [hvDialogOpen, hvCountdown]);
 
-  if (!window.electronAPI || !user?.isAdmin) return null;
+  if (!window.desktopAPI || !user?.isAdmin) return null;
 
   const matchingScannedGame = scannedGames.find(g => g.otixMediaId === mediaId) || localGame;
   const isInstalled = matchingScannedGame && matchingScannedGame.platform !== 'iso';
@@ -358,22 +360,22 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   if (isInstalled && matchingScannedGame) {
     const handlePlay = async () => {
       try {
-        await window.electronAPI!.launchGame(matchingScannedGame);
+        await window.desktopAPI!.launchGame(matchingScannedGame);
       } catch (err) {
         console.error('Failed to launch game:', err);
       }
     };
 
     return (
-      <div className="flex items-center gap-3">
+      <div className="dk-media-detail__dl-row">
         <button
           onClick={handlePlay}
-          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white px-5 py-2.5 font-semibold text-sm shadow-lg shadow-emerald-500/25 transition-all duration-200 active:scale-95"
+          className="dk-media-detail__dl-btn-play"
         >
           <Play className="h-4 w-4 fill-current" />
           Play
         </button>
-        <p className="text-xs text-muted-foreground">
+        <p className="dk-media-detail__dl-meta">
           {matchingScannedGame.platform === 'steam' ? 'Launch via Steam' : 'Installed locally'}
         </p>
       </div>
@@ -387,33 +389,33 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     const pct = existingDownload.percentage ?? 0;
 
     return (
-      <div className="space-y-2">
-        <div className={cn('flex items-center gap-2 text-xs font-medium', cfg.color)}>
-          <Icon className={cn('h-4 w-4', (existingDownload.status === 'downloading' || existingDownload.status === 'processing') && 'animate-spin')} />
+      <div className="dk-media-detail__dl-status-group">
+        <div className={cn('dk-media-detail__dl-status-text', cfg.color)}>
+          <Icon className={cn('dk-media-detail__dl-status-icon', (existingDownload.status === 'downloading' || existingDownload.status === 'processing') && 'animate-spin')} />
           <span>{cfg.label}</span>
           {existingDownload.nzbName && (
-            <span className="text-muted-foreground truncate max-w-[200px]">
+            <span className="dk-media-detail__dl-status-label">
               — {existingDownload.nzbName}
             </span>
           )}
-          <span className="tabular-nums ml-1">{pct}%</span>
+          <span className="dk-media-detail__dl-status-pct">{pct}%</span>
         </div>
-        <div className="h-1.5 w-full max-w-xs rounded-full bg-[var(--dk-surface-raised)] overflow-hidden">
+        <div className="dk-media-detail__dl-progress">
           <div
-            className="h-full rounded-full bg-blue-500 transition-all duration-700"
+            className="dk-media-detail__dl-progress-bar"
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="dk-media-detail__dl-actions">
           <button
             onClick={pollQueue}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-media-detail__dl-btn-refresh"
           >
             Refresh status
           </button>
           <button
             onClick={() => cancelDownload(existingDownload.id)}
-            className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            className="dk-media-detail__dl-btn-cancel"
           >
             Cancel
           </button>
@@ -426,20 +428,20 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   if (isIsoAvailable) {
     return (
       <>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-green-400 font-medium">
+        <div className="dk-media-detail__dl-iso-group">
+          <div className="dk-media-detail__dl-iso-status">
             <CheckCircle2 className="h-4 w-4" />
             <span>ISO Available</span>
             {isoPath && (
-              <span className="text-muted-foreground truncate max-w-[250px] text-[10px]">
+              <span className="dk-media-detail__dl-iso-path">
                 {isoPath}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="dk-media-detail__dl-iso-actions">
             <button
               onClick={() => setIsInstallerOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 font-semibold text-sm shadow-lg shadow-green-600/25 transition-all duration-200 active:scale-95"
+              className="dk-media-detail__dl-btn-install"
             >
               <Disc className="h-4 w-4" />
               Install
@@ -449,7 +451,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
                 onClick={async () => {
                   setPostProcessing(true);
                   try {
-                    await window.electronAPI!.downloadsPostProcess(
+                    await window.desktopAPI!.downloadsPostProcess(
                       existingDownload.id,
                       dlConfig.id,
                       dlConfig.sabnzbdCompletePath ?? undefined,
@@ -461,7 +463,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
                   }
                 }}
                 disabled={postProcessing}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass)] px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50"
+                className="dk-media-detail__dl-btn-move"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 {postProcessing ? 'Moving...' : 'Move to library'}
@@ -471,7 +473,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
           {downloadsEnabled && (
             <button
               onClick={handleDownload}
-              className="block text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="dk-media-detail__dl-btn-redownload"
             >
               Re-download
             </button>
@@ -491,17 +493,17 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   // 4. Failed download
   if (downloadsEnabled && existingDownload?.status === 'failed') {
     return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-red-400 font-medium">
+      <div className="dk-media-detail__dl-failed-group">
+        <div className="dk-media-detail__dl-failed-status">
           <XCircle className="h-4 w-4" />
           <span>Download failed</span>
         </div>
         {existingDownload.errorMessage && (
-          <p className="text-xs text-red-400">{existingDownload.errorMessage}</p>
+          <p className="dk-media-detail__dl-failed-msg">{existingDownload.errorMessage}</p>
         )}
         <button
           onClick={handleDownload}
-          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          className="dk-media-detail__dl-btn-retry"
         >
           Try again
         </button>
@@ -512,11 +514,11 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   // 5. Download Available
   if (downloadsEnabled) {
     return (
-      <div className="flex items-center gap-3">
+      <div className="dk-media-detail__dl-dl-row">
         <button
           onClick={handleDownload}
           disabled={searching}
-          className="inline-flex items-center gap-2 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white px-5 py-2.5 font-semibold text-sm shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95"
+          className="dk-media-detail__dl-btn-download"
         >
           {searching ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -526,7 +528,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
           {searching ? 'Searching...' : 'Download ISO'}
         </button>
         {errorMsg && (
-          <p className="text-xs text-red-400">{errorMsg}</p>
+          <p className="dk-media-detail__dl-error">{errorMsg}</p>
         )}
       </div>
     );
@@ -540,24 +542,24 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
         open={hvDialogOpen}
         onOpenChange={(open) => { if (!open) handleHvDismiss(); }}
       >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="dk-media-detail__dl-hv-dialog">
+          <p className="dk-media-detail__dl-hv-text">
             Only hypervisor-tagged releases found for <strong>{hvPending?.gameName ?? 'this game'}</strong>.
             These often require VM setup and may not run natively.
           </p>
-          <p className="text-xs text-muted-foreground">
-            Auto-dismissing in <span className="font-mono font-bold text-foreground">{hvCountdown}</span>s
+          <p className="dk-media-detail__dl-hv-countdown">
+            Auto-dismissing in <span className="dk-media-detail__dl-hv-countdown-num">{hvCountdown}</span>s
           </p>
-          <div className="flex gap-3 pt-2">
+          <div className="dk-media-detail__dl-hv-actions">
             <button
               onClick={handleHvConfirm}
-              className="flex-1 rounded-xl bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 text-sm font-semibold transition-all active:scale-95"
+              className="dk-media-detail__dl-hv-btn-confirm"
             >
               Download HV version
             </button>
             <button
               onClick={handleHvDismiss}
-              className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass)] px-4 py-2 text-sm font-medium transition-all"
+              className="dk-media-detail__dl-hv-btn-skip"
             >
               Skip
             </button>
@@ -648,7 +650,7 @@ export function MediaDetail() {
     null
 
   return (
-    <div className="animate-fade-in space-y-12 pb-16">
+    <div className="dk-media-detail">
       {/* ── SEO ── */}
       <Helmet>
         <title>{`${titleWithYear} - Otix`}</title>
@@ -698,7 +700,7 @@ export function MediaDetail() {
       </div>
 
       {/* ── Content sections ── */}
-      <div className="mx-auto lg:max-w-7xl space-y-12 px-4 sm:px-6 lg:px-8">
+      <div className="dk-media-detail__content">
         {/* Interactions — Like, Watchlist, Watched, Played */}
         <InteractionSection
           mediaId={detail.id}
@@ -727,7 +729,7 @@ export function MediaDetail() {
 
         {/* Unified game action button (Play / Install / Download) */}
         {detail.mediaType === 'game' && (
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="dk-media-detail__game-actions">
             <DownloadGameButton mediaId={detail.id} mediaTitle={detail.title} />
           </div>
         )}
@@ -774,7 +776,7 @@ export function MediaDetail() {
           />
         )}
         {detail.mediaType === 'music' && !detail.album && (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="dk-media-detail__sync-msg">
             Album details are still syncing for this release.
           </p>
         )}
@@ -807,9 +809,9 @@ export function MediaDetail() {
 
         {/* Companies */}
         {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Companies</h2>
-            <div className="flex flex-wrap gap-1.5">
+          <section className="dk-media-detail__companies">
+            <h2 className="dk-media-detail__companies-title">Companies</h2>
+            <div className="dk-media-detail__companies-list">
               {detail.involvedCompanies.map((ic) => {
                 const roles: string[] = []
                 if (ic.production) roles.push('Production')
@@ -823,10 +825,10 @@ export function MediaDetail() {
                     to="/company/$companyId"
                     params={{ companyId: ic.company.id }}
                   >
-                    <Badge variant="secondary" className="gap-1.5 border-white/10 bg-white/5 hover:bg-white/10 transition-colors">
+                    <Badge variant="secondary" className="dk-media-detail__badge-company">
                       {ic.company.name}
                       {roles.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="dk-media-detail__badge-company-roles">
                           {roles.join('/')}
                         </span>
                       )}
@@ -871,8 +873,8 @@ export function MediaDetail() {
         </DeferredSection>
 
         {/* Metadata footer */}
-        <footer className="border-t border-border pt-6 text-xs text-muted-foreground">
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <footer className="dk-media-detail__footer">
+          <div className="dk-media-detail__footer-meta">
             <span>Completeness: {Math.round(detail.completenessScore * 100)}%</span>
             <span aria-hidden="true">·</span>
             <span>Updated {new Date(detail.updatedAt).toLocaleDateString()}</span>

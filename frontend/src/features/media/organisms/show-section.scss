@@ -1,0 +1,447 @@
+@reference "../../../_tailwind-ref.css";
+
+// ── ShowSection ─────────────────────────────────────────────────
+
+.dk-media-show-section {
+  @apply space-y-6;
+
+  &__title {
+    @apply text-lg font-semibold;
+  }
+
+  // ── Empty state ──
+
+  &__empty {
+    @apply rounded-2xl p-8 text-center;
+    background: var(--dk-surface-base);
+  }
+
+  &__empty-text {
+    @apply text-sm;
+    color: hsl(var(--muted-foreground));
+  }
+
+  // ── Season Tabs ──
+
+  &__tabs {
+    @apply relative;
+  }
+
+  &__tabs-btn {
+    @apply absolute top-1/2 z-10 flex w-10 h-10 items-center justify-center rounded-full;
+    background: var(--dk-surface-glass);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--dk-shadow-glass);
+    color: hsl(var(--foreground) / 0.7);
+    transform: translateY(-50%);
+    transition: opacity var(--dk-duration-fast) ease;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+
+    &--left {
+      @apply left-0;
+    }
+
+    &--right {
+      @apply right-0;
+    }
+
+    &--visible {
+      @apply opacity-100;
+    }
+
+    &--hidden {
+      @apply opacity-0 pointer-events-none;
+    }
+  }
+
+  &__tabs-scroll {
+    @apply flex gap-2 overflow-x-auto px-6;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__tab {
+    @apply shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all;
+    background: var(--dk-surface-glass);
+    color: hsl(var(--muted-foreground));
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+
+    &:hover {
+      color: hsl(var(--foreground));
+      background: var(--dk-surface-glass-hover);
+    }
+
+    &--active {
+      background: hsl(var(--foreground));
+      color: hsl(var(--background));
+
+      &:hover {
+        background: hsl(var(--foreground));
+        color: hsl(var(--background));
+      }
+    }
+  }
+
+  // ── Season Content ──
+
+  &__season {
+    @apply space-y-5;
+  }
+
+  &__season-header {
+    @apply flex flex-col gap-4;
+
+    @media (min-width: 640px) {
+      @apply flex-row gap-6;
+    }
+  }
+
+  &__poster {
+    @apply shrink-0 w-32;
+
+    @media (min-width: 640px) {
+      @apply w-40;
+    }
+  }
+
+  &__poster-frame {
+    @apply overflow-hidden rounded-xl;
+    aspect-ratio: 2 / 3;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+
+  &__season-info {
+    @apply flex flex-col gap-2 min-w-0 flex-1;
+  }
+
+  &__season-name {
+    @apply text-base font-semibold;
+  }
+
+  &__season-meta {
+    @apply flex items-center gap-2 text-xs;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__season-desc {
+    @apply text-sm leading-relaxed;
+    color: hsl(var(--muted-foreground) / 0.8);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &__mark-btn {
+    @apply self-start text-xs transition-colors;
+    color: hsl(var(--muted-foreground));
+
+    &:hover {
+      color: #34d399; // emerald-400
+    }
+
+    &--unwatch:hover {
+      color: #f87171; // red-400
+    }
+  }
+
+  // ── Episode Heatmap ──
+
+  &__heatmap {
+    @apply flex items-center gap-0.5 flex-wrap;
+  }
+
+  &__heatmap-square {
+    @apply transition-colors;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 3px;
+
+    &--rated {
+      cursor: help;
+
+      &:hover {
+        box-shadow: 0 0 0 1px rgb(255 255 255 / 0.3);
+      }
+    }
+  }
+
+  // ── Progress Bar ──
+
+  &__progress {
+    @apply flex items-center gap-2;
+  }
+
+  &__progress-track {
+    @apply h-1 flex-1 rounded-full overflow-hidden;
+    background: rgb(255 255 255 / 0.06);
+  }
+
+  &__progress-fill {
+    @apply h-full rounded-full;
+    background: #10b981; // emerald-500
+    transition: width 500ms ease-out;
+  }
+
+  &__progress-text {
+    @apply text-xs shrink-0;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ── Episodes ──
+
+  &__episodes {
+    @apply relative;
+  }
+
+  &__episodes-btn {
+    @apply absolute top-1/2 z-10 flex w-10 h-10 items-center justify-center rounded-full;
+    background: var(--dk-surface-glass);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--dk-shadow-glass);
+    color: hsl(var(--foreground) / 0.7);
+    transform: translateY(-50%);
+    transition: opacity var(--dk-duration-fast) ease;
+
+    &:hover {
+      color: hsl(var(--foreground));
+    }
+
+    &--left {
+      @apply left-0;
+    }
+
+    &--right {
+      @apply right-0;
+    }
+
+    &--visible {
+      @apply opacity-100;
+    }
+
+    &--hidden {
+      @apply opacity-0 pointer-events-none;
+    }
+  }
+
+  &__episodes-scroll {
+    @apply flex gap-3 overflow-x-auto px-6 pb-1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__episode-card {
+    @apply shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all;
+    background: var(--dk-surface-glass);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+
+    &:hover {
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    }
+
+    &--active {
+      box-shadow: inset 0 0 0 2px hsl(var(--foreground) / 0.2);
+    }
+  }
+
+  &__episode-thumb {
+    @apply relative;
+    aspect-ratio: 16 / 9;
+    background: var(--dk-surface-glass);
+  }
+
+  &__episode-badge {
+    @apply absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-0.5 font-semibold;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__episode-rating {
+    @apply absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-semibold;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: #fbbf24; // amber-400
+  }
+
+  &__episode-runtime {
+    @apply absolute bottom-1.5 right-1.5 rounded-md px-1.5 py-0.5 font-medium;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__watch-toggle {
+    @apply absolute top-1.5 left-1.5 rounded-full p-0.5 transition-colors cursor-pointer;
+    background: hsl(var(--background) / 0.5);
+    backdrop-filter: blur(4px);
+    color: hsl(var(--muted-foreground) / 0.5);
+
+    &:hover {
+      color: hsl(var(--muted-foreground));
+    }
+
+    &--watched {
+      background: rgb(16 185 129 / 0.2); // emerald-500/20
+      color: #34d399; // emerald-400
+    }
+  }
+
+  &__episode-info {
+    @apply px-3 py-2;
+  }
+
+  &__episode-title {
+    @apply text-xs font-medium truncate;
+  }
+
+  &__episode-date {
+    color: hsl(var(--muted-foreground));
+    font-size: 10px;
+    margin-top: 0.125rem;
+  }
+
+  &__no-episodes {
+    @apply rounded-xl px-4 py-6 text-center;
+    background: var(--dk-surface-glass);
+  }
+
+  &__no-episodes-text {
+    @apply text-xs;
+    color: hsl(var(--muted-foreground));
+  }
+
+  // ── Dialog ──
+
+  &__dialog-actions {
+    @apply flex justify-end gap-3;
+    margin-top: 1.5rem;
+  }
+
+  &__dialog-btn {
+    @apply px-4 py-2 rounded-xl text-sm font-medium transition-colors;
+
+    &--cancel {
+      background: var(--dk-surface-glass);
+      color: hsl(var(--foreground));
+
+      &:hover {
+        background: var(--dk-surface-glass-hover);
+      }
+    }
+
+    &--confirm {
+      background: #059669; // emerald-600
+      color: white;
+
+      &:hover {
+        background: #10b981; // emerald-500
+      }
+    }
+  }
+}
+
+// ── EpisodeModal ────────────────────────────────────────────────
+
+.dk-media-episode-modal {
+  &__backdrop {
+    @apply fixed inset-0;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+  }
+
+  &__container {
+    @apply fixed inset-0 flex items-center justify-center p-4;
+
+    @media (min-width: 640px) {
+      @apply p-8;
+    }
+  }
+
+  &__card {
+    @apply relative w-full max-w-lg overflow-y-auto rounded-3xl;
+    max-height: 85vh;
+    background: var(--dk-surface-base);
+    box-shadow: var(--dk-shadow-glass);
+  }
+
+  &__close {
+    @apply absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full transition-colors;
+    background: var(--dk-surface-glass);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+
+    &:hover {
+      background: var(--dk-surface-glass-hover);
+    }
+  }
+
+  &__thumb {
+    @apply relative rounded-t-3xl overflow-hidden;
+    aspect-ratio: 16 / 9;
+    background: var(--dk-surface-glass);
+  }
+
+  &__badge {
+    @apply absolute bottom-2 left-2 rounded-md px-2 py-1 font-semibold;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__runtime-badge {
+    @apply absolute bottom-2 right-2 rounded-md px-2 py-1 font-medium;
+    background: hsl(var(--background) / 0.8);
+    backdrop-filter: blur(4px);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__content {
+    @apply p-5 space-y-4;
+
+    @media (min-width: 640px) {
+      @apply p-6;
+    }
+  }
+
+  &__episode-label {
+    @apply font-semibold uppercase;
+    font-size: 11px;
+    color: hsl(var(--muted-foreground));
+    letter-spacing: 0.05em;
+  }
+
+  &__title {
+    @apply text-lg font-semibold;
+    margin-top: 0.25rem;
+  }
+
+  &__meta {
+    @apply flex items-center gap-3 text-xs;
+    color: hsl(var(--muted-foreground));
+  }
+
+  &__overview {
+    @apply text-sm leading-relaxed;
+    color: hsl(var(--muted-foreground) / 0.8);
+  }
+}

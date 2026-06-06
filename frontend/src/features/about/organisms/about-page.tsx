@@ -6,6 +6,7 @@ import { ChevronDown, ArrowRight, Search, Star, List, Trophy, Link, X } from "lu
 import { cn } from "@/lib/utils"
 import { Logo } from "@/features/dk-ui/atoms/logo"
 import { MEDIA_TYPES as MEDIA_TYPE_KEYS, MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR_TINTED } from "@/constants/media"
+import "./about-page.scss"
 
 // ── Data ──
 
@@ -96,7 +97,7 @@ function highlight(text: string, query: string): React.ReactNode {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-primary/20 text-foreground rounded-sm px-0.5">
+      <mark className="dk-about-highlight">
         {text.slice(idx, idx + q.length)}
       </mark>
       {text.slice(idx + q.length)}
@@ -119,23 +120,23 @@ function FaqItem({ q, a, query }: FaqDef & { query: string }) {
   if (!isVisible) return null
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-xs)] overflow-hidden">
+    <div className="dk-about-faq__item">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-3.5 text-left"
+        className="dk-about-faq__button"
       >
-        <span className="text-sm font-medium pr-4">{highlight(q, query)}</span>
+        <span className="dk-about-faq__question">{highlight(q, query)}</span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
+            "dk-about-faq__chevron",
+            open && "dk-about-faq__chevron--open",
           )}
         />
       </button>
       {open && (
-        <div className="px-5 pb-4 pt-0">
-          <p className="text-sm text-muted-foreground leading-relaxed">{highlight(a, query)}</p>
+        <div className="dk-about-faq__answer">
+          <p className="dk-about-faq__answer-text">{highlight(a, query)}</p>
         </div>
       )}
     </div>
@@ -171,7 +172,7 @@ export function AboutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-16">
+    <div className="dk-about-page">
       <Helmet>
         <title>About - Otix</title>
         <meta
@@ -188,18 +189,18 @@ export function AboutPage() {
       </Helmet>
 
       {/* ── Hero ── */}
-      <section className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)] ring-1 ring-white/[0.04] px-10 py-20 text-center sm:px-14 sm:py-24">
+      <section className="dk-about-hero">
         <div>
-          <Logo className="h-9 mx-auto mb-6" />
+          <Logo className="dk-about-hero__logo" />
 
-          <h1 className="text-3xl font-bold tracking-[-0.02em] sm:text-4xl">About Otix</h1>
-          <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-[540px] mx-auto">
+          <h1 className="dk-about-hero__heading">About Otix</h1>
+          <p className="dk-about-hero__desc">
             Your personal media command center. Track, rate, review, and discover across movies,
             shows, games, and music — all in one place, for free.
           </p>
 
           {/* Stats */}
-          <div className="mt-8 flex items-center justify-center gap-4 sm:gap-6">
+          <div className="dk-about-hero__stats">
             <Stat value="4" label="MEDIA TYPES" />
             <Stat value="∞" label="100% FREE" />
             <Stat value="100+" label="ACHIEVEMENTS" />
@@ -208,35 +209,22 @@ export function AboutPage() {
       </section>
 
       {/* ── Slim Search ── */}
-      <div className="relative z-20 -mt-6 mx-auto max-w-[480px]">
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-full p-1.5",
-            "bg-[var(--dk-surface-overlay)]",
-            "shadow-[var(--dk-shadow-glass)]",
-            "ring-1 ring-white/[0.06]",
-            "transition-all duration-300",
-            "focus-within:ring-primary/20 focus-within:scale-[1.005]",
-          )}
-        >
-          <div className="flex items-center gap-2 pl-2 flex-1 min-w-0">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+      <div className="dk-about-search">
+        <div className="dk-about-search__bar">
+          <div className="dk-about-search__input-wrap">
+            <Search className="dk-about-search__icon" />
             <input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search about content..."
-              className={cn(
-                "flex-1 min-w-0 h-9",
-                "bg-transparent border-0 outline-none shadow-none ring-0 focus:ring-0 focus:ring-offset-0",
-                "text-sm placeholder:text-muted-foreground/40 text-foreground",
-              )}
+              className="dk-about-search__input"
             />
           </div>
           {searchValue ? (
             <button
               onClick={handleClear}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06] transition-all"
+              className={cn("dk-about-search__btn", "dk-about-search__btn--clear")}
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
@@ -244,7 +232,7 @@ export function AboutPage() {
           ) : (
             <button
               disabled
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground/20"
+              className={cn("dk-about-search__btn", "dk-about-search__btn--disabled")}
               aria-label="Search"
             >
               <ArrowRight className="h-4 w-4" />
@@ -255,36 +243,25 @@ export function AboutPage() {
 
       {/* ── Results count ── */}
       {query && !hasResults && (
-        <p className="mt-8 text-sm text-muted-foreground text-center">
+        <p className="dk-about-no-results">
           No results found for &ldquo;{query}&rdquo;. Try a different term.
         </p>
       )}
 
       {/* ── What is Otix? ── */}
-      <section className={cn("mt-12", !hasResults && "hidden")}>
-        <h2
-          className="text-xl font-bold tracking-[-0.02em]"
-          style={{
-            background: "linear-gradient(135deg, #e94560, #ff6b6b)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
+      <section className={cn("dk-about-section", !hasResults && "dk-about-section--hidden")}>
+        <h2 className="dk-about-section__title">
           What is Otix?
         </h2>
 
         {/* Media type pills */}
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="dk-about-media-pills">
           {MEDIA_TYPE_PILLS.filter((m) => matchesQuery(m.label, query)).map((m) => {
             const Icon = m.icon
             return (
               <span
                 key={m.label}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-                  m.color,
-                )}
+                className={cn("dk-about-media-pill", m.color)}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {m.label}
@@ -293,52 +270,52 @@ export function AboutPage() {
           })}
         </div>
 
-        <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+        <p className="dk-about-text">
           Otix is a media tracking and discovery platform.{" "}
-          <span className="font-medium text-foreground/70">
+          <span className="dk-about-text--highlight">
             Track movies, shows, games, and music
           </span>{" "}
           in one place — rate what you've experienced, write reviews, build curated lists, and earn
           XP as you go.
         </p>
-        <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+        <p className="dk-about-text">
           Connect your accounts from{" "}
-          <span className="font-medium text-foreground/70">
+          <span className="dk-about-text--highlight">
             Steam, Plex, Spotify, YouTube, TMDb, and Google
           </span>{" "}
           to import your libraries, sync your history, and share what you're playing or listening to.
         </p>
 
         {/* Feature grid */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="dk-about-features">
           {FEATURES.filter((f) => matchesQuery(`${f.title} ${f.desc}`, query)).map((f) => {
             const Icon = f.icon
             return (
               <div
                 key={f.title}
-                className="flex items-start gap-3 rounded-xl bg-[var(--dk-surface-glass)] px-4 py-3.5"
+                className="dk-about-feature"
               >
                 <div
                   className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                    "dk-about-feature__icon",
                     f.iconBg,
                     f.iconColor,
                   )}
                 >
                   <Icon className="h-4 w-4" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{highlight(f.title, query)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{highlight(f.desc, query)}</p>
+                <div className="dk-about-feature__content">
+                  <p className="dk-about-feature__title">{highlight(f.title, query)}</p>
+                  <p className="dk-about-feature__desc">{highlight(f.desc, query)}</p>
                 </div>
               </div>
             )
           })}
         </div>
 
-        <p className="mt-5 text-sm text-muted-foreground leading-relaxed">
+        <p className="dk-about-text">
           Otix is built for people who take their media seriously —{" "}
-          <span className="font-medium text-foreground/70">
+          <span className="dk-about-text--highlight">
             not just what you watch, but what you think about it
           </span>
           . Discover new favorites through the community, follow people with similar taste, and find
@@ -347,19 +324,11 @@ export function AboutPage() {
       </section>
 
       {/* ── Quick Answers ── */}
-      <section className={cn("mt-12", !hasResults && "hidden")}>
-        <h2
-          className="text-xl font-bold tracking-[-0.02em]"
-          style={{
-            background: "linear-gradient(135deg, #e94560, #ff6b6b)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
+      <section className={cn("dk-about-section", !hasResults && "dk-about-section--hidden")}>
+        <h2 className="dk-about-section__title">
           Quick Answers
         </h2>
-        <div className="mt-4 space-y-2">
+        <div className="dk-about-faq">
           {FAQS.map((faq) => (
             <FaqItem key={faq.q} q={faq.q} a={faq.a} query={query} />
           ))}
@@ -367,14 +336,14 @@ export function AboutPage() {
       </section>
 
       {/* ── Explore more ── */}
-      <section className={cn("mt-10 grid grid-cols-1 sm:grid-cols-2 gap-3", !hasResults && "hidden")}>
+      <section className={cn("dk-about-explore", !hasResults && "dk-about-section--hidden")}>
         {ABOUT_SUBPAGES.filter((p) => matchesQuery(`${p.title} ${p.desc}`, query)).map((p) => (
-          <div key={p.to} className="rounded-2xl bg-[var(--dk-surface-base)] p-5">
-            <p className="text-sm font-semibold mb-1">{p.title}</p>
-            <p className="text-xs text-muted-foreground mb-3">{p.desc}</p>
+          <div key={p.to} className="dk-about-explore__card">
+            <p className="dk-about-explore__card-title">{p.title}</p>
+            <p className="dk-about-explore__card-desc">{p.desc}</p>
             <button
               onClick={() => navigate({ to: p.to })}
-              className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              className="dk-about-explore__card-link"
             >
               View details →
             </button>
@@ -389,11 +358,11 @@ export function AboutPage() {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-xl bg-[var(--dk-surface-glass)] px-7 py-5 text-center min-w-[120px]">
-      <p className="text-3xl font-extrabold sm:text-4xl" style={{ color: "#e94560" }}>
+    <div className="dk-about-stat">
+      <p className="dk-about-stat__value" style={{ color: "#e94560" }}>
         {value}
       </p>
-      <p className="text-xs font-medium text-muted-foreground/60 tracking-[0.05em] mt-1">
+      <p className="dk-about-stat__label">
         {label}
       </p>
     </div>

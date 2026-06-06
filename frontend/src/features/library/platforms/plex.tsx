@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useRef, useMemo, useEffect, useState, useCallback } from "react"
 import { useInView } from "framer-motion"
 import { useNavigate, useSearch } from "@tanstack/react-router"
@@ -16,6 +17,7 @@ import { DkDropdown } from "@/features/dk-ui/atoms/dropdown"
 import { PlexIcon } from "@/features/dk-ui/atoms/plex-icon"
 import { registerPlatform } from "./registry"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import "./plex.scss"
 
 function SkeletonGrid() {
   return (
@@ -23,7 +25,7 @@ function SkeletonGrid() {
       {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
-          className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+          className="dk-library-plex__skeleton"
         />
       ))}
     </MediaGrid>
@@ -42,33 +44,32 @@ function formatDaysAgo(unixTimestamp: number): string {
 
 function PlexEmptyState({ onScan, isScanning, scanResult, scanError }: PlatformEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--dk-surface-glass)]">
-        <PlexIcon className="h-8 w-8 opacity-40" />
+    <div className="dk-library-plex__center-col">
+      <div className="dk-library-plex__empty-icon">
+        <PlexIcon className="dk-library-plex__icon--xl dk-library-plex__icon--faded" />
       </div>
-      <p className="text-lg font-semibold text-foreground">Plex library empty</p>
-      <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+      <p className="dk-library-plex__empty-title">Plex library empty</p>
+      <p className="dk-library-plex__empty-desc">
         Sync your Plex servers to see your media here.
       </p>
       <button
         onClick={onScan}
         disabled={isScanning}
         className={cn(
-          "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
-          "bg-primary text-primary-foreground hover:opacity-90 transition-opacity",
-          isScanning && "opacity-60 pointer-events-none",
+          "dk-library-plex__btn-primary",
+          isScanning && "dk-library-plex__btn-primary--disabled",
         )}
       >
-        <RefreshCw className={cn("h-4 w-4", isScanning && "animate-spin")} />
+        <RefreshCw className={cn("dk-library-plex__icon", isScanning && "dk-library-plex__icon--spinning")} />
         {isScanning ? "Syncing..." : "Sync Plex"}
       </button>
       {scanResult && (
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="dk-library-plex__result-text">
           Found {scanResult.matched} matches out of {scanResult.total} Plex items.
         </p>
       )}
       {scanError && (
-        <p className="mt-2 text-xs text-destructive">
+        <p className="dk-library-plex__error-text">
           Sync failed. Please try again.
         </p>
       )}
@@ -196,8 +197,8 @@ function PlexTabContent() {
   if (isLoading) return <SkeletonGrid />
   if (isError) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-muted-foreground">Failed to load. Please try again.</p>
+      <div className="dk-library-plex__center-wrap">
+        <p className="dk-library-plex__center-text">Failed to load. Please try again.</p>
       </div>
     )
   }
@@ -209,8 +210,8 @@ function PlexTabContent() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="dk-library-plex__top-bar">
+        <div className="dk-library-plex__filters">
           <DkDropdown
             variant="filter"
             label="Type"
@@ -235,39 +236,39 @@ function PlexTabContent() {
             value={sortBy}
             onChange={handleSortChange}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="dk-library-plex__status-text">
             {status?.lastScannedAt
               ? `Last synced ${formatDaysAgo(Math.floor(new Date(status.lastScannedAt).getTime() / 1000))}`
               : status ? `${status.itemCount} items in library` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="dk-library-plex__sync-area">
           {syncProgress && (
-            <span className="text-xs text-primary truncate max-w-[200px]">{syncProgress.phase}</span>
+            <span className="dk-library-plex__sync-phase">{syncProgress.phase}</span>
           )}
           <button
             onClick={handleScan}
             disabled={isScanning}
             className={cn(
-              "inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors",
-              isScanning && "opacity-60 pointer-events-none",
+              "dk-library-plex__btn-ghost",
+              isScanning && "dk-library-plex__btn-ghost--disabled",
             )}
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", isScanning && "animate-spin")} />
+            <RefreshCw className={cn("dk-library-plex__icon--sm", isScanning && "dk-library-plex__icon--spinning")} />
             Resync
           </button>
         </div>
       </div>
 
       {syncProgress && syncProgress.itemsTotal !== undefined && syncProgress.itemsTotal > 0 && (
-        <div className="mb-4 space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="dk-library-plex__progress-wrap">
+          <div className="dk-library-plex__progress-info">
             <span>{syncProgress.itemsProcessed ?? 0} / {syncProgress.itemsTotal} items</span>
             <span>{syncProgress.itemsProcessed !== undefined && syncProgress.itemsTotal ? `${Math.round((syncProgress.itemsProcessed / syncProgress.itemsTotal) * 100)}%` : ""}</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/30">
+          <div className="dk-library-plex__progress-bar-bg">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
+              className="dk-library-plex__progress-bar-fill"
               style={{ width: `${syncProgress.itemsProcessed !== undefined && syncProgress.itemsTotal ? (syncProgress.itemsProcessed / syncProgress.itemsTotal) * 100 : 0}%` }}
             />
           </div>
@@ -275,9 +276,9 @@ function PlexTabContent() {
       )}
 
       {items.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <p className="text-lg font-semibold text-foreground">No results found</p>
-          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+        <div className="dk-library-plex__center-col">
+          <p className="dk-library-plex__empty-title">No results found</p>
+          <p className="dk-library-plex__empty-desc">
             No items match your current filters.
           </p>
         </div>
@@ -285,7 +286,7 @@ function PlexTabContent() {
 
       <MediaGrid>
         {items.map((item) => (
-          <div key={item.id} className="relative">
+          <div key={item.id} className="dk-library-plex__media-item">
             <MediaCard
               id={item.id}
               mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
@@ -297,12 +298,12 @@ function PlexTabContent() {
               isAdult={item.isAdult}
             />
             {item.mediaType === "music" && item.albumArtistName && (
-              <p className="mt-1 text-[11px] text-muted-foreground leading-tight truncate">
+              <p className="dk-library-plex__artist-name">
                 {item.albumArtistName}
               </p>
             )}
             {item.mediaType === "music" && item.albumTrackCount != null && item.albumTrackCount > 0 && (
-              <p className="text-[10px] text-muted-foreground/60 leading-tight">
+              <p className="dk-library-plex__track-count">
                 {item.albumTrackCount} track{item.albumTrackCount !== 1 ? "s" : ""}
               </p>
             )}
@@ -312,20 +313,20 @@ function PlexTabContent() {
               const recentLabel = isMusic ? "Recently played" : "Recently viewed"
               const lastLabel = isMusic ? "Last played" : "Last viewed"
               return (
-                <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                  <PlexIcon className="h-3 w-3 opacity-50 shrink-0" />
-                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                <div className="dk-library-plex__view-row">
+                  <PlexIcon className="dk-library-plex__view-icon" />
+                  <span className="dk-library-plex__view-count">
                     {verb} {item.plexViewCount} times
                   </span>
                   {item.plexLastViewedAt != null && (() => {
                     const ts = Math.floor(new Date(item.plexLastViewedAt).getTime() / 1000)
                     const daysAgo = Math.floor((Date.now() / 1000 - ts) / 86400)
                     if (daysAgo <= 14) {
-                      return <span className="text-[10px] text-green-500 font-medium">{recentLabel}</span>
+                      return <span className="dk-library-plex__recent-badge">{recentLabel}</span>
                     }
                     const ago = formatDaysAgo(ts)
                     if (ago) {
-                      return <span className="text-[10px] text-muted-foreground">{lastLabel} {ago}</span>
+                      return <span className="dk-library-plex__last-viewed">{lastLabel} {ago}</span>
                     }
                     return null
                   })()}
@@ -336,12 +337,12 @@ function PlexTabContent() {
         ))}
       </MediaGrid>
 
-      <div ref={loadMoreRef} className="flex justify-center py-8">
+      <div ref={loadMoreRef} className="dk-library-plex__more-wrap">
         {isFetchingNextPage && (
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="dk-library-plex__spinner" />
         )}
         {!hasNextPage && items.length > 0 && (
-          <p className="text-xs text-muted-foreground">End of list</p>
+          <p className="dk-library-plex__end-text">End of list</p>
         )}
       </div>
     </>
@@ -361,21 +362,21 @@ function PlexDashboardSection() {
   if (isLoading || items.length === 0) return null
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="dk-library-plex__section">
+      <div className="dk-library-plex__section-header">
+        <h2 className="dk-library-plex__section-title">
           Plex
         </h2>
         <button
           onClick={() => navigate({ to: "/library/$tab", params: { tab: "plex" } })}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="dk-library-plex__section-link"
         >
           View all
         </button>
       </div>
       <MediaGrid>
         {items.map((item) => (
-          <div key={item.id} className="relative">
+          <div key={item.id} className="dk-library-plex__media-item">
             <MediaCard
               id={item.id}
               mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
@@ -387,13 +388,13 @@ function PlexDashboardSection() {
               isAdult={item.isAdult}
             />
             {item.mediaType === "music" && item.albumArtistName && (
-              <p className="mt-1 text-[11px] text-muted-foreground leading-tight truncate">
+              <p className="dk-library-plex__artist-name">
                 {item.albumArtistName}
               </p>
             )}
             {item.plexViewCount != null && item.plexViewCount > 0 && (
-              <div className="mt-1.5">
-                <span className="text-[11px] text-muted-foreground tabular-nums">
+              <div className="dk-library-plex__dashboard-view">
+                <span className="dk-library-plex__view-count">
                   {item.mediaType === "music" ? "Played" : "Viewed"} {item.plexViewCount} times
                 </span>
               </div>
@@ -410,7 +411,7 @@ function PlexDashboardSection() {
 export const plexPlatform: PlatformDefinition = {
   id: "plex",
   label: "Plex",
-  icon: <PlexIcon className="h-4 w-4" />,
+  icon: <PlexIcon className="dk-library-plex__icon" />,
   requiresConnection: (user) => !!user?.plexId,
   EmptyState: (props) => <PlexEmptyState {...props} />,
   DashboardSection: PlexDashboardSection,

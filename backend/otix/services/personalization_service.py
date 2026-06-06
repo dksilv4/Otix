@@ -1,3 +1,4 @@
+# TODO: Review this file
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -577,7 +578,7 @@ class PersonalizationService:
         return [row[0] for row in result.fetchall()]
 
     def generate_sections(self, profile: PreferenceProfile, user: User | None = None) -> list:
-        from otix.api.schemas.discover import PersonalizedSection
+        from otix.schemas.discover import PersonalizedSection
 
         emphases = profile.discover_emphases
         MAX_SECTIONS = 12 if emphases else 8
@@ -812,7 +813,7 @@ class PersonalizationService:
 
     @staticmethod
     def default_sections() -> list:
-        from otix.api.schemas.discover import PersonalizedSection
+        from otix.schemas.discover import PersonalizedSection
 
         return [
             PersonalizedSection(id="trending_movies", title="Trending Movies", media_type="movie", list_type="trending"),

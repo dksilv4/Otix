@@ -1,8 +1,10 @@
+// TODO: Review this file
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { SectionHeader } from './profile'
+import './notifications.scss'
 
 const NOTIFICATION_CATEGORIES = [
   {
@@ -70,10 +72,10 @@ export function NotificationsSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="dk-settings-notifications__body">
       <div>
-        <h2 className="text-lg font-semibold tracking-[-0.01em]">Notification Preferences</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="dk-settings-notifications__title">Notification Preferences</h2>
+        <p className="dk-settings-notifications__desc">
           Choose which notifications trigger a toast popup. Notifications still appear in your inbox regardless of these settings.
         </p>
       </div>
@@ -81,16 +83,16 @@ export function NotificationsSection() {
       {NOTIFICATION_CATEGORIES.map((category) => (
         <div
           key={category.id}
-          className="rounded-2xl bg-[var(--dk-surface-base)] p-6 shadow-[var(--dk-shadow-sm)]"
+          className="dk-settings-notifications__card"
         >
           <SectionHeader title={category.label} description={category.description} />
-          <div className="space-y-4 mt-4">
+          <div className="dk-settings-notifications__card-body">
             {category.types.map(({ key, label }) => (
               <div
                 key={key}
-                className="flex items-center justify-between gap-4"
+                className="dk-settings-notifications__row"
               >
-                <span className="text-sm font-medium">{label}</span>
+                <span className="dk-settings-notifications__row-label">{label}</span>
                 <DkSwitch
                   checked={preferences[key] !== false}
                   onCheckedChange={(checked) => handleToggle(key, checked)}

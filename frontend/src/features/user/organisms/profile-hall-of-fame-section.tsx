@@ -1,3 +1,4 @@
+// TODO: Review this file
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Crown, Plus, Search, X } from 'lucide-react'
@@ -6,6 +7,8 @@ import { userQueries, useUpdateHallOfFame } from '../user-queries'
 import type { MediaItemSummary } from '@/features/media/media-queries'
 import { apiClient } from '@/lib/api-client'
 import { Skeleton } from '@ui/atoms/skeleton'
+import { cn } from '@/lib/utils'
+import './profile-hall-of-fame-section.scss'
 
 const MEDIA_TYPE_COLORS: Record<string, string> = {
   movie: '#ef4444',
@@ -43,15 +46,15 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="dk-user-hall-of-fame__header">
         <Crown className="h-4 w-4 text-amber-400" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="dk-user-hall-of-fame__title">
           {MEDIA_TYPE_LABELS[mediaType] ?? mediaType}
         </h2>
         {isOwner && hasItems && (
           <button
             onClick={() => setPickerOpen(true)}
-            className="ml-auto text-xs text-muted-foreground/50 hover:text-foreground transition-colors"
+            className="dk-user-hall-of-fame__edit-btn"
           >
             Edit
           </button>
@@ -61,30 +64,30 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
       {!hasItems && isOwner ? (
         <button
           onClick={() => setPickerOpen(true)}
-          className="w-full rounded-2xl border-2 border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)] p-8 text-center hover:border-white/[0.15] transition-colors"
+          className="dk-user-hall-of-fame__empty-state"
         >
           <Crown className="h-5 w-5 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground/50">Curate your top 5 {MEDIA_TYPE_LABELS[mediaType]?.toLowerCase() ?? mediaType}</p>
+          <p className="dk-user-hall-of-fame__empty-text">Curate your top 5 {MEDIA_TYPE_LABELS[mediaType]?.toLowerCase() ?? mediaType}</p>
         </button>
       ) : (
-        <div className="grid grid-cols-5 gap-2 sm:gap-3">
+        <div className="dk-user-hall-of-fame__grid">
           {EMPTY_SLOTS.map((_, i) => {
             const item = items[i]
             if (!item) {
               return (
                 <div
                   key={i}
-                  className="aspect-[2/3] rounded-xl border-2 border-dashed border-white/[0.05] bg-[var(--dk-surface-glass)] flex items-center justify-center"
+                  className="dk-user-hall-of-fame__slot"
                 >
                   {isOwner && i === items.length ? (
                     <button
                       onClick={() => setPickerOpen(true)}
-                      className="p-1 rounded-full hover:bg-white/[0.06] transition-colors"
+                      className="dk-user-hall-of-fame__slot-add-btn"
                     >
                       <Plus className="h-4 w-4 text-muted-foreground/30" />
                     </button>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground/15 font-medium">{i + 1}</span>
+                    <span className="dk-user-hall-of-fame__slot-index">{i + 1}</span>
                   )}
                 </div>
               )
@@ -95,28 +98,28 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
             return (
               <div
                 key={item.id}
-                className="relative aspect-[2/3] rounded-xl overflow-hidden group shadow-[var(--dk-shadow-sm)]"
+                className="dk-user-hall-of-fame__card"
                 style={{ borderBottom: `3px solid ${accent}66` }}
               >
                 {item.posterUrl ? (
                   <img
                     src={item.posterUrl}
                     alt={item.title}
-                    className="h-full w-full object-cover"
+                    className="dk-user-hall-of-fame__card-img"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="h-full w-full bg-[var(--dk-surface-raised)] flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground/40 text-center px-1 leading-tight">
+                  <div className="dk-user-hall-of-fame__card-placeholder">
+                    <span className="dk-user-hall-of-fame__card-placeholder-text">
                       {item.title}
                     </span>
                   </div>
                 )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 pt-6">
-                  <p className="text-[10px] font-medium text-white/90 leading-tight truncate">{item.title}</p>
+                <div className="dk-user-hall-of-fame__card-gradient">
+                  <p className="dk-user-hall-of-fame__card-title">{item.title}</p>
                 </div>
                 <div
-                  className="absolute top-1.5 left-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white/90"
+                  className="dk-user-hall-of-fame__card-rank"
                   style={{ backgroundColor: `${accent}cc` }}
                 >
                   {i + 1}
@@ -127,7 +130,7 @@ export function HallOfFameSection({ username, mediaType }: { username: string; m
                       const newIds = items.filter((_, idx) => idx !== i).map((it) => it.id)
                       updateHall.mutate({ mediaType, mediaIds: newIds, current: currentHofDict })
                     }}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="dk-user-hall-of-fame__card-remove-btn"
                   >
                     <X className="h-3 w-3 text-white/70" />
                   </button>
@@ -224,10 +227,10 @@ function HallOfFamePicker({
   const placeholder = `Search ${MEDIA_TYPE_LABELS[mediaType]?.toLowerCase() ?? mediaType}...`
 
   return (
-    <div className="fixed inset-0 z-[var(--dk-z-modal)] flex items-start justify-center pt-[15vh]">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg mx-4 bg-[var(--dk-surface-overlay)] rounded-2xl shadow-[var(--dk-shadow-dialog)] overflow-hidden">
-        <div className="flex items-center gap-3 p-4 border-b border-white/[0.06]">
+    <div className="dk-user-hall-of-fame__picker">
+      <div className="dk-user-hall-of-fame__picker-backdrop" onClick={onClose} />
+      <div className="dk-user-hall-of-fame__picker-panel">
+        <div className="dk-user-hall-of-fame__picker-header">
           <Search className="h-4 w-4 text-muted-foreground/50 shrink-0" />
           <input
             autoFocus
@@ -238,28 +241,28 @@ function HallOfFamePicker({
               doSearch(e.target.value)
             }}
             placeholder={placeholder}
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/30"
+            className="dk-user-hall-of-fame__picker-input"
           />
-          <span className="text-[10px] text-muted-foreground/40 tabular-nums">{selected.length}/5</span>
+          <span className="dk-user-hall-of-fame__picker-counter">{selected.length}/5</span>
         </div>
 
-        <div className="max-h-[50vh] overflow-y-auto p-3 space-y-1">
+        <div className="dk-user-hall-of-fame__picker-results">
           {searching && (
-            <div className="space-y-2 p-2">
+            <div className="dk-user-hall-of-fame__picker-skeleton">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 rounded-lg" />
               ))}
             </div>
           )}
           {!searching && query.length < 2 && (
-            <p className="text-xs text-muted-foreground/40 text-center py-8">
+            <p className="dk-user-hall-of-fame__picker-info">
               Type at least 2 characters to search
             </p>
           )}
           {!searching &&
             query.length >= 2 &&
             results.length === 0 && (
-              <p className="text-xs text-muted-foreground/40 text-center py-8">No results</p>
+              <p className="dk-user-hall-of-fame__picker-info">No results</p>
             )}
           {!searching &&
             results.map((item) => {
@@ -268,54 +271,56 @@ function HallOfFamePicker({
                 <button
                   key={item.id}
                   onClick={() => toggleItem(item.id)}
-                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-colors text-left ${
-                    isSel
-                      ? 'bg-[var(--dk-surface-glass-hover)] ring-1 ring-white/[0.08]'
-                      : 'hover:bg-[var(--dk-surface-glass-hover)]'
-                  }`}
+                  className={cn(
+                    'dk-user-hall-of-fame__picker-item',
+                    isSel && 'dk-user-hall-of-fame__picker-item--selected',
+                  )}
                 >
-                  <div className="w-10 h-14 rounded-lg bg-[var(--dk-surface-raised)] shrink-0 overflow-hidden">
+                  <div className="dk-user-hall-of-fame__picker-poster">
                     {item.posterUrl ? (
                       <img
                         src={item.posterUrl}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="dk-user-hall-of-fame__picker-poster-img"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center">
-                        <span className="text-[16px] text-muted-foreground/20">?</span>
+                      <div className="dk-user-hall-of-fame__picker-poster-empty">
+                        <span className="dk-user-hall-of-fame__picker-poster-empty-icon">?</span>
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{item.title}</p>
-                    <p className="text-[10px] text-muted-foreground/50">
+                    <p className="dk-user-hall-of-fame__picker-item-title">{item.title}</p>
+                    <p className="dk-user-hall-of-fame__picker-item-year">
                       {item.releaseDate && `${new Date(item.releaseDate).getFullYear()}`}
                     </p>
                   </div>
                   <div
-                    className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-                      isSel ? 'border-amber-400 bg-amber-400' : 'border-white/[0.15]'
-                    }`}
+                    className={cn(
+                      'dk-user-hall-of-fame__picker-check',
+                      isSel
+                        ? 'dk-user-hall-of-fame__picker-check--selected'
+                        : 'dk-user-hall-of-fame__picker-check--default',
+                    )}
                   >
-                    {isSel && <span className="text-[9px] font-bold text-black">✓</span>}
+                    {isSel && <span className="dk-user-hall-of-fame__picker-check-mark">✓</span>}
                   </div>
                 </button>
               )
             })}
         </div>
 
-        <div className="flex gap-2 p-4 border-t border-white/[0.06]">
+        <div className="dk-user-hall-of-fame__picker-footer">
           <button
             onClick={onClose}
-            className="flex-1 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="dk-user-hall-of-fame__picker-cancel-btn"
           >
             Cancel
           </button>
           <button
             onClick={() => onSave(selected)}
-            className="flex-1 py-2 text-xs font-medium bg-amber-400 text-black rounded-lg hover:bg-amber-300 transition-colors"
+            className="dk-user-hall-of-fame__picker-save-btn"
           >
             Save
           </button>
@@ -329,7 +334,7 @@ function HallOfFameSkeleton() {
   return (
     <section>
       <Skeleton className="h-4 w-28 mb-4" />
-      <div className="grid grid-cols-5 gap-2 sm:gap-3">
+      <div className="dk-user-hall-of-fame__grid">
         {EMPTY_SLOTS.map((_, i) => (
           <Skeleton key={i} className="aspect-[2/3] rounded-xl" />
         ))}

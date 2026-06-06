@@ -1,0 +1,137 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ── Preferences Section ────────────────────────────── */
+/* Component: PreferencesSection                         */
+/* Prefix:   dk-settings-preferences                    */
+
+/* ── Section spacing ────────────────────────────────── */
+
+.dk-settings-preferences__body {
+  @apply space-y-6;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.dk-settings-preferences__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-settings-preferences__desc {
+  @apply mt-1 text-sm text-muted-foreground;
+}
+
+/* ── Card container ─────────────────────────────────── */
+
+.dk-settings-preferences__card {
+  @apply rounded-2xl p-6 space-y-6;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+/* ── Section label ──────────────────────────────────── */
+
+.dk-settings-preferences__section-label {
+  @apply text-sm font-medium mb-3;
+}
+
+/* ── Media types grid ───────────────────────────────── */
+
+.dk-settings-preferences__media-grid {
+  @apply grid grid-cols-2 gap-2;
+}
+
+/* ── Media type button ──────────────────────────────── */
+
+.dk-settings-preferences__media-btn {
+  @apply flex items-center gap-2.5 px-4 py-2.5 rounded-xl border-2 text-sm font-medium text-muted-foreground;
+  transition: all 0.2s;
+  border-color: var(--dk-border);
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-settings-preferences__media-btn:not(.dk-settings-preferences__media-btn--selected):hover {
+  @apply text-foreground;
+}
+
+.dk-settings-preferences__media-btn--selected {
+  @apply border-primary text-primary;
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+/* ── Genre section ──────────────────────────────────── */
+
+.dk-settings-preferences__genre-skeleton {
+  @apply rounded-full;
+  height: 2rem;
+  width: 5rem;
+  background-color: var(--dk-surface-glass);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.dk-settings-preferences__genre-list {
+  @apply flex flex-wrap gap-2;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.dk-settings-preferences__genre-pill {
+  @apply rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground;
+  transition: all 0.2s;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-settings-preferences__genre-pill:not(.dk-settings-preferences__genre-pill--selected):hover {
+  @apply text-foreground;
+}
+
+.dk-settings-preferences__genre-pill--selected {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* ── Language grid ──────────────────────────────────── */
+
+.dk-settings-preferences__lang-grid {
+  @apply grid grid-cols-3 sm:grid-cols-4 gap-2;
+}
+
+/* ── Language button ────────────────────────────────── */
+
+.dk-settings-preferences__lang-btn {
+  @apply flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-muted-foreground;
+  transition: all 0.2s;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-settings-preferences__lang-btn:not(.dk-settings-preferences__lang-btn--selected):hover {
+  @apply text-foreground;
+}
+
+.dk-settings-preferences__lang-btn--selected {
+  @apply bg-primary text-primary-foreground;
+}
+
+/* ── Save row ────────────────────────────────────────── */
+
+.dk-settings-preferences__save-row {
+  @apply flex items-center gap-3 pt-2;
+}
+
+/* ── Saved indicator ────────────────────────────────── */
+
+.dk-settings-preferences__saved-indicator {
+  @apply text-sm flex items-center gap-1 text-emerald-400;
+}
+
+/* ── Row (label + switch, used in adult content card) ─ */
+
+.dk-settings-preferences__row {
+  @apply flex items-center justify-between;
+}
+
+.dk-settings-preferences__row-label {
+  @apply text-sm font-medium;
+}
+
+.dk-settings-preferences__row-desc {
+  @apply text-xs text-muted-foreground mt-0.5;
+}

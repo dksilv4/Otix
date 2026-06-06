@@ -1,0 +1,9 @@
+@@ -27,7 +27,7 @@
+ // be needed.
+ #define _REQUIRE_ARGUMENT(at, var, Type, description, extra) ...
+ 
+-#define OnlyAddon static_cast<Addon*>(info.Data().As<v8::External>()->Value())
++#define OnlyAddon static_cast<Addon*>(info.Data().As<v8::External>()->Value(v8::kExternalPointerTypeTagDefault))
+ 
+ #define UseAddon Addon* addon = OnlyAddon
+ 

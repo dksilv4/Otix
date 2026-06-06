@@ -1,3 +1,4 @@
+// TODO: Review this file
 export type CriterionStatus = 'done' | 'partial' | 'missing'
 export type IntegrationStatus = 'integrated' | 'partial' | 'planned' | 'none'
 export type MediaTypeSupport = 'full' | 'partial' | 'none'
