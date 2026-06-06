@@ -10,6 +10,7 @@ import {
   Play,
   Plus,
   Search,
+  Menu,
   ChevronRight,
   Sparkles
 } from 'lucide-react'
@@ -29,6 +30,7 @@ import { useMatchLocalGames, useSyncLocalGames } from '@/features/games/scanner/
 import { usePopularGames, useGameDetail } from '@/features/games/games-queries'
 import { useClaimGame } from '@/features/library/library-queries'
 import { useToast } from '@/features/dk-ui/molecules/toast'
+import { useNavigation } from '@navigation/providers/navigation-provider'
 
 /* ── Types ── */
 
@@ -109,6 +111,7 @@ export function LauncherHomePage() {
   const navigate = useNavigate()
   const { isDesktop } = useDesktopPlatform()
   const { toast } = useToast()
+  const { toggle: toggleNav } = useNavigation()
 
   const [localGames, setLocalGames] = useState<DetectedGame[]>(() => getScannedGames())
   // Detect OS for ISO install hint
@@ -496,6 +499,15 @@ export function LauncherHomePage() {
           maxHeight: 'calc(100vh - 7.5rem)',
         }}
       >
+        {/* Menu button — access main nav from game launcher */}
+        <button
+          onClick={toggleNav}
+          className="w-full h-10 flex items-center justify-center shrink-0 hover:bg-white/5 transition-colors cursor-pointer border-b border-white/5"
+          title="Main Menu"
+        >
+          <Menu size={16} className="text-white/50" />
+        </button>
+
         {/* Game Cover Thumbnails Stack */}
         <div className="flex-1 min-h-0 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full px-1.5 pt-4 pb-20">
           {pickerGames.map((game) => {
