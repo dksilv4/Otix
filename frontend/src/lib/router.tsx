@@ -42,6 +42,7 @@ const AboutAchievementsPage = lazy(() => import("@/features/about/organisms/abou
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
 const SpotifyPlaylistsPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlists-page").then(m => ({ default: m.SpotifyPlaylistsPage })))
 const SpotifyPlaylistDetailPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlist-detail-page").then(m => ({ default: m.SpotifyPlaylistDetailPage })))
+const LauncherHomePage = lazy(() => import("@/features/games/organisms/launcher-home-page").then(m => ({ default: m.LauncherHomePage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -360,6 +361,12 @@ const spotifyPlaylistDetailRoute = createRoute({
   component: SpotifyPlaylistDetailPage,
 })
 
+const gamesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/games",
+  component: LauncherHomePage,
+})
+
 // ── Assemble ──
 
 const routeTree = rootRoute.addChildren([
@@ -395,6 +402,7 @@ const routeTree = rootRoute.addChildren([
   adminBlogPostRoute,
   adminHydrationRoute,
   onboardingRoute,
+  gamesRoute,
   searchRoute,
   aboutRoute,
   aboutProfileRoute,
