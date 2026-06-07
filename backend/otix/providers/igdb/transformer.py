@@ -45,7 +45,6 @@ def _cover_url(image_id: str | None, size: str = "t_cover_big") -> str | None:
     return f"https://images.igdb.com/igdb/image/upload/{size}/{image_id}.jpg"
 
 
-
 def extract_platforms(platforms: list[JSONValue]) -> list[dict]:
     """Convert IGDB platforms list to hydrator-ready dicts.
 
@@ -221,16 +220,18 @@ def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
             if isinstance(lid, str) and lid:
                 logo_image_id = lid
 
-        result.append({
-            "company_name": name,
-            "company_slug": company.get("slug") or _slugify(name),
-            "igdb_id": company.get("id"),
-            "logo_image_id": logo_image_id,
-            "developer": bool(ic.get("developer")),
-            "publisher": bool(ic.get("publisher")),
-            "porting": bool(ic.get("porting")),
-            "supporting": bool(ic.get("supporting")),
-        })
+        result.append(
+            {
+                "company_name": name,
+                "company_slug": company.get("slug") or _slugify(name),
+                "igdb_id": company.get("id"),
+                "logo_image_id": logo_image_id,
+                "developer": bool(ic.get("developer")),
+                "publisher": bool(ic.get("publisher")),
+                "porting": bool(ic.get("porting")),
+                "supporting": bool(ic.get("supporting")),
+            }
+        )
     return result
 
 
@@ -252,9 +253,7 @@ def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
         title=title,
         overview=overview,
         slug=raw.get("slug") or _slugify(title),
-        poster_url=_cover_url(
-            (raw.get("cover") or {}).get("image_id") if isinstance(raw.get("cover"), dict) else None
-        ),
+        poster_url=_cover_url((raw.get("cover") or {}).get("image_id") if isinstance(raw.get("cover"), dict) else None),
         backdrop_url=backdrop_url,
         release_date=_parse_timestamp(raw.get("first_release_date")),
         popularity=float(raw.get("hypes", 0) or 0),
@@ -290,9 +289,7 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
     modes = raw.get("game_modes", [])
     modes_list = modes if isinstance(modes, list) else []
     has_multiplayer = any(
-        "multiplayer" in _slugify(m.get("name", ""))
-        for m in modes_list
-        if isinstance(m, dict) and m.get("name")
+        "multiplayer" in _slugify(m.get("name", "")) for m in modes_list if isinstance(m, dict) and m.get("name")
     )
 
     website_list = websites if isinstance(websites, list) else []
@@ -301,6 +298,7 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
         website=_extract_website(website_list),
         has_multiplayer=has_multiplayer,
         is_free=False,  # explicit default; Steam enrichment updates later
+        time_to_beat=raw.get("time_to_beat"),
     )
     game.media_item = to_media_item(raw)
     return game

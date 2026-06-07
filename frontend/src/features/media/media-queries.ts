@@ -187,6 +187,11 @@ export interface GameDetail {
   reviewSummary?: string
   isFree: boolean
   hasMultiplayer: boolean
+  timeToBeat?: {
+    hastly?: number | null
+    normally?: number | null
+    completely?: number | null
+  } | null
 }
 
 export interface TrackOut {

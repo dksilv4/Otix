@@ -179,6 +179,22 @@ export class GameDetector extends EventEmitter {
     }
   }
 
+  getPlaytimeForGame(gameId: string): { totalMinutes: number; sessionCount: number; lastPlayed: number | null } {
+    try {
+      const data = fs.readFileSync(this.sessionsPath, 'utf-8');
+      const sessions: PlaySession[] = JSON.parse(data);
+      const gameSessions = sessions.filter((s) => s.gameId === gameId && s.endTime > s.startTime);
+      const totalMs = gameSessions.reduce((sum, s) => sum + (s.endTime - s.startTime), 0);
+      return {
+        totalMinutes: Math.round(totalMs / 60000),
+        sessionCount: gameSessions.length,
+        lastPlayed: gameSessions.length > 0 ? Math.max(...gameSessions.map((s) => s.endTime)) : null,
+      };
+    } catch {
+      return { totalMinutes: 0, sessionCount: 0, lastPlayed: null };
+    }
+  }
+
   async scanRunningProcesses(): Promise<RunningGame[]> {
     if (this.library.length === 0) return [];
 

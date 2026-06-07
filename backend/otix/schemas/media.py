@@ -253,6 +253,7 @@ class SteamWishlistListResponse(PaginatedResponse):
 
 class MatchGameEntry(BaseModel):
     """A single game from the desktop scanner, with optional context for matching."""
+
     title: str
     platform: str | None = None
     steam_app_id: int | None = None
@@ -279,6 +280,7 @@ class LocalGameMatchResponse(BaseModel):
 
 class SeedGameEntry(BaseModel):
     """A single game from the desktop scanner, with optional context for IGDB seeding."""
+
     title: str
     platform: str | None = None
     steam_app_id: int | None = None
@@ -453,6 +455,7 @@ class GameDetail(BaseModel):
     review_summary: str | None = None
     is_free: bool = False
     has_multiplayer: bool = False
+    time_to_beat: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -560,7 +563,8 @@ class MediaItemDetail(BaseModel):
             coll = getattr(data.movie, "collection", None)
             if coll is not None and coll.movies:
                 coll.movies.sort(
-                    key=lambda m: m.media_item.release_date or date.min, reverse=True,
+                    key=lambda m: m.media_item.release_date or date.min,
+                    reverse=True,
                 )
             data.collection = coll
         return data

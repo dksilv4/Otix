@@ -89,6 +89,36 @@ class GoogleDriveService:
         logger.info("created google drive folder", name=name, folder_id=new_id)
         return str(new_id)
 
+    async def ensure_folder_path(self, access_token: str, folder_parts: list[str], root_parent_id: str) -> str:
+        """Create nested folder hierarchy under root_parent_id, return leaf folder ID."""
+        parent_id = root_parent_id
+        for part in folder_parts:
+            parent_id = await self.get_or_create_folder(access_token, part, parent_id=parent_id)
+        return parent_id
+
+    async def list_files_recursive(self, access_token: str, folder_id: str, parent_path: str = "") -> list[dict]:
+        """List all files in a folder and its subfolders recursively.
+
+        Returns file metadata with reconstructed full relative paths in ``name``.
+        """
+        all_files: list[dict] = []
+        url = "https://www.googleapis.com/drive/v3/files"
+        params = {
+            "q": f"'{folder_id}' in parents and trashed = false",
+            "fields": "files(id, name, mimeType, md5Checksum, modifiedTime, size)",
+        }
+        resp = await self._request("GET", url, access_token, params=params)
+        data = resp.json()
+        for item in data.get("files", []):
+            if item.get("mimeType") == "application/vnd.google-apps.folder":
+                sub_path = f"{parent_path}{item['name']}/" if parent_path else f"{item['name']}/"
+                sub_files = await self.list_files_recursive(access_token, item["id"], sub_path)
+                all_files.extend(sub_files)
+            else:
+                item["name"] = f"{parent_path}{item['name']}" if parent_path else item["name"]
+                all_files.append(item)
+        return all_files
+
     async def list_files(self, access_token: str, folder_id: str) -> list[dict]:
         """List files inside a folder (returns name, id, md5Checksum, modifiedTime, size)."""
         query = f"'{folder_id}' in parents and trashed = false"

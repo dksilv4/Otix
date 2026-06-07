@@ -77,6 +77,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   },
   getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-games'),
   saveScannedGames: (games: any[]) => ipcRenderer.invoke('scanner:save-scanned-games', games),
+  pickExecutable: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-executable', defaultPath),
   getScanPaths: () => ipcRenderer.invoke('scanner:get-scan-paths'),
   saveScanPaths: (paths: any[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
   getLocalGamesMap: () => ipcRenderer.invoke('scanner:get-local-games-map'),
@@ -89,6 +90,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
   getRecentSessions: () => ipcRenderer.invoke('game:get-recent-sessions'),
+  getPlaytimeForGame: (gameId: string) => ipcRenderer.invoke('game:get-playtime', gameId),
   setLibrary: (games: DetectedGame[]) => ipcRenderer.invoke('game:set-library', games),
   stopTracking: (gameId: string) => ipcRenderer.invoke('game:stop-tracking', gameId),
   getRunningProcesses: () => ipcRenderer.invoke('game:get-running-processes'),
@@ -194,6 +196,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.invoke('installer:install-game', isoPath, targetDir, gameTitle),
   cancelInstall: (installId?: string) => ipcRenderer.invoke('installer:cancel-install', installId),
   getActiveInstalls: () => ipcRenderer.invoke('installer:get-active-installs'),
+  checkInstallDir: (installDir: string) => ipcRenderer.invoke('installer:check-install-dir', installDir),
   onInstallProgress: (callback: (progress: any) => void) => {
     const handler = (_event: any, progress: any) => callback(progress);
     ipcRenderer.on('installer:install-progress', handler);

@@ -186,6 +186,28 @@ export function normalizeSaveTitle(title: string): string {
     .trim();
 }
 
+/** Recursively walk a directory and collect all files with relative paths. */
+async function walkDir(
+  dir: string,
+  baseDir: string,
+  files: { originPath: string; relativePath: string }[] = [],
+): Promise<{ originPath: string; relativePath: string }[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue;
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      await walkDir(fullPath, baseDir, files);
+    } else if (entry.isFile()) {
+      files.push({
+        originPath: fullPath,
+        relativePath: path.relative(baseDir, fullPath),
+      });
+    }
+  }
+  return files;
+}
+
 /* ── SaveDaemon class ── */
 
 export class SaveDaemon {
@@ -267,6 +289,12 @@ export class SaveDaemon {
     const override = await this.getOverride(gameId);
     if (override) {
       candidatePaths.push(override.userPath);
+    } else {
+      // Fallback: use confirmed path from cloud settings
+      const settings = await this.getCloudSettings(gameId);
+      if (settings.isPathConfirmed && settings.confirmedPath) {
+        candidatePaths.push(settings.confirmedPath);
+      }
     }
 
     const detectedPaths: string[] = [];
@@ -348,23 +376,18 @@ export class SaveDaemon {
     const allFiles: { originPath: string; relativePath: string }[] = [];
     for (const dirPath of originPaths) {
       if (!(await fileExists(dirPath))) continue;
-      const entries = await fs.readdir(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isFile() && !entry.name.startsWith('.')) {
-          allFiles.push({
-            originPath: path.join(dirPath, entry.name),
-            relativePath: entry.name,
-          });
-        }
-      }
+      // Recursively collect all files under the save directory
+      await walkDir(dirPath, dirPath, allFiles);
     }
 
+    console.log('[backupToVault] Found', allFiles.length, 'files to back up');
     const totalFiles = allFiles.length;
     let completedFiles = 0;
 
     for (const file of allFiles) {
       const vaultFilePath = path.join(gameDir, file.relativePath);
       try {
+        await ensureDir(path.dirname(vaultFilePath));
         await fs.copyFile(file.originPath, vaultFilePath);
         const stats = await fs.stat(vaultFilePath);
         const fileHash = await hashFile(vaultFilePath);
@@ -706,17 +729,15 @@ export class SaveDaemon {
 
     const remoteFiles = new Map(remoteFilesList.map((f) => [f.name, f]));
 
-    // 4. Read local files in the vault profile directory
-    const localEntries = await fs.readdir(profileDir, { withFileTypes: true });
-    const localFiles = new Map<string, { path: string; md5: string; mtime: number; size: number }>();
-    for (const entry of localEntries) {
-      if (entry.isFile() && !entry.name.startsWith('.')) {
-        const filePath = path.join(profileDir, entry.name);
-        const stats = await fs.stat(filePath);
-        const md5 = await hashFileMd5(filePath);
-        localFiles.set(entry.name, { path: filePath, md5, mtime: stats.mtimeMs, size: stats.size });
-      }
+    // 4. Read local files in the vault profile directory (recursive)
+    const vaultFiles = await walkDir(profileDir, profileDir);
+    const localFiles = new Map<string, { path: string; md5: string; mtime: number; size: number; localRel: string }>();
+    for (const vf of vaultFiles) {
+      const stats = await fs.stat(vf.originPath);
+      const md5 = await hashFileMd5(vf.originPath);
+      localFiles.set(vf.relativePath.replace(/\\/g, '/'), { path: vf.originPath, md5, mtime: stats.mtimeMs, size: stats.size, localRel: vf.relativePath });
     }
+    console.log('[syncCloud] Vault has', vaultFiles.length, 'files');
 
     // 5. Compare lists to determine uploads and downloads
     const uploads: string[] = [];
@@ -794,6 +815,7 @@ export class SaveDaemon {
 
       const arrayBuffer = await downloadResp.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+      await ensureDir(path.dirname(dl.localPath));
       await fs.writeFile(dl.localPath, buffer);
 
       // Upsert vault save record in SQLite

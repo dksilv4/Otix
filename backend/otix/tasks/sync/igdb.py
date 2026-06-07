@@ -44,7 +44,8 @@ GAME_FIELDS = (
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
     "age_ratings,"
-    "franchise.name,franchise.id"
+    "franchise.name,franchise.id,"
+    "time_to_beat"
 )
 
 
@@ -88,9 +89,7 @@ def sync_igdb_game_changes_task(self, lookback_hours: int = 24) -> dict:
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
-async def _update_media_item_from(
-    session, existing: MediaItem, incoming: MediaItem
-) -> None:
+async def _update_media_item_from(session, existing: MediaItem, incoming: MediaItem) -> None:
     from otix.services.admin_edit_service import AdminEditService
 
     existing.title = incoming.title
@@ -218,9 +217,12 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 if conflict is not None and item.id is not None and conflict.media_item_id == item.id:
                     conflict = None
                 if conflict is not None:
-                    logger.info("merging igdb entry into existing steam game",
-                        igdb_id=igdb_id, steam_app_id=steam_app_id_from_raw,
-                        existing_game_id=conflict.media_item_id, incoming_title=item.title,
+                    logger.info(
+                        "merging igdb entry into existing steam game",
+                        igdb_id=igdb_id,
+                        steam_app_id=steam_app_id_from_raw,
+                        existing_game_id=conflict.media_item_id,
+                        incoming_title=item.title,
                     )
                     existing_item = await session.get(MediaItem, conflict.media_item_id)
                     existing_game = conflict
@@ -244,11 +246,16 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
                     # Snapshot protected fields before merge so we can restore them.
                     from otix.services.admin_edit_service import AdminEditService
+
                     protected = await AdminEditService.get_protected_image_types(session, existing.id)
                     pre_urls = {}
                     if protected:
-                        _field_map = {"poster": "poster_url", "backdrop": "backdrop_url",
-                                      "logo": "logo_url", "textless_poster": "textless_poster_url"}
+                        _field_map = {
+                            "poster": "poster_url",
+                            "backdrop": "backdrop_url",
+                            "logo": "logo_url",
+                            "textless_poster": "textless_poster_url",
+                        }
                         for img_type in protected:
                             field = _field_map.get(img_type)
                             if field:
@@ -268,9 +275,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                         if pre_val and pre_val != post_val:
                             setattr(item, field, pre_val)
                             svc = AdminEditService(session)
-                            await svc.create_system_proposal_for_image(
-                                item.id, img_type, post_val
-                            )
+                            await svc.create_system_proposal_for_image(item.id, img_type, post_val)
 
                     if is_embedding_stale(old_overview, item.overview):
                         item.embedding = None
@@ -302,8 +307,20 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         steam_enqueued = False
         steamgrid_enqueued = False
 
-        store_providers = {"steam", "epic", "gog", "origin", "uplay", "bnet", "eshop",
-                           "xbox", "playstation", "nintendo", "itchio", "stadia"}
+        store_providers = {
+            "steam",
+            "epic",
+            "gog",
+            "origin",
+            "uplay",
+            "bnet",
+            "eshop",
+            "xbox",
+            "playstation",
+            "nintendo",
+            "itchio",
+            "stadia",
+        }
         item_store_eids = await session.scalars(
             select(ExternalID).where(
                 ExternalID.entity_id == item.id,
@@ -325,12 +342,20 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         if not steamgrid_enqueued:
             app.send_task("sync.steamgrid.game_by_name", args=[item.id])
 
-        logger.info("igdb game synced",
-            title=item.title, media_type="game", otix_id=item.id, igdb_id=igdb_id,
+        logger.info(
+            "igdb game synced",
+            title=item.title,
+            media_type="game",
+            otix_id=item.id,
+            igdb_id=igdb_id,
             checklist={
-                "genres": "done", "images": "done", "videos": "done",
-                "ratings": "done", "companies": "done",
-                "platforms": "done", "game_modes": "done",
+                "genres": "done",
+                "images": "done",
+                "videos": "done",
+                "ratings": "done",
+                "companies": "done",
+                "platforms": "done",
+                "game_modes": "done",
                 "steam": "enqueued" if steam_enqueued else None,
                 "steamgrid": "enqueued" if steamgrid_enqueued else None,
                 "embedding": "enqueued",
@@ -403,7 +428,9 @@ async def _sync_igdb_game_changes(lookback_hours: int) -> dict:
         app.send_task("sync.igdb.game", args=[int(igdb_id)])
         enqueued += 1
 
-    logger.info("igdb change sync completed", lookback_hours=lookback_hours, changed_ids=len(all_ids), tasks_enqueued=enqueued)
+    logger.info(
+        "igdb change sync completed", lookback_hours=lookback_hours, changed_ids=len(all_ids), tasks_enqueued=enqueued
+    )
     return {"changed_ids": len(all_ids), "tasks_enqueued": enqueued}
 
 
@@ -455,6 +482,7 @@ async def _hydrate_game_age_ratings(media_item_id: str) -> dict | None:
         await session.commit()
 
         from otix.infrastructure.redis import get_redis as _get_redis
+
         _redis = await _get_redis()
         cache_pattern = f"media:detail:{media_item_id}:*"
         keys = [key async for key in _redis.scan_iter(match=cache_pattern, count=100)]

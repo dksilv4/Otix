@@ -133,6 +133,14 @@ function formatPlaytime(minutes: number): string {
   return `${Math.round(hours)}h`
 }
 
+function formatMinutesToHours(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
+}
+
 function formatDaysAgo(unixTimestamp: number): string {
   const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
   if (days <= 0) return "Today"
@@ -148,8 +156,9 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
     game.recommendations != null ||
     game.reviewSummary
   const hasPlaytime = steamPlaytimeForever != null
+  const hasTimeToBeat = game.timeToBeat?.normally != null || game.timeToBeat?.hastly != null || game.timeToBeat?.completely != null
 
-  if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !game.website) return null
+  if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !hasTimeToBeat && !game.website) return null
 
   return (
     <section className={cn('dk-media-game-section', className)}>
@@ -212,6 +221,35 @@ export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, 
               <div>
                 <dt className="dk-media-game-section__stat-label">Last Played</dt>
                 <dd className="dk-media-game-section__stat-value">{formatDaysAgo(steamRtimeLastPlayed)}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
+      {/* Time to Beat */}
+      {hasTimeToBeat && (
+        <div className="dk-media-game-section__section">
+          <h3 className="dk-media-game-section__heading">
+            Time to Beat
+          </h3>
+          <dl className="dk-media-game-section__stats-grid">
+            {game.timeToBeat?.hastly != null && (
+              <div>
+                <dt className="dk-media-game-section__stat-label">Story (Speedrun)</dt>
+                <dd className="dk-media-game-section__stat-value">{formatMinutesToHours(game.timeToBeat.hastly)}</dd>
+              </div>
+            )}
+            {game.timeToBeat?.normally != null && (
+              <div>
+                <dt className="dk-media-game-section__stat-label">Story + Extras</dt>
+                <dd className="dk-media-game-section__stat-value">{formatMinutesToHours(game.timeToBeat.normally)}</dd>
+              </div>
+            )}
+            {game.timeToBeat?.completely != null && (
+              <div>
+                <dt className="dk-media-game-section__stat-label">Completionist</dt>
+                <dd className="dk-media-game-section__stat-value">{formatMinutesToHours(game.timeToBeat.completely)}</dd>
               </div>
             )}
           </dl>

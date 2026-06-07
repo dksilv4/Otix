@@ -52,7 +52,7 @@ async def list_cloud_files(
     """List all game save files currently saved in Google Drive for this game/profile."""
     try:
         folder_id = await get_profile_folder_id(access_token, game_id, profile_id)
-        files = await drive_service.list_files(access_token, folder_id)
+        files = await drive_service.list_files_recursive(access_token, folder_id)
         return files
     except HTTPException:
         raise
@@ -73,11 +73,36 @@ async def upload_cloud_file(
     file: UploadFile = File(...),
     access_token: str = Depends(get_google_access_token),
 ) -> dict:
-    """Upload or update a game save file in Google Drive."""
+    """Upload or update a game save file in Google Drive.
+
+    ``filename`` may contain forward-slash path segments (e.g.
+    ``Saved/SaveGames/7656/save.bin``) to preserve subfolder structure as
+    Google Drive folders.
+    """
     try:
         content = await file.read()
-        folder_id = await get_profile_folder_id(access_token, game_id, profile_id)
-        result = await drive_service.upload_file(access_token, folder_id, filename, content, file_id=file_id)
+        profile_folder_id = await get_profile_folder_id(access_token, game_id, profile_id)
+
+        # Split relative path into folder hierarchy + basename
+        parts = filename.replace("\\", "/").split("/")
+        basename = parts[-1]
+        folder_parts = parts[:-1]
+
+        parent_id = profile_folder_id
+        if folder_parts:
+            parent_id = await drive_service.ensure_folder_path(
+                access_token,
+                folder_parts,
+                profile_folder_id,
+            )
+
+        result = await drive_service.upload_file(
+            access_token,
+            parent_id,
+            basename,
+            content,
+            file_id=file_id,
+        )
         return result
     except HTTPException:
         raise

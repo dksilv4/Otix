@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { dialog, ipcMain } from 'electron';
 import { scanPaths } from '../scanner';
 import { scanAllLaunchers } from '../launchers';
 import {
@@ -135,5 +135,16 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
   // Update game path after file move (move-to-library)
   ipcMain.handle('scanner:update-game-path', (_, oldExePath: string, newExePath: string, newInstallDir?: string) => {
     updateGamePathInDb(oldExePath, newExePath, newInstallDir);
+  });
+
+  // Pick an executable via native file dialog
+  ipcMain.handle('scanner:pick-executable', async (_event, defaultPath?: string) => {
+    const result = await dialog.showOpenDialog({
+      title: 'Select Game Executable',
+      defaultPath,
+      filters: [{ name: 'Executables', extensions: ['exe'] }],
+      properties: ['openFile'],
+    });
+    return result.canceled ? null : result.filePaths[0];
   });
 }
