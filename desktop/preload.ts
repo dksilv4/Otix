@@ -177,6 +177,14 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveSelectExportDir: () => ipcRenderer.invoke('save:select-export-dir'),
   saveSelectImportDir: () => ipcRenderer.invoke('save:select-import-dir'),
   saveSelectOverridePath: () => ipcRenderer.invoke('save:select-override-path'),
+  saveGetCloudSettings: (gameId: string) => ipcRenderer.invoke('save:get-cloud-settings', gameId),
+  saveSetCloudSettings: (gameId: string, autoSync: boolean) => ipcRenderer.invoke('save:set-cloud-settings', gameId, autoSync),
+  saveSyncCloud: (gameId: string, gameTitle: string, profileId: string, apiBaseUrl: string, authToken: string) =>
+    ipcRenderer.invoke('save:sync-cloud', gameId, gameTitle, profileId, apiBaseUrl, authToken),
+  saveConfirmPath: (gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string) =>
+    ipcRenderer.invoke('save:confirm-path', gameId, absolutePath, apiBaseUrl, authToken),
+  saveResolvePathPatterns: (patterns: string[]) =>
+    ipcRenderer.invoke('save:resolve-path-patterns', patterns),
 
   // ── Storage ──
   getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),

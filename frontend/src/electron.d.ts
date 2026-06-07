@@ -1,5 +1,6 @@
 /** Desktop IPC API exposed via preload script */
 interface DesktopAPI {
+  platform: string
   downloadsGetConfig(userId: string): Promise<any>
   downloadsSaveConfig(cfg: any): Promise<any>
   downloadsSearch(query: string, apiKey: string): Promise<any[]>
@@ -26,10 +27,22 @@ interface DesktopAPI {
   dismountIso(path: string): Promise<void>
   applyCrack(...args: any[]): Promise<void>
   onGamesUpdated(callback: () => void): () => void
+  onGameStarted(callback: (data: any) => void): () => void
+  onGameEnded(callback: (data: any) => void): () => void
   saveScanPaths(paths: string[]): Promise<void>
   saveScannedGames(games: any[]): Promise<void>
   saveLocalGamesMapEntry(mediaId: string, game: any): Promise<void>
   updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void>
+  saveGetCloudSettings(gameId: string): Promise<{ gameId: string; autoSync: boolean; lastSyncAt: string | null; isPathConfirmed: boolean; confirmedPath: string | null }>
+  saveSetCloudSettings(gameId: string, autoSync: boolean): Promise<void>
+  saveSyncCloud(gameId: string, gameTitle: string, profileId: string, apiBaseUrl: string, authToken: string): Promise<{ success: boolean; message: string }>
+  saveConfirmPath(gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string): Promise<void>
+  saveResolvePathPatterns(patterns: string[]): Promise<string[]>
+  saveDiscoverForGame(gameId: string, gameTitle: string): Promise<{ gameId: string; gameTitle: string; detectedPaths: string[]; filesFound: number; vaultProfileId: string | null }>
+  saveGetOverride(gameId: string): Promise<{ gameId: string; userPath: string } | null>
+  saveSetOverride(gameId: string, userPath: string): Promise<void>
+  saveClearOverride(gameId: string): Promise<void>
+  saveSelectOverridePath(): Promise<string | null>
 }
 
 interface Window {

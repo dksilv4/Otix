@@ -77,6 +77,28 @@ export function registerSaveIPC(daemon: SaveDaemon): void {
     return daemon.clearOverride(gameId);
   });
 
+  // ── Cloud sync ──
+
+  ipcMain.handle('save:get-cloud-settings', async (_event, gameId: string) => {
+    return daemon.getCloudSettings(gameId);
+  });
+
+  ipcMain.handle('save:set-cloud-settings', async (_event, gameId: string, autoSync: boolean) => {
+    return daemon.setCloudSettings(gameId, autoSync);
+  });
+
+  ipcMain.handle('save:sync-cloud', async (_event, gameId: string, gameTitle: string, profileId: string, apiBaseUrl: string, authToken: string) => {
+    return daemon.syncCloud(gameId, gameTitle, profileId, apiBaseUrl, authToken);
+  });
+
+  ipcMain.handle('save:confirm-path', async (_event, gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string) => {
+    return daemon.confirmSavePath(gameId, absolutePath, apiBaseUrl, authToken);
+  });
+
+  ipcMain.handle('save:resolve-path-patterns', async (_event, patterns: string[]) => {
+    return daemon.resolvePathPatterns(patterns);
+  });
+
   // ── Vault status ──
 
   ipcMain.handle('save:get-vault-status', async () => {

@@ -193,3 +193,40 @@ export function useGameSuggestions(query: string) {
 export function useGameGenres() {
   return useQuery(gameGenresOptions())
 }
+
+export function useSaveLocations(mediaItemId: string | undefined | null) {
+  return useQuery({
+    queryKey: ["saves", "locations", mediaItemId],
+    queryFn: async () => {
+      if (!mediaItemId) return null
+      const { data } = await apiClient.get(`/saves/locations/${mediaItemId}`)
+      return data as {
+        gameId: string
+        verified: { platform: string; pathPattern: string; isVerified: boolean }[]
+        suggested: { platform: string; pathPattern: string; count: number }[]
+      }
+    },
+    enabled: !!mediaItemId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useSubmitSaveLocation() {
+  return useMutation({
+    mutationFn: async ({
+      mediaItemId,
+      platform,
+      pathPattern,
+    }: {
+      mediaItemId: string
+      platform: string
+      pathPattern: string
+    }) => {
+      const { data } = await apiClient.post(`/saves/locations/${mediaItemId}/suggest`, {
+        platform,
+        pathPattern,
+      })
+      return data
+    },
+  })
+}

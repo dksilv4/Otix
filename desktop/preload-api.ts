@@ -347,6 +347,11 @@ export interface IDesktopAPI {
   saveSelectExportDir: () => Promise<string | null>;
   saveSelectImportDir: () => Promise<string | null>;
   saveSelectOverridePath: () => Promise<string | null>;
+  saveGetCloudSettings: (gameId: string) => Promise<any>;
+  saveSetCloudSettings: (gameId: string, autoSync: boolean) => Promise<void>;
+  saveSyncCloud: (gameId: string, gameTitle: string, profileId: string, apiBaseUrl: string, authToken: string) => Promise<any>;
+  saveConfirmPath: (gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string) => Promise<void>;
+  saveResolvePathPatterns: (patterns: string[]) => Promise<string[]>;
 
   // ── Storage ──
   getDiskSpace: () => Promise<Array<{ drive: string; total?: number; used: number; free: number }>>;

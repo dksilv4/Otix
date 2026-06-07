@@ -4,6 +4,7 @@ These endpoints require an authenticated user but are NOT part of the
 OAuth connection/linking flow. Auth-related integration endpoints
 (for linking, unlinking, callbacks) live under otix.api.auth.oauth.
 """
+
 from fastapi import APIRouter
 
 from otix.api.integrations.plex.album_tracks import router as plex_album_tracks_router
@@ -14,6 +15,7 @@ from otix.api.integrations.plex.stream import router as plex_stream_router
 from otix.api.integrations.plex.sync import router as plex_sync_router
 from otix.api.integrations.plex.watchlist.sync import router as plex_watchlist_sync_router
 from otix.api.integrations.plex.webhook import router as plex_webhook_router
+from otix.api.integrations.saves import router as saves_router
 from otix.api.integrations.spotify import router as spotify_router
 from otix.api.integrations.spotify.recently_played.sync import router as spotify_rp_sync_router
 from otix.api.integrations.spotify.sync import router as spotify_sync_router
@@ -47,3 +49,4 @@ router.include_router(tmdb_rating_sync_router)
 router.include_router(tmdb_watchlist_import_router)
 
 router.include_router(youtube_sync_router)
+router.include_router(saves_router)

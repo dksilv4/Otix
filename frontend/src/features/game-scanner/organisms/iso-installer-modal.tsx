@@ -76,6 +76,7 @@ export function IsoInstallerModal({
     completeInstall: storeComplete,
     failInstall: storeFail,
     cancelInstall: storeCancel,
+    dismissInstall: storeDismiss,
   } = useInstallProgress();
 
   // Find the store entry for this modal's isoPath
@@ -89,12 +90,19 @@ export function IsoInstallerModal({
     return game?.otixMediaTitle || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
   }, [games]);
 
-  // Reset on open
+  // Reset on open — also dismiss any stale completed/errored entry so
+  // the user gets the idle form immediately when re-opening after a cancel
   useEffect(() => {
     if (open) {
-      setIsoPath(initialIsoPath || "");
+      const iso = initialIsoPath || "";
+      setIsoPath(iso);
       setTargetDir("");
       setError(null);
+      // If there's a non-active leftover entry (canceled, errored, done), clear it
+      if (iso) {
+        const stale = installs.find((i) => i.isoPath === iso && !i.active)
+        if (stale) storeDismiss(iso)
+      }
     }
   }, [open, initialIsoPath]);
 
@@ -272,15 +280,12 @@ export function IsoInstallerModal({
                     <span className="text-foreground font-medium">
                       {progress ? PHASE_LABELS[progress.phase] : "Starting..."}
                     </span>
-                    <span className="text-muted-foreground text-xs font-mono">
-                      {progressPct}%
-                    </span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--dk-surface-glass)] overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPct}%` }}
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 animate-pulse"
+                      initial={{ width: "100%" }}
+                      animate={{ width: "100%" }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                     />
                   </div>
@@ -388,9 +393,23 @@ export function IsoInstallerModal({
             )}
 
             {(isDone || isError) && (
-              <DkButton onClick={handleClose} className="w-full">
-                {isDone ? "Done" : "Close"}
-              </DkButton>
+              <div className="flex w-full gap-3">
+                {isError && (
+                  <DkButton
+                    variant="ghost"
+                    onClick={() => {
+                      storeDismiss(isoPath)
+                      setError(null)
+                    }}
+                    className="flex-1"
+                  >
+                    Try Again
+                  </DkButton>
+                )}
+                <DkButton onClick={handleClose} className="flex-1">
+                  {isDone ? "Done" : "Close"}
+                </DkButton>
+              </div>
             )}
 
             {isInstallingThis && (

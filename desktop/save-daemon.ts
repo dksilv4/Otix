@@ -107,6 +107,21 @@ async function hashFile(filePath: string): Promise<string> {
   return hash.digest('hex');
 }
 
+async function hashFileMd5(filePath: string): Promise<string> {
+  const hash = createHash('md5');
+  const buffer = Buffer.alloc(65536);
+  const fd = await fs.open(filePath, 'r');
+  try {
+    let bytesRead: number;
+    while ((bytesRead = (await fd.read(buffer, 0, 65536)).bytesRead) > 0) {
+      hash.update(buffer.subarray(0, bytesRead));
+    }
+  } finally {
+    await fd.close();
+  }
+  return hash.digest('hex');
+}
+
 async function fileExists(p: string): Promise<boolean> {
   try {
     await fs.access(p);
@@ -127,6 +142,33 @@ function expandEnvVars(p: string): string {
     .replace(/%LOCALAPPDATA%/g, process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'))
     .replace(/%PROGRAMDATA%/g, process.env.PROGRAMDATA || path.join(os.homedir(), 'AppData', 'Roaming'))
     .replace(/^~\//, os.homedir() + '/');
+}
+
+function normalizePathToPattern(absolutePath: string): string {
+  let p = absolutePath.replace(/\\/g, '/');
+  const home = os.homedir().replace(/\\/g, '/');
+  const localAppdata = (process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')).replace(/\\/g, '/');
+  const appdata = (process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming')).replace(/\\/g, '/');
+  const programdata = (process.env.PROGRAMDATA || 'C:/ProgramData').replace(/\\/g, '/');
+
+  if (p.toLowerCase().startsWith(localAppdata.toLowerCase())) {
+    p = '%LOCALAPPDATA%' + p.substring(localAppdata.length);
+  } else if (p.toLowerCase().startsWith(appdata.toLowerCase())) {
+    p = '%APPDATA%' + p.substring(appdata.length);
+  } else if (p.toLowerCase().startsWith(programdata.toLowerCase())) {
+    p = '%PROGRAMDATA%' + p.substring(programdata.length);
+  } else if (p.toLowerCase().startsWith(home.toLowerCase())) {
+    if (process.platform === 'win32') {
+      p = '%USERPROFILE%' + p.substring(home.length);
+    } else {
+      p = '~' + p.substring(home.length);
+    }
+  }
+
+  if (process.platform === 'win32') {
+    p = p.replace(/\//g, '\\');
+  }
+  return p;
 }
 
 /* ── Normalize title for matching (mirrors frontend normalizeTitle) ── */
@@ -459,6 +501,7 @@ export class SaveDaemon {
 
   async clearOverride(gameId: string): Promise<void> {
     SaveService.deleteOverride(gameId);
+    SaveService.confirmPath(gameId, 0, null);
   }
 
   // ── Vault status ──
@@ -541,4 +584,260 @@ export class SaveDaemon {
 
     return profile.id;
   }
+
+  // ── Cloud Settings ──
+
+  async getCloudSettings(gameId: string): Promise<{ gameId: string; autoSync: boolean; lastSyncAt: string | null; isPathConfirmed: boolean; confirmedPath: string | null }> {
+    const row = SaveService.getCloudSettings(gameId);
+    if (!row) {
+      return { gameId, autoSync: false, lastSyncAt: null, isPathConfirmed: false, confirmedPath: null };
+    }
+    return {
+      gameId: row.game_id,
+      autoSync: row.auto_sync === 1,
+      lastSyncAt: row.last_sync_at,
+      isPathConfirmed: row.is_path_confirmed === 1,
+      confirmedPath: row.confirmed_path,
+    };
+  }
+
+  async setCloudSettings(gameId: string, autoSync: boolean): Promise<void> {
+    const current = await this.getCloudSettings(gameId);
+    SaveService.upsertCloudSettings(gameId, autoSync ? 1 : 0, current.lastSyncAt);
+  }
+
+  async confirmSavePath(gameId: string, absolutePath: string, apiBaseUrl: string, authToken: string): Promise<void> {
+    SaveService.confirmPath(gameId, 1, absolutePath);
+
+    const mediaId = SaveService.getOtixMediaId(gameId);
+    if (mediaId && apiBaseUrl && authToken) {
+      try {
+        const pattern = normalizePathToPattern(absolutePath);
+        const platform = process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux';
+        const url = `${apiBaseUrl}/saves/locations/${mediaId}/suggest`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken,
+          },
+          body: JSON.stringify({
+            platform,
+            path_pattern: pattern,
+          }),
+        });
+        if (!response.ok) {
+          console.error(`[SaveDaemon] Failed to submit path suggestion to server: ${response.statusText}`);
+        } else {
+          console.log(`[SaveDaemon] Submitted save path suggestion: ${pattern} for game ${gameId}`);
+        }
+      } catch (err) {
+        console.error('[SaveDaemon] Error submitting path suggestion:', err);
+      }
+    }
+  }
+
+  async resolvePathPatterns(patterns: string[]): Promise<string[]> {
+    const resolved: string[] = [];
+    const seen = new Set<string>();
+    for (const pat of patterns) {
+      try {
+        const expanded = expandEnvVars(pat);
+        const resolvedPath = path.resolve(expanded);
+        if (seen.has(resolvedPath)) continue;
+        seen.add(resolvedPath);
+        if (await fileExists(resolvedPath)) {
+          resolved.push(resolvedPath);
+        }
+      } catch (err) {
+        // ignore resolution errors
+      }
+    }
+    return resolved;
+  }
+
+  // ── Cloud Sync Engine ──
+
+  async syncCloud(
+    gameId: string,
+    gameTitle: string,
+    profileId: string,
+    apiBaseUrl: string,
+    authToken: string
+  ): Promise<{ success: boolean; message: string }> {
+    logger.info('[SaveDaemon] Starting cloud sync', { gameId, gameTitle, profileId });
+
+    // 1. Discover local saves and run a local backup to update the vault
+    const discovery = await this.discoverForGame(gameId, gameTitle);
+    if (discovery.detectedPaths.length > 0) {
+      await this.backupToVault(gameId, discovery.detectedPaths);
+    }
+
+    // 2. Resolve active profile and vault path
+    let profile = SaveService.getActiveProfile(gameId);
+    if (!profile) {
+      // If still no profile, backupToVault should have created one. If not, create now.
+      const pId = generateId();
+      SaveService.createProfile(pId, gameId, 'default', 1);
+      profile = { id: pId, game_id: gameId, name: 'default', is_active: 1, created_at: new Date().toISOString() };
+    }
+    const effectiveProfileId = profile.id;
+    const profileDir = path.join(this.vaultRoot, gameId, 'profiles', effectiveProfileId);
+    await ensureDir(profileDir);
+
+    // 3. Retrieve list of remote files in Google Drive from the backend
+    const getFilesUrl = new URL(`${apiBaseUrl}/saves/${gameId}/files`);
+    getFilesUrl.searchParams.set('profile_id', effectiveProfileId);
+
+    const getFilesResp = await fetch(getFilesUrl.toString(), {
+      headers: { 'Authorization': authToken }
+    });
+    if (!getFilesResp.ok) {
+      const errText = await getFilesResp.text();
+      throw new Error(`Failed to list Google Drive files: ${errText || getFilesResp.statusText}`);
+    }
+    const remoteFilesList = (await getFilesResp.json()) as Array<{
+      id: string;
+      name: string;
+      md5Checksum: string;
+      modifiedTime: string;
+      size: number;
+    }>;
+
+    const remoteFiles = new Map(remoteFilesList.map((f) => [f.name, f]));
+
+    // 4. Read local files in the vault profile directory
+    const localEntries = await fs.readdir(profileDir, { withFileTypes: true });
+    const localFiles = new Map<string, { path: string; md5: string; mtime: number; size: number }>();
+    for (const entry of localEntries) {
+      if (entry.isFile() && !entry.name.startsWith('.')) {
+        const filePath = path.join(profileDir, entry.name);
+        const stats = await fs.stat(filePath);
+        const md5 = await hashFileMd5(filePath);
+        localFiles.set(entry.name, { path: filePath, md5, mtime: stats.mtimeMs, size: stats.size });
+      }
+    }
+
+    // 5. Compare lists to determine uploads and downloads
+    const uploads: string[] = [];
+    const downloads: { filename: string; fileId: string; localPath: string }[] = [];
+
+    // Check what needs to be uploaded or resolved
+    for (const [filename, localFile] of localFiles.entries()) {
+      const remoteFile = remoteFiles.get(filename);
+      if (!remoteFile) {
+        // Missing on cloud - upload
+        uploads.push(filename);
+      } else if (localFile.md5 !== remoteFile.md5Checksum) {
+        // Diff hashes, compare modification times
+        const remoteTime = new Date(remoteFile.modifiedTime).getTime();
+        if (localFile.mtime > remoteTime) {
+          uploads.push(filename);
+        } else {
+          downloads.push({ filename, fileId: remoteFile.id, localPath: localFile.path });
+        }
+      }
+    }
+
+    // Check what needs to be downloaded (missing locally)
+    for (const [filename, remoteFile] of remoteFiles.entries()) {
+      if (!localFiles.has(filename)) {
+        const localPath = path.join(profileDir, filename);
+        downloads.push({ filename, fileId: remoteFile.id, localPath });
+      }
+    }
+
+    logger.info('[SaveDaemon] Cloud comparison complete', {
+      uploadsCount: uploads.length,
+      downloadsCount: downloads.length,
+    });
+
+    // 6. Execute uploads
+    for (const filename of uploads) {
+      const localFile = localFiles.get(filename)!;
+      const remoteFile = remoteFiles.get(filename);
+      const fileContent = await fs.readFile(localFile.path);
+
+      const formData = new FormData();
+      const blob = new Blob([fileContent], { type: 'application/octet-stream' });
+      formData.append('file', blob, filename);
+
+      const uploadUrl = new URL(`${apiBaseUrl}/saves/${gameId}/upload`);
+      uploadUrl.searchParams.set('filename', filename);
+      uploadUrl.searchParams.set('profile_id', effectiveProfileId);
+      if (remoteFile) {
+        uploadUrl.searchParams.set('file_id', remoteFile.id);
+      }
+
+      const uploadResp = await fetch(uploadUrl.toString(), {
+        method: 'POST',
+        headers: { 'Authorization': authToken },
+        body: formData,
+      });
+
+      if (!uploadResp.ok) {
+        const errText = await uploadResp.text();
+        throw new Error(`Failed to upload ${filename}: ${errText || uploadResp.statusText}`);
+      }
+    }
+
+    // 7. Execute downloads
+    for (const dl of downloads) {
+      const downloadUrl = `${apiBaseUrl}/saves/${gameId}/download/${dl.fileId}`;
+      const downloadResp = await fetch(downloadUrl, {
+        headers: { 'Authorization': authToken },
+      });
+
+      if (!downloadResp.ok) {
+        throw new Error(`Failed to download ${dl.filename}: ${downloadResp.statusText}`);
+      }
+
+      const arrayBuffer = await downloadResp.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      await fs.writeFile(dl.localPath, buffer);
+
+      // Upsert vault save record in SQLite
+      const stats = await fs.stat(dl.localPath);
+      const fileHash = await hashFile(dl.localPath);
+      const saveId = generateId();
+
+      const existingSaves = SaveService.getSavesByProfile(effectiveProfileId);
+      const matchedSave = existingSaves.find((s) => s.file_name === dl.filename);
+      const originPath = matchedSave
+        ? matchedSave.origin_path
+        : path.join(discovery.detectedPaths[0] || '', dl.filename);
+
+      SaveService.upsertVaultSave(
+        saveId,
+        gameId,
+        effectiveProfileId,
+        dl.filename,
+        stats.size,
+        fileHash,
+        dl.localPath,
+        originPath
+      );
+    }
+
+    // 8. Restore newly downloaded files from vault to the game's actual directory
+    if (downloads.length > 0) {
+      await this.restoreFromVault(gameId, { profileId: effectiveProfileId, overwrite: true });
+    }
+
+    // 9. Update last sync date
+    const currentSettings = await this.getCloudSettings(gameId);
+    const syncTime = new Date().toISOString();
+    SaveService.upsertCloudSettings(gameId, currentSettings.autoSync ? 1 : 0, syncTime);
+
+    logger.info('[SaveDaemon] Cloud sync completed successfully', { gameId });
+    return { success: true, message: `Sync complete. Uploaded ${uploads.length} files, downloaded ${downloads.length} files.` };
+  }
 }
+
+// logger stub helper in case structlog doesn't output logger (but it does in ts files)
+const logger = {
+  info: (msg: string, meta?: any) => console.log(`[INFO] ${msg}`, meta || ''),
+  warn: (msg: string, meta?: any) => console.warn(`[WARN] ${msg}`, meta || ''),
+  error: (msg: string, meta?: any) => console.error(`[ERROR] ${msg}`, meta || ''),
+};
+

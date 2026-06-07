@@ -28,7 +28,7 @@ from otix.domain.genre import MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
 
 if TYPE_CHECKING:
-    from otix.domain.collection import CollectionItem
+    from otix.domain.collection import Collection, CollectionItem
     from otix.domain.company import InvolvedCompany
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.franchise import Franchise, FranchiseItem
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from otix.domain.people import MediaCredit
     from otix.domain.review import Review
     from otix.domain.user import User
+    from otix.domain.watch_provider import MediaWatchProvider
 
 
 class MediaItem(Base, TimestampMixin):
@@ -102,9 +103,7 @@ class MediaItem(Base, TimestampMixin):
     )
     platforms: Mapped[list[MediaPlatform]] = relationship("MediaPlatform", back_populates="media_item")
     game_modes: Mapped[list[MediaGameMode]] = relationship("MediaGameMode", back_populates="media_item")
-    watch_providers: Mapped[list[MediaWatchProvider]] = relationship(
-        "MediaWatchProvider", back_populates="media_item"
-    )
+    watch_providers: Mapped[list[MediaWatchProvider]] = relationship("MediaWatchProvider", back_populates="media_item")
 
 
 class Movie(Base):
@@ -248,8 +247,7 @@ class Album(Base, HasExternalIDs):
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
-        primaryjoin="and_(foreign(ExternalID.entity_id) == Album.media_item_id, "
-        "ExternalID.entity_type == 'media_item')",
+        primaryjoin="and_(foreign(ExternalID.entity_id) == Album.media_item_id, ExternalID.entity_type == 'media_item')",
         lazy="raise",
         viewonly=True,
     )
@@ -534,6 +532,28 @@ class UserLocalGame(Base, TimestampMixin):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "title", "platform", name="uq_user_local_game"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "title", "platform", name="uq_user_local_game"),)
+
+
+class GameSavePathSuggestion(Base, TimestampMixin):
+    __tablename__ = "game_save_path_suggestions"
+
+    id: Mapped[otix_pk]
+    game_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    path_pattern: Mapped[str] = mapped_column(String(2000), nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "game_id", "platform", name="uq_user_game_platform_suggestion"),)
+
+
+class GameSaveOfficialPath(Base, TimestampMixin):
+    __tablename__ = "game_save_official_paths"
+
+    id: Mapped[otix_pk]
+    game_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"), nullable=False)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False)
+    path_pattern: Mapped[str] = mapped_column(String(2000), nullable=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    __table_args__ = (UniqueConstraint("game_id", "platform", name="uq_game_platform_official_path"),)

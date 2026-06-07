@@ -36,6 +36,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 
@@ -191,9 +192,7 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
 
     resolved_user = user
     if resolved_user is None and state_user_id:
-        resolved_user = await session.scalar(
-            select(User).where(User.id == state_user_id)
-        )
+        resolved_user = await session.scalar(select(User).where(User.id == state_user_id))
 
     if resolved_user is None:
         raise HTTPException(
@@ -226,7 +225,10 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
     # Check for duplicate links
     existing = await session.scalar(select(User).where(User.google_id == google_id))
     if existing is not None and existing.id != user.id:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This Google account is already linked to another Otix account.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This Google account is already linked to another Otix account.",
+        )
 
     user.google_id = google_id
     user.google_email = profile.get("email")
@@ -325,8 +327,7 @@ async def _unlink_google_quietly(session: AsyncSession, user: User) -> None:
             user_id=user.id,
             type_="integration_disconnected",
             title="Google disconnected",
-            body="Your Google account was disconnected because access was revoked externally. "
-            "Re-link your account in Settings to continue syncing.",
+            body="Your Google account was disconnected because access was revoked externally. Re-link your account in Settings to continue syncing.",
             metadata_json={"provider": "google", "reason": "external_revocation"},
         )
         await session.commit()

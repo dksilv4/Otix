@@ -1,12 +1,14 @@
-import { useCallback, useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Helmet } from "react-helmet-async"
-import { Gamepad2, RefreshCw, Play, Folder, Star, Menu, ExternalLink, Circle, X } from "lucide-react"
+import { Gamepad2, RefreshCw, Play, Folder, Star, Menu, X, Cloud, Link2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 import { useGames } from "../hooks/use-games"
 import { GamesSidePanel } from "./games-side-panel"
 import { GamesShelf } from "./games-shelf"
 import type { DetectedGame } from "@/features/game-scanner/types"
+import { useAuth } from "@/features/auth/auth-provider"
+import { API_BASE_URL } from "@/lib/api-client"
 
 // ── Hero — full game detail panel ──────────────────────────────────
 
@@ -32,6 +34,67 @@ function HeroPanel({
   const [imgFailed, setImgFailed] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
 
+  const { user } = useAuth()
+  const [cloudSettings, setCloudSettings] = useState<{ gameId: string; autoSync: boolean; lastSyncAt: string | null } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!game?.id || !window.desktopAPI) return
+
+    setCloudSettings(null)
+    setSyncError(null)
+    setSuccessMsg(null)
+
+    window.desktopAPI.saveGetCloudSettings(game.id)
+      .then((settings) => {
+        setCloudSettings(settings)
+      })
+      .catch((err) => {
+        console.error('Failed to get cloud settings', err)
+      })
+  }, [game?.id])
+
+  const handleToggleAutoSync = async (checked: boolean) => {
+    if (!game?.id || !window.desktopAPI) return
+    try {
+      await window.desktopAPI.saveSetCloudSettings(game.id, checked)
+      setCloudSettings((prev) => prev ? { ...prev, autoSync: checked } : null)
+    } catch (err: any) {
+      console.error('Failed to set cloud settings', err)
+    }
+  }
+
+  const handleSyncNow = async () => {
+    if (!game?.id || !window.desktopAPI) return
+    setSyncing(true)
+    setSyncError(null)
+    setSuccessMsg(null)
+    try {
+      const token = localStorage.getItem('otix-access-token') || ''
+      const res = await window.desktopAPI.saveSyncCloud(
+        game.id,
+        game.title,
+        'default',
+        API_BASE_URL,
+        token ? `Bearer ${token}` : ''
+      )
+      if (res.success) {
+        setSuccessMsg(res.message || 'Sync successful!')
+        const updated = await window.desktopAPI.saveGetCloudSettings(game.id)
+        setCloudSettings(updated)
+      } else {
+        setSyncError(res.message || 'Sync failed.')
+      }
+    } catch (err: any) {
+      console.error('Sync failed', err)
+      setSyncError(err.message || 'An error occurred during synchronization.')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   if (!game) {
     return (
       <div className="flex-1 rounded-2xl bg-[var(--dk-surface-base)] flex flex-col items-center justify-center min-h-[280px] gap-3">
@@ -46,6 +109,19 @@ function HeroPanel({
 
   const isMatched = !!game.otixMediaId
   const hasSuggestion = !!game.otixMatchSuggestion
+  const isSolelyMultiplayer = useMemo(() => {
+    if (!detail?.gameModes || detail.gameModes.length === 0) return false
+    const modes = detail.gameModes.map((m: any) => m.gameMode.slug)
+    const hasSinglePlayer = modes.includes('single-player')
+    const hasMultiplayer = modes.some((slug: string) => 
+      slug.includes('multiplayer') || 
+      slug.includes('co-op') || 
+      slug.includes('co-operative') || 
+      slug.includes('mmo') || 
+      slug.includes('battle-royale')
+    )
+    return hasMultiplayer && !hasSinglePlayer
+  }, [detail])
   // Steam Grid image → catalog textless poster, then catalog poster, then local poster, then icon
   const gridImage = detail?.textlessPosterUrl ?? detail?.posterUrl ?? game.otixPosterUrl ?? game.posterUrl ?? game.iconUrl
   const installDir = game.installDir.split(/[\/]/).slice(-2).join(" / ")
@@ -192,6 +268,112 @@ function HeroPanel({
                   </span>
                 )}
               </div>
+
+              {/* Google Drive Save Sync Card / Online Multiplayer Notice */}
+              {isSolelyMultiplayer ? (
+                <div className="mt-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/15 backdrop-blur-md space-y-1.5 max-w-[480px]">
+                  <div className="flex items-center gap-2">
+                    <Cloud size={16} className="text-blue-400" />
+                    <span className="text-xs font-bold text-white">Save Sync Not Required</span>
+                  </div>
+                  <p className="text-xs text-white/50 leading-normal">
+                    This is an online-only multiplayer service game. Progress and saves are managed directly by the server.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3 max-w-[480px]">
+                  <div className="flex items-center gap-2">
+                    <Cloud size={16} className="text-[#4285F4]" />
+                    <span className="text-xs font-bold text-white">Google Drive Save Sync</span>
+                    {user?.googleId && (
+                      <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-md px-1.5 py-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Connected
+                      </span>
+                    )}
+                  </div>
+
+                  {!user?.googleId ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-white/50 leading-normal">
+                        Link your Google account in settings to automatically backup and sync your game save files to Google Drive.
+                      </p>
+                      <Link
+                        to="/settings"
+                        search={{ section: "integrations" }}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#4285F4] hover:bg-[#4285F4]/90 active:scale-[0.97] transition-all px-3 py-1.5 text-xs font-bold text-white"
+                      >
+                        <Link2 size={13} /> Connect Google Account
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2">
+                        <span className="text-white/50">Google Account</span>
+                        <span className="text-white/80 font-medium truncate max-w-[200px]" title={user.googleEmail || user.googleName || ""}>
+                          {user.googleName || user.googleEmail}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-medium text-white/80">Auto Cloud Sync</span>
+                          <p className="text-[10px] text-white/40 leading-none">Auto sync save data on game exit</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAutoSync(!(cloudSettings?.autoSync))}
+                          className={cn(
+                            "relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none",
+                            cloudSettings?.autoSync ? "bg-emerald-500" : "bg-white/10"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200",
+                              cloudSettings?.autoSync ? "translate-x-4.5" : "translate-x-1"
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          type="button"
+                          disabled={syncing}
+                          onClick={handleSyncNow}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-white/8 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/12 active:scale-[0.97] transition-all disabled:opacity-40"
+                        >
+                          <RefreshCw size={12} className={cn("text-white/60", syncing && "animate-spin")} />
+                          {syncing ? "Syncing..." : "Sync Now"}
+                        </button>
+                        <div className="text-right">
+                          {cloudSettings?.lastSyncAt ? (
+                            <span className="text-[10px] text-white/40 block">
+                              Last synced: {new Date(cloudSettings.lastSyncAt).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-white/30 block">Never synced</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {syncError && (
+                        <p className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/15 rounded-lg p-2 flex items-start gap-1.5">
+                          <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
+                          <span>{syncError}</span>
+                        </p>
+                      )}
+
+                      {successMsg && (
+                        <p className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-lg p-2 flex items-start gap-1.5">
+                          <CheckCircle2 size={12} className="flex-shrink-0 mt-0.5" />
+                          <span>{successMsg}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -236,6 +418,40 @@ export function GamesPage() {
     handlePlay,
     handleOpenFolder,
   } = useGames()
+
+  // Listen for game ended to trigger auto-sync
+  useEffect(() => {
+    const api = window.desktopAPI
+    if (!api) return
+
+    const unsubscribe = api.onGameEnded(async (data: any) => {
+      const gameId = data?.gameId
+      const gameTitle = data?.gameTitle || 'Game'
+      if (!gameId) return
+
+      try {
+        const settings = await api.saveGetCloudSettings(gameId)
+        if (settings && settings.autoSync) {
+          console.log(`[AutoSync] Triggering auto-sync for game: ${gameId}`)
+          const token = localStorage.getItem('otix-access-token') || ''
+          await api.saveSyncCloud(
+            gameId,
+            gameTitle,
+            'default',
+            API_BASE_URL,
+            token ? `Bearer ${token}` : ''
+          )
+          console.log(`[AutoSync] Auto-sync finished for game: ${gameId}`)
+        }
+      } catch (err) {
+        console.error(`[AutoSync] Auto-sync failed for game: ${gameId}`, err)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
 
   const isLoading = false // games load synchronously from localStorage cache
 

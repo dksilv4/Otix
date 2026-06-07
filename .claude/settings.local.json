@@ -452,7 +452,21 @@
       "Bash(kill 10411 10488 10388)",
       "Bash(npx --no tsc --noEmit)",
       "Read(//mnt/c/Users/diogo/OneDrive/Documents/GitHub/**)",
-      "PowerShell(Get-Content \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\installer.ts\" | Select-Object -Index \\(1049, 1050, 1051, 1052, 1053, 1054, 1055\\) -Encoding utf8)"
+      "PowerShell(Get-Content \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\installer.ts\" | Select-Object -Index \\(1049, 1050, 1051, 1052, 1053, 1054, 1055\\) -Encoding utf8)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(ollama --version)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(winget install *)",
+      "PowerShell(sqlite3 \"$env:APPDATA\\\\Antigravity\\\\User\\\\globalStorage\\\\state.vscdb\" \"SELECT key, value FROM ItemTable WHERE key LIKE '%provider%' OR key LIKE '%model%' OR key LIKE '%ollama%' OR key LIKE '%aiProvider%' OR key LIKE '%antigravity%' LIMIT 50;\" 2>$null)",
+      "PowerShell(sqlite3 \"$env:APPDATA\\\\Antigravity\\\\User\\\\globalStorage\\\\state.vscdb\" \"SELECT key FROM ItemTable WHERE key LIKE '%antigravity%model%' OR key LIKE '%ag%provider%' OR key LIKE '%model%pref%' OR key LIKE '%provider%ollama%' LIMIT 30;\" 2>$null)",
+      "PowerShell(python3 -c \"import sqlite3; conn = sqlite3.connect\\(r'$env:APPDATA\\\\Antigravity\\\\User\\\\globalStorage\\\\state.vscdb'\\); cursor = conn.cursor\\(\\); cursor.execute\\(\\\\\"SELECT key FROM ItemTable WHERE key LIKE '%ollama%' OR key LIKE '%gemma%' OR key LIKE '%customProvider%' OR key LIKE '%provider%' LIMIT 30\\\\\"\\); print\\('\\\\n'.join\\([r[0] for r in cursor.fetchall\\(\\)]\\)\\); conn.close\\(\\)\" 2>$null)",
+      "PowerShell(python3 -c \"import sqlite3; conn = sqlite3.connect\\(r'$env:APPDATA\\\\Antigravity\\\\User\\\\globalStorage\\\\state.vscdb'\\); cursor = conn.cursor\\(\\); cursor.execute\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\); print\\('\\\\n'.join\\([r[0] for r in cursor.fetchall\\(\\)]\\)\\); conn.close\\(\\)\" 2>$null)",
+      "PowerShell(& \"C:\\\\Program Files\\\\Python313\\\\python.exe\" -c \"import sqlite3; conn = sqlite3.connect\\(r'C:\\\\Users\\\\diogo\\\\AppData\\\\Roaming\\\\Antigravity\\\\User\\\\globalStorage\\\\state.vscdb'\\); cursor = conn.cursor\\(\\); cursor.execute\\('SELECT name FROM sqlite_master WHERE type=''table'''\\); print\\('\\\\n'.join\\([r[0] for r in cursor.fetchall\\(\\)]\\)\\); conn.close\\(\\)\")",
+      "PowerShell(python3 C:\\\\Users\\\\diogo\\\\AppData\\\\Local\\\\Temp\\\\query_antigravity.py)",
+      "PowerShell(python3 C:\\\\Users\\\\diogo\\\\AppData\\\\Local\\\\Temp\\\\query_antigravity2.py)",
+      "PowerShell(python3 C:\\\\Users\\\\diogo\\\\AppData\\\\Local\\\\Temp\\\\query_antigravity3.py)",
+      "PowerShell(.venv\\\\Scripts\\\\ruff check --fix \"backend\\\\alembic\\\\versions\\\\33cb7d824ffe_add_game_save_locations.py\", \"backend\\\\otix\\\\api\\\\auth\\\\oauth\\\\google\\\\__init__.py\", \"backend\\\\otix\\\\api\\\\integrations\\\\__init__.py\", \"backend\\\\otix\\\\api\\\\integrations\\\\saves.py\", \"backend\\\\otix\\\\domain\\\\__init__.py\", \"backend\\\\otix\\\\domain\\\\base.py\", \"backend\\\\otix\\\\services\\\\google_auth_service.py\", \"backend\\\\tests\\\\test_saves_locations.py\" 2>&1)"
     ]
   },
   "outputStyle": "default"

@@ -35,8 +35,17 @@ def app(mock_db, current_user):
     app = _make_app()
     from otix.api import _utils as deps
 
-    app.dependency_overrides[deps.get_db] = lambda: mock_db
+    async def override_get_db():
+        try:
+            yield mock_db
+            await mock_db.commit()
+        except Exception:
+            await mock_db.rollback()
+            raise
+
+    app.dependency_overrides[deps.get_db] = override_get_db
     app.dependency_overrides[deps.get_current_user] = lambda: current_user
+    app.dependency_overrides[deps.get_optional_user] = lambda: current_user
     yield app
     app.dependency_overrides.clear()
 
@@ -47,9 +56,10 @@ async def test_google_connect_initiate_success(mock_build_url, app):
     mock_build_url.return_value = ("https://accounts.google.com/oauth", "state-123")
 
     # Configure mock client settings
-    with patch.object(settings, "google_client_id", "some-id"), \
-         patch.object(settings, "google_client_secret", "some-secret"):
-
+    with (
+        patch.object(settings, "google_client_id", "some-id"),
+        patch.object(settings, "google_client_secret", "some-secret"),
+    ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post("/auth/oauth/google")
@@ -64,13 +74,11 @@ async def test_google_connect_initiate_success(mock_build_url, app):
 @pytest.mark.anyio
 @patch("otix.api.auth.oauth.google.build_google_link_url")
 async def test_google_connect_initiate_unconfigured(mock_build_url, app):
-    with patch.object(settings, "google_client_id", ""), \
-         patch.object(settings, "google_client_secret", ""):
-
+    with patch.object(settings, "google_client_id", ""), patch.object(settings, "google_client_secret", ""):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post("/auth/oauth/google")
-            assert resp.status_code == 501
+            assert resp.status_code == 503
             assert "Google authentication is not configured" in resp.json()["detail"]
             mock_build_url.assert_not_called()
 
@@ -114,9 +122,10 @@ async def test_google_disconnect_not_linked(mock_unlink, mock_db, current_user, 
 async def test_google_callback_success(mock_link, mock_db, current_user, app):
     mock_link.return_value = None
 
-    with patch.object(settings, "google_client_id", "some-id"), \
-         patch.object(settings, "google_client_secret", "some-secret"):
-
+    with (
+        patch.object(settings, "google_client_id", "some-id"),
+        patch.object(settings, "google_client_secret", "some-secret"),
+    ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
@@ -133,16 +142,14 @@ async def test_google_callback_success(mock_link, mock_db, current_user, app):
 @pytest.mark.anyio
 @patch("otix.api.auth.oauth.google.callback.link_google_to_user")
 async def test_google_callback_unconfigured(mock_link, app):
-    with patch.object(settings, "google_client_id", ""), \
-         patch.object(settings, "google_client_secret", ""):
-
+    with patch.object(settings, "google_client_id", ""), patch.object(settings, "google_client_secret", ""):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
                 "/auth/oauth/google/callback",
                 json={"code": "auth-code-abc", "state": "state-xyz"},
             )
-            assert resp.status_code == 501
+            assert resp.status_code == 503
             assert "Google authentication is not configured" in resp.json()["detail"]
             mock_link.assert_not_awaited()
 
@@ -152,9 +159,10 @@ async def test_google_callback_unconfigured(mock_link, app):
 async def test_google_callback_http_exception_passthrough(mock_link, mock_db, current_user, app):
     mock_link.side_effect = HTTPException(status_code=409, detail="Google account already linked to another user")
 
-    with patch.object(settings, "google_client_id", "some-id"), \
-         patch.object(settings, "google_client_secret", "some-secret"):
-
+    with (
+        patch.object(settings, "google_client_id", "some-id"),
+        patch.object(settings, "google_client_secret", "some-secret"),
+    ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
@@ -173,9 +181,10 @@ async def test_google_callback_http_exception_passthrough(mock_link, mock_db, cu
 async def test_google_callback_generic_error(mock_link, mock_db, current_user, app):
     mock_link.side_effect = RuntimeError("token exchange failed")
 
-    with patch.object(settings, "google_client_id", "some-id"), \
-         patch.object(settings, "google_client_secret", "some-secret"):
-
+    with (
+        patch.object(settings, "google_client_id", "some-id"),
+        patch.object(settings, "google_client_secret", "some-secret"),
+    ):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(
@@ -187,4 +196,3 @@ async def test_google_callback_generic_error(mock_link, mock_db, current_user, a
 
             mock_db.rollback.assert_awaited_once()
             mock_db.commit.assert_not_awaited()
-
