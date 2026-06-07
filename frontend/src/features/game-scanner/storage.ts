@@ -164,7 +164,16 @@ export async function loadFromDatabase(): Promise<void> {
     // Games — authoritative
     const dbGames = await api.getScannedGames();
     if (dbGames && dbGames.length > 0) {
-      const deduped = mergeDuplicateGames(dbGames);
+      // Preserve install status from current cache (DB may have stale ISO platform)
+      const preserved = dbGames.map(g => {
+        if (g.platform !== 'iso') return g
+        const existing = cache.games.find(c => c.id === g.id || c.exePath === g.exePath)
+        if (existing && existing.platform !== 'iso') {
+          return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
+        }
+        return g
+      })
+      const deduped = mergeDuplicateGames(preserved);
       cache.games = deduped;
       localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
       if (deduped.length < dbGames.length) {
@@ -254,7 +263,16 @@ export function setIsoPaths(paths: string[]): void {
 }
 
 export function setScannedGames(games: DetectedGame[]): void {
-  const deduped = mergeDuplicateGames(games);
+  // Guard: never downgrade an installed game back to ISO (prevents race with match mutation)
+  const guarded = games.map(g => {
+    if (g.platform !== 'iso') return g // only check games being set as ISO
+    const existing = cache.games.find(c => c.id === g.id || c.exePath === g.exePath)
+    if (existing && existing.platform !== 'iso') {
+      return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
+    }
+    return g
+  })
+  const deduped = mergeDuplicateGames(guarded);
   cache.games = deduped;
   localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
 
@@ -343,6 +361,43 @@ export function filterRejectedSuggestions(games: DetectedGame[]): DetectedGame[]
  * ("move to library"). Finds game by oldExePath, replaces both fields,
  * persists to cache + localStorage + SQLite, fires games:updated event.
  */
+/**
+ * Update a scanned game after ISO install completes.
+ * Changes platform from 'iso' to 'pc', updates exePath and installDir,
+ * persists to cache + localStorage + SQLite, fires games:updated event.
+ */
+export function markGameInstalled(
+  isoExePath: string,
+  installedExePath: string | null,
+  installDir: string,
+): void {
+  const idx = cache.games.findIndex((g) => g.exePath === isoExePath)
+  if (idx === -1) {
+    // fallback: try case-insensitive match (Windows paths)
+    const ci = cache.games.findIndex((g) => g.exePath.toLowerCase() === isoExePath.toLowerCase())
+    if (ci === -1) return
+    const updated = [...cache.games]
+    updated[ci] = {
+      ...updated[ci],
+      platform: 'pc',
+      exePath: installedExePath ?? updated[ci].exePath,
+      installDir,
+    }
+    setScannedGames(updated)
+    return
+  }
+
+  const updated = [...cache.games]
+  updated[idx] = {
+    ...updated[idx],
+    platform: 'pc',
+    exePath: installedExePath ?? updated[idx].exePath,
+    installDir,
+  }
+
+  setScannedGames(updated)
+}
+
 export function updateGamePath(
   oldExePath: string,
   newExePath: string,

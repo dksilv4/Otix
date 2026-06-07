@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DkButton } from "@/features/dk-ui/atoms/button";
-import { hasDesktopAPI, getScanPaths } from "../storage";
+import { hasDesktopAPI, getScanPaths, markGameInstalled } from "../storage";
 import { useInstallProgress } from "../install-store";
 import type {
   DetectedGame,
@@ -58,6 +58,7 @@ interface IsoInstallerModalProps {
   onClose: () => void;
   games: DetectedGame[];
   initialIsoPath?: string;
+  onInstallComplete?: (isoPath: string, installDir: string, gameExe: string | null) => void;
 }
 
 export function IsoInstallerModal({
@@ -65,6 +66,7 @@ export function IsoInstallerModal({
   onClose,
   games,
   initialIsoPath,
+  onInstallComplete,
 }: IsoInstallerModalProps) {
   const [isoPath, setIsoPath] = useState("");
   const [targetDir, setTargetDir] = useState("");
@@ -161,6 +163,12 @@ export function IsoInstallerModal({
       const api = (window as any).desktopAPI;
       const res: InstallResult = await api.installGame(isoPath, targetDir, gameTitle);
       storeComplete(isoPath, res);
+      // Update game in storage so main page sees it as installed (pc, not iso)
+      if (res.success) {
+        markGameInstalled(isoPath, res.gameExe ?? null, res.installDir)
+        // Direct callback to parent for immediate UI update
+        onInstallComplete?.(isoPath, res.installDir, res.gameExe ?? null)
+      }
       if (!res.success && res.error) {
         setError(res.error);
       }

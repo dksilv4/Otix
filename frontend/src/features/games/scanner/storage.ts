@@ -5,4 +5,5 @@ export {
   getIsoPaths,
   hasDesktopAPI,
   filterRejectedSuggestions,
+  rejectSuggestion,
 } from "@/features/game-scanner/storage"

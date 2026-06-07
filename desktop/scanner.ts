@@ -245,7 +245,7 @@ async function findExecutables(dir: string, maxDepth = 5, onWalk?: (subDir: stri
 }
 
 // Pick the best executable among candidates using heuristics (size, install directory matching)
-async function pickBestExe(exes: string[], installDirName: string): Promise<string | null> {
+export async function pickBestExe(exes: string[], installDirName: string): Promise<string | null> {
   if (exes.length === 0) return null;
   if (exes.length === 1) return exes[0];
 
@@ -260,7 +260,7 @@ async function pickBestExe(exes: string[], installDirName: string): Promise<stri
     // Ignore obvious utility and dependency files
     if (
       exeName.includes('crash') ||
-      exeName.includes('uninst') ||
+      exeName.includes('unins') ||
       exeName.includes('setup') ||
       exeName.includes('redist') ||
       exeName.includes('config') ||
@@ -274,7 +274,20 @@ async function pickBestExe(exes: string[], installDirName: string): Promise<stri
     }
 
     let score = 0;
-    
+
+    // Bonus for Unreal Engine "Shipping" executables (actual game binary)
+    if (exeName.includes('shipping')) score += 80;
+
+    // Bonus for exes in subdirectories (binary is often in Binaries/ subfolder)
+    const pathLower = exe.toLowerCase()
+    const fnLower = installDirName.toLowerCase()
+    const folderIdx = pathLower.indexOf(fnLower)
+    if (folderIdx >= 0) {
+      const afterFolder = pathLower.substring(folderIdx + fnLower.length)
+      const sepCount = (afterFolder.match(/[\\/]/g) || []).length
+      if (sepCount > 1) score += 30 // exe is in a subfolder, not the root game dir
+    }
+
     // Exact or close match to folder name
     if (exeName === cleanInstallDir || exeName === installDirName.toLowerCase()) {
       score += 100;
@@ -297,7 +310,7 @@ async function pickBestExe(exes: string[], installDirName: string): Promise<stri
     }
   }
 
-  return bestExe || exes[0];
+  return bestExe;
 }
 
 interface IconDataResult {

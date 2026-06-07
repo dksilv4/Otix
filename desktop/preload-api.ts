@@ -272,6 +272,7 @@ export interface IDesktopAPI {
   onGamesUpdated: (callback: () => void) => () => void;
   getScannedGames: () => Promise<DetectedGame[]>;
   saveScannedGames: (games: DetectedGame[]) => Promise<void>;
+  pickExecutable: (defaultPath?: string) => Promise<string | null>;
   getScanPaths: () => Promise<{ path: string; type: 'game' | 'iso' }[]>;
   saveScanPaths: (paths: { path: string; type: 'game' | 'iso' }[]) => Promise<void>;
   getLocalGamesMap: () => Promise<Record<string, DetectedGame>>;
@@ -283,6 +284,7 @@ export interface IDesktopAPI {
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;
   getRecentSessions: () => Promise<PlaySession[]>;
+  getPlaytimeForGame: (gameId: string) => Promise<{ totalMinutes: number; sessionCount: number; lastPlayed: number | null }>;
   setLibrary: (games: DetectedGame[]) => Promise<boolean>;
   stopTracking: (gameId: string) => Promise<boolean>;
   getRunningProcesses: () => Promise<DetectedProcess[]>;
@@ -361,6 +363,7 @@ export interface IDesktopAPI {
   cancelInstall: (installId?: string) => Promise<boolean>;
   onInstallProgress: (callback: (progress: InstallProgress) => void) => () => void;
   getActiveInstalls: () => Promise<ActiveInstallInfo[]>;
+  checkInstallDir: (installDir: string) => Promise<{ found: boolean; gameExe: string | null }>;
 }
 
 declare global {

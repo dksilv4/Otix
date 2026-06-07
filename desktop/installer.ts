@@ -1109,36 +1109,58 @@ async function runWithProgress(
 
 /** Scan install directory for the game's main executable. */
 export async function findGameExe(installDir: string): Promise<string | undefined> {
-  const IGNORE_EXES = new Set([
-    'unins000.exe', 'uninst.exe', 'setup.exe', 'install.exe', 'dxwebsetup.exe',
-    'vcredist.exe', 'vcredist_x86.exe', 'vcredist_x64.exe', 'directx.exe',
-    'oalinst.exe', 'gfwlivesetup.exe', 'xnafx30.exe', 'xnafx40.exe',
-    'dotnetfx.exe', 'dotnetfx35.exe',
-  ]);
+  const IGNORE_PATTERNS = [
+    'unins', 'uninst', 'setup', 'install', 'dxwebsetup',
+    'vcredist', 'directx', 'oalinst', 'gfwlivesetup',
+    'xnafx', 'dotnetfx', 'crash', 'helper', 'redist',
+    'config', 'tool', 'cef', 'register', 'patch',
+  ];
 
-  async function scan(dir: string, depth: number): Promise<string | undefined> {
-    if (depth > 4) return undefined;
+  let best: { path: string; score: number } | null = null;
+
+  async function scan(dir: string, depth: number): Promise<void> {
+    if (depth > 4) return;
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
-      // Check files first — exact name matches
       for (const e of entries) {
-        if (e.isFile() && e.name.toLowerCase().endsWith('.exe')) {
-          if (IGNORE_EXES.has(e.name.toLowerCase())) continue;
-          return path.join(dir, e.name);
-        }
-      }
-      // Check subdirectories
-      for (const e of entries) {
+        const fullPath = path.join(dir, e.name);
         if (e.isDirectory() && !e.name.startsWith('$')) {
-          const found = await scan(path.join(dir, e.name), depth + 1);
-          if (found) return found;
+          await scan(fullPath, depth + 1);
+        } else if (e.isFile() && e.name.toLowerCase().endsWith('.exe')) {
+          const exeName = path.basename(e.name, '.exe').toLowerCase();
+          // Skip obvious utility and dependency files
+          if (IGNORE_PATTERNS.some(p => exeName.includes(p))) continue;
+
+          let score = 0;
+
+          // Bonus for Unreal Engine "Shipping" executables (actual game binary)
+          if (exeName.includes('shipping')) score += 80;
+
+          // Bonus for deeper paths (game exe is often in a Binaries/ subfolder)
+          const depth = fullPath.split(/[\\/]/).length - installDir.split(/[\\/]/).length;
+          if (depth >= 2) score += 30; // depth param is from scan() — use it directly
+
+          // Prefer exe that matches the folder name
+          const folderName = path.basename(installDir).toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (exeName === folderName) score += 100;
+          else if (exeName.includes(folderName) || folderName.includes(exeName)) score += 50;
+
+          // Prefer larger files (main game exe is usually big)
+          try {
+            const stats = await fs.stat(fullPath);
+            score += Math.min(30, Math.floor(stats.size / (1024 * 1024)));
+          } catch {}
+
+          if (!best || score > best.score) {
+            best = { path: fullPath, score };
+          }
         }
       }
-    } catch { /* ignore */ }
-    return undefined;
+    } catch {}
   }
 
-  return scan(installDir, 1);
+  await scan(installDir, 1);
+  return (best as { path: string; score: number } | null)?.path ?? undefined;
 }
 
 // ── innounp extraction (skip installer GUI — no dialogs, no sound, no usernames) ──

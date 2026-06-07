@@ -186,6 +186,7 @@ class Game(Base, HasExternalIDs):
     is_free: Mapped[bool] = mapped_column(default=False)
     has_multiplayer: Mapped[bool] = mapped_column(default=False)
     franchise_id: Mapped[str | None] = mapped_column(ForeignKey("franchises.id", ondelete="SET NULL"), nullable=True)
+    time_to_beat: Mapped[dict | None] = mapped_column(JSONB)
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",

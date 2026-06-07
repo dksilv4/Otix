@@ -1,6 +1,6 @@
 /* ── LauncherHomePage — fullscreen game launcher driven by real database & scanner data ── */
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import {
@@ -35,7 +35,8 @@ import {
   getScanPaths,
   getIsoPaths,
   hasDesktopAPI,
-  filterRejectedSuggestions
+  filterRejectedSuggestions,
+  rejectSuggestion
 } from '@/features/games/scanner/storage'
 import type { DetectedGame } from '@/features/games/scanner/types'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/games/scanner/queries'
@@ -142,8 +143,50 @@ export function LauncherHomePage() {
   }, [])
   const [scanning, setScanning] = useState(false)
   const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null)
+  const [localPlaytime, setLocalPlaytime] = useState<{ totalMinutes: number; sessionCount: number; lastPlayed: number | null } | null>(null)
 
-  const { activeInstalls, cancelInstall } = useInstallProgress()
+  // Fetch local playtime from Electron game detector when active game changes
+  useEffect(() => {
+    setLocalPlaytime(null)
+    if (!activeGame || !isDesktop) return
+    const api = (window as any).desktopAPI
+    if (!api?.getPlaytimeForGame) return
+    const gameId = activeGame.rawGame?.id || activeGame.id
+    api.getPlaytimeForGame(gameId).then(setLocalPlaytime).catch(() => setLocalPlaytime(null))
+  }, [activeGame?.id, isDesktop])
+
+  const { activeInstalls, cancelInstall, installs } = useInstallProgress()
+
+  // When ISO install completes, refresh localGames from cache (markGameInstalled already updated it)
+  const prevCompletedRef = useRef(0)
+  useEffect(() => {
+    const fresh = installs.filter(i => !i.active && i.result?.success).length
+    if (fresh > prevCompletedRef.current) {
+      setLocalGames(getScannedGames())
+      prevCompletedRef.current = fresh
+    }
+  }, [installs])
+
+  // Direct handler called by IsoInstallerModal when install succeeds
+  const handleInstallComplete = useCallback((isoPath: string, installDir: string, gameExe: string | null) => {
+    const normIso = isoPath.replace(/\\/g, '/').toLowerCase()
+    setLocalGames(prev => {
+      const updated = prev.map(g => {
+        const normExe = g.exePath.replace(/\\/g, '/').toLowerCase()
+        if (normExe === normIso) {
+          return {
+            ...g,
+            platform: 'pc' as const,
+            exePath: gameExe ?? g.exePath,
+            installDir,
+          }
+        }
+        return g
+      })
+      setScannedGames(updated)
+      return updated
+    })
+  }, [])
 
   // Selection states
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
@@ -164,9 +207,18 @@ export function LauncherHomePage() {
     matchMutation.mutateAsync(localGames).then((matched) => {
       if (matched?.length) {
         const filtered = filterRejectedSuggestions(matched)
-        setLocalGames(filtered)
-        setScannedGames(filtered)
-        syncMutation.mutate(filtered)
+        // Preserve install status from current cache (avoids race with install completion)
+        const current = getScannedGames()
+        const merged = filtered.map(g => {
+          const existing = current.find(c => c.id === g.id || c.exePath === g.exePath)
+          if (existing && existing.platform !== g.platform && existing.platform !== 'iso') {
+            return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
+          }
+          return g
+        })
+        setLocalGames(merged)
+        setScannedGames(merged)
+        syncMutation.mutate(merged)
       }
     }).catch(() => { })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -269,6 +321,88 @@ export function LauncherHomePage() {
     return activeInstalls.find(i => i.isoPath?.toLowerCase() === activePath)
   }, [activeInstalls, activeGame])
 
+  // ── Install verification: check if ISO game has pre-existing files in installDir ──
+  const [foundInstall, setFoundInstall] = useState<{ exePath: string; installKey: string } | null>(null)
+  const checkedGameDirs = useRef(new Set<string>(
+    (() => { try { return JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]') } catch { return [] } })()
+  ))
+
+  useEffect(() => {
+    if (!activeGame) { setFoundInstall(null); return }
+    // Only check unmatched ISO games not yet installed
+    if (activeGame.platform !== 'iso' || activeGame.isInstalled) { setFoundInstall(null); return }
+    if (activeGame.otixMediaId) { setFoundInstall(null); return }
+    const dir = activeGame.rawGame?.installDir || activeGame.installDir
+    if (!dir) { setFoundInstall(null); return }
+    // Use ISO path as key — stable across sessions unlike game ID
+    const rawKey = activeGame.rawGame?.exePath || activeGame.exePath || dir
+    const installKey = rawKey.replace(/\\/g, '/').toLowerCase()
+    if (checkedGameDirs.current.has(installKey)) { setFoundInstall(null); return }
+
+    const api = (window as any).desktopAPI
+    if (!api?.checkInstallDir) return
+    api.checkInstallDir(dir).then((r: { found: boolean; gameExe: string | null }) => {
+      if (r.found && r.gameExe && !checkedGameDirs.current.has(installKey)) {
+        checkedGameDirs.current.add(installKey)
+        try {
+          const dismissed = JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]')
+          if (dismissed.includes(installKey)) { setFoundInstall(null); return }
+        } catch {}
+        setFoundInstall({ exePath: r.gameExe, installKey })
+      } else setFoundInstall(null)
+    }).catch(() => { setFoundInstall(null) })
+  }, [activeGame])
+
+  const handleConfirmInstalled = useCallback(() => {
+    if (!activeGame || !foundInstall) return
+    const { exePath, installKey } = foundInstall
+    setLocalGames(prev => {
+      const updated = prev.map(g => {
+        if (g.id === activeGame.id || g.exePath === activeGame.exePath) {
+          return {
+            ...g,
+            platform: 'pc' as const,
+            exePath,
+            installDir: activeGame.installDir || g.installDir,
+          }
+        }
+        return g
+      })
+      setScannedGames(updated)
+      return updated
+    })
+    setFoundInstall(null)
+    // Remove from dismissed list since game is now installed
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]')
+      const kept = dismissed.filter((k: string) => k !== installKey)
+      localStorage.setItem('otix_verify_dismissed', JSON.stringify(kept))
+    } catch {}
+    if (typeof window !== 'undefined' && (window as any).desktopAPI?.launchGame) {
+      console.log('[Play] handleConfirmInstalled launchGame exePath:', exePath)
+      ;(window as any).desktopAPI.launchGame({ exePath } as any).catch(console.error)
+      toast({
+        title: 'Launching Game',
+        description: `Running installed executable...`,
+        variant: 'success'
+      })
+    }
+  }, [activeGame, foundInstall, toast])
+
+  const handleDismissInstallFound = useCallback(() => {
+    if (!foundInstall) return
+    const { installKey } = foundInstall
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]')
+      if (!dismissed.includes(installKey)) {
+        dismissed.push(installKey)
+        localStorage.setItem('otix_verify_dismissed', JSON.stringify(dismissed))
+      }
+    } catch {}
+    checkedGameDirs.current.add(installKey)
+    setFoundInstall(null)
+  }, [foundInstall])
+
   // Query details for active game from backend
   const { data: activeGameDetail } = useGameDetail(activeGame?.otixMediaId)
 
@@ -304,17 +438,21 @@ export function LauncherHomePage() {
   const [overridePath, setOverridePath] = useState<string | null>(null)
   const [resolvingServerPaths, setResolvingServerPaths] = useState(false)
   const [confirmingPath, setConfirmingPath] = useState(false)
+  const autoAssignedGames = useRef(new Set<string>())
 
   // Auto-detect and auto-assign save folder locations
   useEffect(() => {
-    let active = true
+    const gameId = activeGame?.id
+    if (!gameId || !window.desktopAPI || !cloudSettings) return
+    // Per-game guard: auto-assign runs ONCE per game per session, no matter how deps cascade
+    if (autoAssignedGames.current.has(gameId)) return
+    autoAssignedGames.current.add(gameId)
 
-    const detectAndAssign = async () => {
-      if (!activeGame?.id || !window.desktopAPI || !cloudSettings) return
+    const active = true
+    setResolvingServerPaths(true)
+
+    ;(async () => {
       try {
-        setResolvingServerPaths(true)
-        const gameId = activeGame.id
-
         // 1. Get local auto-detected paths
         const discoverRes = await window.desktopAPI.saveDiscoverForGame(gameId, activeGame.title)
         if (!active || activeGame.id !== gameId) return
@@ -400,13 +538,7 @@ export function LauncherHomePage() {
           setConfirmingPath(false)
         }
       }
-    }
-
-    detectAndAssign()
-
-    return () => {
-      active = false
-    }
+    })()
   }, [activeGame?.id, serverLocations, cloudSettings, confirmingPath, refetchServerLocations])
 
   useEffect(() => {
@@ -709,6 +841,18 @@ export function LauncherHomePage() {
     })
   }, [activeGame, claimMutation, toast])
 
+  const handleDenySuggestion = useCallback(() => {
+    if (!activeGame?.rawGame?.otixMatchSuggestion) return
+    rejectSuggestion(activeGame.rawGame, activeGame.rawGame.otixMatchSuggestion.mediaId)
+    // Refresh local state to hide the suggestion
+    setLocalGames(getScannedGames())
+    toast({
+      title: 'Suggestion Dismissed',
+      description: `Match suggestion hidden. It won't reappear on future scans.`,
+      variant: 'default'
+    })
+  }, [activeGame, toast])
+
   const handleActionClick = useCallback(() => {
     if (!activeGame) return
 
@@ -724,7 +868,8 @@ export function LauncherHomePage() {
       // Local game: Launch executable
       if (activeGame.rawGame) {
         if (typeof window !== 'undefined' && (window as any).desktopAPI?.launchGame) {
-          (window as any).desktopAPI.launchGame(activeGame.rawGame).catch(console.error)
+          console.log('[Play] launchGame rawGame:', activeGame.rawGame)
+          ;(window as any).desktopAPI.launchGame(activeGame.rawGame).catch(console.error)
           toast({
             title: 'Launching Game',
             description: `Running executable for ${activeGame.title}...`,
@@ -940,15 +1085,20 @@ export function LauncherHomePage() {
             <div className="absolute bottom-8 flex gap-3 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
               <div className="bg-white/[0.04] border border-white/[0.06] backdrop-blur-2xl rounded-3xl px-6 py-4 min-w-[160px] shadow-2xl hover:bg-white/[0.07] hover:border-white/[0.10] transition-all flex flex-col justify-between">
                 <p className="text-2xl font-black text-white tracking-tight leading-none mb-2 flex items-center gap-2">
-                  {activeGameDetail?.steamPlaytimeForever != null
-                    ? (() => {
-                        const hours = Math.round(activeGameDetail.steamPlaytimeForever! / 60)
-                        const mins = activeGameDetail.steamPlaytimeForever! % 60
-                        return hours >= 1
-                          ? `${hours}h ${mins}m`
-                          : `${mins}m`
-                      })()
-                    : '—'}
+                  {(() => {
+                    // Prefer Steam playtime, fall back to local Electron playtime
+                    if (activeGameDetail?.steamPlaytimeForever != null) {
+                      const hours = Math.round(activeGameDetail.steamPlaytimeForever! / 60)
+                      const mins = activeGameDetail.steamPlaytimeForever! % 60
+                      return hours >= 1 ? `${hours}h ${mins}m` : `${mins}m`
+                    }
+                    if (localPlaytime && localPlaytime.totalMinutes > 0) {
+                      const hours = Math.floor(localPlaytime.totalMinutes / 60)
+                      const mins = localPlaytime.totalMinutes % 60
+                      return hours >= 1 ? `${hours}h ${mins}m` : `${mins}m`
+                    }
+                    return '—'
+                  })()}
                   <Play size={14} className="text-emerald-400/80" fill="currentColor" />
                 </p>
                 <p className="text-[9px] font-black text-white/30 tracking-widest uppercase">
@@ -1011,7 +1161,7 @@ export function LauncherHomePage() {
                 <img
                   src={activeGameDetail?.logoUrl || activeGame.logoUrl}
                   alt={activeGame.title}
-                  className="h-24 object-contain mb-4 drop-shadow-[0_4px_20px_rgba(0,0,0,0.7)] max-w-[340px]"
+                  className="h-52 object-contain mb-6 drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] max-w-[600px]"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                     const sib = (e.target as HTMLImageElement).nextSibling as HTMLElement;
@@ -1062,7 +1212,7 @@ export function LauncherHomePage() {
               <div className="flex gap-2.5 items-center justify-end">
                 {(() => {
                   const isIncompatible = activeGame.platform === 'iso' && osName !== 'Windows'
-                  // Installed: Play + Open Folder
+                  // Installed: Play + Open Folder + Choose Exe
                   if (activeGame.isInstalled) {
                     return (
                       <>
@@ -1074,12 +1224,46 @@ export function LauncherHomePage() {
                           Open Folder
                         </button>
                         <button
+                          onClick={async () => {
+                            const api = (window as any).desktopAPI
+                            if (!api?.pickExecutable) return
+                            const newExe = await api.pickExecutable(activeGame.installDir)
+                            if (!newExe) return
+                            console.log('[ChooseExe] picked:', newExe)
+                            // Update game in local state and persist
+                            const updated = getScannedGames().map((g: any) =>
+                              g.id === activeGame.id ? { ...g, exePath: newExe } : g
+                            )
+                            setLocalGames(updated)
+                            setScannedGames(updated)
+                            toast({
+                              title: 'Executable Updated',
+                              description: `Game exe changed to: ${newExe}`,
+                              variant: 'success'
+                            })
+                          }}
+                          className="px-3.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/50"
+                          title="Choose a different executable"
+                        >
+                          <Search size={13} />
+                          Choose Exe
+                        </button>
+                        <button
                           onClick={handleActionClick}
                           className="px-5.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
                         >
                           <Play size={14} fill="currentColor" />
-                          Play Game
+                          Play
                         </button>
+                        {activeGame.otixMediaId && (
+                          <button
+                            onClick={() => navigate({ to: '/media/$mediaType/$mediaId', params: { mediaType: 'game', mediaId: activeGame.otixMediaId! } } as any)}
+                            className="px-3.5 py-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md active:scale-95 text-white/70"
+                          >
+                            <Search size={13} />
+                            Details
+                          </button>
+                        )}
                       </>
                     )
                   }
@@ -1150,39 +1334,50 @@ export function LauncherHomePage() {
                     return (
                       <>
                         {!activeGame.otixMediaId && (
-                          <button
-                            onClick={() => {
-                              if (activeGame.rawGame) {
-                                matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
-                                  if (matched?.length) {
-                                    const filtered = filterRejectedSuggestions(matched)
-                                    setLocalGames(filtered)
-                                    setScannedGames(filtered)
-                                    syncMutation.mutate(filtered)
-                                    toast({ title: 'Game Matched', description: `"${matched[0]?.otixMediaTitle || matched[0]?.title}" found in catalog.`, variant: 'success' })
-                                  }
-                                }).catch(() => {})
-                              }
-                            }}
-                            className="px-4.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
-                          >
-                            <Search size={14} />
-                            Match Game
-                          </button>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => {
+                                if (activeGame.rawGame) {
+                                  matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
+                                    if (matched?.length) {
+                                      const filtered = filterRejectedSuggestions(matched)
+                                      setLocalGames(filtered)
+                                      setScannedGames(filtered)
+                                      syncMutation.mutate(filtered)
+                                      toast({ title: 'Game Matched', description: `"${matched[0]?.otixMediaTitle || matched[0]?.title}" found in catalog.`, variant: 'success' })
+                                    }
+                                  }).catch(() => {})
+                                }
+                              }}
+                              className="px-4.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                            >
+                              <Search size={14} />
+                              Match Game
+                            </button>
+                            {activeGame.rawGame?.otixMatchSuggestion && (
+                              <button
+                                onClick={handleDenySuggestion}
+                                className="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[11px] font-semibold text-white/50 hover:text-white/80 transition-all cursor-pointer active:scale-95"
+                                title="Deny this match suggestion — it won't reappear"
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
+                          </div>
                         )}
                         <button
                           onClick={() => setIsInstallerOpen(true)}
-                          className="px-5.5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95 animate-pulse"
+                          className="px-5.5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
                         >
                           <Disc size={14} />
-                          Install Game
+                          Install
                         </button>
                       </>
                     )
                   }
                   // Unmatched local game: Match
                   return (
-                    <>
+                    <div className="flex gap-1.5">
                       <button
                         onClick={() => {
                           if (activeGame.rawGame) {
@@ -1202,10 +1397,47 @@ export function LauncherHomePage() {
                         <Search size={14} />
                         Match Game
                       </button>
-                    </>
+                      {activeGame.rawGame?.otixMatchSuggestion && (
+                        <button
+                          onClick={handleDenySuggestion}
+                          className="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[11px] font-semibold text-white/50 hover:text-white/80 transition-all cursor-pointer active:scale-95"
+                          title="Deny this match suggestion — it won't reappear"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
                   )
                 })()}
               </div>
+
+              {/* Install verification prompt — game files detected but not marked installed */}
+              {foundInstall?.exePath && !activeGame.isInstalled && (
+                <div className="mt-4 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/20 backdrop-blur-md space-y-2.5 w-[280px] text-left">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <span className="text-[11px] font-black tracking-wider uppercase text-white/90">Game Detected</span>
+                  </div>
+                  <p className="text-[10px] text-white/60 leading-normal">
+                    Files found in install folder. Is this game fully installed?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleConfirmInstalled}
+                      className="flex-1 inline-flex items-center justify-center gap-1 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all text-white font-bold text-[9px] rounded-lg px-2.5 py-1.5 cursor-pointer"
+                    >
+                      <Play size={11} fill="currentColor" />
+                      Yes, Launch
+                    </button>
+                    <button
+                      onClick={handleDismissInstallFound}
+                      className="flex-1 inline-flex items-center justify-center gap-1 bg-white/8 hover:bg-white/12 active:scale-95 transition-all text-white/70 font-bold text-[9px] rounded-lg px-2.5 py-1.5 cursor-pointer"
+                    >
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Google Drive Save Sync Card / Online Multiplayer Notice */}
               {activeGame.isInstalled && (
@@ -1548,6 +1780,7 @@ export function LauncherHomePage() {
         onClose={() => setIsInstallerOpen(false)}
         games={localGames}
         initialIsoPath={activeGame?.rawGame?.exePath || undefined}
+        onInstallComplete={handleInstallComplete}
       />
     </div>
   )

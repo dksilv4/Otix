@@ -12,6 +12,7 @@ import {
   cancelInstall,
   cancelInstallByIsoPath,
   getActiveInstalls,
+  findGameExe,
   type InstallProgress,
 } from '../installer';
 import { findUpdateFilesForIso } from '../scanner';
@@ -131,6 +132,16 @@ export function registerInstallerIPC(): void {
       }
     },
   );
+
+  // Check if install directory has a game executable
+  ipcMain.handle('installer:check-install-dir', async (_, installDir: string) => {
+    try {
+      const gameExe = await findGameExe(installDir)
+      return { found: !!gameExe, gameExe: gameExe ?? null }
+    } catch {
+      return { found: false, gameExe: null }
+    }
+  })
 
   // Cancel a running install — accepts isoPath or installId
   ipcMain.handle('installer:cancel-install', (_event, cancelKey?: string) => {
