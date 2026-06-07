@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
-from otix.schemas.karma import VoteCountsOut, VoteCreate
 from otix.domain.user import User
+from otix.schemas.karma import VoteCountsOut, VoteCreate
 from otix.services.karma_service import KarmaService
 
 review_vote_router = APIRouter(prefix="/reviews", tags=["review_votes"])

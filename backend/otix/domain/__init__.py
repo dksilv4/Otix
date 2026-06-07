@@ -11,15 +11,15 @@ RULES:
 from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, ProposalVote
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
-from otix.domain.franchise import Franchise, FranchiseItem
 from otix.domain.company import Company, InvolvedCompany
-
-from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.episode_interaction import UserEpisodeInteraction
+from otix.domain.follow import Follow, FollowRequest, FollowRequestStatus
+from otix.domain.franchise import Franchise, FranchiseItem
+from otix.domain.friend import FriendRequest
+from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
+from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
-from otix.domain.media_rating import MediaItemRating
-from otix.domain.review import Review
 from otix.domain.media import (
     Album,
     Episode,
@@ -40,15 +40,14 @@ from otix.domain.media import (
     UserPlexServer,
     UserSteamGame,
 )
+from otix.domain.media_rating import MediaItemRating
 from otix.domain.mood import UserMoodCheckIn
-from otix.domain.people import MediaCredit, Person, UserPersonFollow
-from otix.domain.sync import ProviderState, SyncJob
-from otix.domain.follow import Follow, FollowRequest, FollowRequestStatus
-from otix.domain.friend import FriendRequest
-from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.notification import Notification
+from otix.domain.people import MediaCredit, Person, UserPersonFollow
+from otix.domain.review import Review
 from otix.domain.review_vote import ReviewVote
 from otix.domain.search_log import SearchLog
+from otix.domain.sync import ProviderState, SyncJob
 from otix.domain.user import AuthActionToken, RefreshToken, User, UserRating, UserSession
 from otix.domain.user_badge import UserBadge
 from otix.domain.user_streak import UserStreak

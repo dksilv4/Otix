@@ -7,14 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.api._utils import get_db
-from otix.schemas.user import HallOfFameItem, LibraryStatsOut
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
-from otix.domain.media import MediaItem, MediaItem
+from otix.domain.media import MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.review import Review
 from otix.domain.user import User
 from otix.domain.workout import Workout
+from otix.schemas.user import HallOfFameItem, LibraryStatsOut
 from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.services.media_service import MediaService
 

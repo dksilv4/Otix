@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import datetime, timezone
 
-from otix.domain.workout import Exercise, Workout, WorkoutExercise
+import pytest
+
+from otix.domain.workout import Exercise, Workout
 from otix.services.workout_service import WorkoutService
 
 
@@ -26,7 +27,7 @@ def _make_workout(workout_id: str, user_id: str) -> Workout:
         user_id=user_id,
         raw_input="Bench press 3x10",
         notes="Felt good",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     w.id = workout_id
     w.workout_exercises = []
@@ -122,7 +123,7 @@ class TestWorkoutGetQueries:
     async def test_get_workouts_has_more(self, service: WorkoutService, mock_db_session: AsyncMock):
         w1 = _make_workout("work-1", "user-123")
         w2 = _make_workout("work-2", "user-123")
-        
+
         mock_unique = MagicMock()
         mock_unique.unique.return_value = [w1, w2]
         mock_db_session.scalars.return_value = mock_unique
@@ -134,7 +135,7 @@ class TestWorkoutGetQueries:
 
     async def test_get_workouts_with_cursor(self, service: WorkoutService, mock_db_session: AsyncMock):
         w1 = _make_workout("work-1", "user-123")
-        
+
         mock_unique = MagicMock()
         mock_unique.unique.return_value = [w1]
         mock_db_session.scalars.return_value = mock_unique
@@ -153,7 +154,7 @@ class TestWorkoutUpdatesAndDeletion:
             workout,  # reload at end
         ]
 
-        completed = datetime.now(timezone.utc)
+        completed = datetime.now(UTC)
         result = await service.update_workout("work-1", notes="New notes", completed_at=completed)
 
         assert result == workout

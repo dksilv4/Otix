@@ -11,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.media import ExternalID, MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.user import User
-from otix.infrastructure.config import settings
-from otix.infrastructure.redis import get_redis
 from otix.providers.tmdb.client import TMDBProvider
 
 logger = structlog.get_logger()

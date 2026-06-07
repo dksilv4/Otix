@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import structlog
 
-import httpx
-
 from otix.providers.base import ProviderError
 
 logger = structlog.get_logger()

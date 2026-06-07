@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user
-from otix.schemas.discover import PersonalizedSectionsResponse
-from otix.domain.user import User
-from otix.services.personalization_service import PersonalizationService
 from otix.api.discover.router_helpers import _cache_get, _cache_set
+from otix.domain.user import User
+from otix.schemas.discover import PersonalizedSectionsResponse
+from otix.services.personalization_service import PersonalizationService
 
 logger = structlog.get_logger()
 

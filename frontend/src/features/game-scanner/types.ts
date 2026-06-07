@@ -69,6 +69,22 @@ export type Platform = "all" | "steam" | "pc" | "iso" | "epic" | "gog" | "battle
 
 export type InstallerStep = 1 | 2 | 3 | 4;
 
+export type InstallPhase = 'mounting' | 'detecting' | 'installing' | 'cracking' | 'finishing' | 'done' | 'error';
+
+export interface InstallProgress {
+  phase: InstallPhase;
+  progress: number;
+  message: string;
+}
+
+export interface InstallResult {
+  success: boolean;
+  installDir: string;
+  gameExe?: string;
+  crackApplied?: boolean;
+  error?: string;
+}
+
 export type OrgPreset = "scene" | "simple" | "clean" | "custom";
 
 export const ORG_PRESETS: Record<

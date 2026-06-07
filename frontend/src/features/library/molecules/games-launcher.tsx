@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   Search, Play, Download, Gamepad2, X, RefreshCw,
-  ExternalLink, Star, Check, Folder, Circle,
+  ExternalLink, Star, Check, Folder, Circle, Disc,
 } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
-import { getScannedGames, setScannedGames, hasElectronAPI, rejectSuggestion, clearRejectedSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
+import { getScannedGames, setScannedGames, hasDesktopAPI, rejectSuggestion, clearRejectedSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import { useGameDetail, usePopularGames } from "@/features/games/games-queries"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
+import { IsoInstallerModal } from "@/features/game-scanner/organisms/iso-installer-modal"
 import type { DetectedGame } from "@/features/game-scanner/types"
 import type { CatalogGameDetail } from "@/features/games/types"
 
@@ -243,6 +244,7 @@ function HeroSection({
   detail,
   onPlay,
   onOpenFolder,
+  onInstall,
   onAcceptSuggestion,
   onRejectSuggestion,
   onViewDetails,
@@ -251,6 +253,7 @@ function HeroSection({
   detail?: CatalogGameDetail | null
   onPlay: (game: DetectedGame) => void
   onOpenFolder: (game: DetectedGame) => void
+  onInstall?: (game: DetectedGame) => void
   onAcceptSuggestion?: (game: DetectedGame) => void
   onRejectSuggestion?: (game: DetectedGame) => void
   onViewDetails: (id: string) => void
@@ -526,9 +529,13 @@ function HeroSection({
                     </button>
                   </>
                 ) : isIso && suitable ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-blue-500/10 text-blue-400 px-5 py-2.5 text-xs font-bold backdrop-blur-sm">
-                    <Download size={14} /> Available to Install
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onInstall?.(game)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-6 py-2.5 text-sm font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_16px_rgba(59,130,246,0.25)] hover:bg-blue-400 hover:shadow-[0_4px_20px_rgba(59,130,246,0.35)] active:scale-[0.97] transition-all"
+                  >
+                    <Download size={15} /> Install
+                  </button>
                 ) : hasSuggestion ? (
                   <span className="inline-flex items-center gap-1.5 text-xs text-white/30 py-2 px-1">
                     <span className="w-2 h-2 rounded-full bg-blue-400/50" /> Needs match confirmation
@@ -855,18 +862,43 @@ export function GamesLauncher() {
   // ── Helpers ──────────────────────────────────────────────────────
 
   const handleRescan = async () => {
-    if (!hasElectronAPI()) return
+    if (!hasDesktopAPI()) return
     setScanning(true)
     try {
-      const api = (window as any).electronAPI
+      const api = (window as any).desktopAPI
       const scanned = await api.scanPaths(
         JSON.parse(localStorage.getItem("otix_scanner_paths") || "[]"),
         JSON.parse(localStorage.getItem("otix_scanner_iso_paths") || "[]"),
       )
       const matched = await matchMutation.mutateAsync(scanned)
       if (matched?.length) {
-        setGames(matched)
-        setScannedGames(matched)
+        // Preserve existing otixMediaId for games the match API didn't re-match
+        const merged = matched.map((newGame: DetectedGame) => {
+          const existing = games.find(
+            (g) => g.id === newGame.id || g.exePath === newGame.exePath,
+          )
+          if (!newGame.otixMediaId && !newGame.otixMatchSuggestion) {
+            if (existing?.otixMediaId) {
+              return {
+                ...newGame,
+                otixMediaId: existing.otixMediaId,
+                otixMediaTitle: existing.otixMediaTitle,
+                otixMediaSlug: existing.otixMediaSlug,
+                otixPosterUrl: existing.otixPosterUrl,
+                otixTextlessPosterUrl: existing.otixTextlessPosterUrl,
+                otixBackdropUrl: existing.otixBackdropUrl,
+                otixIconUrl: existing.otixIconUrl,
+                otixLogoUrl: existing.otixLogoUrl,
+              }
+            }
+            if (existing?.otixMatchSuggestion) {
+              return { ...newGame, otixMatchSuggestion: existing.otixMatchSuggestion, otixConfidence: existing.otixConfidence }
+            }
+          }
+          return newGame
+        })
+        setGames(merged)
+        setScannedGames(merged)
       }
     } catch (err) {
       console.error("Rescan failed:", err)
@@ -898,16 +930,24 @@ export function GamesLauncher() {
   }, [games])
 
   const handlePlay = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).electronAPI) {
-      (window as any).electronAPI.launchGame(game).catch(console.error)
+    if (typeof window !== "undefined" && (window as any).desktopAPI) {
+      (window as any).desktopAPI.launchGame(game).catch(console.error)
     }
   }, [])
 
   const handleOpenFolder = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).electronAPI) {
+    if (typeof window !== "undefined" && (window as any).desktopAPI) {
       const { shell } = window as any
       if (shell?.openPath) shell.openPath(game.installDir)
     }
+  }, [])
+
+  const [installerOpen, setInstallerOpen] = useState(false)
+  const [installIsoPath, setInstallIsoPath] = useState<string | undefined>()
+
+  const openInstaller = useCallback((game: DetectedGame) => {
+    setInstallIsoPath(game.exePath)
+    setInstallerOpen(true)
   }, [])
 
   const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
@@ -1067,6 +1107,7 @@ export function GamesLauncher() {
           detail={gameDetail}
           onPlay={handlePlay}
           onOpenFolder={handleOpenFolder}
+          onInstall={openInstaller}
           onAcceptSuggestion={handleAcceptSuggestion}
           onRejectSuggestion={handleRejectSuggestion}
           onViewDetails={(id) => navigate({ to: "/media/$mediaType/$mediaId", params: { mediaType: "game", mediaId: id } })}
@@ -1203,6 +1244,13 @@ export function GamesLauncher() {
           )}
         </div>
       )}
+
+      <IsoInstallerModal
+        open={installerOpen}
+        onClose={() => setInstallerOpen(false)}
+        games={games}
+        initialIsoPath={installIsoPath}
+      />
     </div>
   )
 }

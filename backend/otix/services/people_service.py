@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 
 from otix.domain.media import MediaItem, Season, Show
 from otix.domain.people import MediaCredit, Person, UserPersonFollow

@@ -10,7 +10,6 @@ from otix.domain.media import Album, MediaItem, Track
 from otix.domain.people import Person
 from otix.lib.types import JSONValue
 
-
 _RELEASE_TYPE_MAP = {
     "Album": "album",
     "Single": "single",

@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+
 from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
-from otix.domain.asset import MediaAsset
 from otix.domain.collection import CollectionItem
 from otix.domain.company import InvolvedCompany
 from otix.domain.genre import MediaGenre, MediaKeyword
 from otix.domain.media import (
-    Album,
     ExternalID,
-    Game,
     MediaItem,
-    Movie,
-    Show,
     Track,
 )
 from otix.domain.people import MediaCredit, Person
@@ -119,11 +115,11 @@ async def report() -> None:
             if mi.genres:
                 print(f"    genres:     {[g.genre.name for g in mi.genres]}")
             else:
-                print(f"    genres:     none")
+                print("    genres:     none")
             if mi.keywords:
                 print(f"    keywords:   {[k.keyword.name for k in mi.keywords[:10]]}")
             else:
-                print(f"    keywords:   none")
+                print("    keywords:   none")
 
             # Collection
             if mi.collection_items:
@@ -131,7 +127,7 @@ async def report() -> None:
                     c = ci.collection
                     print(f"    collection: {c.name} (tmdb={c.tmdb_id}) sort={ci.sort_order}")
             else:
-                print(f"    collection: none")
+                print("    collection: none")
 
         # ── SHOWS ──────────────────────────────────────────────
         result = await session.execute(
@@ -304,7 +300,7 @@ async def report() -> None:
             tracks = result2.scalars().all()
             for t in tracks:
                 has_mbid = bool(t.musicbrainz_recording_id)
-                has_isrc = bool(t.isrc)
+                bool(t.isrc)
                 has_dur = t.duration_ms is not None
                 dur_str = f"{t.duration_ms // 1000}s" if has_dur else "?"
                 all_ids = f"mbid={t.musicbrainz_recording_id or '-':<20} isrc={t.isrc or '-'}"
@@ -375,7 +371,7 @@ async def report() -> None:
 
         # ── GLOBAL TOTALS ───────────────────────────────────────
         print(f"\n{'='*70}")
-        print(f"  G L O B A L   T O T A L S")
+        print("  G L O B A L   T O T A L S")
         print(f"{'='*70}")
 
         # Media items by type
@@ -385,7 +381,7 @@ async def report() -> None:
                 "GROUP BY media_type ORDER BY COUNT(*) DESC"
             )
         )
-        print(f"\n  MEDIA ITEMS by type:")
+        print("\n  MEDIA ITEMS by type:")
         for r in result:
             print(f"    {r[0]:<10} {r[1]}")
 
@@ -400,7 +396,7 @@ async def report() -> None:
                 "GROUP BY asset_type ORDER BY COUNT(*) DESC"
             )
         )
-        print(f"\n  MEDIA ASSETS by type:")
+        print("\n  MEDIA ASSETS by type:")
         for r in result:
             print(f"    {r[0]:<20} {r[1]}")
 
@@ -423,7 +419,7 @@ async def report() -> None:
                 "FROM external_ids GROUP BY entity_type ORDER BY COUNT(*) DESC"
             )
         )
-        print(f"\n  EXTERNAL IDs by entity_type:")
+        print("\n  EXTERNAL IDs by entity_type:")
         for r in result:
             print(f"    {r[0]:<25} {r[1]}")
 

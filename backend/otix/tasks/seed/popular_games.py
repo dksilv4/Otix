@@ -16,8 +16,7 @@ from __future__ import annotations
 import asyncio
 import time
 
-from otix.infrastructure.database import async_session, dispose_engine
-
+from otix.infrastructure.database import dispose_engine
 
 # ── Most popular Steam games by concurrent players & cultural impact ──────
 
@@ -157,7 +156,7 @@ async def run_popular_games_seed() -> dict:
     print(f"  Errors: {len(errors)}")
 
     if errors:
-        print(f"\n  Errors:")
+        print("\n  Errors:")
         for e in errors:
             print(f"    {e}")
 

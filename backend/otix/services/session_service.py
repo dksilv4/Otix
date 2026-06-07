@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from otix.domain.user import RefreshToken, User, UserSession
 
 from otix.domain.user import RefreshToken, User, UserSession
 
@@ -37,7 +35,7 @@ class SessionService:
             )
         )
         if session_record is not None:
-            session_record.last_seen_at = datetime.now(timezone.utc)
+            session_record.last_seen_at = datetime.now(UTC)
             await self.session.flush()
 
     async def list_user_sessions(self, user_id: str) -> list[dict]:
@@ -70,13 +68,13 @@ class SessionService:
         )
         if session_record is None:
             return False
-        session_record.revoked_at = datetime.now(timezone.utc)
+        session_record.revoked_at = datetime.now(UTC)
         session_record.revoked_reason = reason
         await self.session.flush()
         return True
 
     async def revoke_other_sessions(self, user_id: str, current_session_key: str, reason: str = "user_revoked") -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.session.execute(
             select(UserSession).where(
                 UserSession.user_id == user_id,

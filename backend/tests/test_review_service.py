@@ -1,16 +1,15 @@
 """Tests for ReviewService and MediaRatingService."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import datetime, timedelta, timezone
 
-from otix.domain.media import MediaItem
+import pytest
+
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.review import Review
 from otix.services.media_rating_service import MediaRatingService
 from otix.services.review_service import ReviewService
-
 
 # ── ReviewService Tests ──
 
@@ -34,9 +33,9 @@ def _make_review(user_id: str, media_item_id: str, content: str) -> Review:
         content=content,
         is_spoiler=False,
         is_private=False,
-        cooldown_until=datetime.now(timezone.utc) + timedelta(minutes=30),
+        cooldown_until=datetime.now(UTC) + timedelta(minutes=30),
     )
-    r.created_at = datetime.now(timezone.utc)
+    r.created_at = datetime.now(UTC)
     return r
 
 
@@ -80,7 +79,7 @@ class TestReviewUpsert:
     async def test_upsert_locked_after_cooldown(self, review_service: ReviewService, mock_db_session: AsyncMock):
         """After cooldown expires, text fields are locked."""
         existing = _make_review("user-123", "oti_med01", "Original")
-        existing.cooldown_until = datetime.now(timezone.utc) - timedelta(minutes=1)
+        existing.cooldown_until = datetime.now(UTC) - timedelta(minutes=1)
         mock_db_session.scalar.return_value = existing
 
         review = await review_service.upsert_review(
@@ -101,7 +100,7 @@ class TestReviewUpsert:
     async def test_upsert_during_cooldown_allows_edit(self, review_service: ReviewService, mock_db_session: AsyncMock):
         """During cooldown, text fields can still be edited."""
         existing = _make_review("user-123", "oti_med01", "Original")
-        existing.cooldown_until = datetime.now(timezone.utc) + timedelta(minutes=5)
+        existing.cooldown_until = datetime.now(UTC) + timedelta(minutes=5)
         mock_db_session.scalar.return_value = existing
 
         review = await review_service.upsert_review(

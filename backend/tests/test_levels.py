@@ -1,11 +1,9 @@
-import pytest
 from otix.lib.levels import (
+    compute_level_info,
     get_level_title,
     get_reputation_tier,
-    compute_level_info,
-    LEVEL_TIERS,
-    REPUTATION_TIERS,
 )
+
 
 def test_get_level_title():
     # Test valid tiers

@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
+from otix.api.workout.detail import router as detail_router
+from otix.api.workout.exercises import router as exercise_router
+from otix.api.workout.heatmap import router as heatmap_router
+from otix.api.workout.today import router as today_router
+from otix.domain.user import User
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.workout import WorkoutCreate, WorkoutListOut, WorkoutOut
-from otix.domain.user import User
 from otix.services.workout_service import WorkoutService
-from otix.api.workout.detail import router as detail_router
-from otix.api.workout.today import router as today_router
-from otix.api.workout.heatmap import router as heatmap_router
-from otix.api.workout.exercises import router as exercise_router
 
 logger = structlog.get_logger()
 

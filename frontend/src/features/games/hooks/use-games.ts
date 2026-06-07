@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import {
   getScannedGames,
   setScannedGames,
-  hasElectronAPI,
+  hasDesktopAPI,
   getScanPaths,
   getIsoPaths,
   setLocalGamesMapEntry,
@@ -65,7 +65,7 @@ export function useGames() {
   useEffect(() => {
     if (localGames.length === 0 || hasSeeded.current) return
     hasSeeded.current = true
-    if (!hasElectronAPI()) return
+    if (!hasDesktopAPI()) return
     const titles = [...new Set(localGames.map((g) => g.title))]
     seedMutation.mutate(titles)
   }, [])
@@ -191,10 +191,10 @@ export function useGames() {
   }, [])
 
   const handleRescan = useCallback(async () => {
-    if (!hasElectronAPI()) return
+    if (!hasDesktopAPI()) return
     setScanning(true)
     try {
-      const api = (window as any).electronAPI
+      const api = (window as any).desktopAPI
       const gamePaths = getScanPaths()
       const isoPaths = getIsoPaths()
       const scanned = await api.scanPaths(gamePaths, isoPaths)
@@ -222,13 +222,13 @@ export function useGames() {
   }, [])
 
   const handlePlay = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).electronAPI) {
-      (window as any).electronAPI.launchGame(game).catch(console.error)
+    if (typeof window !== "undefined" && (window as any).desktopAPI) {
+      (window as any).desktopAPI.launchGame(game).catch(console.error)
     }
   }, [])
 
   const handleOpenFolder = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).electronAPI) {
+    if (typeof window !== "undefined" && (window as any).desktopAPI) {
       const { shell } = window as any
       if (shell?.openPath) shell.openPath(game.installDir)
     }

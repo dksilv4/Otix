@@ -126,6 +126,34 @@ export interface PostProcessResult {
   errors: string[];
 }
 
+export interface InstallProgress {
+  phase: 'mounting' | 'detecting' | 'installing' | 'cracking' | 'finishing' | 'done' | 'error';
+  progress: number;
+  message: string;
+  /** Added in multi-install: identifies which install this event belongs to. */
+  installId?: string;
+  isoPath?: string;
+}
+
+export interface InstallResult {
+  success: boolean;
+  installDir: string;
+  gameExe?: string;
+  crackApplied?: boolean;
+  error?: string;
+}
+
+export interface ActiveInstallInfo {
+  installId: string;
+  isoPath: string;
+  targetDir: string;
+  gameTitle: string;
+  startTime: number;
+  phase: string;
+  progress: number;
+  message: string;
+}
+
 export interface PathMapping {
   id: string;
   configId: string;
@@ -241,6 +269,7 @@ export interface IDesktopAPI {
   batchOrganize: (directory: string, namingTemplate?: string) => Promise<AutoOrganizeResult>;
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
   onScannerProgress: (callback: (data: { currentDir: string; progress: number }) => void) => () => void;
+  onGamesUpdated: (callback: () => void) => () => void;
   getScannedGames: () => Promise<DetectedGame[]>;
   saveScannedGames: (games: DetectedGame[]) => Promise<void>;
   getScanPaths: () => Promise<{ path: string; type: 'game' | 'iso' }[]>;
@@ -249,6 +278,7 @@ export interface IDesktopAPI {
   saveLocalGamesMapEntry: (mediaId: string, game: DetectedGame | null) => Promise<void>;
   batchCheckMatchCache: (isoPaths: string[]) => Promise<Record<string, MatchCacheEntry | null>>;
   saveMatchCache: (entries: MatchCacheEntry[]) => Promise<void>;
+  updateGamePath: (oldExePath: string, newExePath: string, newInstallDir?: string) => Promise<void>;
 
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;
@@ -320,6 +350,12 @@ export interface IDesktopAPI {
 
   // ── Storage ──
   getDiskSpace: () => Promise<Array<{ drive: string; total?: number; used: number; free: number }>>;
+
+  // ── Auto Install ──
+  installGame: (isoPath: string, targetDir: string, gameTitle?: string) => Promise<InstallResult>;
+  cancelInstall: (installId?: string) => Promise<boolean>;
+  onInstallProgress: (callback: (progress: InstallProgress) => void) => () => void;
+  getActiveInstalls: () => Promise<ActiveInstallInfo[]>;
 }
 
 declare global {

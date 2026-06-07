@@ -1,9 +1,6 @@
 """Run seeding/hydration test for 10 items of each media type."""
-import asyncio
 import json
-import sys
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Patch Celery to use the app
 from otix.infrastructure.celery import app
@@ -23,7 +20,7 @@ results = {
 
 print("=" * 60)
 print("SEEDING/HYDRATION TEST — 10 items per media type")
-print(f"Start: {datetime.now(timezone.utc).isoformat()}")
+print(f"Start: {datetime.now(UTC).isoformat()}")
 print("=" * 60)
 
 # ── Movies (sync existing stubs with TMDB) ──

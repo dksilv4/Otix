@@ -43,7 +43,7 @@ function isSettingsSection(value: unknown): value is Section {
 export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
-  const isDesktop = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const isDesktop = (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')) || typeof (window as any).desktopAPI !== 'undefined'
   const desktopSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
   const filteredNav = NAV_ITEMS.filter(i => !desktopSections.has(i.id) || isDesktop)
   const [activeSection, setActiveSection] = useState<Section>(() =>

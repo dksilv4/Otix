@@ -7,10 +7,10 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user
-from otix.schemas.media import MediaItemListResponse
+from otix.api.discover.router_helpers import _build_response, _cache_get, _cache_set
 from otix.domain.user import User
+from otix.schemas.media import MediaItemListResponse
 from otix.services.media_service import MediaService, should_exclude_adult
-from otix.api.discover.router_helpers import _cache_get, _cache_set, _build_response
 
 logger = structlog.get_logger()
 

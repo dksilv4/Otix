@@ -376,24 +376,24 @@ def _on_worker_process_init(**kwargs):
 
 # Register tasks — explicit top-level imports so all @app.task decorators fire.
 # Each import guarantees the worker knows the task when it picks up a message.
-import otix.tasks.seed.tmdb_seed  # noqa: F401 — seed.* TMDB cycle
-import otix.tasks.seed.catalog_seed  # noqa: F401 — seed.* IGDB/Steam/MusicBrainz/Deezer
-import otix.tasks.maintenance  # noqa: F401 — maintenance.* (via __init__ imports all submodules)
-import otix.tasks.xp  # noqa: F401 — xp.*
 import otix.tasks.gamification  # noqa: F401 — gamification.*
-import otix.tasks.sync.embedding  # noqa: F401 — embedding.*
-import otix.tasks.sync.spotify  # noqa: F401 — sync.spotify.*
-import otix.tasks.sync.deezer  # noqa: F401 — seed.deezer_cycle, sync.deezer.*
-import otix.tasks.sync.tmdb  # noqa: F401 — sync.tmdb.*
-import otix.tasks.sync.igdb  # noqa: F401 — sync.igdb.*
-import otix.tasks.sync.steam  # noqa: F401 — sync.steam.*, sync.steamgrid.*
-import otix.tasks.sync.musicbrainz  # noqa: F401 — sync.musicbrainz.*
-import otix.tasks.sync.fanart  # noqa: F401 — sync.fanart.*
-import otix.tasks.sync.omdb  # noqa: F401 — sync.omdb.*
-import otix.tasks.sync.lastfm  # noqa: F401 — sync.lastfm.*
-import otix.tasks.sync.theaudiodb  # noqa: F401 — sync.theaudiodb.*
-import otix.tasks.sync.lrclib  # noqa: F401 — sync.lrclib.*
-import otix.tasks.sync.youtube  # noqa: F401 — sync.youtube.*
-import otix.tasks.sync.media  # noqa: F401 — sync.media.*
-import otix.tasks.sync.search  # noqa: F401 — search.*
+import otix.tasks.maintenance  # noqa: F401 — maintenance.* (via __init__ imports all submodules)
 import otix.tasks.maintenance.music_backfill  # noqa: F401 — maintenance.backfill_music_poster_url
+import otix.tasks.seed.catalog_seed  # noqa: F401 — seed.* IGDB/Steam/MusicBrainz/Deezer
+import otix.tasks.seed.tmdb_seed  # noqa: F401 — seed.* TMDB cycle
+import otix.tasks.sync.deezer  # noqa: F401 — seed.deezer_cycle, sync.deezer.*
+import otix.tasks.sync.embedding  # noqa: F401 — embedding.*
+import otix.tasks.sync.fanart  # noqa: F401 — sync.fanart.*
+import otix.tasks.sync.igdb  # noqa: F401 — sync.igdb.*
+import otix.tasks.sync.lastfm  # noqa: F401 — sync.lastfm.*
+import otix.tasks.sync.lrclib  # noqa: F401 — sync.lrclib.*
+import otix.tasks.sync.media  # noqa: F401 — sync.media.*
+import otix.tasks.sync.musicbrainz  # noqa: F401 — sync.musicbrainz.*
+import otix.tasks.sync.omdb  # noqa: F401 — sync.omdb.*
+import otix.tasks.sync.search  # noqa: F401 — search.*
+import otix.tasks.sync.spotify  # noqa: F401 — sync.spotify.*
+import otix.tasks.sync.steam  # noqa: F401 — sync.steam.*, sync.steamgrid.*
+import otix.tasks.sync.theaudiodb  # noqa: F401 — sync.theaudiodb.*
+import otix.tasks.sync.tmdb  # noqa: F401 — sync.tmdb.*
+import otix.tasks.sync.youtube  # noqa: F401 — sync.youtube.*
+import otix.tasks.xp  # noqa: F401 — xp.*

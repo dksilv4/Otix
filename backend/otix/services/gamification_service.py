@@ -11,7 +11,6 @@ from otix.domain.user_badge import UserBadge
 from otix.domain.user_streak import UserStreak
 from otix.infrastructure.celery import app
 from otix.lib.badges import BADGES, BadgeContext
-from otix.lib.levels import get_level_title
 
 
 class GamificationService:
@@ -125,8 +124,9 @@ class GamificationService:
 
     async def recalculate_workout_streak(self, user_id: str) -> dict:
         """Recalculate workout streak after an undo/delete. Walks backwards from today."""
-        from otix.domain.workout import Workout
         from datetime import timedelta
+
+        from otix.domain.workout import Workout
 
         today = date.today()
         streak = await self.session.scalar(
@@ -201,14 +201,15 @@ class GamificationService:
         if not user:
             return None
 
+        from sqlalchemy import or_
+
+        from otix.domain.friend import FriendRequest
         from otix.domain.interaction import UserMediaInteraction
         from otix.domain.list import UserList
-        from otix.domain.review import Review
-        from otix.domain.friend import FriendRequest
-        from otix.domain.workout import Workout
         from otix.domain.media import MediaItem
+        from otix.domain.review import Review
         from otix.domain.review_vote import ReviewVote
-        from sqlalchemy import or_
+        from otix.domain.workout import Workout
 
         streak = await self.session.scalar(
             select(UserStreak).where(UserStreak.user_id == user_id)

@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import datetime, timezone
 
-from otix.domain.list import UserList, UserListItem, MediaListCollaborator, MediaListLike, ListItemRankHistory
+import pytest
+
+from otix.domain.list import MediaListCollaborator, UserList
 from otix.domain.user import User
-from otix.domain.media import MediaItem
 from otix.services.list_service import ListService
 
 

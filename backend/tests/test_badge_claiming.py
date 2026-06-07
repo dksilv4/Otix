@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from otix.api.user import claim_badge, get_user_badges
 from otix.domain.user import User
 from otix.domain.user_badge import UserBadge
-from otix.lib.badges import BADGES, BadgeContext
+from otix.lib.badges import BadgeContext
 
 
 def make_user() -> User:
@@ -29,10 +29,10 @@ def mock_session() -> AsyncMock:
 
 async def test_get_user_badges_returns_claimed_and_xp_reward(mock_session: AsyncMock):
     user = make_user()
-    
+
     # Mocking User model returning
     mock_session.scalar.return_value = user
-    
+
     # Mocking user badges database query
     earned_badge = UserBadge(user_id=user.id, badge_key="first_review", claimed=True)
     mock_session.scalars.return_value = [earned_badge]
@@ -40,14 +40,14 @@ async def test_get_user_badges_returns_claimed_and_xp_reward(mock_session: Async
     # Patch the context retrieval to return a real BadgeContext
     with patch("otix.services.gamification_service.GamificationService._get_badge_context") as mock_ctx:
         mock_ctx.return_value = BadgeContext(review_count=5)
-        
+
         badges = await get_user_badges(username="test", db=mock_session)
-        
+
         # Verify fields are exposed
         first_review_badge = next(b for b in badges if b.badge_key == "first_review")
         assert first_review_badge.claimed is True
         assert first_review_badge.xp_reward == 150  # Special tier
-        
+
         locked_badge = next(b for b in badges if b.badge_key == "reviews_10")
         assert locked_badge.claimed is False
         assert locked_badge.xp_reward == 50  # Bronze tier
@@ -55,7 +55,7 @@ async def test_get_user_badges_returns_claimed_and_xp_reward(mock_session: Async
 
 async def test_claim_badge_success(mock_session: AsyncMock):
     user = make_user()
-    
+
     # UserBadge is found and unclaimed
     user_badge = UserBadge(user_id=user.id, badge_key="first_review", claimed=False)
     mock_session.scalar.return_value = user_badge
@@ -89,7 +89,7 @@ async def test_claim_badge_not_found(mock_session: AsyncMock):
 
 async def test_claim_badge_not_earned(mock_session: AsyncMock):
     user = make_user()
-    
+
     # No UserBadge in database
     mock_session.scalar.return_value = None
 
@@ -106,7 +106,7 @@ async def test_claim_badge_not_earned(mock_session: AsyncMock):
 
 async def test_claim_badge_already_claimed(mock_session: AsyncMock):
     user = make_user()
-    
+
     # UserBadge is found but already claimed
     user_badge = UserBadge(user_id=user.id, badge_key="first_review", claimed=True)
     mock_session.scalar.return_value = user_badge

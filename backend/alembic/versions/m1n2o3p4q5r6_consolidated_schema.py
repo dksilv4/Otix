@@ -13,9 +13,6 @@ Create Date: 2026-06-03
 """
 from __future__ import annotations
 
-from typing import ClassVar
-
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "m1n2o3p4q5r6"

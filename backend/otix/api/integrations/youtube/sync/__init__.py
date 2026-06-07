@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 import asyncio
 import uuid
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+
 from otix.api._utils import get_current_user
 from otix.domain.user import User
 from otix.lib.sse import SseStreamConfig, create_sse_response

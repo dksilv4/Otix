@@ -3,13 +3,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import and_, case, false, or_, select, func, type_coerce, union
+from sqlalchemy import and_, case, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from otix.domain.user import User
-
+from otix.domain.collection import Collection
 from otix.domain.company import InvolvedCompany
+from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import (
     Album,
     Episode,
@@ -22,10 +22,9 @@ from otix.domain.media import (
     Show,
     Track,
 )
-from otix.domain.watch_provider import MediaWatchProvider
-from otix.domain.collection import Collection
-from otix.domain.genre import Genre, MediaGenre
 from otix.domain.people import MediaCredit, Person
+from otix.domain.user import User
+from otix.domain.watch_provider import MediaWatchProvider
 
 
 def should_exclude_adult(user: User | None) -> bool:
@@ -48,8 +47,9 @@ class MediaService:
     @staticmethod
     async def increment_view_count(media_id: str) -> None:
         """Fire-and-forget view count increment using a fresh session."""
-        from otix.infrastructure.database import async_session
         from sqlalchemy import update
+
+        from otix.infrastructure.database import async_session
 
         try:
             async with async_session() as session:
@@ -224,11 +224,11 @@ class MediaService:
 
         if is_anime is not None:
             if is_anime:
-                movie_cond = Movie.is_anime == True
-                show_cond = Show.is_anime == True
+                movie_cond = Movie.is_anime
+                show_cond = Show.is_anime
             else:
-                movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
-                show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
+                movie_cond = or_(not Movie.is_anime, Movie.is_anime.is_(None))
+                show_cond = or_(not Show.is_anime, Show.is_anime.is_(None))
             if media_type == "movie":
                 query = query.where(MediaItem.id.in_(select(Movie.media_item_id).where(movie_cond)))
             elif media_type == "show":
@@ -253,7 +253,7 @@ class MediaService:
             )
 
         if exclude_adult:
-            query = query.where(MediaItem.is_adult == False)
+            query = query.where(not MediaItem.is_adult)
 
         if date_from is not None:
             query = query.where(MediaItem.release_date >= date_from)
@@ -291,11 +291,11 @@ class MediaService:
                 )
             if is_anime is not None:
                 if is_anime:
-                    movie_cond = Movie.is_anime == True
-                    show_cond = Show.is_anime == True
+                    movie_cond = Movie.is_anime
+                    show_cond = Show.is_anime
                 else:
-                    movie_cond = or_(Movie.is_anime == False, Movie.is_anime.is_(None))
-                    show_cond = or_(Show.is_anime == False, Show.is_anime.is_(None))
+                    movie_cond = or_(not Movie.is_anime, Movie.is_anime.is_(None))
+                    show_cond = or_(not Show.is_anime, Show.is_anime.is_(None))
                 if media_type == "movie":
                     count_query = count_query.where(MediaItem.id.in_(select(Movie.media_item_id).where(movie_cond)))
                 elif media_type == "show":
@@ -306,7 +306,7 @@ class MediaService:
                     MediaCredit.role == (credit_role or "primary"),
                 )
             if exclude_adult:
-                count_query = count_query.where(MediaItem.is_adult == False)
+                count_query = count_query.where(not MediaItem.is_adult)
             if media_ids:
                 count_query = count_query.where(MediaItem.id.in_(media_ids))
             if date_from is not None:
@@ -462,7 +462,7 @@ class MediaService:
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
         if exclude_adult:
-            base_q = base_q.where(MediaItem.is_adult == False)
+            base_q = base_q.where(not MediaItem.is_adult)
 
         # Ranking: blend ts_rank, trigram similarity, vector similarity, credit
         # matches, and popularity.
@@ -570,7 +570,7 @@ class MediaService:
         if media_type:
             q = q.where(MediaItem.media_type == media_type)
         if exclude_adult:
-            q = q.where(MediaItem.is_adult == False)
+            q = q.where(not MediaItem.is_adult)
 
         result = await self.session.execute(q)
         rows = result.all()
@@ -612,7 +612,6 @@ class MediaService:
 
         Results are returned in the original input order.
         """
-        import re
 
         if not games:
             return []
@@ -750,7 +749,7 @@ class MediaService:
 
         # Build lookup: clean_title -> (media_id, score)
         match_by_clean: dict[str, tuple[str, float]] = {}
-        for clean_title, media_id, media_title, sim in rows:
+        for clean_title, media_id, _media_title, sim in rows:
             if clean_title not in match_by_clean or sim > match_by_clean[clean_title][1]:
                 match_by_clean[clean_title] = (media_id, round(sim, 4))
 

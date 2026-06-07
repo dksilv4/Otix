@@ -5,23 +5,23 @@ import enum
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, func
+from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
+    from otix.domain.company import UserCompanyFollow
+    from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.follow import Follow, FollowRequest
     from otix.domain.friend import FriendRequest
     from otix.domain.interaction import UserMediaInteraction
-    from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.karma_transaction import KarmaTransaction
     from otix.domain.list import UserList
     from otix.domain.media_rating import MediaItemRating
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
-    from otix.domain.company import UserCompanyFollow
     from otix.domain.people import UserPersonFollow
     from otix.domain.review import Review
     from otix.domain.review_vote import ReviewVote
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 DEFAULT_PROFILE_SECTIONS: list[str] = ["hof_movie", "hof_show", "hof_game", "hof_music", "library_breakdown", "mood_timeline"]
 
 
-class AuthActionType(str, enum.Enum):
+class AuthActionType(enum.StrEnum):
     VERIFY_EMAIL = "verify_email"
     PASSWORD_RESET = "password_reset"
 
@@ -120,7 +120,7 @@ class User(Base, TimestampMixin):
     karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
-    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship("UserEpisodeInteraction", back_populates="user")
+    episode_interactions: Mapped[list[UserEpisodeInteraction]] = relationship("UserEpisodeInteraction", back_populates="user")
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
     media_ratings: Mapped[list[MediaItemRating]] = relationship("MediaItemRating", back_populates="user")
     lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")

@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.notification import NotificationOut, NotificationListResponse, UnreadCountOut
 from otix.domain.user import User
 from otix.lib.sse import SseStreamConfig, create_sse_response
+from otix.schemas.notification import NotificationListResponse, NotificationOut, UnreadCountOut
 from otix.services.notification_service import NotificationService
 
 logger = structlog.get_logger()

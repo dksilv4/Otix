@@ -53,7 +53,6 @@ class TestMovieEndpoints:
     async def test_get_movie_changes_returns_data(self, tmdb_provider: TMDBProvider, mock_httpx_client):
         # Override the transport to return changes data
         import json
-        from unittest.mock import MagicMock
 
         class ChangesTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -82,7 +81,6 @@ class TestShowEndpoints:
     async def test_get_season(self, tmdb_provider: TMDBProvider):
         # We need to add a season endpoint response to the mock
         import json
-        from unittest.mock import MagicMock
 
         class SeasonTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -114,7 +112,6 @@ class TestShowEndpoints:
 class TestOtherEndpoints:
     async def test_get_person(self, tmdb_provider: TMDBProvider):
         import json
-        from unittest.mock import MagicMock
 
         class PersonTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -130,7 +127,6 @@ class TestOtherEndpoints:
 
     async def test_get_collection(self, tmdb_provider: TMDBProvider):
         import json
-        from unittest.mock import MagicMock
 
         class CollTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -146,7 +142,6 @@ class TestOtherEndpoints:
 
     async def test_search_multi(self, tmdb_provider: TMDBProvider):
         import json
-        from unittest.mock import MagicMock
 
         class SearchTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:

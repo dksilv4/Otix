@@ -6,11 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
+from otix.domain.user import User
+from otix.lib.badges import BADGES
 from otix.lib.levels import compute_level_info
 from otix.schemas.user import UserSearchListResponse, UserSearchResult
-from otix.domain.user import User
 from otix.schemas.user_badge import BadgeDefOut
-from otix.lib.badges import BADGES
 
 logger = structlog.get_logger()
 

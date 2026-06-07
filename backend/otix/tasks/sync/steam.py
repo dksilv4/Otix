@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -11,7 +11,6 @@ from sqlalchemy.orm import joinedload
 
 from otix.domain.base import gen_otix_id
 from otix.domain.media import Game, MediaItem
-from otix.services.external_id_service import ExternalIDService
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
@@ -22,6 +21,7 @@ from otix.providers.steam.client import SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.steamgrid.client import SteamGridDBProvider
 from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
+from otix.services.external_id_service import ExternalIDService
 
 logger = structlog.get_logger()
 
@@ -78,7 +78,7 @@ async def _sync_steam_seed_app(steam_app_id: int) -> dict | None:
                 overview=str(store.get("short_description", "") or ""),
                 slug=slugify(name),
                 poster_url=_extract_header_image(store),
-                synced_at=datetime.now(timezone.utc),
+                synced_at=datetime.now(UTC),
             )
             session.add(item)
             await session.flush()

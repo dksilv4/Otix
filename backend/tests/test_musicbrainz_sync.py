@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 import otix.tasks.sync.musicbrainz as sync_tasks
 from otix.domain.media import Album, ExternalID, MediaItem

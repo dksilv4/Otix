@@ -297,6 +297,15 @@ app.on('ready', async () => {
   registerInstallerIPC();
   registerGameDetectorIPC(gameDetector);
 
+  // Pre-download innounp on startup (ready for ISO installs)
+  try {
+    const { ensureInnounp } = require('./installer');
+    ensureInnounp().then((p: string | null) => {
+      if (p) console.log('[startup] innounp ready');
+      else console.warn('[startup] innounp failed (will retry on demand)');
+    });
+  } catch {}
+
   // ── Initialize Save Daemon —────
   const saveDaemon = new SaveDaemon(path.join(app.getPath('userData'), 'saves'));
   registerSaveIPC(saveDaemon);
@@ -351,6 +360,11 @@ app.on('ready', async () => {
 
 app.on('window-all-closed', () => {
   gameDetector?.stopAll();
+  // Kill any running game install
+  try {
+    const { cancelCurrentInstall } = require('./installer');
+    cancelCurrentInstall();
+  } catch {}
   if (process.platform !== 'darwin') {
     app.quit();
   }

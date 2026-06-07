@@ -13,6 +13,7 @@ import {
   VolumeX,
   ChevronLeft,
   Clock,
+  Disc,
   Download,
   Loader2,
   X,
@@ -30,6 +31,7 @@ import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
+import { useInstallProgress } from '@/features/game-scanner/install-store'
 import { cn } from '@/lib/utils'
 import './now-playing-view.scss'
 
@@ -72,6 +74,7 @@ export interface NowPlayingViewProps {
 export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
   const navigate = useNavigate()
   const { user: currentUser } = useAuth()
+  const { installs, dismissInstall, cancelInstall } = useInstallProgress()
   const {
     source,
     isPlaying,
@@ -738,7 +741,95 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
             </div>
           )}
 
-          {/* 2. Downloads Container */}
+          {/* 2. Game Install Progress */}
+          {installs.length > 0 ? (
+            <div className="dk-now-playing__downloads">
+              <div className="dk-now-playing__downloads-header">
+                <div className="dk-now-playing__downloads-icon-wrap">
+                  {installs.some(i => i.active) ? (
+                    <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  )}
+                </div>
+                <span className="dk-now-playing__downloads-title">
+                  Game Installs ({installs.length})
+                </span>
+              </div>
+              <div className="dk-now-playing__downloads-list">
+                {installs.map((inst) => (
+                  <div key={inst.isoPath} className="dk-now-playing__downloads-item">
+                    <div className="dk-now-playing__downloads-item-top">
+                      {inst.active ? (
+                        <Loader2 className="h-4 w-4 text-emerald-400 animate-spin shrink-0" />
+                      ) : inst.result?.success ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                      )}
+                      <div className="dk-now-playing__queue-item-info">
+                        <p className="dk-now-playing__downloads-item-name" title={inst.gameTitle ?? ''}>
+                          {inst.gameTitle ?? 'Game'}
+                        </p>
+                      </div>
+                      <div className="dk-now-playing__downloads-actions">
+                        {inst.active ? (
+                          <button
+                            type="button"
+                            onClick={() => cancelInstall(inst.isoPath)}
+                            className="dk-now-playing__downloads-cancel"
+                            title="Cancel Install"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => dismissInstall(inst.isoPath)}
+                            className="dk-now-playing__downloads-cancel"
+                            title="Dismiss"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {inst.active && inst.progress && (
+                      <div className="dk-now-playing__downloads-progress">
+                        <div className="dk-now-playing__downloads-progress-track">
+                          <div
+                            className="dk-now-playing__downloads-progress-fill dk-now-playing__downloads-progress-fill--downloading"
+                            style={{ width: `${inst.progress.progress}%` }}
+                          />
+                        </div>
+                        <span className="dk-now-playing__downloads-progress-pct">
+                          {inst.progress.progress}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Phase message */}
+                    {inst.active && inst.progress && (
+                      <p className="dk-now-playing__downloads-error" style={{ marginTop: 4 }}>
+                        {inst.progress.message || inst.progress.phase}
+                      </p>
+                    )}
+
+                    {/* Error message */}
+                    {inst.error && !inst.active && (
+                      <p className="dk-now-playing__downloads-error" style={{ marginTop: 4 }}>
+                        {inst.error}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* 3. Downloads Container */}
           {hasDownloads && (
             <div className="dk-now-playing__downloads">
               <div className="dk-now-playing__downloads-header">
@@ -839,7 +930,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
             </div>
           )}
 
-          {/* 3. Plex Activity Container */}
+          {/* 4. Plex Activity Container */}
           {plexSessions.length > 0 && (
             <div className="dk-now-playing__plex">
               <div className="dk-now-playing__plex-header">
@@ -852,8 +943,8 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
             </div>
           )}
 
-          {/* 4. Empty/Placeholder State Container */}
-          {!currentTrack && !hasDownloads && plexSessions.length === 0 && (
+          {/* 5. Empty/Placeholder State Container */}
+          {!currentTrack && !hasDownloads && installs.length === 0 && plexSessions.length === 0 && (
             <div className="dk-now-playing__empty">
               <p className="dk-now-playing__empty-text">
                 No current activity

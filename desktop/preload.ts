@@ -68,6 +68,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
       ipcRenderer.removeListener('scanner:progress', subscription);
     };
   },
+  onGamesUpdated: (callback: () => void) => {
+    const subscription = () => callback();
+    ipcRenderer.on('scanner:games-updated', subscription);
+    return () => {
+      ipcRenderer.removeListener('scanner:games-updated', subscription);
+    };
+  },
   getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-games'),
   saveScannedGames: (games: any[]) => ipcRenderer.invoke('scanner:save-scanned-games', games),
   getScanPaths: () => ipcRenderer.invoke('scanner:get-scan-paths'),
@@ -76,6 +83,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveLocalGamesMapEntry: (mediaId: string, game: any | null) => ipcRenderer.invoke('scanner:save-local-games-map-entry', mediaId, game),
   batchCheckMatchCache: (isoPaths: string[]) => ipcRenderer.invoke('scanner:batch-check-match-cache', isoPaths),
   saveMatchCache: (entries: any[]) => ipcRenderer.invoke('scanner:save-match-cache', entries),
+  updateGamePath: (oldExePath: string, newExePath: string, newInstallDir?: string) =>
+    ipcRenderer.invoke('scanner:update-game-path', oldExePath, newExePath, newInstallDir),
 
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
@@ -171,4 +180,15 @@ contextBridge.exposeInMainWorld('desktopAPI', {
 
   // ── Storage ──
   getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),
+
+  // ── Auto Install ──
+  installGame: (isoPath: string, targetDir: string, gameTitle?: string) =>
+    ipcRenderer.invoke('installer:install-game', isoPath, targetDir, gameTitle),
+  cancelInstall: (installId?: string) => ipcRenderer.invoke('installer:cancel-install', installId),
+  getActiveInstalls: () => ipcRenderer.invoke('installer:get-active-installs'),
+  onInstallProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('installer:install-progress', handler);
+    return () => ipcRenderer.removeListener('installer:install-progress', handler);
+  },
 });

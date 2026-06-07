@@ -11,14 +11,14 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user, resolve_country_code
+from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     MediaItemDetail,
     MediaWatchProviderOut,
     WatchProviderOut,
 )
-from otix.domain.user import User
-from otix.infrastructure.redis import get_redis
 from otix.services.admin_edit_service import AdminEditService
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService

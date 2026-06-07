@@ -1482,6 +1482,18 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   }
 }
 
+/**
+ * Update a scanned game's paths in the local DB after a file move.
+ * Searches by exe_path and updates exe_path + install_dir.
+ */
+export async function updateGamePathInDb(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void> {
+  await ensureDb();
+  _run(
+    'UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?',
+    [newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath],
+  );
+}
+
 export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game' | 'iso' }[]> {
   await ensureDb();
   const rows = _all('SELECT * FROM game_scan_paths');

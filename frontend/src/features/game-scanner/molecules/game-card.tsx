@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { DkBadge } from "@/features/dk-ui/atoms/badge";
 import type { DetectedGame } from "../types";
-import { hasElectronAPI } from "../storage";
+import { hasDesktopAPI } from "../storage";
 
 const PLATFORM_BADGES: Record<
   string,
@@ -55,9 +55,9 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (hasElectronAPI()) {
+    if (hasDesktopAPI()) {
       try {
-        await (window as any).electronAPI.launchGame(game);
+        await (window as any).desktopAPI.launchGame(game);
       } catch (err) {
         console.error("Failed to launch game:", err);
       }

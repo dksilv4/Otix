@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, timezone
 
 from otix.domain.notification import Notification
 from otix.services.notification_service import NotificationService
@@ -25,7 +26,7 @@ def _make_notification(id_suffix: str, user_id: str, type_: str, title: str) -> 
         is_read=False,
     )
     n.id = f"oti_notif{id_suffix}"
-    n.created_at = datetime.now(timezone.utc)
+    n.created_at = datetime.now(UTC)
     return n
 
 

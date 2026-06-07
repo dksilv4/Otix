@@ -1,7 +1,7 @@
 # TODO: Review this file
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,7 +66,7 @@ class NotificationService:
         )
         if notification:
             notification.is_read = True
-            notification.read_at = datetime.now(timezone.utc)
+            notification.read_at = datetime.now(UTC)
             await self.session.flush()
         return notification
 
@@ -74,7 +74,7 @@ class NotificationService:
         await self.session.execute(
             update(Notification)
             .where(Notification.user_id == user_id, Notification.is_read == False)  # noqa: E712
-            .values(is_read=True, read_at=datetime.now(timezone.utc))
+            .values(is_read=True, read_at=datetime.now(UTC))
         )
         await self.session.flush()
 

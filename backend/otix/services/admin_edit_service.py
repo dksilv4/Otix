@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 
 from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, ProposalVote
 from otix.domain.media import MediaItem
@@ -11,11 +11,10 @@ from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
 from otix.lib.xp import (
-    EDIT_PROPOSAL_CREATE,
     EDIT_PROPOSAL_APPROVE,
+    EDIT_PROPOSAL_CREATE,
     EDIT_PROPOSAL_REJECT,
     PROPOSAL_VOTE_UPVOTE,
-    PROPOSAL_VOTE_DOWNVOTE,
 )
 
 _ALLOWED_FIELDS = {
@@ -509,7 +508,7 @@ class AdminEditService:
         overrides = await self.session.scalars(
             select(MediaImageOverride).where(
                 MediaImageOverride.media_item_id == media_item_id,
-                MediaImageOverride.is_active == True,
+                MediaImageOverride.is_active,
             )
         )
         result: dict[str, dict[str, str]] = {}
@@ -523,7 +522,7 @@ class AdminEditService:
         overrides = await session.scalars(
             select(MediaImageOverride.image_type).where(
                 MediaImageOverride.media_item_id == media_item_id,
-                MediaImageOverride.is_active == True,
+                MediaImageOverride.is_active,
                 MediaImageOverride.language_code == "*",
             )
         )

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
-from sqlalchemy import func, select, text, column, exists as sa_exists, case as sa_case
+from sqlalchemy import case as sa_case
+from sqlalchemy import column, func, select, text
+from sqlalchemy import exists as sa_exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.media import ExternalID, MediaItem
@@ -196,7 +198,7 @@ class AdminService:
         self, metric: str, hours: float,
     ) -> list[AdminMetricPoint]:
         """Get admin metrics time-series data."""
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(UTC) - timedelta(hours=hours)
         trunc_unit, label_fmt = self._granularity(hours)
 
         if metric == "stubs":

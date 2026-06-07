@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import TmdbCallbackRequest, TmdbCallbackResponse
 from otix.domain.user import User
-from otix.services.tmdb_auth_service import link_tmdb_to_user, link_tmdb_state_to_user
+from otix.schemas.auth import TmdbCallbackRequest, TmdbCallbackResponse
+from otix.services.tmdb_auth_service import link_tmdb_state_to_user, link_tmdb_to_user
 
 logger = structlog.get_logger()
 router = APIRouter()

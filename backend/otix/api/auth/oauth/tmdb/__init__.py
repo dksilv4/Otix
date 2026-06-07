@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from otix.api._utils import get_current_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import TmdbInitiateResponse
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.providers.tmdb.client import TMDBProvider
+from otix.schemas.auth import TmdbInitiateResponse
 from otix.services.tmdb_auth_service import build_tmdb_link_url_for_user
 from otix.services.tmdb_rating_service import get_tmdb_account_stats
 

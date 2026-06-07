@@ -9,9 +9,8 @@ Create Date: 2026-06-03
 """
 from __future__ import annotations
 
-from typing import ClassVar
-
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "a1b2c3d4e5f6"

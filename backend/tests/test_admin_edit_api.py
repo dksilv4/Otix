@@ -1,10 +1,9 @@
 """Tests for admin edit proposal API endpoints."""
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +14,7 @@ from otix.domain.user import User
 
 def _make_app():
     from fastapi import FastAPI
+
     from otix.api.router import api_router
     app = FastAPI()
     app.include_router(api_router, prefix="/api")
@@ -75,7 +75,7 @@ def _make_media_item(**overrides):
 
 
 def _make_proposal(**overrides):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     defaults = {
         "id": "oti_prop0000001",
         "media_item_id": "oti_media000001",

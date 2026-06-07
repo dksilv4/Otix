@@ -30,9 +30,7 @@ class DeezerHydrator:
         isrcs: list[str] = []
 
         # Delete existing tracks and rebuild (cleanest for mutable tracklists)
-        existing = (await self._session.execute(
-            select(Track).where(Track.album_id == album.media_item_id)
-        )).scalars().all()
+        existing = (await self._session.execute(select(Track).where(Track.album_id == album.media_item_id))).scalars().all()
         existing_isrcs = {t.isrc for t in existing if t.isrc}
 
         for t in track_list:
@@ -48,8 +46,10 @@ class DeezerHydrator:
         if deezer_id:
             eid_svc = ExternalIDService(self._session)
             await eid_svc.upsert(
-                "deezer", str(deezer_id),
-                "media_item", album.media_item_id,
+                "deezer",
+                str(deezer_id),
+                "media_item",
+                album.media_item_id,
             )
 
         # Store UPC/EAN barcode as ExternalID
@@ -57,8 +57,10 @@ class DeezerHydrator:
         if upc:
             eid_svc = ExternalIDService(self._session)
             await eid_svc.upsert(
-                "barcode", upc,
-                "media_item", album.media_item_id,
+                "barcode",
+                upc,
+                "media_item",
+                album.media_item_id,
             )
 
         await self._session.flush()
@@ -89,19 +91,23 @@ class DeezerHydrator:
             )
         )
         if not exists:
-            self._session.add(MediaCredit(
-                media_item_id=album.media_item_id,
-                person_id=person.id,
-                role="primary",
-                character_name=name,
-                sort_order=0,
-            ))
+            self._session.add(
+                MediaCredit(
+                    media_item_id=album.media_item_id,
+                    person_id=person.id,
+                    role="primary",
+                    character_name=name,
+                    sort_order=0,
+                )
+            )
 
         return deezer_artist_id
 
     async def hydrate_genres(self, album: Album, raw: dict[str, JSONValue]) -> None:
         from uuid import uuid4
+
         from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         from otix.domain.genre import Genre, MediaGenre
 
         genres_data = raw.get("genres", {})
@@ -119,59 +125,53 @@ class DeezerHydrator:
         slugs = [n.lower().replace(" ", "-").replace("/", "-") for n in names]
 
         # Batch-check existing genres
-        existing_genres = (await self._session.scalars(
-            select(Genre).where(Genre.slug.in_(slugs))
-        )).all()
+        existing_genres = (await self._session.scalars(select(Genre).where(Genre.slug.in_(slugs)))).all()
         genre_by_slug = {g.slug: g for g in existing_genres}
 
         # Create missing genres with INSERT ON CONFLICT DO NOTHING
         new_genres = []
-        for name, slug in zip(names, slugs):
+        for name, slug in zip(names, slugs, strict=False):
             if slug not in genre_by_slug:
                 gid = f"oti_{uuid4().hex[:12]}"
                 new_genres.append({"id": gid, "name": name, "slug": slug})
         if new_genres:
-            await self._session.execute(
-                pg_insert(Genre).values(new_genres).on_conflict_do_nothing(constraint="genres_slug_key")
-            )
+            await self._session.execute(pg_insert(Genre).values(new_genres).on_conflict_do_nothing())
             # Re-query to get the IDs of newly inserted genres
-            refreshed = (await self._session.scalars(
-                select(Genre).where(Genre.slug.in_([g["slug"] for g in new_genres]))
-            )).all()
+            refreshed = (await self._session.scalars(select(Genre).where(Genre.slug.in_([g["slug"] for g in new_genres])))).all()
             for g in refreshed:
                 genre_by_slug[g.slug] = g
 
         # Batch-check existing MediaGenre links
         genre_ids = [g.id for g in genre_by_slug.values()]
         if genre_ids:
-            existing_links = (await self._session.scalars(
-                select(MediaGenre.genre_id).where(
-                    MediaGenre.media_item_id == album.media_item_id,
-                    MediaGenre.genre_id.in_(genre_ids),
+            existing_links = (
+                await self._session.scalars(
+                    select(MediaGenre.genre_id).where(
+                        MediaGenre.media_item_id == album.media_item_id,
+                        MediaGenre.genre_id.in_(genre_ids),
+                    )
                 )
-            )).all()
+            ).all()
             existing_genre_ids = set(existing_links)
 
             for name in names:
                 slug = name.lower().replace(" ", "-").replace("/", "-")
                 genre = genre_by_slug.get(slug)
                 if genre and genre.id not in existing_genre_ids:
-                    self._session.add(MediaGenre(
-                        media_item_id=album.media_item_id,
-                        genre_id=genre.id,
-                    ))
+                    self._session.add(
+                        MediaGenre(
+                            media_item_id=album.media_item_id,
+                            genre_id=genre.id,
+                        )
+                    )
 
     # ── Helpers ──────────────────────────────────────────────────────────
 
     async def _get_or_create_artist(self, name: str, deezer_id: str | None, raw: dict | None = None) -> Person:
-        from uuid import uuid4
         from sqlalchemy import func as sa_func
-        from sqlalchemy.dialects.postgresql import insert as pg_insert
 
         # Try by name first (case-insensitive)
-        person = await self._session.scalar(
-            select(Person).where(sa_func.lower(Person.name) == name.lower())
-        )
+        person = await self._session.scalar(select(Person).where(sa_func.lower(Person.name) == name.lower()))
         if person is not None:
             # Backfill picture if missing
             if raw and not person.photo_url:

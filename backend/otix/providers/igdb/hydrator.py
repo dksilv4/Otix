@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
+from otix.domain.franchise import Franchise, FranchiseItem
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import (
     ExternalID,
@@ -26,10 +27,8 @@ from otix.lib.collection_matcher import normalize_franchise_name
 from otix.lib.genres import normalize_genre_names
 from otix.lib.slug import slugify as _slugify
 from otix.lib.types import JSONValue
-from otix.domain.franchise import Franchise, FranchiseItem
-from otix.services.external_id_service import ExternalIDService
-from otix.providers.igdb.client import IGDBProvider
 from otix.providers.asset_mapper import map_asset_type
+from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.transformer import (
     _cover_url,
     extract_franchise,
@@ -37,6 +36,7 @@ from otix.providers.igdb.transformer import (
     extract_modes,
     extract_platforms,
 )
+from otix.services.external_id_service import ExternalIDService
 
 
 class IGDBHydrator:

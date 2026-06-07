@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_admin_user, get_db
-from otix.schemas.admin import AdminMetricsResponse
 from otix.domain.user import User
+from otix.schemas.admin import AdminMetricsResponse
 from otix.services.admin_service import AdminService
 
 logger = structlog.get_logger()

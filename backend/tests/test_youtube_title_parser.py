@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from otix.lib.youtube_title_parser import parse_music_title, ParsedTitle
-
+from otix.lib.youtube_title_parser import parse_music_title
 
 # ── Basic formats ──
 

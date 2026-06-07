@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.media import Album, MediaAsset
 from otix.domain.people import MediaCredit, Person
-from otix.lib.types import JSONValue
 from otix.providers.theaudiodb.client import TheAudioDBProvider
 from otix.services.external_id_service import ExternalIDService
 

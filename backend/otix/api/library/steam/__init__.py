@@ -6,6 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
+from otix.domain.media import UserSteamGame
+from otix.domain.user import User
 from otix.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
@@ -14,8 +16,6 @@ from otix.schemas.media import (
     SteamWishlistItemSummary,
     SteamWishlistListResponse,
 )
-from otix.domain.media import UserSteamGame
-from otix.domain.user import User
 from otix.services.steam_library_service import (
     get_steam_library,
     get_steam_wishlist,

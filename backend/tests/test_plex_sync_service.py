@@ -4,31 +4,26 @@ optimizations (GuidCache, AlbumContext, EpisodeCache, show watch computation).""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from sqlalchemy import and_, or_
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.services.plex_sync_service import (
-    _best_connection,
-    _as_list,
-    _container_items,
-    _media_type,
-    GuidCache,
     AlbumContext,
     EpisodeCache,
-    _build_guid_cache,
+    GuidCache,
+    _as_list,
+    _best_connection,
     _build_album_context,
     _build_episode_cache,
+    _build_guid_cache,
     _compute_show_watches,
+    _container_items,
+    _fetch_plex_library_items,
+    _media_type,
     extract_guids,
 )
-
-async def _fetch_library_items(*args, **kwargs):
-    pytest.skip("Plex library pagination is now inline in sync_plex_library")
-
 
 # ── _best_connection ──────────────────────────────────────────────────
 
@@ -70,40 +65,101 @@ class TestBestConnection:
 
 
 class TestFetchLibraryItems:
-    """Verify paginated library fetching with partial-failure tolerance."""
+    """Verify paginated fetch via _fetch_plex_library_items.
+
+    The function loops with X-Plex-Container-Start/Size until offset >=
+    totalSize or an empty page is returned. Tests patch PLEX_PAGE_SIZE
+    to a low value so we can exercise pagination with few mock items.
+    """
+
+    BASE_KWARGS = {
+        "base_url": "https://plex.test",
+        "section_key": "1",
+        "library_type": "movie",
+        "token": "tok",
+    }
 
     @pytest.mark.asyncio
-    async def test_single_page_no_pagination(self):
-        """When totalSize <= page_size, only one request is made."""
-        data1 = {
+    async def test_single_page_when_total_fits(self):
+        """When totalSize <= PLEX_PAGE_SIZE, only one request is made."""
+        data = {
             "MediaContainer": {
-                "totalSize": 5,
+                "totalSize": 2,
                 "Metadata": [
                     {"title": "A", "type": "movie"},
                     {"title": "B", "type": "movie"},
                 ],
             }
         }
+        call_count = 0
 
-        async def mock_get_json(url, token, timeout=240.0, **kwargs):
-            return data1
+        async def mock_get_json(url, token, timeout=30.0, client=None):
+            nonlocal call_count
+            call_count += 1
+            return data
 
-        with patch(
-            "otix.services.plex_sync_service._get_json",
-            side_effect=mock_get_json,
-        ):
-            items, incomplete = await _fetch_library_items("https://plex.test", "section1", "token", "movie")
-            assert not incomplete
-            assert len(items) == 2
-            assert items[0]["title"] == "A"
+        with patch("otix.services.plex_sync_service._get_json", side_effect=mock_get_json):
+            with patch("otix.services.plex_sync_service.PLEX_PAGE_SIZE", 200):
+                items = await _fetch_plex_library_items(**self.BASE_KWARGS)
+
+        assert items is not None
+        assert len(items) == 2
+        assert [i["title"] for i in items] == ["A", "B"]
+        assert call_count == 1
 
     @pytest.mark.asyncio
     async def test_multi_page_pagination(self):
-        """Fetches all pages when totalSize exceeds page_size."""
-        # totalSize=3, page_size=2 → first page has 2 items, second has 1
+        """Fetches all pages when totalSize exceeds PLEX_PAGE_SIZE."""
+        PAGE = 2  # force 2 items/page
         page1 = {
             "MediaContainer": {
-                "totalSize": 3,
+                "totalSize": 5,
+                "Metadata": [
+                    {"title": "A", "type": "movie"},
+                    {"title": "B", "type": "movie"},
+                ],
+                "size": 2,
+            }
+        }
+        page2 = {
+            "MediaContainer": {
+                "totalSize": 5,
+                "Metadata": [
+                    {"title": "C", "type": "movie"},
+                    {"title": "D", "type": "movie"},
+                ],
+                "size": 2,
+            }
+        }
+        page3 = {
+            "MediaContainer": {
+                "totalSize": 5,
+                "Metadata": [
+                    {"title": "E", "type": "movie"},
+                ],
+                "size": 1,
+            }
+        }
+
+        responses = [page1, page2, page3]
+
+        async def mock_get_json(url, token, timeout=30.0, client=None):
+            return responses.pop(0)
+
+        with patch("otix.services.plex_sync_service._get_json", side_effect=mock_get_json):
+            with patch("otix.services.plex_sync_service.PLEX_PAGE_SIZE", PAGE):
+                items = await _fetch_plex_library_items(**self.BASE_KWARGS)
+
+        assert items is not None
+        assert len(items) == 5
+        assert [i["title"] for i in items] == ["A", "B", "C", "D", "E"]
+        assert not responses  # all pages consumed
+
+    @pytest.mark.asyncio
+    async def test_no_total_size_fallback(self):
+        """Older Plex servers may not return totalSize; loop breaks on empty page."""
+        page1 = {
+            "MediaContainer": {
                 "Metadata": [
                     {"title": "A", "type": "movie"},
                     {"title": "B", "type": "movie"},
@@ -112,71 +168,48 @@ class TestFetchLibraryItems:
         }
         page2 = {
             "MediaContainer": {
-                "totalSize": 3,
-                "Metadata": [
-                    {"title": "C", "type": "movie"},
-                ],
+                "Metadata": [],
             }
         }
 
         responses = [page1, page2]
 
-        async def mock_get_json(url, token, timeout=240.0, **kwargs):
+        async def mock_get_json(url, token, timeout=30.0, client=None):
             return responses.pop(0)
 
-        with patch(
-            "otix.services.plex_sync_service._get_json",
-            side_effect=mock_get_json,
-        ):
-            items, incomplete = await _fetch_library_items(
-                "https://plex.test", "section1", "token", "movie", page_size=2
-            )
-            assert not incomplete
-            assert len(items) == 3
-            assert [i["title"] for i in items] == ["A", "B", "C"]
+        with patch("otix.services.plex_sync_service._get_json", side_effect=mock_get_json):
+            with patch("otix.services.plex_sync_service.PLEX_PAGE_SIZE", 2):
+                items = await _fetch_plex_library_items(**self.BASE_KWARGS)
+
+        assert items is not None
+        assert len(items) == 2
+        assert [i["title"] for i in items] == ["A", "B"]
 
     @pytest.mark.asyncio
-    async def test_partial_page_failure_continues(self):
-        """If one page fails, remaining pages still process, marked incomplete."""
-        # totalSize=3 with page_size=1 → 3 pages at offsets 0,1,2
-        page1 = {
-            "MediaContainer": {
-                "totalSize": 3,
-                "Metadata": [
-                    {"title": "A", "type": "movie"},
-                ],
+    async def test_retry_on_failure(self):
+        """First attempt fails, retries with fresh client."""
+        call_count = 0
+
+        async def fail_then_succeed(url, token, timeout=30.0, client=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise httpx.ConnectError("connection refused", request=MagicMock())
+            return {
+                "MediaContainer": {
+                    "totalSize": 1,
+                    "Metadata": [{"title": "Retry", "type": "movie"}],
+                }
             }
-        }
-        page3 = {
-            "MediaContainer": {
-                "totalSize": 3,
-                "Metadata": [
-                    {"title": "C", "type": "movie"},
-                ],
-            }
-        }
 
-        call = [0]
+        with patch("otix.services.plex_sync_service._get_json", side_effect=fail_then_succeed):
+            with patch("otix.services.plex_sync_service.PLEX_PAGE_SIZE", 200):
+                items = await _fetch_plex_library_items(**self.BASE_KWARGS)
 
-        async def mock_get_json(url, token, timeout=240.0, **kwargs):
-            call[0] += 1
-            if call[0] == 2:
-                raise httpx.ReadTimeout("timed out", request=MagicMock())
-            if call[0] == 1:
-                return page1
-            return page3
-
-        with patch(
-            "otix.services.plex_sync_service._get_json",
-            side_effect=mock_get_json,
-        ):
-            items, incomplete = await _fetch_library_items(
-                "https://plex.test", "section1", "token", "movie", page_size=1
-            )
-            # Got items from pages 1 and 3 (page 2 failed silently)
-            assert incomplete
-            assert len(items) == 2
-            assert call[0] == 3
+        assert items is not None
+        assert len(items) == 1
+        assert items[0]["title"] == "Retry"
+        assert call_count == 2
 
     @pytest.mark.asyncio
     async def test_artist_library_adds_type_param(self):
@@ -191,18 +224,18 @@ class TestFetchLibraryItems:
         }
         url_seen = []
 
-        async def mock_get_json(url, token, timeout=240.0, **kwargs):
+        async def mock_get_json(url, token, timeout=30.0, client=None):
             url_seen.append(url)
             return data
 
-        with patch(
-            "otix.services.plex_sync_service._get_json",
-            side_effect=mock_get_json,
-        ):
-            items, incomplete = await _fetch_library_items("https://plex.test", "section1", "token", "artist")
-            assert not incomplete
-            assert "type=9" in url_seen[0]
-            assert len(items) == 1
+        kwargs = {**self.BASE_KWARGS, "library_type": "artist"}
+        with patch("otix.services.plex_sync_service._get_json", side_effect=mock_get_json):
+            with patch("otix.services.plex_sync_service.PLEX_PAGE_SIZE", 200):
+                items = await _fetch_plex_library_items(**kwargs)
+
+        assert items is not None
+        assert len(items) == 1
+        assert "type=9" in url_seen[0]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -338,9 +371,7 @@ class TestBuildGuidCache:
     async def test_populated_cache(self, mock_db_session):
         """Returns a populated cache when the DB has matching ExternalIDs."""
         items = [
-            {"title": "Fight Club", "type": "movie",
-             "guid": "plex://movie/5d776b",
-             "Guid": [{"id": "imdb://tt0137523"}, {"id": "tmdb://550"}]},
+            {"title": "Fight Club", "type": "movie", "guid": "plex://movie/5d776b", "Guid": [{"id": "imdb://tt0137523"}, {"id": "tmdb://550"}]},
         ]
 
         from otix.domain.media import ExternalID
@@ -464,7 +495,7 @@ class TestBuildEpisodeCache:
 
     @pytest.mark.asyncio
     async def test_populates_season_and_episode(self, mock_db_session):
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -542,7 +573,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_all_episodes_watched_marks_show(self, mock_db_session):
         """When every episode in every season is watched, the show is marked."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -581,7 +612,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_partial_watch_does_not_mark(self, mock_db_session):
         """When only some episodes are watched, the show is NOT marked."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -616,7 +647,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_multiple_seasons_all_watched(self, mock_db_session):
         """Show with 2 seasons: all episodes in both seasons watched."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -659,7 +690,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_one_season_done_other_not(self, mock_db_session):
         """Show with 2 seasons: only season 1 fully watched. NOT full watch."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -696,7 +727,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_user_scoped_watch_check(self, mock_db_session):
         """Only the specified user's episode interactions are checked."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "season_1"
@@ -734,7 +765,7 @@ class TestComputeShowWatches:
     @pytest.mark.asyncio
     async def test_multiple_shows_some_fully_watched(self, mock_db_session):
         """Multiple shows: one fully watched, one partially, one empty."""
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         # Show 1: 1 season, 2 episodes, both watched → full watch
         s1 = MagicMock(spec=Season)
@@ -787,7 +818,7 @@ class TestComputeShowWatches:
         The function is called with a specific user_id, so it only queries
         that user's interactions.
         """
-        from otix.domain.media import Season, Episode
+        from otix.domain.media import Episode, Season
 
         s1 = MagicMock(spec=Season)
         s1.id = "s1"

@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import LoginRequest, LoginResponse
 from otix.lib.tokens import get_refresh_cookie_config
+from otix.schemas.auth import LoginRequest, LoginResponse
 from otix.services.auth.auth_service import AuthService
 
 logger = structlog.get_logger()

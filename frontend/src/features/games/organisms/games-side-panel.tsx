@@ -197,8 +197,8 @@ export function GamesSidePanel({
             <div className="flex gap-1.5 pt-3 mt-2 border-t border-white/5 flex-shrink-0">
               <button type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined" && (window as any).electronAPI)
-                    (window as any).electronAPI.selectDirectory()
+                  if (typeof window !== "undefined" && (window as any).desktopAPI)
+                    (window as any).desktopAPI.selectDirectory()
                 }}
                 className="flex-1 text-center py-1.5 rounded-md text-[10px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all inline-flex items-center justify-center gap-1">
                 <Plus size={10} /> Add Folder

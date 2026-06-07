@@ -72,16 +72,16 @@ async def _run_rehydrate_step(task_id: str, provider: str, label: str, fn) -> di
 
 async def _force_rehydrate_media(task_id: str, media_item_id: str) -> dict:
     from otix.lib.media_rehydrate_progress import store_result
+    from otix.tasks.sync.fanart import _sync_fanart_enrich
+    from otix.tasks.sync.igdb import _sync_igdb_game
+    from otix.tasks.sync.lastfm import _sync_lastfm_enrich_album
+    from otix.tasks.sync.musicbrainz import _sync_musicbrainz_album
+    from otix.tasks.sync.omdb import _sync_omdb_ratings
+    from otix.tasks.sync.steam import _sync_steam_update_app, _sync_steamgrid_game_by_name, _sync_steamgrid_game_by_platform
+    from otix.tasks.sync.theaudiodb import _sync_theaudiodb_enrich_album
 
     # Import provider-specific sync functions
     from otix.tasks.sync.tmdb import _sync_tmdb_media
-    from otix.tasks.sync.igdb import _sync_igdb_game
-    from otix.tasks.sync.steam import _sync_steam_update_app, _sync_steamgrid_game_by_name, _sync_steamgrid_game_by_platform
-    from otix.tasks.sync.musicbrainz import _sync_musicbrainz_album
-    from otix.tasks.sync.theaudiodb import _sync_theaudiodb_enrich_album
-    from otix.tasks.sync.lastfm import _sync_lastfm_enrich_album
-    from otix.tasks.sync.fanart import _sync_fanart_enrich
-    from otix.tasks.sync.omdb import _sync_omdb_ratings
 
     try:
         target = await _load_rehydrate_target(media_item_id)

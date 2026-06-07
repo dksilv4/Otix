@@ -30,9 +30,7 @@ class InteractionService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_youtube_liked_interaction(
-        self, user_id: str, media_item_id: str
-    ) -> UserMediaInteraction | None:
+    async def get_youtube_liked_interaction(self, user_id: str, media_item_id: str) -> UserMediaInteraction | None:
         """Return a YouTube liked-video interaction for a user+media combination, if any."""
         return await self.session.scalar(
             select(UserMediaInteraction)
@@ -45,9 +43,7 @@ class InteractionService:
             .limit(1)
         )
 
-    async def get_user_interactions(
-        self, user_id: str, media_item_id: str
-    ) -> dict[str, bool]:
+    async def get_user_interactions(self, user_id: str, media_item_id: str) -> dict[str, bool]:
         result = await self.session.scalars(
             select(UserMediaInteraction.interaction_type).where(
                 UserMediaInteraction.user_id == user_id,
@@ -58,12 +54,8 @@ class InteractionService:
         active = set(result.all())
         return {t: t in active for t in _VALID_TYPES}
 
-    async def get_batch_interactions(
-        self, user_id: str, media_item_ids: list[str]
-    ) -> dict[str, dict[str, bool]]:
-        interactions: dict[str, dict[str, bool]] = {
-            mid: {t: False for t in _VALID_TYPES} for mid in media_item_ids
-        }
+    async def get_batch_interactions(self, user_id: str, media_item_ids: list[str]) -> dict[str, dict[str, bool]]:
+        interactions: dict[str, dict[str, bool]] = {mid: dict.fromkeys(_VALID_TYPES, False) for mid in media_item_ids}
         if not media_item_ids:
             return interactions
 
@@ -115,11 +107,7 @@ class InteractionService:
         await self._recalc_count(media_item_id, interaction_type)
 
         if is_new:
-            amount = (
-                INTERACTION_WATCHED_PLAYED
-                if interaction_type in ("watched", "played", "listened")
-                else INTERACTION_LIKE_WATCHLIST_STARTED
-            )
+            amount = INTERACTION_WATCHED_PLAYED if interaction_type in ("watched", "played", "listened") else INTERACTION_LIKE_WATCHLIST_STARTED
             app.send_task("xp.award", args=[user_id, amount])
 
         app.send_task("streak.update", args=[user_id])
@@ -154,12 +142,12 @@ class InteractionService:
             for mid, itype, extra in interactions
         ]
 
+        stmt = pg_insert(UserMediaInteraction.__table__).values(rows)
+        excluded = stmt.excluded
         await self.session.execute(
-            pg_insert(UserMediaInteraction.__table__)
-            .values(rows)
-            .on_conflict_do_update(
+            stmt.on_conflict_do_update(
                 index_elements=["user_id", "media_item_id", "interaction_type"],
-                set_={"metadata": pg_insert.excluded.metadata, "updated_at": now},
+                set_={"metadata": excluded.metadata, "updated_at": now},
             )
         )
 
@@ -189,9 +177,7 @@ class InteractionService:
 
         return len(interactions)
 
-    async def remove_interaction(
-        self, user_id: str, media_item_id: str, interaction_type: str
-    ) -> bool:
+    async def remove_interaction(self, user_id: str, media_item_id: str, interaction_type: str) -> bool:
         result = await self.session.execute(
             delete(UserMediaInteraction).where(
                 UserMediaInteraction.user_id == user_id,
@@ -252,13 +238,7 @@ class InteractionService:
                 cursor_created_at, cursor_media_id = parts[0], parts[1]
                 try:
                     cursor_dt = datetime.fromisoformat(cursor_created_at)
-                    query = query.where(
-                        (UserMediaInteraction.created_at < cursor_dt)
-                        | (
-                            (UserMediaInteraction.created_at == cursor_dt)
-                            & (MediaItem.id > cursor_media_id)
-                        )
-                    )
+                    query = query.where((UserMediaInteraction.created_at < cursor_dt) | ((UserMediaInteraction.created_at == cursor_dt) & (MediaItem.id > cursor_media_id)))
                 except ValueError:
                     pass
 

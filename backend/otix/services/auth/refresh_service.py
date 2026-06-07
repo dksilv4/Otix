@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.lib.tokens import create_access_token, create_refresh_token, decode_token
 from otix.domain.user import RefreshToken, User
 from otix.infrastructure.config import settings
+from otix.lib.tokens import create_access_token, create_refresh_token, decode_token
 
 logger = structlog.get_logger()
 
@@ -87,7 +87,7 @@ class RefreshService:
 
         # ── Global logout check ───────────────────────────────────────────
         if user.global_logout_marker is not None:
-            issued_at = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+            issued_at = datetime.fromtimestamp(payload["iat"], tz=UTC)
             if issued_at < user.global_logout_marker:
                 raise RefreshError("Token issued before global logout", user_id=user_id)
 
@@ -100,7 +100,7 @@ class RefreshService:
 
         # ── Issue new token pair ──────────────────────────────────────────
         if settings.rotate_refresh_tokens:
-            rt.revoked_at = datetime.now(timezone.utc)
+            rt.revoked_at = datetime.now(UTC)
             new_access = create_access_token(user.id)
             new_refresh, new_jti, new_exp = create_refresh_token(user.id, session_key)
             new_rt = RefreshToken(user_id=user.id, jti=new_jti, expires_at=new_exp)
@@ -114,7 +114,7 @@ class RefreshService:
 
     async def _revoke_all_user_tokens(self, user_id: str) -> None:
         """Revoke every active refresh token for the given user."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.session.execute(
             select(RefreshToken).where(
                 RefreshToken.user_id == user_id,

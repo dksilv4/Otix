@@ -41,17 +41,15 @@ if backend not in sys.path:
     sys.path.insert(0, backend)
 importlib.invalidate_caches()
 
-from otix.infrastructure.config import settings  # noqa: E402
-from otix.infrastructure.database import async_session, dispose_engine  # noqa: E402
-from otix.infrastructure.redis import get_redis, close_redis  # noqa: E402
-from otix.providers.musicbrainz.client import MusicBrainzProvider  # noqa: E402
-from otix.domain.asset import MediaAsset  # noqa: E402
-from otix.domain.media import MediaItem, ExternalID  # noqa: E402
-from otix.domain.people import MediaCredit, Person  # noqa: E402
-
+import httpx  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
-import httpx  # noqa: E402
+from otix.domain.asset import MediaAsset  # noqa: E402
+from otix.domain.media import ExternalID, MediaItem  # noqa: E402
+from otix.domain.people import MediaCredit, Person  # noqa: E402
+from otix.infrastructure.database import async_session, dispose_engine  # noqa: E402
+from otix.infrastructure.redis import close_redis, get_redis  # noqa: E402
+from otix.providers.musicbrainz.client import MusicBrainzProvider  # noqa: E402
 
 # ── Shared HTTP clients ─────────────────────────────────────────────────────────
 
@@ -514,17 +512,17 @@ async def main() -> int:
     elapsed = time.monotonic() - t0
     print(f"\n{'═' * 50}")
     print(f"Done in {elapsed:.1f}s")
-    print(f"── Phase 1 (direct MBID → CAA) ──")
+    print("── Phase 1 (direct MBID → CAA) ──")
     print(f"  Scanned: {stats['direct_scanned']}")
     print(f"  Covers found: {stats['direct_hit']}")
     print(f"  Missed:       {stats['direct_miss']}")
-    print(f"── Phase 2 (search → CAA) ──")
+    print("── Phase 2 (search → CAA) ──")
     print(f"  Scanned:        {stats['search_scanned']}")
     print(f"  MBID found:     {stats['search_mbid_found']}")
     print(f"  MBID miss:      {stats['search_mbid_miss']}")
     print(f"  CAA hit:        {stats['search_caa_hit']}")
     print(f"  CAA miss:       {stats['search_caa_miss']}")
-    print(f"── Shared ──")
+    print("── Shared ──")
     print(f"  MediaAssets added:  {stats['assets_added']}")
     print(f"  poster_url set:     {stats['poster_set']}")
     if stats["errors"]:

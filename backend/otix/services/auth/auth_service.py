@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import bcrypt
 import structlog
@@ -11,14 +11,13 @@ from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from otix.domain.user import AuthActionToken, AuthActionType, RefreshToken, User
 from otix.lib.tokens import (
     create_access_token,
     create_challenge_token,
     create_refresh_token,
     decode_token,
 )
-from otix.domain.user import AuthActionToken, AuthActionType, RefreshToken, User
-from otix.infrastructure.config import settings
 
 logger = structlog.get_logger()
 
@@ -87,7 +86,7 @@ class AuthService:
         if not verify_password(password, user.hashed_password):
             return None
 
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = datetime.now(UTC)
         await self.session.flush()
 
         # If 2FA is enabled, return a challenge token instead of real tokens.
@@ -164,7 +163,7 @@ class AuthService:
     async def logout(self, user_id: str) -> None:
         user = await self.session.scalar(select(User).where(User.id == user_id))
         if user is not None:
-            user.global_logout_marker = datetime.now(timezone.utc)
+            user.global_logout_marker = datetime.now(UTC)
             await self.session.flush()
             logger.info("user logged out", user_id=user_id)
 
@@ -174,7 +173,7 @@ class AuthService:
         await self.logout(user_id)
 
     async def _revoke_all_user_tokens(self, user_id: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.session.execute(
             select(RefreshToken).where(
                 RefreshToken.user_id == user_id,
@@ -191,7 +190,7 @@ class AuthService:
         token = secrets.token_urlsafe(48)
         token_hash_val = hash_token(token)
         await self._invalidate_existing_tokens(user.id, AuthActionType.VERIFY_EMAIL.value)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         action_token = AuthActionToken(
             user_id=user.id,
             purpose=AuthActionType.VERIFY_EMAIL.value,
@@ -204,7 +203,7 @@ class AuthService:
 
     async def verify_email(self, token: str) -> bool:
         token_hash_val = hash_token(token)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         action_token = await self.session.scalar(
             select(AuthActionToken).where(
                 AuthActionToken.token_hash == token_hash_val,
@@ -232,7 +231,7 @@ class AuthService:
         token = secrets.token_urlsafe(48)
         token_hash_val = hash_token(token)
         await self._invalidate_existing_tokens(user.id, AuthActionType.PASSWORD_RESET.value)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         action_token = AuthActionToken(
             user_id=user.id,
             purpose=AuthActionType.PASSWORD_RESET.value,
@@ -245,7 +244,7 @@ class AuthService:
 
     async def reset_password(self, token: str, new_password: str) -> bool:
         token_hash_val = hash_token(token)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         action_token = await self.session.scalar(
             select(AuthActionToken).where(
                 AuthActionToken.token_hash == token_hash_val,
@@ -267,7 +266,7 @@ class AuthService:
         return True
 
     async def _invalidate_existing_tokens(self, user_id: str, purpose: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.session.execute(
             select(AuthActionToken).where(
                 AuthActionToken.user_id == user_id,

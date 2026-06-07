@@ -22,16 +22,17 @@ Usage in a Celery task:
 
 from __future__ import annotations
 
-import asyncio
 from abc import ABC
 from typing import TYPE_CHECKING
+
 import httpx
 import structlog
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
-from otix.lib.circuit_breaker import CircuitBreaker, State as CBState
+from otix.lib.circuit_breaker import CircuitBreaker
+from otix.lib.circuit_breaker import State as CBState
 from otix.lib.metrics import CIRCUIT_BREAKER_STATE, track_api_call
 from otix.lib.rate_limiter import RateLimiter
 
@@ -145,7 +146,7 @@ class BaseProvider(ABC):
             pass
 
     @staticmethod
-    async def check_cooldown(redis: "Redis", provider_name: str) -> int:
+    async def check_cooldown(redis: Redis, provider_name: str) -> int:
         """Return remaining cooldown seconds for a provider, or 0 if not rate limited."""
         try:
             remaining = await redis.ttl(f"ratelimit:{provider_name}:cooldown")

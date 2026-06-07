@@ -35,11 +35,13 @@ import type { MediaItemDetail } from '../media-queries'
 import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
 import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDesktopPlatform } from '@/lib/desktop-platform'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
 import type { HypervisorConfirmResponse } from '@/features/downloads/types'
 import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { useExperiment } from '@/features/experiments/experiments-provider'
 import { getScannedGames, setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
+import { useInstallProgress } from '@/features/game-scanner/install-store'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
 
 import './media-detail.scss'
@@ -260,6 +262,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   const [hvDialogOpen, setHvDialogOpen] = useState(false);
   const [hvCountdown, setHvCountdown] = useState(10);
   const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null);
+  const { installs: allInstalls } = useInstallProgress();
 
   // Load scanned games and local game map entry
   useEffect(() => {
@@ -424,6 +427,75 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
     );
   }
 
+  // 2b. Install in progress (ISO install) — show progress even when modal is closed
+  const installEntry = isoPath
+    ? allInstalls.find((i) => i.isoPath?.toLowerCase() === isoPath.toLowerCase())
+    : undefined;
+  const isInstallingThis = installEntry?.active === true;
+  const justInstalled = !installEntry?.active && installEntry?.result?.success === true;
+
+  if (isInstallingThis) {
+    const pct = installEntry!.progress?.progress ?? 0;
+    return (
+      <div className="dk-media-detail__dl-status-group">
+        <div className="dk-media-detail__dl-status-text text-blue-400">
+          <Loader2 className="dk-media-detail__dl-status-icon animate-spin" />
+          <span>Installing {installEntry!.gameTitle ?? 'game'}...</span>
+          <span className="dk-media-detail__dl-status-pct">{pct}%</span>
+        </div>
+        <div className="dk-media-detail__dl-progress">
+          <div
+            className="dk-media-detail__dl-progress-bar"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="dk-media-detail__dl-meta">
+          {installEntry!.progress?.message ?? installEntry!.progress?.phase ?? 'Starting...'}
+        </p>
+      </div>
+    );
+  }
+
+  // 2c. Install just completed — keep showing success briefly
+  if (justInstalled) {
+    return (
+      <div className="dk-media-detail__dl-iso-group">
+        <div className="dk-media-detail__dl-iso-status">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Installation Complete</span>
+          {installEntry!.result?.installDir && (
+            <span className="dk-media-detail__dl-iso-path">
+              {installEntry!.result.installDir}
+            </span>
+          )}
+        </div>
+        <div className="dk-media-detail__dl-iso-actions">
+          {installEntry!.result?.gameExe && (
+            <button
+              onClick={async () => {
+                try {
+                  await window.desktopAPI!.launchGame({
+                    exePath: installEntry!.result!.gameExe!,
+                    installDir: installEntry!.result!.installDir,
+                    title: installEntry!.gameTitle ?? 'Game',
+                    id: installEntry!.result!.installDir,
+                    platform: 'pc',
+                  } as any);
+                } catch (e) {
+                  console.error('Failed to launch:', e);
+                }
+              }}
+              className="dk-media-detail__dl-btn-play"
+            >
+              <Play className="h-4 w-4 fill-current" />
+              Play
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // 3. ISO Available / Ready to Install
   if (isIsoAvailable) {
     return (
@@ -577,6 +649,11 @@ export function MediaDetail() {
   const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
   const mediaId = params.mediaId || ''
 
+  // Route param not available yet during hard refresh — show skeleton, not error
+  if (!mediaId) return <DetailSkeleton />
+
+  const { isDesktop } = useDesktopPlatform()
+
   const { data, isLoading, isError } = useMediaDetail(mediaId)
   const isShowDetail = data?.mediaType === 'show'
   const episodeInteractions = useEpisodeInteractions(mediaId, { enabled: isShowDetail })
@@ -650,7 +727,7 @@ export function MediaDetail() {
     null
 
   return (
-    <div className="dk-media-detail">
+    <div className={cn('dk-media-detail', isDesktop && 'dk-media-detail--desktop')}>
       {/* ── SEO ── */}
       <Helmet>
         <title>{`${titleWithYear} - Otix`}</title>

@@ -12,7 +12,6 @@ from otix.providers.omdb.client import OMDbError, OMDbProvider
 from otix.providers.omdb.hydrator import OMDbHydrator
 from otix.providers.omdb.transformer import omdb_to_ratings
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Sample OMDb response
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -330,6 +329,7 @@ class TestOMDbHydrator:
 class TestOMDbClient:
     async def test_get_by_imdb_id(self, fakeredis, omdb_movie_raw: dict):
         import json
+
         import httpx
 
         class OMDbTransport(httpx.AsyncBaseTransport):
@@ -348,7 +348,6 @@ class TestOMDbClient:
         assert len(result["Ratings"]) == 3
 
     async def test_get_by_imdb_id_not_found(self, fakeredis):
-        import json
         import httpx
 
         class OMDbTransport(httpx.AsyncBaseTransport):

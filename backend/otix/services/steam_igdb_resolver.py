@@ -6,10 +6,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import ExternalID, Game, UserSteamGame
+from otix.domain.media import ExternalID, UserSteamGame
 from otix.infrastructure.redis import get_redis
 from otix.providers.igdb.client import IGDBProvider
 from otix.tasks.sync.igdb import _sync_igdb_game

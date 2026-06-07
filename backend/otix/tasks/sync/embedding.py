@@ -50,7 +50,7 @@ async def _generate_embedding(media_item_id: str) -> dict | None:
 
 async def _generate_embedding_batch(media_item_ids: list[str]) -> dict | None:
     from sqlalchemy import select
-    from sqlalchemy.orm import selectinload, joinedload
+    from sqlalchemy.orm import selectinload
 
     from otix.services.embedding_service import EmbeddingService
 
@@ -89,7 +89,7 @@ async def _generate_embedding_batch(media_item_ids: list[str]) -> dict | None:
             select(MediaItem).where(MediaItem.id.in_([it.id for it in items]))
         )
         item_map = {item.id: item for item in result}
-        for old_item, embedding in zip(items, embeddings):
+        for old_item, embedding in zip(items, embeddings, strict=False):
             fresh = item_map.get(old_item.id)
             if fresh is not None:
                 fresh.embedding = embedding

@@ -1,12 +1,14 @@
 # TODO: Review this file
 from __future__ import annotations
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from otix.api._utils import get_current_user, get_db
-from otix.schemas.auth import TmdbWatchlistImportResponse
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.providers.tmdb.client import TMDBProvider
+from otix.schemas.auth import TmdbWatchlistImportResponse
 from otix.services.tmdb_rating_service import import_tmdb_watchlist
 
 router = APIRouter()

@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 class TaskGuard:
     """Per-task guards backed by Redis."""
 
-    def __init__(self, redis: "Redis", provider: str):
+    def __init__(self, redis: Redis, provider: str):
         self.redis = redis
         self.provider = provider
 

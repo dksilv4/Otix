@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
-import pytest
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from otix.domain.follow import Follow
 from otix.domain.user import User
@@ -29,7 +30,7 @@ def _make_user(user_id: str, username: str) -> User:
 class TestFollow:
     async def test_follow_success(self, service: FollowService, mock_db_session: AsyncMock):
         follower = _make_user("user-1", "follower")
-        followed = _make_user("user-2", "followed")
+        _make_user("user-2", "followed")
 
         # Mock the checks
         mock_db_session.scalar.side_effect = [

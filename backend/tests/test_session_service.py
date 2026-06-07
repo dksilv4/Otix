@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from datetime import datetime, timezone
 
 from otix.domain.user import User, UserSession
 from otix.services.session_service import SessionService
@@ -28,8 +29,8 @@ def _make_session(sess_id: str, user_id: str) -> UserSession:
         ip_address="127.0.0.1",
         user_agent="Firefox",
     )
-    s.last_seen_at = datetime.now(timezone.utc)
-    s.created_at = datetime.now(timezone.utc)
+    s.last_seen_at = datetime.now(UTC)
+    s.created_at = datetime.now(UTC)
     return s
 
 

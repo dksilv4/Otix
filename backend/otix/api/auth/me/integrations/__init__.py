@@ -3,10 +3,10 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter, Depends
 
-from otix.api.auth.me._utils import _gravatar_url
 from otix.api._utils import get_current_user
-from otix.schemas.auth import MeIntegrationsResponse
+from otix.api.auth.me._utils import _gravatar_url
 from otix.domain.user import User
+from otix.schemas.auth import MeIntegrationsResponse
 
 logger = structlog.get_logger()
 router = APIRouter()

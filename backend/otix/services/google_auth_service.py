@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import secrets
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import httpx
@@ -234,7 +234,7 @@ async def link_google_to_user(session: AsyncSession, user: User | None = None, c
     user.google_avatar_url = profile.get("picture")
     user.google_access_token = access_token
     user.google_refresh_token = refresh_token
-    user.google_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    user.google_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     await session.flush()
     logger.info("google account linked", user_id=user.id, google_id=google_id)
@@ -274,7 +274,7 @@ async def get_user_google_access_token(
 
     expires_at = user.google_token_expires_at
     if expires_at and isinstance(expires_at, datetime):
-        if datetime.now(timezone.utc) < expires_at - timedelta(seconds=60):
+        if datetime.now(UTC) < expires_at - timedelta(seconds=60):
             return user.google_access_token
 
     try:
@@ -296,7 +296,7 @@ async def get_user_google_access_token(
 
     user.google_access_token = new_access
     expires_in = tokens.get("expires_in", 3600)
-    user.google_token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    user.google_token_expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     return new_access
 

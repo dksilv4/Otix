@@ -10,10 +10,6 @@ Create Date: 2026-06-03
 """
 from __future__ import annotations
 
-from typing import ClassVar
-
-from alembic import op
-
 revision: str = "6c9a83fc54f3"
 down_revision: str | None = "d847197dadc8"
 branch_labels: str | None = None

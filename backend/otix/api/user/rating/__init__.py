@@ -6,12 +6,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db, get_optional_user
-from otix.schemas.user import RatingDistributionItem, RatingDistributionOut
-from otix.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
 from otix.domain.media import MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.notification import Notification
 from otix.domain.user import User, UserRating
+from otix.schemas.user import RatingDistributionItem, RatingDistributionOut
+from otix.schemas.user_rating import UserRatingCreate, UserRatingOut, UserReputationOut
 from otix.services.user_rating_service import UserRatingService
 
 logger = structlog.get_logger()

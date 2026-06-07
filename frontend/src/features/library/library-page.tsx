@@ -349,10 +349,10 @@ function LocalGamesOverviewSection() {
     return () => window.removeEventListener("focus", handleFocus)
   }, [])
 
-  const isElectron = typeof window !== "undefined" && !!(window as any).electronAPI
+  const isElectron = typeof window !== "undefined" && !!(window as any).desktopAPI
   if (!isElectron || games.length === 0) return null
 
-  const preview = games.slice(0, 5)
+  const preview = games.filter(g => g.platform !== 'iso' && !g.sources?.includes('iso')).slice(0, 5)
 
   return (
     <div className="space-y-4">

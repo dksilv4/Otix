@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from otix.schemas.media import MediaItemListResponse, MediaItemSummary, UserInteractionState
+
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
+from otix.schemas.media import MediaItemListResponse, MediaItemSummary, UserInteractionState
 from otix.services.interaction_service import InteractionService
+
 
 async def _cache_get(key: str) -> str | None:
     try:

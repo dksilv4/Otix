@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigation } from "@navigation/providers/navigation-provider"
 import { cn } from "@/lib/utils"
 
-const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI
+const isElectron = typeof window !== 'undefined' && !!(window as any).desktopAPI
 
 const iconBg = cn(
   "flex items-center justify-center w-9 h-9 rounded-full shrink-0",

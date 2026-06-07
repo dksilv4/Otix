@@ -4,8 +4,8 @@ import structlog
 from fastapi import APIRouter, Depends
 
 from otix.api._utils import get_current_user
-from otix.schemas.auth import MePreferencesResponse
 from otix.domain.user import User
+from otix.schemas.auth import MePreferencesResponse
 
 logger = structlog.get_logger()
 router = APIRouter()

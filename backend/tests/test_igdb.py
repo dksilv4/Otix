@@ -12,7 +12,6 @@ from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre
 from otix.domain.media import (
     ExternalID,
-    Game,
     GameMode,
     MediaGameMode,
     MediaPlatform,
@@ -22,8 +21,8 @@ from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import (
     _cover_url,
-    _extract_store_ids,
     _extract_steam_app_id,
+    _extract_store_ids,
     _extract_website,
     _parse_timestamp,
     _slugify,
@@ -33,7 +32,6 @@ from otix.providers.igdb.transformer import (
     to_game,
     to_media_item,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fixtures
@@ -805,8 +803,9 @@ class TestHydrateModes:
 class TestIGDBProviderSearchGames:
     async def test_search_games_escapes_quotes(self, fakeredis):
         """Quotes in the query should be escaped."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
         provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
@@ -820,8 +819,9 @@ class TestIGDBProviderSearchGames:
 
     async def test_search_games_returns_results(self, fakeredis):
         """Should return parsed JSON results."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
         mock_results = [{"id": 1942, "name": "The Witcher 3"}]
@@ -835,8 +835,9 @@ class TestIGDBProviderSearchGames:
 
     async def test_search_games_includes_fields(self, fakeredis):
         """Should include the fields parameter in the query body."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
         provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
@@ -849,8 +850,9 @@ class TestIGDBProviderSearchGames:
 
     async def test_search_games_default_limit(self, fakeredis):
         """Should default to limit 50."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
         provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
@@ -863,8 +865,9 @@ class TestIGDBProviderSearchGames:
 
     async def test_search_games_custom_limit(self, fakeredis):
         """Should use custom limit when provided."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         provider = IGDBProvider(redis=fakeredis, http_client=httpx.AsyncClient())
         provider._post = AsyncMock(return_value=MagicMock(status_code=200, json=MagicMock(return_value=[])))
@@ -877,8 +880,9 @@ class TestIGDBProviderSearchGames:
 
     async def test_search_games_raises_on_error(self, fakeredis):
         """Should raise IGDBError on non-200 response."""
-        import httpx
         from unittest.mock import MagicMock
+
+        import httpx
 
         from otix.providers.igdb.client import IGDBError
 

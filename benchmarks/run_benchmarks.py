@@ -152,4 +152,4 @@ if __name__ == "__main__":
 
     print(format_summary(results))
     print(f"Results saved to: {json_path}")
-    print(f"Latest copy at: benchmarks/response-times-latest.json")
+    print("Latest copy at: benchmarks/response-times-latest.json")

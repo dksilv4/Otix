@@ -5,16 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
-from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.list import UserListCreate, UserListOut
-from otix.domain.user import User
-from otix.services.list_service import ListService
-from otix.api.list.detail import router as detail_router
-from otix.api.list.item import router as item_router
 from otix.api.list.collaborators import router as collaborators_router
-from otix.api.list.like import router as like_router
+from otix.api.list.detail import router as detail_router
 from otix.api.list.export import router as export_router
 from otix.api.list.history import router as history_router
+from otix.api.list.item import router as item_router
+from otix.api.list.like import router as like_router
+from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
+from otix.domain.user import User
+from otix.schemas.list import UserListCreate, UserListOut
+from otix.services.list_service import ListService
 
 logger = structlog.get_logger()
 

@@ -11,6 +11,7 @@ import { useNotificationToasts } from '@/features/notifications/use-notification
 import { XPToastContainer } from '@/features/dk-ui/atoms/xp-toast'
 import { NowPlayingButton } from '@/features/spotify/now-playing-button'
 import { NowPlayingView } from '@/features/spotify/now-playing-view'
+import { TitleBar } from '@/features/title-bar/organisms/title-bar'
 
 import { useDesktopPlatform } from '@/lib/desktop-platform'
 import { cn } from '@/lib/utils'
@@ -87,8 +88,7 @@ function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="dk-app-shell">
-      {/* Invisible drag bar — lets user move the window on frameless desktop */}
-      {isDesktop && <div className="fixed top-0 left-0 right-0 h-2.5 z-[99999]" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties} />}
+      <TitleBar />
 
       {/* Left floating pill — hidden in game launcher (it has its own picker) */}
       {!location.pathname.startsWith('/games') && (

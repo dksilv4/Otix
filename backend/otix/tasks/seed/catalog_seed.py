@@ -21,23 +21,20 @@ from __future__ import annotations
 
 import asyncio
 import gzip
-import httpx
 import json
 import os
 import tempfile
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
 from pathlib import Path
 
+import httpx
 import structlog
 
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.redis import get_redis
-
 from otix.tasks.seed import (
-    TMDB_EXPORT_BASE,
     check_fast_queue_backlog,
     download_export,
     load_state,
@@ -328,7 +325,6 @@ async def _process_people_batch(state: dict) -> dict:
 
 
 async def _download_steam_app_list(last_appid: int = 0) -> Path | None:
-    from otix.infrastructure.config import settings
 
     if not settings.steam_api_key:
         logger.warning("seed steam skipped — no Steam API key configured")
@@ -389,7 +385,7 @@ async def _process_steam_batch(state: dict) -> dict:
     current_offset = 0
 
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         response_data = data.get("response", {})

@@ -289,7 +289,7 @@ def cleanup_orphan_credits() -> dict:
 
 
 async def _cleanup_orphan_credits() -> dict:
-    from sqlalchemy import and_, delete, select
+    from sqlalchemy import delete, select
 
     from otix.infrastructure.database import async_session
 

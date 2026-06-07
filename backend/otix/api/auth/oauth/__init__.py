@@ -4,39 +4,36 @@ Data-retrieval, sync, and webhook endpoints have been moved to
 otix.api.integrations.
 """
 from __future__ import annotations
+
 import asyncio
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from otix.api.auth.me._utils import _gravatar_url
-from otix.api.auth.oauth.spotify import _spotify_stats
-from otix.api.auth.oauth.tmdb import _tmdb_stats
+
 from otix.api._utils import get_current_user, get_db
-from otix.schemas.auth import IntegrationProviderResponse, IntegrationsResponse, SteamProfileResponse
-from otix.domain.user import User
-from otix.services.steam_auth_service import get_steam_user_info
-from otix.services.tmdb_auth_service import get_tmdb_account
-
-from otix.api.auth.oauth.spotify import router as spotify_router
-from otix.api.auth.oauth.spotify.callback import router as spotify_callback_router
-from otix.api.auth.oauth.spotify.disconnect import router as spotify_disconnect_router
-
-from otix.api.auth.oauth.steam import router as steam_router
-from otix.api.auth.oauth.steam.callback import router as steam_callback_router
-from otix.api.auth.oauth.steam.disconnect import router as steam_disconnect_router
-
-from otix.api.auth.oauth.plex import router as plex_router
-from otix.api.auth.oauth.plex.callback import router as plex_callback_router
-from otix.api.auth.oauth.plex.disconnect import router as plex_disconnect_router
-
-from otix.api.auth.oauth.tmdb import router as tmdb_router
-from otix.api.auth.oauth.tmdb.redirect import router as tmdb_redirect_router
-from otix.api.auth.oauth.tmdb.callback import router as tmdb_callback_router
-from otix.api.auth.oauth.tmdb.disconnect import router as tmdb_disconnect_router
-
+from otix.api.auth.me._utils import _gravatar_url
 from otix.api.auth.oauth.google import router as google_router
 from otix.api.auth.oauth.google.callback import router as google_callback_router
 from otix.api.auth.oauth.google.disconnect import router as google_disconnect_router
-
+from otix.api.auth.oauth.plex import router as plex_router
+from otix.api.auth.oauth.plex.callback import router as plex_callback_router
+from otix.api.auth.oauth.plex.disconnect import router as plex_disconnect_router
+from otix.api.auth.oauth.spotify import _spotify_stats
+from otix.api.auth.oauth.spotify import router as spotify_router
+from otix.api.auth.oauth.spotify.callback import router as spotify_callback_router
+from otix.api.auth.oauth.spotify.disconnect import router as spotify_disconnect_router
+from otix.api.auth.oauth.steam import router as steam_router
+from otix.api.auth.oauth.steam.callback import router as steam_callback_router
+from otix.api.auth.oauth.steam.disconnect import router as steam_disconnect_router
+from otix.api.auth.oauth.tmdb import _tmdb_stats
+from otix.api.auth.oauth.tmdb import router as tmdb_router
+from otix.api.auth.oauth.tmdb.callback import router as tmdb_callback_router
+from otix.api.auth.oauth.tmdb.disconnect import router as tmdb_disconnect_router
+from otix.api.auth.oauth.tmdb.redirect import router as tmdb_redirect_router
+from otix.domain.user import User
+from otix.schemas.auth import IntegrationProviderResponse, IntegrationsResponse, SteamProfileResponse
+from otix.services.steam_auth_service import get_steam_user_info
+from otix.services.tmdb_auth_service import get_tmdb_account
 
 integrations_router = APIRouter()
 

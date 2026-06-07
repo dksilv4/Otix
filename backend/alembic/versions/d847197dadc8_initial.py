@@ -1,16 +1,17 @@
 """initial
 
 Revision ID: d847197dadc8
-Revises: 
+Revises:
 Create Date: 2026-05-29 18:40:31.544186
 """
 
 from collections.abc import Sequence
 
-from alembic import op
+import pgvector
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-import pgvector
+
+from alembic import op
 
 revision: str = 'd847197dadc8'
 down_revision: str | None = None

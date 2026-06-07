@@ -362,7 +362,7 @@ def avatar_url(seed: str) -> str:
 
 def cover_url(seed: str) -> str:
     """Generate a cover/background image using picsum."""
-    n = abs(hash(seed)) % 1000
+    abs(hash(seed)) % 1000
     return f"https://picsum.photos/seed/{seed}/800/400"
 
 # ── Country pool ─────────────────────────────────────────
