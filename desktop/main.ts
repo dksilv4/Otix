@@ -6,6 +6,7 @@ import { GameDetector } from './game-detector';
 import { registerDownloadsIPC } from './ipc/downloads';
 import { registerScannerIPC } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
+import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
 import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
@@ -290,6 +291,9 @@ app.on('ready', async () => {
     console.error('[main] DB init failed:', err);
     throw err;
   });
+
+  // Rehydrate any installs that were running before Electron last closed
+  rehydrateActiveInstalls();
 
   // Register modular IPC handlers
   registerDownloadsIPC();

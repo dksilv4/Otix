@@ -194,6 +194,55 @@ export function deleteOverride(gameId: string): void {
   _run('DELETE FROM game_save_overrides WHERE game_id = ?', [gameId]);
 }
 
+/* ── Cloud Settings ── */
+
+export interface CloudSettingsRow {
+  game_id: string;
+  auto_sync: number;
+  last_sync_at: string | null;
+  is_path_confirmed: number;
+  confirmed_path: string | null;
+}
+
+export function getCloudSettings(gameId: string): CloudSettingsRow | null {
+  return (_get('SELECT * FROM game_save_cloud_settings WHERE game_id = ?', [gameId]) as CloudSettingsRow | undefined) ?? null;
+}
+
+export function upsertCloudSettings(gameId: string, autoSync: number, lastSyncAt: string | null): void {
+  const exists = _get('SELECT game_id FROM game_save_cloud_settings WHERE game_id = ?', [gameId]);
+  if (exists) {
+    _run(
+      'UPDATE game_save_cloud_settings SET auto_sync = ?, last_sync_at = ? WHERE game_id = ?',
+      [autoSync, lastSyncAt, gameId],
+    );
+  } else {
+    _run(
+      'INSERT INTO game_save_cloud_settings (game_id, auto_sync, last_sync_at, is_path_confirmed, confirmed_path) VALUES (?, ?, ?, 0, NULL)',
+      [gameId, autoSync, lastSyncAt],
+    );
+  }
+}
+
+export function confirmPath(gameId: string, isConfirmed: number, confirmedPath: string | null): void {
+  const exists = _get('SELECT game_id FROM game_save_cloud_settings WHERE game_id = ?', [gameId]);
+  if (exists) {
+    _run(
+      'UPDATE game_save_cloud_settings SET is_path_confirmed = ?, confirmed_path = ? WHERE game_id = ?',
+      [isConfirmed, confirmedPath, gameId],
+    );
+  } else {
+    _run(
+      'INSERT INTO game_save_cloud_settings (game_id, auto_sync, last_sync_at, is_path_confirmed, confirmed_path) VALUES (?, 0, NULL, ?, ?)',
+      [gameId, isConfirmed, confirmedPath],
+    );
+  }
+}
+
+export function getOtixMediaId(gameId: string): string | null {
+  const row = _get('SELECT otix_media_id FROM scanned_games WHERE id = ?', [gameId]) as any;
+  return row?.otix_media_id ?? null;
+}
+
 /* ── Aggregates ── */
 
 export function getSaveCount(): number {

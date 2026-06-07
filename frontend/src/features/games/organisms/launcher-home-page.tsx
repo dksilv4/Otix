@@ -1,7 +1,7 @@
 /* ── LauncherHomePage — fullscreen game launcher driven by real database & scanner data ── */
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import {
   Gamepad2,
@@ -12,11 +12,23 @@ import {
   Search,
   Menu,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Cloud,
+  Link2,
+  AlertCircle,
+  CheckCircle2,
+  RefreshCw,
+  Folder,
+  Check,
+  Disc,
+  Loader2,
+  X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useDesktopPlatform } from '@/lib/desktop-platform'
+import { useAuth } from '@/features/auth/auth-provider'
+import { API_BASE_URL } from '@/lib/api-client'
 import {
   getScannedGames,
   setScannedGames,
@@ -27,10 +39,12 @@ import {
 } from '@/features/games/scanner/storage'
 import type { DetectedGame } from '@/features/games/scanner/types'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/games/scanner/queries'
-import { usePopularGames, useGameDetail } from '@/features/games/games-queries'
+import { usePopularGames, useGameDetail, useSaveLocations } from '@/features/games/games-queries'
 import { useClaimGame } from '@/features/library/library-queries'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 import { useNavigation } from '@navigation/providers/navigation-provider'
+import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
+import { useInstallProgress } from '@/features/game-scanner/install-store'
 
 /* ── Types ── */
 
@@ -129,9 +143,14 @@ export function LauncherHomePage() {
   const [scanning, setScanning] = useState(false)
   const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null)
 
+  const { activeInstalls, cancelInstall } = useInstallProgress()
+
   // Selection states
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
   const [shelfTab, setShelfTab] = useState<'popular' | 'downloaded' | 'rated'>('popular')
+  const [isInstallerOpen, setIsInstallerOpen] = useState(false)
+
+
 
   // Real Queries
   const { data: popularGames = [] } = usePopularGames()
@@ -186,7 +205,7 @@ export function LauncherHomePage() {
           platform: g.platform,
           exePath: g.exePath,
           installDir: g.installDir,
-          isInstalled: !!g.exePath && !(g.platform === 'iso' && osName !== 'Windows'),
+          isInstalled: !!g.exePath && g.platform !== 'iso',
           otixMediaId: g.otixMediaId || undefined,
           rawGame: g
         }
@@ -244,8 +263,313 @@ export function LauncherHomePage() {
     return displayGames.find((g) => g.id === activeGameId) || pickerGames[0] || null
   }, [displayGames, pickerGames, activeGameId])
 
+  const activeInstall = useMemo(() => {
+    const activePath = activeGame?.rawGame?.exePath?.toLowerCase()
+    if (!activePath) return null
+    return activeInstalls.find(i => i.isoPath?.toLowerCase() === activePath)
+  }, [activeInstalls, activeGame])
+
   // Query details for active game from backend
   const { data: activeGameDetail } = useGameDetail(activeGame?.otixMediaId)
+
+  const isSolelyMultiplayer = useMemo(() => {
+    if (!activeGameDetail?.gameModes || activeGameDetail.gameModes.length === 0) return false
+    const modes = activeGameDetail.gameModes.map(m => m.gameMode.slug)
+    const hasSinglePlayer = modes.includes('single-player')
+    const hasMultiplayer = modes.some(slug => 
+      slug.includes('multiplayer') || 
+      slug.includes('co-op') || 
+      slug.includes('co-operative') || 
+      slug.includes('mmo') || 
+      slug.includes('battle-royale')
+    )
+    return hasMultiplayer && !hasSinglePlayer
+  }, [activeGameDetail])
+
+  const { user } = useAuth()
+  const [cloudSettings, setCloudSettings] = useState<{
+    gameId: string
+    autoSync: boolean
+    lastSyncAt: string | null
+    isPathConfirmed: boolean
+    confirmedPath: string | null
+  } | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // Crowd-sourced save paths queries
+  const { data: serverLocations, refetch: refetchServerLocations } = useSaveLocations(activeGame?.otixMediaId)
+  const [detectedPath, setDetectedPath] = useState<string | null>(null)
+  const [overridePath, setOverridePath] = useState<string | null>(null)
+  const [resolvingServerPaths, setResolvingServerPaths] = useState(false)
+  const [confirmingPath, setConfirmingPath] = useState(false)
+
+  // Auto-detect and auto-assign save folder locations
+  useEffect(() => {
+    let active = true
+
+    const detectAndAssign = async () => {
+      if (!activeGame?.id || !window.desktopAPI || !cloudSettings) return
+      try {
+        setResolvingServerPaths(true)
+        const gameId = activeGame.id
+
+        // 1. Get local auto-detected paths
+        const discoverRes = await window.desktopAPI.saveDiscoverForGame(gameId, activeGame.title)
+        if (!active || activeGame.id !== gameId) return
+        const localDetected = discoverRes.detectedPaths[0] || null
+
+        // 2. Get local override path
+        const override = await window.desktopAPI.saveGetOverride(gameId)
+        if (!active || activeGame.id !== gameId) return
+        const overridePathVal = override?.userPath || null
+        setOverridePath(overridePathVal)
+
+        // Determine platform key
+        const currentPlatform = window.desktopAPI?.platform || 'win32'
+        const platformKey = currentPlatform === 'win32' ? 'windows' : currentPlatform === 'darwin' ? 'mac' : 'linux'
+
+        // 3. Resolve server verified paths
+        let verifiedPathVal: string | null = null
+        if (serverLocations?.verified) {
+          const verifiedPatterns = serverLocations.verified
+            .filter(loc => loc.platform === platformKey)
+            .map(loc => loc.pathPattern)
+          if (verifiedPatterns.length > 0) {
+            const resolved = await window.desktopAPI.saveResolvePathPatterns(verifiedPatterns)
+            if (!active || activeGame.id !== gameId) return
+            if (resolved && resolved.length > 0) {
+              verifiedPathVal = resolved[0]
+            }
+          }
+        }
+
+        // 4. Resolve server suggested paths
+        let suggestedPathVal: string | null = null
+        if (serverLocations?.suggested) {
+          const suggestedPatterns = serverLocations.suggested
+            .filter(loc => loc.platform === platformKey)
+            .map(loc => loc.pathPattern)
+          if (suggestedPatterns.length > 0) {
+            const resolved = await window.desktopAPI.saveResolvePathPatterns(suggestedPatterns)
+            if (!active || activeGame.id !== gameId) return
+            if (resolved && resolved.length > 0) {
+              suggestedPathVal = resolved[0]
+            }
+          }
+        }
+
+        // Determine best candidate
+        let candidate: string | null = null
+        if (overridePathVal) {
+          candidate = overridePathVal
+        } else if (verifiedPathVal) {
+          candidate = verifiedPathVal
+        } else if (localDetected) {
+          candidate = localDetected
+        } else if (suggestedPathVal) {
+          candidate = suggestedPathVal
+        }
+
+        setDetectedPath(candidate)
+
+        // Auto-assign if not already confirmed
+        if (candidate && !cloudSettings.isPathConfirmed && !confirmingPath) {
+          console.log(`[AutoAssign] Automatically confirming detected path: ${candidate}`)
+          setConfirmingPath(true)
+          const token = localStorage.getItem('otix-access-token') || ''
+          await window.desktopAPI.saveConfirmPath(
+            gameId,
+            candidate,
+            API_BASE_URL,
+            token ? `Bearer ${token}` : ''
+          )
+          if (!active || activeGame.id !== gameId) return
+          const updated = await window.desktopAPI.saveGetCloudSettings(gameId)
+          if (!active || activeGame.id !== gameId) return
+          setCloudSettings(updated || null)
+          setSuccessMsg("Save path automatically detected and confirmed!")
+          refetchServerLocations()
+        }
+      } catch (err) {
+        console.error('Failed in path detection/assignment', err)
+      } finally {
+        if (active) {
+          setResolvingServerPaths(false)
+          setConfirmingPath(false)
+        }
+      }
+    }
+
+    detectAndAssign()
+
+    return () => {
+      active = false
+    }
+  }, [activeGame?.id, serverLocations, cloudSettings, confirmingPath, refetchServerLocations])
+
+  useEffect(() => {
+    if (!activeGame?.id || !window.desktopAPI) return
+
+    setCloudSettings(null)
+    setSyncError(null)
+    setSuccessMsg(null)
+
+    window.desktopAPI.saveGetCloudSettings(activeGame.id)
+      .then((settings) => {
+        setCloudSettings(settings)
+      })
+      .catch((err) => {
+        console.error('Failed to get cloud settings', err)
+      })
+  }, [activeGame?.id])
+
+  const handleToggleAutoSync = async (checked: boolean) => {
+    if (!activeGame?.id || !window.desktopAPI) return
+    try {
+      await window.desktopAPI.saveSetCloudSettings(activeGame.id, checked)
+      setCloudSettings((prev) => prev ? { ...prev, autoSync: checked } : null)
+    } catch (err: any) {
+      console.error('Failed to set cloud settings', err)
+    }
+  }
+
+  const handleConfirmPath = async (pathUrl: string) => {
+    if (!activeGame?.id || !window.desktopAPI) return
+    setConfirmingPath(true)
+    setSyncError(null)
+    setSuccessMsg(null)
+    try {
+      const token = localStorage.getItem('otix-access-token') || ''
+      await window.desktopAPI.saveConfirmPath(
+        activeGame.id,
+        pathUrl,
+        API_BASE_URL,
+        token ? `Bearer ${token}` : ''
+      )
+      setSuccessMsg("Save location confirmed successfully!")
+      const updated = await window.desktopAPI.saveGetCloudSettings(activeGame.id)
+      setCloudSettings(updated)
+      refetchServerLocations()
+    } catch (err: any) {
+      console.error('Failed to confirm path', err)
+      setSyncError(err.message || 'Failed to confirm save path.')
+    } finally {
+      setConfirmingPath(false)
+    }
+  }
+
+  const handleSelectFolder = async () => {
+    if (!activeGame?.id || !window.desktopAPI) return
+    try {
+      const selected = await window.desktopAPI.saveSelectOverridePath()
+      if (selected) {
+        await window.desktopAPI.saveSetOverride(activeGame.id, selected)
+        setOverridePath(selected)
+        setDetectedPath(selected)
+        // Automatically confirm manual folder selection
+        const token = localStorage.getItem('otix-access-token') || ''
+        await window.desktopAPI.saveConfirmPath(
+          activeGame.id,
+          selected,
+          API_BASE_URL,
+          token ? `Bearer ${token}` : ''
+        )
+        const updated = await window.desktopAPI.saveGetCloudSettings(activeGame.id)
+        setCloudSettings(updated)
+        setSuccessMsg("Save folder selected and confirmed successfully!")
+        refetchServerLocations()
+      }
+    } catch (err: any) {
+      console.error('Failed to select override path', err)
+      setSyncError(err.message || 'Failed to confirm selected folder.')
+    }
+  }
+
+  const handleClearOverride = async () => {
+    if (!activeGame?.id || !window.desktopAPI) return
+    try {
+      await window.desktopAPI.saveClearOverride(activeGame.id)
+      setOverridePath(null)
+      setSuccessMsg("Custom path override cleared.")
+      const updated = await window.desktopAPI.saveGetCloudSettings(activeGame.id)
+      setCloudSettings(updated)
+    } catch (err) {
+      console.error('Failed to clear override', err)
+    }
+  }
+
+  const handleSyncNow = async () => {
+    if (!activeGame?.id || !window.desktopAPI) return
+    if (!cloudSettings?.isPathConfirmed) {
+      setSyncError("Please confirm your save folder location first before syncing.")
+      return
+    }
+    setSyncing(true)
+    setSyncError(null)
+    setSuccessMsg(null)
+    try {
+      const token = localStorage.getItem('otix-access-token') || ''
+      const res = await window.desktopAPI.saveSyncCloud(
+        activeGame.id,
+        activeGame.title,
+        'default',
+        API_BASE_URL,
+        token ? `Bearer ${token}` : ''
+      )
+      if (res.success) {
+        setSuccessMsg(res.message || 'Sync successful!')
+        const updated = await window.desktopAPI.saveGetCloudSettings(activeGame.id)
+        setCloudSettings(updated)
+      } else {
+        setSyncError(res.message || 'Sync failed.')
+      }
+    } catch (err: any) {
+      console.error('Sync failed', err)
+      setSyncError(err.message || 'An error occurred during synchronization.')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  // Listen for game ended to trigger auto-sync
+  useEffect(() => {
+    const api = window.desktopAPI
+    if (!api) return
+
+    const unsubscribe = api.onGameEnded(async (data: any) => {
+      const gameId = data?.gameId
+      const gameTitle = data?.gameTitle || 'Game'
+      if (!gameId) return
+
+      try {
+        const settings = await api.saveGetCloudSettings(gameId)
+        if (settings && settings.autoSync) {
+          console.log(`[AutoSync] Triggering auto-sync for game: ${gameId}`)
+          const token = localStorage.getItem('otix-access-token') || ''
+          await api.saveSyncCloud(
+            gameId,
+            gameTitle,
+            'default',
+            API_BASE_URL,
+            token ? `Bearer ${token}` : ''
+          )
+          console.log(`[AutoSync] Auto-sync finished for game: ${gameId}`)
+          if (activeGameId === gameId) {
+            const updated = await api.saveGetCloudSettings(gameId)
+            setCloudSettings(updated)
+          }
+        }
+      } catch (err) {
+        console.error(`[AutoSync] Auto-sync failed for game: ${gameId}`, err)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [activeGameId])
 
   // Sort shelf catalog games based on the selected tab
   const shelfGames = useMemo<DisplayGame[]>(() => {
@@ -536,8 +860,12 @@ export function LauncherHomePage() {
                 {game.isInstalled && (
                   <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black/30 shadow-sm" />
                 )}
-                {!game.isInstalled && game.platform === 'iso' && osName !== 'Windows' && (
-                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Can't install this on macOS" />
+                {!game.isInstalled && game.platform === 'iso' && (
+                  osName !== 'Windows' ? (
+                    <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-red-500/50 border border-black/30 shadow-sm" title="Can't install this on macOS" />
+                  ) : (
+                    <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-black/30 shadow-sm" title="Ready to Install" />
+                  )
                 )}
               </button>
             )
@@ -645,8 +973,10 @@ export function LauncherHomePage() {
                     <p className="text-[9px] font-black text-white/30 tracking-widest uppercase">
                       {activeGame.isInstalled
                         ? 'Ready to play'
-                        : activeGame.platform === 'iso' && osName !== 'Windows'
-                          ? "Can't install on macOS"
+                        : activeGame.platform === 'iso'
+                          ? osName !== 'Windows'
+                            ? "Can't install on macOS"
+                            : "Ready to Install"
                           : activeGame.installDir
                             ? `At ${activeGame.installDir}`
                             : 'Local game'}
@@ -657,20 +987,23 @@ export function LauncherHomePage() {
             </div>
 
             {/* Developer / Publisher (Bottom Right) */}
-            {activeGameDetail?.involvedCompanies?.length > 0 && (
-              <div className="absolute bottom-8 right-8 pointer-events-auto">
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end max-w-xs">
-                  {["developer", "publisher"].filter(r => activeGameDetail!.involvedCompanies.some(c => (c as any)[r])).map((role) => (
-                    <span key={role} className="text-[10px] text-white/35">
-                      <span className="uppercase tracking-wider">{role}</span>{' '}
-                      <span className="text-white/60">
-                        {activeGameDetail!.involvedCompanies.filter(c => (c as any)[role]).map(c => c.company.name).join(", ")}
+            {activeGameDetail?.involvedCompanies && activeGameDetail.involvedCompanies.length > 0 && (() => {
+              const companies = activeGameDetail.involvedCompanies;
+              return (
+                <div className="absolute bottom-8 right-8 pointer-events-auto">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 justify-end max-w-xs">
+                    {["developer", "publisher"].filter(r => companies.some(c => (c as any)[r])).map((role) => (
+                      <span key={role} className="text-[10px] text-white/35">
+                        <span className="uppercase tracking-wider">{role}</span>{' '}
+                        <span className="text-white/60">
+                          {companies.filter(c => (c as any)[role]).map(c => c.company.name).join(", ")}
+                        </span>
                       </span>
-                    </span>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Game Info & Action Buttons (Center Right) */}
             <div className="absolute right-8 top-1/2 -translate-y-[35%] flex flex-col items-end text-right max-w-sm pointer-events-auto">
@@ -784,6 +1117,69 @@ export function LauncherHomePage() {
                       </button>
                     )
                   }
+                  // ISO available (and not installed): Install + Match (if unmatched)
+                  if (activeGame.platform === 'iso') {
+                    if (activeInstall) {
+                      const message = activeInstall.progress?.message ?? 'Installing...'
+                      return (
+                        <div className="flex gap-2 items-stretch h-[38px]">
+                          <button
+                            onClick={() => setIsInstallerOpen(true)}
+                            className="relative overflow-hidden px-4 bg-white/5 hover:bg-white/8 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-md active:scale-[0.99] text-white w-48 justify-start"
+                          >
+                            {/* Visual Progress Bar Overlay */}
+                            <div 
+                              className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-600/30 animate-pulse pointer-events-none"
+                            />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400 shrink-0 relative z-10" />
+                            <div className="flex flex-col items-start relative z-10 text-left min-w-0 leading-tight">
+                              <span className="font-bold text-white truncate w-full text-[10px]">Installing...</span>
+                              <span className="text-[9px] text-white/50 truncate w-full">{message}</span>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => cancelInstall(activeInstall.isoPath)}
+                            className="px-3 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 rounded-xl text-[11px] font-semibold transition-all cursor-pointer active:scale-95 flex items-center justify-center"
+                            title="Cancel Installation"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )
+                    }
+                    return (
+                      <>
+                        {!activeGame.otixMediaId && (
+                          <button
+                            onClick={() => {
+                              if (activeGame.rawGame) {
+                                matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
+                                  if (matched?.length) {
+                                    const filtered = filterRejectedSuggestions(matched)
+                                    setLocalGames(filtered)
+                                    setScannedGames(filtered)
+                                    syncMutation.mutate(filtered)
+                                    toast({ title: 'Game Matched', description: `"${matched[0]?.otixMediaTitle || matched[0]?.title}" found in catalog.`, variant: 'success' })
+                                  }
+                                }).catch(() => {})
+                              }
+                            }}
+                            className="px-4.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                          >
+                            <Search size={14} />
+                            Match Game
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setIsInstallerOpen(true)}
+                          className="px-5.5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95 animate-pulse"
+                        >
+                          <Disc size={14} />
+                          Install Game
+                        </button>
+                      </>
+                    )
+                  }
                   // Unmatched local game: Match
                   return (
                     <>
@@ -810,6 +1206,195 @@ export function LauncherHomePage() {
                   )
                 })()}
               </div>
+
+              {/* Google Drive Save Sync Card / Online Multiplayer Notice */}
+              {activeGame.isInstalled && (
+                isSolelyMultiplayer ? (
+                  <div className="mt-4 p-3.5 rounded-2xl bg-blue-500/5 border border-blue-500/15 backdrop-blur-md space-y-1.5 w-[280px] text-left">
+                    <div className="flex items-center gap-2">
+                      <Cloud size={14} className="text-blue-400" />
+                      <span className="text-[11px] font-black tracking-wider uppercase text-white/90">Save Sync Not Required</span>
+                    </div>
+                    <p className="text-[10px] text-white/50 leading-normal">
+                      This is an online-only multiplayer service game. Progress and saves are managed directly by the server.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md space-y-3 w-[280px] text-left">
+                    <div className="flex items-center gap-2">
+                      <Cloud size={14} className="text-[#4285F4]" />
+                      <span className="text-[11px] font-black tracking-wider uppercase text-white/90">Google Drive Sync</span>
+                      {user?.googleId && (
+                        <span className="ml-auto flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-md px-1.5 py-0.5">
+                          Connected
+                        </span>
+                      )}
+                    </div>
+
+                    {!user?.googleId ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-white/50 leading-normal">
+                          Link your Google account in Settings to enable Cloud Save backups for your games.
+                        </p>
+                        <Link
+                          to="/settings"
+                          search={{ section: "integrations" }}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#4285F4] hover:bg-[#4285F4]/90 active:scale-95 transition-all px-3 py-1.5 text-[10px] font-bold text-white cursor-pointer"
+                        >
+                          <Link2 size={12} /> Link Google Account
+                        </Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-[10px] border-b border-white/5 pb-1.5">
+                          <span className="text-white/40">Account</span>
+                          <span className="text-white/70 font-semibold truncate max-w-[140px]" title={user.googleEmail || user.googleName || ""}>
+                            {user.googleName || user.googleEmail}
+                          </span>
+                        </div>
+
+                        {/* Save Location Confirmation Section */}
+                        <div className="space-y-1.5 border-b border-white/5 pb-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-white/80 flex items-center gap-1">
+                              <Folder size={11} className="text-white/40" /> Save Folder
+                            </span>
+                            {cloudSettings?.isPathConfirmed ? (
+                              <span className="text-[9px] font-bold text-emerald-400 flex items-center gap-0.5">
+                                <Check size={10} /> Confirmed
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold text-amber-400 flex items-center gap-0.5">
+                                <AlertCircle size={10} /> Unconfirmed
+                              </span>
+                            )}
+                          </div>
+
+                          {cloudSettings?.isPathConfirmed ? (
+                            <div className="space-y-1">
+                              <p className="text-[9px] text-white/60 bg-white/5 border border-white/10 rounded px-1.5 py-1 font-mono break-all leading-tight">
+                                {cloudSettings.confirmedPath}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleSelectFolder}
+                                  className="text-[9px] text-white/50 hover:text-white/80 transition-all font-semibold underline cursor-pointer"
+                                >
+                                  Change folder
+                                </button>
+                                {overridePath && (
+                                  <button
+                                    type="button"
+                                    onClick={handleClearOverride}
+                                    className="text-[9px] text-rose-400/70 hover:text-rose-400 transition-all font-semibold underline cursor-pointer"
+                                  >
+                                    Clear override
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ) : detectedPath ? (
+                            <div className="space-y-1.5">
+                              <p className="text-[9px] text-white/60 bg-white/5 border border-white/10 rounded px-1.5 py-1 font-mono break-all leading-tight">
+                                {detectedPath}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={confirmingPath || resolvingServerPaths}
+                                  onClick={() => handleConfirmPath(detectedPath)}
+                                  className="inline-flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 active:scale-95 transition-all text-white font-bold text-[9px] rounded px-2.5 py-1 cursor-pointer disabled:opacity-40"
+                                >
+                                  {confirmingPath ? "Confirming..." : "Confirm Folder"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleSelectFolder}
+                                  className="inline-flex items-center justify-center bg-white/10 hover:bg-white/15 active:scale-95 transition-all text-white font-bold text-[9px] rounded px-2.5 py-1 cursor-pointer"
+                                >
+                                  Select Manually
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <p className="text-[9px] text-amber-400/80 bg-amber-500/5 border border-amber-500/10 rounded px-1.5 py-1 leading-normal flex items-start gap-1">
+                                <AlertCircle size={10} className="flex-shrink-0 mt-0.5" />
+                                <span>Save folder not detected automatically.</span>
+                              </p>
+                              <button
+                                type="button"
+                                onClick={handleSelectFolder}
+                                className="inline-flex items-center justify-center bg-white/10 hover:bg-white/15 active:scale-95 transition-all text-white font-bold text-[9px] rounded px-2.5 py-1 cursor-pointer"
+                              >
+                                Select Folder Manually
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold text-white/80">Auto Sync</span>
+                            <p className="text-[9px] text-white/30 leading-none">Sync saves on game exit</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAutoSync(!(cloudSettings?.autoSync))}
+                            className={cn(
+                              "relative inline-flex h-4 w-7 items-center rounded-full transition-colors duration-200 focus:outline-none cursor-pointer",
+                              cloudSettings?.autoSync ? "bg-emerald-500" : "bg-white/10"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200",
+                                cloudSettings?.autoSync ? "translate-x-3.5" : "translate-x-0.5"
+                              )}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <button
+                            type="button"
+                            disabled={syncing}
+                            onClick={handleSyncNow}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-lg text-[10px] font-bold text-white transition-all cursor-pointer disabled:opacity-40 active:scale-95"
+                          >
+                            <RefreshCw size={11} className={cn("text-white/60", syncing && "animate-spin")} />
+                            {syncing ? "Syncing..." : "Sync Now"}
+                          </button>
+                          <div className="text-right">
+                            {cloudSettings?.lastSyncAt ? (
+                              <span className="text-[9px] text-white/40 block leading-none">
+                                Synced {new Date(cloudSettings.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-white/30 block leading-none">Never synced</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {syncError && (
+                          <p className="text-[9px] text-rose-400 bg-rose-500/10 border border-rose-500/15 rounded-lg p-1.5 flex items-start gap-1">
+                            <AlertCircle size={11} className="flex-shrink-0 mt-0.5" />
+                            <span>{syncError}</span>
+                          </p>
+                        )}
+
+                        {successMsg && (
+                          <p className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/15 rounded-lg p-1.5 flex items-start gap-1">
+                            <CheckCircle2 size={11} className="flex-shrink-0 mt-0.5" />
+                            <span>{successMsg}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
             </div>
           </div>
         </section>
@@ -958,6 +1543,12 @@ export function LauncherHomePage() {
           </div>
         </section>
       </main>
+      <IsoInstallerModal
+        open={isInstallerOpen}
+        onClose={() => setIsInstallerOpen(false)}
+        games={localGames}
+        initialIsoPath={activeGame?.rawGame?.exePath || undefined}
+      />
     </div>
   )
 }

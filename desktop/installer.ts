@@ -16,6 +16,152 @@ function execPromise(cmd: string): Promise<string> {
   });
 }
 
+/**
+ * Mutes any Windows audio sessions belonging to `pid` and all its descendants.
+ * Uses WASAPI (Windows Core Audio) via a temp PowerShell script file.
+ * Fire-and-forget — failures are silently ignored.
+ */
+function muteProcessAudio(pid: number): void {
+  const ps = `
+$ErrorActionPreference = 'SilentlyContinue'
+
+# Build full process tree from root PID
+function Get-Tree([int]$root) {
+  $tree = @($root)
+  $changed = $true
+  while ($changed) {
+    $changed = $false
+    $all = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue
+    foreach ($p in $all) {
+      if ($tree -contains $p.ParentProcessId -and $tree -notcontains $p.ProcessId) {
+        $tree += $p.ProcessId
+        $changed = $true
+      }
+    }
+  }
+  return $tree
+}
+
+$cs = @'
+using System;
+using System.Runtime.InteropServices;
+[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceEnumerator { int GetDefaultAudioEndpoint(int f, int r, out IMMDevice d); }
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDevice { int Activate(ref Guid id, int ctx, IntPtr p, out object o); }
+[ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface ISimpleAudioVolume { int SetMute(bool m, ref Guid g); int GetMute(out bool m); }
+[ComImport, Guid("C8ADBD64-E71E-48a0-A4DE-D864F36B7414"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionManager2 { int GetSessionEnumerator(out IAudioSessionEnumerator e); }
+[ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionEnumerator { int GetCount(out int n); int GetSession(int i, out IAudioSessionControl s); }
+[ComImport, Guid("F4B1A599-7266-4319-A8CA-E70ACB10E3D5"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionControl { }
+[ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioSessionControl2 {
+  int GetState(out int s); int GetDisplayName(out IntPtr n); int GetIconPath(out IntPtr p);
+  int GetGroupingParam(out Guid g); int RegisterAudioSessionNotification(IntPtr c);
+  int UnregisterAudioSessionNotification(IntPtr c); int GetSessionIdentifier(out IntPtr i);
+  int GetSessionInstanceIdentifier(out IntPtr i); int GetProcessId(out uint pid);
+}
+public class OtixMuter {
+  public static int MutePids(uint[] pids) {
+    int muted = 0;
+    try {
+      var enType = Type.GetTypeFromCLSID(new Guid("BCDE0358-D378-4A37-82C3-40BD7D46F873"));
+      var en = (IMMDeviceEnumerator)Activator.CreateInstance(enType);
+      IMMDevice dev; en.GetDefaultAudioEndpoint(0, 1, out dev);
+      var iid = new Guid("770D5002-8A09-486B-809C-C15C1338519E");
+      object mgr; dev.Activate(ref iid, 23, IntPtr.Zero, out mgr);
+      IAudioSessionEnumerator se; ((IAudioSessionManager2)mgr).GetSessionEnumerator(out se);
+      int cnt; se.GetCount(out cnt);
+      var set = new System.Collections.Generic.HashSet<uint>(pids);
+      for (int i = 0; i < cnt; i++) {
+        IAudioSessionControl sc; se.GetSession(i, out sc);
+        uint pid; ((IAudioSessionControl2)sc).GetProcessId(out pid);
+        if (set.Contains(pid)) {
+          var g = Guid.Empty; ((ISimpleAudioVolume)sc).SetMute(true, ref g);
+          muted++;
+        }
+      }
+    } catch {}
+    return muted;
+  }
+}
+'@
+
+Add-Type -TypeDefinition $cs -ErrorAction SilentlyContinue
+$tree = Get-Tree ${pid}
+$uintPids = $tree | ForEach-Object { [uint32]$_ }
+$count = [OtixMuter]::MutePids($uintPids)
+Write-Output "Muted $count session(s) for PID tree rooted at ${pid}"
+`.trimStart()
+
+  try {
+    const tmpFile = path.join(tmpdir(), `otix-mute-${pid}.ps1`)
+    require('fs').writeFileSync(tmpFile, ps, 'utf-8')
+    exec(
+      `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "${tmpFile}"`,
+      { windowsHide: true },
+      (err, stdout) => {
+        try { require('fs').unlinkSync(tmpFile) } catch {}
+        if (stdout?.trim()) console.log(`[muteProcessAudio] ${stdout.trim()}`)
+        if (err) console.warn(`[muteProcessAudio] warn:`, err.message)
+      }
+    )
+  } catch (e) {
+    console.warn('[muteProcessAudio] setup error:', e)
+  }
+}
+
+/**
+ * Polls child processes of a given PID for a window title containing installer
+ * progress info in the format emitted by Inno Setup / voices installers:
+ *   "11.4%  Wait 45 min"  or  "Copying files... 73%"
+ * Returns parsed { pct, waitMin, rawTitle } or null if nothing useful found.
+ */
+async function pollWindowTitleProgress(
+  parentPid: number,
+): Promise<{ pct: number; waitMin: number | null; rawTitle: string } | null> {
+  try {
+    // Walk full process tree under parentPid and collect all window titles
+    const ps = [
+      `$root = ${parentPid}`,
+      `$all = @($root)`,
+      `$q = [System.Collections.Queue]::new(); $q.Enqueue($root)`,
+      `while ($q.Count) {`,
+      `  $p = $q.Dequeue()`,
+      `  $kids = Get-CimInstance Win32_Process -Filter "ParentProcessId=$p" -ErrorAction SilentlyContinue`,
+      `  foreach ($k in $kids) { $all += $k.ProcessId; $q.Enqueue($k.ProcessId) }`,
+      `}`,
+      `$all | ForEach-Object {`,
+      `  $proc = Get-Process -Id $_ -ErrorAction SilentlyContinue`,
+      `  if ($proc -and $proc.MainWindowTitle) { Write-Output $proc.MainWindowTitle }`,
+      `}`,
+    ].join('; ')
+
+    const out = execSync(
+      `powershell -NoProfile -NonInteractive -Command "${ps}"`,
+      { encoding: 'utf-8', windowsHide: true, timeout: 3000 },
+    ).trim()
+
+    if (!out) return null
+
+    for (const line of out.split('\n').map(l => l.trim()).filter(Boolean)) {
+      // Match "11.4%  Wait 45 min" or "73%" or "Copying files... 73%"
+      const pctMatch = line.match(/(\d+(?:\.\d+)?)\s*%/)
+      if (!pctMatch) continue
+      const pct = parseFloat(pctMatch[1])
+      const waitMatch = line.match(/Wait\s+(\d+)\s*min/i)
+      const waitMin = waitMatch ? parseInt(waitMatch[1], 10) : null
+      return { pct: Math.round(pct), waitMin, rawTitle: line }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export interface MountResult {
   driveLetter: string;
   setupPath?: string;
@@ -653,7 +799,7 @@ export async function runSilentInstall(
 }
 
 // Multi-instance install tracking — Map<installId, handle>
-const _currentInstalls = new Map<string, { proc: import('child_process').ChildProcess; killed: boolean }>();
+const _currentInstalls = new Map<string, { proc: import('child_process').ChildProcess | null; pid: number | null; killed: boolean }>();
 // Metadata for active installs (survives proc cleanup for status queries)
 const _installMeta = new Map<string, {
   isoPath: string;
@@ -664,6 +810,117 @@ const _installMeta = new Map<string, {
   lastProgress: number;
   lastMessage: string;
 }>();
+
+// ── Persistent install registry (survives Electron restarts) ────────────────
+
+interface PersistedInstall {
+  installId: string;
+  pid: number;
+  isoPath: string;
+  targetDir: string;
+  gameTitle: string;
+  startTime: number;
+}
+
+function _addPersistedInstall(entry: PersistedInstall): void {
+  try {
+    const { _run } = require('./db');
+    _run(
+      `INSERT OR REPLACE INTO active_installs (install_id, pid, iso_path, target_dir, game_title, start_time)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [entry.installId, entry.pid, entry.isoPath, entry.targetDir, entry.gameTitle, entry.startTime],
+    );
+  } catch (e) { console.warn('[install-persist] write error:', e); }
+}
+
+function _removePersistedInstall(installId: string): void {
+  try {
+    const { _run } = require('./db');
+    _run('DELETE FROM active_installs WHERE install_id = ?', [installId]);
+  } catch (e) { console.warn('[install-persist] remove error:', e); }
+}
+
+function _readPersistedInstalls(): PersistedInstall[] {
+  try {
+    const { _all } = require('./db');
+    return (_all('SELECT * FROM active_installs') as any[]).map(r => ({
+      installId: r.install_id,
+      pid: r.pid,
+      isoPath: r.iso_path,
+      targetDir: r.target_dir,
+      gameTitle: r.game_title,
+      startTime: r.start_time,
+    }));
+  } catch { return []; }
+}
+
+function _isPidAlive(pid: number): boolean {
+  try {
+    const out = execSync(`tasklist /FI "PID eq ${pid}" /NH /FO CSV`, { encoding: 'utf-8', windowsHide: true });
+    return out.includes(`"${pid}"`);
+  } catch { return false; }
+}
+
+/**
+ * Called once on Electron startup. Reads the persisted install registry, checks
+ * which PIDs are still alive, and re-registers them so getActiveInstalls() returns
+ * them and window-title progress polling resumes automatically.
+ */
+export function rehydrateActiveInstalls(): void {
+  const persisted = _readPersistedInstalls();
+
+  for (const entry of persisted) {
+    if (!_isPidAlive(entry.pid)) {
+      console.log(`[rehydrate] PID ${entry.pid} (${entry.gameTitle}) no longer running — removing`);
+      _removePersistedInstall(entry.installId);  // clean stale row from DB
+      continue;
+    }
+    console.log(`[rehydrate] Re-attaching to install PID ${entry.pid}: ${entry.gameTitle}`);
+
+    // Restore metadata so getActiveInstalls() can report it
+    _installMeta.set(entry.installId, {
+      isoPath: entry.isoPath,
+      targetDir: entry.targetDir,
+      gameTitle: entry.gameTitle,
+      startTime: entry.startTime,
+      lastPhase: 'installing',
+      lastProgress: 0,
+      lastMessage: 'Resuming install tracking...',
+    });
+
+    // Synthetic handle — no ChildProcess reference, just PID
+    _currentInstalls.set(entry.installId, { proc: null, pid: entry.pid, killed: false });
+
+    // Re-mute the process (in case it was unmuted after restart)
+    setTimeout(() => muteProcessAudio(entry.pid), 2000);
+
+    // Poll window title for real progress; clean up when the process dies
+    const interval = setInterval(async () => {
+      const handle = _currentInstalls.get(entry.installId);
+      if (!handle || handle.killed) { clearInterval(interval); return; }
+
+      if (!_isPidAlive(entry.pid)) {
+        console.log(`[rehydrate] PID ${entry.pid} finished. Cleaning up.`);
+        clearInterval(interval);
+        _currentInstalls.delete(entry.installId);
+        _installMeta.delete(entry.installId);
+        _removePersistedInstall(entry.installId);
+        return;
+      }
+
+      const titleProgress = await pollWindowTitleProgress(entry.pid);
+      const meta = _installMeta.get(entry.installId);
+      if (meta && titleProgress) {
+        const { pct, waitMin } = titleProgress;
+        meta.lastPhase = 'installing';
+        meta.lastProgress = Math.min(pct, 99);
+        meta.lastMessage = waitMin != null
+          ? `Installing... ${pct}% · ~${waitMin} min remaining`
+          : `Installing... ${pct}%`;
+      }
+    }, 3000);
+  }
+}
 
 export interface ActiveInstallInfo {
   installId: string;
@@ -701,14 +958,15 @@ export function cancelInstall(installId: string): void {
   const handle = _currentInstalls.get(installId);
   if (handle && !handle.killed) {
     handle.killed = true;
-    const pid = handle.proc.pid;
-    handle.proc.kill('SIGTERM');
+    const pid = handle.pid ?? handle.proc?.pid;
+    if (handle.proc) handle.proc.kill('SIGTERM');
     if (pid) {
       try { execSync(`taskkill /T /F /PID ${pid}`, { stdio: 'ignore', windowsHide: true }); } catch {}
     }
     _currentInstalls.delete(installId);
   }
   _installMeta.delete(installId);
+  _removePersistedInstall(installId);
 }
 
 /** Cancel install by ISO path. */
@@ -728,17 +986,35 @@ export function cancelCurrentInstall(): void {
   }
 }
 
-/** Register a process handle for a given install ID. */
+/** Register a process handle for a given install ID and persist PID to DB. */
 function registerInstallProc(installId: string, proc: import('child_process').ChildProcess): void {
-  const handle = { proc, killed: false };
+  const handle = { proc, pid: proc.pid ?? null, killed: false };
   _currentInstalls.set(installId, handle);
+
+  // Persist PID to DB so we can re-attach if Electron restarts mid-install
+  if (proc.pid) {
+    const meta = _installMeta.get(installId);
+    if (meta) {
+      _addPersistedInstall({
+        installId,
+        pid: proc.pid,
+        isoPath: meta.isoPath,
+        targetDir: meta.targetDir,
+        gameTitle: meta.gameTitle,
+        startTime: meta.startTime,
+      });
+    }
+  }
+
   const cleanup = () => {
     const h = _currentInstalls.get(installId);
     if (h === handle) _currentInstalls.delete(installId);
+    _removePersistedInstall(installId);  // clean up DB on normal completion
   };
   proc.on('exit', cleanup);
   proc.on('close', cleanup);
 }
+
 
 /** Run a command and poll target dir for progress updates. */
 async function runWithProgress(
@@ -763,22 +1039,50 @@ async function runWithProgress(
 
     registerInstallProc(installId, proc);
 
+    // Mute any audio the installer plays (e.g. background music / intro sounds)
+    if (proc.pid) {
+      setTimeout(() => { if (proc.pid) muteProcessAudio(proc.pid) }, 1500)
+    }
+
     let pollCount = 0;
     const interval = setInterval(async () => {
       pollCount++;
+      const pid = proc.pid
+
+      // ── Priority 1: Parse real progress from installer window title ──
+      // e.g. setup.tmp shows "11.4%  Wait 45 min" in its title
+      if (pid) {
+        const titleProgress = await pollWindowTitleProgress(pid)
+        if (titleProgress) {
+          const { pct, waitMin } = titleProgress
+          const message = waitMin != null
+            ? `~${waitMin} min remaining`
+            : `Installing... ${pct}%`
+          onProgress?.({
+            phase: 'installing',
+            progress: Math.min(pct, 99),
+            message,
+            pct,
+            waitMin,
+          } as any)
+          return
+        }
+      }
+
+      // ── Fallback: estimate from target dir file count ──
       try {
         const entries = await fs.readdir(targetDir);
         const fileCount = entries.length - prevFileCount;
         if (fileCount > 0) {
           const progress = Math.min(70, 40 + Math.min(fileCount, 300) / 300 * 30);
-          wrappedProgress({
+          onProgress?.({
             phase: 'installing',
             progress: Math.round(progress),
             message: `Installing... ${fileCount} files`,
           });
         } else if (pollCount % 4 === 0) {
           const waiting = Math.min(45, 40 + pollCount / 20);
-          wrappedProgress({
+          onProgress?.({
             phase: 'installing',
             progress: Math.round(waiting),
             message: `Waiting for installer...`,
@@ -792,7 +1096,7 @@ async function runWithProgress(
       (async () => {
         try {
           const entries = await fs.readdir(targetDir);
-          wrappedProgress({
+          onProgress?.({
             phase: 'installing',
             progress: 70,
             message: `Install complete — ${entries.length} files`,
@@ -952,7 +1256,7 @@ async function extractWithProgress(
           extracted++;
           if (extracted % 10 === 0 || extracted === totalFiles || extracted === 1) {
             const pct = Math.round((extracted / Math.max(totalFiles, 1)) * 100);
-            wrappedProgress({
+            onProgress?.({
               phase: 'installing',
               progress: Math.min(pct, 99),
               message: `${trimmed.substring(0, 30)} (${pct}%)`,
@@ -979,7 +1283,7 @@ async function extractWithProgress(
           await fs.rm(safeTmp, { recursive: true, force: true }).catch(() => {});
           console.log(`[extractWithProgress] Copied to target OK`);
         } catch (e) { console.warn(`[extractWithProgress] Copy error:`, e); }
-        wrappedProgress({ phase: 'installing', progress: 100, message: `Extracted ${extracted} files` });
+        onProgress?.({ phase: 'installing', progress: 100, message: `Extracted ${extracted} files` });
         resolve(true);
       } else { resolve(false); }
     });
@@ -1040,10 +1344,11 @@ export async function installGameIso(
 ): Promise<InstallResult> {
   let mappedDrive: string | undefined;
 
+  const startTime = Date.now();
   // Track install metadata so getActiveInstalls() can report it
   _installMeta.set(installId, {
     isoPath, targetDir, gameTitle,
-    startTime: Date.now(),
+    startTime,
     lastPhase: 'mounting',
     lastProgress: 0,
     lastMessage: 'Starting...',

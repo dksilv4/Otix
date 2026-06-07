@@ -73,8 +73,10 @@ export type InstallPhase = 'mounting' | 'detecting' | 'installing' | 'cracking' 
 
 export interface InstallProgress {
   phase: InstallPhase;
-  progress: number;
-  message: string;
+  progress: number;     // 0-100, used for the progress bar
+  message: string;      // human-readable status line
+  pct?: number;         // parsed percentage from installer window title (0-100)
+  waitMin?: number | null; // parsed "Wait N min" from window title, null if not available
 }
 
 export interface InstallResult {

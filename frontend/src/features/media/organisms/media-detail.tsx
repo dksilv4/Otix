@@ -435,18 +435,15 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
   const justInstalled = !installEntry?.active && installEntry?.result?.success === true;
 
   if (isInstallingThis) {
-    const pct = installEntry!.progress?.progress ?? 0;
     return (
       <div className="dk-media-detail__dl-status-group">
         <div className="dk-media-detail__dl-status-text text-blue-400">
           <Loader2 className="dk-media-detail__dl-status-icon animate-spin" />
           <span>Installing {installEntry!.gameTitle ?? 'game'}...</span>
-          <span className="dk-media-detail__dl-status-pct">{pct}%</span>
         </div>
-        <div className="dk-media-detail__dl-progress">
+        <div className="dk-media-detail__dl-progress overflow-hidden">
           <div
-            className="dk-media-detail__dl-progress-bar"
-            style={{ width: `${pct}%` }}
+            className="dk-media-detail__dl-progress-bar w-full animate-pulse"
           />
         </div>
         <p className="dk-media-detail__dl-meta">

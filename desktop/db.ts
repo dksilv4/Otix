@@ -290,6 +290,28 @@ function _createTables(): void {
       FOREIGN KEY (game_id) REFERENCES scanned_games(id) ON DELETE CASCADE
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS game_save_cloud_settings (
+      game_id TEXT PRIMARY KEY,
+      auto_sync INTEGER NOT NULL DEFAULT 0,
+      last_sync_at TEXT,
+      is_path_confirmed INTEGER NOT NULL DEFAULT 0,
+      confirmed_path TEXT,
+      FOREIGN KEY (game_id) REFERENCES scanned_games(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS active_installs (
+      install_id TEXT PRIMARY KEY,
+      pid        INTEGER NOT NULL,
+      iso_path   TEXT NOT NULL,
+      target_dir TEXT NOT NULL,
+      game_title TEXT NOT NULL,
+      start_time INTEGER NOT NULL
+    )
+  `);
 }
 
 function _migrateDb(): void {
@@ -308,6 +330,14 @@ function _migrateDb(): void {
   // Migration: add seeded column to scanned_games for seed-once tracking
   try {
     db.run('ALTER TABLE scanned_games ADD COLUMN seeded INTEGER NOT NULL DEFAULT 0');
+  } catch (_) { /* column exists */ }
+
+  // Migration: add path confirmation columns to game_save_cloud_settings
+  try {
+    db.run('ALTER TABLE game_save_cloud_settings ADD COLUMN is_path_confirmed INTEGER NOT NULL DEFAULT 0');
+  } catch (_) { /* column exists */ }
+  try {
+    db.run('ALTER TABLE game_save_cloud_settings ADD COLUMN confirmed_path TEXT');
   } catch (_) { /* column exists */ }
 }
 

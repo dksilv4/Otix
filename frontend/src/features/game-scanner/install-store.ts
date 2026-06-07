@@ -119,8 +119,11 @@ async function syncWithBackend(): Promise<void> {
   try {
     const active: Array<{ installId: string; isoPath: string; targetDir: string; gameTitle: string; startTime: number; phase: string; progress: number; message: string }>
       = await api.getActiveInstalls()
+
+    const backendIsoPaths = new Set(active.map(i => i.isoPath))
+
+    // Add / update entries the backend knows about
     for (const info of active) {
-      const existing = _installs.get(info.isoPath)
       _installs.set(info.isoPath, {
         active: true,
         isoPath: info.isoPath,
@@ -132,7 +135,17 @@ async function syncWithBackend(): Promise<void> {
         error: null,
       })
     }
-    if (active.length > 0) { persist(); emit() }
+
+    // Remove stale active entries the backend no longer tracks
+    // (install finished, was canceled, or Electron restarted and the process died)
+    for (const [isoPath, entry] of _installs) {
+      if (entry.active && !backendIsoPaths.has(isoPath)) {
+        _installs.delete(isoPath)
+      }
+    }
+
+    persist()
+    emit()
   } catch { /* ignore */ }
 }
 

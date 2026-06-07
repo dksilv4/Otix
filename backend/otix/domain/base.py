@@ -8,6 +8,10 @@ from typing import Annotated
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+# Re-export so domain models can import Base from a single location.
+# Base itself is defined in otix.infrastructure.database alongside the engine.
+from otix.infrastructure.database import Base as Base
+
 
 def gen_otix_id() -> str:
     """Generate a unique otix_id in the format oti_XXXXXXXXXXXX."""
@@ -67,7 +71,7 @@ class ExternalIDDescriptor:
         # SQLAlchemy's normal dirty tracking).
         session = object_session(obj)
         if session is not None:
-            mapper = getattr(obj.__class__, '__mapper__', None)
+            mapper = getattr(obj.__class__, "__mapper__", None)
             if mapper is not None and mapper.column_attrs:
                 col_key = list(mapper.column_attrs)[0].key
                 flag_modified(obj, col_key)
@@ -198,13 +202,15 @@ async def flush_pending_external_ids(obj, session) -> int:
                         # Use pg_insert ON CONFLICT DO NOTHING to survive
                         # races with concurrent tasks inserting the same row.
                         await session.execute(
-                            pg_insert(ExternalID).values(
+                            pg_insert(ExternalID)
+                            .values(
                                 provider=provider,
                                 external_id=str_val,
                                 entity_type=entity_type,
                                 entity_id=entity_id,
                                 media_item_id=entity_id if entity_type == "media_item" else None,
-                            ).on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                            )
+                            .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
                         )
                         count += 1
         elif existing is not None:
@@ -215,9 +221,7 @@ async def flush_pending_external_ids(obj, session) -> int:
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), default=func.now(), onupdate=func.now()
     )
