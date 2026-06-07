@@ -6,7 +6,7 @@
   &::before {
     content: '';
     display: block;
-    padding-bottom: calc(2 / 3 * 100%); /* aspect-[2/3] */
+    padding-bottom: calc(3 / 2 * 100%); /* aspect-[2/3] portrait */
   }
 }
 

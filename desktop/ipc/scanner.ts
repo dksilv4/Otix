@@ -4,6 +4,7 @@ import { scanAllLaunchers } from '../launchers';
 import {
   getScannedGamesFromDb,
   saveScannedGamesToDb,
+  updateGamePathInDb,
   getScanPathsFromDb,
   saveScanPathsToDb,
   getLocalGamesMapFromDb,
@@ -129,5 +130,10 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
 
   ipcMain.handle('scanner:save-match-cache', (_, entries: any[]) => {
     return saveMatchCache(entries);
+  });
+
+  // Update game path after file move (move-to-library)
+  ipcMain.handle('scanner:update-game-path', (_, oldExePath: string, newExePath: string, newInstallDir?: string) => {
+    updateGamePathInDb(oldExePath, newExePath, newInstallDir);
   });
 }

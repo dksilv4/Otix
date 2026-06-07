@@ -16,11 +16,10 @@ from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.transformer import (
-    movie_images_to_assets,
-    music_images_to_assets,
-    show_images_to_assets,
     _extract_album_covers_by_rg,
     _extract_artist_assets,
+    movie_images_to_assets,
+    show_images_to_assets,
 )
 
 

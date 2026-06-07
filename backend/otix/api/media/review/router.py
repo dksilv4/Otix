@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db, get_optional_user
+from otix.domain.user import User
 from otix.schemas.media_rating import MediaRatingAggregateOut, MediaRatingCreate, MediaRatingOut
 from otix.schemas.review import (
     ReviewCreate,
@@ -12,7 +13,6 @@ from otix.schemas.review import (
     ReviewUpdate,
     ReviewWithUserOut,
 )
-from otix.domain.user import User
 from otix.services.media_rating_service import MediaRatingService
 from otix.services.review_service import ReviewService
 

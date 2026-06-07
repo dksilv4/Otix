@@ -1,11 +1,14 @@
 import asyncio
+
 from redis.asyncio import Redis
-from otix.infrastructure.database import async_session
-from otix.domain.media import MediaItem, Game
-from otix.providers.steamgrid.client import SteamGridDBProvider
-from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+
+from otix.domain.media import Game, MediaItem
+from otix.infrastructure.database import async_session
+from otix.providers.steamgrid.client import SteamGridDBProvider
+from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
+
 
 async def main():
     redis_client = Redis.from_url("redis://redis:6379/0", decode_responses=False)
@@ -28,7 +31,7 @@ async def main():
         total = len(games)
         ok = fail = 0
 
-        for i, game in enumerate(games):
+        for _i, game in enumerate(games):
             try:
                 hydrator = SteamGridDBHydrator(provider, s)
                 await hydrator.hydrate(game)
@@ -36,7 +39,7 @@ async def main():
                 ok += 1
                 if ok % 25 == 0 or ok == total:
                     print(f"[{ok}/{total}] hydrated, {fail} failed")
-            except Exception as e:
+            except Exception:
                 await s.rollback()
                 fail += 1
 

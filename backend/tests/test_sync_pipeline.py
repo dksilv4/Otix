@@ -30,7 +30,7 @@ class TestFullMovieSync:
     async def test_sync_movie_inserts(self, tmdb_provider, integration_session):
         from sqlalchemy import delete, select
 
-        from otix.domain.media import ExternalID, MediaItem, Movie
+        from otix.domain.media import ExternalID, MediaItem
         from otix.providers.tmdb.hydrator import TMDBHydrator
         from otix.providers.tmdb.transformer import to_movie
 
@@ -137,7 +137,7 @@ class TestFullMovieSync:
     async def test_sync_show_with_seasons(self, tmdb_provider, integration_session):
         from sqlalchemy import select
 
-        from otix.domain.media import ExternalID, Season, Show
+        from otix.domain.media import ExternalID, Season
         from otix.providers.tmdb.hydrator import TMDBHydrator
         from otix.providers.tmdb.transformer import to_show
 

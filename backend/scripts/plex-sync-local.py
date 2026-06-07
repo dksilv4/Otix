@@ -15,9 +15,7 @@ import importlib
 import os
 import sys
 import time
-from typing import Any
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -34,14 +32,17 @@ async def main() -> int:
         sys.path.insert(0, backend)
     importlib.invalidate_caches()
 
-    from otix.infrastructure.config import settings
-    from otix.domain.media import UserPlexServer, UserPlexLibrary
-    from otix.services.plex_sync_service import (
-        sync_plex_library, _fetch_plex_library_items, _build_guid_cache,
-        _build_album_context, _build_episode_cache, extract_guids,
-    )
+    from otix.domain.media import Track, UserPlexLibrary, UserPlexServer
     from otix.domain.user import User
-    from otix.domain.media import Track
+    from otix.infrastructure.config import settings
+    from otix.services.plex_sync_service import (
+        _build_album_context,
+        _build_episode_cache,
+        _build_guid_cache,
+        _fetch_plex_library_items,
+        extract_guids,
+        sync_plex_library,
+    )
 
     engine = create_async_engine(
         settings.database_url, echo=False, pool_size=3, pool_pre_ping=False,

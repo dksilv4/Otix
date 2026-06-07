@@ -12,19 +12,13 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
 import otix.tasks.seed.catalog_seed as cs
 from otix.tasks.seed.catalog_seed import (
-    BATCH_ENTRIES,
-    IGDB_LIMIT,
-    IGDB_PAGES_PER_CYCLE,
-    LOCK_TTL,
-    SEEN_TTL,
-    _IGDB_LOCK,
     _IGDB_SEEN,
     _IGDB_STATE,
     _PEOPLE_LOCK,
@@ -33,6 +27,10 @@ from otix.tasks.seed.catalog_seed import (
     _STEAM_LOCK,
     _STEAM_SEEN,
     _STEAM_STATE,
+    BATCH_ENTRIES,
+    IGDB_PAGES_PER_CYCLE,
+    LOCK_TTL,
+    SEEN_TTL,
     _clear_seen,
     _download_export,
     _download_steam_app_list,
@@ -49,7 +47,6 @@ from otix.tasks.seed.catalog_seed import (
     seed_people_cycle,
     seed_steam_cycle,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Helpers
@@ -753,7 +750,7 @@ class TestProcessSteamBatch:
         state = {"file_path": str(json_path), "entries_processed": 0}
 
         try:
-            result = await _process_steam_batch(state)
+            await _process_steam_batch(state)
         finally:
             try:
                 os.unlink(json_path)
@@ -890,7 +887,7 @@ class TestProcessIGDBBatch:
         mock_igdb_provider.get_games_offset.side_effect = [results, []]
         state = {"offset": 0}
 
-        result = await _process_igdb_batch(state)
+        await _process_igdb_batch(state)
 
         assert mock_enqueue.call_count == 1
         mock_enqueue.assert_called_once_with(_IGDB_SEEN, "sync.igdb.game", 1)

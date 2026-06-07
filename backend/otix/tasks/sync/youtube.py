@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import structlog
 
-from sqlalchemy import select
-
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session

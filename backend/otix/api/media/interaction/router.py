@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
+from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import (
     InteractionCounts,
     InteractionCreate,
@@ -13,8 +15,6 @@ from otix.schemas.interaction import (
     InteractionToggleResponse,
     UserInteractionState,
 )
-from otix.domain.user import User
-from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
 
 logger = structlog.get_logger()
@@ -117,6 +117,7 @@ async def claim_game(
 ) -> dict:
     """Record that the current user owns this game."""
     from sqlalchemy import select
+
     from otix.domain.media import MediaItem
 
     # Ensure the media item exists before claiming

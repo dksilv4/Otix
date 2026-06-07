@@ -10,31 +10,28 @@ import gzip
 import json
 import os
 import tempfile
+from datetime import UTC
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
+from otix.tasks.seed import load_state, save_state
 from otix.tasks.seed.tmdb_seed import (
-    BATCH_INSERT_SIZE,
-    BACKLOG_BATCH_SIZE,
     _BACKLOG_LOCK,
     _BACKLOG_LOCK_TTL,
-    _EXPORT_LOCK_TTL,
+    BATCH_INSERT_SIZE,
+    _bulk_insert_stubs,
     _check_fast_queue_backlog,
+    _daily_import_loop,
     _download_export,
     _import_export_file,
-    _bulk_insert_stubs,
     _process_backlog_batch,
-    _daily_import_loop,
     _seed_backlog_loop,
-    _detect_deletions_after_import,
-    seed_tmdb_daily_import,
     seed_tmdb_backlog_cycle,
+    seed_tmdb_daily_import,
 )
-from otix.tasks.seed import load_state, save_state
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Helpers
@@ -367,7 +364,7 @@ class TestProcessBacklogBatch:
 
         session = _make_async_session_mock(scalars_result=stubs)
         with patch("otix.tasks.seed.tmdb_seed.async_session", return_value=session):
-            result = await _process_backlog_batch({})
+            await _process_backlog_batch({})
 
         mock_send.assert_called_once_with("sync.tmdb.company", args=[1, "company"])
 
@@ -379,7 +376,7 @@ class TestProcessBacklogBatch:
 
         session = _make_async_session_mock(scalars_result=stubs)
         with patch("otix.tasks.seed.tmdb_seed.async_session", return_value=session):
-            result = await _process_backlog_batch({})
+            await _process_backlog_batch({})
 
         mock_send.assert_called_once_with("sync.tmdb.company", args=[2, "network"])
 
@@ -391,7 +388,7 @@ class TestProcessBacklogBatch:
 
         session = _make_async_session_mock(scalars_result=stubs)
         with patch("otix.tasks.seed.tmdb_seed.async_session", return_value=session):
-            result = await _process_backlog_batch({})
+            await _process_backlog_batch({})
 
         mock_send.assert_called_once_with("sync.tmdb.keyword", args=[42])
 
@@ -403,7 +400,7 @@ class TestProcessBacklogBatch:
 
         session = _make_async_session_mock(scalars_result=stubs)
         with patch("otix.tasks.seed.tmdb_seed.async_session", return_value=session):
-            result = await _process_backlog_batch({})
+            await _process_backlog_batch({})
 
         mock_send.assert_called_once_with("sync.tmdb.movie", args=[999])
 
@@ -474,8 +471,8 @@ class TestDailyImportLoop:
 
     async def test_lock_prevents_concurrent_same_day(self, mocks):
         fakeredis, mock_import, _ = mocks
-        from datetime import datetime, timezone
-        date_key = datetime.now(timezone.utc).strftime("%Y%m%d")
+        from datetime import datetime
+        date_key = datetime.now(UTC).strftime("%Y%m%d")
         lock_key = f"otix:tmdb_seed:daily_lock:{date_key}"
         await fakeredis.set(lock_key, "1")
 
@@ -491,8 +488,8 @@ class TestDailyImportLoop:
         assert mock_import.call_count == 10  # all 10 export files
         mock_deletion.assert_called_once()
         # Lock persists (not deleted) to prevent same-day re-run
-        from datetime import datetime, timezone
-        date_key = datetime.now(timezone.utc).strftime("%Y%m%d")
+        from datetime import datetime
+        date_key = datetime.now(UTC).strftime("%Y%m%d")
         lock_key = f"otix:tmdb_seed:daily_lock:{date_key}"
         assert await fakeredis.get(lock_key) is not None
 

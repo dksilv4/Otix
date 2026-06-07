@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -145,7 +145,7 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
             await _upsert_url_external_ids(session, item.id, [("barcode", barcode)])
 
         item.content_hash = content_hash
-        item.synced_at = datetime.now(timezone.utc)
+        item.synced_at = datetime.now(UTC)
         item.next_sync_at = compute_next_sync_at("album", raw, 0)
         await session.commit()
 

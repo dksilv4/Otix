@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
-from unittest.mock import AsyncMock, MagicMock
+from datetime import date
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -128,11 +128,11 @@ class TestGetPerson:
     async def test_get_person_with_credits_sorting(
         self, service: PeopleService, mock_db_session: AsyncMock
     ):
-        from otix.domain.people import MediaCredit
         from otix.domain.media import MediaItem
+        from otix.domain.people import MediaCredit
 
         person = _make_person("01", "Brad Pitt")
-        
+
         # Create media items with and without release dates
         item_no_date = MediaItem(release_date=None)
         item_date_older = MediaItem(release_date=date(2010, 1, 1))

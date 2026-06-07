@@ -3,13 +3,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from sqlalchemy import select
 
 from otix.domain.media import ExternalID, Game, MediaItem
-from otix.services.external_id_service import ExternalIDService
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
@@ -20,7 +19,8 @@ from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
-from otix.providers.igdb.transformer import _extract_steam_app_id, _extract_store_ids, extract_franchise, to_game
+from otix.providers.igdb.transformer import _extract_steam_app_id, _extract_store_ids, to_game
+from otix.services.external_id_service import ExternalIDService
 
 from ._common import compute_content_hash, enqueue_list_items
 
@@ -126,11 +126,11 @@ async def _update_game_from(session, existing: Game, incoming: Game, store_ids: 
 
 
 def _compute_game_next_sync_at(raw: dict[str, JSONValue], hash_match_count: int = 0) -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ts = raw.get("first_release_date")
     if ts and isinstance(ts, (int, float)):
         try:
-            release_date = datetime.fromtimestamp(float(ts), tz=timezone.utc).date()
+            release_date = datetime.fromtimestamp(float(ts), tz=UTC).date()
             age_days = (now.date() - release_date).days
         except (ValueError, OSError):
             age_days = None
@@ -167,7 +167,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         if ext_id is not None and not force:
             media_item = await session.get(MediaItem, ext_id.entity_id or ext_id.media_item_id)
             if media_item is not None and media_item.next_sync_at is not None:
-                if media_item.next_sync_at > datetime.now(timezone.utc):
+                if media_item.next_sync_at > datetime.now(UTC):
                     logger.debug("skipping game not due for sync", igdb_id=igdb_id)
                     return None
 
@@ -295,7 +295,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
         ext_id.content_hash = content_hash
         ext_id.hash_match_count = 0
-        item.synced_at = datetime.now(timezone.utc)
+        item.synced_at = datetime.now(UTC)
         item.next_sync_at = _compute_game_next_sync_at(raw, 0)
         await session.commit()
 
@@ -374,7 +374,7 @@ async def _sync_igdb_game_changes(lookback_hours: int) -> dict:
     redis = await get_redis()
     provider = IGDBProvider(redis)
 
-    start_ts = int((datetime.now(timezone.utc) - timedelta(hours=lookback_hours)).timestamp())
+    start_ts = int((datetime.now(UTC) - timedelta(hours=lookback_hours)).timestamp())
 
     all_ids: set[str] = set()
     max_pages = 10

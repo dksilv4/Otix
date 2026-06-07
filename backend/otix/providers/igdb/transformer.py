@@ -8,7 +8,7 @@ and related domain objects.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from otix.domain.media import Game, MediaItem
 from otix.lib.slug import slugify as _slugify
@@ -29,7 +29,7 @@ def _parse_timestamp(ts: int | float | None) -> date | None:
     if ts is None:
         return None
     try:
-        return datetime.fromtimestamp(float(ts), tz=timezone.utc).date()
+        return datetime.fromtimestamp(float(ts), tz=UTC).date()
     except (ValueError, TypeError, OSError):
         return None
 

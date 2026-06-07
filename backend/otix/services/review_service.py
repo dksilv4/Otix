@@ -1,13 +1,12 @@
 # TODO: Review this file
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.domain.media import MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.review import Review
 from otix.infrastructure.celery import app
@@ -37,7 +36,7 @@ class ReviewService:
         )
 
         is_new = existing is None
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cooldown_until = now + timedelta(minutes=REVIEW_COOLDOWN_MINUTES)
 
         if existing:
@@ -90,7 +89,7 @@ class ReviewService:
         if existing is None:
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
 
         for field, value in update_data.items():
@@ -107,7 +106,7 @@ class ReviewService:
         limit: int = 20,
         current_user_id: str | None = None,
     ) -> tuple[list[Review], bool]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         query = (
             select(Review)
             .options(joinedload(Review.user))
@@ -155,7 +154,7 @@ class ReviewService:
         limit: int = 20,
         current_user_id: str | None = None,
     ) -> tuple[list[Review], bool]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         query = (
             select(Review)
             .options(joinedload(Review.user))
@@ -205,7 +204,7 @@ class ReviewService:
         current_user_id: str | None = None,
     ) -> tuple[list[tuple[Review, MediaItemRating | None]], bool]:
         """Like get_reviews_for_media but also loads each reviewer's rating."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         query = (
             select(Review, MediaItemRating)
             .options(joinedload(Review.user))

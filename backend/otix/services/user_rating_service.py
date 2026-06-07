@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,7 +165,7 @@ class UserRatingService:
 
         # ── Tenure (0–150) ──
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         years = max(0.0, (now - created_at).total_seconds() / (365.25 * 24 * 3600))
         tenure_score = log2s(years) * 30
 

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import structlog
-from sqlalchemy import select
 
 from otix.domain.media import MediaItem
 from otix.infrastructure.celery import app

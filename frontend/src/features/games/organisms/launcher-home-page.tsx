@@ -76,27 +76,20 @@ function WebPreviewBanner() {
   )
 }
 
-/* ── GamePickerThumb — renders both icon and poster, icon shown first ── */
+/* ── GamePickerThumb — icon URL preferred, poster URL fallback ── */
 
 function GamePickerThumb({ icon, poster, alt }: { icon?: string | null; poster?: string | null; alt: string }) {
+  const src = icon || poster
   return (
     <div className="w-full h-full relative">
-      {poster && (
+      {src ? (
         <img
-          src={poster}
+          src={src}
           alt={alt}
           className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
-      )}
-      {icon && (
-        <img
-          src={icon}
-          alt={alt}
-          className="absolute inset-0 w-full h-full object-cover z-10"
-          onError={(e) => { (e.target as HTMLElement).style.display = 'none' }}
-        />
-      )}
-      {!icon && !poster && (
+      ) : (
         <div className="w-full h-full flex items-center justify-center bg-white/5">
           <Gamepad2 size={14} className="opacity-30" />
         </div>
@@ -219,25 +212,19 @@ export function LauncherHomePage() {
     }
   }, [localGames, popularGames])
 
-  // Picker sidebar: show local games (matched or not), or fallback to catalog
-  // Sort: installed first, then matched, then unmatched
+  // Picker sidebar: matched games only, installed first
   const pickerGames = useMemo<DisplayGame[]>(
     () => {
-      const games = localGames.length > 0
-        ? displayGames
-        : displayGames.filter((g) => !!g.otixMediaId)
+      const games = displayGames.filter((g) => !!g.otixMediaId)
       return [...games].sort((a, b) => {
         // Installed games first
         if (a.isInstalled && !b.isInstalled) return -1
         if (!a.isInstalled && b.isInstalled) return 1
-        // Matched before unmatched
-        if (a.otixMediaId && !b.otixMediaId) return -1
-        if (!a.otixMediaId && b.otixMediaId) return 1
         // Then by original order
         return 0
       })
     },
-    [displayGames, localGames.length],
+    [displayGames],
   )
 
   // Select first game automatically if activeGameId is null or unlisted

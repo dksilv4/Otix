@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
-from otix.domain.collection import Collection, CollectionItem
+from otix.domain.collection import Collection
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.franchise import Franchise, FranchiseItem
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
@@ -282,7 +282,6 @@ class TMDBHydrator:
             return
 
         candidates: list[tuple[str, dict]] = []
-        best_textless: dict | None = None
         best_textless_width = 0
 
         for poster in images.get("posters", [])[:10]:
@@ -292,7 +291,6 @@ class TMDBHydrator:
                 candidates.append(("textless_poster", poster))
                 w = poster.get("width") or 0
                 if w > best_textless_width:
-                    best_textless = poster
                     best_textless_width = w
             else:
                 candidates.append(("poster", poster))

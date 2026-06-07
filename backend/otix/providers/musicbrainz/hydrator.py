@@ -3,16 +3,17 @@
 
 from __future__ import annotations
 
-from sqlalchemy import not_, exists as sa_exists, select
+from sqlalchemy import exists as sa_exists
+from sqlalchemy import not_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from otix.domain.media import Album, ExternalID, MediaItem, Track
-from otix.domain.people import Person, MediaCredit
+from otix.domain.asset import MediaAsset
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
-from otix.domain.asset import MediaAsset
+from otix.domain.media import Album, ExternalID, Track
+from otix.domain.people import MediaCredit, Person
 from otix.lib.types import JSONValue
 from otix.providers.musicbrainz.client import MusicBrainzProvider
 from otix.services.external_id_service import ExternalIDService
@@ -32,9 +33,7 @@ class MusicBrainzHydrator:
 
     async def hydrate_tracks(self, album: Album, raw: dict[str, JSONValue]) -> None:
         """Upsert tracks from MusicBrainz mediums/recordings."""
-        existing = (await self._session.execute(
-            select(Track).options(selectinload(Track._external_ids)).where(Track.album_id == album.media_item_id)
-        )).scalars().all()
+        existing = (await self._session.execute(select(Track).options(selectinload(Track._external_ids)).where(Track.album_id == album.media_item_id))).scalars().all()
         existing_ids = {t.musicbrainz_recording_id for t in existing if t.musicbrainz_recording_id}
 
         tracks_to_add = []
@@ -54,10 +53,7 @@ class MusicBrainzHydrator:
             return
 
         # Batch-check existing MediaCredits for this album
-        existing_credits = (await self._session.execute(
-            select(MediaCredit.person_id, MediaCredit.role)
-            .where(MediaCredit.media_item_id == album.media_item_id)
-        )).all()
+        existing_credits = (await self._session.execute(select(MediaCredit.person_id, MediaCredit.role).where(MediaCredit.media_item_id == album.media_item_id))).all()
         existing_keys = {(c.person_id, c.role) for c in existing_credits}
 
         for idx, ac in enumerate(artist_credits):
@@ -79,13 +75,15 @@ class MusicBrainzHydrator:
             if (person.id, role) in existing_keys:
                 continue
 
-            self._session.add(MediaCredit(
-                media_item_id=album.media_item_id,
-                person_id=person.id,
-                role=role,
-                character_name=character_name,
-                sort_order=idx,
-            ))
+            self._session.add(
+                MediaCredit(
+                    media_item_id=album.media_item_id,
+                    person_id=person.id,
+                    role=role,
+                    character_name=character_name,
+                    sort_order=idx,
+                )
+            )
 
     async def hydrate_labels(self, album: Album, raw: dict[str, JSONValue]) -> None:
         """Create Company + InvolvedCompany for the record label."""
@@ -94,10 +92,7 @@ class MusicBrainzHydrator:
             return
 
         # Batch-check existing InvolvedCompany links for this album
-        existing_links = (await self._session.execute(
-            select(InvolvedCompany.company_id)
-            .where(InvolvedCompany.media_item_id == album.media_item_id)
-        )).all()
+        existing_links = (await self._session.execute(select(InvolvedCompany.company_id).where(InvolvedCompany.media_item_id == album.media_item_id))).all()
         existing_company_ids = {c.company_id for c in existing_links}
 
         for li in label_infos:
@@ -116,11 +111,13 @@ class MusicBrainzHydrator:
             if company.id in existing_company_ids:
                 continue
 
-            self._session.add(InvolvedCompany(
-                media_item_id=album.media_item_id,
-                company_id=company.id,
-                publisher=True,
-            ))
+            self._session.add(
+                InvolvedCompany(
+                    media_item_id=album.media_item_id,
+                    company_id=company.id,
+                    publisher=True,
+                )
+            )
 
     async def hydrate_genres(self, album: Album, raw: dict[str, JSONValue]) -> None:
         """Store genre tags from MusicBrainz."""
@@ -129,10 +126,7 @@ class MusicBrainzHydrator:
             return
 
         # Batch-check existing genre links for this album
-        existing_genres = (await self._session.execute(
-            select(MediaGenre.genre_id)
-            .where(MediaGenre.media_item_id == album.media_item_id)
-        )).all()
+        existing_genres = (await self._session.execute(select(MediaGenre.genre_id).where(MediaGenre.media_item_id == album.media_item_id))).all()
         existing_genre_ids = {g.genre_id for g in existing_genres}
 
         for tag in tags[:8]:
@@ -146,10 +140,12 @@ class MusicBrainzHydrator:
             if genre.id in existing_genre_ids:
                 continue
 
-            self._session.add(MediaGenre(
-                media_item_id=album.media_item_id,
-                genre_id=genre.id,
-            ))
+            self._session.add(
+                MediaGenre(
+                    media_item_id=album.media_item_id,
+                    genre_id=genre.id,
+                )
+            )
 
     async def hydrate_cover_art(self, album: Album, raw: dict[str, JSONValue]) -> None:
         """Fetch cover art from Cover Art Archive and store as MediaAsset."""
@@ -196,12 +192,14 @@ class MusicBrainzHydrator:
 
         # Batch-check existing URLs for this album
         candidate_urls = [c[0] for c in candidates]
-        existing = (await self._session.execute(
-            select(MediaAsset.url).where(
-                MediaAsset.media_item_id == album.media_item_id,
-                MediaAsset.url.in_(candidate_urls),
+        existing = (
+            await self._session.execute(
+                select(MediaAsset.url).where(
+                    MediaAsset.media_item_id == album.media_item_id,
+                    MediaAsset.url.in_(candidate_urls),
+                )
             )
-        )).all()
+        ).all()
         existing_urls = {e.url for e in existing}
 
         from sqlalchemy.exc import IntegrityError
@@ -212,14 +210,16 @@ class MusicBrainzHydrator:
 
             try:
                 async with self._session.begin_nested():
-                    self._session.add(MediaAsset(
-                        media_item_id=album.media_item_id,
-                        asset_type=asset_type,
-                        url=img_url,
-                        width=width,
-                        height=height,
-                        provider="musicbrainz",
-                    ))
+                    self._session.add(
+                        MediaAsset(
+                            media_item_id=album.media_item_id,
+                            asset_type=asset_type,
+                            url=img_url,
+                            width=width,
+                            height=height,
+                            provider="musicbrainz",
+                        )
+                    )
                     await self._session.flush()
             except IntegrityError:
                 pass
@@ -228,19 +228,16 @@ class MusicBrainzHydrator:
 
     async def _get_or_create_artist(self, mbid: str, name: str, raw: dict | None = None) -> Person:
         from uuid import uuid4
+
         from sqlalchemy import func as sa_func
 
         from otix.providers.musicbrainz.transformer import extract_wikidata_id
 
         eid_svc = ExternalIDService(self._session)
-        person_id = await eid_svc.find_entity_id_by_type(
-            "musicbrainz_artist", mbid, "person"
-        )
+        person_id = await eid_svc.find_entity_id_by_type("musicbrainz_artist", mbid, "person")
         person = None
         if person_id:
-            person = await self._session.scalar(
-                select(Person).options(selectinload(Person._external_ids)).where(Person.id == person_id)
-            )
+            person = await self._session.scalar(select(Person).options(selectinload(Person._external_ids)).where(Person.id == person_id))
         if person is not None:
             # Backfill wikidata_id if we now have it and the record doesn't
             if raw:
@@ -255,14 +252,10 @@ class MusicBrainzHydrator:
             relations = raw.get("relations")
             wiki_id = extract_wikidata_id(relations if isinstance(relations, list) else None)
             if wiki_id:
-                existing_person_id = await eid_svc.find_entity_id_by_type(
-                    "wikidata", wiki_id, "person"
-                )
+                existing_person_id = await eid_svc.find_entity_id_by_type("wikidata", wiki_id, "person")
                 existing = None
                 if existing_person_id:
-                    existing = await self._session.scalar(
-                        select(Person).options(selectinload(Person._external_ids)).where(Person.id == existing_person_id)
-                    )
+                    existing = await self._session.scalar(select(Person).options(selectinload(Person._external_ids)).where(Person.id == existing_person_id))
                 if existing is not None:
                     existing.musicbrainz_artist_id = mbid
                     if not existing.name or existing.name == name:
@@ -278,7 +271,9 @@ class MusicBrainzHydrator:
             ExternalID.entity_id == Person.id,
         )
         existing = await self._session.scalar(
-            select(Person).options(selectinload(Person._external_ids)).where(
+            select(Person)
+            .options(selectinload(Person._external_ids))
+            .where(
                 sa_func.lower(Person.name) == name.lower(),
                 not_(has_mbid),
             )
@@ -304,43 +299,28 @@ class MusicBrainzHydrator:
         person_id = f"oti_{uuid4().hex[:12]}"
         values = {"id": person_id, "name": name}
 
-        await self._session.execute(
-            pg_insert(Person)
-            .values(**values)
-            .on_conflict_do_nothing()
-        )
+        await self._session.execute(pg_insert(Person).values(**values).on_conflict_do_nothing())
         await eid_svc.upsert("musicbrainz_artist", mbid, "person", person_id)
         if wiki_id:
             await eid_svc.upsert("wikidata", wiki_id, "person", person_id)
 
         # Re-query via ExternalID to handle race conditions
-        found_id = await eid_svc.find_entity_id_by_type(
-            "musicbrainz_artist", mbid, "person"
-        )
-        person = await self._session.scalar(
-            select(Person).options(selectinload(Person._external_ids)).where(Person.id == found_id)
-        )
+        found_id = await eid_svc.find_entity_id_by_type("musicbrainz_artist", mbid, "person")
+        person = await self._session.scalar(select(Person).options(selectinload(Person._external_ids)).where(Person.id == found_id))
         return person
 
     async def _get_or_create_label(self, name: str) -> Company:
         from otix.domain.company import Company as CompanyModel
 
         slug = name.lower().replace(" ", "-").replace("'", "")
-        company = await self._session.scalar(
-            select(CompanyModel).where(CompanyModel.slug == slug)
-        )
+        company = await self._session.scalar(select(CompanyModel).where(CompanyModel.slug == slug))
         if company is not None:
             return company
 
         from uuid import uuid4
-        await self._session.execute(
-            pg_insert(CompanyModel)
-            .values(id=f"oti_{uuid4().hex[:12]}", name=name, slug=slug)
-            .on_conflict_do_nothing(constraint="companies_slug_key")
-        )
-        company = await self._session.scalar(
-            select(CompanyModel).where(CompanyModel.slug == slug)
-        )
+
+        await self._session.execute(pg_insert(CompanyModel).values(id=f"oti_{uuid4().hex[:12]}", name=name, slug=slug).on_conflict_do_nothing())
+        company = await self._session.scalar(select(CompanyModel).where(CompanyModel.slug == slug))
         return company
 
     async def _get_or_create_genre(self, name: str) -> Genre:
@@ -350,10 +330,7 @@ class MusicBrainzHydrator:
             return genre
 
         from uuid import uuid4
-        await self._session.execute(
-            pg_insert(Genre)
-            .values(id=f"oti_{uuid4().hex[:12]}", name=name, slug=slug)
-            .on_conflict_do_nothing(constraint="genres_slug_key")
-        )
+
+        await self._session.execute(pg_insert(Genre).values(id=f"oti_{uuid4().hex[:12]}", name=name, slug=slug).on_conflict_do_nothing())
         genre = await self._session.scalar(select(Genre).where(Genre.slug == slug))
         return genre

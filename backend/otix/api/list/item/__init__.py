@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.list import ListItemAdd, ListItemReorder, UserListOut
 from otix.domain.user import User
+from otix.schemas.list import ListItemAdd, ListItemReorder, UserListOut
 from otix.services.list_service import ListService
 
 logger = structlog.get_logger()

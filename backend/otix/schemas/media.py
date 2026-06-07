@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, model_validator
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.interaction import UserInteractionState
 
-
 # ── Nested relation schemas ──────────────────────────────────────
 
 

@@ -8,13 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user
+from otix.domain.user import User
+from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
 )
-from otix.domain.user import User
-from otix.infrastructure.redis import get_redis
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService, should_exclude_adult
 from otix.services.personalization_service import PersonalizationService

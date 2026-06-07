@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
-
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 from otix.services import plex_auth_service

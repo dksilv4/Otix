@@ -7,10 +7,10 @@ import pytest
 from pydantic import ValidationError
 
 from otix.api.user.mood import dismiss_mood_checkin, get_today_mood_checkin, submit_mood_checkin
-from otix.schemas.mood import MoodCheckInCreate
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.user import User
 from otix.lib.xp import MOOD_CHECKIN
+from otix.schemas.mood import MoodCheckInCreate
 
 
 def make_user() -> User:

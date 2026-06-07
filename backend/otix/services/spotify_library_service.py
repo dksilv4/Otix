@@ -7,11 +7,10 @@ Matches by Spotify ID, seeds missing albums, and creates 'liked'/'listened' inte
 from __future__ import annotations
 
 import structlog
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, ExternalID, Track
+from otix.domain.media import ExternalID, Track
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.redis import get_redis
@@ -65,7 +64,7 @@ async def sync_spotify_user_library(
     If task_id is provided, publishes progress events via Redis pub/sub for SSE streaming.
     Returns summary: {liked_total, liked_matched, liked_seeded}
     """
-    from otix.lib.spotify_progress import publish_progress, store_result, store_progress
+    from otix.lib.spotify_progress import publish_progress, store_progress, store_result
 
     async def _emit(event_type: str, **kwargs) -> None:
         if task_id:
@@ -112,7 +111,6 @@ async def sync_spotify_user_library(
 
         # ── 2. Batch-lookup existing tracks by spotify_id ────────────────
         await _emit("matching_tracks", count=liked_total)
-        existing_tracks: set[str] = set()
         if track_spotify_ids:
             result = await session.execute(
                 select(ExternalID.external_id).where(
@@ -121,7 +119,7 @@ async def sync_spotify_user_library(
                     ExternalID.external_id.in_(track_spotify_ids),
                 )
             )
-            existing_tracks = {row[0] for row in result if row[0]}
+            {row[0] for row in result if row[0]}
 
         # ── 3. Find which albums already exist in Otix ────────────────────
         existing_albums: dict[str, str] = {}  # album_spotify_id -> media_item_id
@@ -178,7 +176,7 @@ async def sync_spotify_user_library(
 
         # Store album Spotify IDs in Redis so /library/spotify can query them.
         # Also store matched media_item_ids for items already in the catalog.
-        matched_album_spotify_ids = {
+        {
             aid for aid in album_spotify_ids if aid in existing_albums
         }
         all_album_spotify_ids = album_spotify_ids | set(existing_albums)
@@ -225,7 +223,7 @@ async def sync_spotify_recently_played(
     Uses a Redis cursor so each poll only fetches plays since the last sync.
     Returns summary: {total, matched, seeded}
     """
-    from otix.lib.spotify_progress import publish_progress, store_result, store_progress
+    from otix.lib.spotify_progress import publish_progress, store_progress, store_result
     from otix.services.interaction_service import InteractionService
 
     async def _emit(event_type: str, **kwargs) -> None:
@@ -356,7 +354,7 @@ async def sync_spotify_recently_played(
         if newest_played_at:
             # Convert ISO8601 to Unix ms for the Spotify API `after` param
             try:
-                from datetime import datetime, timezone
+                from datetime import datetime
                 dt = datetime.fromisoformat(newest_played_at.replace("Z", "+00:00"))
                 new_cursor = int(dt.timestamp() * 1000)
                 await redis.set(cursor_key, new_cursor, ex=7 * 24 * 3600)

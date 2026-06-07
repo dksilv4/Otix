@@ -9,9 +9,8 @@ from __future__ import annotations
 
 import hashlib
 
-from fastapi import Depends, HTTPException, Request, status
-
 import redis.asyncio as aioredis
+from fastapi import Depends, HTTPException, Request, status
 
 from otix.infrastructure.redis import get_redis
 from otix.lib.rate_limiter import RateLimiter

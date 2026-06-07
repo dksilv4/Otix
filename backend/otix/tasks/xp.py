@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select, update
+from sqlalchemy import update
 
 from otix.domain.user import User
 from otix.infrastructure.celery import app

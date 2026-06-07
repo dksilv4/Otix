@@ -4,12 +4,12 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_optional_user, get_db
-from otix.schemas.media import CompanyOut
-from otix.domain.user import User
-from otix.services.company_service import CompanyService
-from otix.api.company.detail.rating import router as rating_router
+from otix.api._utils import get_db, get_optional_user
 from otix.api.company.detail.follow import router as follow_router
+from otix.api.company.detail.rating import router as rating_router
+from otix.domain.user import User
+from otix.schemas.media import CompanyOut
+from otix.services.company_service import CompanyService
 
 logger = structlog.get_logger()
 

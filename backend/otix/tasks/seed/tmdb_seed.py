@@ -17,8 +17,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import select
@@ -37,7 +36,6 @@ except ImportError:  # pragma: no cover
     _REDIS_ERRORS = (OSError,)
 
 from otix.tasks.seed import (
-    TMDB_EXPORT_BASE,
     check_fast_queue_backlog,
     download_export,
 )
@@ -262,7 +260,7 @@ async def _daily_import_loop() -> dict:
     re-import of the same IDs is cheap.
     """
     redis = await get_redis()
-    date_key = datetime.now(timezone.utc).strftime("%Y%m%d")
+    date_key = datetime.now(UTC).strftime("%Y%m%d")
     lock_key = f"otix:tmdb_seed:daily_lock:{date_key}"
     acquired = await redis.set(lock_key, "1", nx=True, ex=_EXPORT_LOCK_TTL)
     if not acquired:
@@ -270,7 +268,6 @@ async def _daily_import_loop() -> dict:
 
     try:
         file_results = []
-        valid_ids_by_type: dict[str, set[int]] = {}
 
         for cfg in _EXPORT_FILES:
             export_type = cfg["file"]

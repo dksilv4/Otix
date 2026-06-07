@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from string import Template
 
 import structlog
@@ -7,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import SendVerificationEmailResponse, VerifyEmailRequest, VerifyEmailResponse
 from otix.domain.user import User
 from otix.infrastructure.config import settings
+from otix.schemas.auth import SendVerificationEmailResponse, VerifyEmailRequest, VerifyEmailResponse
 from otix.services.auth.auth_service import AuthService
 from otix.services.email_service import EmailService
 

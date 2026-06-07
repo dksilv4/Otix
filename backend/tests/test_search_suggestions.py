@@ -1,11 +1,14 @@
 from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from otix.domain.media import MediaItem
 
 
 def _make_app():
     from fastapi import FastAPI
+
     from otix.api.router import api_router
 
     app = FastAPI()

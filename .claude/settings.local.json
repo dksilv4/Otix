@@ -449,7 +449,10 @@
       "Bash(npx sass *)",
       "Bash(kill 9558 9270 8843)",
       "Bash(echo \"exit: $?\")",
-      "Bash(kill 10411 10488 10388)"
+      "Bash(kill 10411 10488 10388)",
+      "Bash(npx --no tsc --noEmit)",
+      "Read(//mnt/c/Users/diogo/OneDrive/Documents/GitHub/**)",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\installer.ts\" | Select-Object -Index \\(1049, 1050, 1051, 1052, 1053, 1054, 1055\\) -Encoding utf8)"
     ]
   },
   "outputStyle": "default"

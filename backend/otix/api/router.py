@@ -5,26 +5,26 @@ from fastapi import APIRouter
 
 from otix.api.admin import admin_router
 from otix.api.auth import auth_router
-from otix.api.integrations import router as integrations_router
 from otix.api.company import company_router
 from otix.api.discover import discover_router
-from otix.api.media.episode_interaction import episode_interaction_router
-from otix.api.user.follow import router as follow_router
-from otix.api.user.friend import router as friend_router
-from otix.api.media.interaction import interaction_router
+from otix.api.integrations import router as integrations_router
+from otix.api.integrations.spotify.playlists import router as spotify_playlists_router
 from otix.api.library import library_router
 from otix.api.list import list_router
 from otix.api.media import media_router
-from otix.api.user.metrics import router as metrics_router
-from otix.api.user.mood import router as mood_router
-from otix.api.user.notification import router as notification_router
-from otix.api.people import people_router
+from otix.api.media.episode_interaction import episode_interaction_router
+from otix.api.media.interaction import interaction_router
 from otix.api.media.review import review_router
 from otix.api.media.review_vote import review_vote_router
-from otix.api.integrations.spotify.playlists import router as spotify_playlists_router
+from otix.api.people import people_router
 from otix.api.track import track_router
 from otix.api.upload import upload_router
 from otix.api.user import user_router
+from otix.api.user.follow import router as follow_router
+from otix.api.user.friend import router as friend_router
+from otix.api.user.metrics import router as metrics_router
+from otix.api.user.mood import router as mood_router
+from otix.api.user.notification import router as notification_router
 from otix.api.workout import exercise_router, workout_router
 
 api_router = APIRouter()

@@ -26,5 +26,6 @@
 }
 
 .dk-media-artist-albums-section__item {
-  @apply w-36 shrink-0 -mt-2 rounded-lg;
+  @apply shrink-0 -mt-2 rounded-lg;
+  width: var(--card-width, 9rem); /* fallback 9rem = w-36 */
 }

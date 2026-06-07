@@ -18,7 +18,16 @@ from otix.api._utils import (
     get_optional_user,
     resolve_country_code,
 )
-from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key, _embedding_cache_key
+from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key
+from otix.domain.user import User
+from otix.infrastructure.celery import app
+from otix.infrastructure.database import async_session
+from otix.lib.media_rehydrate_progress import (
+    channel_name,
+    get_latest_progress,
+    get_stored_result,
+)
+from otix.lib.sse import SseStreamConfig, create_sse_response
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     CompanyOut,
@@ -38,15 +47,6 @@ from otix.schemas.media import (
     SyncLocalGamesResponse,
     TrackSearchResult,
 )
-from otix.domain.user import User
-from otix.infrastructure.celery import app
-from otix.infrastructure.database import async_session
-from otix.lib.media_rehydrate_progress import (
-    channel_name,
-    get_latest_progress,
-    get_stored_result,
-)
-from otix.lib.sse import SseStreamConfig, create_sse_response
 from otix.services.company_service import CompanyService
 from otix.services.external_id_service import ExternalIDService
 from otix.services.interaction_service import InteractionService
@@ -876,7 +876,7 @@ async def sync_local_games(
         upserted = 0
 
         # Fetch existing games for this user
-        from sqlalchemy import select, delete as sa_delete
+        from sqlalchemy import select
 
         existing = (
             await session.execute(

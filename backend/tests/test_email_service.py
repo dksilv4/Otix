@@ -1,7 +1,10 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from otix.services.email_service import EmailService
+
 from otix.infrastructure.config import settings
+from otix.services.email_service import EmailService
+
 
 @pytest.mark.asyncio
 async def test_send_email_no_api_key():
@@ -19,7 +22,7 @@ async def test_send_email_success():
     with patch.object(settings, "resend_api_key", "test_key"), \
          patch.object(settings, "email_from", "Otix <noreply@otix.com>"), \
          patch("resend.Emails.send") as mock_send:
-        
+
         service = EmailService()
         result = await service.send_email(
             to=["test@example.com"],
@@ -41,7 +44,7 @@ async def test_send_email_failure():
     with patch.object(settings, "resend_api_key", "test_key"), \
          patch.object(settings, "email_from", "Otix <noreply@otix.com>"), \
          patch("resend.Emails.send", side_effect=Exception("API Error")) as mock_send:
-        
+
         service = EmailService()
         result = await service.send_email(
             to=["test@example.com"],

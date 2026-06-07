@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from fastapi import APIRouter
+
 from otix.api.media.episode_interaction.media_id.episode_interactions.router import router as ep_inter_router
 from otix.api.media.episode_interaction.media_id.episodes.episode_id.watched.router import router as ep_watched_router
 from otix.api.media.episode_interaction.media_id.seasons.season_number.watched.router import router as season_watched_router

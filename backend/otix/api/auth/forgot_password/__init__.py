@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db
 from otix.api.rate_limit import AuthRateLimiter, get_auth_rate_limiter
-from otix.schemas.auth import ForgotPasswordRequest, ForgotPasswordResponse
 from otix.infrastructure.config import settings
+from otix.schemas.auth import ForgotPasswordRequest, ForgotPasswordResponse
 from otix.services.auth.auth_service import AuthService
 from otix.services.email_service import EmailService
 

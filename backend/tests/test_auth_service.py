@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import date, datetime, timezone, timedelta
 
+import pytest
 from jose import jwt
-from otix.domain.user import User, RefreshToken, AuthActionToken, AuthActionType
+
+from otix.domain.user import AuthActionToken, AuthActionType, RefreshToken, User
 from otix.infrastructure.config import settings
-from otix.services.auth.auth_service import AuthService, hash_password
+from otix.services.auth.auth_service import AuthService
 from otix.services.auth.two_factor_service import TwoFactorService
 
 
@@ -138,7 +139,7 @@ class TestVerify2FALogin:
         mock_db_session.scalar.return_value = user
         mock_create_session.return_value = "session-key-xyz"
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {"sub": "user-123", "type": "2fa_challenge", "iat": now, "exp": now + timedelta(minutes=5)}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
@@ -154,14 +155,14 @@ class TestTokenRefresh:
     @patch("otix.services.session_service.SessionService.touch_session", new_callable=AsyncMock)
     async def test_refresh_success_rotating(self, mock_touch: AsyncMock, auth_service: AuthService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
-        rt = RefreshToken(user_id="user-123", jti="jti-123", expires_at=datetime.now(timezone.utc) + timedelta(days=1))
+        rt = RefreshToken(user_id="user-123", jti="jti-123", expires_at=datetime.now(UTC) + timedelta(days=1))
 
         mock_db_session.scalar.side_effect = [
             rt,    # RefreshToken check
             user,  # User check
         ]
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {"sub": "user-123", "jti": "jti-123", "type": "refresh", "session_key": "sess-1", "iat": int(now.timestamp())}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
@@ -177,10 +178,10 @@ class TestTokenRefresh:
             mock_touch.assert_called_once_with("sess-1")
 
     async def test_refresh_token_reuse_revokes_all(self, auth_service: AuthService, mock_db_session: AsyncMock):
-        user = _make_user("user-123", "test@example.com", "testuser")
+        _make_user("user-123", "test@example.com", "testuser")
         # Already revoked token
-        rt = RefreshToken(user_id="user-123", jti="jti-123", expires_at=datetime.now(timezone.utc) + timedelta(days=1))
-        rt.revoked_at = datetime.now(timezone.utc)
+        rt = RefreshToken(user_id="user-123", jti="jti-123", expires_at=datetime.now(UTC) + timedelta(days=1))
+        rt.revoked_at = datetime.now(UTC)
 
         mock_db_session.scalar.return_value = rt
 
@@ -189,7 +190,7 @@ class TestTokenRefresh:
         mock_result.scalars.return_value = [rt]
         mock_db_session.execute.return_value = mock_result
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {"sub": "user-123", "jti": "jti-123", "type": "refresh", "iat": int(now.timestamp())}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
@@ -212,7 +213,7 @@ class TestEmailVerification:
     async def test_verify_email_success(self, auth_service: AuthService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
         user.is_verified = False
-        action = AuthActionToken(user_id="user-123", purpose=AuthActionType.VERIFY_EMAIL.value, token_hash="hash-123", expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+        action = AuthActionToken(user_id="user-123", purpose=AuthActionType.VERIFY_EMAIL.value, token_hash="hash-123", expires_at=datetime.now(UTC) + timedelta(hours=1))
 
         mock_db_session.scalar.side_effect = [
             action,  # AuthActionToken
@@ -230,7 +231,7 @@ class TestEmailVerification:
 class TestPasswordReset:
     async def test_reset_password_success(self, auth_service: AuthService, mock_db_session: AsyncMock):
         user = _make_user("user-123", "test@example.com", "testuser")
-        action = AuthActionToken(user_id="user-123", purpose=AuthActionType.PASSWORD_RESET.value, token_hash="hash-123", expires_at=datetime.now(timezone.utc) + timedelta(hours=1))
+        action = AuthActionToken(user_id="user-123", purpose=AuthActionType.PASSWORD_RESET.value, token_hash="hash-123", expires_at=datetime.now(UTC) + timedelta(hours=1))
 
         mock_db_session.scalar.side_effect = [
             action,  # AuthActionToken

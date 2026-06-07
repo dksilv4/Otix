@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from sqlalchemy import delete, func, select
@@ -26,7 +26,6 @@ from otix.lib.progress import incr as _progress_incr
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.hydrator import TMDBHydrator
 from otix.providers.tmdb.transformer import _image_url, _parse_date, to_movie, to_person, to_show
-
 from otix.services.external_id_service import ExternalIDService
 
 from ._common import (
@@ -200,7 +199,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             media_item, ext_id = await _resolve_external_id(session, tmdb_id_str, media_type)
 
             if not force and media_item is not None and media_item.next_sync_at is not None:
-                if media_item.next_sync_at > datetime.now(timezone.utc):
+                if media_item.next_sync_at > datetime.now(UTC):
                     logger.debug("skipping media not due for sync", tmdb_id=tmdb_id, media_type=media_type)
                     return None
 
@@ -461,7 +460,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             # ── Finalize ────────────────────────────────────────────
             ext_id.content_hash = content_hash
             ext_id.hash_match_count = 0
-            item.synced_at = datetime.now(timezone.utc)
+            item.synced_at = datetime.now(UTC)
             item.next_sync_at = compute_next_sync_at(media_type, raw, 0)
             await session.commit()
 
@@ -483,7 +482,7 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
             existing = await session.get(Person, entity_id) if entity_id else None
 
             if not force and existing is not None and existing.next_sync_at is not None:
-                if existing.next_sync_at > datetime.now(timezone.utc):
+                if existing.next_sync_at > datetime.now(UTC):
                     logger.debug("skipping person not due for sync", tmdb_id=tmdb_id)
                     return None
 
@@ -507,7 +506,7 @@ async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
             raw_wikidata_id = raw_wikidata_raw.get("wikidata_id") if isinstance(raw_wikidata_raw, dict) else None
 
             person = to_person(raw)
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             if existing is not None:
                 person.id = existing.id
@@ -679,7 +678,7 @@ async def _sync_tmdb_changes(entity_type: str, lookback_hours: int) -> dict:
 
     last_check = await get_last_change_check("tmdb")
     start_date = last_check.strftime("%Y-%m-%d")
-    end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    end_date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     if entity_type == "movie":
         changes_method = provider.get_movie_changes
@@ -711,7 +710,7 @@ async def _sync_tmdb_changes(entity_type: str, lookback_hours: int) -> dict:
         app.send_task(task_name, args=[int(tmdb_id)])
         enqueued += 1
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await set_last_change_check("tmdb", now)
 
     logger.info("change sync completed",

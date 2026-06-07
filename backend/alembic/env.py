@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import otix.domain  # noqa: F401 — ensure all models are registered
+from alembic import context
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import Base
-import otix.domain  # noqa: F401 — ensure all models are registered
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)

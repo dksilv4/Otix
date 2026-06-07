@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.api._utils import get_db
-from otix.schemas.user import MoodCheckinOut, MoodTimelineOut
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import Episode, MediaItem, Season
@@ -17,6 +16,7 @@ from otix.domain.mood import UserMoodCheckIn
 from otix.domain.review import Review
 from otix.domain.user import User
 from otix.infrastructure.database import async_session
+from otix.schemas.user import MoodCheckinOut, MoodTimelineOut
 
 logger = structlog.get_logger()
 

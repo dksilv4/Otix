@@ -23,7 +23,6 @@ from redis.asyncio import Redis
 from otix.infrastructure.config import settings
 from otix.providers.base import BaseProvider, ProviderError
 
-
 _nzbplanet_client: httpx.AsyncClient | None = None
 _nzbplanet_pid: int | None = None
 
@@ -168,7 +167,7 @@ class NZBPlanetProvider(BaseProvider):
     async def test_connection(self) -> bool:
         """Verify the API key works by making a minimal search request."""
         try:
-            results = await self.search("test", limit=1)
+            await self.search("test", limit=1)
             return True
         except Exception:
             return False

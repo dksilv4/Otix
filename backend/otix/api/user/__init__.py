@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from otix.api.user.meta import router as meta_router
-from otix.api.user.detail import router as detail_router
-from otix.api.user.rating import router as rating_router
-from otix.api.user.karma import router as karma_router
-from otix.api.user.badges import router as badges_router
-from otix.api.user.stats import router as stats_router
 from otix.api.user.activity import router as activity_router
+from otix.api.user.badges import router as badges_router
+from otix.api.user.detail import router as detail_router
+from otix.api.user.karma import router as karma_router
+from otix.api.user.meta import router as meta_router
+from otix.api.user.rating import router as rating_router
+from otix.api.user.stats import router as stats_router
 
 user_router = APIRouter(prefix="/users", tags=["users"])
 

@@ -5,12 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db
-from otix.schemas.people import PersonListResponse, PersonSummary
-from otix.services.people_service import PeopleService
 from otix.api.people.detail import router as detail_router
 from otix.api.people.follow import router as follow_router
 from otix.api.people.rating import router as rating_router
 from otix.api.people.related import router as related_router
+from otix.schemas.people import PersonListResponse, PersonSummary
+from otix.services.people_service import PeopleService
 
 logger = structlog.get_logger()
 

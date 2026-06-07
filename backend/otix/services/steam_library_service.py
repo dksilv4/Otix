@@ -1,17 +1,15 @@
 # TODO: Review this file
 from __future__ import annotations
 
-import httpx
 import structlog
+from sqlalchemy import Integer as SAInteger
 from sqlalchemy import func, select
+from sqlalchemy import func as safunc
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from sqlalchemy import Integer as SAInteger
-from sqlalchemy import func as safunc
-
-from otix.domain.media import ExternalID, Game, MediaItem, UserSteamGame, UserSteamWishlist
+from otix.domain.media import ExternalID, MediaItem, UserSteamGame, UserSteamWishlist
 from otix.domain.user import User
 from otix.infrastructure.config import settings
 

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import SteamCallbackRequest, TokenResponse
 from otix.lib.tokens import create_access_token, create_refresh_token, get_refresh_cookie_config
+from otix.schemas.auth import SteamCallbackRequest, TokenResponse
 from otix.services.steam_auth_service import find_or_create_steam_user, validate_steam_callback
 
 logger = structlog.get_logger()

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
 
@@ -60,7 +60,7 @@ class MediaWatchProvider(Base):
     display_priority: Mapped[int] = mapped_column(Integer, default=0)
 
     watch_provider: Mapped[WatchProvider] = relationship("WatchProvider")
-    media_item: Mapped["MediaItem"] = relationship("MediaItem", back_populates="watch_providers")
+    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="watch_providers")
 
     __table_args__ = (
         UniqueConstraint(

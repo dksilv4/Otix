@@ -8,10 +8,9 @@ via a /metrics endpoint or piped to Prometheus later.
 from __future__ import annotations
 
 import time
-from collections import defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass

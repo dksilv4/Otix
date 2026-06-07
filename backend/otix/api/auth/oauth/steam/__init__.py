@@ -5,8 +5,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request
 
 from otix.api._utils import get_current_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import SteamInitiateResponse
 from otix.domain.user import User
+from otix.schemas.auth import SteamInitiateResponse
 from otix.services.steam_auth_service import build_steam_link_url
 
 logger = structlog.get_logger()

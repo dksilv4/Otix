@@ -430,9 +430,9 @@ class PersonalizationService:
         my_genres = set(user.preferred_genres or [])
         my_langs = set(user.preferred_languages or [])
 
-        from sqlalchemy import cast, select
+        from sqlalchemy import String, cast, select
         from sqlalchemy.dialects.postgresql import ARRAY
-        from sqlalchemy import String
+
         from otix.domain.user import User as UserModel
 
         query = select(
@@ -513,7 +513,6 @@ class PersonalizationService:
         Picks up to 10 highly-rated items, computes their embedding centroid,
         then finds nearest neighbors the user hasn't seen.
         """
-        import re
 
         seed_query = text("""
             SELECT mi.embedding::text
@@ -769,7 +768,7 @@ class PersonalizationService:
                     media_label = _media_label(mt)
                     sections.append(PersonalizedSection(
                         id=f"{mt}_plex_library",
-                        title=f"From Your Plex Library",
+                        title="From Your Plex Library",
                         media_type=mt,
                         list_type="integration_plex",
                         is_personalized=True,

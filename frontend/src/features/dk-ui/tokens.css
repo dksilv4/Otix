@@ -28,6 +28,7 @@
   --dk-surface-glass-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-active: oklch(0 0 0 / 0.1);
+  --dk-separator: oklch(0 0 0 / 0.08);
 }
 
 [data-theme='dark'] {
@@ -39,6 +40,7 @@
   --dk-surface-glass-hover: oklch(1 0 0 / 0.08);
   --dk-surface-ghost-hover: oklch(1 0 0 / 0.06);
   --dk-surface-ghost-active: oklch(1 0 0 / 0.1);
+  --dk-separator: oklch(1 0 0 / 0.1);
 }
 
 /* ═══════════════════════════════════════════════

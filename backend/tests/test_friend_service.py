@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from otix.domain.friend import FriendRequest
 from otix.domain.user import User
@@ -85,9 +86,9 @@ class TestFriendAcceptRequest:
         mock_db_session.scalar.return_value = req
 
         # Mock Celery send_task to prevent actual task dispatch errors
-        with MagicMock() as mock_app:
+        with MagicMock():
             mock_db_session.scalar.return_value = req
-            
+
             accepted_req = await service.accept_request("req-1", "user-2")
 
             assert accepted_req.status == "accepted"

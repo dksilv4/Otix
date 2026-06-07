@@ -1,4 +1,5 @@
 import { ipcMain, dialog } from 'electron';
+import { randomUUID } from 'crypto';
 import {
   mountIso,
   dismountIso,
@@ -6,9 +7,16 @@ import {
   previewOrganization,
   executeOrganization,
   launchSetup,
+  installGameIso,
+  cancelCurrentInstall,
+  cancelInstall,
+  cancelInstallByIsoPath,
+  getActiveInstalls,
+  type InstallProgress,
 } from '../installer';
 import { findUpdateFilesForIso } from '../scanner';
 import { batchOrganizeDirectory, smartOrganizePreview } from '../auto-organizer';
+import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
 
 export function registerInstallerIPC(): void {
   // Select ISO dialog
@@ -47,14 +55,28 @@ export function registerInstallerIPC(): void {
     return await previewOrganization(directory, regexPattern, isoTemplate, updateTemplate, separator as 'space' | 'dot' | 'underscore' | 'dash');
   });
 
-  // Execute ISO Folder Reorganization
-  ipcMain.handle('installer:execute-organization', async (_, items: { sourcePath: string; targetPath: string }[]) => {
-    return await executeOrganization(items);
+  // Execute ISO Folder Reorganization — also updates scanned game paths in DB
+  ipcMain.handle('installer:execute-organization', async (event, items: { sourcePath: string; targetPath: string }[]) => {
+    const results = await executeOrganization(items);
+    let updated = false;
+    for (const r of results) {
+      if (r.success) {
+        await updateGamePathInDb(r.sourcePath, r.targetPath);
+        updated = true;
+      }
+    }
+    if (updated) event.sender.send('scanner:games-updated');
+    return results;
   });
 
-  // Batch-organize a directory using configured naming template
-  ipcMain.handle('installer:batch-organize', async (_, directory: string, namingTemplate?: string) => {
-    return await batchOrganizeDirectory(directory, namingTemplate);
+  // Batch-organize a directory — also updates scanned game paths in DB
+  ipcMain.handle('installer:batch-organize', async (event, directory: string, namingTemplate?: string) => {
+    const result = await batchOrganizeDirectory(directory, namingTemplate);
+    for (const o of result.organized) {
+      await updateGamePathInDb(o.from, o.to);
+    }
+    if (result.organized.length > 0) event.sender.send('scanner:games-updated');
+    return result;
   });
 
   // Smart preview using parseReleaseName + naming template (arr-style)
@@ -69,5 +91,55 @@ export function registerInstallerIPC(): void {
       console.error('Failed to launch installer:', setupPath, err);
       throw err;
     }
+  });
+
+  // Return active installs (for rehydration after renderer refresh)
+  ipcMain.handle('installer:get-active-installs', () => {
+    return getActiveInstalls();
+  });
+
+  // Auto install — mount → silent install → crack → dismount
+  ipcMain.handle(
+    'installer:install-game',
+    async (event, isoPath: string, targetDir: string, gameTitle?: string) => {
+      const installId = randomUUID();
+
+      const sendProgress = (p: InstallProgress) => {
+        try {
+          event.sender.send('installer:install-progress', { ...p, installId, isoPath });
+        } catch {
+          // window may have closed
+        }
+      };
+
+      try {
+        // Get ISO scan directories to use as search roots for path resolution
+        const allPaths = await getScanPathsFromDb();
+        const isoRoots = allPaths
+          .filter((p) => p.type === 'iso')
+          .map((p) => p.path);
+
+        const result = await installGameIso(installId, isoPath, targetDir, gameTitle ?? 'Game', sendProgress, isoRoots);
+        return result;
+      } catch (err: any) {
+        console.error('[installer:install-game] Fatal:', err);
+        return {
+          success: false,
+          installDir: targetDir,
+          error: err.message || 'Unknown error',
+        };
+      }
+    },
+  );
+
+  // Cancel a running install — accepts isoPath or installId
+  ipcMain.handle('installer:cancel-install', (_event, cancelKey?: string) => {
+    if (!cancelKey) {
+      cancelCurrentInstall();
+    } else {
+      cancelInstallByIsoPath(cancelKey);
+      cancelInstall(cancelKey); // also try as installId (no-op if already cancelled)
+    }
+    return true;
   });
 }

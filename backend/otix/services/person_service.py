@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import structlog
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -392,7 +392,7 @@ async def dedupe_all_people(db: AsyncSession, cross_provider: bool = False) -> d
     total_merged = 0
     total_credits = 0
 
-    for group_key, people in groups:
+    for _group_key, people in groups:
         target = people[0]
         for source in people[1:]:
             credits = await merge_person(db, source.id, target.id)

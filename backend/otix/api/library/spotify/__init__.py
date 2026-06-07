@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, select
@@ -7,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.api._utils import get_current_user, get_db
-from otix.schemas.media import MediaItemListResponse, MediaItemSummary
 from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.user import User
+from otix.schemas.media import MediaItemListResponse, MediaItemSummary
 from otix.services.spotify_auth_service import get_user_access_token
 
 logger = structlog.get_logger()
@@ -154,7 +156,7 @@ async def get_spotify_status(
         last_scanned_at = None
         if ttl > 0:
             from datetime import datetime, timezone
-            last_scanned_at = datetime.now(timezone.utc).isoformat()
+            last_scanned_at = datetime.now(UTC).isoformat()
     except Exception:
         logger.exception("failed to fetch spotify status", user_id=current_user.id, ip=ip)
         raise

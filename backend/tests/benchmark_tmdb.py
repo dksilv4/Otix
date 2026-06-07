@@ -250,13 +250,14 @@ async def bench_fanout_discovery(
 
 
 async def bench_full_pipeline(movie_id: int, show_id: int) -> list[BenchmarkResult]:
+    from sqlalchemy import select
+
+    from otix.domain.media import ExternalID, MediaItem
     from otix.infrastructure.database import async_session
     from otix.infrastructure.redis import get_redis
     from otix.providers.tmdb.client import TMDBProvider
     from otix.providers.tmdb.hydrator import TMDBHydrator
     from otix.providers.tmdb.transformer import to_movie, to_show
-    from otix.domain.media import ExternalID, MediaItem
-    from sqlalchemy import select
 
     results: list[BenchmarkResult] = []
 

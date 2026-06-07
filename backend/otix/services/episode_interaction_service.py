@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import Episode, Season, MediaItem
+from otix.domain.media import Episode, MediaItem, Season
 from otix.infrastructure.celery import app
 from otix.lib.xp import EPISODE_WATCHED, SEASON_COMPLETED_BONUS, SHOW_COMPLETED_BONUS
 

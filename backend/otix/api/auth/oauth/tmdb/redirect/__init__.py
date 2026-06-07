@@ -39,7 +39,7 @@ async def tmdb_connect_redirect(
     try:
         await link_tmdb_state_to_user(db, state_value, request_token)
         await db.commit()
-    except Exception as exc:
+    except Exception:
         await db.rollback()
         logger.exception("tmdb connect redirect failed", ip=ip)
         return _tmdb_frontend_redirect("error", "Failed to link TMDb account. Please try again.")

@@ -4,21 +4,18 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
 from otix.providers.tmdb.transformer import (
-    _parse_date,
-    _slugify,
     _image_url,
     _is_anime,
-    to_media_item,
-    to_movie,
-    to_show,
-    to_person,
+    _parse_date,
+    _slugify,
     to_genre,
     to_genres,
+    to_media_item,
+    to_movie,
+    to_person,
+    to_show,
 )
-
 
 # ── _parse_date ─────────────────────────────────────────────────────
 

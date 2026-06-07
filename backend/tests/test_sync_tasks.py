@@ -2,12 +2,34 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from otix.domain.sync import ProviderState
+from otix.tasks.sync._common import (
+    compute_content_hash as _compute_hash,
+)
+from otix.tasks.sync._common import (
+    compute_next_sync_at as _compute_next_sync_at,
+)
+from otix.tasks.sync._common import (
+    enqueue_list_items as _enqueue_list_items,
+)
+from otix.tasks.sync._common import (
+    filter_missing_ids as _filter_missing_ids,
+)
+from otix.tasks.sync._common import (
+    filter_stale_ids as _filter_stale_ids,
+)
+from otix.tasks.sync._common import (
+    get_last_change_check as _get_last_change_check,
+)
+from otix.tasks.sync._common import (
+    set_last_change_check as _set_last_change_check,
+)
+from otix.tasks.sync.igdb import _compute_game_next_sync_at
 from otix.tasks.sync.search import (
     _backfill_igdb_games,
     _backfill_tmdb_movies,
@@ -15,18 +37,7 @@ from otix.tasks.sync.search import (
     _search_backfill,
     search_backfill_task,
 )
-from otix.tasks.sync.igdb import _compute_game_next_sync_at
-from otix.tasks.sync._common import (
-    compute_content_hash as _compute_hash,
-    compute_next_sync_at as _compute_next_sync_at,
-    enqueue_list_items as _enqueue_list_items,
-    filter_missing_ids as _filter_missing_ids,
-    filter_stale_ids as _filter_stale_ids,
-    get_last_change_check as _get_last_change_check,
-    set_last_change_check as _set_last_change_check,
-)
 from otix.tasks.sync.tmdb import _sync_tmdb_discover_list
-
 
 # ── Pure function tests ──────────────────────────────────────────────
 
@@ -76,28 +87,28 @@ class TestComputeNextSyncAt:
 
     def test_new_movie_12h(self):
         """Recently released movies sync every 12 hours."""
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         next_sync = _compute_next_sync_at("movie", {"release_date": today})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=11) < delta <= timedelta(hours=13)
 
     def test_recent_movie_7d(self):
         """Movies released within 2 years sync every 7 days."""
-        recent = (datetime.now(timezone.utc) - timedelta(days=500)).strftime("%Y-%m-%d")
+        recent = (datetime.now(UTC) - timedelta(days=500)).strftime("%Y-%m-%d")
         next_sync = _compute_next_sync_at("movie", {"release_date": recent})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=6) < delta <= timedelta(days=8)
 
     def test_classic_movie_30d(self):
         """Old movies sync every 30 days."""
         old = "1999-10-15"
         next_sync = _compute_next_sync_at("movie", {"release_date": old})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     def test_movie_no_release_date_defaults_to_classic(self):
         next_sync = _compute_next_sync_at("movie", {})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     # ── Shows ──
@@ -105,22 +116,22 @@ class TestComputeNextSyncAt:
     def test_airing_show_6h(self):
         """Airing shows sync every 6 hours."""
         next_sync = _compute_next_sync_at("show", {"status": "Returning Series"})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=5) < delta <= timedelta(hours=7)
 
     def test_in_production_show_6h(self):
         next_sync = _compute_next_sync_at("show", {"status": "In Production"})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=5) < delta <= timedelta(hours=7)
 
     def test_ended_recent_show_7d(self):
         """Shows that ended within 2 years sync every 7 days."""
-        recent = (datetime.now(timezone.utc) - timedelta(days=500)).strftime("%Y-%m-%d")
+        recent = (datetime.now(UTC) - timedelta(days=500)).strftime("%Y-%m-%d")
         next_sync = _compute_next_sync_at("show", {
             "status": "Ended",
             "last_air_date": recent,
         })
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=6) < delta <= timedelta(days=8)
 
     def test_ended_old_show_30d(self):
@@ -129,7 +140,7 @@ class TestComputeNextSyncAt:
             "status": "Ended",
             "last_air_date": "2019-05-19",
         })
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     def test_canceled_show_same_as_ended(self):
@@ -137,29 +148,29 @@ class TestComputeNextSyncAt:
             "status": "Canceled",
             "last_air_date": "2019-05-19",
         })
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     def test_unknown_status_show_7d(self):
         next_sync = _compute_next_sync_at("show", {"status": "Unknown"})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=6) < delta <= timedelta(days=8)
 
     # ── People ──
 
     def test_popular_person_7d(self):
         next_sync = _compute_next_sync_at("person", {"popularity": 10.0})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=6) < delta <= timedelta(days=8)
 
     def test_unpopular_person_30d(self):
         next_sync = _compute_next_sync_at("person", {"popularity": 1.0})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     def test_person_zero_popularity_30d(self):
         next_sync = _compute_next_sync_at("person", {"popularity": 0})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     # ── Escalation ──
@@ -168,8 +179,8 @@ class TestComputeNextSyncAt:
         """hash_match_count=1 should double the interval."""
         base = _compute_next_sync_at("person", {"popularity": 1.0}, hash_match_count=0)
         doubled = _compute_next_sync_at("person", {"popularity": 1.0}, hash_match_count=1)
-        base_delta = base - datetime.now(timezone.utc)
-        doubled_delta = doubled - datetime.now(timezone.utc)
+        base_delta = base - datetime.now(UTC)
+        doubled_delta = doubled - datetime.now(UTC)
         # doubled interval should be ~2x (within 10% tolerance)
         ratio = doubled_delta / base_delta
         assert 1.9 < ratio < 2.1
@@ -180,12 +191,12 @@ class TestComputeNextSyncAt:
 
         max_hours = settings.tmdb_sync_max_escalation_days * 24
         next_sync = _compute_next_sync_at("person", {"popularity": 1.0}, hash_match_count=10)
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert delta <= timedelta(hours=max_hours)
 
     def test_escalation_stops_at_5(self):
         """hash_match_count=5 and 6 should give same delta (2^5 = 32x, max)."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         h5 = _compute_next_sync_at("person", {"popularity": 1.0}, hash_match_count=5)
         h6 = _compute_next_sync_at("person", {"popularity": 1.0}, hash_match_count=6)
         delta5 = h5 - now
@@ -285,14 +296,14 @@ class TestProviderStateHelpers:
 
         with patch("otix.tasks.sync._common.async_session", _factory):
             result = await _get_last_change_check("tmdb")
-            expected = datetime.now(timezone.utc) - timedelta(hours=24)
+            expected = datetime.now(UTC) - timedelta(hours=24)
             assert abs((result - expected).total_seconds()) < 5
 
     async def test_get_last_change_check_with_state(self):
         """Returns stored timestamp when available."""
         mock_session = _make_async_session_mock()
         state = ProviderState(provider="tmdb")
-        state.last_sync_at = datetime(2026, 4, 30, 12, 0, 0, tzinfo=timezone.utc)
+        state.last_sync_at = datetime(2026, 4, 30, 12, 0, 0, tzinfo=UTC)
         mock_session.get.return_value = state
 
         def _factory():
@@ -311,7 +322,7 @@ class TestProviderStateHelpers:
             return mock_session
 
         with patch("otix.tasks.sync._common.async_session", _factory):
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             await _set_last_change_check("tmdb", now)
             added = mock_session.add.call_args[0][0]
             assert isinstance(added, ProviderState)
@@ -323,14 +334,14 @@ class TestProviderStateHelpers:
         """Updates existing ProviderState."""
         mock_session = _make_async_session_mock()
         state = ProviderState(provider="tmdb")
-        state.last_sync_at = datetime(2026, 4, 30, tzinfo=timezone.utc)
+        state.last_sync_at = datetime(2026, 4, 30, tzinfo=UTC)
         mock_session.get.return_value = state
 
         def _factory():
             return mock_session
 
         with patch("otix.tasks.sync._common.async_session", _factory):
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             await _set_last_change_check("tmdb", now)
             assert state.last_sync_at == now
 
@@ -399,44 +410,44 @@ class TestComputeGameNextSyncAt:
     def test_unreleased_no_date(self):
         """Games with no release date sync every 12 hours."""
         next_sync = _compute_game_next_sync_at({})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=11) < delta <= timedelta(hours=13)
 
     def test_future_release(self):
         """Games releasing in the future sync every 12 hours."""
-        future_ts = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp())
+        future_ts = int((datetime.now(UTC) + timedelta(days=30)).timestamp())
         next_sync = _compute_game_next_sync_at({"first_release_date": future_ts})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=11) < delta <= timedelta(hours=13)
 
     def test_recently_released(self):
         """Games released within 90 days sync every 24 hours."""
-        recent_ts = int((datetime.now(timezone.utc) - timedelta(days=30)).timestamp())
+        recent_ts = int((datetime.now(UTC) - timedelta(days=30)).timestamp())
         next_sync = _compute_game_next_sync_at({"first_release_date": recent_ts})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(hours=23) < delta <= timedelta(hours=25)
 
     def test_released_within_2_years(self):
         """Games released within 2 years sync every 7 days."""
-        ts = int((datetime.now(timezone.utc) - timedelta(days=500)).timestamp())
+        ts = int((datetime.now(UTC) - timedelta(days=500)).timestamp())
         next_sync = _compute_game_next_sync_at({"first_release_date": ts})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=6) < delta <= timedelta(days=8)
 
     def test_classic_game(self):
         """Games older than 2 years sync every 30 days."""
-        old_ts = int(datetime(2015, 5, 19, tzinfo=timezone.utc).timestamp())
+        old_ts = int(datetime(2015, 5, 19, tzinfo=UTC).timestamp())
         next_sync = _compute_game_next_sync_at({"first_release_date": old_ts})
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert timedelta(days=29) < delta <= timedelta(days=31)
 
     def test_escalation_doubles_interval(self):
         """hash_match_count=1 should double the base interval."""
-        old_ts = int(datetime(2015, 5, 19, tzinfo=timezone.utc).timestamp())
+        old_ts = int(datetime(2015, 5, 19, tzinfo=UTC).timestamp())
         base = _compute_game_next_sync_at({"first_release_date": old_ts}, hash_match_count=0)
         doubled = _compute_game_next_sync_at({"first_release_date": old_ts}, hash_match_count=1)
-        base_delta = base - datetime.now(timezone.utc)
-        doubled_delta = doubled - datetime.now(timezone.utc)
+        base_delta = base - datetime.now(UTC)
+        doubled_delta = doubled - datetime.now(UTC)
         ratio = doubled_delta / base_delta
         assert 1.9 < ratio < 2.1
 
@@ -446,7 +457,7 @@ class TestComputeGameNextSyncAt:
 
         max_hours = settings.tmdb_sync_max_escalation_days * 24
         next_sync = _compute_game_next_sync_at({}, hash_match_count=10)
-        delta = next_sync - datetime.now(timezone.utc)
+        delta = next_sync - datetime.now(UTC)
         assert delta <= timedelta(hours=max_hours)
 
 

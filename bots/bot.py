@@ -28,8 +28,6 @@ from bots.config import (
     REVIEW_TEMPLATES,
     SEARCH_QUERIES,
     SESSION_TEMPLATES,
-    ActivityTier,
-    Chronotype,
     SessionTemplate,
     avatar_url,
     cover_url,
@@ -508,7 +506,7 @@ class Bot:
 
     def _derive_searches_from_detail(self, detail: dict) -> None:
         """Generate related search terms from a media detail view."""
-        title = detail.get("title") or detail.get("name") or ""
+        detail.get("title") or detail.get("name") or ""
         genres = detail.get("genres") or []
 
         # Related people (directors, actors, artists)

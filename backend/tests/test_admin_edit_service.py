@@ -1,11 +1,11 @@
 """Tests for AdminEditService."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from otix.services.admin_edit_service import AdminEditService
+import pytest
+
 from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, ProposalVote
 from otix.domain.media import MediaItem
+from otix.services.admin_edit_service import AdminEditService
 
 
 def make_media_item(**overrides):

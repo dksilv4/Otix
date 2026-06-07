@@ -12,7 +12,6 @@ from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.hydrator import FanartHydrator
 from otix.providers.fanart.transformer import movie_images_to_assets, show_images_to_assets
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Sample Fanart responses
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -298,8 +297,8 @@ class TestFanartHydrator:
 class TestFanartClient:
     async def test_get_movie_images(self, fakeredis, mock_httpx_client, fanart_movie_raw: dict):
         import json
+
         import httpx
-        from unittest.mock import MagicMock
 
         class FanartTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -318,8 +317,8 @@ class TestFanartClient:
 
     async def test_get_show_images(self, fakeredis, fanart_show_raw: dict):
         import json
+
         import httpx
-        from unittest.mock import MagicMock
 
         class ShowTransport(httpx.AsyncBaseTransport):
             async def handle_async_request(self, request: httpx.Request) -> httpx.Response:

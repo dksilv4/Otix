@@ -7,6 +7,10 @@
   @apply animate-fade-in space-y-12 pb-16;
 }
 
+.dk-media-detail--desktop {
+  padding-top: var(--title-bar-height, 38px);
+}
+
 .dk-media-detail__content {
   @apply mx-auto space-y-12 px-4 sm:px-6 lg:max-w-7xl lg:px-8;
 }

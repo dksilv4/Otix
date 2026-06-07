@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,12 +10,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
+from otix.api.router import api_router
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import dispose_engine
-from otix.infrastructure.logging import setup_logging
 from otix.infrastructure.http_client import close_http_client
+from otix.infrastructure.logging import setup_logging
 from otix.infrastructure.redis import close_redis, get_redis
-from otix.api.router import api_router
 
 
 @asynccontextmanager
@@ -31,7 +30,9 @@ async def lifespan(app: FastAPI) -> Any:
     # Alembic acquires an advisory lock so concurrent API containers don't race.
     try:
         import asyncio
+
         from alembic.config import Config
+
         from alembic import command
 
         alembic_cfg = Config("alembic.ini")

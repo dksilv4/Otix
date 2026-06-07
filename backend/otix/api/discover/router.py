@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from fastapi import APIRouter
+
 from otix.api.discover.hero.router import router as hero_router
-from otix.api.discover.sections.router import router as sections_router
 from otix.api.discover.media_type.list_type.router import router as media_list_router
+from otix.api.discover.sections.router import router as sections_router
 
 discover_router = APIRouter(prefix="/discover", tags=["discover"])
 

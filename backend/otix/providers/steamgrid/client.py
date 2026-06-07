@@ -17,7 +17,6 @@ from otix.infrastructure.config import settings
 from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider, ProviderError
 
-
 _steamgrid_client: httpx.AsyncClient | None = None
 _steamgrid_pid: int | None = None
 

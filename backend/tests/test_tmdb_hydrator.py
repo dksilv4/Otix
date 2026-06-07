@@ -10,7 +10,7 @@ import pytest
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection
 from otix.domain.genre import Genre, MediaGenre
-from otix.domain.media import ExternalID, MediaItem
+from otix.domain.media import MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.providers.tmdb.hydrator import TMDBHydrator
 
@@ -529,6 +529,7 @@ class TestHydrateCollection:
     ):
         import hashlib
         import json
+
         from otix.providers.tmdb.transformer import to_movie
 
         movie = to_movie(sample_movie_raw_with_collection)

@@ -10,7 +10,7 @@ import asyncio
 import json
 import os
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -81,7 +81,7 @@ async def check_fast_queue_backlog(caller: str = "", queue: str = "ingest-tmdb")
 
 async def download_export(export_type: str, caller: str = "seed") -> Path | None:
     """Download a TMDB daily export file. Tries today, then yesterday."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     dates = [now.strftime("%m_%d_%Y")]
     yesterday = now - timedelta(days=1)
     dates.append(yesterday.strftime("%m_%d_%Y"))

@@ -9,7 +9,6 @@ import pytest
 from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.media import Game, MediaItem
-from otix.lib.slug import slugify
 from otix.providers.steam.client import SteamError, SteamProvider
 from otix.providers.steam.hydrator import SteamHydrator
 from otix.providers.steam.transformer import (
@@ -23,7 +22,6 @@ from otix.providers.steam.transformer import (
     extract_review_summary,
     extract_screenshot_urls,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fixtures
@@ -258,7 +256,6 @@ def steam_client(fakeredis):
     """SteamProvider with mocked HTTP transport."""
     import httpx
 
-    from otix.providers.base import BaseProvider
 
     class MockTransport(httpx.AsyncBaseTransport):
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -322,7 +319,6 @@ def steam_client(fakeredis):
             return httpx.Response(200, content=b"{}", request=request)
 
     async def _build():
-        import redis.asyncio as aioredis
 
         r = await fakeredis
         http = httpx.AsyncClient(transport=MockTransport())
@@ -761,7 +757,7 @@ class TestHydrateFull:
             return_value={"response": {"player_count": 50000, "result": 1}}
         )
         steam_hydrator.provider.get_app_details = AsyncMock(return_value=steam_store_raw)
-        
+
         def mock_scalar(stmt):
             stmt_str = str(stmt).lower()
             if "external_id" in stmt_str:

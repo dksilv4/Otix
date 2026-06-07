@@ -63,7 +63,7 @@ async def _search_backfill(query: str, media_type: str | None = None) -> dict:
 
     gathered = await asyncio.gather(*[coro for _, coro in providers], return_exceptions=True)
 
-    for (name, _), result in zip(providers, gathered):
+    for (name, _), result in zip(providers, gathered, strict=False):
         if isinstance(result, Exception):
             logger.warning("search backfill provider failed", provider=name, error=str(result))
             results[name] = {"enqueued": 0, "skipped": 0, "error": str(result)}
@@ -225,8 +225,8 @@ async def _seed_igdb_from_titles(games: list[dict]) -> dict:
 
     # ── Phase 1: Steam App ID direct lookups ──────────────────────────
     if steam_games:
-        from otix.services.external_id_service import ExternalIDService
         from otix.infrastructure.database import async_session
+        from otix.services.external_id_service import ExternalIDService
 
         # Dedup Steam App IDs
         steam_app_id_map: dict[int, str] = {}  # app_id (int) -> title

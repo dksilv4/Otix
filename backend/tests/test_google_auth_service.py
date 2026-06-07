@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
@@ -94,10 +94,10 @@ async def test_consume_state_missing(fakeredis, monkeypatch):
 async def test_link_google_to_user_success(fakeredis, monkeypatch, mock_db_session):
     monkeypatch.setattr(google_auth_service, "get_redis", AsyncMock(return_value=fakeredis))
     monkeypatch.setattr(google_auth_service.httpx, "AsyncClient", MockGoogleClient)
-    
+
     state = "some-state"
     await fakeredis.set(google_auth_service._state_key(state), "1")
-    
+
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.id = "user-id-abc"
     mock_db_session.scalar.return_value = None
@@ -126,10 +126,10 @@ async def test_link_google_already_linked(mock_db_session):
 async def test_link_google_duplicate_links(fakeredis, monkeypatch, mock_db_session):
     monkeypatch.setattr(google_auth_service, "get_redis", AsyncMock(return_value=fakeredis))
     monkeypatch.setattr(google_auth_service.httpx, "AsyncClient", MockGoogleClient)
-    
+
     state = "some-state"
     await fakeredis.set(google_auth_service._state_key(state), "1")
-    
+
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.id = "user-id-abc"
 
@@ -157,7 +157,7 @@ async def test_unlink_google_success(mock_db_session):
 
 async def test_unlink_google_not_linked(mock_db_session):
     user = User(email="user@example.com", username="user", hashed_password="pwd")
-    
+
     with pytest.raises(HTTPException) as exc:
         await google_auth_service.unlink_google_from_user(mock_db_session, user)
     assert exc.value.status_code == 400
@@ -167,7 +167,7 @@ async def test_get_user_google_access_token_valid(monkeypatch):
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.google_access_token = "current-valid-token"
     user.google_refresh_token = "refresh"
-    user.google_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    user.google_token_expires_at = datetime.now(UTC) + timedelta(minutes=10)
 
     token = await google_auth_service.get_user_google_access_token(user)
 
@@ -179,10 +179,10 @@ async def test_get_user_google_access_token_refresh(monkeypatch):
     user = User(email="user@example.com", username="user", hashed_password="pwd")
     user.google_access_token = "old-expired-token"
     user.google_refresh_token = "refresh"
-    user.google_token_expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    user.google_token_expires_at = datetime.now(UTC) - timedelta(minutes=1)
 
     token = await google_auth_service.get_user_google_access_token(user)
 
     assert token == "new-access-token"
     assert user.google_access_token == "new-access-token"
-    assert user.google_token_expires_at > datetime.now(timezone.utc)
+    assert user.google_token_expires_at > datetime.now(UTC)

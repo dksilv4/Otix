@@ -7,8 +7,8 @@ in the user_badges table. This file defines badge metadata and unlock conditions
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 
 @dataclass
@@ -19,8 +19,8 @@ class BadgeDef:
     icon: str  # lucide-react icon name
     tier: str  # bronze, silver, gold, platinum, special
     target: int | float
-    metric_fn: Callable[["BadgeContext"], int | float] = field(repr=False)
-    condition: Callable[["BadgeContext"], bool] = field(repr=False)
+    metric_fn: Callable[[BadgeContext], int | float] = field(repr=False)
+    condition: Callable[[BadgeContext], bool] = field(repr=False)
 
     @property
     def xp_reward(self) -> int:

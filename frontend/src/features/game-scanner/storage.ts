@@ -79,17 +79,14 @@ const cache = {
   localMap: {} as Record<string, DetectedGame>
 };
 
-export function hasElectronAPI(): boolean {
+export function hasDesktopAPI(): boolean {
   return (
-    typeof window !== "undefined" && !!(window as any).electronAPI
+    typeof window !== "undefined" && !!(window as any).desktopAPI
   );
 }
 
-/** Alias for `hasElectronAPI` -- preferred name used by consumers */
-export const hasDesktopAPI = hasElectronAPI;
-
 /** Whether the storage module has been initialised (cache populated from localStorage) */
-export let storageReady = true;
+export const storageReady = true;
 
 /** Returns true if the in-memory cache was populated (i.e. we can read games synchronously) */
 export function isStorageReady(): boolean {
@@ -149,8 +146,8 @@ if (typeof window !== "undefined") {
 // ── Overwrite cache from SQLite database (the real source of truth) ──
 
 export async function loadFromDatabase(): Promise<void> {
-  if (!hasElectronAPI()) return;
-  const api = (window as any).electronAPI;
+  if (!hasDesktopAPI()) return;
+  const api = (window as any).desktopAPI;
 
   try {
     // Paths
@@ -193,6 +190,17 @@ if (typeof window !== "undefined") {
       console.error("Database load failed:", err);
     });
   }, 0);
+
+  // Listen for games-updated events from the main process (e.g., after file moves)
+  const api = (window as any).desktopAPI;
+  if (api?.onGamesUpdated) {
+    const unsub = api.onGamesUpdated(() => {
+      loadFromDatabase().catch((err) => {
+        console.error("Games updated reload failed:", err);
+      });
+    });
+    // No cleanup needed at module level — lives for session duration
+  }
 }
 
 // ── Synchronous getters (from in-memory cache) ──
@@ -219,12 +227,12 @@ export function setScanPaths(paths: string[]): void {
   cache.paths = paths;
   localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(paths));
 
-  if (hasElectronAPI()) {
+  if (hasDesktopAPI()) {
     const combined = [
       ...paths.map(p => ({ path: p, type: 'game' as const })),
       ...cache.isoPaths.map(p => ({ path: p, type: 'iso' as const }))
     ];
-    (window as any).electronAPI.saveScanPaths(combined).catch((err: any) => {
+    (window as any).desktopAPI.saveScanPaths(combined).catch((err: any) => {
       console.error("Failed to save scan paths to SQLite:", err);
     });
   }
@@ -234,12 +242,12 @@ export function setIsoPaths(paths: string[]): void {
   cache.isoPaths = paths;
   localStorage.setItem(STORAGE_KEYS.ISO_PATHS, JSON.stringify(paths));
 
-  if (hasElectronAPI()) {
+  if (hasDesktopAPI()) {
     const combined = [
       ...cache.paths.map(p => ({ path: p, type: 'game' as const })),
       ...paths.map(p => ({ path: p, type: 'iso' as const }))
     ];
-    (window as any).electronAPI.saveScanPaths(combined).catch((err: any) => {
+    (window as any).desktopAPI.saveScanPaths(combined).catch((err: any) => {
       console.error("Failed to save ISO scan paths to SQLite:", err);
     });
   }
@@ -250,8 +258,8 @@ export function setScannedGames(games: DetectedGame[]): void {
   cache.games = deduped;
   localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
 
-  if (hasElectronAPI()) {
-    (window as any).electronAPI.saveScannedGames(deduped).catch((err: any) => {
+  if (hasDesktopAPI()) {
+    (window as any).desktopAPI.saveScannedGames(deduped).catch((err: any) => {
       console.error("Failed to save scanned games to SQLite:", err);
     });
   }
@@ -273,8 +281,8 @@ export function setLocalGamesMapEntry(
   }
   localStorage.setItem(STORAGE_KEYS.LOCAL_MAP, JSON.stringify(cache.localMap));
 
-  if (hasElectronAPI()) {
-    (window as any).electronAPI.saveLocalGamesMapEntry(mediaId, game).catch((err: any) => {
+  if (hasDesktopAPI()) {
+    (window as any).desktopAPI.saveLocalGamesMapEntry(mediaId, game).catch((err: any) => {
       console.error("Failed to save local games mapping entry to SQLite:", err);
     });
   }
@@ -328,4 +336,27 @@ export function filterRejectedSuggestions(games: DetectedGame[]): DetectedGame[]
     }
     return g
   })
+}
+
+/**
+ * Update a scanned game's exePath and installDir after a file move
+ * ("move to library"). Finds game by oldExePath, replaces both fields,
+ * persists to cache + localStorage + SQLite, fires games:updated event.
+ */
+export function updateGamePath(
+  oldExePath: string,
+  newExePath: string,
+  newInstallDir?: string,
+): void {
+  const idx = cache.games.findIndex((g) => g.exePath === oldExePath);
+  if (idx === -1) return;
+
+  const updated = [...cache.games];
+  updated[idx] = {
+    ...updated[idx],
+    exePath: newExePath,
+    installDir: newInstallDir ?? newExePath.replace(/[/\\][^/\\]*$/, ''),
+  };
+
+  setScannedGames(updated);
 }

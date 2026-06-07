@@ -56,7 +56,7 @@ def verify_totp(secret: str, code: str, window: int = 1) -> bool:
     if len(expected) != len(provided):
         return False
     result = 0
-    for a, b in zip(expected, provided):
+    for a, b in zip(expected, provided, strict=False):
         result |= a ^ b
     if result == 0:
         return True
@@ -66,7 +66,7 @@ def verify_totp(secret: str, code: str, window: int = 1) -> bool:
         for c in (counter - offset, counter + offset):
             candidate = _hotp(key, c).encode()
             match = 0
-            for a, b in zip(candidate, provided):
+            for a, b in zip(candidate, provided, strict=False):
                 match |= a ^ b
             if match == 0:
                 return True

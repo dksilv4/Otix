@@ -6,18 +6,17 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import Album, ExternalID
-from otix.domain.genre import Genre, MediaGenre
 from otix.domain.asset import ExternalRating
-from otix.lib.types import JSONValue
+from otix.domain.genre import Genre, MediaGenre
+from otix.domain.media import Album, ExternalID
 from otix.providers.lastfm.client import LastFMProvider
-from otix.services.external_id_service import ExternalIDService
 from otix.providers.lastfm.transformer import (
-    extract_wiki_summary,
-    extract_tags,
-    extract_playcount,
     extract_listeners,
+    extract_playcount,
+    extract_tags,
+    extract_wiki_summary,
 )
+from otix.services.external_id_service import ExternalIDService
 
 
 class LastFMHydrator:

@@ -6,7 +6,7 @@ These run on the 'control' queue via Celery beat.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import structlog
@@ -15,8 +15,8 @@ from sqlalchemy import exists as sa_exists
 from sqlalchemy.orm import joinedload
 
 from otix.domain.asset import ExternalRating, MediaAsset
-from otix.domain.media import Album, ExternalID, Game, MediaItem
 from otix.domain.list import UserList, UserListItem
+from otix.domain.media import Album, ExternalID, Game, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.domain.user import RefreshToken, User
 from otix.infrastructure.celery import app
@@ -24,7 +24,7 @@ from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
-from otix.lib.metrics import SYNC_JOBS_ACTIVE, get_registry
+from otix.lib.metrics import get_registry
 from otix.lib.progress import snapshot_and_reset as _progress_snapshot
 from otix.providers.steam.client import SteamProvider
 
@@ -167,8 +167,8 @@ def plex_sync_user(task_id: str, user_id: str) -> dict:
 async def _plex_sync_user(task_id: str, user_id: str) -> dict:
     from typing import Any
 
-    from otix.services.plex_sync_service import sync_plex
     from otix.lib.plex_progress import publish_progress, store_result
+    from otix.services.plex_sync_service import sync_plex
 
     async def progress(event_type: str, **data: Any) -> None:
         try:
@@ -212,7 +212,7 @@ async def _provider_health_check() -> dict:
 
 async def _cleanup_expired_tokens() -> dict:
     async with async_session() as session:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await session.execute(
             delete(RefreshToken).where(RefreshToken.expires_at < now)
         )
@@ -236,7 +236,7 @@ def enrich_fanart() -> dict:
 
 async def _enrich_fanart() -> dict:
     async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        cutoff = datetime.now(UTC) - timedelta(hours=48)
 
         # Subquery: media_item_ids that already have at least one Fanart asset
         enriched = (
@@ -424,7 +424,7 @@ def enrich_omdb() -> dict:
 
 async def _enrich_omdb() -> dict:
     async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        cutoff = datetime.now(UTC) - timedelta(hours=48)
 
         # Subquery: media_item_ids that already have an OMDb-sourced rating
         enriched = (
@@ -604,7 +604,7 @@ def enrich_steam() -> dict:
 
 async def _enrich_steam() -> dict:
     async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
 
         # Games with steam_app_id, synced recently, not enriched in last hour
         query = (
@@ -754,7 +754,7 @@ def enrich_lastfm() -> dict:
 
 async def _enrich_lastfm() -> dict:
     async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        cutoff = datetime.now(UTC) - timedelta(hours=48)
 
         query = (
             select(Album.media_item_id)
@@ -792,7 +792,7 @@ async def _steam_name_match() -> dict:
     import asyncio
 
     async with async_session() as session:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+        cutoff = datetime.now(UTC) - timedelta(hours=72)
 
         has_steam = sa_exists().where(
             ExternalID.provider == "steam",
@@ -1007,7 +1007,7 @@ _MEDIA_SYNC_MAP = {
 
 
 async def _catalog_hydration() -> dict:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     provider_map = _MEDIA_SYNC_MAP
 
     async with async_session() as session:
@@ -1206,7 +1206,7 @@ def dedupe_people() -> dict:
 
 
 async def _dedupe_people() -> dict:
-    from otix.services.person_service import dedupe_all_people, find_all_cross_provider_duplicates, merge_person
+    from otix.services.person_service import dedupe_all_people
 
     async with async_session() as session:
         # Phase 1: Safe dedup (name-based, at least one has no external IDs)
@@ -1235,10 +1235,9 @@ def backfill_person_wikidata() -> dict:
 
 
 async def _backfill_person_wikidata() -> dict:
-    from otix.providers.tmdb.client import TMDBProvider
-    from otix.providers.tmdb.transformer import to_person
     from otix.providers.musicbrainz.client import MusicBrainzProvider
     from otix.providers.musicbrainz.transformer import extract_wikidata_id
+    from otix.providers.tmdb.client import TMDBProvider
 
     redis = await get_redis()
     tmdb = TMDBProvider(redis)

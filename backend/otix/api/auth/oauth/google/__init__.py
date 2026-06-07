@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from otix.api._utils import get_current_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import GoogleInitiateResponse
 from otix.domain.user import User
 from otix.infrastructure.config import settings
+from otix.schemas.auth import GoogleInitiateResponse
 from otix.services.google_auth_service import build_google_link_url
 
 logger = structlog.get_logger()

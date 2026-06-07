@@ -8,8 +8,6 @@ from typing import Annotated
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from otix.infrastructure.database import Base
-
 
 def gen_otix_id() -> str:
     """Generate a unique otix_id in the format oti_XXXXXXXXXXXX."""
@@ -123,7 +121,7 @@ async def flush_pending_external_ids(obj, session) -> int:
         return 0
 
     import structlog
-    from sqlalchemy import delete, select
+    from sqlalchemy import select
     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     from otix.domain.media import ExternalID
@@ -165,7 +163,7 @@ async def flush_pending_external_ids(obj, session) -> int:
                 ]
                 if expected_media_types:
                     clauses.append(ExternalID.media_type.in_(expected_media_types))
-                
+
                 legacy = await session.scalar(select(ExternalID).where(*clauses))
                 if legacy is not None:
                     legacy.entity_type = entity_type

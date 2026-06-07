@@ -13,7 +13,6 @@ import httpx
 from redis.asyncio import Redis
 
 from otix.infrastructure.config import settings
-from otix.lib.types import JSONValue
 from otix.providers.base import BaseProvider
 
 BASE_URL = "https://ws.audioscrobbler.com/2.0/"

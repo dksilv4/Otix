@@ -9,13 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from otix.api._utils import get_current_user, get_db, get_optional_user
-from otix.schemas.review import ReviewWithUserOut
-from otix.schemas.user import (
-    PlexIntegrationPublic,
-    SteamIntegrationPublic,
-    UserProfileOut,
-)
-from otix.schemas.friend import FriendshipStatusOut
 from otix.domain.admin_edit import MediaEditProposal
 from otix.domain.media import MediaItem
 from otix.domain.notification import Notification
@@ -23,6 +16,13 @@ from otix.domain.review import Review
 from otix.domain.user import User
 from otix.domain.user_streak import UserStreak
 from otix.lib.levels import compute_level_info
+from otix.schemas.friend import FriendshipStatusOut
+from otix.schemas.review import ReviewWithUserOut
+from otix.schemas.user import (
+    PlexIntegrationPublic,
+    SteamIntegrationPublic,
+    UserProfileOut,
+)
 from otix.services.follow_service import FollowService
 from otix.services.friend_service import FriendService
 from otix.services.review_service import ReviewService

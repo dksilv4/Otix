@@ -3,24 +3,20 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import redis.asyncio as aioredis
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from otix.domain.media import ExternalID, MediaItem
 from otix.domain.sync import ProviderState
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
-from otix.infrastructure.redis import get_redis
-from otix.lib.progress import incr as _progress_incr
-from otix.lib.types import JSONValue
 
 logger = structlog.get_logger()
 
@@ -75,7 +71,7 @@ def compute_next_sync_at(entity_type: str, raw: dict, hash_match_count: int = 0)
 
     Escalation: base * 2^hash_match_count, capped at max_escalation_days.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if entity_type == "movie":
         release_str = raw.get("release_date", "")
@@ -134,7 +130,7 @@ async def get_last_change_check(provider: str) -> datetime:
         state = await session.get(ProviderState, provider)
         if state and state.last_sync_at:
             return state.last_sync_at
-        return datetime.now(timezone.utc) - timedelta(hours=24)
+        return datetime.now(UTC) - timedelta(hours=24)
 
 
 async def set_last_change_check(provider: str, dt: datetime) -> None:
@@ -155,7 +151,7 @@ async def filter_stale_ids(provider: str, external_ids: set[str]) -> set[str]:
     """Return IDs where next_sync_at is in the past or unset."""
     if not external_ids:
         return set()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with async_session() as session:
         result = await session.scalars(
             select(ExternalID.external_id)
@@ -166,7 +162,7 @@ async def filter_stale_ids(provider: str, external_ids: set[str]) -> set[str]:
                 MediaItem.next_sync_at > now,
             )
         )
-        fresh = {r for r in result}
+        fresh = set(result)
     return external_ids - fresh
 
 
@@ -199,5 +195,5 @@ async def filter_missing_ids(provider: str, external_ids: set[str]) -> set[str]:
                 ExternalID.external_id.in_(external_ids),
             )
         )
-        existing = {r for r in result}
+        existing = set(result)
     return external_ids - existing

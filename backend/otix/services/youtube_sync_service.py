@@ -8,7 +8,8 @@ Also links verified YouTube channels to Person (artist) entities.
 from __future__ import annotations
 
 import structlog
-from sqlalchemy import and_, exists as sa_exists, not_, select
+from sqlalchemy import exists as sa_exists
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -72,7 +73,7 @@ async def sync_youtube_watch_history(
 
     Returns summary: {total, music_videos, matched, channel_links}
     """
-    from otix.lib.youtube_progress import publish_progress, store_result, store_progress
+    from otix.lib.youtube_progress import publish_progress, store_progress, store_result
     from otix.services.interaction_service import InteractionService
 
     async def _emit(event_type: str, **kwargs) -> None:

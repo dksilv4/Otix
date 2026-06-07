@@ -6,7 +6,8 @@ RULES:
 - This is the innermost leaf — it depends on nothing internal.
 """
 
-from otix.lib.circuit_breaker import CircuitBreaker, State as CircuitState
+from otix.lib.circuit_breaker import CircuitBreaker
+from otix.lib.circuit_breaker import State as CircuitState
 from otix.lib.metrics import (
     CIRCUIT_BREAKER_STATE,
     SYNC_API_CALL_DURATION,

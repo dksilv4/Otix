@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from datetime import date
+from unittest.mock import AsyncMock, MagicMock
 
-from otix.domain.media import MediaItem, Movie, Show, Album
+import pytest
+
+from otix.domain.media import Album, MediaItem, Movie, Show
 from otix.services.media_service import MediaService
 
 

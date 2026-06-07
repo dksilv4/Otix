@@ -1,11 +1,13 @@
 # TODO: Review this file
 from __future__ import annotations
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from otix.api._utils import get_current_user, get_db
-from otix.schemas.auth import PlexSessionResponse, PlexSessionsResponse
 from otix.domain.user import User
+from otix.schemas.auth import PlexSessionResponse, PlexSessionsResponse
 from otix.services.plex_sync_service import get_plex_sessions
 
 router = APIRouter()

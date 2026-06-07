@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
-from jose import JWTError, jwt
+from jose import jwt
 
 from otix.infrastructure.config import settings
 
@@ -20,7 +20,7 @@ __all__ = [
 
 
 def create_access_token(user_id: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "type": "access",
@@ -31,7 +31,7 @@ def create_access_token(user_id: str) -> str:
 
 
 def create_refresh_token(user_id: str, session_key: str = "") -> tuple[str, str, datetime]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     jti = str(uuid.uuid4())
     exp = now + timedelta(days=settings.refresh_token_lifetime_days)
     payload = {
@@ -47,7 +47,7 @@ def create_refresh_token(user_id: str, session_key: str = "") -> tuple[str, str,
 
 
 def create_challenge_token(user_id: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "type": "2fa_challenge",

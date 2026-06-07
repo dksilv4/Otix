@@ -33,8 +33,8 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
       if (!el) return
 
       const elStyle = getComputedStyle(el)
-      const gap =
-        parseFloat(elStyle.getPropertyValue('--carousel-gap')) || BASE_GAP
+      // Use computed gap in pixels — avoids parseFloat('1.25rem') → 1.25
+      const gap = parseFloat(elStyle.gap) || BASE_GAP
       const scrollWidth = el.getBoundingClientRect().width
       const padLeft = parseFloat(elStyle.paddingLeft) || 0
       const padRight = parseFloat(elStyle.paddingRight) || 0
@@ -43,11 +43,13 @@ export const MediaCarousel = memo(function MediaCarousel({ items, isLoading, cla
       let count = Math.floor((contentWidth + gap) / (BASE_ITEM_WIDTH + gap))
       count = Math.max(2, count)
 
-      // Size cards to perfectly fill visible content area — no partials
-      el.style.setProperty(
-        '--card-width',
-        `calc((100% - ${(count - 1) * gap}px) / ${count})`,
-      )
+      // Size cards to perfectly fill visible content area — no partials.
+      // Use exact pixel width instead of calc(100% - ...) because 100%
+      // includes padding, which isn't available for flex items. The
+      // ResizeObserver keeps it updated on resize.
+      const totalGapWidth = (count - 1) * gap
+      const cardWidth = Math.max(0, Math.floor((contentWidth - totalGapWidth) / count))
+      el.style.setProperty('--card-width', `${cardWidth}px`)
       setVisibleCount(count)
     }
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -19,13 +20,11 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
-from sqlalchemy.orm import Mapped, foreign, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from pgvector.sqlalchemy import Vector
-
-from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, TimestampMixin, gen_otix_id, otix_fk, otix_pk
+from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
+from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, TimestampMixin, otix_fk, otix_pk
 from otix.domain.genre import MediaGenre, MediaKeyword
-from otix.domain.asset import MediaAsset, MediaVideo, MediaRelease, ExternalRating
 from otix.domain.interaction import UserMediaInteraction
 
 if TYPE_CHECKING:
@@ -33,8 +32,8 @@ if TYPE_CHECKING:
     from otix.domain.company import InvolvedCompany
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.franchise import Franchise, FranchiseItem
-    from otix.domain.people import MediaCredit
     from otix.domain.media_rating import MediaItemRating
+    from otix.domain.people import MediaCredit
     from otix.domain.review import Review
     from otix.domain.user import User
 
@@ -103,7 +102,7 @@ class MediaItem(Base, TimestampMixin):
     )
     platforms: Mapped[list[MediaPlatform]] = relationship("MediaPlatform", back_populates="media_item")
     game_modes: Mapped[list[MediaGameMode]] = relationship("MediaGameMode", back_populates="media_item")
-    watch_providers: Mapped[list["MediaWatchProvider"]] = relationship(
+    watch_providers: Mapped[list[MediaWatchProvider]] = relationship(
         "MediaWatchProvider", back_populates="media_item"
     )
 
@@ -120,7 +119,7 @@ class Movie(Base):
     collection_id: Mapped[str | None] = mapped_column(String(16), ForeignKey("collections.id"))
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="movie")
-    collection: Mapped["Collection | None"] = relationship("Collection", back_populates="movies")
+    collection: Mapped[Collection | None] = relationship("Collection", back_populates="movies")
 
 
 class Show(Base):
@@ -135,7 +134,7 @@ class Show(Base):
     number_of_episodes: Mapped[int | None] = mapped_column(Integer)
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="show")
-    seasons: Mapped[list["Season"]] = relationship("Season", back_populates="show")
+    seasons: Mapped[list[Season]] = relationship("Season", back_populates="show")
 
 
 class Season(Base):
@@ -149,7 +148,7 @@ class Season(Base):
     poster_url: Mapped[str | None] = mapped_column(String(2000))
 
     show: Mapped[Show] = relationship("Show", back_populates="seasons")
-    episodes: Mapped[list["Episode"]] = relationship("Episode", back_populates="season")
+    episodes: Mapped[list[Episode]] = relationship("Episode", back_populates="season")
 
 
 class Episode(Base):
@@ -165,8 +164,8 @@ class Episode(Base):
     still_url: Mapped[str | None] = mapped_column(String(2000))
 
     season: Mapped[Season] = relationship("Season", back_populates="episodes")
-    external_ratings: Mapped[list["ExternalRating"]] = relationship("ExternalRating", back_populates="episode")
-    episode_interactions: Mapped[list["UserEpisodeInteraction"]] = relationship(
+    external_ratings: Mapped[list[ExternalRating]] = relationship("ExternalRating", back_populates="episode")
+    episode_interactions: Mapped[list[UserEpisodeInteraction]] = relationship(
         "UserEpisodeInteraction", back_populates="episode"
     )
 
@@ -197,7 +196,7 @@ class Game(Base, HasExternalIDs):
     )
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game")
-    franchise: Mapped["Franchise | None"] = relationship("Franchise", back_populates="games")
+    franchise: Mapped[Franchise | None] = relationship("Franchise", back_populates="games")
 
     @property
     def store_ids(self) -> dict | None:
@@ -299,7 +298,7 @@ class TrackRating(Base, TimestampMixin):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     track: Mapped[Track] = relationship("Track", back_populates="ratings")
-    user: Mapped["User"] = relationship("User")
+    user: Mapped[User] = relationship("User")
 
     __table_args__ = (CheckConstraint("score >= 1 AND score <= 10", name="ck_track_rating_score_range"),)
 

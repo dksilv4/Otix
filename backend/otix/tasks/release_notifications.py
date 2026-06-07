@@ -16,10 +16,10 @@ from datetime import date
 import structlog
 from sqlalchemy import text
 
-from otix.services.notification_service import NotificationService
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.lib.concurrency import run_async
+from otix.services.notification_service import NotificationService
 
 logger = structlog.get_logger()
 

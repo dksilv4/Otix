@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db
+from otix.domain.user import User
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import MediaItemListResponse, MediaItemSummary
-from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 
 logger = structlog.get_logger()

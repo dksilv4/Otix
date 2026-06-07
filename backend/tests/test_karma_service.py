@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
-from datetime import datetime, timezone
 
 from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.review_vote import ReviewVote
@@ -149,7 +150,7 @@ class TestKarmaGetQueries:
 class TestKarmaTransactions:
     async def test_get_karma_transactions_basic(self, service: KarmaService, mock_db_session: AsyncMock):
         tx1 = KarmaTransaction(user_id="user-1", amount=10, reason="test")
-        tx1.created_at = datetime.now(timezone.utc)
+        tx1.created_at = datetime.now(UTC)
         mock_db_session.scalars.return_value = iter([tx1])
 
         result, next_cursor = await service.get_karma_transactions("user-1", limit=10)
@@ -172,7 +173,7 @@ class TestKarmaTransactions:
 
     async def test_get_karma_transactions_with_cursor(self, service: KarmaService, mock_db_session: AsyncMock):
         tx1 = KarmaTransaction(user_id="user-1", amount=10, reason="test")
-        tx1.created_at = datetime.now(timezone.utc)
+        tx1.created_at = datetime.now(UTC)
         mock_db_session.scalars.return_value = iter([tx1])
 
         result, next_cursor = await service.get_karma_transactions("user-1", cursor="2026-05-24T12:00:00", limit=10)

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from otix.domain.media import Album, MediaItem, Track
 from otix.lib.slug import slugify
@@ -107,7 +107,7 @@ def to_album(raw: dict[str, JSONValue], tracks_data: list[dict] | None = None) -
         slug=slugify(title),
         poster_url=cover_url,
         release_date=release_date,
-        synced_at=datetime.now(timezone.utc),
+        synced_at=datetime.now(UTC),
     )
 
     album = Album(

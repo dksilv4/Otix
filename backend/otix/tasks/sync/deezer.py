@@ -19,8 +19,7 @@ import structlog
 from sqlalchemy import select
 
 from otix.domain.asset import MediaAsset
-from otix.domain.media import Album, ExternalID, MediaItem, Track
-from otix.services.external_id_service import ExternalIDService
+from otix.domain.media import Album, ExternalID
 from otix.domain.people import MediaCredit, Person
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
@@ -30,6 +29,7 @@ from otix.lib.progress import incr as _progress_incr
 from otix.lib.task_guard import TaskGuard
 from otix.providers.deezer.client import DeezerProvider
 from otix.providers.deezer.transformer import _extract_cover_url, to_album
+from otix.services.external_id_service import ExternalIDService
 
 logger = structlog.get_logger()
 
@@ -117,7 +117,7 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
         isrcs: list[str] = []
         # Extract ISRCs from raw track data (isrc is now an ExternalID descriptor, not a column)
         track_isrcs: list[str | None] = []
-        for td in (track_data or []):
+        for td in track_data or []:
             if isinstance(td, dict):
                 raw_isrc = td.get("isrc")
                 track_isrcs.append(str(raw_isrc) if isinstance(raw_isrc, str) and raw_isrc else None)
@@ -148,11 +148,10 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
         artist_data = raw.get("artist")
         if isinstance(artist_data, dict):
             from sqlalchemy import func as sa_func
+
             name = str(artist_data.get("name", ""))
             if name:
-                person = await session.scalar(
-                    select(Person).where(sa_func.lower(Person.name) == name.lower())
-                )
+                person = await session.scalar(select(Person).where(sa_func.lower(Person.name) == name.lower()))
                 if person is None:
                     pic = artist_data.get("picture_medium") or artist_data.get("picture_big")
                     person = Person(
@@ -170,28 +169,29 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
                     )
                 )
                 if not exists:
-                    session.add(MediaCredit(
-                        media_item_id=item.id,
-                        person_id=person.id,
-                        role="primary",
-                        character_name=name,
-                        sort_order=0,
-                    ))
+                    session.add(
+                        MediaCredit(
+                            media_item_id=item.id,
+                            person_id=person.id,
+                            role="primary",
+                            character_name=name,
+                            sort_order=0,
+                        )
+                    )
 
         # 6. Genres
         if genre_names:
-            from otix.domain.genre import Genre, MediaGenre
             from uuid import uuid4
+
             from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            from otix.domain.genre import Genre, MediaGenre
+
             for genre_name in genre_names:
                 slug = genre_name.lower().replace(" ", "-").replace("/", "-")
                 genre = await session.scalar(select(Genre).where(Genre.slug == slug))
                 if genre is None:
-                    await session.execute(
-                        pg_insert(Genre)
-                        .values(id=f"oti_{uuid4().hex[:12]}", name=genre_name, slug=slug)
-                        .on_conflict_do_nothing(constraint="genres_slug_key")
-                    )
+                    await session.execute(pg_insert(Genre).values(id=f"oti_{uuid4().hex[:12]}", name=genre_name, slug=slug).on_conflict_do_nothing())
                     genre = await session.scalar(select(Genre).where(Genre.slug == slug))
                 if genre:
                     mg_exists = await session.scalar(
@@ -205,7 +205,8 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
 
         await session.commit()
 
-        logger.info("deezer album seeded",
+        logger.info(
+            "deezer album seeded",
             otix_id=item.id,
             deezer_id=deezer_id,
             title=item.title,
@@ -266,15 +267,14 @@ async def _sync_deezer_seed_artist(deezer_artist_id: str) -> dict | None:
 
     async with async_session() as session:
         from sqlalchemy import func as sa_func
+
         from otix.domain.people import Person
 
         name = str(artist.get("name", ""))
         if not name:
             return None
 
-        person = await session.scalar(
-            select(Person).where(sa_func.lower(Person.name) == name.lower())
-        )
+        person = await session.scalar(select(Person).where(sa_func.lower(Person.name) == name.lower()))
 
         if person is None:
             pic = artist.get("picture_medium") or artist.get("picture_big")
@@ -311,9 +311,7 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
     async with async_session() as session:
         from sqlalchemy.orm import joinedload
 
-        album = await session.scalar(
-            select(Album).options(joinedload(Album.media_item)).where(Album.media_item_id == otix_id)
-        )
+        album = await session.scalar(select(Album).options(joinedload(Album.media_item)).where(Album.media_item_id == otix_id))
         if album is None:
             return None
 
@@ -347,11 +345,7 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
 
         # Fall back to search by artist+title if no Deezer ID or direct fetch failed
         if not cover_url:
-            credit = await session.scalar(
-                select(Person.name)
-                .join(MediaCredit, MediaCredit.person_id == Person.id)
-                .where(MediaCredit.media_item_id == otix_id, MediaCredit.role == "primary")
-            )
+            credit = await session.scalar(select(Person.name).join(MediaCredit, MediaCredit.person_id == Person.id).where(MediaCredit.media_item_id == otix_id, MediaCredit.role == "primary"))
             artist_name = credit or ""
             album_title = album.media_item.title or ""
 
@@ -375,22 +369,23 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
             return None
 
         album.media_item.poster_url = cover_url
-        session.add(MediaAsset(
-            media_item_id=otix_id,
-            asset_type="poster",
-            url=cover_url,
-            width=1000,
-            height=1000,
-            provider="deezer",
-        ))
+        session.add(
+            MediaAsset(
+                media_item_id=otix_id,
+                asset_type="poster",
+                url=cover_url,
+                width=1000,
+                height=1000,
+                provider="deezer",
+            )
+        )
 
         if matched_deezer_id and not deezer_eid:
             eid_svc = ExternalIDService(session)
             await eid_svc.upsert("deezer", matched_deezer_id, "media_item", otix_id)
 
         await session.commit()
-        logger.info("deezer cover art enriched",
-            title=album.media_item.title, otix_id=otix_id, deezer_id=matched_deezer_id)
+        logger.info("deezer cover art enriched", title=album.media_item.title, otix_id=otix_id, deezer_id=matched_deezer_id)
         return {"otix_id": otix_id, "deezer_id": matched_deezer_id, "cover_url": cover_url}
 
 
@@ -486,7 +481,8 @@ async def _seed_deezer_cycle() -> dict:
             new_count += 1
 
     await _progress_incr("deezer_cycle_albums_enqueued", new_count)
-    logger.info("deezer discovery cycle complete",
+    logger.info(
+        "deezer discovery cycle complete",
         chart_total=len(chart_albums),
         new_enqueued=new_count,
         already_known=skipped_count,

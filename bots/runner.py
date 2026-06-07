@@ -97,7 +97,7 @@ class Runner:
                     return
             except Exception:
                 pass
-            remaining = (max_retries - i) * interval
+            (max_retries - i) * interval
             logger.info("runner.api_not_ready", retry=i + 1, max_retries=max_retries)
             await asyncio.sleep(interval)
         logger.warning("runner.api_not_ready_proceeding")

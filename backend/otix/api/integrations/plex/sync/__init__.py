@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 import uuid
+
 import structlog
 from fastapi import APIRouter, Depends, Request, status
+
 from otix.api._utils import get_current_user
+from otix.domain.user import User
 from otix.lib.plex_progress import get_stored_result
 from otix.lib.sse import SseStreamConfig, create_sse_response
 from otix.schemas.auth import PlexSyncTaskResponse
-from otix.domain.user import User
 
 logger = structlog.get_logger()
 router = APIRouter()

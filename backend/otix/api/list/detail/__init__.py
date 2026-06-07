@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_current_user, get_db, get_optional_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
+from otix.domain.user import User
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.list import (
     CollaboratorOut,
@@ -15,7 +16,6 @@ from otix.schemas.list import (
     UserRef,
 )
 from otix.schemas.media import MediaItemSummary
-from otix.domain.user import User
 from otix.services.interaction_service import InteractionService
 from otix.services.list_service import ListService
 

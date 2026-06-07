@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
+
 import pytest
 
 import otix.tasks.sync.spotify as sync_tasks
@@ -13,6 +14,7 @@ from otix.tasks.sync.spotify import (
     _get_or_create_spotify_artist,
     _sync_spotify_seed_album,
 )
+
 
 # Stub for deprecated/removed function to allow imports and skips to work
 async def _backfill_spotify_album_titles(*args, **kwargs):
@@ -111,6 +113,7 @@ async def test_spotify_seed_album_saves_album_title_and_artist_credit(monkeypatc
 
         async def execute(self, _stmt):
             from unittest.mock import MagicMock
+
             from otix.domain.media import ExternalID
             res = MagicMock()
             res.scalar_one = MagicMock(return_value=ExternalID(provider="spotify", external_id="mock"))

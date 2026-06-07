@@ -9,7 +9,7 @@ from otix.api._utils import get_optional_user
 from otix.domain.media import MediaItem, UserLocalGame
 from otix.domain.user import User
 from otix.infrastructure.database import async_session
-from otix.schemas.media import InstalledGameSummary, InstalledGamesResponse
+from otix.schemas.media import InstalledGamesResponse, InstalledGameSummary
 
 router = APIRouter(prefix="/installed", tags=["library"])
 

@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import get_db, get_optional_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
-from otix.schemas.auth import GoogleCallbackRequest, GoogleCallbackResponse
 from otix.domain.user import User
 from otix.infrastructure.config import settings
+from otix.schemas.auth import GoogleCallbackRequest, GoogleCallbackResponse
 from otix.services.google_auth_service import link_google_to_user
 
 logger = structlog.get_logger()

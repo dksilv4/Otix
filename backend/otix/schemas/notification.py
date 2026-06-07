@@ -5,8 +5,6 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from otix.schemas.common import PaginatedResponse
-
 
 class NotificationOut(BaseModel):
     id: str

@@ -1,7 +1,7 @@
 # TODO: Review this file
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,13 +26,14 @@ class WorkoutService:
         started_at: datetime | None = None,
     ) -> Workout:
         import secrets
+
         from otix.domain.workout import Exercise
 
         workout = Workout(
             user_id=user_id,
             raw_input=raw_input,
             notes=notes,
-            started_at=started_at or datetime.now(timezone.utc),
+            started_at=started_at or datetime.now(UTC),
         )
         self.session.add(workout)
         await self.session.flush()
@@ -148,7 +149,7 @@ class WorkoutService:
         from datetime import date, timedelta
 
         today = date.today()
-        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=UTC)
         tomorrow = today_start + timedelta(days=1)
 
         workout = await self.session.scalar(
@@ -182,7 +183,7 @@ class WorkoutService:
         from datetime import date, timedelta
 
         today = date.today()
-        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=UTC)
         tomorrow = today_start + timedelta(days=1)
 
         existing = await self.session.scalar(
@@ -198,7 +199,7 @@ class WorkoutService:
 
         workout = Workout(
             user_id=user_id,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         self.session.add(workout)
         await self.session.flush()
@@ -214,7 +215,7 @@ class WorkoutService:
         from datetime import date, timedelta
 
         today = date.today()
-        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc)
+        today_start = datetime.combine(today, datetime.min.time()).replace(tzinfo=UTC)
         tomorrow = today_start + timedelta(days=1)
 
         result = await self.session.execute(
@@ -239,7 +240,7 @@ class WorkoutService:
         today = date.today()
         start_date = today - timedelta(days=weeks * 7 - 1)
 
-        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=UTC)
 
         workout_date = func.date(Workout.started_at)
         result = await self.session.execute(
