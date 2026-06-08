@@ -6,10 +6,11 @@ import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { useDownloadConfig, useConnectionTest, useDownloads } from '@/features/downloads/use-downloads'
 import { Loader2, ChevronDown, Server, Search, CheckCircle2, XCircle, Plus, Trash2, Clock, ArchiveX } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
 import './downloads-section.scss'
 
 export function DownloadsSection() {
-  const isDesktop = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const desktop = isDesktop()
   const { user } = useAuth()
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
   const { testingSabnzbd, testingNzbplanet, testSabnzbd, testNzbplanet } = useConnectionTest()
@@ -125,7 +126,7 @@ export function DownloadsSection() {
     setExpandedId(prev => prev === id ? null : id)
   }
 
-  if (!isDesktop) return null
+  if (!desktop) return null
 
   return (
     <div className="dk-settings-downloads__body">

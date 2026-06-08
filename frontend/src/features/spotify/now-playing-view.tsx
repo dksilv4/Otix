@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  Gamepad2,
 } from 'lucide-react'
 import { useDownloads } from '@/features/downloads/use-downloads'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,6 +34,8 @@ import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { useInstallProgress } from '@/features/game-scanner/install-store'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
+import { useRunningGame } from '@/features/games/hooks/use-running-game'
 import './now-playing-view.scss'
 
 // ── helpers ──
@@ -53,6 +56,16 @@ function formatBytes(bytes: number | null): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
+function formatElapsed(ms: number): string {
+  if (ms <= 0) return '0:00'
+  const totalSec = Math.floor(ms / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 interface PersonListResponse {
   items: Array<{ id: string; name: string }>
 }
@@ -63,7 +76,7 @@ interface PlexSessionsResponse {
 
 // ── Now Playing View ──
 
-const PANEL_WIDTH = 340
+const PANEL_WIDTH = 300
 const PANEL_MARGIN = 16
 
 export interface NowPlayingViewProps {
@@ -94,6 +107,9 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
     plexPreviousTracks,
     skipPlexToIndex,
   } = usePlayer()
+
+  const { runningGame, elapsedMs } = useRunningGame()
+  const desktop = isDesktop()
 
   const hasScrolledRef = useRef(false)
 
@@ -279,6 +295,31 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
     } catch { /* ignore */ }
   }
 
+  const staggerVariants = {
+    hidden: {},
+    visible: {
+      transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+    },
+  }
+
+  const sectionVariants = {
+    hidden: { opacity: 0, y: -16, scale: 0.97, filter: 'blur(4px)' },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: 'blur(0px)',
+      transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+    },
+    exit: {
+      opacity: 0,
+      y: -12,
+      scale: 0.97,
+      filter: 'blur(2px)',
+      transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
+    },
+  }
+
   if (!open) return null
 
   const artists = currentTrack
@@ -303,8 +344,8 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
           style={{
             width: PANEL_WIDTH,
             right: PANEL_MARGIN,
-            top: 76, // 60px (nav bottom) + 16px (uniform margin)
-            maxHeight: `calc(100vh - 76px - ${PANEL_MARGIN}px)`,
+            top: desktop ? 100 : 60,
+            maxHeight: `calc(100vh - 100px - ${PANEL_MARGIN}px)`,
             zIndex: 9998,
           }}
           drag="x"
@@ -316,7 +357,59 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
             }
           }}
         >
-          {/* 1. Music Player Container */}
+          {/* ── Stagger container for section animations ── */}
+          <motion.div
+            variants={staggerVariants}
+            initial="hidden"
+            animate="visible"
+            className="dk-now-playing__sections"
+          >
+            {/* 0. Game Activity — running game detected by GameDetector */}
+            <AnimatePresence mode="popLayout">
+              {runningGame && (
+                <motion.div
+                  key="section-game"
+                  variants={sectionVariants}
+                  exit="exit"
+                  layout
+                >
+                  <div className="dk-now-playing__game">
+                    <div className="dk-now-playing__game-card">
+                      <div className="dk-now-playing__game-art">
+                        {runningGame.game.posterUrl || runningGame.game.iconUrl ? (
+                          <img
+                            src={runningGame.game.posterUrl || runningGame.game.iconUrl}
+                            alt={runningGame.game.title}
+                            className="dk-now-playing__game-img"
+                          />
+                        ) : (
+                          <div className="dk-now-playing__game-img-placeholder">
+                            <Gamepad2 size={24} className="text-white/30" />
+                          </div>
+                        )}
+                        <div className="dk-now-playing__game-badge">
+                          <span className="dk-now-playing__game-badge-dot" />
+                        </div>
+                      </div>
+                      <div className="dk-now-playing__game-info">
+                        <p className="dk-now-playing__game-label">Now Playing</p>
+                        <h3 className="dk-now-playing__game-title">{runningGame.game.data?.title || runningGame.game.title}</h3>
+                        <div className="dk-now-playing__game-meta">
+                          <span className="dk-now-playing__game-platform">{runningGame.game.platform.toUpperCase()}</span>
+                          <span className="dk-now-playing__game-sep">·</span>
+                          <span className="dk-now-playing__game-timer">
+                            <Clock size={10} />
+                            {formatElapsed(elapsedMs)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 1. Music Player Container */}
           {currentTrack && (
             <div
               className="dk-now-playing__player"
@@ -742,7 +835,14 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
           )}
 
           {/* 2. Game Install Progress */}
-          {installs.length > 0 ? (
+          <AnimatePresence mode="popLayout">
+            {installs.length > 0 && (
+              <motion.div
+                key="section-installs"
+                variants={sectionVariants}
+                exit="exit"
+                layout
+              >
             <div className="dk-now-playing__downloads">
               <div className="dk-now-playing__downloads-header">
                 <div className="dk-now-playing__downloads-icon-wrap">
@@ -827,10 +927,19 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                 ))}
               </div>
             </div>
-          ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 3. Downloads Container */}
-          {hasDownloads && (
+          <AnimatePresence mode="popLayout">
+            {hasDownloads && (
+              <motion.div
+                key="section-downloads"
+                variants={sectionVariants}
+                exit="exit"
+                layout
+              >
             <div className="dk-now-playing__downloads">
               <div className="dk-now-playing__downloads-header">
                 <div className="dk-now-playing__downloads-icon-wrap">
@@ -928,30 +1037,50 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                 })}
               </div>
             </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 4. Plex Activity Container */}
-          {plexSessions.length > 0 && (
-            <div className="dk-now-playing__plex">
-              <div className="dk-now-playing__plex-header">
-                <span className="dk-now-playing__plex-dot" />
-                <span className="dk-now-playing__plex-title">
-                  Plex &middot; {plexSessions.length} streaming
-                </span>
-              </div>
-              <PlexSessionList sessions={plexSessions} />
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {plexSessions.length > 0 && (
+              <motion.div
+                key="section-plex"
+                variants={sectionVariants}
+                exit="exit"
+                layout
+              >
+                <div className="dk-now-playing__plex">
+                  <div className="dk-now-playing__plex-header">
+                    <span className="dk-now-playing__plex-dot" />
+                    <span className="dk-now-playing__plex-title">
+                      Plex &middot; {plexSessions.length} streaming
+                    </span>
+                  </div>
+                  <PlexSessionList sessions={plexSessions} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 5. Empty/Placeholder State Container */}
-          {!currentTrack && !hasDownloads && installs.length === 0 && plexSessions.length === 0 && (
-            <div className="dk-now-playing__empty">
-              <p className="dk-now-playing__empty-text">
-                No current activity
-              </p>
-            </div>
-          )}
+          <AnimatePresence mode="popLayout">
+            {!currentTrack && !hasDownloads && installs.length === 0 && plexSessions.length === 0 && !runningGame && (
+              <motion.div
+                key="section-empty"
+                variants={sectionVariants}
+                exit="exit"
+              >
+                <div className="dk-now-playing__empty">
+                  <p className="dk-now-playing__empty-text">
+                    No current activity
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
+      </motion.div>
       )}
     </AnimatePresence>
   )

@@ -103,7 +103,7 @@ async def remove_interaction(
     await redis.delete(f"media:detail:{media_id}:{current_user.id}")
 
 
-# ── Claim / unclaim (owned games) ─────────────────────────────────────
+# ── Claim / unclaim (owned game) ─────────────────────────────────────
 
 
 @interaction_router.post(

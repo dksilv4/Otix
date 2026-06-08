@@ -1,5 +1,56 @@
-// frontend/src/features/games/types.ts
-import type { DetectedGame } from "@/features/game-scanner/types"
+// ── Shared game types ──────────────────────────────────────────────
+
+export interface UpdateFile {
+  name: string
+  path: string
+}
+
+export interface Game {
+  id: string
+  title: string
+  slug?: string
+  overview?: string | null
+  platform?: LauncherPlatform
+  iconUrl?: string
+  posterUrl?: string
+  textlessPosterUrl?: string | null
+  backdropUrl?: string
+  logoUrl?: string
+  releaseDate?: string | null
+  genres?: { id: string; name: string; slug: string }[]
+  gameModes?: { id: string; gameMode: { id: string; name: string; slug: string } }[]
+  involvedCompanies?: {
+    id: string
+    company: { id: string; name: string; slug: string; logoUrl?: string | null }
+    developer: boolean
+    publisher: boolean
+  }[]
+  isFree?: boolean
+  hasMultiplayer?: boolean
+}
+
+export interface LocalGame {
+  id: string
+  title: string
+  exePath: string
+  localExePath?: string
+  platform: LauncherPlatform
+  installDir: string
+  sources?: string[]
+  localIconUrl?: string
+  iconUrl?: string
+  posterUrl?: string
+  updateFiles?: UpdateFile[]
+  data?: Game
+  matchSuggestion?: Game
+}
+
+export const LAUNCHER_PLATFORMS = [
+  'steam', 'pc', 'iso', 'epic', 'gog', 'battlenet',
+  'ubisoft', 'origin', 'ea', 'riot', 'xbox', 'itch', 'unknown',
+] as const
+
+export type LauncherPlatform = typeof LAUNCHER_PLATFORMS[number]
 
 // ── Catalog game (from Otix backend API) ─────────────────────────────
 
@@ -43,13 +94,36 @@ export interface CatalogGameDetail extends CatalogGame {
   youtubeChannelTitle?: string | null
 }
 
+// ── Display game (launcher view) ──────────────────────────────────────
+
+export interface DisplayGame {
+  id: string
+  title: string
+  description?: string
+  backdropUrl?: string
+  posterUrl: string | null
+  localIconUrl?: string
+  iconUrl?: string
+  logoUrl?: string
+  badge?: string
+  playtime: string
+  achievements: string
+  isDefault: boolean
+  platform: LauncherPlatform
+  exePath?: string
+  installDir?: string
+  isInstalled?: boolean
+  otixMediaId?: string
+  rawGame?: LocalGame
+}
+
 // ── Shelf display ───────────────────────────────────────────────────
 
 export interface ShelfRow {
   id: string
   label: string
   icon: string
-  games: DetectedGame[]
+  games: LocalGame[]
   catalogGames?: CatalogGame[]
   emptyMessage?: string
 }

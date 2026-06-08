@@ -85,7 +85,7 @@ class SteamGridDBProvider(BaseProvider):
         Supported platforms: steam, egs, origin, bnet, uplay, flashpoint, eshop.
         """
         try:
-            response = await self._get(f"/games/{platform}/{platform_id}")
+            response = await self._get(f"/game/{platform}/{platform_id}")
             if response.status_code != 200:
                 return None
             body = response.json()
@@ -107,7 +107,7 @@ class SteamGridDBProvider(BaseProvider):
     async def get_game_by_id(self, sgdb_game_id: int) -> dict[str, JSONValue] | None:
         """Look up a SteamGridDB game by its own internal ID."""
         try:
-            response = await self._get(f"/games/id/{sgdb_game_id}")
+            response = await self._get(f"/game/id/{sgdb_game_id}")
             if response.status_code != 200:
                 return None
             body = response.json()
@@ -121,7 +121,7 @@ class SteamGridDBProvider(BaseProvider):
             return None
 
     async def search_games(self, query: str) -> list[dict[str, JSONValue]]:
-        """Search for games by name via the autocomplete endpoint.
+        """Search for game by name via the autocomplete endpoint.
 
         Returns a list of matching game objects, each with at least 'id', 'name',
         and 'types' (list of platform strings the game supports).

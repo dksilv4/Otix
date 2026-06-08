@@ -8,6 +8,7 @@ import { useDownloads } from '../use-downloads';
 import { DownloadCard } from '../molecules/download-card';
 import { DkButton } from '@/features/dk-ui/atoms/button';
 import { cn } from '@/lib/utils';
+import { isDesktop } from '@/lib/desktop-api';
 import './download-queue.scss';
 
 export function DownloadQueuePage() {
@@ -17,7 +18,7 @@ export function DownloadQueuePage() {
   const { downloads, loading, pollQueue, cancelDownload } = useDownloads(userId);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'deleted'>('all');
 
-  const isDesktop = typeof window !== 'undefined' && !!window.desktopAPI;
+  const desktop = isDesktop();
 
   // Admin + experiment gate
   if (!user?.isAdmin || !downloadsEnabled) {
@@ -32,7 +33,7 @@ export function DownloadQueuePage() {
     );
   }
 
-  if (!isDesktop) {
+  if (!desktop) {
     return (
       <div className="dk-downloads__gate">
         <Download className="h-12 w-12 text-muted-foreground/30 mb-4" />

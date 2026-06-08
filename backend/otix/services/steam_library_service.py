@@ -19,7 +19,7 @@ STEAM_API_BASE = "https://api.steampowered.com"
 
 
 async def get_steam_game_seed_ids(session: AsyncSession, user_id: str, limit: int = 40) -> list[str]:
-    """Get media_item_ids from a user's Steam games, sorted by playtime."""
+    """Get media_item_ids from a user's Steam game, sorted by playtime."""
     result = await session.execute(
         select(UserSteamGame.media_item_id)
         .where(
@@ -60,7 +60,7 @@ async def get_steam_playtime(session: AsyncSession, user_id: str, media_id: str)
 
 
 async def _fetch_owned_games(steam_id: str) -> list[dict]:
-    """Fetch owned games from Steam Web API directly (no rate limiter needed for one-off scans)."""
+    """Fetch owned game from Steam Web API directly (no rate limiter needed for one-off scans)."""
     url = f"{STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/"
     from otix.infrastructure.http_client import get_http_client
 
@@ -73,18 +73,18 @@ async def _fetch_owned_games(steam_id: str) -> list[dict]:
             "include_played_free_games": 1,
         })
     except Exception as exc:
-        logger.exception("steam owned games request failed")
+        logger.exception("steam owned game request failed")
         raise RuntimeError(f"Failed to connect to Steam API: {exc}") from exc
 
     if resp.status_code == 403 or resp.status_code == 401:
         logger.warning("steam profile is private or api key invalid", steam_id=steam_id, status=resp.status_code)
         return []
     if resp.status_code != 200:
-        logger.error("steam owned games unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500])
+        logger.error("steam owned game unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500])
         raise RuntimeError(f"Steam API returned {resp.status_code}")
 
     data = resp.json()
-    games = data.get("response", {}).get("games")
+    games = data.get("response", {}).get("game")
     if isinstance(games, list):
         return games
     return []
@@ -94,7 +94,7 @@ async def scan_steam_library(
     db: AsyncSession,
     user: User,
 ) -> dict:
-    """Fetch the user's Steam library, match to Otix games, and store results.
+    """Fetch the user's Steam library, match to Otix game, and store results.
 
     Returns a summary dict with ``total_in_steam`` and ``matched_in_otix`` counts.
     """
@@ -172,7 +172,7 @@ async def get_unmatched_steam_games(
     cursor: str | None = None,
     limit: int = 48,
 ) -> tuple[list[UserSteamGame], bool, str | None]:
-    """Return unmatched Steam games (no Otix match) sorted by playtime desc.
+    """Return unmatched Steam game (no Otix match) sorted by playtime desc.
 
     Cursor format: ``{playtime_forever}__{steam_app_id}``.
     """
@@ -232,7 +232,7 @@ async def get_steam_library(
     ``(media_item, playtime_forever, playtime_2weeks, rtime_last_played)``.
 
     Cursor format: ``{playtime_forever}__{steam_app_id}``.
-    Unmatched games (NULL media_item_id) are excluded from results.
+    Unmatched game (NULL media_item_id) are excluded from results.
     """
     query = (
         select(MediaItem, UserSteamGame.playtime_forever, UserSteamGame.playtime_2weeks, UserSteamGame.rtime_last_played)
@@ -364,7 +364,7 @@ async def scan_steam_wishlist(
     db: AsyncSession,
     user: User,
 ) -> dict:
-    """Fetch the user's Steam wishlist, match to Otix games, and store results."""
+    """Fetch the user's Steam wishlist, match to Otix game, and store results."""
     steam_id = user.steam_id
     if not steam_id:
         raise ValueError("User has no linked Steam account")

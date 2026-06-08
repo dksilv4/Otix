@@ -119,7 +119,7 @@ async def _force_rehydrate_media(task_id: str, media_item_id: str) -> dict:
                 await _run_rehydrate_step(task_id, "igdb", "IGDB game", lambda: _sync_igdb_game(int(igdb_id), force=True))
 
             # Re-load after IGDB sync to pick up freshly extracted store IDs.
-            # For Steam-seeded games (no IGDB), uses the IDs already in ExternalID.
+            # For Steam-seeded game (no IGDB), uses the IDs already in ExternalID.
             latest = await _load_rehydrate_target(media_item_id) or target
             store_ids = latest.get("store_ids") if isinstance(latest.get("store_ids"), dict) else {}
 

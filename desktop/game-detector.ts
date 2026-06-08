@@ -3,10 +3,10 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
-import type { DetectedGame } from './scanner';
+import type { LocalGame } from './scanner';
 
 export interface RunningGame {
-  game: DetectedGame;
+  game: LocalGame;
   startTime: number;
   launchedByOtix: boolean;
   pid?: number;
@@ -98,7 +98,7 @@ function getWindowTitles(): Promise<Map<string, string>> {
 
 export class GameDetector extends EventEmitter {
   private runningGames: Map<string, RunningGame> = new Map();
-  private library: DetectedGame[] = [];
+  private library: LocalGame[] = [];
   private scanTimer: ReturnType<typeof setInterval> | null = null;
   private sessionsPath: string;
   private mappingsPath: string;
@@ -113,15 +113,15 @@ export class GameDetector extends EventEmitter {
     this.loadMappings();
   }
 
-  setLibrary(games: DetectedGame[]) {
+  setLibrary(games: LocalGame[]) {
     this.library = games;
   }
 
-  getLibrary(): DetectedGame[] {
+  getLibrary(): LocalGame[] {
     return [...this.library];
   }
 
-  startTracking(game: DetectedGame, pid?: number) {
+  startTracking(game: LocalGame, pid?: number) {
     const entry: RunningGame = {
       game,
       startTime: Date.now(),
@@ -249,7 +249,7 @@ export class GameDetector extends EventEmitter {
         }
       }
 
-      // End sessions for games no longer detected
+      // End sessions for game no longer detected
       for (const [id, entry] of this.runningGames) {
         if (!currentlyRunning.has(id) && !entry.launchedByOtix) {
           this.endSession(entry);
@@ -391,7 +391,7 @@ export class GameDetector extends EventEmitter {
 
   // ── Private matching helpers ──
 
-  private matchWindowTitle(game: DetectedGame, windowTitles: Map<string, string>): boolean {
+  private matchWindowTitle(game: LocalGame, windowTitles: Map<string, string>): boolean {
     const titleLower = game.title.toLowerCase();
     const normTitle = normalizeTitle(game.title);
     const titleWords = normTitle.split(/\s+/).filter((w) => w.length > 2);
@@ -419,7 +419,7 @@ export class GameDetector extends EventEmitter {
     return false;
   }
 
-  private fuzzyMatch(game: DetectedGame, runningNames: Set<string>): boolean {
+  private fuzzyMatch(game: LocalGame, runningNames: Set<string>): boolean {
     const norm = normalizeTitle(game.title);
     const titleWords = norm.split(/\s+/).filter((w) => w.length > 2);
     const candidates = titleToExeCandidates(game.title);
@@ -451,7 +451,7 @@ export class GameDetector extends EventEmitter {
     return false;
   }
 
-  private getExeNames(game: DetectedGame): string[] {
+  private getExeNames(game: LocalGame): string[] {
     const names: string[] = [];
     if (game.exePath && !game.exePath.startsWith('steam://')) {
       names.push(path.basename(game.exePath));

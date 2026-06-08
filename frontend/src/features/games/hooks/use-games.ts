@@ -1,58 +1,89 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api';
-import { useGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/game-scanner/game-queries';
-import { useGameDetail, useGameGenres, usePopularGames, useSeedFromTitles } from '@/features/games/games-queries';
+import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/game-scanner/game-queries';
+import { useGameDetail, useGameGenres, usePopularGames } from '@/features/games/games-queries';
 import { buildGameShelves } from '@/features/games/_utils';
 
 import type { GamesTab } from '../types';
 import type { LocalGame } from '@/features/game-scanner/types';
 
-export function useGames() {
-  // ── Queries ──────────────────────────────────────────────────────
+// ── UI State ────────────────────────────────────────────────────────
 
-  const { data: localGames = [], isLoading } = useLocalGamesQuery();
-  const acceptSuggestion = useAcceptSuggestion();
-  const rejectSuggestion = useRejectSuggestion();
-
+/** Active tab, search, side panel, selected game, scanning flag. */
+export function useGameUIState() {
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
   const [sidePanelOpen, setSidePanelOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [scanning, setScanning] = useState(false);
 
-  const seedMutation = useSeedFromTitles();
+  const selectGame = useCallback((id: string) => setSelectedLocalId(id), []);
+
+  return {
+    selectedLocalId,
+    sidePanelOpen,
+    activeTab,
+    localSearchQuery,
+    scanning,
+    selectGame,
+    setSidePanelOpen,
+    setActiveTab,
+    setLocalSearchQuery,
+    setScanning,
+  };
+}
+
+// ── Queries (DB-filtered, server-side) ──────────────────────────────
+
+/** Derive GamesFilter from UI state so filtering happens in SQLite. */
+function filterFromTab(tab: GamesTab, search: string): GamesFilter {
+  const filter: GamesFilter = {};
+  if (tab === 'matched') filter.matched = true;
+  if (tab === 'unmatched') filter.matched = false;
+  if (search.trim()) filter.search = search.trim();
+  return filter;
+}
+
+/** Game data queries. Accepts UI filter params so DB does the work. */
+export function useGameQueries(localGameId: string | null, activeTab: GamesTab, searchQuery: string) {
+  const filter = useMemo(() => filterFromTab(activeTab, searchQuery), [activeTab, searchQuery]);
+  const { data: localGames = [], isLoading } = useLocalGamesQuery(filter);
 
   const selectedLocalGame = useMemo(
-    () => localGames.find((g) => g.id === selectedLocalId) ?? localGames[0] ?? null,
-    [localGames, selectedLocalId],
+    () => localGames.find((g) => g.id === localGameId) ?? localGames[0] ?? null,
+    [localGames, localGameId],
   );
 
   const { data: gameDetail } = useGameDetail(selectedLocalGame?.data?.id);
-
-  // ── Derived: filtered lists (server-side when possible, fallback for local UI) ──
+  const { data: genres = [] } = useGameGenres();
 
   const matchedGames = useMemo(() => localGames.filter((g) => g.data?.id), [localGames]);
   const unmatchedGames = useMemo(() => localGames.filter((g) => !g.data?.id), [localGames]);
+  const suggestionCount = localGames.filter((g) => g.matchSuggestion).length;
 
-  const filteredLocalGames = useMemo(() => {
-    let result = localGames;
-    if (activeTab === 'matched') result = result.filter((g) => g.data?.id);
-    if (activeTab === 'unmatched') result = result.filter((g) => !g.data?.id);
-    if (localSearchQuery.trim()) {
-      const q = localSearchQuery.toLowerCase();
-      result = result.filter(
-        (g) =>
-          g.title.toLowerCase().includes(q) ||
-          g.platform.toLowerCase().includes(q) ||
-          g.installDir.toLowerCase().includes(q),
-      );
-    }
-    return result;
-  }, [localGames, activeTab, localSearchQuery]);
+  return {
+    localGames,
+    isLoading,
+    matchedGames,
+    unmatchedGames,
+    gameDetail,
+    genres,
+    selectedLocalGame,
+    suggestionCount,
+    matchedCount: matchedGames.length,
+    unmatchedCount: unmatchedGames.length,
+  };
+}
 
-  // ── Shelves ───────────────────────────────────────────────────────
+// ── Shelves ─────────────────────────────────────────────────────────
 
+/** Build game shelf data from matched/unmatched/popular games. */
+export function useGameShelves(
+  matchedGames: LocalGame[],
+  unmatchedGames: LocalGame[],
+  localGames: LocalGame[],
+) {
   const { data: popularGames = [] } = usePopularGames();
 
   const shelves = useMemo(
@@ -60,15 +91,15 @@ export function useGames() {
     [matchedGames, unmatchedGames, localGames, popularGames],
   );
 
-  // ── Genres ────────────────────────────────────────────────────────
+  return { shelves };
+}
 
-  const { data: genres = [] } = useGameGenres();
+// ── Actions ─────────────────────────────────────────────────────────
 
-  // ── Actions ────────────────────────────────────────────────────────
-
-  const selectGame = useCallback((id: string) => {
-    setSelectedLocalId(id);
-  }, []);
+/** Game actions: play, open folder, rescan, accept/reject suggestions. */
+export function useGameActions(setScanning: (v: boolean) => void) {
+  const acceptSuggestion = useAcceptSuggestion();
+  const rejectSuggestion = useRejectSuggestion();
 
   const handleAcceptSuggestion = useCallback(
     (game: LocalGame) => {
@@ -107,13 +138,12 @@ export function useGames() {
       const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path);
       const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path);
       await api.scanPaths(gamePaths, isoPaths);
-      // DB-change event triggers auto-refetch via subscribeToGameDbChanges
     } catch (err) {
       console.error('Rescan failed:', err);
     } finally {
       setScanning(false);
     }
-  }, []);
+  }, [setScanning]);
 
   const handlePlay = useCallback((game: LocalGame) => {
     const api = getDesktopAPI();
@@ -129,43 +159,7 @@ export function useGames() {
     }
   }, []);
 
-  // Seed unseeded titles on mount (desktop-only, runs once)
-  useEffect(() => {
-    if (localGames.length === 0 || !hasDesktopAPI()) return;
-    const unseeded = localGames.filter((g) => !g.data?.id && !g.matchSuggestion);
-    if (unseeded.length === 0) return;
-    const titles = [...new Set(unseeded.map((g) => g.title))];
-    seedMutation.mutate(titles);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localGames.length]);
-
-  // ── Return ─────────────────────────────────────────────────────────
-
   return {
-    localGames,
-    filteredLocalGames,
-    selectedLocalGame,
-    matchedGames,
-    unmatchedGames,
-
-    gameDetail,
-
-    shelves,
-    genres,
-
-    sidePanelOpen,
-    activeTab,
-    localSearchQuery,
-    scanning,
-
-    matchedCount: matchedGames.length,
-    unmatchedCount: unmatchedGames.length,
-    suggestionCount: localGames.filter((g) => g.matchSuggestion).length,
-
-    selectGame,
-    setSidePanelOpen,
-    setActiveTab,
-    setLocalSearchQuery,
     handleAcceptSuggestion,
     handleRejectSuggestion,
     handleRescan,
@@ -173,3 +167,4 @@ export function useGames() {
     handleOpenFolder,
   };
 }
+

@@ -338,7 +338,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 app.send_task("sync.steamgrid.game_by_platform", args=[store_eid.provider, store_eid.external_id])
                 steamgrid_enqueued = True
 
-        # Name-based SGDB lookup for games without any store-platform IDs
+        # Name-based SGDB lookup for game without any store-platform IDs
         if not steamgrid_enqueued:
             app.send_task("sync.steamgrid.game_by_name", args=[item.id])
 

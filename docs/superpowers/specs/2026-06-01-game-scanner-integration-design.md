@@ -63,7 +63,7 @@ Add `"local-games"` to `LIBRARY_TABS` and `TAB_LABELS` in `library-queries.ts`.
 In `LibraryPage`, conditionally include the tab:
 ```tsx
 if (typeof window !== "undefined" && window.electronAPI) {
-  tabs.push({ id: "local-games", label: "Local Games", icon: <Gamepad2 /> })
+  tabs.push({ id: "local-game", label: "Local Games", icon: <Gamepad2 /> })
 }
 ```
 

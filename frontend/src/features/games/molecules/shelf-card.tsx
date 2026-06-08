@@ -1,14 +1,14 @@
 import { useState, memo } from "react"
 import { Check, X, Gamepad2, Star } from "lucide-react"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import type { LocalGame } from "@/features/game-scanner/types"
 import type { CatalogGame } from "../types"
 
 interface ShelfCardProps {
-  game?: DetectedGame
+  game?: LocalGame
   catalogGame?: CatalogGame
   onClick: (id: string) => void
-  onAcceptSuggestion?: (game: DetectedGame) => void
-  onRejectSuggestion?: (game: DetectedGame) => void
+  onAcceptSuggestion?: (game: LocalGame) => void
+  onRejectSuggestion?: (game: LocalGame) => void
 }
 
 function getGameHue(title: string): number {
@@ -48,10 +48,10 @@ export const ShelfCard = memo(function ShelfCard({
 
   // ── Local game ──
   if (isLocal && game) {
-    const isMatched = !!game.otixMediaId
-    const hasSuggestion = !!game.otixMatchSuggestion
-    const posterUrl = game.otixPosterUrl || game.posterUrl
-    const title = game.otixMediaTitle || game.title
+    const isMatched = !!game.data?.id
+    const hasSuggestion = !!game.matchSuggestion
+    const posterUrl = game.data?.posterUrl || game.posterUrl
+    const title = game.data?.title || game.title
 
     return (
       <button
@@ -80,7 +80,7 @@ export const ShelfCard = memo(function ShelfCard({
         {hasSuggestion && (
           <div className="absolute top-1.5 left-1.5 z-10">
             <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/80 text-white">
-              {game.otixConfidence != null ? `${Math.round(game.otixConfidence * 100)}%` : "?"}
+              {true ? `${Math.round(0 * 100)}%` : "?"}
             </span>
           </div>
         )}

@@ -9,9 +9,10 @@
 /* ── Floating pill ── */
 .dk-floating-pill {
   @apply fixed z-[9999] flex items-center rounded-[2rem] gap-1;
-  background: linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover));
-  backdrop-filter: blur(16px);
+  background-color: oklch(from var(--dk-surface-raised) r g b / 0.25);
+  background-image: linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover));
   box-shadow: var(--dk-shadow-glass);
+  backdrop-filter: blur(16px);
 }
 
 .dk-floating-pill--left {

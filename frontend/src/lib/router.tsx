@@ -3,6 +3,7 @@ import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNav
 import type { QueryClient } from "@tanstack/react-query"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
+import { NotFoundPage } from "@/components/not-found"
 
 // ── Lazy-loaded page components ──
 
@@ -34,7 +35,6 @@ const AdminProposalsPage = lazy(() => import("@/features/admin/organisms/admin-p
 const AdminExperimentsPage = lazy(() => import("@/features/admin/organisms/admin-experiments-page").then(m => ({ default: m.AdminExperimentsPage })))
 const AdminBlogPostPage = lazy(() => import("@/features/admin/organisms/admin-blog-post-page").then(m => ({ default: m.AdminBlogPostPage })))
 const AdminHydrationPage = lazy(() => import("@/features/admin/organisms/admin-hydration-page").then(m => ({ default: m.AdminHydrationPage })))
-const OnboardingPage = lazy(() => import("@/features/onboarding/organisms/onboarding-page").then(m => ({ default: m.OnboardingPage })))
 const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
 const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
 const AboutProfilePage = lazy(() => import("@/features/about/organisms/about-profile-page").then(m => ({ default: m.AboutProfilePage })))
@@ -42,7 +42,8 @@ const AboutAchievementsPage = lazy(() => import("@/features/about/organisms/abou
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
 const SpotifyPlaylistsPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlists-page").then(m => ({ default: m.SpotifyPlaylistsPage })))
 const SpotifyPlaylistDetailPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlist-detail-page").then(m => ({ default: m.SpotifyPlaylistDetailPage })))
-const LauncherHomePage = lazy(() => import("@/features/games/organisms/launcher-home-page").then(m => ({ default: m.LauncherHomePage })))
+const LauncherHomePage = lazy(() => import("@/features/games/pages/launcher-home-page").then(m => ({ default: m.LauncherHomePage })))
+const LauncherGamePage = lazy(() => import("@/features/games/pages/launcher-game-page").then(m => ({ default: m.LauncherGamePage })))
 
 // ── Root — chooses layout based on route ──
 
@@ -63,6 +64,7 @@ function RootComponent() {
 
 const rootRoute = createRootRoute({
   component: RootComponent,
+  notFoundComponent: NotFoundPage,
 })
 
 // ── Routes ──
@@ -304,11 +306,6 @@ const adminHydrationRoute = createRoute({
   component: AdminHydrationPage,
 })
 
-const onboardingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/onboarding",
-  component: OnboardingPage,
-})
 
 const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -363,8 +360,14 @@ const spotifyPlaylistDetailRoute = createRoute({
 
 const gamesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/games",
+  path: "/game",
   component: LauncherHomePage,
+})
+
+const gamesDetailRoute = createRoute({
+  getParentRoute: () => gamesRoute,
+  path: "$gameId",
+  component: LauncherGamePage,
 })
 
 // ── Assemble ──
@@ -401,8 +404,7 @@ const routeTree = rootRoute.addChildren([
   adminExperimentsRoute,
   adminBlogPostRoute,
   adminHydrationRoute,
-  onboardingRoute,
-  gamesRoute,
+  gamesRoute.addChildren([gamesDetailRoute]),
   searchRoute,
   aboutRoute,
   aboutProfileRoute,

@@ -197,7 +197,7 @@ async def run_seed_report() -> SeedReport:
             report.errors.append(f"{name}: {exc}")
 
     # ── Games ───────────────────────────────────────────────────────────
-    print("Syncing games...")
+    print("Syncing game...")
     for app_id in SEED_GAMES:
         try:
             result = await _sync_steam_app(app_id)

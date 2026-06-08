@@ -79,7 +79,7 @@ class SteamGridDBHydrator:
                 if added > 0:
                     return added
 
-        # Name-based fallback for games without any store IDs
+        # Name-based fallback for game without any store IDs
         if title:
             return await self._hydrate_by_name(game, title)
 

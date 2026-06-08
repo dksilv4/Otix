@@ -32,7 +32,7 @@ export const localGameKeys = {
  * Fetch local games from the desktop SQLite DB via IPC.
  * Auto-invalidates when the DB changes (scan complete, suggestion accepted, etc.).
  */
-export function useGames(filter?: GamesFilter) {
+export function useLocalGames(filter?: GamesFilter) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function useGames(filter?: GamesFilter) {
 }
 
 /** Fetch a single game by its local DB id. */
-export function useGameById(id: string | undefined) {
+export function useLocalGame(id: string | undefined) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export function useGameById(id: string | undefined) {
 }
 
 /** Fetch total game count, optionally filtered. */
-export function useGameCount(filter?: GamesFilter) {
+export function useLocalGameCount(filter?: GamesFilter) {
   return useQuery({
     queryKey: localGameKeys.count(filter),
     queryFn: () => fetchGameCount(filter),
@@ -103,16 +103,16 @@ export function useRejectSuggestion() {
 
 /**
  * Convenience: fetch only matched games (those with otixMediaId).
- * Equivalent to useGames({ matched: true }).
+ * Equivalent to useLocalGames({ matched: true }).
  */
 export function useMatchedGames() {
-  return useGames({ matched: true } satisfies GamesFilter);
+  return useLocalGames({ matched: true } satisfies GamesFilter);
 }
 
 /**
  * Convenience: fetch only unmatched games (no otixMediaId, no suggestion).
- * Equivalent to useGames({ matched: false }).
+ * Equivalent to useLocalGames({ matched: false }).
  */
 export function useUnmatchedGames() {
-  return useGames({ matched: false } satisfies GamesFilter);
+  return useLocalGames({ matched: false } satisfies GamesFilter);
 }

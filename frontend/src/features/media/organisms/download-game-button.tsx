@@ -5,7 +5,7 @@ import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downlo
 import type { HypervisorConfirmResponse } from '@/features/downloads/types'
 import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { useExperiment } from '@/features/experiments/experiments-provider'
-import { useGames } from '@/features/game-scanner/game-queries'
+import { useLocalGames } from '@/features/game-scanner/game-queries'
 import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
 import { getDesktopAPI } from '@/lib/desktop-api'
@@ -45,7 +45,7 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
   const [errorMsg, setErrorMsg] = useState('');
   const [postProcessing, setPostProcessing] = useState(false);
   const [isInstallerOpen, setIsInstallerOpen] = useState(false);
-  const { data: scannedGames = [] } = useGames();
+  const { data: scannedGames = [] } = useLocalGames();
   const [localGame, setLocalGame] = useState<LocalGame | null>(null);
   const [hvDialogOpen, setHvDialogOpen] = useState(false);
   const [hvCountdown, setHvCountdown] = useState(10);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getDesktopAPI } from '@/lib/desktop-api'
 
 export interface DesktopPlatformInfo {
   isDesktop: boolean
@@ -9,7 +10,7 @@ export interface DesktopPlatformInfo {
 }
 
 function detectDesktop(): DesktopPlatformInfo {
-  const api = (window as any).desktopAPI as { platform?: string } | undefined
+  const api = getDesktopAPI()
 
   if (api?.platform) {
     const p = api.platform as 'darwin' | 'win32' | 'linux'

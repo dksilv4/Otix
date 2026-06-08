@@ -1,8 +1,8 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
+import { isDesktop } from '@/lib/desktop-api'
 
-const isDesktop = typeof window !== 'undefined' && (!!(window as any).desktopAPI || (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')))
-export const API_BASE_URL = isDesktop ? 'http://127.0.0.1:8000/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
+export const API_BASE_URL = isDesktop() ? 'http://127.0.0.1:8000/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
 const BASE_URL = API_BASE_URL
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'

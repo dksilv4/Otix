@@ -14,6 +14,7 @@ import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
 import { GoogleIcon } from '@/features/dk-ui/atoms/google-icon'
 import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
 import { openExternal } from '@/lib/open-external'
 import { useDownloadConfig, useConnectionTest } from '@/features/downloads/use-downloads'
 import { useExperiment } from '@/features/experiments/experiments-provider'
@@ -555,8 +556,7 @@ export function IntegrationsSection() {
     setConnecting(true)
     setSteamError('')
     try {
-      const isDesktop = !!(window as any).desktopAPI
-      const { data } = await apiClient.post('/auth/oauth/steam', isDesktop ? { source: 'desktop' } : undefined)
+      const { data } = await apiClient.post('/auth/oauth/steam', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl)
     } catch (err) {
       setConnecting(false)

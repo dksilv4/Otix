@@ -242,7 +242,7 @@ All enrichment tasks use Celery's app.send_task() for chaining — providers tri
     author: 'DK',
     tags: ['media', 'roadmap', 'providers'],
     summary:
-      'Currently supported media types (movies, shows, music, games), their enrichment providers, and long-term candidates for integration.',
+      'Currently supported media types (movies, shows, music, game), their enrichment providers, and long-term candidates for integration.',
     body: `## Currently Supported
 
 Four media types are live, enforced by a database check constraint on the media_items table.

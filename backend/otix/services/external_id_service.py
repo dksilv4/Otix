@@ -47,7 +47,7 @@ Each domain model declares its entity type via ``__external_id_entity_type__``:
 ============== ====================================
 Entity Type    Domain Model
 ============== ====================================
-media_item     MediaItem (movies, shows, games, music)
+media_item     MediaItem (movies, shows, game, music)
 person         Person (cast, crew, artists)
 track          Track (music tracks)
 company        Company (production companies, publishers)

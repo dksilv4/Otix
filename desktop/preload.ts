@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Platform info ──
   platform: process.platform,
 
+  // ── Query cache persistence ──
+  cacheLoad: () => ipcRenderer.invoke('cache:load'),
+  cacheSave: (data: unknown) => ipcRenderer.invoke('cache:save', data),
+
   // ── Desktop settings ──
   getDesktopSettings: () => ipcRenderer.invoke('desktop-settings:get'),
   setDesktopSettings: (settings: any) =>
@@ -75,6 +79,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
       ipcRenderer.removeListener('scanner:game-updated', subscription);
     };
   },
+  hydrateMatchedGames: () => ipcRenderer.invoke('games:hydrate-matched'),
   getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-game'),
   getScannedGamesFiltered: (filter: unknown) => ipcRenderer.invoke('scanner:get-scanned-games-filtered', filter),
   getGameById: (id: string) => ipcRenderer.invoke('scanner:get-game-by-id', id),

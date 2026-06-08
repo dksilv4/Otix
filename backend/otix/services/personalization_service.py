@@ -753,7 +753,7 @@ class PersonalizationService:
                             media_type="game",
                             list_type="integration_steam",
                             is_personalized=True,
-                            reason="Based on games you play on Steam",
+                            reason="Based on game you play on Steam",
                         ))
                         integration_added += 1
             if user.plex_id:

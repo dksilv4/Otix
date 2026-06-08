@@ -157,7 +157,7 @@ function SteamTabContent() {
     [data]
   )
 
-  // Auto-scan if no games scanned yet
+  // Auto-scan if no game scanned yet
   useEffect(() => {
     if (status && status.gameCount === 0 && !scan.isPending && !scan.data) {
       scan.mutate()

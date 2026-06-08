@@ -27,7 +27,7 @@ async def steam_resolve_unmatched(
         result = await resolve_unmatched_steam_games(db, current_user.id)
     except Exception:
         logger.exception("steam-igdb resolve failed")
-        raise HTTPException(status_code=500, detail="Failed to resolve unmatched games. Please try again.")
+        raise HTTPException(status_code=500, detail="Failed to resolve unmatched game. Please try again.")
     return {
         "resolved": result.resolved,
         "synced": result.synced,

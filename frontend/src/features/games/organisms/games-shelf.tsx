@@ -1,13 +1,13 @@
 import { useRef, useState } from "react"
 import { ShelfCard } from "../molecules/shelf-card"
 import type { ShelfRow } from "../types"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import type { LocalGame } from "@/features/game-scanner/types"
 
 interface GamesShelfProps {
   rows: ShelfRow[]
   onSelectGame: (id: string) => void
-  onAcceptSuggestion?: (game: DetectedGame) => void
-  onRejectSuggestion?: (game: DetectedGame) => void
+  onAcceptSuggestion?: (game: LocalGame) => void
+  onRejectSuggestion?: (game: LocalGame) => void
 }
 
 function ShelfRowSection({
@@ -18,8 +18,8 @@ function ShelfRowSection({
 }: {
   row: ShelfRow
   onSelectGame: (id: string) => void
-  onAcceptSuggestion?: (game: DetectedGame) => void
-  onRejectSuggestion?: (game: DetectedGame) => void
+  onAcceptSuggestion?: (game: LocalGame) => void
+  onRejectSuggestion?: (game: LocalGame) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -32,8 +32,6 @@ function ShelfRowSection({
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4)
   }
 
-  const hasLocalGames = row.games.length > 0
-  const hasCatalogGames = (row.catalogGames?.length ?? 0) > 0
   const totalItems = row.games.length + (row.catalogGames?.length ?? 0)
 
   if (totalItems === 0) return null

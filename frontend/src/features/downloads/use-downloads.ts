@@ -6,11 +6,8 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { isDesktop } from '@/lib/desktop-api';
 import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry, HypervisorConfirmResponse } from './types';
-
-function isDesktop(): boolean {
-  return typeof window !== 'undefined' && !!window.desktopAPI;
-}
 
 // ── Config ──
 

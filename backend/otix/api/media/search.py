@@ -447,7 +447,7 @@ async def match_local_games(
 ) -> LocalGameMatchResponse:
     """Fuzzy-match local PC/ISO game titles to Otix catalog entries.
 
-    Accepts a list of games (title + optional platform and Steam App ID) and
+    Accepts a list of game (title + optional platform and Steam App ID) and
     returns the best-matching Otix media item per entry. Games with a Steam
     App ID get a direct lookup; the rest fall through to trigram similarity.
     """
@@ -488,8 +488,8 @@ async def seed_from_titles(
 
     When a user runs a desktop game scan, the extracted titles (with optional
     platform and Steam App ID) are sent here so the backend can search IGDB or
-    do direct Steam lookups for each game and import any missing games into the
-    catalog. This ensures subsequent match-local-games calls can find them.
+    do direct Steam lookups for each game and import any missing game into the
+    catalog. This ensures subsequent match-local-game calls can find them.
 
     The actual IGDB searches / Steam sync tasks run asynchronously via
     ``seed.igdb_from_titles``. This endpoint returns immediately with the
@@ -524,7 +524,7 @@ async def seed_from_titles(
     except Exception:
         pass
 
-    print(f"SEED_FROM_TITLES_HIT: {len(unique)} games -> task {task.id}", flush=True)
+    print(f"SEED_FROM_TITLES_HIT: {len(unique)} game -> task {task.id}", flush=True)
     logger.info("seed_from_titles_requested", total=len(unique), task_id=task.id)
 
     return SeedFromTitlesResponse(
@@ -663,7 +663,7 @@ async def search_external_games(
     limit: int = Query(8, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
 ) -> MediaItemListResponse:
-    """Search IGDB for games, import missing ones async, return already-imported.
+    """Search IGDB for game, import missing ones async, return already-imported.
 
     Games already in the Otix database are returned immediately.  Any that
     aren't yet imported trigger a Celery task (sync.igdb.game) and the
@@ -684,7 +684,7 @@ async def search_external_games(
         logger.exception("igdb_external_search_failed", q=q)
         return MediaItemListResponse(items=[])
 
-    # Filter out edition/variant games when the base game is also in results.
+    # Filter out edition/variant game when the base game is also in results.
     has_base = any(game.get("version_parent") is None for game in igdb_results)
     if has_base:
         igdb_results = [g for g in igdb_results if g.get("version_parent") is None]
@@ -706,7 +706,7 @@ async def search_external_games(
             items = await media_service.get_media_items_by_ids(entity_ids)
             summaries = [MediaItemSummary.model_validate(item) for item in items]
 
-    # Trigger Celery imports for games not yet in the DB.
+    # Trigger Celery imports for game not yet in the DB.
     missing_ids = [gid for gid in igdb_ids if gid not in existing_ids]
     if missing_ids:
         query_hash = _poll_query_hash(q, "game")
@@ -853,7 +853,7 @@ async def search_steamgrid(
     return SteamGridSearchResponse(items=items)
 
 
-# ── Sync local games (desktop → backend) ──────────────────────────────
+# ── Sync local game (desktop → backend) ──────────────────────────────
 
 
 @media_router.post("/sync-local-games", response_model=SyncLocalGamesResponse)
@@ -861,9 +861,9 @@ async def sync_local_games(
     body: SyncLocalGamesRequest,
     current_user: User = Depends(get_optional_user),
 ) -> SyncLocalGamesResponse:
-    """Sync the user's locally detected games to the backend.
+    """Sync the user's locally detected game to the backend.
 
-    Called from the desktop app after scanning and matching. Upserts games
+    Called from the desktop app after scanning and matching. Upserts game
     by (user_id, title, platform) so match state survives client-side clears.
     """
     if current_user is None:
@@ -875,7 +875,7 @@ async def sync_local_games(
         user_id = current_user.id
         upserted = 0
 
-        # Fetch existing games for this user
+        # Fetch existing game for this user
         from sqlalchemy import select
 
         existing = (
@@ -914,14 +914,14 @@ async def sync_local_games(
                 session.add(new_game)
             upserted += 1
 
-        # Delete games no longer present on the desktop
+        # Delete game no longer present on the desktop
         deleted = 0
         for key, existing_game in existing_by_key.items():
             if key not in incoming_keys:
                 await session.delete(existing_game)
                 deleted += 1
 
-        # Auto-claim matched games (fire and forget via interaction service)
+        # Auto-claim matched game (fire and forget via interaction service)
         from otix.services.interaction_service import InteractionService
         interaction_svc = InteractionService(session)
         for game in body.games:

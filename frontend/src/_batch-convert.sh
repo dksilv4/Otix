@@ -32,7 +32,7 @@ for file in "$@"; do
   # Extract a component prefix from the filename
   # Remove common suffixes
   prefix=$(echo "$basename" | sed -E 's/-(page|section|panel|form|modal|card|button|input|field|badge|list|item|row|grid|detail|hero|menu|nav|search|tabs|bar|state|badge|renderer|display|showcase|timeline|filters|actions|composer|sync|profile|section|breakdown|distribution|achievements|hall-of-fame|streak|mood|library|rating|follow|button|inline|preview|heatmap)//g')
-  prefix=$(echo "$prefix" | sed -E 's/^(about|admin|auth|browse|company|discover|downloads|experiments|games|interaction|library|list|media|navigation|notifications|person|review|settings|spotify|title-bar|user|workout)-//')
+  prefix=$(echo "$prefix" | sed -E 's/^(about|admin|auth|browse|company|discover|downloads|experiments|game|interaction|library|list|media|navigation|notifications|person|review|settings|spotify|title-bar|user|workout)-//')
 
   echo "  -> Component prefix: $prefix, ref: $ref_path"
 done

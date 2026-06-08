@@ -3,7 +3,7 @@ import './scanners-section.scss'
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Disc, Monitor, Gamepad2, Folder, Check, X } from "lucide-react"
 import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/features/game-scanner/storage"
-import { useGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
+import { useLocalGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import { useClaimGame } from "@/features/library/library-queries"
 import { apiClient } from "@/lib/api-client"
@@ -15,7 +15,7 @@ interface ScanPath {
 }
 
 export function ScannersSection() {
-  const { data: scannedGames = [] } = useGames();
+  const { data: scannedGames = [] } = useLocalGames();
   const rejectSuggestion = useRejectSuggestion();
 
   const [gamePaths, setGamePathsState] = useState<string[]>(() => getScanPaths())
@@ -75,7 +75,6 @@ export function ScannersSection() {
     try {
       let result = await matchMutation.mutateAsync(scannedGames)
       if (!result) return
-      result = filterRejectedSuggestions(result)
       setScannedGames(result)
       setScannedGamesState(result)
     } catch (err) {

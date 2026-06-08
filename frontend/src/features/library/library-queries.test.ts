@@ -164,7 +164,7 @@ describe('Library Query Hooks', () => {
     expect(result.current.data).toEqual(mockResponse)
   })
 
-  it('useUnmatchedSteamGames fetches unmatched games', async () => {
+  it('useUnmatchedSteamGames fetches unmatched game', async () => {
     const mockResponse = { items: [], nextCursor: 'next-123', hasMore: true }
     vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockResponse })
 
