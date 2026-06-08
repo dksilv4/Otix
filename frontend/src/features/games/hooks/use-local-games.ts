@@ -5,14 +5,7 @@ import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 import type { LocalGame, LauncherPlatform } from '@/features/games/types'
 import type { CatalogGame } from '@/features/games/types'
-import {
-  getScannedGames,
-  setScannedGames,
-  getScanPaths,
-  getIsoPaths,
-  filterRejectedSuggestions,
-  rejectSuggestion,
-} from '@/features/game-scanner/storage'
+import { useGames, useRejectSuggestion } from '@/features/game-scanner/game-queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/game-scanner/queries'
 import type { UseMutationResult } from '@tanstack/react-query'
 import { useInstallProgress } from '@/features/game-scanner/install-store'
@@ -40,45 +33,28 @@ export interface DisplayGame {
 }
 
 export interface UseLocalGamesOptions {
-  /** Custom sort applied to matched picker games. Default: installed first, original order. */
   sortBy?: (games: DisplayGame[]) => DisplayGame[]
 }
 
 export interface UseLocalGamesReturn {
-  /** Raw scanned games */
   localGames: LocalGame[]
-  /** Whether a scan is in progress */
   scanning: boolean
-  /** Currently selected game ID */
   activeGameId: string | null
-  /** Select a game by ID */
   setActiveGameId: (id: string | null) => void
-  /** Currently active display game (resolved from activeGameId) */
   activeGame: DisplayGame | null
-  /** All display games merged from local + catalog fallback */
   displayGames: DisplayGame[]
-  /** Matched games sorted by sortBy (default: installed first) */
   pickerGames: DisplayGame[]
-  /** Install verification state — game files detected but not marked installed */
   foundInstall: { exePath: string; installKey: string } | null
 
-  /** Trigger a scan of configured paths */
   handleScan: () => Promise<void>
-  /** Called by IsoInstallerModal when ISO install succeeds */
   handleInstallComplete: (isoPath: string, installDir: string, gameExe: string | null) => void
-  /** Confirm game is installed — updates state and launches */
   handleConfirmInstalled: () => void
-  /** Dismiss the install-found prompt */
   handleDismissInstallFound: () => void
-  /** Deny a match suggestion */
   handleDenySuggestion: () => void
 
-  /** Match mutation — match local games against catalog */
   matchMutation: UseMutationResult<LocalGame[], Error, LocalGame[], unknown>
-  /** Sync mutation — sync matched local games to backend */
   syncMutation: UseMutationResult<void, Error, LocalGame[], unknown>
 
-  /** Set scanned games directly (e.g. after match mutation resolves) */
   setLocalGames: React.Dispatch<React.SetStateAction<LocalGame[]>>
 }
 
@@ -101,13 +77,14 @@ export function useLocalGames(
   const { toast } = useToast()
   const sortBy = options.sortBy ?? defaultSort
 
+  const { data: localGames = [] } = useGames()
+  const rejectSuggestionMutation = useRejectSuggestion()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
   const { installs } = useInstallProgress()
 
   // ── Core state ──
 
-  const [localGames, setLocalGames] = useState<LocalGame[]>(() => getScannedGames())
   const [scanning, setScanning] = useState(false)
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
   const [foundInstall, setFoundInstall] = useState<{ exePath: string; installKey: string } | null>(null)
@@ -117,55 +94,6 @@ export function useLocalGames(
       catch { return [] }
     })(),
   ))
-
-  // ── Effects ──
-
-  // Re-sync from cache on mount + listen for external updates
-  useEffect(() => {
-    const reload = () => setLocalGames(getScannedGames())
-    const timerId = setTimeout(reload, 100)
-    const onGamesUpdated = () => { clearTimeout(timerId); reload() }
-    window.addEventListener('games:updated', onGamesUpdated)
-    window.addEventListener('game:updated', onGamesUpdated)
-    return () => {
-      clearTimeout(timerId)
-      window.removeEventListener('games:updated', onGamesUpdated)
-      window.removeEventListener('game:updated', onGamesUpdated)
-    }
-  }, [])
-
-  // Match all local games against catalog on mount
-  useEffect(() => {
-    if (localGames.length === 0) return
-    matchMutation.mutateAsync(localGames).then((matched) => {
-      if (matched?.length) {
-        const filtered = filterRejectedSuggestions(matched)
-        const current = getScannedGames()
-        const merged = filtered.map((g) => {
-          const existing = current.find((c) => c.id === g.id || c.exePath === g.exePath)
-          if (existing && existing.platform !== g.platform && existing.platform !== 'iso') {
-            return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
-          }
-          return g
-        })
-        setLocalGames(merged)
-        setScannedGames(merged)
-        syncMutation.mutate(merged)
-      }
-    }).catch((err) => console.error('[LocalGames] Match failed:', err))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Refresh localGames from cache when ISO installs complete
-  const completedInstallPaths = useRef(new Set<string>())
-  useEffect(() => {
-    for (const inst of installs) {
-      if (!inst.active && inst.result?.success && !completedInstallPaths.current.has(inst.isoPath)) {
-        completedInstallPaths.current.add(inst.isoPath)
-        setLocalGames(getScannedGames())
-      }
-    }
-  }, [installs])
 
   // ── Derived data ──
 
@@ -195,7 +123,6 @@ export function useLocalGames(
         }
       })
     }
-    // Fall back to popular catalog games
     return popularGames.slice(0, 10).map((p) => ({
       id: p.id,
       title: p.title,
@@ -224,37 +151,22 @@ export function useLocalGames(
     return displayGames.find((g) => g.id === activeGameId) || pickerGames[0] || null
   }, [displayGames, pickerGames, activeGameId])
 
-
-
   // ── Handlers ──
 
-  // Install verification handlers
   const handleConfirmInstalled = useCallback(() => {
     if (!activeGame || !foundInstall) return
     const { exePath, installKey } = foundInstall
-    setLocalGames((prev) => {
-      const updated = prev.map((g) => {
-        if (g.id === activeGame.id || g.exePath === activeGame.exePath) {
-          return { ...g, platform: 'pc' as const, exePath, installDir: activeGame.installDir || g.installDir }
-        }
-        return g
-      })
-      setScannedGames(updated)
-      return updated
-    })
+    const api = getDesktopAPI()
+    if (api?.launchGame) {
+      api.launchGame({ exePath } as LocalGame).catch(console.error)
+      toast({ title: 'Launching Game', description: 'Running installed executable...', variant: 'success' })
+    }
     setFoundInstall(null)
     try {
       const dismissed = JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]')
       const kept = dismissed.filter((k: string) => k !== installKey)
       localStorage.setItem('otix_verify_dismissed', JSON.stringify(kept))
     } catch { /* ignore */ }
-
-    const api = getDesktopAPI()
-    if (api?.launchGame) {
-      console.log('[Play] handleConfirmInstalled launchGame exePath:', exePath)
-      api!.launchGame({ exePath } as LocalGame).catch(console.error)
-      toast({ title: 'Launching Game', description: 'Running installed executable...', variant: 'success' })
-    }
   }, [activeGame, foundInstall, toast])
 
   const handleDismissInstallFound = useCallback(() => {
@@ -272,18 +184,7 @@ export function useLocalGames(
   }, [foundInstall])
 
   const handleInstallComplete = useCallback((isoPath: string, installDir: string, gameExe: string | null) => {
-    const normIso = isoPath.replace(/\\/g, '/').toLowerCase()
-    setLocalGames((prev) => {
-      const updated = prev.map((g) => {
-        const normExe = g.exePath.replace(/\\/g, '/').toLowerCase()
-        if (normExe === normIso) {
-          return { ...g, platform: 'pc' as const, exePath: gameExe ?? g.exePath, installDir }
-        }
-        return g
-      })
-      setScannedGames(updated)
-      return updated
-    })
+    // ISO installer calls markGameInstalled -> setScannedGames -> DB write -> auto-refetch
   }, [])
 
   const handleScan = useCallback(async () => {
@@ -294,16 +195,14 @@ export function useLocalGames(
     setScanning(true)
     try {
       const api = getDesktopAPI()!
-      const scanned = await api.scanPaths(getScanPaths(), getIsoPaths())
+      const paths = await api.getScanPaths()
+      const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path)
+      const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path)
+      const scanned = await api.scanPaths(gamePaths, isoPaths)
+      // DB-change event triggers auto-refetch
       if (scanned?.length) {
-        const matched = await matchMutation.mutateAsync(scanned)
-        if (matched?.length) {
-          const filtered = filterRejectedSuggestions(matched)
-          setLocalGames(filtered)
-          setScannedGames(filtered)
-          toast({ title: 'Scan Complete', description: `Successfully scanned and loaded ${filtered.length} local games.`, variant: 'success' })
-          if (filtered.length > 0) setActiveGameId(filtered[0].id)
-        }
+        toast({ title: 'Scan Complete', description: `Successfully scanned and loaded ${scanned.length} local games.`, variant: 'success' })
+        if (scanned.length > 0) setActiveGameId(scanned[0].id)
       } else {
         toast({ title: 'Scan Complete', description: 'No local games were detected.', variant: 'default' })
       }
@@ -313,21 +212,21 @@ export function useLocalGames(
     } finally {
       setScanning(false)
     }
-  }, [matchMutation, toast])
+  }, [toast])
 
   const handleDenySuggestion = useCallback(() => {
     if (!activeGame?.rawGame?.matchSuggestion) return
-    rejectSuggestion(activeGame.rawGame, activeGame.rawGame.matchSuggestion.id)
-    setLocalGames(getScannedGames())
+    rejectSuggestionMutation.mutate({
+      gameId: activeGame.rawGame.id,
+      suggestionMediaId: activeGame.rawGame.matchSuggestion.id,
+    })
     toast({
       title: 'Suggestion Dismissed',
       description: "Match suggestion hidden. It won't reappear on future scans.",
       variant: 'default',
     })
-  }, [activeGame, toast])
-  useEffect(() => {
-    console.log('[LocalGames] Active game changed:', activeGameId)
-  }, [activeGame]);
+  }, [activeGame, rejectSuggestionMutation, toast])
+
   return {
     localGames,
     scanning,
@@ -344,6 +243,6 @@ export function useLocalGames(
     handleConfirmInstalled,
     handleDismissInstallFound,
     handleDenySuggestion,
-    setLocalGames,
+    setLocalGames: () => {}, // no-op — data is managed by useGames() query
   }
 }
