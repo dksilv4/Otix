@@ -1,6 +1,9 @@
 import { _run, _get, _all, ensureDb, DbRow } from './db';
+import type { LocalGame } from './preload-api';
 
 // ── Types ──────────────────────────────────────────────────────────────
+
+export type GamePlatform = LocalGame['platform'];
 
 export interface GameRow {
   id: string;
@@ -8,7 +11,7 @@ export interface GameRow {
   exePath: string;
   localExePath?: string;
   installDir: string;
-  platform: string;
+  platform: GamePlatform;
   iconUrl?: string;
   posterUrl?: string;
   sources?: string[];
@@ -41,7 +44,7 @@ function rowToGame(row: DbRow): GameRow {
     exePath: row.exe_path as string,
     localExePath: (row.local_exe_path as string) || undefined,
     installDir: row.install_dir as string,
-    platform: row.platform as string,
+    platform: row.platform as GamePlatform,
     iconUrl: (row.icon_url as string) || undefined,
     posterUrl: (row.poster_url as string) || undefined,
     sources: row.sources ? JSON.parse(row.sources as string) : undefined,
@@ -50,7 +53,7 @@ function rowToGame(row: DbRow): GameRow {
       ? {
           id: row.otix_media_id as string,
           title: (row.otix_media_title as string) || (row.title as string),
-          platform: row.platform as string,
+          platform: row.platform as GamePlatform,
           iconUrl: (row.otix_icon_url as string) || undefined,
           posterUrl: (row.poster_url as string) || undefined,
         }

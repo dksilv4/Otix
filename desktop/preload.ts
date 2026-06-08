@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DetectedGame } from './preload-api';
+import type { LocalGame } from './preload-api';
 
 // Resolves once the main process has registered all IPC handlers.
 let _resolveIpcReady: (() => void) | null = null;
@@ -48,7 +48,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   },
   scanPaths: (paths: string[], isoPaths: string[]) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
-  launchGame: (game: DetectedGame) => ipcRenderer.invoke('launcher:launch-game', game),
+  launchGame: (game: LocalGame) => ipcRenderer.invoke('launcher:launch-game', game),
   selectIso: () => ipcRenderer.invoke('installer:select-iso'),
   mountIso: (isoPath: string) => ipcRenderer.invoke('installer:mount-iso', isoPath),
   dismountIso: (isoPath: string) => ipcRenderer.invoke('installer:dismount-iso', isoPath),
@@ -70,28 +70,38 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   },
   onGamesUpdated: (callback: () => void) => {
     const subscription = () => callback();
-    ipcRenderer.on('scanner:games-updated', subscription);
+    ipcRenderer.on('scanner:game-updated', subscription);
     return () => {
-      ipcRenderer.removeListener('scanner:games-updated', subscription);
+      ipcRenderer.removeListener('scanner:game-updated', subscription);
     };
   },
-  getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-games'),
-  saveScannedGames: (games: any[]) => ipcRenderer.invoke('scanner:save-scanned-games', games),
+  getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-game'),
+  getScannedGamesFiltered: (filter: unknown) => ipcRenderer.invoke('scanner:get-scanned-games-filtered', filter),
+  getGameById: (id: string) => ipcRenderer.invoke('scanner:get-game-by-id', id),
+  getGameCount: (filter: unknown) => ipcRenderer.invoke('scanner:get-game-count', filter),
+  saveScannedGames: (games: unknown[]) => ipcRenderer.invoke('scanner:save-scanned-game', games),
   pickExecutable: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-executable', defaultPath),
   getScanPaths: () => ipcRenderer.invoke('scanner:get-scan-paths'),
-  saveScanPaths: (paths: any[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
-  getLocalGamesMap: () => ipcRenderer.invoke('scanner:get-local-games-map'),
-  saveLocalGamesMapEntry: (mediaId: string, game: any | null) => ipcRenderer.invoke('scanner:save-local-games-map-entry', mediaId, game),
+  saveScanPaths: (paths: unknown[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
+  getLocalGamesMap: () => ipcRenderer.invoke('scanner:get-local-game-map'),
+  saveLocalGamesMapEntry: (mediaId: string, game: unknown) => ipcRenderer.invoke('scanner:save-local-game-map-entry', mediaId, game),
   batchCheckMatchCache: (isoPaths: string[]) => ipcRenderer.invoke('scanner:batch-check-match-cache', isoPaths),
-  saveMatchCache: (entries: any[]) => ipcRenderer.invoke('scanner:save-match-cache', entries),
-  updateGamePath: (oldExePath: string, newExePath: string, newInstallDir?: string) =>
-    ipcRenderer.invoke('scanner:update-game-path', oldExePath, newExePath, newInstallDir),
+  saveMatchCache: (entries: unknown[]) => ipcRenderer.invoke('scanner:save-match-cache', entries),
+  updateGamePath: (id: string, exePath: string, installDir?: string) =>
+    ipcRenderer.invoke('scanner:update-game-path', id, exePath, installDir),
+  acceptSuggestion: (gameId: string, suggestion: unknown) => ipcRenderer.invoke('scanner:accept-suggestion', gameId, suggestion),
+  rejectSuggestion: (gameId: string, suggestionMediaId: string) => ipcRenderer.invoke('scanner:reject-suggestion', gameId, suggestionMediaId),
+  onGamesDbChanged: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('games-db:changed', handler);
+    return () => ipcRenderer.removeListener('games-db:changed', handler);
+  },
 
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
   getRecentSessions: () => ipcRenderer.invoke('game:get-recent-sessions'),
   getPlaytimeForGame: (gameId: string) => ipcRenderer.invoke('game:get-playtime', gameId),
-  setLibrary: (games: DetectedGame[]) => ipcRenderer.invoke('game:set-library', games),
+  setLibrary: (games: LocalGame[]) => ipcRenderer.invoke('game:set-library', games),
   stopTracking: (gameId: string) => ipcRenderer.invoke('game:stop-tracking', gameId),
   getRunningProcesses: () => ipcRenderer.invoke('game:get-running-processes'),
   addMapping: (processName: string, gameId: string, gameTitle: string) =>
@@ -138,7 +148,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   downloadsRemovePathMapping: (id: string) => ipcRenderer.invoke('downloads:remove-path-mapping', id),
 
   // Update tracking
-  downloadsGetTrackedGames: () => ipcRenderer.invoke('downloads:get-tracked-games'),
+  downloadsGetTrackedGames: () => ipcRenderer.invoke('downloads:get-tracked-game'),
   downloadsCheckUpdates: () => ipcRenderer.invoke('downloads:check-updates'),
 
   // Organizer
