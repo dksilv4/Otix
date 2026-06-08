@@ -219,6 +219,18 @@ export function markGameInstalled(isoExePath: string, installedExePath: string |
   setScannedGames(updated);
 }
 
+// ── Deprecated: kept for backward compat during migration ────────────
+
+/** @deprecated Use rejectSuggestionOnServer() instead (async, DB-backed). */
+export function rejectSuggestion(game: { title: string; platform: string }, _suggestionMediaId: string): void {
+  console.warn('[storage] rejectSuggestion() is deprecated, use rejectSuggestionOnServer()');
+}
+
+/** @deprecated Server now filters rejected suggestions; this is a no-op. */
+export function filterRejectedSuggestions<T extends { matchSuggestion?: unknown }>(games: T[]): T[] {
+  return games;
+}
+
 export function updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): void {
   const idx = cache.games.findIndex((g) => g.exePath === oldExePath);
   if (idx === -1) return;
