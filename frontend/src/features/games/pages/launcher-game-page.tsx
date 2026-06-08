@@ -26,12 +26,7 @@ import { useDesktopPlatform } from '@/lib/desktop-platform'
 import { getDesktopAPI } from '@/lib/desktop-api'
 import { useAuth } from '@/features/auth/auth-provider'
 import { API_BASE_URL } from '@/lib/api-client'
-import {
-  getScannedGames,
-  setScannedGames,
-  filterRejectedSuggestions,
-  rejectSuggestion,
-} from '@/features/game-scanner/storage'
+import { useGames, useRejectSuggestion } from '@/features/game-scanner/game-queries'
 import { useGameDetail, useSaveLocations } from '@/features/games/games-queries'
 import { useClaimGame } from '@/features/library/library-queries'
 import { useToast } from '@/features/dk-ui/molecules/toast'
@@ -85,24 +80,18 @@ export function LauncherGamePage() {
   const { isDesktop } = useDesktopPlatform()
   const { toast } = useToast()
   const { user } = useAuth()
+  const { data: localGames = [] } = useGames()
+  const rejectSuggestionMutation = useRejectSuggestion()
   const claimMutation = useClaimGame()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
   const { activeInstalls, cancelInstall } = useInstallProgress()
 
-  // ── Local game state (synced from localStorage / custom events) ──
+  // ── Local game state ──
 
-  const [localGames, setLocalGamesState] = useState<LocalGame[]>(() => getScannedGames())
   const [activeGameId, setActiveGameId] = useState<string | null>(null)
   const [foundInstall, _setFoundInstall] = useState<{ exePath: string; installKey: string } | null>(null)
   const [isInstallerOpen, setIsInstallerOpen] = useState(false)
-
-  // Sync localGames from external changes (scan, install, match mutations)
-  useEffect(() => {
-    const handler = () => setLocalGamesState(getScannedGames())
-    window.addEventListener('game:updated', handler)
-    return () => window.removeEventListener('game:updated', handler)
-  }, [])
 
   // Sync activeGameId from FloatingGameSelector selection
   useEffect(() => {
@@ -121,15 +110,9 @@ export function LauncherGamePage() {
     }
   }, [localGames, activeGameId])
 
-  // ── Writable setLocalGames that also persists ──
+  // ── Writable setLocalGames (no-op — data managed by useGames() query) ──
 
-  const setLocalGames: React.Dispatch<React.SetStateAction<LocalGame[]>> = useCallback((action) => {
-    setLocalGamesState(prev => {
-      const next = typeof action === 'function' ? action(prev) : action
-      setScannedGames(next)
-      return next
-    })
-  }, [])
+  const setLocalGames: React.Dispatch<React.SetStateAction<LocalGame[]>> = useCallback(() => {}, [])
 
   // ── Derived ──
 
@@ -508,16 +491,6 @@ export function LauncherGamePage() {
   const handleConfirmInstalled = useCallback(() => {
     if (!activeGame || !foundInstall) return
     const { exePath, installKey } = foundInstall
-    setLocalGames((prev) => {
-      const updated = prev.map((g) => {
-        if (g.id === activeGame.id || g.exePath === activeGame.exePath) {
-          return { ...g, platform: 'pc' as const, exePath, installDir: activeGame.installDir || g.installDir }
-        }
-        return g
-      })
-      setScannedGames(updated)
-      return updated
-    })
     _setFoundInstall(null)
     try {
       const dismissed = JSON.parse(localStorage.getItem('otix_verify_dismissed') || '[]')
@@ -547,14 +520,16 @@ export function LauncherGamePage() {
 
   const handleDenySuggestion = useCallback(() => {
     if (!activeGame?.rawGame?.matchSuggestion) return
-    rejectSuggestion(activeGame.rawGame, activeGame.rawGame.matchSuggestion.id)
-    setLocalGamesState(getScannedGames())
+    rejectSuggestionMutation.mutate({
+      gameId: activeGame.rawGame.id,
+      suggestionMediaId: activeGame.rawGame.matchSuggestion.id,
+    })
     toast({
       title: 'Suggestion Dismissed',
       description: "Match suggestion hidden. It won't reappear on future scans.",
       variant: 'default',
     })
-  }, [activeGame, toast])
+  }, [activeGame, rejectSuggestionMutation, toast])
 
   // ── No game loaded ──
 
@@ -807,7 +782,7 @@ export function LauncherGamePage() {
                           if (activeGame.rawGame) {
                             matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
                               if (matched?.length) {
-                                const filtered = filterRejectedSuggestions(matched)
+                                const filtered = matched
                                 setLocalGames(filtered)
                                 setScannedGames(filtered)
                                 syncMutation.mutate(filtered)
@@ -838,7 +813,7 @@ export function LauncherGamePage() {
                     if (activeGame.rawGame) {
                       matchMutation.mutateAsync([activeGame.rawGame]).then((matched) => {
                         if (matched?.length) {
-                          const filtered = filterRejectedSuggestions(matched)
+                          const filtered = matched
                           setLocalGames(filtered)
                           setScannedGames(filtered)
                           syncMutation.mutate(filtered)
