@@ -13,6 +13,7 @@ import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { ensureDb } from './db';
+import { setNotifyTarget } from './game-storage-service';
 import { scheduledUpdateCheck } from './downloads';
 import { SaveDaemon } from './save-daemon';
 import { registerSaveIPC } from './ipc/saves';
@@ -123,6 +124,9 @@ function createWindow() {
       partition: 'persist:main',
     },
   });
+
+  // Wire game-storage-service change notifications to this window
+  setNotifyTarget(mainWindow);
 
   if (saved?.maximized) {
     mainWindow.maximize()
