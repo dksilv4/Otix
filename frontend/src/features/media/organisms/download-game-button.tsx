@@ -5,13 +5,15 @@ import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downlo
 import type { HypervisorConfirmResponse } from '@/features/downloads/types'
 import { DkDialog } from '@/features/dk-ui/molecules/dialog'
 import { useExperiment } from '@/features/experiments/experiments-provider'
-import { getScannedGames, setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
+import { useGames } from '@/features/game-scanner/game-queries'
+import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
+import { getDesktopAPI } from '@/lib/desktop-api'
 import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import './download-game-button.scss'
 
-type DetectedGame = import('@/features/game-scanner/types').DetectedGame;
+type LocalGame = import('@/features/game-scanner/types').LocalGame;
 
 function isTitleMatch(gameTitle: string, mediaTitle: string): boolean {
   if (!gameTitle || !mediaTitle) return false;
@@ -43,15 +45,15 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
   const [errorMsg, setErrorMsg] = useState('');
   const [postProcessing, setPostProcessing] = useState(false);
   const [isInstallerOpen, setIsInstallerOpen] = useState(false);
-  const [localGame, setLocalGame] = useState<DetectedGame | null>(null);
-  const [scannedGames, setScannedGames] = useState<DetectedGame[]>([]);
+  const { data: scannedGames = [] } = useGames();
+  const [localGame, setLocalGame] = useState<LocalGame | null>(null);
   const [hvDialogOpen, setHvDialogOpen] = useState(false);
   const [hvCountdown, setHvCountdown] = useState(10);
   const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null);
 
-  // Load scanned games and local game map entry
+  // Load local game map entry on mount / media change
   useEffect(() => {
-    let currentLocal: DetectedGame | null = null;
+    let currentLocal: LocalGame | null = null;
     try {
       const map = getLocalGamesMap();
       currentLocal = map[mediaId] || null;
@@ -60,19 +62,16 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
       setLocalGame(null);
     }
 
-    const scanned = getScannedGames();
-    setScannedGames(scanned);
-
     // Auto-link if not in localGames map but matched by title
     if (!currentLocal && mediaTitle) {
-      const match = scanned.find(g => g.otixMediaId === mediaId) ||
-                    scanned.find(g => isTitleMatch(g.title, mediaTitle));
+      const match = scannedGames.find(g => g.data?.id === mediaId) ||
+                    scannedGames.find(g => isTitleMatch(g.title, mediaTitle));
       if (match) {
         setLocalGamesMapEntry(mediaId, match);
         setLocalGame(match);
       }
     }
-  }, [mediaId, mediaTitle]);
+  }, [mediaId, mediaTitle, scannedGames]);
 
   // Hypervisor confirmation countdown — auto-dismiss after 10s
   useEffect(() => {
@@ -91,7 +90,7 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
 
   if (!window.desktopAPI || !user?.isAdmin) return null;
 
-  const matchingScannedGame = scannedGames.find(g => g.otixMediaId === mediaId) || localGame;
+  const matchingScannedGame = scannedGames.find(g => g.data?.id === mediaId) || localGame;
   const isInstalled = matchingScannedGame && matchingScannedGame.platform !== 'iso';
 
   if (!downloadsEnabled && !matchingScannedGame) return null;

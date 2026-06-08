@@ -14,8 +14,7 @@ import { ListComposer } from "@/features/list/organisms/list-composer"
 import { useAuth } from "@/features/auth/auth-provider"
 import { getPlatformTabs, getPlatform } from "./platforms"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
-import type { DetectedGame } from "@/features/game-scanner/types"
-import { getScannedGames } from "@/features/game-scanner/storage"
+import { useGames } from "@/features/game-scanner/game-queries"
 import { GamesLauncher } from "./molecules/games-launcher"
 
 // ── Tab definitions ──
@@ -338,16 +337,7 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
 
 function LocalGamesOverviewSection() {
   const navigate = useNavigate()
-  const [games, setGames] = useState<DetectedGame[]>(getScannedGames)
-
-  // Re-read from cache on focus/mount
-  useEffect(() => {
-    const handleFocus = () => {
-      setGames(getScannedGames())
-    }
-    window.addEventListener("focus", handleFocus)
-    return () => window.removeEventListener("focus", handleFocus)
-  }, [])
+  const { data: games = [] } = useGames()
 
   const isElectron = typeof window !== "undefined" && !!(window as any).desktopAPI
   if (!isElectron || games.length === 0) return null
@@ -364,7 +354,7 @@ function LocalGamesOverviewSection() {
           onClick={() =>
             navigate({
               to: "/library/$tab",
-              params: { tab: "local-games" },
+              params: { tab: "local-game" },
             })
           }
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -382,7 +372,7 @@ function LocalGamesOverviewSection() {
             onClick={() =>
               navigate({
                 to: "/library/$tab",
-                params: { tab: "local-games" },
+                params: { tab: "local-game" },
               })
             }
             className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
