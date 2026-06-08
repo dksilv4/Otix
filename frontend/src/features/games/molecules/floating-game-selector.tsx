@@ -1,9 +1,8 @@
-import { useMemo, useCallback } from 'react'
+import { useCallback } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Gamepad2, Menu } from 'lucide-react'
 import { useNavigation } from '@navigation/providers/navigation-provider'
 import { useLocalGames } from '@/features/game-scanner/game-queries'
-import { usePopularGames } from '@/features/games/games-queries'
 import { toDisplayGame } from '@/features/games/launcher-utils'
 import GameThumbList from '@/features/games/molecules/game-thumb-list'
 
@@ -13,22 +12,9 @@ export function FloatingGameSelector() {
   const p = useParams({ strict: false })
   const activeGameId = (p as Record<string, string>).gameId || null
 
-  const { data: localGames = [] } = useLocalGames()
-  const { data: popularGames = [] } = usePopularGames()
+  const { data: localGames = [] } = useLocalGames({ installed: true, sortBy: 'last_played_at', sortDir: 'desc' })
 
-  const games = useMemo(() => {
-    const local = localGames.map(toDisplayGame).filter(g => !!g.otixMediaId)
-    if (local.length > 0) return local.sort((a, b) => a.title.localeCompare(b.title))
-    return popularGames.slice(0, 10).map((p) => ({
-      id: p.id, title: p.title, posterUrl: p.posterUrl || null,
-      backdropUrl: p.backdropUrl || undefined, logoUrl: p.logoUrl || undefined,
-      iconUrl: p.iconUrl || undefined,
-      badge: p.avgRating ? `★ ${p.avgRating.toFixed(1)} · ${p.ratingCount.toLocaleString()} ratings`
-        : p.popularity > 200 ? 'Popular' : 'Featured',
-      playtime: '—', achievements: p.avgRating ? `${Math.round(p.avgRating * 10)}%` : '—',
-      isDefault: true, platform: 'pc', otixMediaId: p.id,
-    }))
-  }, [localGames, popularGames])
+  const games = localGames.map(toDisplayGame)
 
   const handleSelectGame = useCallback((id: string) => {
     navigate({ to: '/game/$gameId', params: { gameId: id } })

@@ -73,7 +73,7 @@ export function ScannersSection() {
   const handleMatchAll = useCallback(async () => {
     setMatching(true)
     try {
-      let result = await matchMutation.mutateAsync(scannedGames)
+      const result = await matchMutation.mutateAsync(scannedGames)
       if (!result) return
       setScannedGames(result)
       setScannedGamesState(result)

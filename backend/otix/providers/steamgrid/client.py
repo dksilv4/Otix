@@ -66,9 +66,7 @@ class SteamGridDBProvider(BaseProvider):
     def _resolve_success(self, response: httpx.Response) -> list[dict[str, JSONValue]]:
         """Parse a SteamGridDB response, raising on error."""
         if response.status_code != 200:
-            raise SteamGridDBError(
-                f"SteamGridDB returned {response.status_code}: {response.text[:500]}"
-            )
+            raise SteamGridDBError(f"SteamGridDB returned {response.status_code}: {response.text[:500]}")
         body = response.json()
         if not body.get("success", False):
             errors = body.get("errors", [])
@@ -78,7 +76,9 @@ class SteamGridDBProvider(BaseProvider):
     # ── Game lookup ──────────────────────────────────────────────────
 
     async def get_game_by_platform_id(
-        self, platform: str, platform_id: str | int,
+        self,
+        platform: str,
+        platform_id: str | int,
     ) -> dict[str, JSONValue] | None:
         """Look up a SteamGridDB game by external platform ID.
 
@@ -154,9 +154,7 @@ class SteamGridDBProvider(BaseProvider):
         except (SteamGridDBError, ProviderError):
             return []
 
-    async def get_heroes(
-        self, game_id: int, styles: str | None = None
-    ) -> list[dict[str, JSONValue]]:
+    async def get_heroes(self, game_id: int, styles: str | None = None) -> list[dict[str, JSONValue]]:
         """Get heroes (banners) for a game. Style options: alternate, blurred, material."""
         params: dict = {}
         if styles:

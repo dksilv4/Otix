@@ -73,8 +73,6 @@ async def _call_embed_query(q: str):
     return await _eq(q)
 
 
-
-
 @media_router.get("/suggestions", response_model=list[MediaItemSummary])
 async def search_suggestions(
     q: str = Query(..., min_length=1, description="Search query"),
@@ -182,7 +180,8 @@ async def list_media(
         if album_media_ids:
             rg_future = asyncio.ensure_future(
                 ExternalIDService(db).batch_find_by_entity_ids(
-                    "media_item", album_media_ids,
+                    "media_item",
+                    album_media_ids,
                 )
             )
 
@@ -455,10 +454,7 @@ async def match_local_games(
     exclude_adult = should_exclude_adult(current_user)
     matches: list[LocalGameMatch] = []
 
-    games_data = [
-        {"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id}
-        for g in body.games
-    ]
+    games_data = [{"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id} for g in body.games]
     results = await svc.match_local_games(games_data)
 
     for query_title, item, confidence in results:
@@ -511,10 +507,7 @@ async def seed_from_titles(
     if not unique:
         return SeedFromTitlesResponse(accepted=True, total_titles=0)
 
-    games_data = [
-        {"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id}
-        for g in unique
-    ]
+    games_data = [{"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id} for g in unique]
     task = app.send_task("seed.igdb_from_titles", args=[games_data])
 
     # Track via Redis counter for debugging
@@ -746,7 +739,8 @@ async def import_igdb_game(
         # Sync may have skipped — look up existing entry by IGDB ID
         async with async_session() as session:
             ext_id = await ExternalIDService(session).get_by_provider_ext_id(
-                "igdb", str(igdb_id),
+                "igdb",
+                str(igdb_id),
             )
             if ext_id is not None:
                 media_id = ext_id.entity_id or ext_id.media_item_id
@@ -879,10 +873,8 @@ async def sync_local_games(
         from sqlalchemy import select
 
         existing = (
-            await session.execute(
-                select(UserLocalGame).where(UserLocalGame.user_id == user_id)
-            )
-        ).scalars().all()
+            (await session.execute(select(UserLocalGame).where(UserLocalGame.user_id == user_id))).scalars().all()
+        )
 
         existing_by_key: dict[tuple[str, str], UserLocalGame] = {}
         for g in existing:
@@ -923,6 +915,7 @@ async def sync_local_games(
 
         # Auto-claim matched game (fire and forget via interaction service)
         from otix.services.interaction_service import InteractionService
+
         interaction_svc = InteractionService(session)
         for game in body.games:
             if game.otix_media_id:

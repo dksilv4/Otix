@@ -11,9 +11,10 @@ export interface GamesFilter {
   matched?: boolean;
   hasSuggestion?: boolean;
   search?: string;
+  installed?: boolean;
   limit?: number;
   offset?: number;
-  sortBy?: 'title' | 'platform' | 'updated_at';
+  sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at';
   sortDir?: 'asc' | 'desc';
 }
 
@@ -105,7 +106,7 @@ export function useRejectSuggestion() {
  * Convenience: fetch only matched games (those with otixMediaId).
  * Equivalent to useLocalGames({ matched: true }).
  */
-export function useMatchedGames() {
+export function useLocalMatchedGames() {
   return useLocalGames({ matched: true } satisfies GamesFilter);
 }
 

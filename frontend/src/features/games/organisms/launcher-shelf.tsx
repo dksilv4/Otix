@@ -1,27 +1,27 @@
-/* ── LauncherShelf — shelf tab bar + poster card grid ── */
+/* ── LauncherShelf — self-contained shelf: My Games + Popular tabs ── */
 
-import { Gamepad2 } from 'lucide-react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { DisplayGame } from '@/features/games/types'
+import { MediaCard } from '@/features/dk-ui/molecules/media-card'
+import { usePopularGames } from '@/features/games/games-queries'
+import { useLocalGames } from '@/features/game-scanner/game-queries'
 
-export type ShelfTab = 'popular' | 'downloaded' | 'rated'
+type ShelfTab = 'my-games' | 'popular'
+
+const TAB_LABELS: Record<ShelfTab, string> = {
+  'my-games': 'My Games',
+  popular: 'Popular',
+}
 
 interface LauncherShelfProps {
   id?: string
-  games: DisplayGame[]
-  activeGameId: string | null
-  shelfTab: ShelfTab
-  onTabChange: (tab: ShelfTab) => void
-  onSelectGame: (id: string) => void
 }
 
-const TAB_LABELS: Record<ShelfTab, string> = {
-  popular: 'Popular',
-  downloaded: 'Most Downloaded',
-  rated: 'Top Rated',
-}
+export function LauncherShelf({ id }: LauncherShelfProps) {
+  const { data: localGames = [] } = useLocalGames()
+  const { data: popularGames = [] } = usePopularGames()
+  const [shelfTab, setShelfTab] = useState<ShelfTab>('my-games')
 
-export function LauncherShelf({ id, games, activeGameId, shelfTab, onTabChange, onSelectGame }: LauncherShelfProps) {
   return (
     <div id={id}>
       {/* ── Tab bar ── */}
@@ -34,7 +34,7 @@ export function LauncherShelf({ id, games, activeGameId, shelfTab, onTabChange, 
           {(Object.keys(TAB_LABELS) as ShelfTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => onTabChange(tab)}
+              onClick={() => setShelfTab(tab)}
               className={cn(
                 "text-[11px] font-semibold transition-all cursor-pointer pb-0.5",
                 shelfTab === tab
@@ -50,31 +50,41 @@ export function LauncherShelf({ id, games, activeGameId, shelfTab, onTabChange, 
 
       {/* ── Poster cards ── */}
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none scroll-smooth snap-x">
-        {games.map((game) => (
-          <button
-            key={`shelf-${game.id}`}
-            onClick={() => onSelectGame(game.id)}
-            className={cn(
-              "w-[120px] aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer border shadow-md relative hover:scale-105 active:scale-95 transition-all duration-300 shrink-0 snap-start",
-              game.id === activeGameId
-                ? "border-white shadow-[0_0_12px_rgba(255,255,255,0.15)]"
-                : "border-white/5 hover:border-white/20"
-            )}
-            title={game.title}
-          >
-            {game.posterUrl ? (
-              <img
-                src={game.posterUrl}
-                alt={game.title}
-                className="w-full h-full object-cover"
+        {shelfTab === 'my-games' ? (
+          localGames.length === 0 ? (
+            <div className="flex items-center justify-center h-32 w-full text-white/30 text-xs font-semibold">
+              No local games matched yet. Run a scan!
+            </div>
+          ) : (
+            localGames.map((g) => (
+              <MediaCard
+                key={`shelf-${g.id}`}
+                id={g.data?.id || g.id}
+                mediaType="game"
+                title={g.title}
+                posterUrl={g.posterUrl || g.iconUrl}
+                className="shrink-0 snap-start"
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-white/5">
-                <Gamepad2 size={18} className="opacity-30"/>
-              </div>
-            )}
-          </button>
-        ))}
+            ))
+          )
+        ) : popularGames.length === 0 ? (
+          <div className="flex items-center justify-center h-32 w-full text-white/30 text-xs font-semibold">
+            No popular games loaded.
+          </div>
+        ) : (
+          popularGames.map((g) => (
+            <MediaCard
+              key={`shelf-${g.id}`}
+              id={g.id}
+              mediaType="game"
+              title={g.title}
+              posterUrl={g.posterUrl}
+              avgRating={g.avgRating}
+              ratingCount={g.ratingCount}
+              className="shrink-0 snap-start"
+            />
+          ))
+        )}
       </div>
     </div>
   )

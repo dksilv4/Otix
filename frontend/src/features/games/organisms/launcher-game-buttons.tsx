@@ -31,9 +31,10 @@ export function LauncherGameButtons() {
   const handlePickExe = async () => {
     if (!g.id || !getDesktopAPI()) return
     const api = getDesktopAPI()!
-    if (!api.pickExecutable) return
+    if (!api.pickExecutable || !api.updateGamePath) return
     const newExe = await api.pickExecutable(g.installDir)
     if (!newExe) return
+    await api.updateGamePath(g.id, newExe)
     toast({ title: 'Executable Updated', description: `Exe changed to: ${newExe}`, variant: 'success' })
   }
 

@@ -19,36 +19,85 @@ class PreferenceProfile:
 
 
 _GENRE_LABELS: dict[str, str] = {
-    "action": "Action", "adventure": "Adventure", "animation": "Animated",
-    "comedy": "Comedy", "crime": "Crime", "documentary": "Documentary",
-    "drama": "Drama", "family": "Family", "fantasy": "Fantasy",
-    "history": "History", "horror": "Horror", "mystery": "Mystery",
-    "romance": "Romance", "science-fiction": "Sci-Fi", "sci-fi": "Sci-Fi",
-    "thriller": "Thriller", "war": "War", "western": "Western",
-    "rpg": "RPG", "shooter": "Shooter", "strategy": "Strategy",
-    "simulation": "Simulation", "sports": "Sports", "racing": "Racing",
-    "puzzle": "Puzzle", "indie": "Indie", "fighting": "Fighting",
-    "pop": "Pop", "rock": "Rock", "hip-hop": "Hip-Hop", "rap": "Rap",
-    "r-b": "R&B", "electronic": "Electronic", "jazz": "Jazz",
-    "classical": "Classical", "country": "Country", "metal": "Metal",
-    "punk": "Punk", "folk": "Folk", "blues": "Blues", "reggae": "Reggae",
-    "latin": "Latin", "k-pop": "K-Pop", "j-pop": "J-Pop",
-    "soundtrack": "Soundtrack", "alternative": "Alternative",
-    "soul": "Soul", "funk": "Funk",
+    "action": "Action",
+    "adventure": "Adventure",
+    "animation": "Animated",
+    "comedy": "Comedy",
+    "crime": "Crime",
+    "documentary": "Documentary",
+    "drama": "Drama",
+    "family": "Family",
+    "fantasy": "Fantasy",
+    "history": "History",
+    "horror": "Horror",
+    "mystery": "Mystery",
+    "romance": "Romance",
+    "science-fiction": "Sci-Fi",
+    "sci-fi": "Sci-Fi",
+    "thriller": "Thriller",
+    "war": "War",
+    "western": "Western",
+    "rpg": "RPG",
+    "shooter": "Shooter",
+    "strategy": "Strategy",
+    "simulation": "Simulation",
+    "sports": "Sports",
+    "racing": "Racing",
+    "puzzle": "Puzzle",
+    "indie": "Indie",
+    "fighting": "Fighting",
+    "pop": "Pop",
+    "rock": "Rock",
+    "hip-hop": "Hip-Hop",
+    "rap": "Rap",
+    "r-b": "R&B",
+    "electronic": "Electronic",
+    "jazz": "Jazz",
+    "classical": "Classical",
+    "country": "Country",
+    "metal": "Metal",
+    "punk": "Punk",
+    "folk": "Folk",
+    "blues": "Blues",
+    "reggae": "Reggae",
+    "latin": "Latin",
+    "k-pop": "K-Pop",
+    "j-pop": "J-Pop",
+    "soundtrack": "Soundtrack",
+    "alternative": "Alternative",
+    "soul": "Soul",
+    "funk": "Funk",
 }
 
 _LANGUAGE_LABELS: dict[str, str] = {
-    "ja": "Japanese", "ko": "Korean", "zh": "Chinese",
-    "pt-PT": "Portuguese", "pt-BR": "Brazilian", "es": "Spanish", "fr": "French",
-    "de": "German", "it": "Italian", "hi": "Hindi",
-    "ar": "Arabic", "ru": "Russian", "th": "Thai",
-    "tr": "Turkish", "pl": "Polish", "nl": "Dutch",
-    "sv": "Swedish", "no": "Norwegian", "da": "Danish",
-    "fi": "Finnish", "en": "English",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "zh": "Chinese",
+    "pt-PT": "Portuguese",
+    "pt-BR": "Brazilian",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "hi": "Hindi",
+    "ar": "Arabic",
+    "ru": "Russian",
+    "th": "Thai",
+    "tr": "Turkish",
+    "pl": "Polish",
+    "nl": "Dutch",
+    "sv": "Swedish",
+    "no": "Norwegian",
+    "da": "Danish",
+    "fi": "Finnish",
+    "en": "English",
 }
 
 _MEDIA_LABELS: dict[str, str] = {
-    "movie": "Movies", "show": "Shows", "game": "Games", "music": "Music",
+    "movie": "Movies",
+    "show": "Shows",
+    "game": "Games",
+    "music": "Music",
 }
 
 
@@ -68,54 +117,78 @@ class CombinedSignal:
 
 _COMBINED_SIGNALS: list[CombinedSignal] = [
     CombinedSignal(
-        "anime", "Anime",
-        ("animation",), ("ja",),
-        ("movie", "show"), "trending",
+        "anime",
+        "Anime",
+        ("animation",),
+        ("ja",),
+        ("movie", "show"),
+        "trending",
         "Because you enjoy Japanese animation",
         use_is_anime=True,
         skip_language_filter=True,
     ),
     CombinedSignal(
-        "k_drama", "K-Dramas",
-        ("drama",), ("ko",),
-        ("show",), "trending",
+        "k_drama",
+        "K-Dramas",
+        ("drama",),
+        ("ko",),
+        ("show",),
+        "trending",
         "Because you enjoy Korean dramas",
     ),
     CombinedSignal(
-        "k_pop", "K-Pop",
-        ("pop", "k-pop"), ("ko",),
-        ("music",), "trending",
+        "k_pop",
+        "K-Pop",
+        ("pop", "k-pop"),
+        ("ko",),
+        ("music",),
+        "trending",
         "Because you enjoy K-Pop",
     ),
     CombinedSignal(
-        "j_pop", "J-Pop",
-        ("pop", "j-pop"), ("ja",),
-        ("music",), "trending",
+        "j_pop",
+        "J-Pop",
+        ("pop", "j-pop"),
+        ("ja",),
+        ("music",),
+        "trending",
         "Because you enjoy J-Pop",
     ),
     CombinedSignal(
-        "j_drama", "Japanese Dramas",
-        ("drama",), ("ja",),
-        ("show",), "trending",
+        "j_drama",
+        "Japanese Dramas",
+        ("drama",),
+        ("ja",),
+        ("show",),
+        "trending",
         "Because you enjoy Japanese dramas",
         exclude_is_anime=True,
     ),
     CombinedSignal(
-        "c_drama", "Chinese Dramas",
-        ("drama",), ("zh",),
-        ("show",), "trending",
+        "c_drama",
+        "Chinese Dramas",
+        ("drama",),
+        ("zh",),
+        ("show",),
+        "trending",
         "Because you enjoy Chinese dramas",
     ),
     CombinedSignal(
-        "latin_music", "Latin Music",
-        ("pop", "latin", "reggae"), ("es", "pt-PT", "pt-BR"),
-        ("music",), "trending",
+        "latin_music",
+        "Latin Music",
+        ("pop", "latin", "reggae"),
+        ("es", "pt-PT", "pt-BR"),
+        ("music",),
+        "trending",
         "Because you enjoy Latin music",
     ),
     CombinedSignal(
-        "bollywood", "Bollywood",
-        ("drama", "romance", "action"), ("hi",),
-        ("movie",), "trending",
+        "bollywood",
+        "Bollywood",
+        ("drama", "romance", "action"),
+        ("hi",),
+        ("movie",),
+        "trending",
         "Because you enjoy Hindi cinema",
     ),
 ]
@@ -371,7 +444,8 @@ class PersonalizationService:
         return result
 
     async def _compute_integration_genre_affinity(
-        self, user: User,
+        self,
+        user: User,
     ) -> dict[str, list[tuple[str, int]]]:
         affinity: dict[str, dict[str, float]] = {}
 
@@ -444,9 +518,9 @@ class PersonalizationService:
 
         # Pre-filter: only consider users who share at least one preferred genre or media type
         if my_genres:
-            query = query.where(UserModel.preferred_genres.op('?|')(cast(list(my_genres), ARRAY(String))))
+            query = query.where(UserModel.preferred_genres.op("?|")(cast(list(my_genres), ARRAY(String))))
         elif my_types:
-            query = query.where(UserModel.preferred_media_types.op('?|')(cast(list(my_types), ARRAY(String))))
+            query = query.where(UserModel.preferred_media_types.op("?|")(cast(list(my_types), ARRAY(String))))
 
         # Safety cap: never load more than 2000 users into memory
         query = query.limit(2000)
@@ -473,7 +547,11 @@ class PersonalizationService:
         return scored[:limit]
 
     async def _get_collaborative_items(
-        self, user_id: str, similar_users: list[tuple[str, float]], media_type: str, limit: int = 20,
+        self,
+        user_id: str,
+        similar_users: list[tuple[str, float]],
+        media_type: str,
+        limit: int = 20,
     ) -> list[str]:
         """Get media IDs that similar users interacted with, excluding items the current user already knows."""
         if not similar_users:
@@ -492,12 +570,15 @@ class PersonalizationService:
               )
             LIMIT :limit
         """)
-        result = await self.session.execute(query, {
-            "similar_ids": similar_ids,
-            "media_type": media_type,
-            "user_id": user_id,
-            "limit": limit,
-        })
+        result = await self.session.execute(
+            query,
+            {
+                "similar_ids": similar_ids,
+                "media_type": media_type,
+                "user_id": user_id,
+                "limit": limit,
+            },
+        )
         return [row[0] for row in result.fetchall()]
 
     async def get_semantic_recommendations(
@@ -525,10 +606,13 @@ class PersonalizationService:
             ORDER BY umi.created_at DESC
             LIMIT 10
         """)
-        result = await self.session.execute(seed_query, {
-            "user_id": user_id,
-            "media_type": media_type,
-        })
+        result = await self.session.execute(
+            seed_query,
+            {
+                "user_id": user_id,
+                "media_type": media_type,
+            },
+        )
         embeddings = []
         for row in result.fetchall():
             raw = row[0]
@@ -635,17 +719,19 @@ class PersonalizationService:
                         continue
                     covered.add(key)
 
-                    sections.append(PersonalizedSection(
-                        id=f"{target_mt}_emphasis_{signal_id}_{genre_slug}",
-                        title=f"{adjective_label} {sig.display_name}",
-                        media_type=target_mt,
-                        list_type=sig.list_type,
-                        genre=genre_slug,
-                        language=None if sig.skip_language_filter else next(iter(sig.match_languages), None),
-                        is_anime=True if sig.use_is_anime else (False if sig.exclude_is_anime else None),
-                        is_personalized=True,
-                        reason=f"Because you emphasized {sig.display_name.lower()}",
-                    ))
+                    sections.append(
+                        PersonalizedSection(
+                            id=f"{target_mt}_emphasis_{signal_id}_{genre_slug}",
+                            title=f"{adjective_label} {sig.display_name}",
+                            media_type=target_mt,
+                            list_type=sig.list_type,
+                            genre=genre_slug,
+                            language=None if sig.skip_language_filter else next(iter(sig.match_languages), None),
+                            is_anime=True if sig.use_is_anime else (False if sig.exclude_is_anime else None),
+                            is_personalized=True,
+                            reason=f"Because you emphasized {sig.display_name.lower()}",
+                        )
+                    )
                     sub_count += 1
                     emphasis_added += 1
         else:
@@ -667,17 +753,19 @@ class PersonalizationService:
                     if _is_covered(mt, genre=matched_genre, lang=matched_lang):
                         continue
                     _cover(mt, genre=matched_genre, lang=matched_lang)
-                    sections.append(PersonalizedSection(
-                        id=f"{mt}_combined_{sig.signal_id}",
-                        title=sig.display_name,
-                        media_type=mt,
-                        list_type=sig.list_type,
-                        genre=matched_genre,
-                        language=None if sig.skip_language_filter else matched_lang,
-                        is_anime=True if sig.use_is_anime else (False if sig.exclude_is_anime else None),
-                        is_personalized=True,
-                        reason=sig.reason,
-                    ))
+                    sections.append(
+                        PersonalizedSection(
+                            id=f"{mt}_combined_{sig.signal_id}",
+                            title=sig.display_name,
+                            media_type=mt,
+                            list_type=sig.list_type,
+                            genre=matched_genre,
+                            language=None if sig.skip_language_filter else matched_lang,
+                            is_anime=True if sig.use_is_anime else (False if sig.exclude_is_anime else None),
+                            is_personalized=True,
+                            reason=sig.reason,
+                        )
+                    )
 
             # ── Tier 2: Genre affinity (top genres from interaction/integration data) ──
             genre_sections_added = 0
@@ -697,15 +785,17 @@ class PersonalizationService:
                     _cover(mt, genre=genre_slug)
                     label = _genre_label(genre_slug)
                     media_label = _media_label(mt)
-                    sections.append(PersonalizedSection(
-                        id=f"{mt}_{genre_slug}_affinity",
-                        title=f"Trending {label} {media_label}",
-                        media_type=mt,
-                        list_type="trending",
-                        genre=genre_slug,
-                        is_personalized=True,
-                        reason=f"Because you like {label.lower()}",
-                    ))
+                    sections.append(
+                        PersonalizedSection(
+                            id=f"{mt}_{genre_slug}_affinity",
+                            title=f"Trending {label} {media_label}",
+                            media_type=mt,
+                            list_type="trending",
+                            genre=genre_slug,
+                            is_personalized=True,
+                            reason=f"Because you like {label.lower()}",
+                        )
+                    )
                     genre_sections_added += 1
                     break
 
@@ -714,8 +804,9 @@ class PersonalizationService:
         for lang in user_langs:
             if lang_added >= 1 or len(sections) >= MAX_SECTIONS - 1:
                 break
-            if any(set(sig.match_languages) & {lang} and set(sig.match_genres) & user_genres
-                   for sig in _COMBINED_SIGNALS):
+            if any(
+                set(sig.match_languages) & {lang} and set(sig.match_genres) & user_genres for sig in _COMBINED_SIGNALS
+            ):
                 continue  # already covered by a combined signal
             for mt in user_types:
                 if mt == "game":
@@ -727,16 +818,18 @@ class PersonalizationService:
                 _cover(mt, lang=lang)
                 label = _language_label(lang)
                 media_label = _media_label(mt)
-                sections.append(PersonalizedSection(
-                    id=f"{mt}_{lang}_lang",
-                    title=f"{label} {media_label}",
-                    media_type=mt,
-                    list_type="trending",
-                    genre=None,
-                    language=lang,
-                    is_personalized=True,
-                    reason=f"Because you enjoy {label.lower()} content",
-                ))
+                sections.append(
+                    PersonalizedSection(
+                        id=f"{mt}_{lang}_lang",
+                        title=f"{label} {media_label}",
+                        media_type=mt,
+                        list_type="trending",
+                        genre=None,
+                        language=lang,
+                        is_personalized=True,
+                        reason=f"Because you enjoy {label.lower()} content",
+                    )
+                )
                 lang_added += 1
                 break
 
@@ -747,14 +840,16 @@ class PersonalizationService:
                 if integration_added < 2 and len(sections) < MAX_SECTIONS:
                     if not _is_covered("game", lang="_integration"):
                         _cover("game", lang="_integration")
-                        sections.append(PersonalizedSection(
-                            id="game_steam_library",
-                            title="From Your Steam Library",
-                            media_type="game",
-                            list_type="integration_steam",
-                            is_personalized=True,
-                            reason="Based on game you play on Steam",
-                        ))
+                        sections.append(
+                            PersonalizedSection(
+                                id="game_steam_library",
+                                title="From Your Steam Library",
+                                media_type="game",
+                                list_type="integration_steam",
+                                is_personalized=True,
+                                reason="Based on game you play on Steam",
+                            )
+                        )
                         integration_added += 1
             if user.plex_id:
                 for mt in ("movie", "show"):
@@ -766,14 +861,16 @@ class PersonalizationService:
                         continue
                     _cover(mt, lang="_integration")
                     media_label = _media_label(mt)
-                    sections.append(PersonalizedSection(
-                        id=f"{mt}_plex_library",
-                        title="From Your Plex Library",
-                        media_type=mt,
-                        list_type="integration_plex",
-                        is_personalized=True,
-                        reason=f"Inspired by {media_label.lower()} in your Plex library",
-                    ))
+                    sections.append(
+                        PersonalizedSection(
+                            id=f"{mt}_plex_library",
+                            title="From Your Plex Library",
+                            media_type=mt,
+                            list_type="integration_plex",
+                            is_personalized=True,
+                            reason=f"Inspired by {media_label.lower()} in your Plex library",
+                        )
+                    )
                     integration_added += 1
 
         # ── Tier 5: Collaborative (1 section) ──
@@ -784,14 +881,16 @@ class PersonalizationService:
                 continue
             _cover(mt, lang="_collab")
             media_label = _media_label(mt)
-            sections.append(PersonalizedSection(
-                id=f"{mt}_collaborative",
-                title=f"Because You Like {media_label}",
-                media_type=mt,
-                list_type="collaborative",
-                is_personalized=True,
-                reason="Users with similar taste enjoyed these",
-            ))
+            sections.append(
+                PersonalizedSection(
+                    id=f"{mt}_collaborative",
+                    title=f"Because You Like {media_label}",
+                    media_type=mt,
+                    list_type="collaborative",
+                    is_personalized=True,
+                    reason="Users with similar taste enjoyed these",
+                )
+            )
             break  # Only one collaborative section
 
         # ── Tier 6: Generic fallbacks for uncovered media types ──
@@ -801,12 +900,14 @@ class PersonalizationService:
             if any(s.media_type == media_type and s.is_personalized for s in sections):
                 continue
             media_label = _media_label(media_type)
-            sections.append(PersonalizedSection(
-                id=f"{media_type}_trending",
-                title=f"Trending {media_label}",
-                media_type=media_type,
-                list_type="trending",
-            ))
+            sections.append(
+                PersonalizedSection(
+                    id=f"{media_type}_trending",
+                    title=f"Trending {media_label}",
+                    media_type=media_type,
+                    list_type="trending",
+                )
+            )
 
         return sections
 
@@ -815,7 +916,9 @@ class PersonalizationService:
         from otix.schemas.discover import PersonalizedSection
 
         return [
-            PersonalizedSection(id="trending_movies", title="Trending Movies", media_type="movie", list_type="trending"),
+            PersonalizedSection(
+                id="trending_movies", title="Trending Movies", media_type="movie", list_type="trending"
+            ),
             PersonalizedSection(id="trending_shows", title="Trending Shows", media_type="show", list_type="trending"),
             PersonalizedSection(id="popular_games", title="Popular Games", media_type="game", list_type="popular"),
             PersonalizedSection(id="new_music", title="New Music", media_type="music", list_type="popular"),
