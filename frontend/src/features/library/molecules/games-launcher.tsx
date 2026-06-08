@@ -5,18 +5,19 @@ import {
 } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
-import { getScannedGames, setScannedGames, hasDesktopAPI, rejectSuggestion, clearRejectedSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
+import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop-api"
+import { useGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import { useGameDetail, usePopularGames } from "@/features/games/games-queries"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { IsoInstallerModal } from "@/features/game-scanner/organisms/iso-installer-modal"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import type { LocalGame } from "@/features/game-scanner/types"
 import type { CatalogGameDetail } from "@/features/games/types"
 
 // ── CSS for hero background animation ─────────────────────────────
 
-const heroBgStyleId = "games-hero-bg-anim"
+const heroBgStyleId = "game-hero-bg-anim"
 if (typeof document !== "undefined" && !document.getElementById(heroBgStyleId)) {
   const style = document.createElement("style")
   style.id = heroBgStyleId
@@ -67,7 +68,7 @@ function detectPlatform(): "windows" | "mac" | "linux" {
   return "linux"
 }
 
-function isSuitable(game: DetectedGame): boolean {
+function isSuitable(game: LocalGame): boolean {
   if (game.platform === "steam" || game.platform === "gog") return true
   if (game.sources?.includes("iso") || game.platform === "iso") return detectPlatform() === "windows"
   if (game.exePath.endsWith(".exe")) return detectPlatform() === "windows"
@@ -112,14 +113,14 @@ function heroBackground(title: string, backdropUrl?: string | null): React.CSSPr
   }
 }
 
-// ── Game card (for local detected games) ───────────────────────────
+// ── Game card (for local detected game) ───────────────────────────
 
 function GameCard({
   game,
   isSelected,
   onSelect,
 }: {
-  game: DetectedGame
+  game: LocalGame
   isSelected: boolean
   onSelect: (id: string) => void
 }) {
@@ -127,19 +128,19 @@ function GameCard({
   const [imgLoaded, setImgLoaded] = useState(false)
 
   const isIso = game.sources?.includes("iso") || game.platform === "iso"
-  const isMatched = !!game.otixMediaId && !isIso
-  const hasSuggestion = !!game.otixMatchSuggestion
-  const isMatchedIso = !!game.otixMediaId && isIso
+  const isMatched = !!game.data?.id && !isIso
+  const hasSuggestion = !!game.matchSuggestion
+  const isMatchedIso = !!game.data?.id && isIso
   const suitable = isSuitable(game)
-  const title = game.otixMediaTitle || game.title
-  const img = game.otixPosterUrl || game.posterUrl || game.iconUrl
+  const title = game.data?.title || game.title
+  const img = game.data?.posterUrl || game.posterUrl || game.iconUrl
 
   const badge = isMatched && suitable
     ? { label: "Play", color: "bg-emerald-500/90 text-white", icon: <Play size={9} fill="currentColor" /> }
     : isIso && suitable
       ? { label: "Install", color: "bg-blue-500/90 text-white", icon: <Download size={9} /> }
       : hasSuggestion
-        ? { label: `${game.otixConfidence != null ? Math.round(game.otixConfidence * 100) : "?"}%`, color: "bg-blue-500/80 text-white", icon: null }
+        ? { label: `${game.data?.confidence != null ? Math.round(game.data?.confidence * 100) : "?"}%`, color: "bg-blue-500/80 text-white", icon: null }
         : null
 
   return (
@@ -249,13 +250,13 @@ function HeroSection({
   onRejectSuggestion,
   onViewDetails,
 }: {
-  game: DetectedGame
+  game: LocalGame
   detail?: CatalogGameDetail | null
-  onPlay: (game: DetectedGame) => void
-  onOpenFolder: (game: DetectedGame) => void
-  onInstall?: (game: DetectedGame) => void
-  onAcceptSuggestion?: (game: DetectedGame) => void
-  onRejectSuggestion?: (game: DetectedGame) => void
+  onPlay: (game: LocalGame) => void
+  onOpenFolder: (game: LocalGame) => void
+  onInstall?: (game: LocalGame) => void
+  onAcceptSuggestion?: (game: LocalGame) => void
+  onRejectSuggestion?: (game: LocalGame) => void
   onViewDetails: (id: string) => void
 }) {
   const [imgFailed, setImgFailed] = useState(false)
@@ -263,14 +264,14 @@ function HeroSection({
   const [logoFailed, setLogoFailed] = useState(false)
 
   const isIso = game.sources?.includes("iso") || game.platform === "iso"
-  const isMatched = !!game.otixMediaId
-  const hasSuggestion = !!game.otixMatchSuggestion
+  const isMatched = !!game.data?.id
+  const hasSuggestion = !!game.matchSuggestion
   const suitable = isSuitable(game)
-  const title = game.otixMediaTitle || game.title
+  const title = game.data?.title || game.title
 
-  console.log("[Hero] render", title, { isMatched, isIso, hasSuggestion, suitable, otixMediaId: game.otixMediaId, platform: game.platform })
+  console.log("[Hero] render", title, { isMatched, isIso, hasSuggestion, suitable, otixMediaId: game.data?.id, platform: game.platform })
 
-  const posterUrl = detail?.textlessPosterUrl ?? detail?.posterUrl ?? game.otixPosterUrl ?? game.posterUrl
+  const posterUrl = detail?.textlessPosterUrl ?? detail?.posterUrl ?? game.data?.posterUrl ?? game.posterUrl
   const backdropUrl = detail?.backdropUrl
   const logoUrl = detail?.logoUrl
   const installDir = game.installDir.split(/[/\\]/).slice(-2).join(" / ")
@@ -388,7 +389,7 @@ function HeroSection({
               {hasSuggestion && (
                 <div className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 backdrop-blur-sm px-2.5 py-1">
                   <span className="text-[11px] font-semibold text-blue-400">
-                    {game.otixConfidence != null ? `${Math.round(game.otixConfidence * 100)}%` : "?"} match suggested
+                    {game.data?.confidence != null ? `${Math.round(game.data?.confidence * 100)}%` : "?"} match suggested
                   </span>
                 </div>
               )}
@@ -485,9 +486,9 @@ function HeroSection({
               {hasSuggestion && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-500/8 border border-blue-500/15">
                   <span className="text-sm text-blue-400 font-medium">
-                    Match with <strong>{game.otixMatchSuggestion!.title}</strong>?
-                    {game.otixConfidence != null && (
-                      <span className="ml-1.5 text-blue-400/60">({Math.round(game.otixConfidence * 100)}%)</span>
+                    Match with <strong>{game.matchSuggestion!.title}</strong>?
+                    {game.data?.confidence != null && (
+                      <span className="ml-1.5 text-blue-400/60">({Math.round(game.data?.confidence * 100)}%)</span>
                     )}
                   </span>
                   <div className="flex gap-2 ml-auto">
@@ -549,7 +550,7 @@ function HeroSection({
                 {isMatched && (
                   <button
                     type="button"
-                    onClick={() => onViewDetails(game.otixMediaId!)}
+                    onClick={() => onViewDetails(game.data?.id!)}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-white/8 px-4 py-2.5 text-xs font-medium text-white/40 hover:bg-white/12 hover:text-white/70 active:scale-[0.97] transition-all backdrop-blur-sm"
                   >
                     <ExternalLink size={12} /> Details
@@ -564,7 +565,7 @@ function HeroSection({
   )
 }
 
-// ── Empty hero (when no games at all) ──────────────────────────────
+// ── Empty hero (when no game at all) ──────────────────────────────
 
 function EmptyHero() {
   return (
@@ -581,7 +582,7 @@ function EmptyHero() {
   )
 }
 
-// ── Shelf row (local games, horizontal scroll) ────────────────────
+// ── Shelf row (local game, horizontal scroll) ────────────────────
 
 function LocalShelfRow({
   label,
@@ -591,7 +592,7 @@ function LocalShelfRow({
 }: {
   label: string
   icon: React.ReactNode
-  items: DetectedGame[]
+  items: LocalGame[]
   onSelect: (id: string) => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -631,10 +632,10 @@ function LocalShelfRow({
           className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-thin snap-x snap-mandatory"
         >
           {items.map((game) => {
-            const isMatched = !!game.otixMediaId
-            const hasSuggestion = !!game.otixMatchSuggestion
-            const title = game.otixMediaTitle || game.title
-            const img = game.otixPosterUrl || game.posterUrl || game.iconUrl
+            const isMatched = !!game.data?.id
+            const hasSuggestion = !!game.matchSuggestion
+            const title = game.data?.title || game.title
+            const img = game.data?.posterUrl || game.posterUrl || game.iconUrl
             return (
               <button
                 key={game.id}
@@ -703,9 +704,9 @@ function EmptyGridState({ activeTab, search, hasGames }: {
   }
 
   const messages: Record<GamesTab, { title: string; desc: string }> = {
-    all: { title: "No games found", desc: "" },
-    matched: { title: "No matched games", desc: "Games you've matched to the catalog appear here." },
-    unmatched: { title: "No unmatched games", desc: "Every local game either has a catalog match or a pending suggestion." },
+    all: { title: "No game found", desc: "" },
+    matched: { title: "No matched game", desc: "Games you've matched to the catalog appear here." },
+    unmatched: { title: "No unmatched game", desc: "Every local game either has a catalog match or a pending suggestion." },
   }
   const m = messages[activeTab]
 
@@ -722,81 +723,29 @@ function EmptyGridState({ activeTab, search, hasGames }: {
 
 export function GamesLauncher() {
   const navigate = useNavigate()
-  const [games, setGames] = useState<DetectedGame[]>(() => getScannedGames())
+  const { data: games = [] } = useGames()
+  const rejectSuggestionMutation = useRejectSuggestion()
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<GamesTab>("all")
-  const [selectedGame, setSelectedGame] = useState<DetectedGame | null>(null)
+  const [selectedGame, setSelectedGame] = useState<LocalGame | null>(null)
   const [scanning, setScanning] = useState(false)
-  const [matching, setMatching] = useState(false)
   const matchMutation = useMatchLocalGames()
-  const initializedRef = useRef(false)
-  const [matchNotice, setMatchNotice] = useState<{ matched: number; suggested: number } | null>(null)
 
-  // Always use the latest version of selectedGame from the games array
+  // Always use the latest version of selectedGame from the game array
   const activeSelectedGame = useMemo(
     () => (selectedGame ? games.find((g) => g.id === selectedGame.id) ?? selectedGame : null),
     [games, selectedGame],
   )
 
   // Catalog detail for the active selected game
-  const { data: gameDetail } = useGameDetail(activeSelectedGame?.otixMediaId)
+  const { data: gameDetail } = useGameDetail(activeSelectedGame?.data?.id)
 
-  // Popular catalog games for shelf
+  // Popular catalog game for shelf
   const { data: popularGames = [] } = usePopularGames()
 
-  // Auto-match unmatched games on mount
-  useEffect(() => {
-    if (initializedRef.current || games.length === 0) return
-    initializedRef.current = true
-    const needsMatch = games.some((g) => !g.otixMediaId && !g.otixMatchSuggestion)
-    if (!needsMatch) return
-    setMatching(true)
-    matchMutation.mutateAsync(games).then((matched) => {
-      if (matched && matched.length > 0) {
-        const filtered = filterRejectedSuggestions(matched)
-        const prevMatched = games.filter((g) => g.otixMediaId).length
-        const newMatched = filtered.filter((g) => g.otixMediaId).length
-        const newSuggested = filtered.filter((g) => g.otixMatchSuggestion).length
-        const deltaMatched = newMatched - prevMatched
-        console.log(`[Auto-match] ${deltaMatched} new matches, ${newSuggested} new suggestions`)
-        if (deltaMatched > 0 || newSuggested > 0) {
-          setMatchNotice({ matched: deltaMatched, suggested: newSuggested })
-          setTimeout(() => setMatchNotice(null), 6000)
-        }
-        setGames(filtered)
-        setScannedGames(filtered)
-      }
-    }).catch((err) => {
-      console.error("[Auto-match] failed:", err)
-    }).finally(() => {
-      setMatching(false)
-    })
-  }, [])
-
-  // Refresh on window focus — re-read storage + re-match unmatched
-  useEffect(() => {
-    const handle = () => {
-      const fresh = getScannedGames()
-      setGames(fresh)
-      const needsMatch = fresh.some((g) => !g.otixMediaId && !g.otixMatchSuggestion)
-      if (needsMatch && !matching) {
-        setMatching(true)
-        matchMutation.mutateAsync(fresh).then((matched) => {
-          if (matched && matched.length > 0) {
-            const filtered = filterRejectedSuggestions(matched)
-            setGames(filtered)
-            setScannedGames(filtered)
-          }
-        }).catch(() => {}).finally(() => {
-          setMatching(false)
-        })
-      }
-    }
-    window.addEventListener("focus", handle)
-    return () => window.removeEventListener("focus", handle)
-  }, [])
-
   // Auto-select first game when games load and none is selected
+
+  // Auto-select first game when game load and none is selected
   useEffect(() => {
     if (!selectedGame && games.length > 0) {
       setSelectedGame(games[0])
@@ -806,7 +755,7 @@ export function GamesLauncher() {
   // ── Derived ──────────────────────────────────────────────────────
 
   const matchedGames = useMemo(() => games.filter(
-    (g) => g.otixMediaId && !(g.sources?.includes("iso") || g.platform === "iso"),
+    (g) => g.data?.id && !(g.sources?.includes("iso") || g.platform === "iso"),
   ), [games])
 
   const isoGames = useMemo(() => games.filter(
@@ -814,37 +763,37 @@ export function GamesLauncher() {
   ), [games])
 
   const unmatchedGames = useMemo(() => games.filter(
-    (g) => !g.otixMediaId && !g.otixMatchSuggestion,
+    (g) => !g.data?.id && !g.matchSuggestion,
   ), [games])
 
   const suggestedGames = useMemo(() => games.filter(
-    (g) => g.otixMatchSuggestion,
+    (g) => g.matchSuggestion,
   ), [games])
 
   // Tab counts matching the actual tab filter logic
-  const tabMatchedCount = useMemo(() => games.filter((g) => g.otixMediaId).length, [games])
+  const tabMatchedCount = useMemo(() => games.filter((g) => g.data?.id).length, [games])
   const tabUnmatchedCount = useMemo(() => unmatchedGames.length, [unmatchedGames])
 
   // Filtered + sorted display list
   const filtered = useMemo(() => {
     let result = games
 
-    if (activeTab === "matched") result = result.filter((g) => g.otixMediaId)
-    if (activeTab === "unmatched") result = result.filter((g) => !g.otixMediaId && !g.otixMatchSuggestion)
+    if (activeTab === "matched") result = result.filter((g) => g.data?.id)
+    if (activeTab === "unmatched") result = result.filter((g) => !g.data?.id && !g.matchSuggestion)
 
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
         (g) =>
-          (g.otixMediaTitle || g.title).toLowerCase().includes(q) ||
+          (g.data?.title || g.title).toLowerCase().includes(q) ||
           g.platform.toLowerCase().includes(q),
       )
     }
 
-    const isIso = (g: DetectedGame) => g.sources?.includes("iso") || g.platform === "iso"
+    const isIso = (g: LocalGame) => g.sources?.includes("iso") || g.platform === "iso"
     return [...result].sort((a, b) => {
-      const aScore = a.otixMediaId && !isIso(a) ? 4 : a.otixMediaId && isIso(a) ? 3 : a.otixMatchSuggestion ? 2 : 1
-      const bScore = b.otixMediaId && !isIso(b) ? 4 : b.otixMediaId && isIso(b) ? 3 : b.otixMatchSuggestion ? 2 : 1
+      const aScore = a.data?.id && !isIso(a) ? 4 : a.data?.id && isIso(a) ? 3 : a.matchSuggestion ? 2 : 1
+      const bScore = b.data?.id && !isIso(b) ? 4 : b.data?.id && isIso(b) ? 3 : b.matchSuggestion ? 2 : 1
       return bScore - aScore
     })
   }, [games, activeTab, search])
@@ -865,41 +814,12 @@ export function GamesLauncher() {
     if (!hasDesktopAPI()) return
     setScanning(true)
     try {
-      const api = (window as any).desktopAPI
-      const scanned = await api.scanPaths(
-        JSON.parse(localStorage.getItem("otix_scanner_paths") || "[]"),
-        JSON.parse(localStorage.getItem("otix_scanner_iso_paths") || "[]"),
-      )
-      const matched = await matchMutation.mutateAsync(scanned)
-      if (matched?.length) {
-        // Preserve existing otixMediaId for games the match API didn't re-match
-        const merged = matched.map((newGame: DetectedGame) => {
-          const existing = games.find(
-            (g) => g.id === newGame.id || g.exePath === newGame.exePath,
-          )
-          if (!newGame.otixMediaId && !newGame.otixMatchSuggestion) {
-            if (existing?.otixMediaId) {
-              return {
-                ...newGame,
-                otixMediaId: existing.otixMediaId,
-                otixMediaTitle: existing.otixMediaTitle,
-                otixMediaSlug: existing.otixMediaSlug,
-                otixPosterUrl: existing.otixPosterUrl,
-                otixTextlessPosterUrl: existing.otixTextlessPosterUrl,
-                otixBackdropUrl: existing.otixBackdropUrl,
-                otixIconUrl: existing.otixIconUrl,
-                otixLogoUrl: existing.otixLogoUrl,
-              }
-            }
-            if (existing?.otixMatchSuggestion) {
-              return { ...newGame, otixMatchSuggestion: existing.otixMatchSuggestion, otixConfidence: existing.otixConfidence }
-            }
-          }
-          return newGame
-        })
-        setGames(merged)
-        setScannedGames(merged)
-      }
+      const api = getDesktopAPI()!
+      const paths = await api.getScanPaths()
+      const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path)
+      const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path)
+      await api.scanPaths(gamePaths, isoPaths)
+      // DB-change event triggers auto-refetch via subscribeToGameDbChanges
     } catch (err) {
       console.error("Rescan failed:", err)
     } finally {
@@ -913,7 +833,7 @@ export function GamesLauncher() {
       const result = await matchMutation.mutateAsync(games)
       if (result && result.length > 0) {
         const filtered = filterRejectedSuggestions(result)
-        console.log(`[Re-match] matched: ${filtered.filter(g => g.otixMediaId).length}, suggested: ${filtered.filter(g => g.otixMatchSuggestion).length}`)
+        console.log(`[Re-match] matched: ${filtered.filter(g => g.data?.id).length}, suggested: ${filtered.filter(g => g.matchSuggestion).length}`)
         setGames(filtered)
         setScannedGames(filtered)
       }
@@ -929,70 +849,45 @@ export function GamesLauncher() {
     if (g) setSelectedGame(g)
   }, [games])
 
-  const handlePlay = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).desktopAPI) {
-      (window as any).desktopAPI.launchGame(game).catch(console.error)
+  const handlePlay = useCallback((game: LocalGame) => {
+    const api = getDesktopAPI()
+    if (api) {
+      api.launchGame(game).catch(console.error)
     }
   }, [])
 
-  const handleOpenFolder = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).desktopAPI) {
-      const { shell } = window as any
-      if (shell?.openPath) shell.openPath(game.installDir)
+  const handleOpenFolder = useCallback((game: LocalGame) => {
+    const api = getDesktopAPI()
+    if (api?.showItemInFolder) {
+      api.showItemInFolder(game.installDir).catch(console.error)
     }
   }, [])
 
   const [installerOpen, setInstallerOpen] = useState(false)
   const [installIsoPath, setInstallIsoPath] = useState<string | undefined>()
 
-  const openInstaller = useCallback((game: DetectedGame) => {
+  const openInstaller = useCallback((game: LocalGame) => {
     setInstallIsoPath(game.exePath)
     setInstallerOpen(true)
   }, [])
 
-  const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
-    if (!game.otixMatchSuggestion) {
-      console.log("[Accept] no suggestion on game", game.id, game.title, { otixMediaId: game.otixMediaId, otixMatchSuggestion: game.otixMatchSuggestion })
-      return
+  const handleAcceptSuggestion = useCallback((game: LocalGame) => {
+    if (!game.matchSuggestion) return
+    const api = getDesktopAPI()
+    if (api?.acceptSuggestion) {
+      api.acceptSuggestion(game.id, game.matchSuggestion).catch(console.error)
     }
-    console.log("[Accept] accepting", game.id, game.title, "→", game.otixMatchSuggestion.mediaId, game.otixMatchSuggestion.title)
-    clearRejectedSuggestion(game, game.otixMatchSuggestion.mediaId)
-    setGames((prev) => {
-      const found = prev.find((g) => g.id === game.id)
-      console.log("[Accept] found in prev:", !!found, "total:", prev.length)
-      return prev.map((g) =>
-        g.id === game.id
-          ? {
-              ...g,
-              otixMediaId: game.otixMatchSuggestion!.mediaId,
-              otixMediaTitle: game.otixMatchSuggestion!.title,
-              otixMediaSlug: game.otixMatchSuggestion!.slug,
-              otixMatchSuggestion: undefined,
-              otixConfidence: undefined,
-            }
-          : g,
-      )
+  }, [])
+
+  const handleRejectSuggestion = useCallback((game: LocalGame) => {
+    if (!game.matchSuggestion) return
+    rejectSuggestionMutation.mutate({
+      gameId: game.id,
+      suggestionMediaId: game.matchSuggestion.id,
     })
-  }, [])
+  }, [rejectSuggestionMutation])
 
-  const handleRejectSuggestion = useCallback((game: DetectedGame) => {
-    if (game.otixMatchSuggestion) {
-      rejectSuggestion(game, game.otixMatchSuggestion.mediaId)
-    }
-    setGames((prev) =>
-      prev.map((g) =>
-        g.id === game.id
-          ? { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined }
-          : g,
-      ),
-    )
-  }, [])
-
-  // Sync to storage on change
-  useEffect(() => {
-    if (games.length === 0) return
-    setScannedGames(games)
-  }, [games])
+  // No longer sync to storage — data managed by useGames() query
 
   // ── Keyboard navigation ──────────────────────────────────────────
 
