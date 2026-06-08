@@ -312,6 +312,19 @@ function _createTables(): void {
       start_time INTEGER NOT NULL
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS game_rejected_suggestions (
+      id TEXT PRIMARY KEY,
+      game_title TEXT NOT NULL,
+      game_platform TEXT NOT NULL,
+      suggestion_media_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(game_title, game_platform, suggestion_media_id)
+    )
+  `);
+
+  db.run('CREATE INDEX IF NOT EXISTS idx_rejected_suggestions_lookup ON game_rejected_suggestions(game_title, game_platform)');
 }
 
 function _migrateDb(): void {
