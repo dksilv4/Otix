@@ -1,4 +1,4 @@
-export interface DetectedGame {
+export interface LocalGame {
   id: string;
   title: string;
   exePath: string;
@@ -52,7 +52,7 @@ export interface ProcessMapping {
 }
 
 export interface RunningGame {
-  game: DetectedGame;
+  game: LocalGame;
   startTime: number;
   launchedByOtix: boolean;
   pid?: number;
@@ -68,7 +68,7 @@ export interface PlaySession {
 
 export interface LauncherScanResult {
   source: string;
-  games: DetectedGame[];
+  games: LocalGame[];
   error?: string;
 }
 
@@ -255,9 +255,9 @@ export interface IDesktopAPI {
   openExternal: (url: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;
   onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
-  scanPaths: (paths: string[], isoPaths: string[]) => Promise<DetectedGame[]>;
+  scanPaths: (paths: string[], isoPaths: string[]) => Promise<LocalGame[]>;
   scanLaunchers: () => Promise<LauncherScanResult[]>;
-  launchGame: (game: DetectedGame) => Promise<boolean>;
+  launchGame: (game: LocalGame) => Promise<boolean>;
   selectIso: () => Promise<string | null>;
   mountIso: (isoPath: string) => Promise<MountResult>;
   dismountIso: (isoPath: string) => Promise<boolean>;
@@ -270,28 +270,34 @@ export interface IDesktopAPI {
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
   onScannerProgress: (callback: (data: { currentDir: string; progress: number }) => void) => () => void;
   onGamesUpdated: (callback: () => void) => () => void;
-  getScannedGames: () => Promise<DetectedGame[]>;
-  saveScannedGames: (games: DetectedGame[]) => Promise<void>;
+  getScannedGames: () => Promise<LocalGame[]>;
+  saveScannedGames: (games: LocalGame[]) => Promise<void>;
   pickExecutable: (defaultPath?: string) => Promise<string | null>;
   getScanPaths: () => Promise<{ path: string; type: 'game' | 'iso' }[]>;
   saveScanPaths: (paths: { path: string; type: 'game' | 'iso' }[]) => Promise<void>;
-  getLocalGamesMap: () => Promise<Record<string, DetectedGame>>;
-  saveLocalGamesMapEntry: (mediaId: string, game: DetectedGame | null) => Promise<void>;
+  getLocalGamesMap: () => Promise<Record<string, LocalGame>>;
+  saveLocalGamesMapEntry: (mediaId: string, game: LocalGame | null) => Promise<void>;
   batchCheckMatchCache: (isoPaths: string[]) => Promise<Record<string, MatchCacheEntry | null>>;
   saveMatchCache: (entries: MatchCacheEntry[]) => Promise<void>;
-  updateGamePath: (oldExePath: string, newExePath: string, newInstallDir?: string) => Promise<void>;
+  updateGamePath: (id: string, exePath: string, installDir?: string) => Promise<void>;
+  getScannedGamesFiltered: (filter: unknown) => Promise<LocalGame[]>;
+  getGameById: (id: string) => Promise<LocalGame | null>;
+  getGameCount: (filter: unknown) => Promise<number>;
+  acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
+  rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
+  onGamesDbChanged: (callback: () => void) => () => void;
 
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;
   getRecentSessions: () => Promise<PlaySession[]>;
   getPlaytimeForGame: (gameId: string) => Promise<{ totalMinutes: number; sessionCount: number; lastPlayed: number | null }>;
-  setLibrary: (games: DetectedGame[]) => Promise<boolean>;
+  setLibrary: (games: LocalGame[]) => Promise<boolean>;
   stopTracking: (gameId: string) => Promise<boolean>;
   getRunningProcesses: () => Promise<DetectedProcess[]>;
   addMapping: (processName: string, gameId: string, gameTitle: string) => Promise<boolean>;
   removeMapping: (processName: string) => Promise<boolean>;
   getMappings: () => Promise<ProcessMapping[]>;
-  getLibrary: () => Promise<DetectedGame[]>;
+  getLibrary: () => Promise<LocalGame[]>;
   onGameStarted: (callback: (data: RunningGame) => void) => () => void;
   onGameEnded: (callback: (data: PlaySession) => void) => () => void;
 
