@@ -1,20 +1,12 @@
-/* ── LauncherFooter — composes DiskSpaceWidget + ScanActions + Hydrate ── */
+/* ── LauncherFooter — composes DiskSpaceWidget + LauncherScanWidget + Hydrate ── */
 
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop-api'
 import { DiskSpaceWidget } from '@/features/games/molecules/disk-space-widget'
-import { ScanActions } from '@/features/games/molecules/scan-actions'
+import { LauncherScanWidget } from '@/features/games/molecules/scan-widget'
 
-interface LauncherFooterProps {
-  id?: string
-  scanning: boolean
-  onScan: () => void
-  onSettings: () => void
-  onLibrary: () => void
-}
-
-export function LauncherFooter({ id, scanning, onScan, onSettings, onLibrary }: LauncherFooterProps) {
+export function LauncherFooter({ id }: { id?: string }) {
   const [hydrating, setHydrating] = useState(false)
 
   const handleHydrate = async () => {
@@ -42,7 +34,7 @@ export function LauncherFooter({ id, scanning, onScan, onSettings, onLibrary }: 
           <RefreshCw size={12} className={hydrating ? 'animate-spin' : ''} />
           {hydrating ? 'Hydrating...' : 'Hydrate'}
         </button>
-        <ScanActions id="launcher-scan-actions" scanning={scanning} onScan={onScan} onSettings={onSettings} onLibrary={onLibrary} />
+        <LauncherScanWidget id="launcher-scan-widget" />
       </div>
     </div>
   )

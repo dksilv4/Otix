@@ -71,7 +71,9 @@ async def _search_backfill(query: str, media_type: str | None = None) -> dict:
             results[name] = result
 
     total_enqueued = sum(v.get("enqueued", 0) for v in results.values())
-    logger.info("search backfill complete", query=query, media_type=media_type, total_enqueued=total_enqueued, breakdown=results)
+    logger.info(
+        "search backfill complete", query=query, media_type=media_type, total_enqueued=total_enqueued, breakdown=results
+    )
     return {"query": query, "media_type": media_type, "results": results}
 
 
@@ -215,8 +217,10 @@ async def _seed_igdb_from_titles(games: list[dict]) -> dict:
 
     if not steam_games and not title_games:
         return {
-            "enqueued_steam": 0, "enqueued_igdb": 0,
-            "total_entries": 0, "found": 0,
+            "enqueued_steam": 0,
+            "enqueued_igdb": 0,
+            "total_entries": 0,
+            "found": 0,
         }
 
     enqueued_steam = 0
@@ -238,13 +242,9 @@ async def _seed_igdb_from_titles(games: list[dict]) -> dict:
         # Check which are already in the catalog
         async with async_session() as session:
             eid_svc = ExternalIDService(session)
-            existing = await eid_svc.batch_find_entity_ids(
-                "steam", [str(a) for a in steam_app_id_map]
-            )
+            existing = await eid_svc.batch_find_entity_ids("steam", [str(a) for a in steam_app_id_map])
 
-        remaining_app_ids = [
-            a for a in steam_app_id_map if str(a) not in existing
-        ]
+        remaining_app_ids = [a for a in steam_app_id_map if str(a) not in existing]
 
         if remaining_app_ids:
             # Try IGDB external_games mapping for remaining

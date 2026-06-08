@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
 import type { LocalGame } from './scanner';
+import { updateLastPlayedAt } from './game-storage-service';
 
 export interface RunningGame {
   game: LocalGame;
@@ -501,6 +502,7 @@ export class GameDetector extends EventEmitter {
     };
 
     this.saveSession(session);
+    updateLastPlayedAt(entry.game.id, new Date(session.endTime).toISOString());
     this.emit('game:ended', session);
   }
 

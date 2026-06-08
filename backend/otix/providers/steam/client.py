@@ -31,6 +31,7 @@ class SteamProvider(BaseProvider):
     def __init__(self, redis: Redis, http_client: httpx.AsyncClient | None = None):
         if http_client is None:
             from otix.infrastructure.http_client import get_http_client
+
             http_client = get_http_client()
         super().__init__(
             name="steam",

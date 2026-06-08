@@ -31,9 +31,7 @@ async def get_user_interactions(
     current_user: User = Depends(get_current_user),
 ) -> UserInteractionState:
     service = InteractionService(db)
-    state = await service.get_user_interactions(
-        user_id=current_user.id, media_item_id=media_id
-    )
+    state = await service.get_user_interactions(user_id=current_user.id, media_item_id=media_id)
     return UserInteractionState(**state)
 
 
@@ -94,9 +92,7 @@ async def remove_interaction(
         interaction_type=interaction_type,
     )
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Interaction not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interaction not found")
 
     # Invalidate the media-detail cache so the next GET returns fresh user_interactions
     redis = await get_redis()

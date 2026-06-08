@@ -148,7 +148,9 @@ class IGDBProvider(BaseProvider):
             return response.json()
         raise IGDBError(f"IGDB popular game query failed: {response.status_code}")
 
-    async def get_recently_released_games(self, limit: int = 100, fields: str | None = None) -> list[dict[str, JSONValue]]:
+    async def get_recently_released_games(
+        self, limit: int = 100, fields: str | None = None
+    ) -> list[dict[str, JSONValue]]:
         """Recently released game in the last 90 days."""
         now = int(time.time())
         ninety_days_ago = now - 90 * 86400
@@ -210,12 +212,7 @@ class IGDBProvider(BaseProvider):
         if end_date is not None:
             conditions.append(f"first_release_date <= {end_date}")
         where = " & ".join(conditions)
-        body = (
-            f"fields {fields or '*'}; "
-            f"sort first_release_date desc; "
-            f"where {where}; "
-            f"limit {limit}; offset {offset};"
-        )
+        body = f"fields {fields or '*'}; sort first_release_date desc; where {where}; limit {limit}; offset {offset};"
         response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()

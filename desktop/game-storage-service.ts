@@ -19,6 +19,7 @@ export interface GameRow {
   data?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string };
   matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string };
   updateFiles?: { name: string; path: string }[];
+  lastPlayedAt?: string;
 }
 
 export interface GameFilter {
@@ -26,9 +27,10 @@ export interface GameFilter {
   matched?: boolean;
   hasSuggestion?: boolean;
   search?: string;
+  installed?: boolean;
   limit?: number;
   offset?: number;
-  sortBy?: 'title' | 'platform' | 'updated_at';
+  sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at';
   sortDir?: 'asc' | 'desc';
 }
 
@@ -51,6 +53,7 @@ function rowToGame(row: DbRow): GameRow {
     posterUrl: (row.poster_url as string) || undefined,
     sources: row.sources ? JSON.parse(row.sources as string) : undefined,
     updateFiles: row.update_files ? JSON.parse(row.update_files as string) : undefined,
+    lastPlayedAt: (row.last_played_at as string) || undefined,
     data: row.otix_media_id
       ? (() => {
           const base = {
@@ -100,14 +103,26 @@ export function getAllGames(filter: GameFilter = {}): GameRow[] {
     conditions.push('(title LIKE ? OR install_dir LIKE ?)');
     params.push(`%${filter.search}%`, `%${filter.search}%`);
   }
+  if (filter.installed === true) {
+    conditions.push("platform != 'iso'");
+  }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const sortBy = filter.sortBy || 'title';
   const sortDir = filter.sortDir || 'asc';
+
+  let orderClause: string;
+  if (sortBy === 'last_played_at' && sortDir === 'desc') {
+    orderClause = `ORDER BY CASE WHEN last_played_at IS NULL THEN 1 ELSE 0 END, last_played_at DESC`;
+  } else if (sortBy === 'last_played_at' && sortDir === 'asc') {
+    orderClause = `ORDER BY last_played_at ASC`;
+  } else {
+    orderClause = `ORDER BY ${sortBy} ${sortDir}`;
+  }
   const limit = filter.limit ? `LIMIT ${filter.limit}` : '';
   const offset = filter.offset ? `OFFSET ${filter.offset}` : '';
 
-  const sql = `SELECT * FROM scanned_games ${where} ORDER BY ${sortBy} ${sortDir} ${limit} ${offset}`;
+  const sql = `SELECT * FROM scanned_games ${where} ${orderClause} ${limit} ${offset}`;
   return _all(sql, params).map(rowToGame);
 }
 
@@ -197,6 +212,15 @@ export function updateGamePath(id: string, exePath: string, installDir?: string)
   _run(
     "UPDATE scanned_games SET exe_path = ?, install_dir = ?, updated_at = datetime('now') WHERE id = ?",
     [exePath, installDir || exePath.replace(/\/[^/]*$/, ''), id],
+  );
+  notifyGamesChanged();
+}
+
+export function updateLastPlayedAt(id: string, playedAt: string): void {
+  ensureDb();
+  _run(
+    "UPDATE scanned_games SET last_played_at = ? WHERE id = ?",
+    [playedAt, id],
   );
 }
 

@@ -11,7 +11,7 @@ interface GameThumbListProps {
 
 const GameThumbList = ({ games, activeGameId, onSelect }: GameThumbListProps) => {
     return (
-        <div className="flex-1 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full h-full px-1.5 pt-14 pb-14">
+        <div className="min-h-[2rem] flex-1 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full h-full px-1.5 pt-16 pb-16">
             {games.map((game: DisplayGame) => {
                 const isActive = game.id === activeGameId
                 return (

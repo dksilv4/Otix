@@ -45,9 +45,7 @@ async def get_steam_library_tab(
         )
 
     try:
-        item_tuples, has_more, next_cursor = await get_steam_library(
-            db, current_user.id, cursor=cursor, limit=limit
-        )
+        item_tuples, has_more, next_cursor = await get_steam_library(db, current_user.id, cursor=cursor, limit=limit)
     except Exception:
         await db.rollback()
         logger.exception("failed to fetch steam library", user_id=current_user.id, ip=ip)
@@ -119,9 +117,7 @@ async def get_steam_unmatched_games(
         )
 
     try:
-        items, has_more, next_cursor = await get_unmatched_steam_games(
-            db, current_user.id, cursor=cursor, limit=limit
-        )
+        items, has_more, next_cursor = await get_unmatched_steam_games(db, current_user.id, cursor=cursor, limit=limit)
     except Exception:
         await db.rollback()
         logger.exception("failed to fetch unmatched steam game", user_id=current_user.id, ip=ip)
@@ -154,9 +150,7 @@ async def get_steam_wishlist_tab(
         )
 
     try:
-        item_tuples, has_more, next_cursor = await get_steam_wishlist(
-            db, current_user.id, cursor=cursor, limit=limit
-        )
+        item_tuples, has_more, next_cursor = await get_steam_wishlist(db, current_user.id, cursor=cursor, limit=limit)
     except Exception:
         await db.rollback()
         logger.exception("failed to fetch steam wishlist", user_id=current_user.id, ip=ip)

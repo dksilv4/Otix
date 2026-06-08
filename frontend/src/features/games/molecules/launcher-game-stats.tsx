@@ -50,7 +50,6 @@ export function LauncherGameStats() {
 
   const isInstalled = !!g?.exePath && g?.platform !== 'iso'
   const statusLabel = isInstalled ? 'Installed' : g?.platform === 'iso' && osName !== 'Windows' ? 'Incompatible' : 'Not installed'
-  const statusColor = isInstalled ? 'text-emerald-400' : 'text-white/30'
   const ttb = formatTimeToBeat(g.data?.game?.timeToBeat as Record<string, unknown> | undefined)
   const avgRating = (g.data?.avgRating as number | undefined) ?? null
   const ratingCount = (g.data?.ratingCount as number) ?? 0
@@ -67,7 +66,7 @@ export function LauncherGameStats() {
   const playtimeStr = formatPlaytime(playtime, null)
 
   return (
-    <div className="absolute bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
+    <div className="z-1 absolute bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
       <div className="bg-white/10 backdrop-blur-2xl rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-6">
         {/* Playtime */}
         <div className="flex items-center gap-3 min-w-0">
@@ -85,7 +84,7 @@ export function LauncherGameStats() {
           <span className={cn("w-3 h-3 rounded-full shrink-0", isInstalled ? 'bg-emerald-400' : 'bg-white/40')} />
           <div>
             <p className={cn("text-lg font-black tracking-tight leading-none", isInstalled ? 'text-emerald-400' : 'text-white/80')}>{statusLabel}</p>
-            <p className={cn("text-[10px] font-semibold tracking-wide text-white/60")}>{ttb || 'Not installed'}</p>
+            <p className={cn("text-[10px] font-semibold tracking-wide text-white/60")}>{ttb || (isInstalled ? `${g.platform.toUpperCase()}` : 'Not installed')}</p>
           </div>
         </div>
 

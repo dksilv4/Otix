@@ -71,13 +71,7 @@ class SeedReport:
         if self.errors:
             _section("Errors", self.errors)
 
-        total = (
-            len(self.movies)
-            + len(self.shows)
-            + len(self.people)
-            + len(self.games)
-            + len(self.albums)
-        )
+        total = len(self.movies) + len(self.shows) + len(self.people) + len(self.games) + len(self.albums)
         print(f"\n  {'─' * 50}")
         print(f"  Total entities: {total}")
         print(f"  Errors: {len(self.errors)}")
@@ -110,9 +104,9 @@ SEED_PEOPLE = [
 ]
 
 SEED_GAMES = [
-    730,       # Counter-Strike 2
-    570,       # Dota 2
-    578080,    # PUBG: BATTLEGROUNDS
+    730,  # Counter-Strike 2
+    570,  # Dota 2
+    578080,  # PUBG: BATTLEGROUNDS
 ]
 
 SEED_ALBUMS = [
@@ -245,9 +239,7 @@ async def verify_external_ids() -> None:
 
         # Verify descriptor reads for a sample of each entity type
         game = await session.scalar(
-            select(Game)
-            .options(selectinload(Game.media_item), selectinload(Game._external_ids))
-            .limit(1)
+            select(Game).options(selectinload(Game.media_item), selectinload(Game._external_ids)).limit(1)
         )
         if game:
             steam_id = game.steam_app_id
@@ -270,9 +262,7 @@ async def verify_external_ids() -> None:
             print(f"    Person '{person.name}' tmdb_id = {person.tmdb_id}")
 
         album = await session.scalar(
-            select(Album)
-            .options(selectinload(Album.media_item), selectinload(Album._external_ids))
-            .limit(1)
+            select(Album).options(selectinload(Album.media_item), selectinload(Album._external_ids)).limit(1)
         )
         if album:
             mb_id = album.musicbrainz_id

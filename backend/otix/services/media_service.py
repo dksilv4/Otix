@@ -54,16 +54,17 @@ class MediaService:
         try:
             async with async_session() as session:
                 await session.execute(
-                    update(MediaItem).where(MediaItem.id == media_id).values(
-                        view_count=MediaItem.view_count + 1
-                    )
+                    update(MediaItem).where(MediaItem.id == media_id).values(view_count=MediaItem.view_count + 1)
                 )
                 await session.commit()
         except Exception:
             pass
 
     async def list_deleted_tmdb_ids(
-        self, page: int = 1, page_size: int = 50, media_type: str | None = None,
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        media_type: str | None = None,
     ) -> tuple[list, int]:
         """List deleted TMDB IDs with pagination. Returns (items, total)."""
         from otix.domain.media import TMDBDeletedID
@@ -77,8 +78,7 @@ class MediaService:
 
         total = await self.session.scalar(count_query) or 0
         rows = await self.session.execute(
-            base_query.order_by(TMDBDeletedID.detection_date.desc())
-            .offset((page - 1) * page_size).limit(page_size)
+            base_query.order_by(TMDBDeletedID.detection_date.desc()).offset((page - 1) * page_size).limit(page_size)
         )
         return list(rows.scalars().all()), total
 
@@ -99,9 +99,7 @@ class MediaService:
         result = await self.session.scalars(query)
         return list(result)
 
-    async def list_certifications(
-        self, country_code: str = "us", media_type: str | None = None
-    ) -> list[str]:
+    async def list_certifications(self, country_code: str = "us", media_type: str | None = None) -> list[str]:
         """List distinct certifications for a country, optionally filtered by media type."""
         from otix.domain.asset import MediaRelease
 
@@ -127,9 +125,7 @@ class MediaService:
 
     async def get_media_type(self, media_id: str) -> str | None:
         """Return the media_type for a media item, or None if not found."""
-        result = await self.session.scalar(
-            select(MediaItem.media_type).where(MediaItem.id == media_id)
-        )
+        result = await self.session.scalar(select(MediaItem.media_type).where(MediaItem.id == media_id))
         return result
 
     async def list_media(
@@ -640,9 +636,7 @@ class MediaService:
         steam_items_map: dict[str, MediaItem] = {}
         if steam_hits:
             entity_ids = list(steam_hits.values())
-            steam_result = await self.session.execute(
-                select(MediaItem).where(MediaItem.id.in_(entity_ids))
-            )
+            steam_result = await self.session.execute(select(MediaItem).where(MediaItem.id.in_(entity_ids)))
             steam_items_map = {item.id: item for item in steam_result.scalars().all()}
 
         # Fill in Steam results and track which titles still need trigram
@@ -667,9 +661,7 @@ class MediaService:
 
         # ── Phase 2: Trigram matching for remaining titles ──────────
         if trigram_titles:
-            trigram_results = await self._match_local_games_by_trigram(
-                trigram_titles, threshold
-            )
+            trigram_results = await self._match_local_games_by_trigram(trigram_titles, threshold)
             for pos, (raw_title, item, conf) in enumerate(trigram_results):
                 orig_idx = trigram_index_map[pos]
                 results[orig_idx] = (raw_title, item, conf)
@@ -706,19 +698,25 @@ class MediaService:
                 r"[-.\s](?:RUNE|CODEX|FLT|PLAZA|HOODLUM|SKIDROW|TENOKE|DODI|"
                 r"ElAmigos|Razor1911|FAIRLIGHT|GOLDBERG|P2P|EMPRESS|FCKDRM|"
                 r"STEAMPUNKS|CPY|RELOADED|PROPHET|TiNYiSO|BAT|ALI213|3DM|GOG|FCK)",
-                "", clean, flags=re.IGNORECASE,
+                "",
+                clean,
+                flags=re.IGNORECASE,
             )
             clean = re.sub(r"[\[\(]?\s*v?\d+(?:\.\d+)+(?:\w\d*)?\s*[\]\)]?", "", clean)
             clean = re.sub(
                 r"(?:\b(?:goty|game of the year|definitive|enhanced|remastered|"
                 r"ultimate|complete|deluxe|collectors|special|legendary|"
                 r"anniversary|vr|directors? cut)\s*edition\b)",
-                "", clean, flags=re.IGNORECASE,
+                "",
+                clean,
+                flags=re.IGNORECASE,
             )
             clean = re.sub(
                 r"\b(?:goty|remastered|definitive|enhanced|complete|deluxe|"
                 r"legendary|anniversary|repack|multilingual)\b",
-                "", clean, flags=re.IGNORECASE,
+                "",
+                clean,
+                flags=re.IGNORECASE,
             )
             clean = clean.replace(".", " ").replace("_", " ")
             clean = re.sub(r"\s+", " ", clean).strip()
@@ -757,9 +755,7 @@ class MediaService:
         matched_ids = {v[0] for v in match_by_clean.values()}
         items_map: dict[str, MediaItem] = {}
         if matched_ids:
-            result = await self.session.execute(
-                select(MediaItem).where(MediaItem.id.in_(list(matched_ids)))
-            )
+            result = await self.session.execute(select(MediaItem).where(MediaItem.id.in_(list(matched_ids))))
             items_map = {item.id: item for item in result.scalars().all()}
 
         # Build result list in original input order

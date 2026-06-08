@@ -49,6 +49,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeSetting>(getInitialTheme)
   const [resolvedTheme, setResolvedTheme] = useState<Theme>(() => resolveTheme(theme))
   const [layoutTheme, setLayoutThemeState] = useState<string>(getInitialLayoutTheme)
+
+  /* ── Load saved accent color on startup ── */
+  useEffect(() => {
+    const saved = localStorage.getItem('otix-accent')
+    if (saved) {
+      const root = document.documentElement
+      root.style.setProperty('--primary', saved)
+      root.style.setProperty('--ring', saved)
+      root.style.setProperty('--sidebar-primary', saved)
+      root.style.setProperty('--sidebar-ring', saved)
+    }
+  }, [])
   // Track the stable setLayoutTheme to avoid unnecessary re-renders of consumers
   const layoutThemeRef = useRef(layoutTheme)
   layoutThemeRef.current = layoutTheme

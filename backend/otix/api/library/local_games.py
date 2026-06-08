@@ -31,11 +31,7 @@ async def get_installed_games(
         user_id = current_user.id
 
         # Count total
-        total_q = (
-            select(func.count())
-            .select_from(UserLocalGame)
-            .where(UserLocalGame.user_id == user_id)
-        )
+        total_q = select(func.count()).select_from(UserLocalGame).where(UserLocalGame.user_id == user_id)
         total = (await session.execute(total_q)).scalar_one()
 
         # Fetch paginated local game
@@ -52,11 +48,7 @@ async def get_installed_games(
         media_ids = [g.media_item_id for g in rows if g.media_item_id]
         catalog_map: dict[str, MediaItem] = {}
         if media_ids:
-            catalog_rows = (
-                await session.execute(
-                    select(MediaItem).where(MediaItem.id.in_(media_ids))
-                )
-            ).scalars().all()
+            catalog_rows = (await session.execute(select(MediaItem).where(MediaItem.id.in_(media_ids)))).scalars().all()
             catalog_map = {m.id: m for m in catalog_rows}
 
         games: list[InstalledGameSummary] = []

@@ -13,6 +13,7 @@ from otix.schemas.auth import SteamResolveResponse
 logger = structlog.get_logger()
 router = APIRouter()
 
+
 @router.post("/integrations/steam/resolve-unmatched", response_model=SteamResolveResponse)
 async def steam_resolve_unmatched(
     db: AsyncSession = Depends(get_db),
@@ -23,6 +24,7 @@ async def steam_resolve_unmatched(
     if not settings.igdb_client_id:
         raise HTTPException(status_code=503, detail="IGDB not configured")
     from otix.services.steam_igdb_resolver import resolve_unmatched_steam_games
+
     try:
         result = await resolve_unmatched_steam_games(db, current_user.id)
     except Exception:

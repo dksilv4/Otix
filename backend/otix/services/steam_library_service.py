@@ -66,12 +66,15 @@ async def _fetch_owned_games(steam_id: str) -> list[dict]:
 
     try:
         client = get_http_client()
-        resp = await client.get(url, params={
-            "key": settings.steam_api_key,
-            "steamid": steam_id,
-            "include_appinfo": 1,
-            "include_played_free_games": 1,
-        })
+        resp = await client.get(
+            url,
+            params={
+                "key": settings.steam_api_key,
+                "steamid": steam_id,
+                "include_appinfo": 1,
+                "include_played_free_games": 1,
+            },
+        )
     except Exception as exc:
         logger.exception("steam owned game request failed")
         raise RuntimeError(f"Failed to connect to Steam API: {exc}") from exc
@@ -80,7 +83,9 @@ async def _fetch_owned_games(steam_id: str) -> list[dict]:
         logger.warning("steam profile is private or api key invalid", steam_id=steam_id, status=resp.status_code)
         return []
     if resp.status_code != 200:
-        logger.error("steam owned game unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500])
+        logger.error(
+            "steam owned game unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500]
+        )
         raise RuntimeError(f"Steam API returned {resp.status_code}")
 
     data = resp.json()
@@ -131,28 +136,32 @@ async def scan_steam_library(
         if media_item_id:
             matched += 1
 
-        stmt = pg_insert(UserSteamGame).values(
-            user_id=user.id,
-            steam_app_id=appid,
-            media_item_id=media_item_id,
-            name=g.get("name", f"Steam App {appid}"),
-            playtime_forever=g.get("playtime_forever", 0),
-            playtime_2weeks=g.get("playtime_2weeks", 0),
-            img_icon_url=g.get("img_icon_url"),
-            img_logo_url=g.get("img_logo_url"),
-            rtime_last_played=g.get("rtime_last_played"),
-        ).on_conflict_do_update(
-            constraint="uq_user_steam_game",
-            set_={
-                "media_item_id": media_item_id,
-                "name": g.get("name"),
-                "playtime_forever": g.get("playtime_forever", 0),
-                "playtime_2weeks": g.get("playtime_2weeks", 0),
-                "img_icon_url": g.get("img_icon_url"),
-                "img_logo_url": g.get("img_logo_url"),
-                "rtime_last_played": g.get("rtime_last_played"),
-                "updated_at": func.now(),
-            },
+        stmt = (
+            pg_insert(UserSteamGame)
+            .values(
+                user_id=user.id,
+                steam_app_id=appid,
+                media_item_id=media_item_id,
+                name=g.get("name", f"Steam App {appid}"),
+                playtime_forever=g.get("playtime_forever", 0),
+                playtime_2weeks=g.get("playtime_2weeks", 0),
+                img_icon_url=g.get("img_icon_url"),
+                img_logo_url=g.get("img_logo_url"),
+                rtime_last_played=g.get("rtime_last_played"),
+            )
+            .on_conflict_do_update(
+                constraint="uq_user_steam_game",
+                set_={
+                    "media_item_id": media_item_id,
+                    "name": g.get("name"),
+                    "playtime_forever": g.get("playtime_forever", 0),
+                    "playtime_2weeks": g.get("playtime_2weeks", 0),
+                    "img_icon_url": g.get("img_icon_url"),
+                    "img_logo_url": g.get("img_logo_url"),
+                    "rtime_last_played": g.get("rtime_last_played"),
+                    "updated_at": func.now(),
+                },
+            )
         )
         await db.execute(stmt)
 
@@ -235,7 +244,9 @@ async def get_steam_library(
     Unmatched game (NULL media_item_id) are excluded from results.
     """
     query = (
-        select(MediaItem, UserSteamGame.playtime_forever, UserSteamGame.playtime_2weeks, UserSteamGame.rtime_last_played)
+        select(
+            MediaItem, UserSteamGame.playtime_forever, UserSteamGame.playtime_2weeks, UserSteamGame.rtime_last_played
+        )
         .join(UserSteamGame, UserSteamGame.media_item_id == MediaItem.id)
         .options(
             joinedload(MediaItem.movie),
@@ -272,9 +283,7 @@ async def get_steam_library(
     result = await db.execute(query)
     rows = list(result.unique().all())
 
-    items: list[tuple[MediaItem, int, int, int | None]] = [
-        (row[0], row[1] or 0, row[2] or 0, row[3]) for row in rows
-    ]
+    items: list[tuple[MediaItem, int, int, int | None]] = [(row[0], row[1] or 0, row[2] or 0, row[3]) for row in rows]
 
     has_more = len(items) > limit
     if has_more:
@@ -307,6 +316,7 @@ async def _fetch_wishlist(steam_id: str) -> list[dict]:
     url = f"https://store.steampowered.com/wishlist/profiles/{steam_id}/wishlistdata/?p=0"
     try:
         from otix.infrastructure.http_client import get_http_client
+
         client = get_http_client()
         resp = await client.get(url, follow_redirects=False)
     except Exception as exc:
@@ -325,7 +335,9 @@ async def _fetch_wishlist(steam_id: str) -> list[dict]:
         logger.warning("steam wishlist is private", steam_id=steam_id, status=resp.status_code)
         return []
     if resp.status_code != 200:
-        logger.error("steam wishlist unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500])
+        logger.error(
+            "steam wishlist unexpected status", steam_id=steam_id, status=resp.status_code, body=resp.text[:500]
+        )
         raise RuntimeError(f"Steam Store returned {resp.status_code}")
 
     content_type = resp.headers.get("content-type", "")
@@ -350,13 +362,15 @@ async def _fetch_wishlist(steam_id: str) -> list[dict]:
             appid = int(appid_str)
         except (ValueError, TypeError):
             continue
-        items.append({
-            "appid": appid,
-            "name": info.get("name", f"Steam App {appid}"),
-            "priority": info.get("priority", 0),
-            "added": info.get("added"),
-            "is_free": info.get("is_free_game", False),
-        })
+        items.append(
+            {
+                "appid": appid,
+                "name": info.get("name", f"Steam App {appid}"),
+                "priority": info.get("priority", 0),
+                "added": info.get("added"),
+                "is_free": info.get("is_free_game", False),
+            }
+        )
     return items
 
 
@@ -396,25 +410,29 @@ async def scan_steam_wishlist(
         if media_item_id:
             matched += 1
 
-        stmt = pg_insert(UserSteamWishlist).values(
-            user_id=user.id,
-            steam_app_id=appid,
-            media_item_id=media_item_id,
-            name=item.get("name", f"Steam App {appid}"),
-            priority=item.get("priority", 0),
-            added_date=item.get("added"),
-            is_free=item.get("is_free", False),
-            img_icon_url=None,  # wishlist API doesn't return icons
-        ).on_conflict_do_update(
-            constraint="uq_user_steam_wishlist",
-            set_={
-                "media_item_id": media_item_id,
-                "name": item.get("name"),
-                "priority": item.get("priority", 0),
-                "added_date": item.get("added"),
-                "is_free": item.get("is_free", False),
-                "updated_at": func.now(),
-            },
+        stmt = (
+            pg_insert(UserSteamWishlist)
+            .values(
+                user_id=user.id,
+                steam_app_id=appid,
+                media_item_id=media_item_id,
+                name=item.get("name", f"Steam App {appid}"),
+                priority=item.get("priority", 0),
+                added_date=item.get("added"),
+                is_free=item.get("is_free", False),
+                img_icon_url=None,  # wishlist API doesn't return icons
+            )
+            .on_conflict_do_update(
+                constraint="uq_user_steam_wishlist",
+                set_={
+                    "media_item_id": media_item_id,
+                    "name": item.get("name"),
+                    "priority": item.get("priority", 0),
+                    "added_date": item.get("added"),
+                    "is_free": item.get("is_free", False),
+                    "updated_at": func.now(),
+                },
+            )
         )
         await db.execute(stmt)
 
@@ -477,9 +495,7 @@ async def get_steam_wishlist(
     result = await db.execute(query)
     rows = list(result.unique().all())
 
-    items: list[tuple[MediaItem, int]] = [
-        (row[0], row[1] or 0) for row in rows
-    ]
+    items: list[tuple[MediaItem, int]] = [(row[0], row[1] or 0) for row in rows]
 
     has_more = len(items) > limit
     if has_more:

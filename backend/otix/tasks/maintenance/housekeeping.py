@@ -291,20 +291,14 @@ async def _cleanup_orphan_credits() -> dict:
 
     async with async_session() as session:
         # Find orphaned credits
-        orphaned = await session.scalars(
-            select(MediaCredit.id).where(
-                ~MediaCredit.person_id.in_(select(Person.id))
-            )
-        )
+        orphaned = await session.scalars(select(MediaCredit.id).where(~MediaCredit.person_id.in_(select(Person.id))))
         orphan_ids = list(orphaned.all())
 
         if not orphan_ids:
             return {"deleted": 0}
 
         # Delete them
-        result = await session.execute(
-            delete(MediaCredit).where(MediaCredit.id.in_(orphan_ids))
-        )
+        result = await session.execute(delete(MediaCredit).where(MediaCredit.id.in_(orphan_ids)))
         await session.commit()
 
         count = result.rowcount

@@ -48,7 +48,8 @@ class SteamGridDBHydrator:
         self.session = session
 
     async def hydrate(
-        self, game: Game,
+        self,
+        game: Game,
         platform: str | None = None,
         platform_id: str | int | None = None,
         title: str | None = None,
@@ -97,7 +98,10 @@ class SteamGridDBHydrator:
         return ext_id
 
     async def _hydrate_one(
-        self, game: Game, platform: str, platform_id: str | int,
+        self,
+        game: Game,
+        platform: str,
+        platform_id: str | int,
     ) -> int:
         sgdb_game = await self.provider.get_game_by_platform_id(platform, platform_id)
         if sgdb_game is None:
@@ -145,12 +149,14 @@ class SteamGridDBHydrator:
             return
 
         from otix.services.external_id_service import ExternalIDService
+
         eid_svc = ExternalIDService(self.session)
         await eid_svc.upsert("steamgrid", str(sgdb_id), "media_item", game.media_item_id)
 
     @staticmethod
     def _pick_best_match(
-        results: list[dict[str, JSONValue]], title: str,
+        results: list[dict[str, JSONValue]],
+        title: str,
     ) -> dict[str, JSONValue] | None:
         """Pick the best match from SGDB search results.
 
@@ -207,20 +213,19 @@ class SteamGridDBHydrator:
         hero = self._pick_hero(heroes)
         if hero and isinstance(hero.get("url"), str) and media_item.backdrop_url != hero["url"]:
             from otix.services.admin_edit_service import AdminEditService
-            protected = await AdminEditService.get_protected_image_types(
-                self.session, media_item.id
-            )
+
+            protected = await AdminEditService.get_protected_image_types(self.session, media_item.id)
             if "backdrop" in protected and media_item.backdrop_url:
                 svc = AdminEditService(self.session)
-                await svc.create_system_proposal_for_image(
-                    media_item.id, "backdrop", hero["url"]
-                )
+                await svc.create_system_proposal_for_image(media_item.id, "backdrop", hero["url"])
             else:
                 media_item.backdrop_url = hero["url"]
 
         return added
 
-    async def _fetch_assets(self, sgdb_game_id: int) -> tuple[
+    async def _fetch_assets(
+        self, sgdb_game_id: int
+    ) -> tuple[
         list[dict[str, JSONValue]],
         list[dict[str, JSONValue]],
         list[dict[str, JSONValue]],
@@ -379,9 +384,7 @@ class SteamGridDBHydrator:
 
         # Batch-check existing URLs
         urls = [r[0] for r in resolved]
-        existing = await self.session.scalars(
-            select(MediaAsset.url).where(MediaAsset.url.in_(urls))
-        )
+        existing = await self.session.scalars(select(MediaAsset.url).where(MediaAsset.url.in_(urls)))
         existing_urls = set(existing.all())
 
         added = 0

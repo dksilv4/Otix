@@ -135,7 +135,10 @@ class ExternalIDService:
         self._session = session
 
     async def get_by_provider_ext_id(
-        self, provider: str, external_id: str, entity_type: str | None = None,
+        self,
+        provider: str,
+        external_id: str,
+        entity_type: str | None = None,
     ) -> ExternalID | None:
         clauses = [
             ExternalID.provider == provider,
@@ -146,14 +149,15 @@ class ExternalIDService:
         return await self._session.scalar(select(ExternalID).where(*clauses))
 
     async def find_entity_id(
-        self, provider: str, external_id: str, entity_type: str | None = None,
+        self,
+        provider: str,
+        external_id: str,
+        entity_type: str | None = None,
     ) -> str | None:
         row = await self.get_by_provider_ext_id(provider, external_id, entity_type)
         return row.entity_id if row is not None else None
 
-    async def find_entity_id_by_type(
-        self, provider: str, external_id: str, entity_type: str
-    ) -> str | None:
+    async def find_entity_id_by_type(self, provider: str, external_id: str, entity_type: str) -> str | None:
         row = await self._session.scalar(
             select(ExternalID).where(
                 ExternalID.provider == provider,
@@ -163,9 +167,7 @@ class ExternalIDService:
         )
         return row.entity_id if row is not None else None
 
-    async def batch_find_entity_ids(
-        self, provider: str, external_ids: list[str]
-    ) -> dict[str, str]:
+    async def batch_find_entity_ids(self, provider: str, external_ids: list[str]) -> dict[str, str]:
         rows = await self._session.scalars(
             select(ExternalID).where(
                 ExternalID.provider == provider,
@@ -186,9 +188,7 @@ class ExternalIDService:
         result: dict[str, list[tuple[str, str]]] = {}
         for row in rows:
             if row.entity_id:
-                result.setdefault(row.entity_id, []).append(
-                    (row.provider, row.external_id)
-                )
+                result.setdefault(row.entity_id, []).append((row.provider, row.external_id))
         return result
 
     async def upsert(
@@ -212,10 +212,12 @@ class ExternalIDService:
         """
         # ── 1. SELECT — match (provider, external_id) ignoring entity_type ──
         existing = await self._session.scalar(
-            select(ExternalID).where(
+            select(ExternalID)
+            .where(
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
-            ).limit(1)
+            )
+            .limit(1)
         )
         if existing is not None:
             existing.entity_type = entity_type
@@ -255,10 +257,12 @@ class ExternalIDService:
         # inserted a row with a different entity_type (including NULL).  Try
         # the SELECT one more time.
         existing = await self._session.scalar(
-            select(ExternalID).where(
+            select(ExternalID)
+            .where(
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
-            ).limit(1)
+            )
+            .limit(1)
         )
         if existing is not None:
             existing.entity_type = entity_type
@@ -267,13 +271,9 @@ class ExternalIDService:
                 existing.media_item_id = entity_id
             return existing
 
-        raise RuntimeError(
-            f"upsert race: {provider=} {external_id=} {entity_type=} {entity_id=}"
-        )
+        raise RuntimeError(f"upsert race: {provider=} {external_id=} {entity_type=} {entity_id=}")
 
-    async def delete(
-        self, entity_type: str, entity_id: str, provider: str
-    ) -> bool:
+    async def delete(self, entity_type: str, entity_id: str, provider: str) -> bool:
         result = await self._session.execute(
             sa_delete(ExternalID).where(
                 ExternalID.entity_type == entity_type,
