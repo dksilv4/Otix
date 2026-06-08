@@ -1,7 +1,7 @@
 // frontend/src/features/game-scanner/queries.ts
 import { useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { DetectedGame } from "./types";
+import type { LocalGame } from "./types";
 
 interface MatchResult {
   queryTitle: string;
@@ -22,10 +22,29 @@ interface MatchResponse {
   matches: MatchResult[];
 }
 
+export function useSyncLocalGames() {
+  return useMutation({
+    mutationFn: async (games: LocalGame[]): Promise<void> => {
+      const matched = games.filter((g) => g.data?.id);
+      if (matched.length === 0) return;
+      await apiClient.post("/media/sync-local-games", {
+        games: matched.map((g) => ({
+          id: g.id,
+          mediaId: g.data?.id,
+          title: g.title,
+          platform: g.platform,
+          exePath: g.exePath,
+          installDir: g.installDir,
+        })),
+      });
+    },
+  });
+}
+
 export function useMatchLocalGames() {
   return useMutation({
-    mutationFn: async (games: DetectedGame[]): Promise<DetectedGame[]> => {
-      // Always send all games to refresh catalog data for every title
+    mutationFn: async (games: LocalGame[]): Promise<LocalGame[]> => {
+      // Always send all game to refresh catalog data for every title
       const gameEntries = games.map((g) => ({
         title: g.title,
         platform: g.platform,
@@ -43,11 +62,11 @@ export function useMatchLocalGames() {
         const match = matchMap.get(game.title);
         if (match && match.matchedMedia) {
           const media = match.matchedMedia;
-          const isNewMatch = !game.otixMediaId;
+          const isNewMatch = !game.data?.id;
           const autoAcceptNew = match.confidence >= 0.9;
 
-          // Always refresh data for already-matched games, only auto-match new ones at high confidence
-          if (game.otixMediaId || autoAcceptNew) {
+          // Always refresh data for already-matched game, only auto-match new ones at high confidence
+          if (game.data?.id || autoAcceptNew) {
             return {
               ...game,
               otixMediaId: media.id,
