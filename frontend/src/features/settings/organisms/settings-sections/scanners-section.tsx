@@ -2,11 +2,12 @@
 import './scanners-section.scss'
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Disc, Monitor, Gamepad2, Folder, Check, X } from "lucide-react"
-import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, getScannedGames, setScannedGames, getLastScanTime, setLastScanTime, hasDesktopAPI, rejectSuggestion, filterRejectedSuggestions } from "@/features/game-scanner/storage"
+import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/features/game-scanner/storage"
+import { useGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import { useClaimGame } from "@/features/library/library-queries"
 import { apiClient } from "@/lib/api-client"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import type { LocalGame } from "@/features/game-scanner/types"
 
 interface ScanPath {
   path: string
@@ -14,11 +15,12 @@ interface ScanPath {
 }
 
 export function ScannersSection() {
+  const { data: scannedGames = [] } = useGames();
+  const rejectSuggestion = useRejectSuggestion();
+
   const [gamePaths, setGamePathsState] = useState<string[]>(() => getScanPaths())
   const [isoPaths, setIsoPathsState] = useState<string[]>(() => getIsoPaths())
   const [scanning, setScanning] = useState(false)
-  const [scannedGames, setScannedGamesState] = useState<DetectedGame[]>(() => getScannedGames())
-  const [gameCount, setGameCount] = useState(() => scannedGames.length)
   const [showAutoBreakdown, setShowAutoBreakdown] = useState(false)
   const [showUnmatchedBreakdown, setShowUnmatchedBreakdown] = useState(false)
   const [matchingGameId, setMatchingGameId] = useState<string | null>(null)
@@ -26,19 +28,9 @@ export function ScannersSection() {
   const [matchResults, setMatchResults] = useState<{ id: string; title: string; slug?: string; posterUrl?: string | null }[] | null>(null)
   const [searching, setSearching] = useState(false)
   const matchSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [lastScan, setLastScan] = useState<string | null>(() => getLastScanTime())
 
   const isDesktop = hasDesktopAPI()
-
-  // Keep game count and scanned list in sync
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const games = getScannedGames()
-      setScannedGamesState(games)
-      setGameCount(games.length)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+  const gameCount = scannedGames.length
 
   const handleAddGamePath = useCallback(async () => {
     if (!isDesktop) return
@@ -96,8 +88,8 @@ export function ScannersSection() {
   const handleVerifyAll = useCallback(() => {
     const newlyClaimed: string[] = []
     const withClaimed = scannedGames.map((g) => {
-      if (!g.otixMediaId || g.otixMatchVerified) return g
-      newlyClaimed.push(g.otixMediaId)
+      if (!g.data?.id || g.otixMatchVerified) return g
+      newlyClaimed.push(g.data?.id)
       return { ...g, otixMatchVerified: true, otixClaimed: true }
     })
     setScannedGames(withClaimed)
@@ -109,9 +101,9 @@ export function ScannersSection() {
     }
   }, [scannedGames, claimMutation])
 
-  const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
-    if (!game.otixMatchSuggestion) return
-    const sug = game.otixMatchSuggestion
+  const handleAcceptSuggestion = useCallback((game: LocalGame) => {
+    if (!game.matchSuggestion) return
+    const sug = game.matchSuggestion
     const updated = scannedGames.map((g) =>
       g.id === game.id
         ? {
@@ -119,10 +111,10 @@ export function ScannersSection() {
             otixMediaId: sug.mediaId,
             otixMediaTitle: sug.title,
             otixMediaSlug: sug.slug,
-            otixPosterUrl: game.otixPosterUrl,
-            otixTextlessPosterUrl: game.otixTextlessPosterUrl,
-            otixLogoUrl: game.otixLogoUrl,
-            otixConfidence: game.otixConfidence,
+            otixPosterUrl: game.data?.posterUrl,
+            otixTextlessPosterUrl: game.data?.textlessPosterUrl,
+            otixLogoUrl: game.data?.logoUrl,
+            otixConfidence: game.data?.confidence,
             otixMatchVerified: true,
             otixMatchSuggestion: undefined,
           }
@@ -140,7 +132,7 @@ export function ScannersSection() {
     }
   }, [scannedGames, claimMutation])
 
-  const handleUnmatch = useCallback((game: DetectedGame) => {
+  const handleUnmatch = useCallback((game: LocalGame) => {
     const updated = scannedGames.map((g) =>
       g.id === game.id
         ? {
@@ -162,7 +154,7 @@ export function ScannersSection() {
 
   // ── Manual match search ────────────────────────────────────────────
 
-  const handleOpenMatchSearch = useCallback((game: DetectedGame) => {
+  const handleOpenMatchSearch = useCallback((game: LocalGame) => {
     setMatchingGameId(game.id)
     setMatchSearch(game.title)
     setMatchResults(null)
@@ -234,7 +226,6 @@ export function ScannersSection() {
       }
       const now = new Date().toLocaleString()
       setLastScan(now)
-      setLastScanTime(now)
 
       // Auto-match against catalog
       if (scanned && scanned.length > 0) {
@@ -265,12 +256,12 @@ export function ScannersSection() {
   }, [])
 
   // Derived groups for the match UI
-  const verifiedMatched = useMemo(() => scannedGames.filter((g) => g.otixMediaId && g.otixMatchVerified), [scannedGames])
-  const autoMatched = useMemo(() => scannedGames.filter((g) => g.otixMediaId && !g.otixMatchSuggestion && !g.otixMatchVerified), [scannedGames])
-  const suggestedGames = useMemo(() => scannedGames.filter((g) => g.otixMatchSuggestion), [scannedGames])
-  const unmatchedGames = useMemo(() => scannedGames.filter((g) => !g.otixMediaId && !g.otixMatchSuggestion), [scannedGames])
+  const verifiedMatched = useMemo(() => scannedGames.filter((g) => g.data?.id && g.otixMatchVerified), [scannedGames])
+  const autoMatched = useMemo(() => scannedGames.filter((g) => g.data?.id && !g.matchSuggestion && !g.otixMatchVerified), [scannedGames])
+  const suggestedGames = useMemo(() => scannedGames.filter((g) => g.matchSuggestion), [scannedGames])
+  const unmatchedGames = useMemo(() => scannedGames.filter((g) => !g.data?.id && !g.matchSuggestion), [scannedGames])
 
-  // Platform breakdown of scanned games
+  // Platform breakdown of scanned game
   const platformBreakdown = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const g of scannedGames) {
@@ -510,8 +501,8 @@ export function ScannersSection() {
               </h4>
               <div className="dk-settings-scanners__suggestions-list">
                 {suggestedGames.map((game) => {
-                  const suggestion = game.otixMatchSuggestion
-                  const posterUrl = game.otixPosterUrl
+                  const suggestion = game.matchSuggestion
+                  const posterUrl = game.data?.posterUrl
                   return (
                     <div
                       key={game.id}
@@ -543,14 +534,14 @@ export function ScannersSection() {
                           <span className="dk-settings-scanners__suggestion-match-arrow">→</span>
                           <span className="dk-settings-scanners__suggestion-match-title">{suggestion?.title || "?"}</span>
                           <span className="dk-settings-scanners__suggestion-confidence">
-                            {Math.round((game.otixConfidence ?? 0) * 100)}%
+                            {Math.round((game.data?.confidence ?? 0) * 100)}%
                           </span>
                         </div>
                         {/* Confidence bar */}
                         <div className="dk-settings-scanners__confidence-bar">
                           <div
                             className="dk-settings-scanners__confidence-bar-fill"
-                            style={{ width: `${Math.min(100, Math.round((game.otixConfidence ?? 0) * 100))}%` }}
+                            style={{ width: `${Math.min(100, Math.round((game.data?.confidence ?? 0) * 100))}%` }}
                           />
                         </div>
                       </div>
@@ -565,7 +556,7 @@ export function ScannersSection() {
                         </button>
                         <button
                           onClick={() => {
-                            rejectSuggestion(game, game.otixMatchSuggestion?.mediaId ?? "")
+                            rejectSuggestion(game, game.matchSuggestion?.id ?? "")
                             const updated = scannedGames.map((g) =>
                               g.id === game.id ? { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined } : g,
                             )
@@ -584,7 +575,7 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Verified matched games ── */}
+          {/* ── Verified matched game ── */}
           {verifiedMatched.length > 0 && (
             <div className="dk-settings-scanners__section">
               <div className="dk-settings-scanners__toggle dk-settings-scanners__toggle--verified">
@@ -598,8 +589,8 @@ export function ScannersSection() {
                     className="dk-settings-scanners__game-card dk-settings-scanners__game-card--verified"
                   >
                     <div className="dk-settings-scanners__game-poster">
-                      {game.otixPosterUrl ? (
-                        <img src={game.otixPosterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      {game.data?.posterUrl ? (
+                        <img src={game.data?.posterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                       ) : (
                         <div className="dk-settings-scanners__game-poster-placeholder">?</div>
                       )}
@@ -611,9 +602,9 @@ export function ScannersSection() {
                       </div>
                       <div className="dk-settings-scanners__game-match-row">
                         <span className="dk-settings-scanners__game-match-arrow">→</span>
-                        <span className="dk-settings-scanners__game-match-title">{game.otixMediaTitle || "?"}</span>
-                        {game.otixConfidence != null && (
-                          <span className="dk-settings-scanners__game-confidence">{Math.round(game.otixConfidence * 100)}%</span>
+                        <span className="dk-settings-scanners__game-match-title">{game.data?.title || "?"}</span>
+                        {game.data?.confidence != null && (
+                          <span className="dk-settings-scanners__game-confidence">{Math.round(game.data?.confidence * 100)}%</span>
                         )}
                       </div>
                     </div>
@@ -624,7 +615,7 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Auto-matched games ── */}
+          {/* ── Auto-matched game ── */}
           {autoMatched.length > 0 && (
             <div className="dk-settings-scanners__section">
               <button
@@ -642,8 +633,8 @@ export function ScannersSection() {
                       className="dk-settings-scanners__game-card dk-settings-scanners__game-card--auto"
                     >
                       <div className="dk-settings-scanners__game-poster">
-                        {game.otixPosterUrl ? (
-                          <img src={game.otixPosterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        {game.data?.posterUrl ? (
+                          <img src={game.data?.posterUrl} alt="" className="dk-settings-scanners__game-poster-img" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                         ) : (
                           <div className="dk-settings-scanners__game-poster-placeholder">?</div>
                         )}
@@ -655,9 +646,9 @@ export function ScannersSection() {
                         </div>
                         <div className="dk-settings-scanners__game-match-row">
                           <span className="dk-settings-scanners__game-match-arrow">→</span>
-                          <span className="dk-settings-scanners__game-match-title">{game.otixMediaTitle || "?"}</span>
-                          {game.otixConfidence != null && (
-                            <span className="dk-settings-scanners__game-confidence">{Math.round(game.otixConfidence * 100)}%</span>
+                          <span className="dk-settings-scanners__game-match-title">{game.data?.title || "?"}</span>
+                          {game.data?.confidence != null && (
+                            <span className="dk-settings-scanners__game-confidence">{Math.round(game.data?.confidence * 100)}%</span>
                           )}
                         </div>
                       </div>
@@ -669,8 +660,8 @@ export function ScannersSection() {
                             )
                             setScannedGames(updated)
                             setScannedGamesState(updated)
-                            if (game.otixMediaId && !game.otixClaimed) {
-                              claimMutation.mutate(game.otixMediaId)
+                            if (game.data?.id && !game.otixClaimed) {
+                              claimMutation.mutate(game.data?.id)
                               const claimed = updated.map((g) =>
                                 g.id === game.id ? { ...g, otixClaimed: true } : g,
                               )
@@ -691,7 +682,7 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Unmatched games ── */}
+          {/* ── Unmatched game ── */}
           {unmatchedGames.length > 0 && (
             <div className="dk-settings-scanners__section">
               <button
