@@ -1,266 +1,167 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
-import {
-  getScannedGames,
-  setScannedGames,
-  hasDesktopAPI,
-  getScanPaths,
-  getIsoPaths,
-  setLocalGamesMapEntry,
-} from "@/features/game-scanner/storage"
-import { useMatchLocalGames } from "@/features/game-scanner/queries"
-import { usePopularGames, useGameDetail, useGameGenres, useSeedFromTitles } from "@/features/games/games-queries"
-import type { DetectedGame } from "@/features/game-scanner/types"
-import type { GamesTab, ShelfRow } from "../types"
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api';
+import { useGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/game-scanner/game-queries';
+import { useGameDetail, useGameGenres, usePopularGames, useSeedFromTitles } from '@/features/games/games-queries';
+import { buildGameShelves } from '@/features/games/_utils';
+
+import type { GamesTab } from '../types';
+import type { LocalGame } from '@/features/game-scanner/types';
 
 export function useGames() {
-  // ── Local games (from scanner) ─────────────────────────────────────
-  const [localGames, setLocalGames] = useState<DetectedGame[]>(() => getScannedGames())
-  const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null)
-  const [sidePanelOpen, setSidePanelOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<GamesTab>("all")
-  const [localSearchQuery, setLocalSearchQuery] = useState("")
-  const [scanning, setScanning] = useState(false)
+  // ── Queries ──────────────────────────────────────────────────────
 
-  const matchMutation = useMatchLocalGames()
-  const seedMutation = useSeedFromTitles()
-  const initialized = useRef(false)
-  const hasSeeded = useRef(false)
+  const { data: localGames = [], isLoading } = useLocalGamesQuery();
+  const acceptSuggestion = useAcceptSuggestion();
+  const rejectSuggestion = useRejectSuggestion();
 
-  // ── Selected local game & catalog detail ──────────────────────────
+  const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
+  const [sidePanelOpen, setSidePanelOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<GamesTab>('all');
+  const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [scanning, setScanning] = useState(false);
+
+  const seedMutation = useSeedFromTitles();
 
   const selectedLocalGame = useMemo(
     () => localGames.find((g) => g.id === selectedLocalId) ?? localGames[0] ?? null,
     [localGames, selectedLocalId],
-  )
+  );
 
-  const { data: gameDetail } = useGameDetail(selectedLocalGame?.otixMediaId)
+  const { data: gameDetail } = useGameDetail(selectedLocalGame?.data?.id);
 
-  // ── Build installed map ───────────────────────────────────────────
+  // ── Derived: filtered lists (server-side when possible, fallback for local UI) ──
 
-  const installedMap = useMemo(() => {
-    const map = new Map<string, DetectedGame>()
-    for (const g of localGames) {
-      if (g.otixMediaId) map.set(g.otixMediaId, g)
-    }
-    return map
-  }, [localGames])
-
-  // ── Auto-match on mount ──────────────────────────────────────────
-
-  useEffect(() => {
-    if (initialized.current || localGames.length === 0) return
-    initialized.current = true
-    const needsMatch = localGames.some((g) => !g.otixMediaId && !g.otixMatchSuggestion)
-    if (!needsMatch) return
-    matchMutation.mutateAsync(localGames).then((matched) => {
-      if (matched && matched.length > 0) {
-        setLocalGames(matched)
-        setScannedGames(matched)
-      }
-    }).catch(() => {})
-  }, [])
-
-  // ── Seed backend titles ───────────────────────────────────────────
-
-  useEffect(() => {
-    if (localGames.length === 0 || hasSeeded.current) return
-    hasSeeded.current = true
-    if (!hasDesktopAPI()) return
-    const titles = [...new Set(localGames.map((g) => g.title))]
-    seedMutation.mutate(titles)
-  }, [])
-
-  // ── Sync to storage ──────────────────────────────────────────────
-
-  useEffect(() => {
-    if (localGames.length === 0) return
-    setScannedGames(localGames)
-    for (const g of localGames) {
-      if (g.otixMediaId) setLocalGamesMapEntry(g.otixMediaId, g)
-    }
-  }, [localGames])
-
-  // ── Auto-select first game ───────────────────────────────────────
-
-  useEffect(() => {
-    if (!selectedLocalId && localGames.length > 0) {
-      setSelectedLocalId(localGames[0].id)
-    }
-  }, [localGames, selectedLocalId])
-
-  // ── Local game filtering ─────────────────────────────────────────
+  const matchedGames = useMemo(() => localGames.filter((g) => g.data?.id), [localGames]);
+  const unmatchedGames = useMemo(() => localGames.filter((g) => !g.data?.id), [localGames]);
 
   const filteredLocalGames = useMemo(() => {
-    let result = localGames
-    if (activeTab === "matched") result = result.filter((g) => g.otixMediaId)
-    if (activeTab === "unmatched") result = result.filter((g) => !g.otixMediaId)
+    let result = localGames;
+    if (activeTab === 'matched') result = result.filter((g) => g.data?.id);
+    if (activeTab === 'unmatched') result = result.filter((g) => !g.data?.id);
     if (localSearchQuery.trim()) {
-      const q = localSearchQuery.toLowerCase()
+      const q = localSearchQuery.toLowerCase();
       result = result.filter(
         (g) =>
           g.title.toLowerCase().includes(q) ||
           g.platform.toLowerCase().includes(q) ||
           g.installDir.toLowerCase().includes(q),
-      )
+      );
     }
-    return result
-  }, [localGames, activeTab, localSearchQuery])
-
-  const matchedGames = useMemo(() => localGames.filter((g) => g.otixMediaId), [localGames])
-  const unmatchedGames = useMemo(() => localGames.filter((g) => !g.otixMediaId), [localGames])
+    return result;
+  }, [localGames, activeTab, localSearchQuery]);
 
   // ── Shelves ───────────────────────────────────────────────────────
 
-  const { data: popularGames = [] } = usePopularGames()
+  const { data: popularGames = [] } = usePopularGames();
 
-  const shelves = useMemo((): ShelfRow[] => {
-    const rows: ShelfRow[] = []
-    if (matchedGames.length > 0) {
-      rows.push({
-        id: "matched",
-        label: "Installed Games",
-        icon: "✓",
-        games: matchedGames.slice(0, 12),
-      })
-    }
-    const suggested = localGames.filter((g) => g.otixMatchSuggestion)
-    if (suggested.length > 0) {
-      rows.push({
-        id: "suggested",
-        label: "Suggested Matches",
-        icon: "🔗",
-        games: suggested.slice(0, 8),
-      })
-    }
-    const unmatched = unmatchedGames.filter((g) => !g.otixMatchSuggestion)
-    if (unmatched.length > 0) {
-      rows.push({
-        id: "unmatched",
-        label: "Unmatched Games",
-        icon: "🔍",
-        games: unmatched.slice(0, 8),
-      })
-    }
-    if (popularGames.length > 0) {
-      rows.push({
-        id: "popular",
-        label: "Popular on Otix",
-        icon: "🔥",
-        games: [],
-        catalogGames: popularGames.slice(0, 12),
-      })
-    }
-    return rows
-  }, [matchedGames, unmatchedGames, localGames, popularGames])
+  const shelves = useMemo(
+    () => buildGameShelves(matchedGames, unmatchedGames, localGames, popularGames),
+    [matchedGames, unmatchedGames, localGames, popularGames],
+  );
 
-  // ── Genres (for hero metadata) ────────────────────────────────────
+  // ── Genres ────────────────────────────────────────────────────────
 
-  const { data: genres = [] } = useGameGenres()
+  const { data: genres = [] } = useGameGenres();
 
   // ── Actions ────────────────────────────────────────────────────────
 
   const selectGame = useCallback((id: string) => {
-    setSelectedLocalId(id)
-  }, [])
+    setSelectedLocalId(id);
+  }, []);
 
-  const handleAcceptSuggestion = useCallback((game: DetectedGame) => {
-    if (!game.otixMatchSuggestion) return
-    setLocalGames((prev) =>
-      prev.map((g) =>
-        g.id === game.id
-          ? {
-              ...g,
-              otixMediaId: game.otixMatchSuggestion!.mediaId,
-              otixMediaTitle: game.otixMatchSuggestion!.title,
-              otixMediaSlug: game.otixMatchSuggestion!.slug,
-              otixMatchSuggestion: undefined,
-            }
-          : g,
-      ),
-    )
-  }, [])
+  const handleAcceptSuggestion = useCallback(
+    (game: LocalGame) => {
+      if (!game.matchSuggestion) return;
+      acceptSuggestion.mutate({
+        gameId: game.id,
+        suggestion: {
+          id: game.matchSuggestion.id,
+          title: game.matchSuggestion.title,
+          platform: game.matchSuggestion.platform,
+          iconUrl: game.matchSuggestion.iconUrl,
+          posterUrl: game.matchSuggestion.posterUrl,
+        },
+      });
+    },
+    [acceptSuggestion],
+  );
 
-  const handleRejectSuggestion = useCallback((game: DetectedGame) => {
-    setLocalGames((prev) =>
-      prev.map((g) =>
-        g.id === game.id
-          ? { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined }
-          : g,
-      ),
-    )
-  }, [])
+  const handleRejectSuggestion = useCallback(
+    (game: LocalGame) => {
+      if (!game.matchSuggestion) return;
+      rejectSuggestion.mutate({
+        gameId: game.id,
+        suggestionMediaId: game.matchSuggestion.id,
+      });
+    },
+    [rejectSuggestion],
+  );
 
   const handleRescan = useCallback(async () => {
-    if (!hasDesktopAPI()) return
-    setScanning(true)
+    if (!hasDesktopAPI()) return;
+    const api = getDesktopAPI()!;
+    setScanning(true);
     try {
-      const api = (window as any).desktopAPI
-      const gamePaths = getScanPaths()
-      const isoPaths = getIsoPaths()
-      const scanned = await api.scanPaths(gamePaths, isoPaths)
-      const carryOver = new Map<string, DetectedGame>()
-      for (const g of localGames) {
-        if (g.otixMediaId || g.otixMatchSuggestion) carryOver.set(g.id, g)
-      }
-      const matched = await matchMutation.mutateAsync(scanned)
-      if (!matched) return
-      const restored = matched.map((g) => {
-        if (g.otixMediaId || g.otixMatchSuggestion) return g
-        const prev = carryOver.get(g.id)
-        if (!prev) return g
-        return { ...g, ...prev }
-      })
-      setLocalGames(restored)
-      setScannedGames(restored)
-      const titles = [...new Set(scanned.map((g) => g.title))]
-      seedMutation.mutate(titles)
+      const paths = await api.getScanPaths();
+      const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path);
+      const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path);
+      await api.scanPaths(gamePaths, isoPaths);
+      // DB-change event triggers auto-refetch via subscribeToGameDbChanges
     } catch (err) {
-      console.error("Rescan failed:", err)
+      console.error('Rescan failed:', err);
     } finally {
-      setScanning(false)
+      setScanning(false);
     }
-  }, [])
+  }, []);
 
-  const handlePlay = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).desktopAPI) {
-      (window as any).desktopAPI.launchGame(game).catch(console.error)
+  const handlePlay = useCallback((game: LocalGame) => {
+    const api = getDesktopAPI();
+    if (api) {
+      api.launchGame(game).catch(console.error);
     }
-  }, [])
+  }, []);
 
-  const handleOpenFolder = useCallback((game: DetectedGame) => {
-    if (typeof window !== "undefined" && (window as any).desktopAPI) {
-      const { shell } = window as any
-      if (shell?.openPath) shell.openPath(game.installDir)
+  const handleOpenFolder = useCallback((game: LocalGame) => {
+    const api = getDesktopAPI();
+    if (api?.showItemInFolder) {
+      api.showItemInFolder(game.installDir).catch(console.error);
     }
-  }, [])
+  }, []);
+
+  // Seed unseeded titles on mount (desktop-only, runs once)
+  useEffect(() => {
+    if (localGames.length === 0 || !hasDesktopAPI()) return;
+    const unseeded = localGames.filter((g) => !g.data?.id && !g.matchSuggestion);
+    if (unseeded.length === 0) return;
+    const titles = [...new Set(unseeded.map((g) => g.title))];
+    seedMutation.mutate(titles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localGames.length]);
+
+  // ── Return ─────────────────────────────────────────────────────────
 
   return {
-    // Local games
     localGames,
     filteredLocalGames,
     selectedLocalGame,
     matchedGames,
     unmatchedGames,
 
-    // Catalog detail
     gameDetail,
 
-    // Shelves + genres
     shelves,
     genres,
 
-    // UI state
     sidePanelOpen,
     activeTab,
     localSearchQuery,
     scanning,
 
-    // Stats
     matchedCount: matchedGames.length,
     unmatchedCount: unmatchedGames.length,
-    suggestionCount: localGames.filter((g) => g.otixMatchSuggestion).length,
+    suggestionCount: localGames.filter((g) => g.matchSuggestion).length,
 
-    // Actions
     selectGame,
     setSidePanelOpen,
     setActiveTab,
@@ -270,5 +171,5 @@ export function useGames() {
     handleRescan,
     handlePlay,
     handleOpenFolder,
-  }
+  };
 }
