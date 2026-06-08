@@ -183,7 +183,7 @@ async def _backfill_tmdb_shows(query: str, redis: aioredis.Redis, query_hash: st
     acks_late=True,
 )
 def seed_igdb_from_titles_task(self, games: list[dict]) -> dict:
-    """Seed the catalog with games discovered by the desktop scanner.
+    """Seed the catalog with game discovered by the desktop scanner.
 
     Each entry is a dict with ``title`` (required), ``platform`` (optional),
     and ``steam_app_id`` (optional).
@@ -259,7 +259,7 @@ async def _seed_igdb_from_titles(games: list[dict]) -> dict:
                     app.send_task("sync.steam.seed_app", args=[app_id], priority=9)
                     enqueued_steam += 1
 
-    # ── Phase 2: Title-based IGDB search for non-Steam games ─────────
+    # ── Phase 2: Title-based IGDB search for non-Steam game ─────────
     if title_games:
         semaphore = asyncio.Semaphore(5)
 

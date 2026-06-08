@@ -12,6 +12,7 @@ export interface GameRow {
   localExePath?: string;
   installDir: string;
   platform: GamePlatform;
+  localIconUrl?: string;
   iconUrl?: string;
   posterUrl?: string;
   sources?: string[];
@@ -45,18 +46,29 @@ function rowToGame(row: DbRow): GameRow {
     localExePath: (row.local_exe_path as string) || undefined,
     installDir: row.install_dir as string,
     platform: row.platform as GamePlatform,
+    localIconUrl: (row.local_icon_url as string) || undefined,
     iconUrl: (row.icon_url as string) || undefined,
     posterUrl: (row.poster_url as string) || undefined,
     sources: row.sources ? JSON.parse(row.sources as string) : undefined,
     updateFiles: row.update_files ? JSON.parse(row.update_files as string) : undefined,
     data: row.otix_media_id
-      ? {
-          id: row.otix_media_id as string,
-          title: (row.otix_media_title as string) || (row.title as string),
-          platform: row.platform as GamePlatform,
-          iconUrl: (row.otix_icon_url as string) || undefined,
-          posterUrl: (row.poster_url as string) || undefined,
-        }
+      ? (() => {
+          const base = {
+            id: row.otix_media_id as string,
+            title: (row.otix_media_title as string) || (row.title as string),
+            platform: row.platform as GamePlatform,
+            iconUrl: (row.otix_icon_url as string) || undefined,
+            posterUrl: (row.otix_poster_url as string) || undefined,
+          };
+          try {
+            const raw = row.otix_data as string | undefined;
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              return { ...base, ...parsed };
+            }
+          } catch { /* ignore parse errors */ }
+          return base;
+        })()
       : undefined,
     matchSuggestion,
   };
@@ -129,9 +141,9 @@ export function upsertGames(games: GameRow[]): void {
     _run(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
-        icon_url, poster_url, sources, update_files,
+        local_icon_url, icon_url, poster_url, sources, update_files,
         otix_media_id, otix_media_title, otix_match_suggestion, seeded
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         g.id,
         g.title,
@@ -139,6 +151,7 @@ export function upsertGames(games: GameRow[]): void {
         g.localExePath || null,
         g.installDir,
         g.platform,
+        g.localIconUrl || null,
         g.iconUrl || null,
         g.posterUrl || null,
         g.sources ? JSON.stringify(g.sources) : null,
@@ -150,6 +163,33 @@ export function upsertGames(games: GameRow[]): void {
       ],
     );
   }
+}
+
+export function hydrateGame(
+  id: string,
+  title: string,
+  iconUrl: string | null,
+  posterUrl: string | null,
+  fullData: Record<string, unknown> | null,
+): void {
+  ensureDb();
+  _run(
+    `UPDATE scanned_games SET
+      otix_media_title = ?,
+      otix_icon_url = ?,
+      otix_poster_url = ?,
+      otix_data = ?,
+      updated_at = datetime('now')
+    WHERE id = ?`,
+    [title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, id],
+  );
+}
+
+export function getMatchedGames(): { id: string; otix_media_id: string; title: string }[] {
+  ensureDb();
+  return _all(
+    'SELECT id, otix_media_id, title FROM scanned_games WHERE otix_media_id IS NOT NULL',
+  ) as { id: string; otix_media_id: string; title: string }[];
 }
 
 export function updateGamePath(id: string, exePath: string, installDir?: string): void {

@@ -126,30 +126,30 @@ class IGDBProvider(BaseProvider):
     # ── Game endpoints ────────────────────────────────────────────────
 
     async def get_games(self, ids: list[int], fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Fetch multiple games by ID."""
+        """Fetch multiple game by ID."""
         if not ids:
             return []
         id_list = ",".join(str(i) for i in ids)
         body = f"fields {fields or '*'}; where id = ({id_list}); limit {len(ids)};"
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
-        raise IGDBError(f"IGDB games query failed: {response.status_code}")
+        raise IGDBError(f"IGDB game query failed: {response.status_code}")
 
     async def get_game(self, igdb_id: int, fields: str | None = None) -> dict[str, JSONValue] | None:
         results = await self.get_games([igdb_id], fields)
         return results[0] if results else None
 
     async def get_popular_games(self, limit: int = 50, fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Popular games ordered by rating (aggregated_rating)."""
+        """Popular game ordered by rating (aggregated_rating)."""
         body = f"fields {fields or '*'}; sort aggregated_rating desc; where aggregated_rating != null & rating_count > 10; limit {limit};"
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
-        raise IGDBError(f"IGDB popular games query failed: {response.status_code}")
+        raise IGDBError(f"IGDB popular game query failed: {response.status_code}")
 
     async def get_recently_released_games(self, limit: int = 100, fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Recently released games in the last 90 days."""
+        """Recently released game in the last 90 days."""
         now = int(time.time())
         ninety_days_ago = now - 90 * 86400
         body = (
@@ -158,13 +158,13 @@ class IGDBProvider(BaseProvider):
             f"where first_release_date >= {ninety_days_ago} & first_release_date <= {now}; "
             f"limit {limit};"
         )
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
-        raise IGDBError(f"IGDB recent games query failed: {response.status_code}")
+        raise IGDBError(f"IGDB recent game query failed: {response.status_code}")
 
     async def get_upcoming_games(self, limit: int = 100, fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Upcoming/unreleased games."""
+        """Upcoming/unreleased game."""
         now = int(time.time())
         body = (
             f"fields {fields or '*'}; "
@@ -172,10 +172,10 @@ class IGDBProvider(BaseProvider):
             f"where first_release_date > {now} & hypes > 5; "
             f"limit {limit};"
         )
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
-        raise IGDBError(f"IGDB upcoming games query failed: {response.status_code}")
+        raise IGDBError(f"IGDB upcoming game query failed: {response.status_code}")
 
     # ── Franchise ────────────────────────────────────────────────────
 
@@ -190,7 +190,7 @@ class IGDBProvider(BaseProvider):
     async def get_changed_game_ids(self, start_timestamp: int, limit: int = 100) -> list[dict[str, JSONValue]]:
         """Get game IDs changed since the given Unix timestamp."""
         body = f"fields id,updated_at; sort updated_at asc; where updated_at >= {start_timestamp}; limit {limit};"
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB change query failed: {response.status_code}")
@@ -203,8 +203,8 @@ class IGDBProvider(BaseProvider):
         start_date: int | None = None,
         end_date: int | None = None,
     ) -> list[dict[str, JSONValue]]:
-        """Get games with offset pagination, optionally filtered by release date."""
-        conditions = ["version_parent = null"]  # Main games only (no DLC, mods, etc.)
+        """Get game with offset pagination, optionally filtered by release date."""
+        conditions = ["version_parent = null"]  # Main game only (no DLC, mods, etc.)
         if start_date is not None:
             conditions.append(f"first_release_date >= {start_date}")
         if end_date is not None:
@@ -216,16 +216,16 @@ class IGDBProvider(BaseProvider):
             f"where {where}; "
             f"limit {limit}; offset {offset};"
         )
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB offset query failed: {response.status_code}")
 
     async def search_games(self, query: str, limit: int = 50, fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Search games by name."""
+        """Search game by name."""
         escaped = query.replace('"', '\\"')
         body = f'search "{escaped}"; fields {fields or "*"}; limit {limit};'
-        response = await self._post("/games", content=body)
+        response = await self._post("/game", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB search query failed: {response.status_code}")

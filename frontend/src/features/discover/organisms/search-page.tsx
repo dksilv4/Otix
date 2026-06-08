@@ -83,7 +83,7 @@ export function SearchPage() {
     <div className="dk-discover-search-page">
       <Helmet>
         <title>{q ? `"${q}" - Search - Otix` : 'Search - Otix'}</title>
-        <meta name="description" content={q ? `Search results for "${q}" on Otix — find movies, shows, games, and music.` : 'Search Otix for movies, shows, games, and music.'} />
+        <meta name="description" content={q ? `Search results for "${q}" on Otix — find movies, shows, games, and music.` : 'Search Otix for movies, shows, game, and music.'} />
         <meta property="og:title" content={q ? `"${q}" - Search - Otix` : 'Search - Otix'} />
         <meta property="og:description" content={q ? `Search results for "${q}" on Otix.` : 'Find your next obsession on Otix.'} />
         <meta property="og:type" content="website" />

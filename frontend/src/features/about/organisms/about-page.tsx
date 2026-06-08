@@ -55,7 +55,7 @@ interface FaqDef {
 const FAQS: FaqDef[] = [
   {
     q: "What media types are supported?",
-    a: "Movies, TV shows, games, and music. Search, rate, review, and organize all four into lists and collections.",
+    a: "Movies, TV shows, game, and music. Search, rate, review, and organize all four into lists and collections.",
   },
   {
     q: "Is Otix free?",
@@ -158,7 +158,7 @@ export function AboutPage() {
       ...FAQS.map((f) => `${f.q} ${f.a}`),
       ...MEDIA_TYPE_PILLS.map((m) => m.label),
       "What is Otix?",
-      "track movies shows games music rate review XP lists",
+      "track movies shows game music rate review XP lists",
       "Steam Plex Spotify YouTube TMDb Google",
       "community profile scores XP levels aura badges achievements",
     ]

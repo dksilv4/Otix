@@ -1,5 +1,5 @@
 # TODO: Review this file
-"""Resolve unmatched Steam games via IGDB cross-reference."""
+"""Resolve unmatched Steam game via IGDB cross-reference."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ async def resolve_unmatched_steam_games(
     db: AsyncSession,
     user_id: str,
 ) -> ResolverResult:
-    """Resolve unmatched Steam games by looking them up in IGDB.
+    """Resolve unmatched Steam game by looking them up in IGDB.
 
     For each unmatched UserSteamGame:
     1. Look up the Steam app ID in IGDB's external_games table
@@ -39,7 +39,7 @@ async def resolve_unmatched_steam_games(
     3. If the IGDB game is not in the catalog → sync it from IGDB, then link
     4. If IGDB has no match → leave unmatched
     """
-    # Fetch all unmatched games for this user
+    # Fetch all unmatched game for this user
     unmatched = await db.execute(
         select(UserSteamGame).where(
             UserSteamGame.user_id == user_id,
@@ -52,7 +52,7 @@ async def resolve_unmatched_steam_games(
         return ResolverResult(total=0)
 
     result = ResolverResult(total=len(unmatched_games))
-    unmatched_count = len(unmatched_games)  # games IGDB didn't know about at all
+    unmatched_count = len(unmatched_games)  # game IGDB didn't know about at all
 
     # Batch by BATCH_SIZE for the IGDB lookup
     for i in range(0, len(unmatched_games), BATCH_SIZE):
@@ -91,7 +91,7 @@ async def resolve_unmatched_steam_games(
             except ValueError:
                 pass
 
-        # Link games that are already in the catalog
+        # Link game that are already in the catalog
         for steam_app_id, igdb_game_id in steam_to_igdb.items():
             game = app_to_game.get(steam_app_id)
             if game is None:
@@ -102,7 +102,7 @@ async def resolve_unmatched_steam_games(
                 game.media_item_id = media_item_id
                 result.resolved += 1
 
-        # Sync games not yet in the catalog
+        # Sync game not yet in the catalog
         for steam_app_id, igdb_game_id in steam_to_igdb.items():
             game = app_to_game.get(steam_app_id)
             if game is None:

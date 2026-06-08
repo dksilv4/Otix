@@ -127,7 +127,7 @@ describe("Platforms Component Suite", () => {
       expect(screen.getByText("2h")).toBeInTheDocument()
     })
 
-    it("renders Content correctly with games and handles unmatched toggle", async () => {
+    it("renders Content correctly with game and handles unmatched toggle", async () => {
       vi.mocked(useLibraryTab).mockReturnValue({
         data: { pages: [{ items: [{ id: "game-1", title: "Portal 2", mediaType: "game", steamPlaytimeForever: 120, steamPlaytime2weeks: 30, steamRtimeLastPlayed: Math.floor(Date.now() / 1000 - 3600) }] }] },
         isLoading: false,

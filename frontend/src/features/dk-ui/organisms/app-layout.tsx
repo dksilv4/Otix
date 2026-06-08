@@ -91,7 +91,7 @@ function AppShell({ children }: { children: ReactNode }) {
       <TitleBar />
 
       {/* Left floating pill — hidden in game launcher (it has its own picker) */}
-      {!location.pathname.startsWith('/games') && (
+      {!location.pathname.startsWith('/game') && (
         <div
           className={cn('dk-floating-pill dk-floating-pill--left', titleBarOffset, navLogo && 'dk-floating-pill--left-w-logo')}
           data-menu-trigger

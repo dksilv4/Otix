@@ -8,9 +8,10 @@
   &:not(.dk-spotify__button--bare) {
     @apply flex items-center p-1.5;
     border-radius: 2rem;
-    background: linear-gradient(135deg, var(--dk-surface-glass), var(--dk-surface-glass-hover));
-    backdrop-filter: blur(16px);
+    background-color: oklch(from var(--dk-surface-raised) r g b / 0.25);
+    background-image: linear-gradient(135deg, var(--dk-surface-glass), var(--dk-surface-glass-hover));
     box-shadow: var(--dk-shadow-glass);
+    backdrop-filter: blur(16px);
   }
 
   /* Not pinned -> pointer cursor */
@@ -55,6 +56,11 @@
 /* ── Album art ── */
 .dk-spotify__album-art {
   @apply h-6 w-6 rounded-full object-cover;
+}
+
+/* ── Game icon wrapper ── */
+.dk-spotify__game-wrapper {
+  @apply flex items-center justify-center;
 }
 
 /* ── Download icon wrapper ── */

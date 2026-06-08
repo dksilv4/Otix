@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Music, Download } from 'lucide-react'
+import { Music, Download, Gamepad2 } from 'lucide-react'
 import { useDownloads } from '@/features/downloads/use-downloads'
 import { usePlayer } from './use-player'
 import type { PlexSession } from './plex-now-playing'
@@ -7,6 +7,7 @@ import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { cn } from '@/lib/utils'
+import { useRunningGame } from '@/features/games/hooks/use-running-game'
 import './now-playing-button.scss'
 
 interface PlexSessionsResponse {
@@ -45,6 +46,7 @@ export function NowPlayingButton({
   bare?: boolean
 }) {
   const { source, isPlaying, currentTrack } = usePlayer()
+  const { runningGame } = useRunningGame()
 
   const { user: currentUser } = useAuth()
 
@@ -90,7 +92,19 @@ export function NowPlayingButton({
         )}
         aria-label="Activity"
       >
-        {hasLocalPlayback ? (
+        {runningGame ? (
+          <div className="dk-spotify__game-wrapper">
+            {runningGame.game.iconUrl || runningGame.game.posterUrl ? (
+              <img
+                src={runningGame.game.iconUrl || runningGame.game.posterUrl}
+                alt=""
+                className="dk-spotify__album-art"
+              />
+            ) : (
+              <Gamepad2 className="h-5 w-5 text-emerald-400" />
+            )}
+          </div>
+        ) : hasLocalPlayback ? (
           currentTrack.albumArt ? (
             <img
               src={currentTrack.albumArt}

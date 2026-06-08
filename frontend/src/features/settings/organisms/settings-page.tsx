@@ -8,6 +8,7 @@ import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
 import './settings-page.scss'
 import { PreferencesSection } from './settings-sections/preferences'
 import { ProfileSection } from './settings-sections/profile'
@@ -43,11 +44,11 @@ function isSettingsSection(value: unknown): value is Section {
 export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
-  const isDesktop = (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')) || typeof (window as any).desktopAPI !== 'undefined'
+  const desktop = isDesktop()
   const desktopSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
-  const filteredNav = NAV_ITEMS.filter(i => !desktopSections.has(i.id) || isDesktop)
+  const filteredNav = NAV_ITEMS.filter(i => !desktopSections.has(i.id) || desktop)
   const [activeSection, setActiveSection] = useState<Section>(() =>
-    isSettingsSection(search.section) && (!desktopSections.has(search.section) || isDesktop) ? search.section : 'profile',
+    isSettingsSection(search.section) && (!desktopSections.has(search.section) || desktop) ? search.section : 'profile',
   )
   const [mobileView, setMobileView] = useState<'menu' | 'section'>('menu')
   const { theme, setTheme } = useTheme()

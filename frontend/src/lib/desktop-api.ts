@@ -91,8 +91,22 @@ export interface SaveOverrideResult {
 export interface DesktopAPI {
   readonly platform: string | undefined
 
+  // Query cache persistence
+  cacheLoad: () => Promise<unknown>
+  cacheSave: (data: unknown) => Promise<void>
+
+  // Game hydration
+  hydrateMatchedGames: () => Promise<{ updated: number; failed: number; total: number }>
+
   // Game scanning & detection
   scanPaths(scanPaths: string[], isoPaths: string[]): Promise<LocalGame[]>
+  getScanPaths(): Promise<{ path: string; type: 'game' | 'iso' }[]>
+  saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void>
+  getScannedGames(): Promise<LocalGame[]>
+  saveScannedGames(games: LocalGame[]): Promise<void>
+  getLocalGamesMap(): Promise<Record<string, LocalGame>>
+  saveLocalGamesMapEntry(mediaId: string, game: LocalGame | null): Promise<void>
+  onGamesUpdated(cb: () => void): () => void
   getScannedGamesFiltered(filter: any): Promise<LocalGame[]>
   getGameById(id: string): Promise<LocalGame | null>
   getGameCount(filter: any): Promise<number>
@@ -156,6 +170,12 @@ export function getDesktopAPI(): DesktopAPI | null {
 }
 
 export function hasDesktopAPI(): boolean {
+  return getDesktopAPI() !== null
+}
+
+/** SSR-safe check — true when running inside Electron. */
+export function isDesktop(): boolean {
+  if (typeof window === 'undefined') return false
   return getDesktopAPI() !== null
 }
 

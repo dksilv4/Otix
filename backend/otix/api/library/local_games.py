@@ -1,4 +1,4 @@
-"""GET /library/installed — user's locally installed games enriched with catalog data."""
+"""GET /library/installed — user's locally installed game enriched with catalog data."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ async def get_installed_games(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> InstalledGamesResponse:
-    """Return the user's locally installed games, enriched with catalog data.
+    """Return the user's locally installed game, enriched with catalog data.
 
     Ordered by last_seen_at descending (most recently seen first).
     """
@@ -38,7 +38,7 @@ async def get_installed_games(
         )
         total = (await session.execute(total_q)).scalar_one()
 
-        # Fetch paginated local games
+        # Fetch paginated local game
         q = (
             select(UserLocalGame)
             .where(UserLocalGame.user_id == user_id)

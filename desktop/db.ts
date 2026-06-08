@@ -352,6 +352,20 @@ function _migrateDb(): void {
   try {
     db.run('ALTER TABLE game_save_cloud_settings ADD COLUMN confirmed_path TEXT');
   } catch (_) { /* column exists */ }
+
+  // Migration: add hydration columns to scanned_games
+  try {
+    db.run('ALTER TABLE scanned_games ADD COLUMN local_icon_url TEXT');
+  } catch (_) { /* column exists */ }
+  try {
+    db.run('ALTER TABLE scanned_games ADD COLUMN otix_icon_url TEXT');
+  } catch (_) { /* column exists */ }
+  try {
+    db.run('ALTER TABLE scanned_games ADD COLUMN otix_poster_url TEXT');
+  } catch (_) { /* column exists */ }
+  try {
+    db.run('ALTER TABLE scanned_games ADD COLUMN otix_data TEXT');
+  } catch (_) { /* column exists */ }
 }
 
 // Ensure DB is initialized before any operation

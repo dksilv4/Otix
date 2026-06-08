@@ -1,12 +1,13 @@
 import { useRef, useCallback, useEffect } from "react"
 import { X, Search, Circle, Menu, Plus, RefreshCw, Link as LinkIcon } from "lucide-react"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import { getDesktopAPI } from "@/lib/desktop-api"
+import type { LocalGame } from "@/features/game-scanner/types"
 import type { GamesTab } from "../types"
 
 interface GamesSidePanelProps {
   open: boolean
   onClose: () => void
-  games: DetectedGame[]
+  games: LocalGame[]
   selectedId: string | null
   onSelect: (id: string) => void
   activeTab: GamesTab
@@ -146,11 +147,11 @@ export function GamesSidePanel({
               ) : (
                 games.map((game) => {
                   const isSelected = game.id === selectedId
-                  const isMatched = !!game.otixMediaId
-                  const hasSuggestion = !!game.otixMatchSuggestion
+                  const isMatched = !!game.data?.id
+                  const hasSuggestion = !!game.matchSuggestion
                   const faded = !isMatched && !hasSuggestion
-                  const posterUrl = game.otixPosterUrl || game.posterUrl
-                  const displayTitle = game.otixMediaTitle || game.title
+                  const posterUrl = game.data?.posterUrl || game.posterUrl
+                  const displayTitle = game.data?.title || game.title
 
                   return (
                     <button key={game.id} type="button" onClick={() => onSelect(game.id)}
@@ -197,8 +198,8 @@ export function GamesSidePanel({
             <div className="flex gap-1.5 pt-3 mt-2 border-t border-white/5 flex-shrink-0">
               <button type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined" && (window as any).desktopAPI)
-                    (window as any).desktopAPI.selectDirectory()
+                  if (getDesktopAPI())
+                    getDesktopAPI()!.selectDirectory()
                 }}
                 className="flex-1 text-center py-1.5 rounded-md text-[10px] text-white/40 hover:text-white/60 hover:bg-white/5 transition-all inline-flex items-center justify-center gap-1">
                 <Plus size={10} /> Add Folder

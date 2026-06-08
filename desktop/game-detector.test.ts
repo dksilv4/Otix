@@ -16,11 +16,11 @@ import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { GameDetector } from './game-detector'
-import type { DetectedGame } from './scanner'
+import type { LocalGame } from './scanner'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function makeGame(overrides: Partial<DetectedGame> = {}): DetectedGame {
+function makeGame(overrides: Partial<LocalGame> = {}): LocalGame {
   return {
     id: 'test-game',
     title: 'Test Game',
@@ -194,7 +194,7 @@ describe('GameDetector', () => {
       expect(results).toHaveLength(1)
     })
 
-    it('finds games via install directory basename', async () => {
+    it('finds game via install directory basename', async () => {
       const game = makeGame({
         id: 'game-2',
         title: 'Some Obscure Game',
@@ -251,7 +251,7 @@ describe('GameDetector', () => {
       }))
     })
 
-    it('does not re-emit game:started for already-detected games', async () => {
+    it('does not re-emit game:started for already-detected game', async () => {
       const started = vi.fn()
       detector.on('game:started', started)
 
@@ -321,10 +321,10 @@ describe('GameDetector', () => {
     })
   })
 
-  // ── Multiple games ──
+  // ── Multiple game ──
 
-  describe('multiple concurrent games', () => {
-    it('detects multiple games running simultaneously', async () => {
+  describe('multiple concurrent game', () => {
+    it('detects multiple game running simultaneously', async () => {
       const g1 = makeGame({ id: 'game-1', title: 'Game Alpha', exePath: 'C:/alpha.exe' })
       const g2 = makeGame({ id: 'game-2', title: 'Game Beta', exePath: 'D:/beta.exe' })
       const g3 = makeGame({ id: 'game-3', title: 'Game Gamma', exePath: 'E:/gamma.exe' })
@@ -361,7 +361,7 @@ describe('GameDetector', () => {
   // ── PID-based tracking ──
 
   describe('PID-based tracking', () => {
-    it('keeps games tracked with a real PID alive even when process list is empty', async () => {
+    it('keeps game tracked with a real PID alive even when process list is empty', async () => {
       const game = makeGame({ id: 'game-1', exePath: 'C:/game.exe' })
       detector.setLibrary([game])
       // Use current process PID — guaranteed to exist
@@ -373,7 +373,7 @@ describe('GameDetector', () => {
       expect(results).toHaveLength(1)
     })
 
-    it('cleans up games whose PID no longer exists', async () => {
+    it('cleans up game whose PID no longer exists', async () => {
       const game = makeGame({ id: 'game-1', exePath: 'C:/game.exe' })
       // PID 9999 does not exist — getRunningGames will clean it up
       detector.startTracking(game, 9999)

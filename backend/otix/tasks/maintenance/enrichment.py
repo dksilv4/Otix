@@ -341,9 +341,9 @@ async def _enrich_content_ratings() -> dict:
 
 @app.task(name="maintenance.enrich_game_age_ratings")
 def enrich_game_age_ratings() -> dict:
-    """Scan games for missing age ratings (ESRB, PEGI) and enqueue hydration.
+    """Scan game for missing age ratings (ESRB, PEGI) and enqueue hydration.
 
-    Runs every 5 min. Finds games with an IGDB ID that have no MediaRelease
+    Runs every 5 min. Finds game with an IGDB ID that have no MediaRelease
     rows and enqueues a focused age_ratings hydration task per item.
     Batch size of 200/cycle.
     """
@@ -382,9 +382,9 @@ async def _enrich_game_age_ratings() -> dict:
 
 @app.task(name="maintenance.enrich_steam")
 def enrich_steam() -> dict:
-    """Scan recently-synced games for Steam app IDs and enqueue updates.
+    """Scan recently-synced game for Steam app IDs and enqueue updates.
 
-    Runs every 15 min. Finds games with a steam_app_id that were synced
+    Runs every 15 min. Finds game with a steam_app_id that were synced
     recently and enqueues individual Steam update tasks.
     """
     return run_async(_enrich_steam())
@@ -428,9 +428,9 @@ async def _enrich_steam() -> dict:
 
 @app.task(name="maintenance.enrich_steamgrid")
 def enrich_steamgrid() -> dict:
-    """Scan games for missing SteamGridDB artwork across all supported platforms.
+    """Scan game for missing SteamGridDB artwork across all supported platforms.
 
-    Runs every 30 min. Finds games with any platform ID (steam_app_id or
+    Runs every 30 min. Finds game with any platform ID (steam_app_id or
     entries in store_ids) that are missing textless_poster_url, backdrop_url,
     or logo_url.
     """
@@ -445,7 +445,7 @@ async def _enrich_steamgrid() -> dict:
     )
 
     async with async_session() as session:
-        # Steam games (dedicated column, fast query)
+        # Steam game (dedicated column, fast query)
         steam_result = await session.execute(
             select(Game.media_item_id, ExternalID.external_id)
             .join(MediaItem, MediaItem.id == Game.media_item_id)
@@ -465,7 +465,7 @@ async def _enrich_steamgrid() -> dict:
         )
         steam_rows = steam_result.all()
 
-        # Non-Steam games (store IDs via ExternalID)
+        # Non-Steam game (store IDs via ExternalID)
         store_providers = {
             "epic",
             "gog",

@@ -6,6 +6,7 @@ import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
 import { FolderKanban, CheckCircle2 } from 'lucide-react'
 
 const NAMING_PRESETS = [
@@ -27,7 +28,7 @@ const TOKEN_DOCS = [
 ]
 
 export function OrganizerSection() {
-  const isDesktop = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron')
+  const desktop = isDesktop()
   const { user } = useAuth()
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
 
@@ -55,7 +56,7 @@ export function OrganizerSection() {
   // Preview template on change
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!isDesktop || !window.desktopAPI?.downloadsPreviewNamingTemplate) {
+      if (!desktop || !window.desktopAPI?.downloadsPreviewNamingTemplate) {
         setPreviewResult(namingTemplate.replace(/\{(\w+)\}/g, 'sample'))
         return
       }
@@ -73,7 +74,7 @@ export function OrganizerSection() {
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [namingTemplate, isDesktop])
+  }, [namingTemplate, desktop])
 
   const handlePresetChange = (presetId: string) => {
     const preset = NAMING_PRESETS.find(p => p.id === presetId)
@@ -99,7 +100,7 @@ export function OrganizerSection() {
     setTimeout(() => setSaved(false), 2000)
   }
 
-  if (!isDesktop) return null
+  if (!desktop) return null
 
   return (
     <div className="dk-settings-organizer">

@@ -250,10 +250,10 @@ def vacuum_high_churn_tables() -> dict:
     Runs every hour to keep dead tuple ratios low. Uses VACUUM (not FULL)
     so the tables remain available for reads/writes.
     """
-    import asyncio
+    return run_async(_vacuum_high_churn_tables())
 
-    from otix.infrastructure.database import async_session
 
+async def _vacuum_high_churn_tables() -> dict:
     HIGH_CHURN_TABLES = [
         "media_credits",
         "external_ids",
@@ -264,17 +264,13 @@ def vacuum_high_churn_tables() -> dict:
         "media_platforms",
     ]
 
-    async def _vacuum():
-        async with async_session() as session:
-            for table in HIGH_CHURN_TABLES:
-                await session.execute(text(f"VACUUM ANALYZE {table}"))
-            await session.commit()
-        return {"vacuumed": HIGH_CHURN_TABLES}
+    async with async_session() as session:
+        for table in HIGH_CHURN_TABLES:
+            await session.execute(text(f"VACUUM ANALYZE {table}"))
+        await session.commit()
 
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(_vacuum())
     logger.info("periodic_vacuum_complete", tables=HIGH_CHURN_TABLES)
-    return result
+    return {"vacuumed": HIGH_CHURN_TABLES}
 
 
 @app.task(name="maintenance.cleanup_orphan_credits")

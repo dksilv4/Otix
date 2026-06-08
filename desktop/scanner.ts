@@ -3,14 +3,15 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getBestIconUrl, getBestGridUrl } from './steamgrid';
 
-export interface DetectedGame {
+export interface LocalGame {
   id: string;
   title: string;
   exePath: string;
   localExePath?: string;
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
-  iconUrl?: string; // base64 data URL or SGDB icon URL
+  localIconUrl?: string; // base64 data URL from .exe icon
+  iconUrl?: string; // SGDB icon URL
   posterUrl?: string; // SGDB grid (cover/poster) URL
   updateFiles?: { name: string; path: string }[];
 }
@@ -25,7 +26,7 @@ function parseAcf(content: string): Record<string, string> {
   return result;
 }
 
-// Generate a unique, deterministic ID for non-steam games based on file path
+// Generate a unique, deterministic ID for non-steam game based on file path
 function generateId(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -314,32 +315,30 @@ export async function pickBestExe(exes: string[], installDirName: string): Promi
 }
 
 interface IconDataResult {
+  localIconUrl?: string;
   iconUrl?: string;
   posterUrl?: string;
 }
 
-// Get icon and poster for a game — native Electron file icon with SteamGridDB fallback
+// Get icon and poster for a game — native Electron file icon + SteamGridDB
 async function getIconDataUrl(exePath: string, title?: string): Promise<IconDataResult> {
   const result: IconDataResult = {};
 
-  // 1. Native file icon
+  // 1. Native file icon (always stored separately as localIconUrl)
   try {
     const icon = await app.getFileIcon(exePath, { size: 'large' });
-    result.iconUrl = icon.toDataURL();
+    result.localIconUrl = icon.toDataURL();
   } catch {
-    // Native icon failed — try SteamGridDB if we have a title
+    // Native icon failed
   }
 
-  // 2. SteamGridDB fallbacks
+  // 2. SteamGridDB icons
   if (title) {
-    // Icon fallback
-    if (!result.iconUrl) {
-      try {
-        const url = await getBestIconUrl(title);
-        if (url) result.iconUrl = url;
-      } catch (err) {
-        console.error('SteamGridDB icon lookup failed for', title, err);
-      }
+    try {
+      const url = await getBestIconUrl(title);
+      if (url) result.iconUrl = url;
+    } catch (err) {
+      console.error('SteamGridDB icon lookup failed for', title, err);
     }
 
     // Poster (grid) — always try to get cover art
@@ -383,8 +382,8 @@ export async function scanPaths(
   scanDirectories: string[],
   isoDirectories: string[],
   onProgress?: (data: { currentDir: string; progress: number }) => void
-): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
   const totalPaths = scanDirectories.length + isoDirectories.length;
   let currentPathIndex = 0;
 
@@ -413,7 +412,7 @@ export async function scanPaths(
       }
 
       if (steamappsPath) {
-        // Steam games search
+        // Steam game search
         onProgress?.({
           currentDir: `${steamappsPath} (reading manifests)`,
           progress: baseProgress + Math.round((nextProgress - baseProgress) * 0.2),
@@ -449,10 +448,12 @@ export async function scanPaths(
                   // common directory might not exist yet
                 }
 
+                let localIconUrl: string | undefined;
                 let iconUrl: string | undefined;
                 let posterUrl: string | undefined;
                 if (localExePath) {
                   const iconData = await getIconDataUrl(localExePath, name);
+                  localIconUrl = iconData.localIconUrl;
                   iconUrl = iconData.iconUrl;
                   posterUrl = iconData.posterUrl;
                 }
@@ -464,6 +465,7 @@ export async function scanPaths(
                   localExePath,
                   installDir: commonDir,
                   platform: 'steam',
+                  localIconUrl,
                   iconUrl,
                   posterUrl,
                 });
@@ -479,7 +481,7 @@ export async function scanPaths(
         const hasSelfGame = selfExes.some(exe => {
           const nameLower = path.basename(exe).toLowerCase();
           if (nameLower.includes('unins') || nameLower.includes('setup') || nameLower.includes('helper') || nameLower.includes('crash')) return false;
-          // Exe must resolve back to dir (not a subdirectory) to avoid treating library folders as games
+          // Exe must resolve back to dir (not a subdirectory) to avoid treating library folders as game
           const gameFolder = getGameFolder(exe, dir);
           return path.resolve(gameFolder).toLowerCase() === path.resolve(dir).toLowerCase();
         });
@@ -495,6 +497,7 @@ export async function scanPaths(
               exePath: bestExe,
               installDir: dir,
               platform: 'pc',
+              localIconUrl: iconData.localIconUrl,
               iconUrl: iconData.iconUrl,
               posterUrl: iconData.posterUrl,
             });
@@ -528,6 +531,7 @@ export async function scanPaths(
                   exePath: bestExe,
                   installDir: gameFolder,
                   platform: 'pc',
+                  localIconUrl: iconData.localIconUrl,
                   iconUrl: iconData.iconUrl,
                   posterUrl: iconData.posterUrl,
                 });
@@ -587,8 +591,8 @@ export async function scanPaths(
     progress: 100,
   });
 
-  // Deduplicate games by ID, exePath, and non-ISO installation directories
-  const uniqueGames: DetectedGame[] = [];
+  // Deduplicate game by ID, exePath, and non-ISO installation directories
+  const uniqueGames: LocalGame[] = [];
   const seenIds = new Set<string>();
   const seenExes = new Set<string>();
   const seenInstallDirs = new Set<string>();

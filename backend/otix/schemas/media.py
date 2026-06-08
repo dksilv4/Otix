@@ -589,7 +589,7 @@ class SyncLocalGamesResponse(BaseModel):
     deleted: int = 0
 
 
-# ── Installed games response (for /library/installed) ───────────────
+# ── Installed game response (for /library/installed) ───────────────
 
 
 class InstalledGameSummary(BaseModel):

@@ -349,7 +349,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('sender_id', 'receiver_id')
     )
-    op.create_table('games',
+    op.create_table('game',
     sa.Column('media_item_id', sa.String(length=16), nullable=False),
     sa.Column('release_status', sa.String(length=50), nullable=True),
     sa.Column('website', sa.String(length=2000), nullable=True),
@@ -1044,7 +1044,7 @@ def downgrade() -> None:
     op.drop_index('ix_karma_transactions_user', table_name='karma_transactions')
     op.drop_table('karma_transactions')
     op.drop_table('involved_companies')
-    op.drop_table('games')
+    op.drop_table('game')
     op.drop_table('friend_requests')
     op.drop_table('franchise_items')
     op.drop_index('ix_follows_follower', table_name='follows')

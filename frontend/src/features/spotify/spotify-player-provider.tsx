@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { apiClient } from '@/lib/api-client'
+import { isDesktop } from '@/lib/desktop-api'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 
 
@@ -224,7 +225,6 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
 
   // Are we running in Electron? If so skip Web Playback SDK (no DRM/CDM
   // guarantees) and use the Connect REST API as a remote control instead.
-  const [isDesktop] = useState(() => typeof window !== 'undefined' && !!(window as any).desktopAPI)
   const [connectMode] = useState(isDesktop)
   // Mirror availableDevices in a ref so Connect play callbacks can read the
   // latest active device without needing state in their dependency arrays.
@@ -439,7 +439,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   // Load SDK script (browser only — Electron uses Connect REST API)
   // Load SDK script (browser only — Electron uses Connect REST API)
   useEffect(() => {
-    if (!hasSpotify || sdkLoadedRef.current || isDesktop) return
+    if (!hasSpotify || sdkLoadedRef.current || connectMode) return
 
     const existing = document.querySelector(`script[src="${SDK_URL}"]`)
     if (existing) {
@@ -462,7 +462,7 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
   // Create and connect player (browser only — Electron uses Connect REST API)
   useEffect(() => {
   // Create and connect player (browser only — Electron uses Connect REST API)
-    if (!hasSpotify || isDesktop) return
+    if (!hasSpotify || connectMode) return
 
     let player: SpotifyPlayerInstance | null = null
     let disposed = false

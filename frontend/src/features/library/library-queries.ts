@@ -357,7 +357,7 @@ export function useSteamWishlistScan() {
 function cleanupStaleMediaRef(mediaId: string) {
   const games = getScannedGames()
   const updated = games.map((g) => {
-    if (g.otixMediaId === mediaId || g.otixMatchSuggestion?.mediaId === mediaId) {
+    if (g.data?.id === mediaId || g.matchSuggestion?.id === mediaId) {
       const { otixMediaId, otixMediaTitle, otixMediaSlug, otixPosterUrl, otixTextlessPosterUrl, otixLogoUrl, otixMatchSuggestion, otixConfidence, otixClaimed, otixMatchVerified, ...rest } = g
       return rest as typeof g
     }
@@ -366,7 +366,7 @@ function cleanupStaleMediaRef(mediaId: string) {
   setScannedGames(updated)
 }
 
-// ── Claim / unclaim games (owned) ───────────────────────────────────
+// ── Claim / unclaim game (owned) ───────────────────────────────────
 
 export function useClaimGame() {
   const queryClient = useQueryClient()

@@ -109,7 +109,7 @@ async def get_steam_unmatched_games(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SteamUnmatchedListResponse:
-    """Get unmatched Steam games (not yet linked to a media item)."""
+    """Get unmatched Steam game (not yet linked to a media item)."""
     ip = request.client.host if request.client else None
 
     if not current_user.steam_id:
@@ -124,11 +124,11 @@ async def get_steam_unmatched_games(
         )
     except Exception:
         await db.rollback()
-        logger.exception("failed to fetch unmatched steam games", user_id=current_user.id, ip=ip)
+        logger.exception("failed to fetch unmatched steam game", user_id=current_user.id, ip=ip)
         raise
 
     summaries = [SteamUnmatchedGameSummary.model_validate(g) for g in items]
-    logger.info("steam unmatched games fetched", user_id=current_user.id, count=len(summaries), ip=ip)
+    logger.info("steam unmatched game fetched", user_id=current_user.id, count=len(summaries), ip=ip)
     return SteamUnmatchedListResponse(
         items=summaries,
         next_cursor=next_cursor,

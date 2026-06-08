@@ -1,5 +1,5 @@
 # TODO: Review this file
-"""Seed the most popular Steam games into Otix.
+"""Seed the most popular Steam game into Otix.
 
 Runs inline (not via Celery) for each Steam app ID. Games already in the
 database are skipped (ExternalID dedup).
@@ -18,7 +18,7 @@ import time
 
 from otix.infrastructure.database import dispose_engine
 
-# ── Most popular Steam games by concurrent players & cultural impact ──────
+# ── Most popular Steam game by concurrent players & cultural impact ──────
 
 POPULAR_STEAM_APPS: list[tuple[int, str]] = [
     # Top by player count (Steam Charts)
@@ -131,7 +131,7 @@ async def run_popular_games_seed() -> dict:
     skipped: list[str] = []
     errors: list[str] = []
 
-    print(f"\nSeeding {len(POPULAR_STEAM_APPS)} popular Steam games...\n")
+    print(f"\nSeeding {len(POPULAR_STEAM_APPS)} popular Steam game...\n")
 
     for app_id, title in POPULAR_STEAM_APPS:
         try:

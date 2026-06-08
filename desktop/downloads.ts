@@ -559,10 +559,10 @@ export async function scheduledUpdateCheck(): Promise<{ game: string; queued: nu
   }
   const games = await getTrackedGames();
   if (games.length === 0) {
-    console.log('[update-check] No tracked games');
+    console.log('[update-check] No tracked game');
     return [];
   }
-  console.log('[update-check] Checking', games.length, 'tracked games for updates');
+  console.log('[update-check] Checking', games.length, 'tracked game for updates');
   const results: { game: string; queued: number }[] = [];
   for (const game of games) {
     try {
@@ -1436,7 +1436,7 @@ export async function getScannedGamesFromDb(): Promise<any[]> {
 export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   await ensureDb();
 
-  // Preserve `seeded` flag for games that were already in the DB.
+  // Preserve `seeded` flag for game that were already in the DB.
   // The DELETE-then-INSERT pattern would lose it, so we snapshot first.
   const existingSeeded = new Map<string, number>();
   const existingRows = _all('SELECT id, seeded FROM scanned_games');
@@ -1444,7 +1444,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
     existingSeeded.set(r.id, r.seeded as number);
   }
 
-  // Delete games that are no longer present in this scan batch
+  // Delete game that are no longer present in this scan batch
   const newIds = [...new Set(games.map((g) => g.id))];
   if (newIds.length > 0) {
     const placeholders = newIds.map(() => '?').join(',');
@@ -1522,8 +1522,8 @@ export interface UnseededGame {
   steam_app_id: number | null;
 }
 
-/** Return unseeded games from scanned_games, grouped by normalized title.
- *  For Steam games, extracts the numeric Steam App ID from the game's id. */
+/** Return unseeded game from scanned_games, grouped by normalized title.
+ *  For Steam game, extracts the numeric Steam App ID from the game's id. */
 export function getUnseededGames(): UnseededGame[] {
   const rows = _all(
     'SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0'
@@ -1549,7 +1549,7 @@ export function getUnseededGames(): UnseededGame[] {
   return Array.from(byTitle.values());
 }
 
-/** Mark the given games as seeded in scanned_games (matches by title). */
+/** Mark the given game as seeded in scanned_games (matches by title). */
 export function markGamesAsSeeded(games: UnseededGame[]): void {
   if (!games.length) return;
   const titles = games.map(g => g.title);

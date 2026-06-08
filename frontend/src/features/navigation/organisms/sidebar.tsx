@@ -15,8 +15,10 @@ import { useAuth } from "@/features/auth/auth-provider"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigation } from "@navigation/providers/navigation-provider"
 import { cn } from "@/lib/utils"
+import { isDesktop } from "@/lib/desktop-api"
+import { useDesktopPlatform } from "@/lib/desktop-platform"
 
-const isElectron = typeof window !== 'undefined' && !!(window as any).desktopAPI
+const isElectron = isDesktop()
 
 const iconBg = cn(
   "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
@@ -55,10 +57,11 @@ export function MenuDropdown() {
   const { user } = useAuth()
   const location = useLocation()
   const ref = useRef<HTMLDivElement>(null)
+  const { isDesktop } = useDesktopPlatform()
 
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
-    { to: "/games", icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined },
+    { to: "/game", icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined },
     { to: "/library", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
     ...(user ? [
       { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },
@@ -112,8 +115,9 @@ export function MenuDropdown() {
           exit={{ opacity: 0, y: -8, scale: 0.96 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className={cn(
-            "fixed top-[4.5rem] z-[9998]",
-            location.pathname.startsWith("/games") ? "left-[6rem]" : "left-4",
+            "fixed z-[9998]",
+            isDesktop ? "top-[100px]" : "top-[4.5rem]",
+            location.pathname.startsWith("/game") ? "left-[6rem]" : "left-4",
             "w-[15rem] p-3 rounded-[1.5rem]",
             "bg-[var(--dk-surface-overlay)]",
             "backdrop-blur-xl",

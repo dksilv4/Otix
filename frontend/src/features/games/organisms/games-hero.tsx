@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react"
 import { Play, Folder, Check, X, Menu, Gamepad2, Star, ExternalLink } from "lucide-react"
-import type { DetectedGame } from "@/features/game-scanner/types"
+import type { LocalGame } from "@/features/game-scanner/types"
 
 interface GamesHeroProps {
-  game: (DetectedGame & {
+  game: (LocalGame & {
     backdropUrl?: string | null
     overview?: string | null
     genres?: { id: string; name: string; slug: string }[]
@@ -11,10 +11,10 @@ interface GamesHeroProps {
     releaseDate?: string | null
     isFree?: boolean
   }) | null
-  onPlay: (game: DetectedGame) => void
-  onOpenFolder: (game: DetectedGame) => void
-  onAcceptSuggestion?: (game: DetectedGame) => void
-  onRejectSuggestion?: (game: DetectedGame) => void
+  onPlay: (game: LocalGame) => void
+  onOpenFolder: (game: LocalGame) => void
+  onAcceptSuggestion?: (game: LocalGame) => void
+  onRejectSuggestion?: (game: LocalGame) => void
   onTogglePanel: () => void
   sidePanelOpen: boolean
 }
@@ -72,9 +72,9 @@ export function GamesHero({
     )
   }
 
-  const isMatched = !!game.otixMediaId
-  const hasSuggestion = !!game.otixMatchSuggestion
-  const posterUrl = game.otixPosterUrl || game.posterUrl || game.iconUrl
+  const isMatched = !!game.data?.id
+  const hasSuggestion = !!game.matchSuggestion
+  const posterUrl = game.data?.posterUrl || game.posterUrl || game.iconUrl
   const installDir = game.installDir.split(/[\/]/).slice(-2).join(" / ")
 
   const heroBg = getGradient(game.title)
@@ -90,14 +90,14 @@ export function GamesHero({
         className="absolute top-4 left-4 z-10 inline-flex items-center gap-2 rounded-xl bg-black/40 backdrop-blur-md px-3 py-2 text-xs font-medium text-white/70 hover:text-white hover:bg-black/50 transition-all active:scale-[0.97]"
       >
         {sidePanelOpen ? <X size={14} /> : <Menu size={14} />}
-        <span className="font-normal max-w-[100px] truncate">{game.otixMediaTitle || game.title}</span>
+        <span className="font-normal max-w-[100px] truncate">{game.data?.title || game.title}</span>
       </button>
 
       {/* Suggestion badge */}
       {hasSuggestion && (
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-xl bg-blue-500/20 backdrop-blur-md px-3 py-1.5">
           <span className="text-[11px] font-semibold text-blue-400">
-            {game.otixConfidence != null ? `${Math.round(game.otixConfidence * 100)}%` : "?"} match
+            {true ? `${Math.round(0 * 100)}%` : "?"} match
           </span>
         </div>
       )}
@@ -139,7 +139,7 @@ export function GamesHero({
 
             {/* Title */}
             <h2 className="text-xl lg:text-2xl font-extrabold text-white leading-tight tracking-tight">
-              {game.otixMediaTitle || game.title}
+              {game.data?.title || game.title}
             </h2>
 
             {/* Metadata */}
@@ -175,7 +175,7 @@ export function GamesHero({
             {hasSuggestion && (
               <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/8 border border-blue-500/15">
                 <span className="text-xs text-blue-400 font-medium">
-                  Match with <strong>{game.otixMatchSuggestion!.title}</strong>?
+                  Match with <strong>{game.matchSuggestion!.title}</strong>?
                 </span>
                 <div className="flex gap-1 ml-auto">
                   <button

@@ -4,7 +4,7 @@ import { Play, Gamepad2, CheckCircle2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { DkBadge } from "@/features/dk-ui/atoms/badge";
-import type { DetectedGame } from "../types";
+import type { LocalGame } from "../types";
 import { hasDesktopAPI } from "../storage";
 
 const PLATFORM_BADGES: Record<
@@ -25,10 +25,10 @@ const PLATFORM_BADGES: Record<
 };
 
 interface GameCardProps {
-  game: DetectedGame;
+  game: LocalGame;
   index: number;
-  onAcceptSuggestion?: (game: DetectedGame) => void;
-  onRejectSuggestion?: (game: DetectedGame) => void;
+  onAcceptSuggestion?: (game: LocalGame) => void;
+  onRejectSuggestion?: (game: LocalGame) => void;
 }
 
 export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }: GameCardProps) {
@@ -42,12 +42,12 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
     ? { variant: "default" as const, label: game.sources!.map((s) => PLATFORM_BADGES[s]?.label ?? s).join(" + ") }
     : primaryBadge;
   // Prefer textless poster so the floating logo pops clean.
-  // Fall back to SGDB grid (posterUrl from scanner) for unmatched games.
-  const backgroundUrl = game.otixTextlessPosterUrl || game.otixPosterUrl || game.posterUrl;
+  // Fall back to SGDB grid (posterUrl from scanner) for unmatched game.
+  const backgroundUrl = game.data?.posterUrl || game.data?.posterUrl || game.posterUrl;
   const hasBackground = backgroundUrl && !posterError;
-  const hasLogo = game.otixLogoUrl && !logoError;
-  const isMatched = !!game.otixMediaId;
-  const mediaId = game.otixMediaId || game.otixMatchSuggestion?.mediaId;
+  const hasLogo = game.data?.logoUrl && !logoError;
+  const isMatched = !!game.data?.id;
+  const mediaId = game.data?.id || game.matchSuggestion?.id;
   const linkTo = mediaId
     ? { to: "/media/$mediaType/$mediaId" as const, params: { mediaType: "game" as const, mediaId } }
     : null;
@@ -141,9 +141,9 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
             <CheckCircle2 className="h-3 w-3" />
           </div>
         )}
-        {game.otixMatchSuggestion && !isMatched && (
+        {game.matchSuggestion && !isMatched && (
           <div className="flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2 py-0.5 text-[10px] font-semibold text-blue-400 shadow-lg">
-            {game.otixConfidence != null ? `${Math.round(game.otixConfidence * 100)}%` : "?"}
+            {true ? `${Math.round(0 * 100)}%` : "?"}
           </div>
         )}
       </div>
@@ -152,7 +152,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
       {hasLogo && (
         <div className="absolute top-[8%] left-0 right-0 z-10 flex items-center justify-center px-6">
           <img
-            src={game.otixLogoUrl!}
+            src={game.data?.logoUrl!}
             alt={game.title}
             className="max-h-[45%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-105"
             onError={() => setLogoError(true)}
@@ -166,14 +166,14 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
           {game.title}
         </h3>
         <p className="mt-0.5 text-[11px] text-white/50 truncate">
-          {isMatched && game.otixMediaTitle && game.otixMediaTitle !== game.title
-            ? game.otixMediaTitle
+          {isMatched && game.data?.title && game.data?.title !== game.title
+            ? game.data?.title
             : game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
         </p>
       </div>
 
       {/* Hover: play button or match suggestion */}
-      {game.otixMatchSuggestion && !isMatched ? (
+      {game.matchSuggestion && !isMatched ? (
         <div
           className={`absolute inset-0 z-20 flex items-center justify-center transition-all duration-300 ${
             isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -183,7 +183,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
           <div className="relative z-10 flex flex-col items-center gap-3 px-4">
             <p className="text-sm font-semibold text-white text-center leading-tight">
               Match with{" "}
-              <span className="text-blue-400">{game.otixMatchSuggestion.title}</span>?
+              <span className="text-blue-400">{game.matchSuggestion.title}</span>?
             </p>
             <div className="flex items-center gap-3">
               <button

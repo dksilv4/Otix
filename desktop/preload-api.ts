@@ -5,7 +5,8 @@ export interface LocalGame {
   localExePath?: string;
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
-  iconUrl?: string; // base64 data URL
+  localIconUrl?: string; // base64 data URL from .exe icon
+  iconUrl?: string; // SGDB grid (cover/poster) URL
   posterUrl?: string; // SGDB grid (cover/poster) URL
   updateFiles?: { name: string; path: string }[];
   otixMediaId?: string;
@@ -234,6 +235,13 @@ export interface IDesktopAPI {
 
   // ── Platform info ──
   platform: string;
+
+  // ── Query cache persistence ──
+  cacheLoad: () => Promise<unknown>;
+  cacheSave: (data: unknown) => Promise<void>;
+
+  // ── Game hydration ──
+  hydrateMatchedGames: () => Promise<{ updated: number; failed: number; total: number }>;
 
   // ── Desktop settings ──
   getDesktopSettings: () => Promise<DesktopSettings>;

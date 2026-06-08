@@ -97,7 +97,7 @@ class NZBPlanetProvider(BaseProvider):
 
         Args:
             query: Search string (game name).
-            category_ids: Comma-separated category IDs (default: PC + Console games).
+            category_ids: Comma-separated category IDs (default: PC + Console game).
             limit: Max results to return.
 
         Returns:

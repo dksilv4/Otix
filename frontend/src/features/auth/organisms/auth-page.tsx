@@ -13,6 +13,7 @@ import { PasswordStrengthBar } from '../atoms/password-strength-bar'
 import { Logo } from '@ui/atoms/logo'
 import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop-api'
 import { openExternal } from '@/lib/open-external'
 
 type FormMode = 'login' | 'register'
@@ -219,8 +220,7 @@ export function AuthPage() {
   async function handleSteamLogin() {
     setSteamLoading(true)
     try {
-      const isDesktop = !!(window as any).desktopAPI
-      const { data } = await apiClient.post('/auth/steam/initiate', isDesktop ? { source: 'desktop' } : undefined)
+      const { data } = await apiClient.post('/auth/steam/initiate', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl)
     } catch {
       setSteamLoading(false)
@@ -235,7 +235,7 @@ export function AuthPage() {
     <div className="dk-auth-page__wrapper">
       <Helmet>
         <title>{isLogin ? 'Sign In - Otix' : 'Create Account - Otix'}</title>
-        <meta name="description" content={isLogin ? 'Sign in to Otix to continue your journey.' : 'Create an account on Otix to track movies, shows, games, and music.'} />
+        <meta name="description" content={isLogin ? 'Sign in to Otix to continue your journey.' : 'Create an account on Otix to track movies, shows, game, and music.'} />
         <meta name="robots" content="noindex" />
       </Helmet>
       {canGoBack && (

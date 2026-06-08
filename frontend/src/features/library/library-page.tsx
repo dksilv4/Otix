@@ -3,6 +3,7 @@ import { useState, useRef, useMemo, useEffect } from "react"
 import { Helmet } from "react-helmet-async"
 import { useInView } from "framer-motion"
 import { useParams, useNavigate } from "@tanstack/react-router"
+import { isDesktop } from '@/lib/desktop-api'
 import { BookmarkIcon, HeartIcon, CheckCircle2Icon, Gamepad2Icon, LayoutDashboardIcon, ListIcon, MusicIcon, PlusIcon, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
@@ -14,7 +15,7 @@ import { ListComposer } from "@/features/list/organisms/list-composer"
 import { useAuth } from "@/features/auth/auth-provider"
 import { getPlatformTabs, getPlatform } from "./platforms"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
-import { useGames } from "@/features/game-scanner/game-queries"
+import { useLocalGames } from "@/features/game-scanner/game-queries"
 import { GamesLauncher } from "./molecules/games-launcher"
 
 // ── Tab definitions ──
@@ -337,9 +338,9 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
 
 function LocalGamesOverviewSection() {
   const navigate = useNavigate()
-  const { data: games = [] } = useGames()
+  const { data: games = [] } = useLocalGames()
 
-  const isElectron = typeof window !== "undefined" && !!(window as any).desktopAPI
+  const isElectron = isDesktop()
   if (!isElectron || games.length === 0) return null
 
   const preview = games.filter(g => g.platform !== 'iso' && !g.sources?.includes('iso')).slice(0, 5)

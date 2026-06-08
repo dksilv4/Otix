@@ -95,14 +95,14 @@ class SteamProvider(BaseProvider):
             raise SteamError(f"Steam reviews failed: {response.status_code}")
         return response.json()
 
-    # ── Owned games ──────────────────────────────────────────────────
+    # ── Owned game ──────────────────────────────────────────────────
 
     async def get_owned_games(self, steam_id: str) -> list[dict[str, JSONValue]]:
-        """Fetch all owned games for a Steam user.
+        """Fetch all owned game for a Steam user.
 
-        Calls IPlayerService/GetOwnedGames/v1/ with app info and free games
-        included. Returns the ``games`` list from the response, or an empty
-        list if the profile is private / has no games.
+        Calls IPlayerService/GetOwnedGames/v1/ with app info and free game
+        included. Returns the ``game`` list from the response, or an empty
+        list if the profile is private / has no game.
         """
         try:
             response = await self._get(
@@ -114,16 +114,16 @@ class SteamProvider(BaseProvider):
                 },
             )
         except Exception:
-            logger.exception("steam owned games request failed")
+            logger.exception("steam owned game request failed")
             return []
 
         if response.status_code == 403:
             logger.warning("steam profile is private", steam_id=steam_id)
             return []
         if response.status_code != 200:
-            raise SteamError(f"Steam owned games failed: {response.status_code}")
+            raise SteamError(f"Steam owned game failed: {response.status_code}")
         data = response.json()
-        games = data.get("response", {}).get("games")
+        games = data.get("response", {}).get("game")
         if isinstance(games, list):
             return games
         return []

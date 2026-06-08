@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { GameDetector } from './game-detector';
 import { registerDownloadsIPC } from './ipc/downloads';
+import { registerGamesIPC } from './ipc/games';
 import { registerScannerIPC } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
@@ -289,6 +290,18 @@ app.on('ready', async () => {
     }
   });
 
+  // ── Query cache persistence ──
+  const cachePath = path.join(app.getPath('userData'), 'query-cache.json');
+  ipcMain.handle('cache:load', async () => {
+    try {
+      return JSON.parse(fs.readFileSync(cachePath, 'utf-8'));
+    } catch { return null; }
+  });
+  ipcMain.handle('cache:save', async (_event, data: unknown) => {
+    try { fs.writeFileSync(cachePath, JSON.stringify(data), 'utf-8'); }
+    catch (err) { console.error('[Cache] persist failed', err); }
+  });
+
   // Init DB before any IPC handler or window — eliminates race where frontend calls
   // DB-dependent handlers before DB is ready.
   await ensureDb().catch((err) => {
@@ -301,6 +314,7 @@ app.on('ready', async () => {
 
   // Register modular IPC handlers
   registerDownloadsIPC();
+  registerGamesIPC();
   registerScannerIPC(gameDetector);
   registerInstallerIPC();
   registerGameDetectorIPC(gameDetector);

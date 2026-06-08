@@ -1,5 +1,5 @@
 /**
- * Auto game organizer — arr-style (Radarr/Sonarr/Lidarr) for games.
+ * Auto game organizer — arr-style (Radarr/Sonarr/Lidarr) for game.
  *
  * Triggered after SABnzbd download completes:
  *   1. Find downloaded content (ISOs, PC game folders, update files)

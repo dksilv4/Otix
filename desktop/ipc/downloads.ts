@@ -102,7 +102,7 @@ export function registerDownloadsIPC(): void {
     return await removePathMapping(id);
   });
 
-  ipcMain.handle('downloads:get-tracked-games', async () => {
+  ipcMain.handle('downloads:get-tracked-game', async () => {
     return await getTrackedGames();
   });
 

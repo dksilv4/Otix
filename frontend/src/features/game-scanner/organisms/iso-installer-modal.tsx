@@ -16,7 +16,7 @@ import { DkButton } from "@/features/dk-ui/atoms/button";
 import { hasDesktopAPI, getScanPaths, markGameInstalled } from "../storage";
 import { useInstallProgress } from "../install-store";
 import type {
-  DetectedGame,
+  LocalGame,
   InstallResult,
   InstallPhase,
 } from "../types";
@@ -56,7 +56,7 @@ function suggestInstallDir(isoPath: string, gameTitle: string): string {
 interface IsoInstallerModalProps {
   open: boolean;
   onClose: () => void;
-  games: DetectedGame[];
+  games: LocalGame[];
   initialIsoPath?: string;
   onInstallComplete?: (isoPath: string, installDir: string, gameExe: string | null) => void;
 }
@@ -89,7 +89,7 @@ export function IsoInstallerModal({
     const game = games.find(
       (g) => g.exePath === iso || g.exePath.toLowerCase() === iso.toLowerCase(),
     );
-    return game?.otixMediaTitle || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
+    return game?.data?.title || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
   }, [games]);
 
   // Reset on open — also dismiss any stale completed/errored entry so

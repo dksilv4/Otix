@@ -66,7 +66,7 @@ export function registerInstallerIPC(): void {
         updated = true;
       }
     }
-    if (updated) event.sender.send('scanner:games-updated');
+    if (updated) event.sender.send('scanner:game-updated');
     return results;
   });
 
@@ -76,7 +76,7 @@ export function registerInstallerIPC(): void {
     for (const o of result.organized) {
       await updateGamePathInDb(o.from, o.to);
     }
-    if (result.organized.length > 0) event.sender.send('scanner:games-updated');
+    if (result.organized.length > 0) event.sender.send('scanner:game-updated');
     return result;
   });
 

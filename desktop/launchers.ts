@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import { Dirent } from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
-import type { DetectedGame } from './scanner';
+import type { LocalGame } from './scanner';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -75,8 +75,8 @@ interface EpicManifest {
   AppName?: string;
 }
 
-export async function scanEpicGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanEpicGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   const entries = await readDirSafe(EPIC_MANIFESTS_DIR);
   for (const entry of entries) {
@@ -146,8 +146,8 @@ const GOG_COMMON_PATHS = [
   'C:\\Program Files\\GOG Galaxy\\Games',
 ];
 
-async function scanGogRegistry(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+async function scanGogRegistry(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   for (const regPath of GOG_REGISTRY_PATHS) {
     const script = `Get-ChildItem -Path '${regPath}' -ErrorAction SilentlyContinue | ForEach-Object {
@@ -191,8 +191,8 @@ async function scanGogRegistry(): Promise<DetectedGame[]> {
   return games;
 }
 
-async function scanGogCommonPaths(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+async function scanGogCommonPaths(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   for (const basePath of GOG_COMMON_PATHS) {
     if (!(await pathExists(basePath))) continue;
@@ -228,7 +228,7 @@ async function scanGogCommonPaths(): Promise<DetectedGame[]> {
   return games;
 }
 
-export async function scanGogGames(): Promise<DetectedGame[]> {
+export async function scanGogGames(): Promise<LocalGame[]> {
   // Registry has better metadata — try that first, fall back to common paths
   const regGames = await scanGogRegistry();
   if (regGames.length > 0) return regGames;
@@ -243,8 +243,8 @@ const BATTLENET_COMMON_PATHS = [
   'C:\\Battle.net\\Games',
 ];
 
-export async function scanBattlenetGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanBattlenetGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   for (const basePath of BATTLENET_COMMON_PATHS) {
     if (!(await pathExists(basePath))) continue;
@@ -254,7 +254,7 @@ export async function scanBattlenetGames(): Promise<DetectedGame[]> {
       if (!entry.isDirectory()) continue;
       const gameDir = path.join(basePath, entry.name);
 
-      // Battle.net games often have a launcher subdirectory
+      // Battle.net game often have a launcher subdirectory
       // e.g., Call of Duty/_retail_/cod.exe or World of Warcraft/_retail_/Wow.exe
       const candidates = [gameDir];
       try {
@@ -307,8 +307,8 @@ export async function scanBattlenetGames(): Promise<DetectedGame[]> {
 
 const UBISOFT_REGISTRY_KEY = 'HKLM:\\SOFTWARE\\WOW6432Node\\Ubisoft\\Launcher\\Installs';
 
-export async function scanUbisoftGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanUbisoftGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   const script = `Get-ChildItem -Path '${UBISOFT_REGISTRY_KEY}' -ErrorAction SilentlyContinue | ForEach-Object {
     $id = $_.PSChildName
@@ -356,7 +356,7 @@ export async function scanUbisoftGames(): Promise<DetectedGame[]> {
   }
 
   // Also check common paths
-  const ubiCommon = 'C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\games';
+  const ubiCommon = 'C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\game';
   if (await pathExists(ubiCommon)) {
     const entries = await readDirSafe(ubiCommon);
     for (const entry of entries) {
@@ -397,8 +397,8 @@ const EA_COMMON_PATHS = [
   'C:\\Program Files (x86)\\Origin Games',
 ];
 
-export async function scanEAGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanEAGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   for (const basePath of EA_COMMON_PATHS) {
     if (!(await pathExists(basePath))) continue;
@@ -408,7 +408,7 @@ export async function scanEAGames(): Promise<DetectedGame[]> {
       if (!entry.isDirectory()) continue;
       const gameDir = path.join(basePath, entry.name);
 
-      // EA games have deep nesting sometimes: GameDir/Game/Binaries/Win64/game.exe
+      // EA game have deep nesting sometimes: GameDir/Game/Binaries/Win64/game.exe
       const exeDirs: string[] = [gameDir];
       try {
         const subDirs = await fs.readdir(gameDir, { withFileTypes: true });
@@ -474,8 +474,8 @@ const RIOT_COMMON_PATHS = [
   'C:\\Program Files\\Riot Games',
 ];
 
-export async function scanRiotGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanRiotGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   for (const basePath of RIOT_COMMON_PATHS) {
     if (!(await pathExists(basePath))) continue;
@@ -485,7 +485,7 @@ export async function scanRiotGames(): Promise<DetectedGame[]> {
       if (!entry.isDirectory()) continue;
       const gameDir = path.join(basePath, entry.name);
 
-      // Riot games have deep exe paths like: Riot Games/League of Legends/Game/League of Legends.exe
+      // Riot game have deep exe paths like: Riot Games/League of Legends/Game/League of Legends.exe
       let found = false;
       const walkDir = async (dir: string, depth: number) => {
         if (found || depth > 3) return;
@@ -530,8 +530,8 @@ export async function scanRiotGames(): Promise<DetectedGame[]> {
 
 // ── Xbox / Microsoft Store ────────────────────────────────────────────────
 
-export async function scanXboxGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanXboxGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   const output = await execPowershell(
     'Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object { $_.IsFramework -eq $false -and $_.InstallLocation -ne $null } | Select-Object Name, InstallLocation | ConvertTo-Json',
@@ -621,8 +621,8 @@ const ITCH_APPS_DIR = process.env.APPDATA
   ? path.join(process.env.APPDATA, 'itch', 'apps')
   : '';
 
-export async function scanItchGames(): Promise<DetectedGame[]> {
-  const games: DetectedGame[] = [];
+export async function scanItchGames(): Promise<LocalGame[]> {
+  const games: LocalGame[] = [];
 
   if (!ITCH_APPS_DIR || !(await pathExists(ITCH_APPS_DIR))) return games;
 
@@ -687,12 +687,12 @@ export async function scanItchGames(): Promise<DetectedGame[]> {
 
 export interface LauncherScanResult {
   source: string;
-  games: DetectedGame[];
+  games: LocalGame[];
   error?: string;
 }
 
 export async function scanAllLaunchers(): Promise<LauncherScanResult[]> {
-  const scanners: Array<{ name: string; fn: () => Promise<DetectedGame[]> }> = [
+  const scanners: Array<{ name: string; fn: () => Promise<LocalGame[]> }> = [
     { name: 'epic', fn: scanEpicGames },
     { name: 'gog', fn: scanGogGames },
     { name: 'battlenet', fn: scanBattlenetGames },

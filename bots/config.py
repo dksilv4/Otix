@@ -504,7 +504,7 @@ LIST_DESCRIPTIONS: list[str] = [
     "Instant mood boost guaranteed.",
     "Embrace the void. These go to some dark places.",
     "Grab some controllers and snacks.",
-    "Just me, my thoughts, and these games.",
+    "Just me, my thoughts, and these game.",
     "Heavy rotation. What I'm into right now.",
 ]
 

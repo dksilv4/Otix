@@ -203,7 +203,7 @@ class MediaService:
         if has_artwork:
             # Movies/shows need textless poster (TMDB+Fanart provide it).
             # Games use poster_url (IGDB covers don't have a textless variant,
-            # and SteamGridDB only covers Steam games).
+            # and SteamGridDB only covers Steam game).
             # Music uses poster_url (album covers have artwork text).
             query = query.where(
                 MediaItem.textless_poster_url.isnot(None)
@@ -601,7 +601,7 @@ class MediaService:
         games: list[dict],
         threshold: float = 0.3,
     ) -> list[tuple[str, MediaItem | None, float]]:
-        """Match local games to Otix catalog entries.
+        """Match local game to Otix catalog entries.
 
         Each entry is a dict with ``title`` (required), ``platform`` (optional),
         and ``steam_app_id`` (optional).
@@ -636,7 +636,7 @@ class MediaService:
             eid_svc = ExternalIDService(self.session)
             steam_hits = await eid_svc.batch_find_entity_ids("steam", steam_app_ids)
 
-        # Fetch MediaItems for found Steam games in one batch
+        # Fetch MediaItems for found Steam game in one batch
         steam_items_map: dict[str, MediaItem] = {}
         if steam_hits:
             entity_ids = list(steam_hits.values())

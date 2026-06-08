@@ -22,9 +22,9 @@ logger = structlog.get_logger()
 
 @app.task(name="maintenance.steam_name_match")
 def steam_name_match() -> dict:
-    """Find games without a steam_app_id by searching the Steam store by name.
+    """Find game without a steam_app_id by searching the Steam store by name.
 
-    Runs every 30 min. Limited to 25 games per cycle to stay under rate limits.
+    Runs every 30 min. Limited to 25 game per cycle to stay under rate limits.
     """
     return run_async(_steam_name_match())
 
@@ -131,11 +131,11 @@ async def _steam_name_match() -> dict:
 
 @app.task(name="maintenance.steam_ccu_batch", queue="maintain")
 def steam_ccu_batch() -> dict:
-    """Batch update current player counts for games with a Steam app ID.
+    """Batch update current player counts for game with a Steam app ID.
 
-    Runs every 5 min. Limit of 250 games/cycle (~72k calls/day) keeps
+    Runs every 5 min. Limit of 250 game/cycle (~72k calls/day) keeps
     well within Steam's 100k daily budget, leaving headroom for enrichment.
-    Popular games (by current player count) get priority.
+    Popular game (by current player count) get priority.
     """
     return run_async(_steam_ccu_batch())
 

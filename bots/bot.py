@@ -488,8 +488,8 @@ class Bot:
                     g = random.choice(genres)
                     if isinstance(g, dict):
                         g = g.get("name", "")
-                    if g and f"{g} {random.choice(['movies', 'shows', 'games', 'music', 'artists'])}" not in self._seen_titles:
-                        self._search_queue.append(f"{g} {random.choice(['movies', 'shows', 'music', 'games'])}")
+                    if g and f"{g} {random.choice(['movies', 'shows', 'game', 'music', 'artists'])}" not in self._seen_titles:
+                        self._search_queue.append(f"{g} {random.choice(['movies', 'shows', 'music', 'game'])}")
 
     async def _do_view_media(self) -> dict | None:
         await self._ensure_media_ids()

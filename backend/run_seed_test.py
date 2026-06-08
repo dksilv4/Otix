@@ -13,7 +13,7 @@ GAME_STEAM_IDS = [3736420, 4160690, 4274120, 3212290, 3948960, 4532990, 3867360,
 
 results = {
     "movies": {"enqueued": 0, "errors": []},
-    "games": {"enqueued": 0, "errors": []},
+    "game": {"enqueued": 0, "errors": []},
     "music": {"enqueued": 0, "errors": []},
     "shows": {"enqueued": 0, "errors": []},
 }
@@ -33,15 +33,15 @@ for tmdb_id in MOVIE_TMDB_IDS:
         results["movies"]["errors"].append(str(e))
 print(f"   Enqueued: {results['movies']['enqueued']}")
 
-# ── Games (sync existing games with Steam) ──
+# ── Games (sync existing game with Steam) ──
 print("\n🎮 GAMES — Enqueuing 10 Steam update tasks...")
 for steam_id in GAME_STEAM_IDS:
     try:
         app.send_task("sync.steam.update_app", args=[steam_id], priority=9)
-        results["games"]["enqueued"] += 1
+        results["game"]["enqueued"] += 1
     except Exception as e:
-        results["games"]["errors"].append(str(e))
-print(f"   Enqueued: {results['games']['enqueued']}")
+        results["game"]["errors"].append(str(e))
+print(f"   Enqueued: {results['game']['enqueued']}")
 
 # ── Music (seed via Deezer — charts provide real album IDs) ──
 print("\n🎵 MUSIC — Enqueuing Deezer chart discovery...")

@@ -206,15 +206,15 @@ export const PIPELINE_EFFICIENCY: Record<string, PipelineEfficiency> = {
     seedingMethod: 'Steam store app list + IGDB game database. Dual-seed from both providers with fuzzy name matching for cross-provider resolution.',
     seedingSchedule: 'Steam seed every 5 min, IGDB seed every 5 min, Steam enrich every 15 min at :03/:18/:33/:48, SteamGrid every 30 min at :27/:57, CCU batch every 5 min',
     seedingStatus: 'done',
-    seedingNote: 'Dual-seed with name match. CCU batch handles up to 250 games per cycle. Strongest pipeline of the four types.',
+    seedingNote: 'Dual-seed with name match. CCU batch handles up to 250 game per cycle. Strongest pipeline of the four types.',
     providers: [
       { name: 'Steam', status: 'done', schedule: 'seed every 5 min + enrich every 15 min', note: 'Store page data (price, developers, publishers, screenshots, movies), reviews (Steam user + Metacritic), CCU, library sync' },
       { name: 'IGDB', status: 'done', schedule: 'every 5 min', note: 'Game metadata, genres, platforms, game modes, screenshots, critic/user ratings, age ratings (ESRB/PEGI/CERO/USK/GRAC/ClassInd/ACB)' },
-      { name: 'Steam Name Match', status: 'done', schedule: 'every 30 min at :23/:53', note: 'Searches Steam store by title to backfill steam_app_id for IGDB-only games' },
+      { name: 'Steam Name Match', status: 'done', schedule: 'every 30 min at :23/:53', note: 'Searches Steam store by title to backfill steam_app_id for IGDB-only game' },
       { name: 'SteamGrid', status: 'done', schedule: 'every 30 min at :27/:57', note: 'Grid images (textless posters), heroes (backdrops), logos, icons' },
       { name: 'Fanart', status: 'done', schedule: 'every 15 min at :07/:22/:37/:52' },
       { name: 'Game Age Ratings', status: 'done', schedule: 'every 5 min' },
-      { name: 'CCU Batch', status: 'done', schedule: 'every 5 min', note: 'Updates current_players for up to 250 games per cycle' },
+      { name: 'CCU Batch', status: 'done', schedule: 'every 5 min', note: 'Updates current_players for up to 250 game per cycle' },
       { name: 'Embedding', status: 'done', schedule: 'every 3 min (backfill)', note: 'Used in search ranking via cosine distance' },
     ],
     flow: [
@@ -226,7 +226,7 @@ export const PIPELINE_EFFICIENCY: Record<string, PipelineEfficiency> = {
       { label: 'SteamGrid', status: 'done', schedule: 'every 30 min', note: 'Grid images, hero backdrops, logos, icons' },
       { label: 'Fanart', status: 'done', schedule: 'every 15 min', note: 'Game artwork' },
       { label: 'Age Ratings', status: 'done', schedule: 'every 5 min', note: 'ESRB, PEGI, CERO, USK, GRAC, ClassInd, ACB — mapped from IGDB' },
-      { label: 'CCU Batch', status: 'done', schedule: 'every 5 min', note: 'Concurrent player counts for up to 250 games/cycle' },
+      { label: 'CCU Batch', status: 'done', schedule: 'every 5 min', note: 'Concurrent player counts for up to 250 game/cycle' },
       { label: 'Vector Embedding', status: 'done', schedule: 'every 3 min', note: 'pgvector cosine distance in search ranking' },
     ],
     gaps: [
@@ -246,7 +246,7 @@ export const EXPERIMENTS_ADMIN: Record<string, ExperimentAdminMeta> = {
       { label: 'Collaborative filtering cache', status: 'missing', note: 'Scans all users in memory with no indexing or caching' },
       { label: 'User preference weighting', status: 'missing' },
       { label: 'Fallback to trending content', status: 'done' },
-      { label: 'Multi-type support', status: 'missing', note: 'No per-media-type models — movies, shows, music, and games would each need tuned signals' },
+      { label: 'Multi-type support', status: 'missing', note: 'No per-media-type models — movies, shows, music, and game would each need tuned signals' },
     ],
     integrations: [
       { targetFeature: 'gamification', status: 'planned', note: 'XP for discovering content through recommendations' },
@@ -295,7 +295,7 @@ export const EXPERIMENTS_ADMIN: Record<string, ExperimentAdminMeta> = {
       { mediaType: 'movie', status: 'partial', note: 'Edit modal exists for movies but not wired to mutation pipeline' },
       { mediaType: 'show', status: 'partial', note: 'Edit modal exists for shows but not wired to mutation pipeline' },
       { mediaType: 'music', status: 'partial', note: 'Edit modal exists for music but not wired to mutation pipeline' },
-      { mediaType: 'game', status: 'partial', note: 'Edit modal exists for games but not wired to mutation pipeline' },
+      { mediaType: 'game', status: 'partial', note: 'Edit modal exists for game but not wired to mutation pipeline' },
     ],
   },
 

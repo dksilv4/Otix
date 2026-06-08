@@ -180,6 +180,10 @@ export function usePopularGames() {
 }
 
 export function useGameDetail(id: string | undefined | null) {
+  return useGame(id)
+}
+
+export function useGame(id: string | undefined | null) {
   return useQuery({
     ...gameDetailOptions(id ?? ""),
     enabled: !!id,

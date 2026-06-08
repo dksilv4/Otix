@@ -6,7 +6,7 @@ import {
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
 import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop-api"
-import { useGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
+import { useLocalGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/features/game-scanner/queries"
 import { useGameDetail, usePopularGames } from "@/features/games/games-queries"
 import { MediaCard } from "@ui/molecules/media-card"
@@ -723,7 +723,7 @@ function EmptyGridState({ activeTab, search, hasGames }: {
 
 export function GamesLauncher() {
   const navigate = useNavigate()
-  const { data: games = [] } = useGames()
+  const { data: games = [] } = useLocalGames()
   const rejectSuggestionMutation = useRejectSuggestion()
   const [search, setSearch] = useState("")
   const [activeTab, setActiveTab] = useState<GamesTab>("all")
@@ -832,7 +832,7 @@ export function GamesLauncher() {
     try {
       const result = await matchMutation.mutateAsync(games)
       if (result && result.length > 0) {
-        const filtered = filterRejectedSuggestions(result)
+        const filtered = result
         console.log(`[Re-match] matched: ${filtered.filter(g => g.data?.id).length}, suggested: ${filtered.filter(g => g.matchSuggestion).length}`)
         setGames(filtered)
         setScannedGames(filtered)
@@ -887,7 +887,7 @@ export function GamesLauncher() {
     })
   }, [rejectSuggestionMutation])
 
-  // No longer sync to storage — data managed by useGames() query
+  // No longer sync to storage — data managed by useLocalGames() query
 
   // ── Keyboard navigation ──────────────────────────────────────────
 

@@ -2,11 +2,11 @@ import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
 import { GameDetector } from '../game-detector';
-import { DetectedGame } from '../scanner';
+import { LocalGame } from '../scanner';
 
 export function registerGameDetectorIPC(gameDetector: GameDetector | null): void {
-  // Launch game — accepts full DetectedGame for tracking
-  ipcMain.handle('launcher:launch-game', async (_, game: DetectedGame) => {
+  // Launch game — accepts full LocalGame for tracking
+  ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
     try {
       if (game.exePath.startsWith('steam://')) {
         await shell.openExternal(game.exePath);
@@ -45,7 +45,7 @@ export function registerGameDetectorIPC(gameDetector: GameDetector | null): void
     return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null };
   });
 
-  ipcMain.handle('game:set-library', (_, games: DetectedGame[]) => {
+  ipcMain.handle('game:set-library', (_, games: LocalGame[]) => {
     gameDetector?.setLibrary(games);
     gameDetector?.startPeriodicScan();
     return true;
