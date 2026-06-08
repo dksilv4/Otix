@@ -1,218 +1,126 @@
 // frontend/src/features/game-scanner/storage.ts
-import type { DetectedGame } from "./types";
-import { STORAGE_KEYS } from "./types";
+import type { LocalGame } from './types';
+import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop-api';
+import { mergeDuplicateGames } from './storage-utils';
 
-// ── Dedup Helper: merge games with the same title from different sources ──
+// ── In-memory cache (hot reads, invalidated on DB change) ─────────
 
-export function normalizeTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[™®©]/g, "")
-    .replace(/[-.\s](goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\s*edition/gi, "")
-    .replace(/\bii\b/g, '2')
-    .replace(/\biii\b/g, '3')
-    .replace(/\biv\b/g, '4')
-    .replace(/\bv\b/g, '5')
-    .replace(/\bvi\b/g, '6')
-    .replace(/\bvii\b/g, '7')
-    .replace(/\bviii\b/g, '8')
-    .replace(/\bix\b/g, '9')
-    .replace(/\bx\b/g, '10')
-    .replace(/[^a-z0-9]/g, "")
-    .trim();
-}
-
-export function mergeDuplicateGames(games: DetectedGame[]): DetectedGame[] {
-  const groups = new Map<string, DetectedGame[]>();
-  for (const g of games) {
-    const key = normalizeTitle(g.title);
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(g);
-    } else {
-      groups.set(key, [g]);
-    }
-  }
-
-  const merged: DetectedGame[] = [];
-  for (const group of groups.values()) {
-    if (group.length === 1) {
-      merged.push(group[0]);
-      continue;
-    }
-
-    const getPriority = (g: DetectedGame) => {
-      if (g.platform === 'steam') return 4;
-      if (g.platform !== 'iso') return 3;
-      return 1;
-    };
-
-    const best = [...group].sort((a, b) => {
-      if (a.otixMediaId && !b.otixMediaId) return -1;
-      if (!a.otixMediaId && b.otixMediaId) return 1;
-      const pA = getPriority(a);
-      const pB = getPriority(b);
-      if (pA !== pB) return pB - pA;
-      if (a.iconUrl && !b.iconUrl) return -1;
-      if (!a.iconUrl && b.iconUrl) return 1;
-      return 0;
-    })[0];
-
-    const sources = [...new Set(group.map((g) => g.platform))];
-
-    merged.push({
-      ...best,
-      sources: sources.length > 1 ? sources : undefined,
-      exePath: group.find((g) => g.platform === "steam")?.exePath ?? best.exePath,
-      installDir: best.installDir,
-    });
-  }
-
-  return merged;
-}
-
-// In-memory cache — the frontend's fast synchronous read layer
-const cache = {
-  paths: [] as string[],
-  isoPaths: [] as string[],
-  games: [] as DetectedGame[],
-  localMap: {} as Record<string, DetectedGame>
+const cache: {
+  paths: string[];
+  isoPaths: string[];
+  games: LocalGame[];
+  localMap: Record<string, LocalGame>;
+  loaded: boolean;
+} = {
+  paths: [],
+  isoPaths: [],
+  games: [],
+  localMap: {},
+  loaded: false,
 };
 
 export function hasDesktopAPI(): boolean {
-  return (
-    typeof window !== "undefined" && !!(window as any).desktopAPI
-  );
+  return checkDesktopAPI();
 }
 
-/** Whether the storage module has been initialised (cache populated from localStorage) */
-export const storageReady = true;
-
-/** Returns true if the in-memory cache was populated (i.e. we can read games synchronously) */
+/** True after first successful IPC load. */
 export function isStorageReady(): boolean {
-  return storageReady;
+  return cache.loaded;
 }
 
-const _lastScanKey = "otix_last_scan_time";
+// ── Shared guard: never downgrade installed game back to ISO ──
 
-export function getLastScanTime(): string | null {
-  try {
-    return localStorage.getItem(_lastScanKey);
-  } catch {
-    return null;
-  }
+function preserveInstallStatus(games: LocalGame[]): LocalGame[] {
+  return games.map((g) => {
+    if (g.platform !== 'iso') return g;
+    const existing = cache.games.find((c) => c.id === g.id || c.exePath === g.exePath);
+    if (existing && existing.platform !== 'iso') {
+      return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir };
+    }
+    return g;
+  });
 }
 
-export function setLastScanTime(time: string): void {
-  try {
-    localStorage.setItem(_lastScanKey, time);
-  } catch {
-    // silently ignore
-  }
+// ── Async IPC fetchers (single source of truth: SQLite) ──────────
+
+export async function fetchGames(filter?: unknown): Promise<LocalGame[]> {
+  if (!hasDesktopAPI()) return [];
+  const api = getDesktopAPI()!;
+  const games = filter ? await api.getScannedGamesFiltered(filter) : await api.getScannedGames();
+  cache.games = games;
+  return games;
 }
 
-// ── Initialise cache from localStorage (fast, for immediate reads) ──
-
-if (typeof window !== "undefined") {
-  try {
-    const rawPaths = localStorage.getItem(STORAGE_KEYS.PATHS);
-    cache.paths = rawPaths ? JSON.parse(rawPaths) : [];
-  } catch {
-    cache.paths = [];
-  }
-
-  try {
-    const rawIsoPaths = localStorage.getItem(STORAGE_KEYS.ISO_PATHS);
-    cache.isoPaths = rawIsoPaths ? JSON.parse(rawIsoPaths) : [];
-  } catch {
-    cache.isoPaths = [];
-  }
-
-  try {
-    const rawGames = localStorage.getItem(STORAGE_KEYS.GAMES);
-    cache.games = rawGames ? mergeDuplicateGames(JSON.parse(rawGames)) : [];
-  } catch {
-    cache.games = [];
-  }
-
-  try {
-    const rawMap = localStorage.getItem(STORAGE_KEYS.LOCAL_MAP);
-    cache.localMap = rawMap ? JSON.parse(rawMap) : {};
-  } catch {
-    cache.localMap = {};
-  }
+export async function fetchGameById(id: string): Promise<LocalGame | null> {
+  if (!hasDesktopAPI()) return null;
+  const api = getDesktopAPI()!;
+  return api.getGameById(id);
 }
 
-// ── Overwrite cache from SQLite database (the real source of truth) ──
+export async function fetchGameCount(filter?: unknown): Promise<number> {
+  if (!hasDesktopAPI()) return 0;
+  const api = getDesktopAPI()!;
+  return api.getGameCount(filter || {});
+}
+
+export async function fetchScanPaths(): Promise<{ game: string[]; iso: string[] }> {
+  if (!hasDesktopAPI()) return { game: [], iso: [] };
+  const api = getDesktopAPI()!;
+  const raw = await api.getScanPaths();
+  return {
+    game: raw.filter((p): p is { path: string; type: 'game' } => p.type === 'game').map((p) => p.path),
+    iso: raw.filter((p): p is { path: string; type: 'iso' } => p.type === 'iso').map((p) => p.path),
+  };
+}
+
+export async function saveScanPathsToServer(paths: string[], isoPaths: string[]): Promise<void> {
+  if (!hasDesktopAPI()) return;
+  const api = getDesktopAPI()!;
+  const combined = [
+    ...paths.map((p) => ({ path: p, type: 'game' as const })),
+    ...isoPaths.map((p) => ({ path: p, type: 'iso' as const })),
+  ];
+  await api.saveScanPaths(combined);
+}
+
+// ── Load from SQLite into cache (call on startup) ────────────────
 
 export async function loadFromDatabase(): Promise<void> {
   if (!hasDesktopAPI()) return;
-  const api = (window as any).desktopAPI;
+  const api = getDesktopAPI()!;
 
   try {
-    // Paths
-    const dbPaths = await api.getScanPaths();
+    const [dbPaths, dbGames, dbMap] = await Promise.all([
+      api.getScanPaths(),
+      api.getScannedGames(),
+      api.getLocalGamesMap(),
+    ]);
+
     if (dbPaths && dbPaths.length > 0) {
-      const paths = dbPaths.filter((p: any) => p.type === 'game').map((p: any) => p.path);
-      const isoPaths = dbPaths.filter((p: any) => p.type === 'iso').map((p: any) => p.path);
-      cache.paths = paths;
-      cache.isoPaths = isoPaths;
-      localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(paths));
-      localStorage.setItem(STORAGE_KEYS.ISO_PATHS, JSON.stringify(isoPaths));
+      cache.paths = dbPaths.filter((p) => p.type === 'game').map((p) => p.path);
+      cache.isoPaths = dbPaths.filter((p) => p.type === 'iso').map((p) => p.path);
     }
 
-    // Games — authoritative
-    const dbGames = await api.getScannedGames();
     if (dbGames && dbGames.length > 0) {
-      // Preserve install status from current cache (DB may have stale ISO platform)
-      const preserved = dbGames.map(g => {
-        if (g.platform !== 'iso') return g
-        const existing = cache.games.find(c => c.id === g.id || c.exePath === g.exePath)
-        if (existing && existing.platform !== 'iso') {
-          return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
-        }
-        return g
-      })
-      const deduped = mergeDuplicateGames(preserved);
-      cache.games = deduped;
-      localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
-      if (deduped.length < dbGames.length) {
-        await api.saveScannedGames(deduped);
+      const preserved = preserveInstallStatus(dbGames);
+      cache.games = mergeDuplicateGames(preserved);
+      // Write-back if dedup reduced count
+      if (cache.games.length < dbGames.length) {
+        api.saveScannedGames(cache.games).catch(() => {});
       }
     }
 
-    // Local map
-    const dbMap = await api.getLocalGamesMap();
     if (dbMap && Object.keys(dbMap).length > 0) {
       cache.localMap = dbMap;
-      localStorage.setItem(STORAGE_KEYS.LOCAL_MAP, JSON.stringify(dbMap));
     }
+
+    cache.loaded = true;
   } catch (err) {
-    console.error("Failed to load game data from SQLite database:", err);
+    console.error('Failed to load game data from database:', err);
   }
 }
 
-// Run on startup — defer so components get an initial render from localStorage first
-if (typeof window !== "undefined") {
-  setTimeout(() => {
-    loadFromDatabase().catch((err) => {
-      console.error("Database load failed:", err);
-    });
-  }, 0);
-
-  // Listen for games-updated events from the main process (e.g., after file moves)
-  const api = (window as any).desktopAPI;
-  if (api?.onGamesUpdated) {
-    const unsub = api.onGamesUpdated(() => {
-      loadFromDatabase().catch((err) => {
-        console.error("Games updated reload failed:", err);
-      });
-    });
-    // No cleanup needed at module level — lives for session duration
-  }
-}
-
-// ── Synchronous getters (from in-memory cache) ──
+// ── Sync cache readers (hot reads, may be stale) ─────────────────
 
 export function getScanPaths(): string[] {
   return cache.paths;
@@ -222,187 +130,96 @@ export function getIsoPaths(): string[] {
   return cache.isoPaths;
 }
 
-export function getScannedGames(): DetectedGame[] {
+export function getScannedGames(): LocalGame[] {
   return cache.games;
 }
 
-export function getLocalGamesMap(): Record<string, DetectedGame> {
+export function getLocalGamesMap(): Record<string, LocalGame> {
   return cache.localMap;
 }
 
-// ── Setters — write to cache + localStorage + SQLite ──
+export function invalidateCache(): void {
+  cache.loaded = false;
+}
+
+// ── Sync setters (write-through to IPC) ───────────────────────────
 
 export function setScanPaths(paths: string[]): void {
   cache.paths = paths;
-  localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(paths));
-
   if (hasDesktopAPI()) {
     const combined = [
-      ...paths.map(p => ({ path: p, type: 'game' as const })),
-      ...cache.isoPaths.map(p => ({ path: p, type: 'iso' as const }))
+      ...paths.map((p) => ({ path: p, type: 'game' as const })),
+      ...cache.isoPaths.map((p) => ({ path: p, type: 'iso' as const })),
     ];
-    (window as any).desktopAPI.saveScanPaths(combined).catch((err: any) => {
-      console.error("Failed to save scan paths to SQLite:", err);
-    });
+    getDesktopAPI()!.saveScanPaths(combined).catch(() => {});
   }
 }
 
 export function setIsoPaths(paths: string[]): void {
   cache.isoPaths = paths;
-  localStorage.setItem(STORAGE_KEYS.ISO_PATHS, JSON.stringify(paths));
-
   if (hasDesktopAPI()) {
     const combined = [
-      ...cache.paths.map(p => ({ path: p, type: 'game' as const })),
-      ...paths.map(p => ({ path: p, type: 'iso' as const }))
+      ...cache.paths.map((p) => ({ path: p, type: 'game' as const })),
+      ...paths.map((p) => ({ path: p, type: 'iso' as const })),
     ];
-    (window as any).desktopAPI.saveScanPaths(combined).catch((err: any) => {
-      console.error("Failed to save ISO scan paths to SQLite:", err);
-    });
+    getDesktopAPI()!.saveScanPaths(combined).catch(() => {});
   }
 }
 
-export function setScannedGames(games: DetectedGame[]): void {
-  // Guard: never downgrade an installed game back to ISO (prevents race with match mutation)
-  const guarded = games.map(g => {
-    if (g.platform !== 'iso') return g // only check games being set as ISO
-    const existing = cache.games.find(c => c.id === g.id || c.exePath === g.exePath)
-    if (existing && existing.platform !== 'iso') {
-      return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir }
-    }
-    return g
-  })
+export function setScannedGames(games: LocalGame[]): void {
+  const guarded = preserveInstallStatus(games);
   const deduped = mergeDuplicateGames(guarded);
   cache.games = deduped;
-  localStorage.setItem(STORAGE_KEYS.GAMES, JSON.stringify(deduped));
 
   if (hasDesktopAPI()) {
-    (window as any).desktopAPI.saveScannedGames(deduped).catch((err: any) => {
-      console.error("Failed to save scanned games to SQLite:", err);
-    });
+    getDesktopAPI()!.saveScannedGames(deduped).catch(() => {});
   }
 
-  // Notify listeners that cached game data has changed
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("games:updated", { detail: deduped }));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('game:updated', { detail: deduped }));
   }
 }
 
-export function setLocalGamesMapEntry(
-  mediaId: string,
-  game: DetectedGame | null,
-): void {
-  if (game) {
-    cache.localMap[mediaId] = game;
-  } else {
-    delete cache.localMap[mediaId];
-  }
-  localStorage.setItem(STORAGE_KEYS.LOCAL_MAP, JSON.stringify(cache.localMap));
+export function setLocalGamesMapEntry(mediaId: string, game: LocalGame | null): void {
+  if (game) cache.localMap[mediaId] = game;
+  else delete cache.localMap[mediaId];
 
   if (hasDesktopAPI()) {
-    (window as any).desktopAPI.saveLocalGamesMapEntry(mediaId, game).catch((err: any) => {
-      console.error("Failed to save local games mapping entry to SQLite:", err);
-    });
+    getDesktopAPI()!.saveLocalGamesMapEntry(mediaId, game).catch(() => {});
   }
 }
 
-// ── Rejected suggestions ───────────────────────────────────────────
-// Remember suggestions the user denied so they don't reappear on re-match.
+// ── Suggestions (forwarded to desktop service) ────────────────────
 
-type RejectedKey = string
-
-function rejectedKey(game: { title: string; platform: string }, mediaId: string): RejectedKey {
-  return `${normalizeTitle(game.title)}|${game.platform}|${mediaId}`
+export async function acceptSuggestionOnServer(gameId: string, suggestion: unknown): Promise<void> {
+  if (!hasDesktopAPI()) return;
+  await getDesktopAPI()!.acceptSuggestion(gameId, suggestion);
+  invalidateCache();
 }
 
-let _rejectedCache: Set<RejectedKey> | null = null
-
-function getRejectedSet(): Set<RejectedKey> {
-  if (_rejectedCache) return _rejectedCache
-  try {
-    const raw = localStorage.getItem("otix_rejected_suggestions")
-    _rejectedCache = new Set<RejectedKey>(raw ? JSON.parse(raw) : [])
-  } catch {
-    _rejectedCache = new Set()
-  }
-  return _rejectedCache
+export async function rejectSuggestionOnServer(gameId: string, suggestionMediaId: string): Promise<void> {
+  if (!hasDesktopAPI()) return;
+  await getDesktopAPI()!.rejectSuggestion(gameId, suggestionMediaId);
+  invalidateCache();
 }
 
-function saveRejectedSet(set: Set<RejectedKey>): void {
-  _rejectedCache = set
-  localStorage.setItem("otix_rejected_suggestions", JSON.stringify([...set]))
+// ── ISO install helpers (sync, cache-only) ────────────────────────
+
+export function markGameInstalled(isoExePath: string, installedExePath: string | null, installDir: string): void {
+  const findIdx = (): number => {
+    const exact = cache.games.findIndex((g) => g.exePath === isoExePath);
+    if (exact !== -1) return exact;
+    return cache.games.findIndex((g) => g.exePath.toLowerCase() === isoExePath.toLowerCase());
+  };
+  const idx = findIdx();
+  if (idx === -1) return;
+
+  const updated = [...cache.games];
+  updated[idx] = { ...updated[idx], platform: 'pc', exePath: installedExePath ?? updated[idx].exePath, installDir };
+  setScannedGames(updated);
 }
 
-export function rejectSuggestion(game: { title: string; platform: string }, suggestionMediaId: string): void {
-  const set = getRejectedSet()
-  set.add(rejectedKey(game, suggestionMediaId))
-  saveRejectedSet(set)
-}
-
-export function clearRejectedSuggestion(game: { title: string; platform: string }, mediaId: string): void {
-  const set = getRejectedSet()
-  set.delete(rejectedKey(game, mediaId))
-  saveRejectedSet(set)
-}
-
-export function filterRejectedSuggestions(games: DetectedGame[]): DetectedGame[] {
-  return games.map((g) => {
-    if (!g.otixMatchSuggestion) return g
-    const key = rejectedKey(g, g.otixMatchSuggestion.mediaId)
-    if (getRejectedSet().has(key)) {
-      return { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined }
-    }
-    return g
-  })
-}
-
-/**
- * Update a scanned game's exePath and installDir after a file move
- * ("move to library"). Finds game by oldExePath, replaces both fields,
- * persists to cache + localStorage + SQLite, fires games:updated event.
- */
-/**
- * Update a scanned game after ISO install completes.
- * Changes platform from 'iso' to 'pc', updates exePath and installDir,
- * persists to cache + localStorage + SQLite, fires games:updated event.
- */
-export function markGameInstalled(
-  isoExePath: string,
-  installedExePath: string | null,
-  installDir: string,
-): void {
-  const idx = cache.games.findIndex((g) => g.exePath === isoExePath)
-  if (idx === -1) {
-    // fallback: try case-insensitive match (Windows paths)
-    const ci = cache.games.findIndex((g) => g.exePath.toLowerCase() === isoExePath.toLowerCase())
-    if (ci === -1) return
-    const updated = [...cache.games]
-    updated[ci] = {
-      ...updated[ci],
-      platform: 'pc',
-      exePath: installedExePath ?? updated[ci].exePath,
-      installDir,
-    }
-    setScannedGames(updated)
-    return
-  }
-
-  const updated = [...cache.games]
-  updated[idx] = {
-    ...updated[idx],
-    platform: 'pc',
-    exePath: installedExePath ?? updated[idx].exePath,
-    installDir,
-  }
-
-  setScannedGames(updated)
-}
-
-export function updateGamePath(
-  oldExePath: string,
-  newExePath: string,
-  newInstallDir?: string,
-): void {
+export function updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): void {
   const idx = cache.games.findIndex((g) => g.exePath === oldExePath);
   if (idx === -1) return;
 
@@ -412,6 +229,5 @@ export function updateGamePath(
     exePath: newExePath,
     installDir: newInstallDir ?? newExePath.replace(/[/\\][^/\\]*$/, ''),
   };
-
   setScannedGames(updated);
 }

@@ -1,36 +1,7 @@
-// frontend/src/features/game-scanner/types.ts
-
-export interface UpdateFile {
-  name: string;
-  path: string;
-}
-
-export interface DetectedGame {
-  id: string;
-  title: string;
-  exePath: string;
-  localExePath?: string;
-  installDir: string;
-  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
-  sources?: string[];
-  iconUrl?: string;
-  posterUrl?: string; // SGDB grid (cover/poster) URL
-  updateFiles?: UpdateFile[];
-  otixMediaId?: string;
-  otixMediaTitle?: string;
-  otixMediaSlug?: string;
-  otixConfidence?: number;
-  otixPosterUrl?: string | null;
-  otixTextlessPosterUrl?: string | null;
-  otixBackdropUrl?: string | null;
-  otixIconUrl?: string | null;
-  otixLogoUrl?: string | null;
-  otixMatchSuggestion?: {
-    mediaId: string;
-    title: string;
-    slug: string;
-  };
-}
+// Re-export canonical types from features/games/types
+import type { UpdateFile } from "@/features/games/types"
+export type { LocalGame, LauncherPlatform } from "@/features/games/types"
+export { LAUNCHER_PLATFORMS } from "@/features/games/types"
 
 export interface MountResult {
   driveLetter: string;
@@ -125,9 +96,3 @@ export const ORG_PRESETS: Record<
   },
 };
 
-export const STORAGE_KEYS = {
-  PATHS: "otix_scanner_paths",
-  ISO_PATHS: "otix_scanner_iso_paths",
-  GAMES: "otix_scanned_games",
-  LOCAL_MAP: "otix_local_games_map",
-} as const;
