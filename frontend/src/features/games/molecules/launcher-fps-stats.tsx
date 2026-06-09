@@ -49,8 +49,8 @@ export function LauncherFpsStats() {
 
   return (
     <div className="relative bg-white/5 backdrop-blur-2xl rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden">
-      {/* Full-bleed sparkline */}
-      {sparkline && (
+      {/* Full-bleed sparkline — only while capturing live data */}
+      {isLive && sparkline && (
         <svg
           viewBox={`0 0 ${sparkline.w} ${sparkline.h}`}
           className="absolute inset-0 pointer-events-none w-full h-full"
