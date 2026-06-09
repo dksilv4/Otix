@@ -126,3 +126,18 @@
     @apply bg-primary/15 text-primary ring-1 ring-primary/20;
   }
 }
+
+.dk-discover-chat-input__ai-indicator {
+  @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ml-auto;
+  @apply text-emerald-400/60 bg-emerald-400/5 ring-1 ring-emerald-400/10;
+
+  &--classifying {
+    @apply text-emerald-400 bg-emerald-400/10 ring-emerald-400/20;
+    animation: dk-ai-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes dk-ai-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}

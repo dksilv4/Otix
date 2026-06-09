@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
-import { ArrowRight, Dumbbell, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Brain, Dumbbell, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import './chat-search-input.scss'
@@ -54,6 +54,10 @@ interface ChatSearchInputProps {
   onTypeChange?: (type: string | null) => void
   /** Current media type filter from the parent (dropdown/tabs). Shown as a tag when no /:mediaType is typed. */
   activeType?: string | null
+  /** AI on-device classification status */
+  aiStatus?: 'not_available' | 'downloading' | 'ready' | 'error'
+  /** Whether AI is currently classifying the input */
+  aiClassifying?: boolean
 }
 
 export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps>(function ChatSearchInput({
@@ -72,6 +76,8 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   onModeChange,
   onTypeChange,
   activeType,
+  aiStatus,
+  aiClassifying = false,
 }, ref) {
   const [inputValue, setInputValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -232,6 +238,18 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
               </button>
             )
           })}
+
+          {aiStatus === 'ready' && (
+            <span
+              className={cn(
+                'dk-discover-chat-input__ai-indicator',
+                aiClassifying && 'dk-discover-chat-input__ai-indicator--classifying',
+              )}
+            >
+              <Brain className="h-3 w-3" />
+              AI
+            </span>
+          )}
         </div>
       </div>
     </div>
