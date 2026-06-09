@@ -12,7 +12,7 @@ export function LauncherRatingStats() {
 
   return (
     <>
-      <div className="w-px h-10 bg-white/15" />
+      <div className="w-px self-stretch bg-white/15" />
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-amber-400 text-lg leading-none">★</span>
         <div>

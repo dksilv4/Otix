@@ -12,7 +12,7 @@ export function LauncherGameStats() {
 
   return (
     <div className="flex items-center gap-4">
-      <div className="bg-white/10 backdrop-blur-2xl rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-6">
+      <div className="bg-white/10 backdrop-blur-2xl rounded-2xl px-6 py-4 shadow-2xl flex items-stretch gap-6">
         <LauncherPlaytimeStats />
         <LauncherRatingStats />
         <LauncherCloudSyncStat />
