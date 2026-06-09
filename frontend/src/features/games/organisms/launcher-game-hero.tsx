@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react'
 import { useLocalGame } from '@/features/game-scanner/game-queries'
 import { heroImage } from '@/features/games/launcher-utils'
 import { LauncherGameStats } from '@/features/games/molecules/launcher-game-stats'
+import { LauncherFpsStats } from '@/features/games/molecules/launcher-fps-stats'
 import { LauncherGameCompanies } from '@/features/games/molecules/launcher-game-companies'
 import { LauncherGameDetailInfo } from '@/features/games/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/games/organisms/launcher-game-buttons'
@@ -55,7 +56,10 @@ export function LauncherGameHero() {
         </div>
       )}
 
-      <LauncherGameStats />
+      <div className="absolute z-10 bottom-8 pointer-events-auto flex items-start gap-3" style={{ left: 'calc(76px + 1.5rem)' }}>
+        <LauncherGameStats />
+        <LauncherFpsStats />
+      </div>
       <div className="absolute inset-0 z-10 pointer-events-none">
         <LauncherGameCompanies />
         <div className="absolute right-8 top-1/2 -translate-y-[35%] flex flex-col items-end text-right max-w-sm pointer-events-auto">
