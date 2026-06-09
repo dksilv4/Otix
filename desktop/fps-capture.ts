@@ -398,6 +398,9 @@ export function startFpsCapture(
       fpsPermissionListeners.forEach((fn) => fn({ pid, gameId }));
     }
     activeSession = null;
+    // If PresentMon exited on its own, restore GamingServices
+    // since stopFpsCapture() won't be called.
+    restoreGamingServices();
     if (code !== null) {
       console.log(
         `[FPS] exit ${code} (pid ${pid}${gameId ? `, ${gameId}` : ''})`,
