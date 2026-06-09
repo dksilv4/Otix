@@ -115,6 +115,7 @@ export class GameDetector extends EventEmitter {
   private mappings: ProcessMapping[] = [];
   private trackedPids = new Set<number>();
   private processCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private deadCheckTimer: ReturnType<typeof setInterval> | null = null;
   private fpsPollTimer: ReturnType<typeof setInterval> | null = null;
   /** Which game ID owns the active PresentMon FPS capture. */
   private fpsTargetGameId: string | null = null;
@@ -150,7 +151,7 @@ export class GameDetector extends EventEmitter {
 
     if (pid) {
       this.trackedPids.add(pid);
-      this.startProcessCheck();
+      this.startProcessCheck(); this.startDeadCheck();
       // Start FPS capture if PresentMon is available
       if (isPresentMonAvailable()) {
         const exeName = game.exePath ? path.basename(game.exePath) : game.title;
@@ -294,7 +295,7 @@ export class GameDetector extends EventEmitter {
             };
             this.runningGames.set(game.id, entry);
             this.trackedPids.add(detectedPid);
-            this.startProcessCheck();
+            this.startProcessCheck(); this.startDeadCheck();
             this.emit('game:started', entry);
           } else if (existing.pid !== detectedPid) {
             // PID changed (e.g. launcher → game process) — update tracking
@@ -375,9 +376,37 @@ export class GameDetector extends EventEmitter {
     }
   }
 
+  /** Every 2s: if a tracked game's PID is dead, end the session. */
+  private startDeadCheck() {
+    if (this.deadCheckTimer) return;
+    this.deadCheckTimer = setInterval(() => {
+      for (const [id, entry] of this.runningGames) {
+        if (!entry.pid) continue;
+        try {
+          process.kill(entry.pid, 0);
+        } catch {
+          this.endSession(entry);
+          this.runningGames.delete(id);
+        }
+      }
+      if (this.runningGames.size === 0 && this.deadCheckTimer) {
+        clearInterval(this.deadCheckTimer);
+        this.deadCheckTimer = null;
+      }
+    }, 2000);
+  }
+
+  private stopDeadCheck() {
+    if (this.deadCheckTimer) {
+      clearInterval(this.deadCheckTimer);
+      this.deadCheckTimer = null;
+    }
+  }
+
   stopAll() {
     this.stopPeriodicScan();
     this.stopProcessCheck();
+    this.stopDeadCheck();
     this.stopFpsPolling();
     for (const entry of this.runningGames.values()) {
       this.endSession(entry);
@@ -511,7 +540,7 @@ export class GameDetector extends EventEmitter {
           };
           this.runningGames.set(mapping.gameId, entry);
           this.trackedPids.add(proc.pid);
-          this.startProcessCheck();
+          this.startProcessCheck(); this.startDeadCheck();
           if (isPresentMonAvailable() && !isCapturing()) {
             if (startFpsCapture(proc.pid, game.id)) {
               this.startFpsPolling(game.id);
