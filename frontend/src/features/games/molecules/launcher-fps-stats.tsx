@@ -22,17 +22,25 @@ export function LauncherFpsStats() {
   const isLive = liveFps && liveFps.frameCount > 0
   const lastStats = playtime?.lastFpsStats
 
-  // Show live FPS, or last session's average if available, or nothing
-  let displayValue: { value: string; live: boolean } | null = null
+  // Live FPS > last session average > nothing
+  let displayValue: { value: string; label: string; live: boolean } | null = null
 
   if (isLive) {
-    displayValue = { value: `${Math.round(liveFps.currentFps)}`, live: true }
+    displayValue = {
+      value: `${Math.round(liveFps.currentFps)}`,
+      label: 'FPS',
+      live: true,
+    }
   } else if (lastStats && lastStats.totalFrames > 0) {
-    displayValue = { value: `${Math.round(lastStats.avgFps)}`, live: false }
+    displayValue = {
+      value: `${Math.round(lastStats.avgFps)}`,
+      label: 'AVG FPS',
+      live: false,
+    }
   }
 
   return (
-    <div className="relative backdrop-blur-2xl rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden">
+    <div className="relative bg-white/5 backdrop-blur-2xl rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden">
       {/* Full-bleed sparkline */}
       {sparkline && (
         <svg
@@ -58,13 +66,25 @@ export function LauncherFpsStats() {
           {displayValue?.live && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           )}
-          <span className="text-2xl font-bold tracking-tight leading-none"
-            style={{ color: displayValue?.live ? 'rgb(255 255 255 / 0.9)' : displayValue ? 'rgb(255 255 255 / 0.4)' : 'rgb(255 255 255 / 0.15)' }}>
-            {displayValue?.value ?? '—'}
-          </span>
-          {displayValue && (
-            <span className="text-[11px] font-medium text-white/25 uppercase tracking-widest leading-none">
-              FPS
+          {displayValue ? (
+            <>
+              <span
+                className="text-2xl font-bold tracking-tight leading-none"
+                style={{
+                  color: displayValue.live
+                    ? 'rgb(255 255 255 / 0.9)'
+                    : 'rgb(255 255 255 / 0.4)',
+                }}
+              >
+                {displayValue.value}
+              </span>
+              <span className="text-[11px] font-medium text-white/25 uppercase tracking-widest leading-none">
+                {displayValue.label}
+              </span>
+            </>
+          ) : (
+            <span className="text-2xl font-bold text-white/15 tracking-tight leading-none">
+              &mdash;
             </span>
           )}
         </div>
