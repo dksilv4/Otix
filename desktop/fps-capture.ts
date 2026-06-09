@@ -295,6 +295,14 @@ function computeStats(frameTimesMs: number[]): FpsStats {
 
 let activeSession: FpsCaptureSession | null = null;
 
+/**
+ * When PresentMon exits on its own (game process died), we stash the
+ * frame data here so stopFpsCapture() can still compute final stats.
+ * Without this, the exit handler nulls activeSession and the frames
+ * accumulated over the whole capture are lost.
+ */
+let completedFrames: number[] | null = null;
+
 export function startFpsCapture(
   pid: number,
   gameId?: string,
@@ -377,18 +385,23 @@ export function startFpsCapture(
     );
   }, 10000);
 
-  // Detect access-denied (exit code 6) for ETW permission prompt
+  // When PresentMon exits on its own (game died, --timed expired, etc.),
+  // save the accumulated frame data before clearing the session so
+  // stopFpsCapture() can still compute final stats.
   child.on('exit', (code) => {
     clearInterval(debugTimer);
+    if (activeSession) {
+      completedFrames = activeSession.frameTimesMs;
+    }
     if (code === 6 && gameId) {
       fpsPermissionListeners.forEach((fn) => fn({ pid, gameId }));
     }
+    activeSession = null;
     if (code !== null) {
       console.log(
         `[FPS] exit ${code} (pid ${pid}${gameId ? `, ${gameId}` : ''})`,
       );
     }
-    activeSession = null;
   });
 
   if (child.stderr) {
@@ -415,17 +428,22 @@ export function startFpsCapture(
 }
 
 export function stopFpsCapture(): FpsStats | null {
-  if (!activeSession) return null;
+  let frameTimesMs: number[] | null = null;
 
-  const { process: child, frameTimesMs } = activeSession;
-  try { child.kill('SIGTERM'); } catch { /* already dead */ }
-
-  activeSession = null;
+  if (activeSession) {
+    frameTimesMs = activeSession.frameTimesMs;
+    try { activeSession.process.kill('SIGTERM'); } catch { /* already dead */ }
+    activeSession = null;
+  } else if (completedFrames) {
+    // PresentMon already exited on its own — use the stashed frames
+    frameTimesMs = completedFrames;
+    completedFrames = null;
+  }
 
   // Re-enable Gaming Services that were stopped for clean capture
   restoreGamingServices();
 
-  return computeStats(frameTimesMs);
+  return frameTimesMs ? computeStats(frameTimesMs) : null;
 }
 
 export function getLiveFps(): LiveFpsSnapshot | null {
