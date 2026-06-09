@@ -283,6 +283,11 @@ export class GameDetector extends EventEmitter {
         }
 
         if (detectedPid !== undefined) {
+          // Skip if the detected process is a known non-game (e.g. wallpaper engine)
+          const proc = processes.find((p) => p.pid === detectedPid);
+          if (proc && (NON_GAME_PROCESSES.has(proc.name.toLowerCase()) || NON_GAME_PROCESSES.has(proc.name.toLowerCase() + '.exe'))) {
+            continue;
+          }
           currentlyRunning.add(game.id);
           const existing = this.runningGames.get(game.id);
           if (!existing) {
@@ -319,9 +324,14 @@ export class GameDetector extends EventEmitter {
         }
       }
 
-      // Start FPS capture for best candidate (first windowed game, else first detected)
+      // Start FPS capture for best candidate.
+      // Don't switch away from a game that's still alive (prevents wallpaper engine flip-flop).
       if (fpsCandidate && isPresentMonAvailable()) {
-        const skipFps = this.fpsTargetGameId === fpsCandidate.gameId && isCapturing();
+        const currentAlive = this.fpsTargetGameId && isCapturing() &&
+          this.runningGames.get(this.fpsTargetGameId)?.pid;
+        const skipFps = currentAlive
+          ? this.fpsTargetGameId === fpsCandidate.gameId  // only switch if same game (new PID)
+          : this.fpsTargetGameId === fpsCandidate.gameId && isCapturing();
         if (!skipFps) {
           if (isCapturing()) {
             const lastStats = stopFpsCapture();
