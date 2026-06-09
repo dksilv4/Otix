@@ -668,9 +668,14 @@ export class GameDetector extends EventEmitter {
             process.kill(entry.pid, 0);
             hasTrackedPid = true;
           } catch {
-            // PID dead — clear it. Don't endSession: game may have
-            // moved to new PID. Next scanRunningProcesses re-detects.
+            // PID dead — end session for non-Otix games immediately.
+            // Otherwise wait for next scan (game may have moved PID).
             this.trackedPids.delete(entry.pid);
+            if (!entry.launchedByOtix) {
+              this.endSession(entry);
+              this.runningGames.delete(entry.game.id);
+              continue;
+            }
             entry.pid = undefined;
           }
         }
