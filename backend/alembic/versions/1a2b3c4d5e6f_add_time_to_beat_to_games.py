@@ -18,8 +18,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("game", sa.Column("time_to_beat", JSONB, nullable=True))
+    op.add_column("games", sa.Column("time_to_beat", JSONB, nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("game", "time_to_beat")
+    op.drop_column("games", "time_to_beat")

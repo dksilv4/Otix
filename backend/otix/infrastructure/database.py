@@ -63,21 +63,21 @@ def _process_pending_external_ids(session: Session, flush_context=None) -> None:
 
                     legacy = session.scalar(sa_select(ExternalID).where(*clauses))
                     if legacy is not None:
-                        # Check if a row with the target entity_type already exists
-                        # (e.g. set by a concurrent task upsert).  If so, skip the
-                        # upgrade to avoid a duplicate-key violation.
-                        conflict = session.scalar(
-                            sa_select(ExternalID).where(
-                                ExternalID.provider == provider,
-                                ExternalID.external_id == str_val,
-                                ExternalID.entity_type == entity_type,
-                            )
+                        # Atomically INSERT-or-confirm the target row, then delete
+                        # the legacy stub.  The INSERT is safe under concurrency
+                        # (ON CONFLICT DO NOTHING).  After this, the canonical row
+                        # exists and the stub is redundant regardless of which
+                        # session won the race.
+                        session.execute(
+                            pg_insert(ExternalID).values(
+                                provider=provider,
+                                external_id=str_val,
+                                entity_type=entity_type,
+                                entity_id=entity_id,
+                                media_item_id=entity_id if entity_type == "media_item" else None,
+                            ).on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
                         )
-                        if conflict is None:
-                            legacy.entity_type = entity_type
-                            legacy.entity_id = entity_id
-                            if entity_type == "media_item":
-                                legacy.media_item_id = entity_id
+                        session.delete(legacy)
                     else:
                         # Use INSERT ON CONFLICT DO NOTHING so a concurrent
                         # upsert that already created this row doesn't cause a

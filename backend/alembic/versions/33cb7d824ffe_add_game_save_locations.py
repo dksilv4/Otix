@@ -46,9 +46,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("user_id", "game_id", "platform", name="uq_user_game_platform_suggestion"),
     )
+    conn = op.get_bind()
+    # Use savepoints so a failed DDL doesn't abort the outer transaction.
     try:
-        op.drop_constraint("user_local_games_user_id_title_platform_key", "user_local_games", type_="unique")
-        op.create_unique_constraint("uq_user_local_game", "user_local_games", ["user_id", "title", "platform"])
+        with conn.begin_nested():
+            op.drop_constraint("user_local_games_user_id_title_platform_key", "user_local_games", type_="unique")
+    except Exception:
+        pass
+    try:
+        with conn.begin_nested():
+            op.create_unique_constraint("uq_user_local_game", "user_local_games", ["user_id", "title", "platform"])
     except Exception:
         pass
     # ### end Alembic commands ###
