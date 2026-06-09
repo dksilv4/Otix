@@ -24,7 +24,7 @@ export function LauncherFpsStats() {
   const frameCount = isLive ? liveFps.frameCount : null
 
   return (
-    <div className="relative bg-white/[0.06] border border-white/[0.08] rounded-xl px-5 py-3 min-w-[160px] overflow-hidden">
+    <div className="relative bg-white/[0.06] rounded-xl px-5 py-3 min-w-[160px] overflow-hidden">
       {/* Sparkline */}
       {sparkline && (
         <svg
