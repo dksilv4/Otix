@@ -1,19 +1,37 @@
 /**
  * FPS capture using Intel PresentMon.
  *
- * Spawns PresentMon as a child process when a game starts (by PID),
- * parses the CSV frame-timing stream from stdout, and computes
- * aggregate stats (avg / 1% low / 0.1% low FPS) when the session ends.
+ * Spawns PresentMon as a child process, parses the CSV frame-timing
+ * stream from stdout in-memory, and computes aggregate stats when the
+ * session ends.
  *
- * Falls back gracefully if PresentMon is not installed or lacks
- * ETW permissions (user not in "Performance Log Users" group).
+ * Design:
+ *  - Zero disk writes during capture (stdout parse only)
+ *  - Bounded frame history (capped at 36000 entries ~10 min @ 60 fps)
+ *  - Stale ETW sessions cleaned before each capture
+ *  - Pure in-memory — no CSV file written to user's drive
  */
 
 import { ChildProcess, spawn, execSync } from 'child_process';
-import * as fs from 'fs';
 import * as path from 'path';
 import { createInterface } from 'readline';
 import { app } from 'electron';
+
+// ── Constants ──────────────────────────────────────────────────────
+
+/** Max frames kept in memory (~10 min at 60 fps = 36000 frames). */
+const MAX_FRAMES = 36000;
+
+/** Names of known ETW sessions that interfere with PresentMon. */
+const INTERFERING_SESSIONS = [
+  'PresentMon',
+  'OtixCapture',
+  'FPS_Capture',
+  'GraphicsPerfMonitorSession',
+];
+
+/** Windows Gaming Services that auto-create interfering ETW sessions. */
+const GAMING_SERVICES = ['GamingServices', 'GamingServicesNet'];
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -45,9 +63,10 @@ export function onFpsPermissionNeeded(cb: (evt: FpsPermissionEvent) => void): ()
 
 interface FpsCaptureSession {
   process: ChildProcess;
-  frameTimes: number[];
+  frameTimesMs: number[];
   startWallMs: number;
   gameId: string;
+  totalLines: number;
 }
 
 // ── PresentMon discovery ───────────────────────────────────────────
@@ -58,7 +77,6 @@ const KNOWN_PATHS: Record<string, string[]> = {
   win32: [
     path.join(BUNDLED_DIR, 'PresentMon.exe'),
     path.join(BUNDLED_DIR, 'PresentMon-2.4.1-x64.exe'),
-    path.join(BUNDLED_DIR, 'PresentMon-2.4.0.exe'),
     path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'PresentMon', 'PresentMon.exe'),
     path.join(process.env['LOCALAPPDATA'] || '', 'PresentMon', 'PresentMon.exe'),
     'PresentMon.exe',
@@ -73,7 +91,7 @@ export function findPresentMon(): string | null {
   const paths = KNOWN_PATHS[process.platform] ?? [];
   for (const p of paths) {
     try {
-      if (fs.existsSync(p)) {
+      if (require('fs').existsSync(p)) {
         _presentMonPath = p;
         return p;
       }
@@ -95,7 +113,7 @@ export function findPresentMon(): string | null {
   // Check userData location (auto-download target)
   try {
     const userDataPath = path.join(app.getPath('userData'), 'PresentMon', 'PresentMon.exe');
-    if (fs.existsSync(userDataPath)) {
+    if (require('fs').existsSync(userDataPath)) {
       _presentMonPath = userDataPath;
       return userDataPath;
     }
@@ -106,6 +124,7 @@ export function findPresentMon(): string | null {
 }
 
 export async function ensurePresentMon(): Promise<string | null> {
+  const fs = require('fs');
   const existing = findPresentMon();
   if (existing) return existing;
 
@@ -120,7 +139,7 @@ export async function ensurePresentMon(): Promise<string | null> {
   const VERSION = '2.4.1';
   const url = `https://github.com/GameTechDev/PresentMon/releases/download/v${VERSION}/PresentMon-${VERSION}-x64.exe`;
 
-  console.log('[PresentMon] Not found — downloading from GitHub...');
+  console.log('[PresentMon] Downloading from GitHub...');
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -139,7 +158,67 @@ export function isPresentMonAvailable(): boolean {
   return findPresentMon() !== null;
 }
 
+// ── ETW session cleanup ───────────────────────────────────────────
+
+/**
+ * Stop stale or interfering ETW trace sessions that would starve
+ * PresentMon of buffer resources.
+ *
+ * PresentMon's main session is "PresentMon".  Other sessions with the
+ * same providers (OtixCapture, FPS_Capture, GraphicsPerfMonitor, etc.)
+ * consume ETW memory and cause PresentMon's events to be dropped.
+ */
+/**
+ * Stop stale or interfering ETW trace sessions that would starve
+ * PresentMon of buffer resources.
+ *
+ * Also suspends Windows Gaming Services which auto-create the
+ * GraphicsPerfMonitorSession ETW session that conflicts with
+ * PresentMon's capture.
+ *
+ * Gaming Services are restarted in stopFpsCapture().
+ */
+function cleanupEtwSessions(): void {
+  // Stop Gaming Services first so they stop recreating the session
+  for (const name of GAMING_SERVICES) {
+    try {
+      execSync(`net stop "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
+    } catch { /* already stopped or not available */ }
+  }
+
+  // Then remove any lingering interfering ETW sessions
+  for (const name of INTERFERING_SESSIONS) {
+    try {
+      execSync(`logman stop "${name}" -ets 2>nul`, { timeout: 3000, windowsHide: true });
+    } catch { /* not running or not ours - ignore */ }
+  }
+}
+
+/** Re-enable Windows Gaming Services after FPS capture ends. */
+function restoreGamingServices(): void {
+  for (const name of GAMING_SERVICES) {
+    try {
+      execSync(`net start "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
+    } catch { /* already running or not available */ }
+  }
+}
+
 // ── CSV parsing ────────────────────────────────────────────────────
+
+const CSV_COLS = new Map([
+  ['application', 0],
+  ['processid', 1],
+  ['swapchainaddress', 2],
+  ['presentruntime', 3],
+  ['msbetweenpresents', 9],     // column index 9: time between consecutive presents in ms
+  ['msinpresentapi', 12],
+  ['msuntildisplayed', 14],
+  ['mscpubusy', 20],
+  ['mscpuwait', 21],
+  ['msgputime', 23],
+  ['msbusy', 24],
+  ['msuntildisplayed', 14],
+]);
 
 function parseCsvHeader(line: string): Map<string, number> {
   const cols = line.trim().split(',');
@@ -150,8 +229,13 @@ function parseCsvHeader(line: string): Map<string, number> {
   return map;
 }
 
-function parseFrameTime(line: string, colIndex: Map<string, number>, targetPid?: number): number | null {
+function parseFrameTime(
+  line: string,
+  colIndex: Map<string, number>,
+  targetPid?: number,
+): number | null {
   const cols = line.trim().split(',');
+
   // Filter by PID when targeting a specific process
   if (targetPid !== undefined) {
     const pidIdx = colIndex.get('processid');
@@ -159,20 +243,30 @@ function parseFrameTime(line: string, colIndex: Map<string, number>, targetPid?:
     const linePid = parseInt(cols[pidIdx], 10);
     if (linePid !== targetPid) return null;
   }
+
+  // Try MsBetweenPresents (v2 metrics) first, then fall back to msbetweenpresents
   const msIdx = colIndex.get('msbetweenpresents');
   if (msIdx === undefined) return null;
+
   const val = parseFloat(cols[msIdx]);
-  return Number.isFinite(val) && val > 0 ? val : null;
+  // Valid frame time: positive, < 500ms (2 fps floor) — filter out outliers
+  return Number.isFinite(val) && val > 0 && val <= 500 ? val : null;
 }
 
 // ── Stats computation ──────────────────────────────────────────────
 
 function computeStats(frameTimesMs: number[]): FpsStats {
   if (frameTimesMs.length === 0) {
-    return { avgFps: 0, onePercentLow: 0, zeroPointOnePercentLow: 0, maxFps: 0, minFps: 0, totalFrames: 0, captureDurationMs: 0 };
+    return {
+      avgFps: 0, onePercentLow: 0, zeroPointOnePercentLow: 0,
+      maxFps: 0, minFps: 0, totalFrames: 0, captureDurationMs: 0,
+    };
   }
 
-  const fpsValues = frameTimesMs.map((ms) => 1000 / ms).sort((a, b) => a - b);
+  const fpsValues = frameTimesMs
+    .map((ms) => 1000 / ms)
+    .sort((a, b) => a - b);
+
   const n = fpsValues.length;
   const sumFps = fpsValues.reduce((s, v) => s + v, 0);
   const avgFps = sumFps / n;
@@ -201,31 +295,35 @@ function computeStats(frameTimesMs: number[]): FpsStats {
 
 let activeSession: FpsCaptureSession | null = null;
 
-export function startFpsCapture(pid: number, gameId?: string, processName?: string): boolean {
+export function startFpsCapture(
+  pid: number,
+  gameId?: string,
+  processName?: string,
+): boolean {
   const exePath = findPresentMon();
   if (!exePath) return false;
 
   // Kill stale session
   if (activeSession) stopFpsCapture();
 
-  const frameTimes: number[] = [];
+  const frameTimesMs: number[] = [];
+  let totalLines = 0;
 
-  // Pre-create ETW session with 1024 KB buffers to prevent event loss on Win11.
-  // PresentMon defaults to 64 KB which overflows on this system.
-  // Without --stop_existing_session, PresentMon reuses the pre-created session.
-  try {
-    execSync('logman stop "PresentMon" -ets 2>nul', { timeout: 3000 });
-    execSync(
-      'logman start "PresentMon" -ets -bs 1024 -nb 16 64 -ct perfin -rt 2>nul',
-      { timeout: 3000 },
-    );
-  } catch { /* session config failed — PresentMon will create default-size */ }
-
-  const args = ['--output_stdout', '--process_id', String(pid)];
-  // Intentionally omit --stop_existing_session so PM reuses our larger-buffer session.
+  const args = [
+    '--output_stdout',
+    '--stop_existing_session',
+    '--no_console_stats',
+    '--process_id', String(pid),
+  ];
   if (processName) {
     args.push('--process_name', processName);
   }
+
+  // Clean interfering ETW sessions RIGHT BEFORE PresentMon starts.
+  // GraphicsPerfMonitorSession is auto-recreated by Windows Game Bar
+  // within milliseconds, so we time this as tight as possible.
+  cleanupEtwSessions();
+
   const child = spawn(exePath, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: false,
@@ -233,104 +331,150 @@ export function startFpsCapture(pid: number, gameId?: string, processName?: stri
 
   let headerParsed = false;
   let colIndex: Map<string, number> = new Map();
-  let linesReceived = 0;
   const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity });
 
   rl.on('line', (line: string) => {
-    const trimmed = line.trim();
+    // PresentMon outputs UTF-16-LE to stdout when piped. Strip null bytes.
+    const cleaned = line.replace(/\0/g, '');
+    const trimmed = cleaned.trim();
     if (!trimmed) return;
-    // Skip non-CSV lines (stats output when --no_console_stats omitted)
-    if (!headerParsed && !trimmed.startsWith('ProcessID')) return;
-    if (headerParsed && !/^\d/.test(trimmed)) return;
 
-    linesReceived++;
+    // The v2 CSV header starts with "Application", v1 starts with "ProcessID"
     if (!headerParsed) {
-      colIndex = parseCsvHeader(line);
-      headerParsed = true;
-      console.log(`[FPS] header parsed (cols: ${Array.from(colIndex.keys()).join(',')})`);
+      if (
+        trimmed.startsWith('Application') ||
+        trimmed.startsWith('ProcessID')
+      ) {
+        colIndex = parseCsvHeader(cleaned);
+        headerParsed = true;
+        console.log(
+          `[FPS] header parsed (${Array.from(colIndex.keys()).length} cols)`,
+        );
+      }
       return;
     }
-    // Filter by PID in the CSV parser so we only keep frames from our target process
+
+    // v2 CSV data: "Application,ProcessID,..." — first column is app name, not a digit
+    totalLines++;
+
     const ft = parseFrameTime(line, colIndex, pid);
-    if (ft !== null) frameTimes.push(ft);
+    if (ft !== null) {
+      frameTimesMs.push(ft);
+
+      // Bounded memory: discard oldest frames beyond cap
+      if (frameTimesMs.length > MAX_FRAMES) {
+        frameTimesMs.splice(0, frameTimesMs.length - MAX_FRAMES);
+      }
+    }
   });
 
-  // Log every 5s so we can see if lines arrive but parsing fails
+  // Log progress every 10s to help debug empty capture
   const debugTimer = setInterval(() => {
     if (!activeSession) { clearInterval(debugTimer); return; }
-    console.log(`[FPS] debug: ${frameTimes.length} parsed frames, ${linesReceived} total lines from stdout`);
-  }, 5000);
+    const elapsed = Date.now() - activeSession.startWallMs;
+    console.log(
+      `[FPS] ${frameTimesMs.length} frames, ${totalLines} lines, ${Math.round(elapsed / 1000)}s`,
+    );
+  }, 10000);
 
   // Detect access-denied (exit code 6) for ETW permission prompt
   child.on('exit', (code) => {
+    clearInterval(debugTimer);
     if (code === 6 && gameId) {
-      fpsPermissionListeners.forEach(fn => fn({ pid, gameId }));
+      fpsPermissionListeners.forEach((fn) => fn({ pid, gameId }));
     }
     if (code !== null) {
-      console.log(`[PresentMon] exited with code ${code} (pid ${pid}, game ${gameId})`);
+      console.log(
+        `[FPS] exit ${code} (pid ${pid}${gameId ? `, ${gameId}` : ''})`,
+      );
     }
-    // Clear session so game detector can restart on next scan
     activeSession = null;
   });
 
-  // Log errors to stderr
   if (child.stderr) {
     child.stderr.on('data', (data) => {
       const msg = data.toString().trim();
-      if (msg) console.log('[PresentMon]', msg);
+      if (msg && !msg.includes('warning:')) {
+        console.log('[PresentMon]', msg);
+      }
     });
   }
 
   child.on('error', () => {});
 
-  activeSession = { process: child, frameTimes, startWallMs: Date.now(), gameId: gameId || '' };
-  console.log(`[PresentMon] started for pid ${pid} (game ${gameId})`);
+  activeSession = {
+    process: child,
+    frameTimesMs,
+    startWallMs: Date.now(),
+    gameId: gameId || '',
+    totalLines,
+  };
+
+  console.log(`[FPS] started for pid ${pid}${gameId ? ` (${gameId})` : ''}`);
   return true;
 }
 
 export function stopFpsCapture(): FpsStats | null {
   if (!activeSession) return null;
 
-  const { process: child, frameTimes } = activeSession;
+  const { process: child, frameTimesMs } = activeSession;
   try { child.kill('SIGTERM'); } catch { /* already dead */ }
 
   activeSession = null;
 
-  const filtered = frameTimes.filter((ms) => ms > 0 && ms <= 500);
-  return computeStats(filtered);
+  // Re-enable Gaming Services that were stopped for clean capture
+  restoreGamingServices();
+
+  return computeStats(frameTimesMs);
 }
 
 export function getLiveFps(): LiveFpsSnapshot | null {
   if (!activeSession) return null;
 
-  const { frameTimes, startWallMs, gameId } = activeSession;
+  const { frameTimesMs, startWallMs, gameId } = activeSession;
   const elapsed = Date.now() - startWallMs;
 
+  // Sliding window: sum frame times within last ~1 second
   const WINDOW_MS = 1000;
   let windowSum = 0;
   let windowCount = 0;
-  for (let i = frameTimes.length - 1; i >= 0; i--) {
-    windowSum += frameTimes[i];
+  for (let i = frameTimesMs.length - 1; i >= 0; i--) {
+    windowSum += frameTimesMs[i];
     windowCount++;
     if (windowSum >= WINDOW_MS) break;
   }
 
   if (windowCount === 0) {
-    // Log every 5s so user can see if capture is running but empty
-    if (elapsed > 0 && Math.floor(elapsed / 5000) > Math.floor((elapsed - 500) / 5000)) {
-      console.log(`[FPS] no frames yet for ${gameId} after ${Math.round(elapsed / 1000)}s (total events: ${frameTimes.length})`);
+    // Log once per 5s when no frames yet
+    if (
+      elapsed > 0 &&
+      Math.floor(elapsed / 5000) > Math.floor((elapsed - 500) / 5000)
+    ) {
+      console.log(
+        `[FPS] waiting for frames (${Math.round(elapsed / 1000)}s)`,
+      );
     }
     return null;
   }
 
-  const fps = windowSum > 0 ? Math.round((windowCount / windowSum) * 10000) / 10 : 0;
-  // Log every 5s
-  if (elapsed > 0 && Math.floor(elapsed / 5000) > Math.floor((elapsed - 500) / 5000)) {
-    console.log(`[FPS] live ${fps} for ${gameId} (${frameTimes.length} frames, ${Math.round(elapsed / 1000)}s)`);
+  const fps =
+    windowSum > 0
+      ? Math.round((windowCount / windowSum) * 10000) / 10
+      : 0;
+
+  // Log periodically
+  if (
+    elapsed > 0 &&
+    Math.floor(elapsed / 5000) > Math.floor((elapsed - 500) / 5000)
+  ) {
+    console.log(
+      `[FPS] ${fps} fps, ${frameTimesMs.length} frames (${Math.round(elapsed / 1000)}s)`,
+    );
   }
+
   return {
     currentFps: fps,
-    frameCount: frameTimes.length,
+    frameCount: frameTimesMs.length,
     captureDurationMs: elapsed,
     gameId,
   };

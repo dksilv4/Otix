@@ -28,6 +28,11 @@ let gameDetector: GameDetector | null = null;
 let pendingDeepLink: string | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// Disable GPU disk cache to prevent 'Unable to move the cache: Access is denied'
+// errors on some Windows configurations (typically after unclean shutdown).
+app.commandLine.appendSwitch('disable-gpu-program-cache');
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
 // ── Window position persistence ───────────────────────────────
 interface WindowState {
   x?: number
