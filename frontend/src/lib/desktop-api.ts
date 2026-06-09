@@ -4,6 +4,19 @@ import type { LocalGame } from '@/features/game-scanner/types'
 
 // ── API types ────────────────────────────────────────────────────────
 
+export type AiModelStatus = 'not_available' | 'downloading' | 'loading' | 'ready' | 'error';
+
+export interface DesktopSettingsData {
+  launchOnStartup: boolean;
+  minimizeToTray: boolean;
+  closeToTray: boolean;
+  alwaysOnTop: boolean;
+  startMinimized: boolean;
+  aiAddonEnabled: boolean;
+  aiModelStatus: AiModelStatus;
+  aiSystemPrompt: string;
+}
+
 export interface DiskInfo {
   drive: string
   total?: number
@@ -16,10 +29,28 @@ export interface RecentSession {
   endTime: number
 }
 
+export interface LiveFpsSnapshot {
+  currentFps: number
+  frameCount: number
+  captureDurationMs: number
+  gameId: string
+}
+
+export interface FpsStatsData {
+  avgFps: number
+  onePercentLow: number
+  zeroPointOnePercentLow: number
+  maxFps: number
+  minFps: number
+  totalFrames: number
+  captureDurationMs: number
+}
+
 export interface PlaytimeInfo {
   totalMinutes: number
   sessionCount: number
   lastPlayed: number | null
+  lastFpsStats: FpsStatsData | null
 }
 
 export interface RunningGameData {
@@ -119,6 +150,7 @@ export interface DesktopAPI {
   launchGame(game: LocalGame): Promise<void>
   showItemInFolder(path: string): Promise<void>
   pickExecutable(dir?: string): Promise<string | null>
+  updateGamePath(id: string, exePath: string, installDir?: string): Promise<void>
 
   // Disk
   getDiskSpace(): Promise<DiskInfo[]>
@@ -130,6 +162,10 @@ export interface DesktopAPI {
   // Game lifecycle events — returns unsubscribe function
   onGameStarted(cb: (data: RunningGameData) => void): () => void
   onGameEnded(cb: (data: { gameId?: string; gameTitle?: string }) => void): () => void
+  onFpsUpdate(cb: (data: LiveFpsSnapshot) => void): () => void
+  fixFpsPermissions: () => Promise<{ success: boolean; needRestart?: boolean; error?: string }>
+  onFpsPermissionNeeded: (cb: () => void) => () => void
+  onCleanQuit: (cb: () => void) => () => void
 
   // Save sync
   saveDiscoverForGame(gameId: string, title: string): Promise<SaveDiscoverResult>
@@ -150,6 +186,19 @@ export interface DesktopAPI {
 
   // Install verification
   checkInstallDir(dir: string): Promise<InstallCheckResult>
+
+  // AI model management
+  aiGetStatus: () => Promise<AiModelStatus>
+  aiGetDownloadProgress: () => Promise<number | null>
+  aiGetLoadingProgress: () => Promise<number | null>
+  aiDownloadModel: () => Promise<void>
+  aiDeleteModel: () => Promise<void>
+  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => Promise<string | null>
+  aiGetSystemPrompt: () => Promise<string>
+  aiSetSystemPrompt: (prompt: string) => Promise<void>
+  onAiDownloadProgress: (cb: (progress: number) => void) => () => void
+  onAiLoadingProgress: (cb: (progress: number) => void) => () => void
+  onAiStatusChanged: (cb: (status: AiModelStatus) => void) => () => void
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

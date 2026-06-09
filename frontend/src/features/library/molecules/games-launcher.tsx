@@ -794,7 +794,12 @@ export function GamesLauncher() {
     return [...result].sort((a, b) => {
       const aScore = a.data?.id && !isIso(a) ? 4 : a.data?.id && isIso(a) ? 3 : a.matchSuggestion ? 2 : 1
       const bScore = b.data?.id && !isIso(b) ? 4 : b.data?.id && isIso(b) ? 3 : b.matchSuggestion ? 2 : 1
-      return bScore - aScore
+      const tierDiff = bScore - aScore
+      if (tierDiff !== 0) return tierDiff
+      // Within same tier, sort by last played descending (nulls last)
+      const aTime = a.lastPlayedAt ? new Date(a.lastPlayedAt).getTime() : 0
+      const bTime = b.lastPlayedAt ? new Date(b.lastPlayedAt).getTime() : 0
+      return bTime - aTime
     })
   }, [games, activeTab, search])
 

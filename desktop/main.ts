@@ -14,10 +14,13 @@ import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { ensureDb } from './db';
-import { setNotifyTarget } from './game-storage-service';
-import { scheduledUpdateCheck } from './downloads';
+import { setNotifyTarget, getAllGames } from './game-storage-service';
+import type { LocalGame } from './preload-api';
+import { onFpsPermissionNeeded, ensurePresentMon } from './fps-capture';
+import { scheduledUpdateCheck, purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './save-daemon';
 import { registerSaveIPC } from './ipc/saves';
+import { registerClassifierIPC } from './ipc/classifier';
 import { populateKnownLocations } from './save-export';
 
 let mainWindow: BrowserWindow | null = null;
@@ -224,7 +227,17 @@ function handleDeepLink(url: string) {
 }
 
 app.on('ready', async () => {
+  // Auto-download PresentMon if not installed
+  ensurePresentMon().then((p) => {
+    if (p) console.log('[startup] PresentMon ready at', p);
+    else console.warn('[startup] PresentMon unavailable (FPS capture disabled)');
+  });
+
   gameDetector = new GameDetector(app.getPath('userData'));
+
+  // Purge old deleted downloads every hour
+  purgeOldDeletedDownloads().catch(() => {});
+  setInterval(() => purgeOldDeletedDownloads().catch(() => {}), 3600000);
 
   // Forward game detection events to renderer
   gameDetector.on('game:started', (runningGame) => {
@@ -232,6 +245,37 @@ app.on('ready', async () => {
   });
   gameDetector.on('game:ended', (session) => {
     mainWindow?.webContents.send('game:ended', session);
+  });
+  gameDetector.on('game:fps', (snapshot) => {
+    mainWindow?.webContents.send('game:fps', snapshot);
+  });
+
+  // Forward PresentMon permission-needed events to renderer
+  onFpsPermissionNeeded((evt) => {
+    mainWindow?.webContents.send('fps:permission-needed', evt);
+  });
+
+  // ── FPS permission fix (one-click Performance Log Users group) ──
+  ipcMain.handle('fps:fix-permissions', async () => {
+    try {
+      const psFile = path.join(app.getPath('userData'), 'fix-fps-permissions.ps1');
+      const psContent =
+        'try {\n' +
+        '  net localgroup "Performance Log Users" $env:USERNAME /add\n' +
+        '  Write-Output "OK"\n' +
+        '} catch { Write-Error $_.Exception.Message; exit 1 }\n';
+      fs.writeFileSync(psFile, psContent, 'utf-8');
+      const { execSync } = require('child_process');
+      execSync(
+        `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\"${psFile}\\"' -WindowStyle Hidden -Wait"`,
+        { timeout: 120000 },
+      );
+      fs.unlinkSync(psFile);
+      return { success: true, needRestart: true };
+    } catch (err: any) {
+      console.error('[main] FPS permission fix failed:', err.message);
+      return { success: false, error: err.message };
+    }
   });
 
   // General utilities
@@ -319,6 +363,19 @@ app.on('ready', async () => {
   registerInstallerIPC();
   registerGameDetectorIPC(gameDetector);
 
+  // Seed detector with previously-scanned games so it can detect
+  // games already running when the app loads.
+  try {
+    const existingGames = getAllGames({ installed: true });
+    if (existingGames.length > 0) {
+      gameDetector?.setLibrary(existingGames as LocalGame[]);
+      gameDetector?.startPeriodicScan();
+      console.log(`[main] Seeded detector with ${existingGames.length} installed game(s) from DB`);
+    }
+  } catch (err) {
+    console.error('[main] Failed to seed detector from DB:', err);
+  }
+
   // Pre-download innounp on startup (ready for ISO installs)
   try {
     const { ensureInnounp } = require('./installer');
@@ -353,6 +410,9 @@ app.on('ready', async () => {
     // Register desktop settings IPC (needs window + tray references)
     registerDesktopSettingsIPC(mainWindow, tray)
 
+    // ── AI Addon (local model via node-llama-cpp) ──
+    registerClassifierIPC(mainWindow)
+
     // Handle startMinimized: hide window immediately
     if (settings.startMinimized && tray) {
       mainWindow.hide()
@@ -363,6 +423,11 @@ app.on('ready', async () => {
   // The renderer's loadFromDatabase() waits for this before calling IPC.
   mainWindow?.webContents.on('did-finish-load', () => {
     mainWindow?.webContents.send('main:ipc-ready');
+  });
+
+  // ── Clean-quit signal for last-route restore ──
+  app.on('before-quit', () => {
+    mainWindow?.webContents.send('app:clean-quit');
   });
 
   // ── Scheduled update check ──

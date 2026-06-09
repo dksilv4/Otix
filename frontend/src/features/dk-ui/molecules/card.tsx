@@ -9,7 +9,7 @@ interface DkCardProps extends React.HTMLAttributes<HTMLDivElement> {
   interactive?: boolean
 }
 
-const DkCard = forwardRef<HTMLDivElement, DkCardProps>(
+export const DkCard = forwardRef<HTMLDivElement, DkCardProps>(
   ({ className, elevation = 'sm', interactive, children, ...props }, ref) => {
     return (
       <div
@@ -29,5 +29,3 @@ const DkCard = forwardRef<HTMLDivElement, DkCardProps>(
   },
 )
 DkCard.displayName = 'DkCard'
-
-export { DkCard }

@@ -222,6 +222,7 @@ export function updateLastPlayedAt(id: string, playedAt: string): void {
     "UPDATE scanned_games SET last_played_at = ? WHERE id = ?",
     [playedAt, id],
   );
+  notifyGamesChanged();
 }
 
 // ── Suggestions ────────────────────────────────────────────────────────

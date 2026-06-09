@@ -43,10 +43,6 @@ export async function initDb(): Promise<any> {
       console.log('[DB] count query failed:', e);
     }
 
-    // Purge old deleted downloads every hour
-    const { purgeOldDeletedDownloads } = require('./downloads');
-    purgeOldDeletedDownloads().catch(() => {});
-    setInterval(() => purgeOldDeletedDownloads().catch(() => {}), 3600000);
     return db;
   } catch (err) {
     console.error('Failed to open downloads database with better-sqlite3:', err);

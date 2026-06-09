@@ -4,6 +4,51 @@ import type { QueryClient } from "@tanstack/react-query"
 import { AppLayout } from "@ui/organisms/app-layout"
 import { LoadingPage } from "@ui/organisms/loading-page"
 import { NotFoundPage } from "@/components/not-found"
+import { getDesktopAPI } from "@/lib/desktop-api"
+
+const LAST_ROUTE_KEY = 'otix:lastRoute'
+
+/** Save current route to localStorage on every navigation. */
+function useSaveLastRoute() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const route = location.href
+    // Don't save transient/auth routes
+    if (!route || route === '/' || route === '/loading' || route.startsWith('/auth')) return
+    localStorage.setItem(LAST_ROUTE_KEY, route)
+  }, [location.href])
+}
+
+/** Restore last route if app wasn't cleanly quit (crash/power loss). */
+function useRestoreLastRoute() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LAST_ROUTE_KEY)
+    if (!saved) return
+    if (saved === location.href) return
+
+    // Wait briefly for auth state then redirect
+    const t = setTimeout(() => {
+      localStorage.removeItem(LAST_ROUTE_KEY)
+      window.history.replaceState(null, '', saved)
+    }, 100)
+    return () => clearTimeout(t)
+  }, [location.href])
+}
+
+/** Listen for clean-quit IPC from Electron main and clear saved route. */
+function useCleanQuitSignal() {
+  useEffect(() => {
+    const api = getDesktopAPI()
+    if (!api?.onCleanQuit) return
+    const unsub = api.onCleanQuit(() => {
+      localStorage.removeItem(LAST_ROUTE_KEY)
+    })
+    return unsub
+  }, [])
+}
 
 // ── Lazy-loaded page components ──
 
@@ -50,6 +95,11 @@ const LauncherGamePage = lazy(() => import("@/features/games/pages/launcher-game
 function RootComponent() {
   const location = useLocation()
   const isAuthRoute = location.pathname.startsWith("/auth")
+
+  // Last-route persistence for crash recovery
+  useCleanQuitSignal()
+  useSaveLastRoute()
+  useRestoreLastRoute()
 
   if (isAuthRoute || location.pathname === "/loading") {
     return <Outlet />

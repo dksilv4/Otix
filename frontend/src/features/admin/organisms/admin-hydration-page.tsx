@@ -380,7 +380,7 @@ export function AdminHydrationPage() {
                       <td className="dk-admin-hydration__cell dk-admin-hydration__cell--title">
                         <Link
                           to="/media/$mediaType/$mediaId"
-                          params={{ mediaType: item.mediaType as any, mediaId: String(item.id) }}
+                          params={{ mediaType: item.mediaType as string, mediaId: String(item.id) }}
                           className="dk-admin-hydration__title-link"
                         >
                           {item.title}

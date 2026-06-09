@@ -66,15 +66,16 @@ async def _sync_youtube_watch_history() -> dict:
 
 
 @app.task(name="maintenance.plex_sync_user", acks_late=True, reject_on_worker_lost=True)
-def plex_sync_user(task_id: str, user_id: str) -> dict:
+def plex_sync_user(task_id: str, user_id: str, library_id: str | None = None) -> dict:
     """Sync Plex libraries for a single user, publishing progress via Redis pub/sub.
 
     Called on-demand from the API. Runs on the fast queue so it starts immediately.
+    When *library_id* is provided, only that library is synced.
     """
-    return run_async(_plex_sync_user(task_id, user_id))
+    return run_async(_plex_sync_user(task_id, user_id, library_id=library_id))
 
 
-async def _plex_sync_user(task_id: str, user_id: str) -> dict:
+async def _plex_sync_user(task_id: str, user_id: str, library_id: str | None = None) -> dict:
     from typing import Any
 
     from otix.lib.plex_progress import publish_progress, store_result
@@ -93,7 +94,7 @@ async def _plex_sync_user(task_id: str, user_id: str) -> dict:
             raise ValueError(f"User {user_id} not found")
 
         try:
-            result = await sync_plex(session, user, progress=progress)
+            result = await sync_plex(session, user, progress=progress, library_id=library_id)
             await store_result(task_id, result)
             logger.info("plex sync completed for user", user_id=user_id, task_id=task_id, **result)
             return {"status": "success", **result}

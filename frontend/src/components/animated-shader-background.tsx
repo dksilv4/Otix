@@ -105,19 +105,30 @@ function resolveQualityTier(input: {
 
 export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShaderBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [useFallback, setUseFallback] = useState(false)
+  const [useFallback, setUseFallback] = useState(() => {
+    // One-time check — runs during first render, not in an effect
+    if (typeof window === 'undefined') return true
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      logFallback('prefers-reduced-motion is enabled')
+      return true
+    }
+    const probeCanvas = document.createElement('canvas')
+    const ctx = (
+      probeCanvas.getContext('webgl2', { alpha: true }) ??
+      probeCanvas.getContext('webgl', { alpha: true }) ??
+      probeCanvas.getContext('experimental-webgl', { alpha: true })
+    )
+    if (!ctx) {
+      logFallback('WebGL is unavailable in this browser/runtime')
+      return true
+    }
+    return false
+  })
   const { shaderQuality } = useShaderQuality()
 
   useEffect(() => {
     const container = containerRef.current
     if (!container || useFallback) return
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReducedMotion) {
-      logFallback('prefers-reduced-motion is enabled')
-      setUseFallback(true)
-      return
-    }
 
     const hardwareConcurrency = navigator.hardwareConcurrency ?? 8
     const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8
@@ -130,12 +141,7 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
       webgl2Context ??
       probeCanvas.getContext('webgl', { alpha: true }) ??
       probeCanvas.getContext('experimental-webgl', { alpha: true })
-    ) as WebGL2RenderingContext | WebGLRenderingContext | null
-    if (!probeContext) {
-      logFallback('WebGL is unavailable in this browser/runtime')
-      setUseFallback(true)
-      return
-    }
+    ) as WebGL2RenderingContext | WebGLRenderingContext
 
     const base = PROFILES[mode]
     const autoQualityTier = resolveQualityTier({
@@ -169,7 +175,7 @@ export default function AnimatedShaderBackground({ mode = 'idle' }: AnimatedShad
       })
     } catch (error) {
       logFallback(error instanceof Error ? error.message : 'Three.js renderer creation failed')
-      setUseFallback(true)
+      setTimeout(() => setUseFallback(true), 0)
       return
     }
     renderer.setPixelRatio(clamp(pixelRatio, 1, quality.pixelRatioCap))

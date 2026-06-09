@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
-import { connectTaskSseStream } from "@/lib/sse-client"
+import { apiClient, API_BASE_URL } from "@/lib/api-client"
+import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/sse-client"
 import { getScannedGames, setScannedGames } from "@/features/game-scanner/storage"
 import { libraryKeys } from "./library-keys"
 
@@ -157,6 +157,76 @@ export function usePlexStatus({ enabled = true }: { enabled?: boolean } = {}) {
     staleTime: 1000 * 60 * 2,
     enabled,
   })
+}
+
+export interface PlexLibraryInfo {
+  id: string
+  serverId: string
+  serverName: string
+  sectionKey: string
+  title: string
+  libraryType: string  // "movie", "show", "artist"
+  selected: boolean
+  itemCount: number
+  lastSyncedAt: string | null
+}
+
+export function usePlexLibraries({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("plex"), "libraries"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ libraries: PlexLibraryInfo[] }>(
+        "/integrations/plex/libraries",
+      )
+      return data.libraries
+    },
+    staleTime: 1000 * 60,
+    enabled,
+  })
+}
+
+/**
+ * Sync a single Plex library and stream progress via SSE.
+ * Resolves with the final PlexSyncResult.
+ */
+export async function streamPlexLibrarySync(
+  libraryId: string,
+  onEvent?: (event: { type: string; [key: string]: unknown }) => void,
+): Promise<PlexSyncResult> {
+  const token = localStorage.getItem("otix-access-token") ?? ""
+
+  // POST with library_id body — can't use connectTaskSseStream because
+  // it doesn't send a request body.
+  const { data: createData } = await apiClient.post<{ taskId: string }>(
+    "/integrations/plex/sync",
+    { library_id: libraryId },
+  )
+
+  const stream = createSseStream({
+    url: `${API_BASE_URL}/integrations/plex/sync/${createData.taskId}/stream`,
+    token,
+  })
+
+  let lastEvent: SseEvent = { type: "unknown" }
+  for await (const event of stream) {
+    onEvent?.(event)
+    lastEvent = event
+    if (event.type === "sync_complete" || event.type === "error") {
+      break
+    }
+  }
+
+  if (lastEvent.type === "error") {
+    throw new Error((lastEvent.message as string) ?? "Plex library sync failed")
+  }
+
+  return {
+    total: (lastEvent.total as number) ?? 0,
+    matched: (lastEvent.matched as number) ?? 0,
+    seeded: (lastEvent.seeded as number) ?? 0,
+    servers: lastEvent.servers as number | undefined,
+    libraries: lastEvent.libraries as number | undefined,
+  }
 }
 
 export interface UnmatchedGame {

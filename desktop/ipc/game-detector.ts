@@ -42,7 +42,7 @@ export function registerGameDetectorIPC(gameDetector: GameDetector | null): void
   });
 
   ipcMain.handle('game:get-playtime', (_event, gameId: string) => {
-    return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null };
+    return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
   });
 
   ipcMain.handle('game:set-library', (_, games: LocalGame[]) => {

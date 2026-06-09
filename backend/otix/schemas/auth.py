@@ -409,6 +409,22 @@ class PlexDiscoveryResponse(BaseModel):
     unreachable_servers: list[str] | None = None
 
 
+class PlexLibraryDetailResponse(BaseModel):
+    id: str
+    server_id: str
+    server_name: str
+    section_key: str
+    title: str
+    library_type: str
+    selected: bool
+    item_count: int = 0
+    last_synced_at: str | None = None
+
+
+class PlexLibraryListResponse(BaseModel):
+    libraries: list[PlexLibraryDetailResponse]
+
+
 class PlexSyncResponse(BaseModel):
     servers: int = 0
     libraries: int = 0

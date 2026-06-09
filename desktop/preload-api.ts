@@ -59,12 +59,29 @@ export interface RunningGame {
   pid?: number;
 }
 
+export interface FpsStats {
+  avgFps: number;
+  onePercentLow: number;
+  zeroPointOnePercentLow: number;
+  maxFps: number;
+  minFps: number;
+  totalFrames: number;
+  captureDurationMs: number;
+}
+
+export interface LiveFpsSnapshot {
+  currentFps: number;
+  frameCount: number;
+  captureDurationMs: number;
+}
+
 export interface PlaySession {
   gameId: string;
   gameTitle: string;
   startTime: number;
   endTime: number;
   launchedByOtix: boolean;
+  fpsStats?: FpsStats | null;
 }
 
 export interface LauncherScanResult {
@@ -221,12 +238,16 @@ export interface GameTrackEntry {
 
 // ── Desktop settings ──
 
+export type AiModelStatus = 'not_available' | 'downloading' | 'loading' | 'ready' | 'error';
+
 export interface DesktopSettings {
   launchOnStartup: boolean;
   minimizeToTray: boolean;
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  aiAddonEnabled: boolean;
+  aiModelStatus: AiModelStatus;
 }
 
 export interface IDesktopAPI {
@@ -298,7 +319,7 @@ export interface IDesktopAPI {
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;
   getRecentSessions: () => Promise<PlaySession[]>;
-  getPlaytimeForGame: (gameId: string) => Promise<{ totalMinutes: number; sessionCount: number; lastPlayed: number | null }>;
+  getPlaytimeForGame: (gameId: string) => Promise<{ totalMinutes: number; sessionCount: number; lastPlayed: number | null; lastFpsStats: FpsStats | null }>;
   setLibrary: (games: LocalGame[]) => Promise<boolean>;
   stopTracking: (gameId: string) => Promise<boolean>;
   getRunningProcesses: () => Promise<DetectedProcess[]>;
@@ -308,6 +329,7 @@ export interface IDesktopAPI {
   getLibrary: () => Promise<LocalGame[]>;
   onGameStarted: (callback: (data: RunningGame) => void) => () => void;
   onGameEnded: (callback: (data: PlaySession) => void) => () => void;
+  onFpsUpdate: (callback: (data: LiveFpsSnapshot) => void) => () => void;
 
   // Downloads
   downloadsGetConfig: (userId: string) => Promise<DownloadConfig | null>;
@@ -378,6 +400,19 @@ export interface IDesktopAPI {
   onInstallProgress: (callback: (progress: InstallProgress) => void) => () => void;
   getActiveInstalls: () => Promise<ActiveInstallInfo[]>;
   checkInstallDir: (installDir: string) => Promise<{ found: boolean; gameExe: string | null }>;
+
+  // ── AI Addon (local model via node-llama-cpp) ──
+  aiGetStatus: () => Promise<AiModelStatus>;
+  aiGetDownloadProgress: () => Promise<number | null>;
+  aiGetLoadingProgress: () => Promise<number | null>;
+  aiDownloadModel: () => Promise<void>;
+  aiDeleteModel: () => Promise<void>;
+  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => Promise<string | null>;
+  aiGetSystemPrompt: () => Promise<string>;
+  aiSetSystemPrompt: (prompt: string) => Promise<void>;
+  onAiDownloadProgress: (callback: (progress: number) => void) => () => void;
+  onAiLoadingProgress: (callback: (progress: number) => void) => () => void;
+  onAiStatusChanged: (callback: (status: AiModelStatus) => void) => () => void;
 }
 
 declare global {

@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
-import { ArrowRight, Brain, Dumbbell, Sparkles, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Brain, Download, Dumbbell, Loader2, Sparkles, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import './chat-search-input.scss'
@@ -55,9 +55,15 @@ interface ChatSearchInputProps {
   /** Current media type filter from the parent (dropdown/tabs). Shown as a tag when no /:mediaType is typed. */
   activeType?: string | null
   /** AI on-device classification status */
-  aiStatus?: 'not_available' | 'downloading' | 'ready' | 'error'
+  aiStatus?: 'not_available' | 'downloading' | 'loading' | 'ready' | 'error'
   /** Whether AI is currently classifying the input */
   aiClassifying?: boolean
+  /** Download progress percentage (0-100) */
+  aiDownloadProgress?: number | null
+  /** Loading-into-memory progress percentage (0-100) */
+  aiLoadingProgress?: number | null
+  /** Called when user clicks the AI status badge (e.g. error → navigate to settings) */
+  onAiStatusClick?: () => void
 }
 
 export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps>(function ChatSearchInput({
@@ -78,6 +84,9 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
   activeType,
   aiStatus,
   aiClassifying = false,
+  aiDownloadProgress,
+  aiLoadingProgress,
+  onAiStatusClick,
 }, ref) {
   const [inputValue, setInputValue] = useState(value)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -239,10 +248,34 @@ export const ChatSearchInput = forwardRef<HTMLInputElement, ChatSearchInputProps
             )
           })}
 
+          {aiStatus && aiStatus !== 'ready' && (
+            <button
+              type="button"
+              className={cn(
+                'dk-discover-chat-input__ai-indicator',
+                `dk-discover-chat-input__ai-indicator--${aiStatus}`,
+                aiStatus === 'error' && 'dk-discover-chat-input__ai-indicator--clickable',
+              )}
+              onClick={aiStatus === 'error' ? onAiStatusClick : undefined}
+              tabIndex={aiStatus === 'error' ? 0 : -1}
+            >
+              {aiStatus === 'loading' && <Loader2 className="h-3 w-3 animate-spin" />}
+              {aiStatus === 'downloading' && <Download className="h-3 w-3" />}
+              {aiStatus === 'not_available' && <Brain className="h-3 w-3 opacity-40" />}
+              {aiStatus === 'error' && <AlertCircle className="h-3 w-3" />}
+              <span>
+                {aiStatus === 'loading' && (aiLoadingProgress != null ? `AI loading ${aiLoadingProgress}%` : 'AI loading...')}
+                {aiStatus === 'downloading' && (aiDownloadProgress != null ? `AI ${aiDownloadProgress}%` : 'AI downloading...')}
+                {aiStatus === 'not_available' && 'AI offline'}
+                {aiStatus === 'error' && 'AI error'}
+              </span>
+            </button>
+          )}
           {aiStatus === 'ready' && (
             <span
               className={cn(
                 'dk-discover-chat-input__ai-indicator',
+                'dk-discover-chat-input__ai-indicator--ready',
                 aiClassifying && 'dk-discover-chat-input__ai-indicator--classifying',
               )}
             >
