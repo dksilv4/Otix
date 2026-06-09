@@ -31,8 +31,6 @@ export function LauncherFpsStats() {
     displayValue = { value: `${Math.round(lastStats.avgFps)}`, live: false }
   }
 
-  if (!displayValue && fpsHistory.length === 0) return null
-
   return (
     <div className="relative backdrop-blur-2xl rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden">
       {/* Full-bleed sparkline */}
@@ -60,7 +58,8 @@ export function LauncherFpsStats() {
           {displayValue?.live && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           )}
-          <span className="text-2xl font-bold text-white/90 tracking-tight leading-none">
+          <span className="text-2xl font-bold tracking-tight leading-none"
+            style={{ color: displayValue?.live ? 'rgb(255 255 255 / 0.9)' : displayValue ? 'rgb(255 255 255 / 0.4)' : 'rgb(255 255 255 / 0.15)' }}>
             {displayValue?.value ?? '—'}
           </span>
           {displayValue && (
