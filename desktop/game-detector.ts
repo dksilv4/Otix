@@ -118,6 +118,8 @@ export class GameDetector extends EventEmitter {
   private fpsPollTimer: ReturnType<typeof setInterval> | null = null;
   /** Which game ID owns the active PresentMon FPS capture. */
   private fpsTargetGameId: string | null = null;
+  /** Stashed FPS stats for games whose capture was ended by a new game taking priority. */
+  private _pendingFpsStats = new Map<string, FpsStats>();
 
   constructor(sessionsDir: string) {
     super();
@@ -320,7 +322,14 @@ export class GameDetector extends EventEmitter {
       if (fpsCandidate && isPresentMonAvailable()) {
         const skipFps = this.fpsTargetGameId === fpsCandidate.gameId && isCapturing();
         if (!skipFps) {
-          if (isCapturing()) stopFpsCapture();
+          if (isCapturing()) {
+            const lastStats = stopFpsCapture();
+            if (lastStats) {
+              // Stash stats for the old fps target's endSession, which runs next
+              const oldTarget = this.fpsTargetGameId;
+              if (oldTarget) this._pendingFpsStats.set(oldTarget, lastStats);
+            }
+          }
           if (startFpsCapture(fpsCandidate.pid, fpsCandidate.gameId)) {
             this.startFpsPolling(fpsCandidate.gameId);
           }
@@ -682,7 +691,8 @@ export class GameDetector extends EventEmitter {
   private endSession(entry: RunningGame) {
     // Stop FPS polling and capture, grab final stats before saving session
     this.stopFpsPolling();
-    const fpsStats = stopFpsCapture();
+    const fpsStats = this._pendingFpsStats.get(entry.game.id) ?? stopFpsCapture();
+    this._pendingFpsStats.delete(entry.game.id);
 
     const session: PlaySession = {
       gameId: entry.game.id,

@@ -179,10 +179,11 @@ export function isPresentMonAvailable(): boolean {
  * Gaming Services are restarted in stopFpsCapture().
  */
 function cleanupEtwSessions(): void {
-  // Stop Gaming Services first so they stop recreating the session
+  // Stop Gaming Services first so they stop recreating the session.
+  // sc stop works without admin (unlike net stop which requires elevation).
   for (const name of GAMING_SERVICES) {
     try {
-      execSync(`net stop "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
+      execSync(`sc stop "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
     } catch { /* already stopped or not available */ }
   }
 
@@ -198,7 +199,7 @@ function cleanupEtwSessions(): void {
 function restoreGamingServices(): void {
   for (const name of GAMING_SERVICES) {
     try {
-      execSync(`net start "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
+      execSync(`sc start "${name}" 2>nul`, { timeout: 5000, windowsHide: true });
     } catch { /* already running or not available */ }
   }
 }
