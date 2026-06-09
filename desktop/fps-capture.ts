@@ -66,7 +66,6 @@ interface FpsCaptureSession {
   startWallMs: number;
   gameId: string;
   totalLines: number;
-  csvPath?: string; // temp CSV file path (--output_file mode)
 }
 
 // ── PresentMon discovery ───────────────────────────────────────────
@@ -318,10 +317,8 @@ export function startFpsCapture(
   const frameTimesMs: number[] = [];
   let totalLines = 0;
 
-  // Write CSV to temp file instead of stdout (stdout pipe causes exit 0 on this Win11 build)
-  const tmpCsv = path.join(require('os').tmpdir(), `pm_cap_${pid}_${Date.now()}.csv`);
   const args = [
-    '--output_file', tmpCsv,
+    '--output_stdout',
     '--stop_existing_session',
     '--no_console_stats',
     '--process_id', String(pid),
@@ -340,41 +337,34 @@ export function startFpsCapture(
 
   let headerParsed = false;
   let colIndex: Map<string, number> = new Map();
+  const { createInterface } = require('readline');
+  const rl = createInterface({ input: child.stdout, crlfDelay: Infinity });
 
-  // Poll temp CSV for new frames every 500ms
-  let lastReadPos = 0;
-  const pollTimer = setInterval(() => {
-    try {
-      if (require('fs').existsSync(tmpCsv)) {
-        const data = require('fs').readFileSync(tmpCsv, 'utf-8');
-        const lines = data.split('\n');
-        if (lines.length > 1) {
-          if (!headerParsed) {
-            const header = lines[0].trim();
-            const cols = header.split(',');
-            for (let i = 0; i < cols.length; i++) {
-              colIndex.set(cols[i].trim().toLowerCase(), i);
-            }
-            headerParsed = true;
-            console.log(`[FPS] header parsed (${colIndex.size} cols)`);
-          }
-          for (let i = lastReadPos + 1; i < lines.length; i++) {
-            const trimmed = lines[i].trim();
-            if (!trimmed) continue;
-            totalLines++;
-            const ft = parseFrameTime(trimmed, colIndex, pid);
-            if (ft !== null) {
-              frameTimesMs.push(ft);
-              if (frameTimesMs.length > MAX_FRAMES) {
-                frameTimesMs.splice(0, frameTimesMs.length - MAX_FRAMES);
-              }
-            }
-          }
-          lastReadPos = lines.length - 1;
-        }
+  rl.on('line', (line: string) => {
+    const cleaned = line.replace(/\0/g, '');
+    const trimmed = cleaned.trim();
+    if (!trimmed) return;
+
+    if (!headerParsed) {
+      if (trimmed.startsWith('Application') || trimmed.startsWith('ProcessID')) {
+        colIndex = new Map(
+          cleaned.split(',').map((c: string, i: number) => [c.trim().toLowerCase(), i])
+        );
+        headerParsed = true;
+        console.log(`[FPS] header parsed (${colIndex.size} cols)`);
       }
-    } catch { /* file not ready yet */ }
-  }, 500);
+      return;
+    }
+
+    totalLines++;
+    const ft = parseFrameTime(trimmed, colIndex, pid);
+    if (ft !== null) {
+      frameTimesMs.push(ft);
+      if (frameTimesMs.length > MAX_FRAMES) {
+        frameTimesMs.splice(0, frameTimesMs.length - MAX_FRAMES);
+      }
+    }
+  });
 
   // Log progress every 10s to help debug empty capture
   const debugTimer = setInterval(() => {
@@ -388,7 +378,7 @@ export function startFpsCapture(
   // When PresentMon exits on its own (game died, etc.),
   // save the accumulated frame data before clearing the session.
   child.on('exit', (code) => {
-    clearInterval(pollTimer);
+    rl.close();
     clearInterval(debugTimer);
     if (activeSession) {
       completedFrames = activeSession.frameTimesMs;
@@ -422,7 +412,6 @@ export function startFpsCapture(
     startWallMs: Date.now(),
     gameId: gameId || '',
     totalLines,
-    csvPath: tmpCsv,
   };
 
   console.log(`[FPS] started for pid ${pid}${gameId ? ` (${gameId})` : ''}`);
@@ -431,21 +420,14 @@ export function startFpsCapture(
 
 export function stopFpsCapture(): FpsStats | null {
   let frameTimesMs: number[] | null = null;
-  let csvPath: string | undefined;
 
   if (activeSession) {
     frameTimesMs = activeSession.frameTimesMs;
-    csvPath = activeSession.csvPath;
     try { activeSession.process.kill('SIGTERM'); } catch { /* already dead */ }
     activeSession = null;
   } else if (completedFrames) {
     frameTimesMs = completedFrames;
     completedFrames = null;
-  }
-
-  // Clean up temp CSV file
-  if (csvPath) {
-    try { require('fs').unlinkSync(csvPath); } catch { /* already gone */ }
   }
 
   restoreGamingServices();
