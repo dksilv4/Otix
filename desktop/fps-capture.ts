@@ -14,7 +14,6 @@
 
 import { ChildProcess, spawn, execSync } from 'child_process';
 import * as path from 'path';
-import { createInterface } from 'readline';
 import { app } from 'electron';
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -67,6 +66,7 @@ interface FpsCaptureSession {
   startWallMs: number;
   gameId: string;
   totalLines: number;
+  csvPath?: string; // temp CSV file path (--output_file mode)
 }
 
 // ── PresentMon discovery ───────────────────────────────────────────
@@ -318,8 +318,10 @@ export function startFpsCapture(
   const frameTimesMs: number[] = [];
   let totalLines = 0;
 
+  // Write CSV to temp file instead of stdout (stdout pipe causes exit 0 on this Win11 build)
+  const tmpCsv = path.join(require('os').tmpdir(), `pm_cap_${pid}_${Date.now()}.csv`);
   const args = [
-    '--output_stdout',
+    '--output_file', tmpCsv,
     '--stop_existing_session',
     '--no_console_stats',
     '--process_id', String(pid),
@@ -329,8 +331,6 @@ export function startFpsCapture(
   }
 
   // Clean interfering ETW sessions RIGHT BEFORE PresentMon starts.
-  // GraphicsPerfMonitorSession is auto-recreated by Windows Game Bar
-  // within milliseconds, so we time this as tight as possible.
   cleanupEtwSessions();
 
   const child = spawn(exePath, args, {
@@ -340,42 +340,41 @@ export function startFpsCapture(
 
   let headerParsed = false;
   let colIndex: Map<string, number> = new Map();
-  const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity });
 
-  rl.on('line', (line: string) => {
-    // PresentMon outputs UTF-16-LE to stdout when piped. Strip null bytes.
-    const cleaned = line.replace(/\0/g, '');
-    const trimmed = cleaned.trim();
-    if (!trimmed) return;
-
-    // The v2 CSV header starts with "Application", v1 starts with "ProcessID"
-    if (!headerParsed) {
-      if (
-        trimmed.startsWith('Application') ||
-        trimmed.startsWith('ProcessID')
-      ) {
-        colIndex = parseCsvHeader(cleaned);
-        headerParsed = true;
-        console.log(
-          `[FPS] header parsed (${Array.from(colIndex.keys()).length} cols)`,
-        );
+  // Poll temp CSV for new frames every 500ms
+  let lastReadPos = 0;
+  const pollTimer = setInterval(() => {
+    try {
+      if (require('fs').existsSync(tmpCsv)) {
+        const data = require('fs').readFileSync(tmpCsv, 'utf-8');
+        const lines = data.split('\n');
+        if (lines.length > 1) {
+          if (!headerParsed) {
+            const header = lines[0].trim();
+            const cols = header.split(',');
+            for (let i = 0; i < cols.length; i++) {
+              colIndex.set(cols[i].trim().toLowerCase(), i);
+            }
+            headerParsed = true;
+            console.log(`[FPS] header parsed (${colIndex.size} cols)`);
+          }
+          for (let i = lastReadPos + 1; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            if (!trimmed) continue;
+            totalLines++;
+            const ft = parseFrameTime(trimmed, colIndex, pid);
+            if (ft !== null) {
+              frameTimesMs.push(ft);
+              if (frameTimesMs.length > MAX_FRAMES) {
+                frameTimesMs.splice(0, frameTimesMs.length - MAX_FRAMES);
+              }
+            }
+          }
+          lastReadPos = lines.length - 1;
+        }
       }
-      return;
-    }
-
-    // v2 CSV data: "Application,ProcessID,..." — first column is app name, not a digit
-    totalLines++;
-
-    const ft = parseFrameTime(line, colIndex, pid);
-    if (ft !== null) {
-      frameTimesMs.push(ft);
-
-      // Bounded memory: discard oldest frames beyond cap
-      if (frameTimesMs.length > MAX_FRAMES) {
-        frameTimesMs.splice(0, frameTimesMs.length - MAX_FRAMES);
-      }
-    }
-  });
+    } catch { /* file not ready yet */ }
+  }, 500);
 
   // Log progress every 10s to help debug empty capture
   const debugTimer = setInterval(() => {
@@ -386,10 +385,10 @@ export function startFpsCapture(
     );
   }, 10000);
 
-  // When PresentMon exits on its own (game died, --timed expired, etc.),
-  // save the accumulated frame data before clearing the session so
-  // stopFpsCapture() can still compute final stats.
+  // When PresentMon exits on its own (game died, etc.),
+  // save the accumulated frame data before clearing the session.
   child.on('exit', (code) => {
+    clearInterval(pollTimer);
     clearInterval(debugTimer);
     if (activeSession) {
       completedFrames = activeSession.frameTimesMs;
@@ -398,8 +397,6 @@ export function startFpsCapture(
       fpsPermissionListeners.forEach((fn) => fn({ pid, gameId }));
     }
     activeSession = null;
-    // If PresentMon exited on its own, restore GamingServices
-    // since stopFpsCapture() won't be called.
     restoreGamingServices();
     if (code !== null) {
       console.log(
@@ -425,6 +422,7 @@ export function startFpsCapture(
     startWallMs: Date.now(),
     gameId: gameId || '',
     totalLines,
+    csvPath: tmpCsv,
   };
 
   console.log(`[FPS] started for pid ${pid}${gameId ? ` (${gameId})` : ''}`);
@@ -433,18 +431,23 @@ export function startFpsCapture(
 
 export function stopFpsCapture(): FpsStats | null {
   let frameTimesMs: number[] | null = null;
+  let csvPath: string | undefined;
 
   if (activeSession) {
     frameTimesMs = activeSession.frameTimesMs;
+    csvPath = activeSession.csvPath;
     try { activeSession.process.kill('SIGTERM'); } catch { /* already dead */ }
     activeSession = null;
   } else if (completedFrames) {
-    // PresentMon already exited on its own — use the stashed frames
     frameTimesMs = completedFrames;
     completedFrames = null;
   }
 
-  // Re-enable Gaming Services that were stopped for clean capture
+  // Clean up temp CSV file
+  if (csvPath) {
+    try { require('fs').unlinkSync(csvPath); } catch { /* already gone */ }
+  }
+
   restoreGamingServices();
 
   return frameTimesMs ? computeStats(frameTimesMs) : null;
