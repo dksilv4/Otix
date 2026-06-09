@@ -18,7 +18,9 @@ import { isDesktop } from '@/lib/desktop-api'
 import { openExternal } from '@/lib/open-external'
 import { useDownloadConfig, useConnectionTest } from '@/features/downloads/use-downloads'
 import { useExperiment } from '@/features/experiments/experiments-provider'
-import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle, ListMusic } from 'lucide-react'
+import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle, ListMusic, Film, Tv, Music } from 'lucide-react'
+import { usePlexLibraries, streamPlexLibrarySync } from '@/features/library/library-queries'
+import type { PlexLibraryInfo } from '@/features/library/library-queries'
 
 type SteamProfile = {
   personaname: string | null
@@ -100,6 +102,14 @@ function extractIntegrationMessage(err: unknown): string {
   }
   if (err instanceof Error) return err.message
   return 'Something went wrong. Please try again.'
+}
+
+function formatDaysAgo(unixTimestamp: number): string {
+  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
+  if (days <= 0) return 'Today'
+  if (days === 1) return '1d ago'
+  if (days <= 14) return `${days}d ago`
+  return ''
 }
 
 const BRAND_COLORS: Record<string, string> = {
@@ -332,7 +342,9 @@ export function IntegrationsSection() {
   const [plexDisconnecting, setPlexDisconnecting] = useState(false)
   const [plexSyncing, setPlexSyncing] = useState(false)
   const [plexSyncResult, setPlexSyncResult] = useState<PlexSyncResult | null>(null)
+  const [discoveringPlex, setDiscoveringPlex] = useState(false)
   const [plexLibraryProgress, setPlexLibraryProgress] = useState<Record<string, PlexLibraryProgress>>({})
+  const [syncingLibraryIds, setSyncingLibraryIds] = useState<Set<string>>(new Set())
   const abortRef = useRef<AbortController | null>(null)
   // Smooth progress animation — drives displayed count toward real server count at observed rate
   const animStateRef = useRef<Record<string, {
@@ -425,6 +437,7 @@ export function IntegrationsSection() {
   const displayedSteamId = steamId ?? user?.steamId ?? null
   const isPlexConnected = plexConnected
   const isTmdbConnected = tmdbConnected
+  const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } = usePlexLibraries({ enabled: isPlexConnected })
 
   // ── SABnzbd + NZBPlanet ──
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
@@ -1068,6 +1081,107 @@ export function IntegrationsSection() {
     }
   }
 
+  const handleDiscoverLibraries = async () => {
+    setDiscoveringPlex(true)
+    setPlexError('')
+    try {
+      await apiClient.get('/integrations/plex/servers')
+      await refetchLibraries()
+    } catch (err) {
+      setPlexError(extractIntegrationMessage(err))
+    } finally {
+      setDiscoveringPlex(false)
+    }
+  }
+
+  const handleSyncLibrary = async (library: PlexLibraryInfo) => {
+    if (syncingLibraryIds.has(library.id)) return
+    setSyncingLibraryIds((prev) => new Set(prev).add(library.id))
+    setPlexError('')
+    const key = `${library.serverName}:${library.title}`
+    setPlexLibraryProgress((prev) => ({
+      ...prev,
+      [key]: {
+        serverName: library.serverName,
+        libraryName: library.title,
+        itemsProcessed: 0,
+        itemsTotal: 0,
+        phase: 'pending',
+      },
+    }))
+    if (!animStateRef.current[key]) {
+      animStateRef.current[key] = { displayed: 0, real: 0, rate: 5, lastItems: 0, lastTime: performance.now() }
+    }
+
+    try {
+      const result = await streamPlexLibrarySync(library.id, (event) => {
+        switch (event.type) {
+          case 'syncing_library': {
+            setPlexLibraryProgress((prev) => ({
+              ...prev,
+              [key]: {
+                ...prev[key],
+                phase: 'syncing',
+                itemsTotal: event.itemsTotal as number,
+              },
+            }))
+            break
+          }
+          case 'library_progress': {
+            const realValue = event.itemsProcessed as number
+            const now = performance.now()
+            const s = animStateRef.current[key]
+            if (s) {
+              const deltaItems = realValue - s.lastItems
+              const deltaTime = now - s.lastTime
+              if (deltaItems > 0 && deltaTime > 30) {
+                const instantRate = deltaItems / (deltaTime / 1000)
+                s.rate = s.rate ? s.rate * 0.4 + instantRate * 0.6 : instantRate
+              }
+              s.real = realValue
+              s.lastItems = realValue
+              s.lastTime = now
+            } else {
+              animStateRef.current[key] = { displayed: Math.max(0, realValue - 5), real: realValue, rate: 5, lastItems: realValue, lastTime: now }
+            }
+            setPlexLibraryProgress((prev) => {
+              const lib = prev[key]
+              if (!lib) return prev
+              return { ...prev, [key]: { ...lib, itemsProcessed: realValue, itemsTotal: event.itemsTotal as number } }
+            })
+            break
+          }
+          case 'library_complete': {
+            const total = event.total as number
+            if (animStateRef.current[key]) {
+              animStateRef.current[key].real = total
+            }
+            setPlexLibraryProgress((prev) => {
+              const lib = prev[key]
+              if (!lib) return prev
+              return { ...prev, [key]: { ...lib, itemsProcessed: total, itemsTotal: total, phase: 'complete' as const } }
+            })
+            break
+          }
+        }
+      })
+      setPlexMessage(`Synced ${library.title}: ${result.matched} matched, ${result.seeded} seeded out of ${result.total} items.`)
+    } catch (err) {
+      setPlexError(extractIntegrationMessage(err))
+      setPlexLibraryProgress((prev) => {
+        const lib = prev[key]
+        if (!lib) return prev
+        return { ...prev, [key]: { ...lib, phase: 'failed' as const } }
+      })
+    } finally {
+      setSyncingLibraryIds((prev) => {
+        const next = new Set(prev)
+        next.delete(library.id)
+        return next
+      })
+    }
+  }
+
   const handleDisconnect = async () => {
     setDisconnecting(true)
     setSteamError('')
@@ -1367,7 +1481,90 @@ export function IntegrationsSection() {
                     icon={PlexIcon}
                     brandColor={BRAND_COLORS.plex}
                   />
-                  <IntegrationAction label="Library Sync" description="Plex Library" result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null} buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync' : 'Sync Now'} buttonIcon={RefreshCw} onPress={handlePlexSync} loading={plexSyncing} progress={Object.keys(plexLibraryProgress).length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>} />
+
+                  {/* Libraries list */}
+                  <div className="dk-settings-integrations__action">
+                    <div className="min-w-0 flex-1">
+                      <p className="dk-settings-integrations__action-label">Plex Libraries</p>
+                      <p className="dk-settings-integrations__action-desc">
+                        {plexLibrariesLoading
+                          ? 'Loading...'
+                          : plexLibraries && plexLibraries.length > 0
+                            ? `${plexLibraries.length} librar${plexLibraries.length === 1 ? 'y' : 'ies'} found`
+                            : 'Discover your Plex libraries to sync individually'}
+                      </p>
+                    </div>
+                    <DkButton
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDiscoverLibraries}
+                      loading={discoveringPlex}
+                      className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      {plexLibraries && plexLibraries.length > 0 ? 'Refresh' : 'Discover'}
+                    </DkButton>
+                  </div>
+
+                  {plexLibraries && plexLibraries.length > 0 && (
+                    <div className="px-5 py-2 space-y-2">
+                      {plexLibraries.map((lib) => {
+                        const TypeIcon = lib.libraryType === 'movie' ? Film : lib.libraryType === 'show' ? Tv : Music
+                        const typeLabel = lib.libraryType === 'artist' ? 'Music' : lib.libraryType === 'movie' ? 'Movies' : 'TV Shows'
+                        const libKey = `${lib.serverName}:${lib.title}`
+                        const libProgress = plexLibraryProgress[libKey]
+                        const isSyncing = syncingLibraryIds.has(lib.id)
+
+                        return (
+                          <div key={lib.id} className="flex items-center gap-3 rounded-xl p-3 bg-muted/30 border border-border/10">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium truncate">{lib.title}</span>
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 bg-muted/50 rounded-md px-1.5 py-0.5">
+                                  <TypeIcon className="h-3 w-3" />
+                                  {typeLabel}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 mt-0.5">
+                                <span className="font-medium text-muted-foreground/80">{lib.serverName}</span>
+                                <span className="text-muted-foreground/30">·</span>
+                                <span>{lib.itemCount} items</span>
+                                {lib.lastSyncedAt && (
+                                  <>
+                                    <span className="text-muted-foreground/30">·</span>
+                                    <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000)) || 'today'}</span>
+                                  </>
+                                )}
+                              </div>
+                              {libProgress && (
+                                <div className="dk-settings-integrations__progress-bar dk-settings-integrations__progress-bar--sm mt-1">
+                                  <div
+                                    className="dk-settings-integrations__progress-bar-fill"
+                                    style={{ width: `${libProgress.itemsTotal > 0 ? (libProgress.itemsProcessed / libProgress.itemsTotal) * 100 : 0}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            <DkButton
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleSyncLibrary(lib)}
+                              loading={isSyncing}
+                              disabled={isSyncing}
+                              className="shrink-0 self-start sm:self-center bg-primary/10 text-primary shadow-none hover:bg-primary/15"
+                            >
+                              <RefreshCw className={isSyncing ? 'h-3 w-3 mr-1 animate-spin' : 'h-3 w-3 mr-1'} />
+                              {isSyncing ? 'Syncing' : 'Sync'}
+                            </DkButton>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Sync All */}
+                  <IntegrationAction label="Sync All Libraries" description="Sync all selected Plex libraries at once" result={plexSyncResult ? `${plexSyncResult.total} items, ${plexSyncResult.seeded} seeded` : null} buttonLabel={plexSyncing ? 'Syncing...' : plexSyncResult ? 'Re-sync All' : 'Sync All'} buttonIcon={RefreshCw} onPress={handlePlexSync} loading={plexSyncing} progress={Object.keys(plexLibraryProgress).length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>} muted />
+
                   <IntegrationAction label="Watchlist Sync" description="Plex Watchlist" result={plexWatchlistSyncResult ? `${plexWatchlistSyncResult.matched} matches out of ${plexWatchlistSyncResult.total} watchlist items` : null} buttonLabel={plexWatchlistSyncing ? 'Syncing...' : plexWatchlistSyncResult ? 'Re-sync' : 'Sync Watchlist'} buttonIcon={RefreshCw} onPress={handlePlexWatchlistSync} loading={plexWatchlistSyncing} muted />
                   <div className="dk-settings-integrations__switch-row">
                     <div className="dk-settings-integrations__switch-info">
@@ -1388,48 +1585,6 @@ export function IntegrationsSection() {
                       }}
                     />
                   </div>
-                  {Object.keys(plexLibraryProgress).length > 0 && (
-                    <div className="dk-settings-integrations__progress-section">
-                      <p className="dk-settings-integrations__progress-section-label">
-                        Library Sync Progress
-                      </p>
-                      {Object.entries(plexLibraryProgress).map(([key, lib]) => {
-                        const anim = animStateRef.current[key]
-                        const displayedCount = anim ? Math.round(anim.displayed) : lib.itemsProcessed
-                        const barPercent = lib.itemsTotal > 0 ? (displayedCount / lib.itemsTotal) * 100 : 0
-                        const showBar = (lib.phase === 'syncing' || displayedCount < lib.itemsTotal) && lib.itemsTotal > 0
-                        return (
-                          <div key={key} className="dk-settings-integrations__progress-item">
-                            <div className="dk-settings-integrations__progress-row">
-                              <span className="font-medium truncate flex-1">
-                                {lib.phase === 'pending' && '(pending) '}
-                                {lib.phase === 'syncing' && '> '}
-                                {lib.phase === 'complete' && '> '}
-                                {lib.phase === 'failed' && '(failed) '}
-                                {' '}{lib.libraryName}
-                                <span className="text-muted-foreground/60 ml-1.5">({lib.serverName})</span>
-                              </span>
-                              {lib.phase === 'syncing' && lib.itemsTotal > 0 && (
-                                <span className="text-muted-foreground shrink-0 ml-2">
-                                  {displayedCount}/{lib.itemsTotal}
-                                  {' '}
-                                  ({Math.round(barPercent)}%)
-                                </span>
-                              )}
-                            </div>
-                            {showBar && (
-                              <div className="dk-settings-integrations__progress-bar">
-                                <div
-                                  className="dk-settings-integrations__progress-bar-fill"
-                                  style={{ width: `${barPercent}%` }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
                   {plexMessage && <p className="dk-settings-integrations__message dk-settings-integrations__message--success">{plexMessage}</p>}
                   {plexError && <p className="dk-settings-integrations__message dk-settings-integrations__message--error">{plexError}</p>}
                 </>

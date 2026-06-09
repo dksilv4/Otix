@@ -249,7 +249,7 @@ class MediaService:
             )
 
         if exclude_adult:
-            query = query.where(not MediaItem.is_adult)
+            query = query.where(MediaItem.is_adult.isnot(True))
 
         if date_from is not None:
             query = query.where(MediaItem.release_date >= date_from)
@@ -302,7 +302,7 @@ class MediaService:
                     MediaCredit.role == (credit_role or "primary"),
                 )
             if exclude_adult:
-                count_query = count_query.where(not MediaItem.is_adult)
+                count_query = count_query.where(MediaItem.is_adult.isnot(True))
             if media_ids:
                 count_query = count_query.where(MediaItem.id.in_(media_ids))
             if date_from is not None:
@@ -458,7 +458,7 @@ class MediaService:
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
         if exclude_adult:
-            base_q = base_q.where(not MediaItem.is_adult)
+            base_q = base_q.where(MediaItem.is_adult.isnot(True))
 
         # Ranking: blend ts_rank, trigram similarity, vector similarity, credit
         # matches, and popularity.
@@ -566,7 +566,7 @@ class MediaService:
         if media_type:
             q = q.where(MediaItem.media_type == media_type)
         if exclude_adult:
-            q = q.where(not MediaItem.is_adult)
+            q = q.where(MediaItem.is_adult.isnot(True))
 
         result = await self.session.execute(q)
         rows = result.all()

@@ -3,6 +3,7 @@ import { Outlet } from '@tanstack/react-router'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 import { FloatingGameSelector } from '@/features/games/molecules/floating-game-selector'
 import { WebPreviewBanner } from '@/features/games/molecules/web-preview-banner'
+import { FpsPermissionDialog } from '@/features/games/molecules/fps-permission-dialog'
 
 export function LauncherHomePage() {
   return (
@@ -11,6 +12,7 @@ export function LauncherHomePage() {
         <Helmet><title>Games · Otix</title></Helmet>
         <WebPreviewBanner />
         <FloatingGameSelector />
+        <FpsPermissionDialog />
         <Outlet />
       </div>
     </QueryErrorBoundary>

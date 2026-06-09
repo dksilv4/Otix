@@ -38,15 +38,18 @@ function circularDist(index: number, target: number, total: number): number {
 }
 
 function cardTransform(dist: number, cardOffset: number): string {
-  const scale = 1 - Math.abs(dist) * 0.12  // fanning scale down
-  const rotate = dist * 6.5                // fanning rotation
-  const translateY = Math.abs(dist) * 16   // downward curve offset
-  
+  const abs = Math.abs(dist)
+  const scale = 1 - abs * 0.10     // fanning scale down
+  const rotate = dist * 5.5        // fanning rotation
+  const translateY = abs * 14      // downward curve offset
+  // diminishing gap — each further layer sits closer than uniform spacing
+  const layerGap = cardOffset * (1 - abs * 0.06)
+
   if (dist === 0) {
     return 'translateX(-50%) translateY(-50%) scale(1) rotate(0deg)'
   }
-  
-  return `translateX(-50%) translateX(${dist * cardOffset}px) translateY(calc(-50% + ${translateY}px)) scale(${scale}) rotate(${rotate}deg)`
+
+  return `translateX(-50%) translateX(${dist * layerGap}px) translateY(calc(-50% + ${translateY}px)) scale(${scale}) rotate(${rotate}deg)`
 }
 
 const CARD_TRANSITION = 'transform 600ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 500ms ease-out'
@@ -303,7 +306,7 @@ function DiscoverHeroCard({
               className="dk-discover-hero__card-overlay"
               style={{
                 backgroundColor: 'var(--background)',
-                opacity: Math.min(0.30 + absDist * 0.25, 0.90),
+                opacity: Math.min(0.25 + absDist * 0.20, 0.85),
                 transition: 'opacity 500ms ease-out',
               }}
             />
@@ -385,15 +388,16 @@ export function DiscoverHero({ className }: { className?: string }) {
 
   const cardOffset = useMemo(() => {
     const effectiveWidth = Math.min(windowWidth, 1400)
-    if (effectiveWidth < 640) return 130
-    if (effectiveWidth < 768) return 180
-    return 220
+    if (effectiveWidth < 640) return 135
+    if (effectiveWidth < 768) return 190
+    return 240
   }, [windowWidth])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start end", "end start"]
+
   })
   const yScroll = useTransform(scrollYProgress, [0, 0.5, 1], [-60, 0, 60])
   const yScrollLogo = useTransform(scrollYProgress, [0, 0.5, 1], [30, 0, -30])

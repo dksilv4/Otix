@@ -1740,6 +1740,8 @@ async def sync_plex(
     db: AsyncSession,
     user: User,
     progress: ProgressCallback | None = None,
+    *,
+    library_id: str | None = None,
 ) -> dict:
     # ── Shared HTTP client for all Plex API calls ──────────────────
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -1783,7 +1785,10 @@ async def sync_plex(
 
         # Phase 2: Process each library sequentially with savepoints so
         # a failure in one library doesn't corrupt the session for others.
+        # When library_id is set, only sync that specific library.
         for srv, lib in all_library_plans:
+            if library_id and lib.id != library_id:
+                continue
             try:
                 async with db.begin_nested():
                     result = await sync_plex_library(
@@ -1805,14 +1810,17 @@ async def sync_plex(
             for key in ("total", "matched", "seeded"):
                 summary[key] += result[key]
         # ── Watchlist sync ─────────────────────────────────────────
-        wl_result = await sync_plex_watchlist(db, user, progress=progress, client=client)
-        for key in ("total", "matched", "seeded"):
-            summary[key] += wl_result[key]
+        # Skip when syncing a single library — watchlist is independent.
+        if not library_id:
+            wl_result = await sync_plex_watchlist(db, user, progress=progress, client=client)
+            for key in ("total", "matched", "seeded"):
+                summary[key] += wl_result[key]
 
     # ── Compute show watch status from episode data ───────────────
     # Query all shows that have episode data for this user (via UserPlexItem),
     # then check if every episode in every season has been watched.
-    if user.plex_watch_history_enabled:
+    # Skip when syncing a single library.
+    if user.plex_watch_history_enabled and not library_id:
         show_rows = (
             await db.scalars(
                 select(UserPlexItem.media_item_id).where(
@@ -1832,7 +1840,7 @@ async def sync_plex(
         summary["failed_servers"] = failed_servers
 
     await db.commit()
-    logger.info("plex sync completed", user_id=user.id, **summary)
+    logger.info("plex sync completed", user_id=user.id, library_id=library_id, **summary)
     await _safe_progress(progress, "sync_complete", **summary)
     return summary
 

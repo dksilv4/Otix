@@ -1,19 +1,12 @@
 // TODO: Review this file
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useDeepLink } from '@/lib/use-deep-link'
+import { AuthContext } from './auth-context'
 import type { User, AuthState, TwoFactorChallenge, LoginResponse } from './types'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
-
-const AuthContext = createContext<AuthState | null>(null)
-
-export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -35,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function loadUser(token: string): Promise<User | null> {
+  async function loadUser(): Promise<User | null> {
     try {
       const meRes = await apiClient.get('/auth/me')
       const user = meRes.data as User
@@ -47,13 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Initialize auth state — runs once on mount
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) {
-      setIsLoading(false)
+      setTimeout(() => setIsLoading(false), 0)
       return
     }
-    loadUser(token).then((user) => {
+    loadUser().then((user) => {
       setUser(user)
       setIsLoading(false)
     })
@@ -63,9 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handler = () => {
       setUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
-      // Don't clear all caches — only auth-dependent queries need invalidation.
-      // Individual queries already get 401 and show errors; clearing non-auth
-      // caches (discover, browse) causes unnecessary flicker.
       queryClient.invalidateQueries({ queryKey: ['workout'] })
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
     }
@@ -77,18 +68,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useDeepLink(
     useCallback(
       (data) => {
-        // otix://auth/steam/callback?accessToken=xxx
         if (data.action === 'auth/steam/callback' && data.params.accessToken) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
-          loadUser(data.params.accessToken).then(setUser)
+          loadUser().then(setUser)
         }
 
-        // otix://auth/steam/connect/callback — refresh integrations
         if (data.action === 'auth/steam/connect/callback') {
           queryClient.invalidateQueries({ queryKey: ['integrations'] })
         }
-
-        // otix://refocus — no-op, just brought app to foreground
       },
       [],
     ),
@@ -104,9 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
-    // Don't clear cache on login — setUser triggers auth-gated queries to
-    // become enabled and refetch naturally based on staleTime. Clearing here
-    // would force every mounted query to refetch simultaneously (request storm).
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
     await mergeIntegrations(user)
@@ -122,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
     setTwoFactorChallenge(null)
-    // Don't clear cache — same rationale as login handler.
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
     await mergeIntegrations(user)
@@ -136,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (email: string, username: string, password: string, dateOfBirth: string) => {
     const res = await apiClient.post('/auth/register', { email, username, password, date_of_birth: dateOfBirth })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
-    // Don't clear cache on register — new user, no stale data to remove.
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
     await mergeIntegrations(user)
@@ -152,8 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACCESS_TOKEN_KEY)
     setUser(null)
     setTwoFactorChallenge(null)
-    // Safe to clear on logout: setUser(null) disables auth-gated queries
-    // so they won't refetch. This wipes user-specific data from cache.
     queryClient.clear()
   }, [])
 
@@ -183,3 +163,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   )
 }
+
+export { useAuth } from './auth-context'

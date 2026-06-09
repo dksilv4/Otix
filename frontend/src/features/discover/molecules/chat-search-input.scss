@@ -130,6 +130,39 @@
 .dk-discover-chat-input__ai-indicator {
   @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ml-auto;
   @apply text-emerald-400/60 bg-emerald-400/5 ring-1 ring-emerald-400/10;
+  transition: all 200ms;
+
+  // ── Variants by status ──
+
+  &--ready {
+    @apply text-emerald-400/60 bg-emerald-400/5 ring-emerald-400/10;
+  }
+
+  &--loading {
+    @apply text-blue-400/80 bg-blue-400/5 ring-blue-400/10;
+  }
+
+  &--downloading {
+    @apply text-amber-400/80 bg-amber-400/5 ring-amber-400/10;
+    animation: dk-ai-pulse 2s ease-in-out infinite;
+  }
+
+  &--not_available {
+    @apply text-muted-foreground/30 bg-white/[0.02] ring-white/[0.04];
+  }
+
+  &--error {
+    @apply text-red-400/80 bg-red-400/5 ring-red-400/10;
+  }
+
+  &--clickable {
+    @apply cursor-pointer;
+    &:hover {
+      @apply bg-red-400/15 ring-red-400/25;
+    }
+  }
+
+  // ── Classifying (ready state only) ──
 
   &--classifying {
     @apply text-emerald-400 bg-emerald-400/10 ring-emerald-400/20;

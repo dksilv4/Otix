@@ -376,9 +376,9 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                   <div className="dk-now-playing__game">
                     <div className="dk-now-playing__game-card">
                       <div className="dk-now-playing__game-art">
-                        {runningGame.game.posterUrl || runningGame.game.iconUrl ? (
+                        {runningGame.game.iconUrl || runningGame.game.posterUrl ? (
                           <img
-                            src={runningGame.game.posterUrl || runningGame.game.iconUrl}
+                            src={runningGame.game.iconUrl || runningGame.game.posterUrl}
                             alt={runningGame.game.title}
                             className="dk-now-playing__game-img"
                           />

@@ -1,5 +1,5 @@
 // TODO: Review this file
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { Helmet } from "react-helmet-async"
 import { useNavigate } from "@tanstack/react-router"
 import { ChevronDown, ArrowRight, Search, Star, List, Trophy, Link, X } from "lucide-react"
@@ -109,13 +109,16 @@ function highlight(text: string, query: string): React.ReactNode {
 
 function FaqItem({ q, a, query }: FaqDef & { query: string }) {
   const [open, setOpen] = useState(false)
+  const [lastQuery, setLastQuery] = useState(query)
   const isVisible = matchesQuery(q, query) || matchesQuery(a, query)
 
-  // auto-open when search matches
-  const shouldAutoOpen = query.length > 0 && isVisible
-  useEffect(() => {
-    if (shouldAutoOpen) setOpen(true)
-  }, [shouldAutoOpen])
+  // Auto-open when query changes and item matches. Resets manual close on new query.
+  if (query !== lastQuery) {
+    setLastQuery(query)
+    if (query.length > 0 && isVisible) {
+      setOpen(true)
+    }
+  }
 
   if (!isVisible) return null
 

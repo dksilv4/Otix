@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react"
 import { Link, useLocation } from "@tanstack/react-router"
 import {
   HomeIcon,
+  MagnifyingGlassIcon,
   BookmarkIcon,
   BellIcon,
   Cog6ToothIcon,
@@ -61,6 +62,7 @@ export function MenuDropdown() {
 
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
+    { to: "/search", icon: <MagnifyingGlassIcon className="h-[18px] w-[18px]" />, label: "Chat", params: undefined },
     { to: "/game", icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined },
     { to: "/library", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
     ...(user ? [

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getDesktopAPI } from '@/lib/desktop-api'
+import type { FpsStatsData } from '@/lib/desktop-api'
 
 export interface PlaytimeInfo {
   totalMinutes: number
   sessionCount: number
   lastPlayed: number | null
+  lastFpsStats: FpsStatsData | null
 }
 
 export function useGamePlaytime(gameId: string | null | undefined): PlaytimeInfo | null {

@@ -242,7 +242,8 @@
   }
 
   &__sections {
-    @apply w-full flex flex-col;
+    @apply w-full flex flex-col mx-auto;
+    max-width: 1400px;
     gap: 3rem;
     margin-top: 1.5rem;
   }

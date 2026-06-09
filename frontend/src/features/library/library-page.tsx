@@ -338,7 +338,7 @@ function ListsTabContent({ onCreateClick }: { onCreateClick: () => void }) {
 
 function LocalGamesOverviewSection() {
   const navigate = useNavigate()
-  const { data: games = [] } = useLocalGames()
+  const { data: games = [] } = useLocalGames({ sortBy: 'last_played_at', sortDir: 'desc' })
 
   const isElectron = isDesktop()
   if (!isElectron || games.length === 0) return null

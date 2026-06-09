@@ -1,5 +1,5 @@
 // TODO: Review this file
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Helmet } from "react-helmet-async"
 import { ArrowPathIcon } from "@heroicons/react/24/solid"
 import { useAuth } from "@/features/auth"
@@ -153,7 +153,7 @@ const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS
 
 function AdminHeader() {
   const { isFetching, dataUpdatedAt, refetch } = useAdminStats()
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     let raf: number
@@ -165,9 +165,9 @@ function AdminHeader() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  const secondsSinceUpdate = dataUpdatedAt != null
-    ? (Date.now() - dataUpdatedAt) / 1000
-    : 0
+  const secondsSinceUpdate = useMemo(() => {
+    return dataUpdatedAt != null ? (Date.now() - dataUpdatedAt) / 1000 : 0
+  }, [dataUpdatedAt, tick])
   const progress = Math.min(1, secondsSinceUpdate / (REFETCH_INTERVAL / 1000))
   const secondsLeft = Math.max(0, Math.ceil(REFETCH_INTERVAL / 1000 - secondsSinceUpdate))
 

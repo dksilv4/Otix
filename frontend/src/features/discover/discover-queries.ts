@@ -51,7 +51,7 @@ export const discoverQueries = {
     infiniteQueryOptions({
       queryKey: discoverKeys.hero(),
       queryFn: async ({ pageParam }) => {
-        const params: Record<string, string> = { limit: '6' }
+        const params: Record<string, string> = { limit: '9' }
         if (pageParam) params.cursor = pageParam
         const { data } = await apiClient.get<DiscoverListResponse>('/discover/hero', { params })
         return data

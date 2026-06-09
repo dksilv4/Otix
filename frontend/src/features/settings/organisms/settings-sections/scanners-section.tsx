@@ -31,6 +31,7 @@ export function ScannersSection() {
 
   const isDesktop = hasDesktopAPI()
   const gameCount = scannedGames.length
+  const [lastScan, setLastScan] = useState<string | null>(() => localStorage.getItem('otix-last-scan'))
 
   const handleAddGamePath = useCallback(async () => {
     if (!isDesktop) return
@@ -225,6 +226,7 @@ export function ScannersSection() {
       }
       const now = new Date().toLocaleString()
       setLastScan(now)
+      localStorage.setItem('otix-last-scan', now)
 
       // Auto-match against catalog
       if (scanned && scanned.length > 0) {

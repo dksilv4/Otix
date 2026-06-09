@@ -1,15 +1,12 @@
 // TODO: Review this file
-import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
-import { DkTabs, DkTabList, DkTab } from '@/features/dk-ui/molecules/tabs'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChatSearchInput } from '../molecules/chat-search-input'
 import { DailyMoodCheckIn, type RecordedMoodContext } from '../molecules/daily-mood-check-in'
 import { discoverQueries } from '@discover/discover-queries'
 import { DiscoverHero } from './discover-hero'
-import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 import { useTodayWorkout, useCheckIn, useUndoCheckIn, useWorkouts, useDeleteWorkout } from '@/features/workout/workout-queries'
@@ -18,28 +15,13 @@ import { groupWorkoutsByDay, formatVolume, type DayGroup } from '@/features/work
 import { WorkoutCard } from '@/features/workout/molecules/workout-card'
 import { WorkoutHeatmap } from '@/features/workout/molecules/workout-heatmap'
 import { Logo } from '@ui/atoms/logo'
-import { Dumbbell, Flame, RotateCcw, CheckCircle2, Weight } from 'lucide-react'
+import { Dumbbell, Flame, RotateCcw, CheckCircle2, Weight, MessageSquareText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import './home-page.scss'
 
 const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 import { MediaSection } from './media-section'
 import { TmdbConnectCallbackPage } from '@auth/organisms/tmdb-connect-callback-page'
-
-const TYPE_TABS = [
-  { value: 'all', label: 'All' },
-  { value: 'movie', label: 'Movies' },
-  { value: 'show', label: 'Shows' },
-  { value: 'game', label: 'Games' },
-  { value: 'music', label: 'Music' },
-] as const
-
-const PLACEHOLDERS = [
-  'Find your next obsession...',
-  'Cue up a cozy night pick...',
-  'Chase a new gaming rabbit hole...',
-  'What vibe are we on today?',
-]
 
 const MEDIA_DOT_COLORS: Record<string, { active: string; inactive: string; text: string }> = {
   movie: {
@@ -201,9 +183,6 @@ export function HomePage() {
 function HomeExperience() {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
-  const searchParams = useSearch({ from: '/' })
-  const queryClient = useQueryClient()
-  const activeType = searchParams.type || 'all'
 
   const [activeSectionIndex, setActiveSectionIndex] = useState(0)
 
@@ -215,9 +194,7 @@ function HomeExperience() {
     }
   }, [])
 
-  const [query, setQuery] = useState('')
   const [isHovered, setIsHovered] = useState(false)
-  const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [greeting] = useState(() => getGreeting())
   const [isMoodPromptVisible, setIsMoodPromptVisible] = useState(false)
   const [moodNoteContext, setMoodNoteContext] = useState<RecordedMoodContext | null>(null)
@@ -225,23 +202,10 @@ function HomeExperience() {
   const [moodNoteResetKey, setMoodNoteResetKey] = useState(0)
   const HOME_MODE_KEY = 'otix-home-mode'
 
-  const [moodNoteSaving, setMoodNoteSaving] = useState(false)
   const [activeMode, setActiveMode] = useState<string>(() => {
     const stored = localStorage.getItem(HOME_MODE_KEY)
     return stored === 'workout' ? 'workout' : 'discover'
   })
-  const searchInputRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  // Navigate to search page when a query is entered
-  useEffect(() => {
-    if (query.length > 0) {
-      navigate({
-        to: '/search',
-        search: { q: query, type: activeType, sort: '' },
-      })
-    }
-  }, [query, activeType, navigate])
 
   // Workout check-in — only fire when authenticated
   const todayWorkoutQuery = useTodayWorkout({ enabled: isAuthenticated })
@@ -361,23 +325,7 @@ function HomeExperience() {
     }
   }, [navSections])
 
-  // Rotate placeholder text
-  useEffect(() => {
-    if (query) return
-    const interval = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [query])
-
   const isMoodNoteMode = moodNoteContext != null
-
-  useEffect(() => {
-    if (isMoodNoteMode) {
-      setMoodNote('')
-      inputRef.current?.focus()
-    }
-  }, [isMoodNoteMode])
 
   const handleMoodRecorded = useCallback((context: RecordedMoodContext) => {
     if (context.feeling !== null) {
@@ -388,57 +336,18 @@ function HomeExperience() {
     }
   }, [])
 
-  const handleMoodNoteSubmit = useCallback(async () => {
-    if (!moodNoteContext || moodNoteSaving) return
-    const note = moodNote.trim()
-    setMoodNoteSaving(true)
-    try {
-      const { data } = await apiClient.post('/mood-checkins', {
-        feeling: moodNoteContext.feeling,
-        mood: moodNoteContext.mood,
-        note: note || null,
-      })
-      queryClient.setQueryData(['mood-checkins', 'today'], { due: false, checkin: data })
-      showXPToast(10)
-      setMoodNote('')
-      setMoodNoteContext(null)
-      setMoodNoteResetKey((key) => key + 1)
-    } finally {
-      setMoodNoteSaving(false)
-    }
-  }, [moodNote, moodNoteContext, moodNoteSaving, queryClient])
-
-  // Pre-warm the API connection when the search input receives focus
-  const prewarmedRef = useRef(false)
-  const handleSearchFocus = useCallback(() => {
-    if (!prewarmedRef.current) {
-      prewarmedRef.current = true
-      apiClient.get('/health')
-    }
-  }, [])
-
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      if (e.key === 'Escape' && target === inputRef.current) {
-        if (moodNoteContext) {
-          setMoodNote('')
-          setMoodNoteContext(null)
-          setMoodNoteResetKey((key) => key + 1)
-        } else {
-          setQuery('')
-        }
-        ;(target as HTMLInputElement).blur()
-      }
       return
     }
 
     if (e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) {
       e.preventDefault()
-      inputRef.current?.focus()
+      navigate({ to: '/search' })
     }
-  }, [moodNoteContext])
+  }, [navigate])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -488,7 +397,7 @@ function HomeExperience() {
         <div
           className="dk-discover-home-page__body"
         >
-          <div id="section-search" ref={searchInputRef} className="dk-discover-home-page__search">
+          <div className="dk-discover-home-page__search">
             <p className="dk-discover-home-page__greeting">
               {isMoodPromptVisible ? `${greeting}, how are you feeling today?` : greeting}
             </p>
@@ -499,11 +408,20 @@ function HomeExperience() {
                 onPromptVisibleChange={setIsMoodPromptVisible}
               />
             </div>
+
+            {/* Chat entry button */}
+            <button
+              onClick={() => navigate({ to: '/search' })}
+              className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-medium bg-white/[0.04] text-foreground/70 ring-1 ring-white/[0.06] transition-all duration-200 hover:bg-white/[0.08] hover:text-foreground hover:ring-primary/20 hover:scale-[1.02] active:scale-[0.98] w-full max-w-[32rem]"
+            >
+              <MessageSquareText className="h-5 w-5" />
+              <span>Chat with AI</span>
+              <span className="ml-auto px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/[0.06] text-muted-foreground/40">/</span>
+            </button>
+
             {activeMode === 'workout' && !isMoodNoteMode ? (
-              <div className="w-full max-w-3xl">
-                <div
-                  className="dk-discover-home-page__workout-panel"
-                >
+              <div className="w-full max-w-3xl mt-4">
+                <div className="dk-discover-home-page__workout-panel">
                   {isAuthenticated ? (
                     <div className="dk-discover-home-page__workout-panel-header">
                       <Flame className="h-5 w-5 shrink-0 text-primary/50" />
@@ -564,7 +482,6 @@ function HomeExperience() {
                       </div>
                     </div>
                   )}
-                  {/* Mode tags */}
                   <div className="dk-discover-home-page__workout-panel-modes">
                     <button
                       onClick={() => handleModeChange('discover')}
@@ -582,31 +499,7 @@ function HomeExperience() {
                   </div>
                 </div>
               </div>
-            ) : (
-              <ChatSearchInput
-                ref={inputRef}
-                value={isMoodNoteMode ? moodNote : query}
-                onChange={isMoodNoteMode ? setMoodNote : setQuery}
-                onTypeChange={isMoodNoteMode ? undefined : (t) => setActiveType(t || 'all')}
-                activeType={isMoodNoteMode ? undefined : activeType === 'all' ? null : activeType}
-                onSubmit={isMoodNoteMode ? handleMoodNoteSubmit : undefined}
-                onFocus={isMoodNoteMode ? undefined : handleSearchFocus}
-                placeholder={
-                  isMoodNoteMode
-                    ? `Optional note for ${moodNoteContext.label.toLowerCase()}`
-                    : query
-                      ? 'Search...'
-                      : PLACEHOLDERS[placeholderIndex]
-                }
-                disabled={moodNoteSaving}
-                debounceMs={isMoodNoteMode ? 0 : 150}
-                leadingIcon={isMoodNoteMode ? moodNoteContext.Icon : undefined}
-                showSubmitWhenEmpty={isMoodNoteMode}
-                submitLabel={isMoodNoteMode ? 'Save note' : 'Search'}
-                activeMode={activeMode}
-                onModeChange={handleModeChange}
-              />
-            )}
+            ) : null}
           </div>
 
           <AnimatePresence mode="wait">
@@ -644,7 +537,7 @@ function HomeExperience() {
               >
                 {/* DiscoverHero carousel */}
                 <div id="section-slides" className="w-full">
-                  <DiscoverHero className="w-full max-w-[1400px]" />
+                  <DiscoverHero />
                 </div>
 
                 {/* Discover sections vertically stacked layout */}

@@ -22,7 +22,7 @@ _DISCOVER_TTL = 120
 @router.get("/hero", response_model=MediaItemListResponse)
 async def discover_hero(
     request: Request,
-    limit: int = Query(6, ge=1, le=20),
+    limit: int = Query(9, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:

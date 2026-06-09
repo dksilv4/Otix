@@ -9,6 +9,7 @@ from fastapi import APIRouter
 
 from otix.api.integrations.plex.album_tracks import router as plex_album_tracks_router
 from otix.api.integrations.plex.connect_info import router as plex_connect_info_router
+from otix.api.integrations.plex.libraries import router as plex_libraries_router
 from otix.api.integrations.plex.servers import router as plex_servers_router
 from otix.api.integrations.plex.sessions import router as plex_sessions_router
 from otix.api.integrations.plex.stream import router as plex_stream_router
@@ -29,6 +30,7 @@ from otix.api.integrations.youtube.sync import router as youtube_sync_router
 router = APIRouter()
 
 router.include_router(plex_servers_router)
+router.include_router(plex_libraries_router)
 router.include_router(plex_sync_router)
 router.include_router(plex_watchlist_sync_router)
 router.include_router(plex_webhook_router)

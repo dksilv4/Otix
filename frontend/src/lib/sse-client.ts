@@ -153,12 +153,16 @@ export async function connectTaskSseStream(
 
   // ── 1. Create the background task ──────────────────────────────
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   const createResponse = await fetch(`${baseUrl}${config.createEndpoint}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers,
+    body: '{}',
     signal,
   })
 

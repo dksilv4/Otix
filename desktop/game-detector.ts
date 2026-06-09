@@ -5,6 +5,8 @@ import * as path from 'path';
 import psList from 'ps-list';
 import type { LocalGame } from './scanner';
 import { updateLastPlayedAt } from './game-storage-service';
+import { startFpsCapture, stopFpsCapture, isPresentMonAvailable, getLiveFps, isCapturing } from './fps-capture';
+import type { FpsStats, LiveFpsSnapshot } from './fps-capture';
 
 export interface RunningGame {
   game: LocalGame;
@@ -19,6 +21,7 @@ export interface PlaySession {
   startTime: number;
   endTime: number;
   launchedByOtix: boolean;
+  fpsStats?: FpsStats | null;
 }
 
 export interface DetectedProcess {
@@ -35,6 +38,12 @@ interface ProcessMapping {
 
 const MAX_SESSIONS = 100;
 const SCAN_INTERVAL_MS = 30000;
+
+/** Process names to ignore — non-game apps that shouldn't trigger FPS capture. */
+const NON_GAME_PROCESSES = new Set([
+  'wallpaper64.exe', 'wallpaper32.exe',
+  'explorer.exe', 'svchost.exe', 'runtimebroker.exe',
+]);
 
 function normalizeTitle(title: string): string {
   return title
@@ -106,6 +115,9 @@ export class GameDetector extends EventEmitter {
   private mappings: ProcessMapping[] = [];
   private trackedPids = new Set<number>();
   private processCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private fpsPollTimer: ReturnType<typeof setInterval> | null = null;
+  /** Which game ID owns the active PresentMon FPS capture. */
+  private fpsTargetGameId: string | null = null;
 
   constructor(sessionsDir: string) {
     super();
@@ -131,9 +143,19 @@ export class GameDetector extends EventEmitter {
     };
     this.runningGames.set(game.id, entry);
 
+    // Mark as just played so it sorts to top immediately
+    updateLastPlayedAt(game.id, new Date().toISOString());
+
     if (pid) {
       this.trackedPids.add(pid);
       this.startProcessCheck();
+      // Start FPS capture if PresentMon is available
+      if (isPresentMonAvailable()) {
+        const exeName = game.exePath ? path.basename(game.exePath) : game.title;
+        if (startFpsCapture(pid, game.id, exeName)) {
+          this.startFpsPolling(game.id);
+        }
+      }
     }
 
     this.emit('game:started', entry);
@@ -149,14 +171,15 @@ export class GameDetector extends EventEmitter {
 
   getRunningGames(): RunningGame[] {
     const alive: RunningGame[] = [];
-    for (const [id, entry] of this.runningGames) {
+    for (const [, entry] of this.runningGames) {
       if (entry.pid) {
         try {
           process.kill(entry.pid, 0);
           alive.push(entry);
         } catch {
-          this.endSession(entry);
-          this.runningGames.delete(id);
+          // PID dead — skip. Don't endSession here: game may have
+          // transitioned to a new PID (launcher → game process).
+          // scanRunningProcesses will re-detect or clean up.
         }
       } else {
         alive.push(entry);
@@ -180,19 +203,22 @@ export class GameDetector extends EventEmitter {
     }
   }
 
-  getPlaytimeForGame(gameId: string): { totalMinutes: number; sessionCount: number; lastPlayed: number | null } {
+  getPlaytimeForGame(gameId: string): { totalMinutes: number; sessionCount: number; lastPlayed: number | null; lastFpsStats: FpsStats | null } {
     try {
       const data = fs.readFileSync(this.sessionsPath, 'utf-8');
       const sessions: PlaySession[] = JSON.parse(data);
       const gameSessions = sessions.filter((s) => s.gameId === gameId && s.endTime > s.startTime);
       const totalMs = gameSessions.reduce((sum, s) => sum + (s.endTime - s.startTime), 0);
+      // Find most recent session that has FPS stats
+      const withFps = gameSessions.filter((s) => s.fpsStats).sort((a, b) => b.endTime - a.endTime);
       return {
         totalMinutes: Math.round(totalMs / 60000),
         sessionCount: gameSessions.length,
         lastPlayed: gameSessions.length > 0 ? Math.max(...gameSessions.map((s) => s.endTime)) : null,
+        lastFpsStats: withFps.length > 0 ? withFps[0].fpsStats! : null,
       };
     } catch {
-      return { totalMinutes: 0, sessionCount: 0, lastPlayed: null };
+      return { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
     }
   }
 
@@ -205,57 +231,118 @@ export class GameDetector extends EventEmitter {
         getWindowTitles(),
       ]);
 
-      const runningNames = new Set(processes.map((p) => p.name.toLowerCase()));
+      // Build set of PIDs with visible windows
+      const pidsWithWindows = new Set<number>();
+      for (const [key] of windowTitles) {
+        const pid = parseInt(key.split('|')[1], 10);
+        if (!isNaN(pid)) pidsWithWindows.add(pid);
+      }
+
       const currentlyRunning = new Set<string>();
 
       // 0. Check custom user mappings first
       this.checkMappings(processes, currentlyRunning);
 
+      // Track best FPS candidate: prefer windowed games, fallback to last detected
+      let fpsCandidate: { gameId: string; pid: number } | null = null;
+
       for (const game of this.library) {
         if (currentlyRunning.has(game.id)) continue;
 
-        let found = false;
+        let detectedPid: number | undefined;
 
         // 1. Window title match (highest confidence)
-        found = this.matchWindowTitle(game, windowTitles);
+        detectedPid = this.matchWindowTitle(game, windowTitles, processes);
 
         // 2. Exact process name match
-        if (!found) {
+        if (detectedPid === undefined) {
           const exeNames = this.getExeNames(game);
           for (const exeName of exeNames) {
             if (!exeName) continue;
-            if (runningNames.has(exeName.toLowerCase())) {
-              found = true;
+            const proc = processes.find((p) => p.name.toLowerCase() === exeName.toLowerCase());
+            if (proc) {
+              detectedPid = proc.pid;
               break;
             }
           }
         }
 
         // 3. Fuzzy process name match
-        if (!found) {
-          found = this.fuzzyMatch(game, runningNames);
+        if (detectedPid === undefined) {
+          detectedPid = this.fuzzyMatchPid(game, processes);
         }
 
-        if (found) {
+        // If matched a launcher process, check for a better renderer PID
+        // (e.g. SB.exe launches SB-Win64-Shipping.exe which does actual rendering)
+        if (detectedPid !== undefined) {
+          const rendererPid = this.findRendererProcess(game, processes, detectedPid);
+          if (rendererPid !== undefined) detectedPid = rendererPid;
+        }
+
+        if (detectedPid !== undefined) {
           currentlyRunning.add(game.id);
-          if (!this.runningGames.has(game.id)) {
+          const existing = this.runningGames.get(game.id);
+          if (!existing) {
+            // New game detected — start tracking
             const entry: RunningGame = {
               game,
               startTime: Date.now(),
               launchedByOtix: false,
+              pid: detectedPid,
             };
             this.runningGames.set(game.id, entry);
+            this.trackedPids.add(detectedPid);
+            this.startProcessCheck();
             this.emit('game:started', entry);
+          } else if (existing.pid !== detectedPid) {
+            // PID changed (e.g. launcher → game process) — update tracking
+            const oldPid = existing.pid;
+            existing.pid = detectedPid;
+            if (oldPid) { this.trackedPids.delete(oldPid); }
+            this.trackedPids.add(detectedPid);
+            // Restart FPS capture only if this game owns the active capture
+            if (this.fpsTargetGameId === game.id || !isCapturing()) {
+              fpsCandidate = { gameId: game.id, pid: detectedPid };
+            }
+          }
+
+          // Update FPS candidate — prefer windowed, else first detected wins
+          const hasWin = pidsWithWindows.has(detectedPid);
+          if (!fpsCandidate) {
+            fpsCandidate = { gameId: game.id, pid: detectedPid };
+          } else if (hasWin && !pidsWithWindows.has(fpsCandidate.pid)) {
+            fpsCandidate = { gameId: game.id, pid: detectedPid };
           }
         }
       }
 
-      // End sessions for game no longer detected
-      for (const [id, entry] of this.runningGames) {
-        if (!currentlyRunning.has(id) && !entry.launchedByOtix) {
-          this.endSession(entry);
-          this.runningGames.delete(id);
+      // Start FPS capture for best candidate (first windowed game, else first detected)
+      if (fpsCandidate && isPresentMonAvailable()) {
+        const skipFps = this.fpsTargetGameId === fpsCandidate.gameId && isCapturing();
+        if (!skipFps) {
+          if (isCapturing()) stopFpsCapture();
+          if (startFpsCapture(fpsCandidate.pid, fpsCandidate.gameId)) {
+            this.startFpsPolling(fpsCandidate.gameId);
+          }
         }
+      }
+
+      // End sessions for game no longer detected (verify PID dead first)
+      for (const [id, entry] of this.runningGames) {
+        if (currentlyRunning.has(id)) continue;
+        if (entry.launchedByOtix) continue;
+        // PID still alive even though scan didn't match — keep session
+        if (entry.pid) {
+          try {
+            process.kill(entry.pid, 0);
+            currentlyRunning.add(id);
+            continue;
+          } catch {
+            // PID is dead — end session below
+          }
+        }
+        this.endSession(entry);
+        this.runningGames.delete(id);
       }
     } catch (err) {
       console.error('[GameDetector] Process scan failed:', err);
@@ -282,10 +369,35 @@ export class GameDetector extends EventEmitter {
   stopAll() {
     this.stopPeriodicScan();
     this.stopProcessCheck();
+    this.stopFpsPolling();
     for (const entry of this.runningGames.values()) {
       this.endSession(entry);
     }
     this.runningGames.clear();
+  }
+
+  // ── Live FPS polling (one game at a time, set by gameId) ──
+
+  private startFpsPolling(gameId: string) {
+    this.stopFpsPolling();
+    this.fpsTargetGameId = gameId;
+    this.fpsPollTimer = setInterval(() => {
+      if (!isCapturing()) {
+        this.fpsTargetGameId = null;
+        this.stopFpsPolling();
+        return;
+      }
+      const snapshot = getLiveFps();
+      if (snapshot) this.emit('game:fps', snapshot);
+    }, 500);
+  }
+
+  private stopFpsPolling() {
+    if (this.fpsPollTimer) {
+      clearInterval(this.fpsPollTimer);
+      this.fpsPollTimer = null;
+    }
+    this.fpsTargetGameId = null;
   }
 
   // ── Manual mappings ──
@@ -298,7 +410,12 @@ export class GameDetector extends EventEmitter {
       ]);
 
       return processes
-        .filter((p) => !p.name.toLowerCase().startsWith('system') && p.name.toLowerCase() !== 'idle')
+        .filter((p) => {
+          const name = p.name.toLowerCase();
+          if (name.startsWith('system') || name === 'idle') return false;
+          if (NON_GAME_PROCESSES.has(name) || NON_GAME_PROCESSES.has(name + '.exe')) return false;
+          return true;
+        })
         .map((p) => {
           let windowTitle: string | null = null;
           for (const [key, title] of windowTitles) {
@@ -384,6 +501,13 @@ export class GameDetector extends EventEmitter {
             pid: proc.pid,
           };
           this.runningGames.set(mapping.gameId, entry);
+          this.trackedPids.add(proc.pid);
+          this.startProcessCheck();
+          if (isPresentMonAvailable() && !isCapturing()) {
+            if (startFpsCapture(proc.pid, game.id)) {
+              this.startFpsPolling(game.id);
+            }
+          }
           this.emit('game:started', entry);
         }
       }
@@ -392,7 +516,12 @@ export class GameDetector extends EventEmitter {
 
   // ── Private matching helpers ──
 
-  private matchWindowTitle(game: LocalGame, windowTitles: Map<string, string>): boolean {
+  // Returns the PID of the matched process, or undefined if no match.
+  private matchWindowTitle(
+    game: LocalGame,
+    windowTitles: Map<string, string>,
+    processes: { name: string; pid: number }[],
+  ): number | undefined {
     const titleLower = game.title.toLowerCase();
     const normTitle = normalizeTitle(game.title);
     const titleWords = normTitle.split(/\s+/).filter((w) => w.length > 2);
@@ -400,27 +529,42 @@ export class GameDetector extends EventEmitter {
     for (const [procKey, winTitle] of windowTitles) {
       const winLower = winTitle.toLowerCase();
 
+      let matched = false;
+
       // Direct title match
-      if (winLower.includes(titleLower)) return true;
-      if (titleLower.includes(winLower) && winLower.length > 5) return true;
-
+      if (winLower.includes(titleLower)) matched = true;
+      else if (titleLower.includes(winLower) && winLower.length > 5) matched = true;
       // Normalized title match
-      if (winLower.includes(normTitle)) return true;
-      if (normTitle.length > 5 && normTitle.includes(winLower)) return true;
-
-      // Word match: count how many title words appear in window title
-      if (titleWords.length >= 2) {
-        const matchCount = titleWords.filter((w) => winLower.includes(w)).length;
-        if (matchCount >= Math.min(titleWords.length, 2)) return true;
+      else if (winLower.includes(normTitle)) matched = true;
+      else if (normTitle.length > 5 && normTitle.includes(winLower)) matched = true;
+      // Word match (whole-word boundaries to avoid substring false positives)
+      else if (titleWords.length >= 2) {
+        const matchCount = titleWords.filter((w) => {
+          const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+          return re.test(winLower);
+        }).length;
+        matched = matchCount >= Math.min(titleWords.length, 2);
       } else if (titleWords.length === 1) {
-        if (winLower.includes(titleWords[0])) return true;
+        const re = new RegExp('\\b' + titleWords[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+        matched = re.test(winLower);
+      }
+
+      if (matched) {
+        // Extract process name from key (format: "processname|pid")
+        const procName = procKey.split('|')[0];
+        const proc = processes.find((p) => p.name.toLowerCase() === procName.toLowerCase());
+        return proc?.pid;
       }
     }
 
-    return false;
+    return undefined;
   }
 
-  private fuzzyMatch(game: LocalGame, runningNames: Set<string>): boolean {
+  // Returns PID of matched process, or undefined.
+  private fuzzyMatchPid(
+    game: LocalGame,
+    processes: { name: string; pid: number }[],
+  ): number | undefined {
     const norm = normalizeTitle(game.title);
     const titleWords = norm.split(/\s+/).filter((w) => w.length > 2);
     const candidates = titleToExeCandidates(game.title);
@@ -433,23 +577,27 @@ export class GameDetector extends EventEmitter {
       }
     }
 
-    for (const procName of runningNames) {
+    for (const proc of processes) {
+      const procName = proc.name.toLowerCase();
       const procBase = procName.replace(/\.exe$/i, '').toLowerCase();
 
       // Candidate match
-      if (candidates.some((c) => c.toLowerCase() === procName)) return true;
+      if (candidates.some((c) => c.toLowerCase() === procName)) return proc.pid;
 
       // Normalized title as substring
       const normNoSpaces = norm.replace(/\s/g, '');
-      if (normNoSpaces.length > 4 && procBase.includes(normNoSpaces)) return true;
+      if (normNoSpaces.length > 4 && procBase.includes(normNoSpaces)) return proc.pid;
 
-      // Word match with lower threshold (1 match for short titles, 2 for long)
-      const matchCount = titleWords.filter((w) => procBase.includes(w)).length;
+      // Word match with whole-word boundaries (avoid substring false positives)
+      const matchCount = titleWords.filter((w) => {
+        const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+        return re.test(procBase);
+      }).length;
       const threshold = titleWords.length <= 2 ? 1 : Math.min(2, titleWords.length);
-      if (titleWords.length > 0 && matchCount >= threshold) return true;
+      if (titleWords.length > 0 && matchCount >= threshold) return proc.pid;
     }
 
-    return false;
+    return undefined;
   }
 
   private getExeNames(game: LocalGame): string[] {
@@ -464,18 +612,57 @@ export class GameDetector extends EventEmitter {
     return names;
   }
 
+  /**
+   * Check if a matched launcher process has a known renderer child.
+   * Unreal Engine games often use a launcher (SB.exe) that spawns the real
+   * renderer (SB-Win64-Shipping.exe). If found, return the renderer's PID.
+   */
+  private findRendererProcess(
+    game: LocalGame,
+    processes: { name: string; pid: number }[],
+    _launcherPid: number,
+  ): number | undefined {
+    const norm = normalizeTitle(game.title);
+    const normNoSpaces = norm.replace(/\s/g, '').toLowerCase();
+    const nameNoSpaces = game.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    for (const proc of processes) {
+      const pn = proc.name.toLowerCase().replace(/\.exe$/i, '');
+
+      // UE4/5 renderer pattern: *-Win64-Shipping, *-Shipping
+      const isRenderer = /-win64-shipping$/.test(pn) || /-shipping$/.test(pn);
+      if (!isRenderer) continue;
+
+      // Check if renderer name contains the game title (normalized)
+      // e.g. "SB-Win64-Shipping" contains "SB"
+      const pnNoSuffix = pn.replace(/-(win64-)?shipping$/i, '').toLowerCase();
+      if (!pnNoSuffix) continue;
+
+      // Direct match: renderer name contains game title
+      if (pn.includes(nameNoSpaces) || pn.includes(normNoSpaces)) return proc.pid;
+
+      // Exe name match: renderer matches one of the game's exe patterns
+      const exeNames = this.getExeNames(game);
+      if (exeNames.some((en) => pn.includes(en.replace(/\.exe$/i, '').toLowerCase()))) return proc.pid;
+    }
+
+    return undefined;
+  }
+
   private startProcessCheck() {
     this.stopProcessCheck();
     this.processCheckTimer = setInterval(() => {
       let hasTrackedPid = false;
-      for (const [id, entry] of this.runningGames) {
+      for (const [, entry] of this.runningGames) {
         if (entry.pid) {
-          hasTrackedPid = true;
           try {
             process.kill(entry.pid, 0);
+            hasTrackedPid = true;
           } catch {
-            this.endSession(entry);
-            this.runningGames.delete(id);
+            // PID dead — clear it. Don't endSession: game may have
+            // moved to new PID. Next scanRunningProcesses re-detects.
+            this.trackedPids.delete(entry.pid);
+            entry.pid = undefined;
           }
         }
       }
@@ -493,12 +680,17 @@ export class GameDetector extends EventEmitter {
   }
 
   private endSession(entry: RunningGame) {
+    // Stop FPS polling and capture, grab final stats before saving session
+    this.stopFpsPolling();
+    const fpsStats = stopFpsCapture();
+
     const session: PlaySession = {
       gameId: entry.game.id,
       gameTitle: entry.game.title,
       startTime: entry.startTime,
       endTime: Date.now(),
       launchedByOtix: entry.launchedByOtix,
+      fpsStats,
     };
 
     this.saveSession(session);

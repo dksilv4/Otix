@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
-import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2, Download, FolderKanban, ScanSearch, Monitor } from 'lucide-react'
+import { ChevronDown, FlaskConical, Heart, User, Palette, Shield, Bell, Link2, Download, FolderKanban, ScanSearch, Monitor, Brain } from 'lucide-react'
 import { ExperimentsSection } from '@/features/experiments/organisms/experiments-section'
 import { useTheme } from '@/lib/theme'
 import { useAuth } from '@/features/auth/auth-provider'
@@ -20,20 +20,22 @@ import { DownloadsSection } from './settings-sections/downloads-section'
 import { OrganizerSection } from './settings-sections/organizer-section'
 import { ScannersSection } from './settings-sections/scanners-section'
 import { DesktopSection } from './settings-sections/desktop'
+import { IntelligenceSection } from './settings-sections/intelligence'
 
-type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments' | 'downloads' | 'organizer' | 'scanners' | 'desktop'
+type Section = 'profile' | 'preferences' | 'appearance' | 'notifications' | 'account' | 'integrations' | 'experiments' | 'downloads' | 'organizer' | 'scanners' | 'desktop' | 'intelligence'
 
 const NAV_ITEMS: { id: Section; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'account', label: 'Security', icon: Shield },
   { id: 'preferences', label: 'Preferences', icon: Heart },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'account', label: 'Account', icon: Shield },
   { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'intelligence', label: 'Intelligence', icon: Brain },
   { id: 'scanners', label: 'Scanners', icon: ScanSearch },
   { id: 'downloads', label: 'Downloads', icon: Download },
   { id: 'organizer', label: 'Organizer', icon: FolderKanban },
-  { id: 'desktop', label: 'Desktop', icon: Monitor },
+  { id: 'desktop', label: 'Window', icon: Monitor },
   { id: 'experiments', label: 'Experiments', icon: FlaskConical },
 ]
 
@@ -45,7 +47,7 @@ export function SettingsPage() {
   const search = useSearch({ strict: false }) as { section?: string }
   const navigate = useNavigate()
   const desktop = isDesktop()
-  const desktopSections = new Set(['downloads', 'organizer', 'scanners', 'desktop'])
+  const desktopSections = new Set(['downloads', 'organizer', 'scanners', 'desktop', 'intelligence'])
   const filteredNav = NAV_ITEMS.filter(i => !desktopSections.has(i.id) || desktop)
   const [activeSection, setActiveSection] = useState<Section>(() =>
     isSettingsSection(search.section) && (!desktopSections.has(search.section) || desktop) ? search.section : 'profile',
@@ -192,6 +194,9 @@ export function SettingsPage() {
           )}
           {activeSection === 'scanners' && (
             <ScannersSection />
+          )}
+          {activeSection === 'intelligence' && (
+            <IntelligenceSection />
           )}
           {activeSection === 'desktop' && (
             <DesktopSection />

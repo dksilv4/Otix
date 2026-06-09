@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { Play, Cloud, RefreshCw, AlertCircle, FileCode, Clock } from 'lucide-react'
+import { Play, Cloud, RefreshCw, AlertCircle, FileCode, Clock, Gauge } from 'lucide-react'
 import { useAuth } from '@/features/auth/auth-provider'
 import { cn, osName } from '@/lib/utils'
 import { useLocalGame } from '@/features/game-scanner/game-queries'
 import { useSaveLocations } from '@/features/games/games-queries'
 import { useGamePlaytime } from '@/features/games/hooks/use-launcher-playtime'
 import { useCloudSync } from '@/features/games/hooks/use-launcher-cloud-sync'
+import { useLiveFps } from '@/features/games/hooks/use-live-fps'
+import type { FpsStatsData } from '@/lib/desktop-api'
 
 function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime: number | null | undefined): string {
   if (steamPlaytime != null) {
@@ -22,15 +24,26 @@ function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime
   return '—'
 }
 
-function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | null {
-  if (!ttb) return null
-  const main = ttb.mainStory as number | undefined
-  if (main) return `${Math.round(main / 3600)}h`
-  const extras = ttb.mainPlusExtras as number | undefined
-  if (extras) return `${Math.round(extras / 3600)}h`
-  const comp = ttb.completionist as number | undefined
-  if (comp) return `${Math.round(comp / 3600)}h`
-  return null
+function formatFpsLabel(
+  liveFps: { currentFps: number; frameCount: number } | null | undefined,
+  lastFps: FpsStatsData | null | undefined,
+): { value: string; detail: string; live: boolean } {
+  // Live FPS takes priority when game is running
+  if (liveFps && liveFps.frameCount > 0) {
+    return {
+      value: `${Math.round(liveFps.currentFps)}`,
+      detail: `${liveFps.frameCount} frames captured`,
+      live: true,
+    }
+  }
+  if (lastFps && lastFps.totalFrames > 0) {
+    return {
+      value: `${Math.round(lastFps.avgFps)}`,
+      detail: `1%: ${Math.round(lastFps.onePercentLow)} · ${lastFps.totalFrames} frames`,
+      live: false,
+    }
+  }
+  return { value: '—', detail: 'No FPS data', live: false }
 }
 
 export function LauncherGameStats() {
@@ -41,6 +54,16 @@ export function LauncherGameStats() {
   const { data: g } = useLocalGame(gameId)
   const mediaId = g?.data?.id
   const playtime = useGamePlaytime(g?.id)
+  const { snapshot: liveFps, history: fpsHistory } = useLiveFps(g?.id)
+
+  // SVG sparkline path
+  const sparkline = useMemo(() => {
+    if (fpsHistory.length < 2) return null
+    const w = 200, h = 60
+    const max = Math.max(...fpsHistory, 1)
+    const pts = fpsHistory.map((v, i) => `${i * (w / (fpsHistory.length - 1))},${h - (v / max) * h}`).join(' ')
+    return { d: `M${pts}`, w, h }
+  }, [fpsHistory])
 
   // ── Cloud sync ──
   const { data: serverLocations, refetch: refetchServerLocations } = useSaveLocations(mediaId)
@@ -48,9 +71,6 @@ export function LauncherGameStats() {
 
   if (!g) return null
 
-  const isInstalled = !!g?.exePath && g?.platform !== 'iso'
-  const statusLabel = isInstalled ? 'Installed' : g?.platform === 'iso' && osName !== 'Windows' ? 'Incompatible' : 'Not installed'
-  const ttb = formatTimeToBeat(g.data?.game?.timeToBeat as Record<string, unknown> | undefined)
   const avgRating = (g.data?.avgRating as number | undefined) ?? null
   const ratingCount = (g.data?.ratingCount as number) ?? 0
 
@@ -64,6 +84,7 @@ export function LauncherGameStats() {
     : 'Cloud saves'
 
   const playtimeStr = formatPlaytime(playtime, null)
+  const fps = formatFpsLabel(liveFps, playtime?.lastFpsStats)
 
   return (
     <div className="z-1 absolute bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
@@ -79,12 +100,32 @@ export function LauncherGameStats() {
 
         <div className="w-px h-10 bg-white/15" />
 
-        {/* Install status */}
-        <div className="flex items-center gap-3 min-w-0">
-          <span className={cn("w-3 h-3 rounded-full shrink-0", isInstalled ? 'bg-emerald-400' : 'bg-white/40')} />
+        {/* FPS / Performance */}
+        <div className="flex items-center gap-3 min-w-0 relative overflow-hidden" style={{ minWidth: 160 }}>
+          {/* Sparkline background */}
+          {sparkline && (
+            <svg width={sparkline.w} height={sparkline.h} className="absolute inset-0 pointer-events-none" style={{ zIndex: 0, width: '100%', height: '100%' }}>
+              <defs>
+                <linearGradient id="fps-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(52 211 153)" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="rgb(52 211 153)" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={`${sparkline.d}L${sparkline.w},${sparkline.h}L0,${sparkline.h}Z`} fill="url(#fps-grad)" />
+              <path d={sparkline.d} fill="none" stroke="rgb(52 211 153)" strokeWidth="1.5" opacity="0.5" />
+            </svg>
+          )}
+          <div className="relative shrink-0" style={{ zIndex: 1 }}>
+            <Gauge size={18} className={cn("shrink-0", fps.live ? "text-emerald-400" : "text-white/80")} />
+            {fps.live && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </div>
           <div>
-            <p className={cn("text-lg font-black tracking-tight leading-none", isInstalled ? 'text-emerald-400' : 'text-white/80')}>{statusLabel}</p>
-            <p className={cn("text-[10px] font-semibold tracking-wide text-white/60")}>{ttb || (isInstalled ? `${g.platform.toUpperCase()}` : 'Not installed')}</p>
+            <p className={cn("text-lg font-black tracking-tight leading-none", fps.live ? "text-emerald-400" : "text-white/80")}>{fps.value}</p>
+            <p className="text-[10px] font-semibold text-white/60 tracking-wide">
+              {fps.live ? <span className="text-emerald-400/80">LIVE · </span> : null}{fps.detail}
+            </p>
           </div>
         </div>
 

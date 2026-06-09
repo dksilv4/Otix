@@ -124,6 +124,22 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('game:ended', handler);
     return () => ipcRenderer.removeListener('game:ended', handler);
   },
+  onFpsUpdate: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:fps', handler);
+    return () => ipcRenderer.removeListener('game:fps', handler);
+  },
+  fixFpsPermissions: () => ipcRenderer.invoke('fps:fix-permissions'),
+  onFpsPermissionNeeded: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('fps:permission-needed', handler);
+    return () => ipcRenderer.removeListener('fps:permission-needed', handler);
+  },
+  onCleanQuit: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('app:clean-quit', handler);
+    return () => ipcRenderer.removeListener('app:clean-quit', handler);
+  },
 
   // Downloads
   downloadsGetConfig: (userId: string) => ipcRenderer.invoke('downloads:get-config', userId),
@@ -216,5 +232,30 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     const handler = (_event: any, progress: any) => callback(progress);
     ipcRenderer.on('installer:install-progress', handler);
     return () => ipcRenderer.removeListener('installer:install-progress', handler);
+  },
+
+  // ── AI Addon ──
+  aiGetStatus: () => ipcRenderer.invoke('ai:get-status'),
+  aiGetDownloadProgress: () => ipcRenderer.invoke('ai:get-download-progress'),
+  aiGetLoadingProgress: () => ipcRenderer.invoke('ai:get-loading-progress'),
+  aiDownloadModel: () => ipcRenderer.invoke('ai:download-model'),
+  aiDeleteModel: () => ipcRenderer.invoke('ai:delete-model'),
+  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => ipcRenderer.invoke('ai:chat', messages),
+  aiGetSystemPrompt: () => ipcRenderer.invoke('ai:get-system-prompt'),
+  aiSetSystemPrompt: (prompt: string) => ipcRenderer.invoke('ai:set-system-prompt', prompt),
+  onAiDownloadProgress: (callback: (p: number) => void) => {
+    const handler = (_event: any, p: number) => callback(p);
+    ipcRenderer.on('ai:download-progress', handler);
+    return () => ipcRenderer.removeListener('ai:download-progress', handler);
+  },
+  onAiLoadingProgress: (callback: (p: number) => void) => {
+    const handler = (_event: any, p: number) => callback(p);
+    ipcRenderer.on('ai:loading-progress', handler);
+    return () => ipcRenderer.removeListener('ai:loading-progress', handler);
+  },
+  onAiStatusChanged: (callback: (s: any) => void) => {
+    const handler = (_event: any, s: any) => callback(s);
+    ipcRenderer.on('ai:status-changed', handler);
+    return () => ipcRenderer.removeListener('ai:status-changed', handler);
   },
 });
