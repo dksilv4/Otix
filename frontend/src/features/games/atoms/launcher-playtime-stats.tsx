@@ -1,3 +1,4 @@
+import { useParams } from '@tanstack/react-router'
 import { Clock } from 'lucide-react'
 import { useGamePlaytime } from '@/features/games/hooks/use-launcher-playtime'
 
@@ -15,11 +16,9 @@ function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime
   return '—'
 }
 
-interface LauncherPlaytimeStatsProps {
-  gameId?: string
-}
-
-export function LauncherPlaytimeStats({ gameId }: LauncherPlaytimeStatsProps) {
+export function LauncherPlaytimeStats() {
+  const p = useParams({ strict: false })
+  const gameId = (p as Record<string, string>).gameId
   const playtime = useGamePlaytime(gameId)
   const playtimeStr = formatPlaytime(playtime, null)
 

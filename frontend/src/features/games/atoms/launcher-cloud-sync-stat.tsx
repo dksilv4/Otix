@@ -1,13 +1,12 @@
+import { useParams } from '@tanstack/react-router'
 import { Cloud, RefreshCw, AlertCircle } from 'lucide-react'
 import { useLocalGame } from '@/features/game-scanner/game-queries'
 import { useSaveLocations } from '@/features/games/games-queries'
 import { useCloudSync } from '@/features/games/hooks/use-launcher-cloud-sync'
 
-interface LauncherCloudSyncStatProps {
-  gameId?: string
-}
-
-export function LauncherCloudSyncStat({ gameId }: LauncherCloudSyncStatProps) {
+export function LauncherCloudSyncStat() {
+  const p = useParams({ strict: false })
+  const gameId = (p as Record<string, string>).gameId
   const { data: g } = useLocalGame(gameId)
   const mediaId = g?.data?.id
   const { data: serverLocations, refetch: refetchServerLocations } = useSaveLocations(mediaId)
