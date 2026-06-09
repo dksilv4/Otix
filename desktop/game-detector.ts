@@ -41,7 +41,7 @@ const SCAN_INTERVAL_MS = 30000;
 
 /** Process names to ignore — non-game apps that shouldn't trigger FPS capture. */
 const NON_GAME_PROCESSES = new Set([
-  'wallpaper64.exe', 'wallpaper32.exe',
+  'wallpaper64.exe', 'wallpaper32.exe', 'wallpaper.exe',
   'explorer.exe', 'svchost.exe', 'runtimebroker.exe',
 ]);
 
@@ -680,7 +680,10 @@ export class GameDetector extends EventEmitter {
           }
         }
       }
-      if (!hasTrackedPid) {
+      if (!hasTrackedPid && this.runningGames.size > 0) {
+        // Games in runningGames have no PIDs — re-check next cycle
+      }
+      if (this.runningGames.size === 0) {
         this.stopProcessCheck();
       }
     }, 5000);
