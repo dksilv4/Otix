@@ -35,11 +35,11 @@ export function LauncherCloudSyncStat() {
 
   return (
     <>
-      <div className="w-px h-10 bg-white/15" />
+      <div className="w-px self-stretch bg-white/15" />
       <button
         onClick={sync.handleSyncNow}
         disabled={sync.syncing || !sync.cloudSettings?.isPathConfirmed}
-        className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/10 transition-all cursor-pointer disabled:opacity-40 active:scale-95"
+        className="flex items-center justify-center min-w-9 rounded-lg hover:bg-white/10 transition-all cursor-pointer disabled:opacity-40 active:scale-95"
         title={cloudTitle}
       >
         {cloudIcon}
