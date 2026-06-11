@@ -16,7 +16,7 @@ export function AuthHeader({ title, subtitle, className, children }: AuthHeaderP
       >
         {title}
       </h2>
-      <p className="mt-2 text-base" style={{ color: "rgba(255, 255, 255, 0.3)" }}>{subtitle}</p>
+      <p className="mt-2 text-base text-muted-foreground">{subtitle}</p>
     </div>
   )
 }

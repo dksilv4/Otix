@@ -24,7 +24,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const firstInputRef = useRef<HTMLInputElement>(null)
 
   const inputClass = (hasError?: boolean) =>
-    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-white/30' + (hasError ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')
+    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50' + (hasError ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -64,8 +64,8 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -8, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'rgb(252 165 165)' }}
+            className="overflow-hidden rounded-xl px-4 py-3 text-sm text-destructive"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--destructive) 10%, transparent)' }}
           >
             {authError}
           </motion.div>
@@ -86,10 +86,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           aria-invalid={!!fieldErrors.email}
           aria-describedby={fieldErrors.email ? 'reg-email-error' : undefined}
           className={inputClass(!!fieldErrors.email)}
-          style={{ boxShadow: fieldErrors.email ? undefined : 'inset 0 1px 1px rgba(0,0,0,0.2)' }}
+          style={fieldErrors.email ? undefined : { backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
         />
         {fieldErrors.email && (
-          <p id="reg-email-error" role="alert" className="text-xs" style={{ color: 'rgb(252 165 165)' }}>
+          <p id="reg-email-error" role="alert" className="text-xs text-destructive">
             {fieldErrors.email}
           </p>
         )}
@@ -108,10 +108,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           aria-invalid={!!fieldErrors.username}
           aria-describedby={fieldErrors.username ? 'reg-username-error' : undefined}
           className={inputClass(!!fieldErrors.username)}
-          style={{ boxShadow: fieldErrors.username ? undefined : 'inset 0 1px 1px rgba(0,0,0,0.2)' }}
+          style={fieldErrors.username ? undefined : { backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
         />
         {fieldErrors.username && (
-          <p id="reg-username-error" role="alert" className="text-xs" style={{ color: 'rgb(252 165 165)' }}>
+          <p id="reg-username-error" role="alert" className="text-xs text-destructive">
             {fieldErrors.username}
           </p>
         )}
@@ -129,10 +129,10 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
           aria-invalid={!!fieldErrors.dateOfBirth}
           aria-describedby={fieldErrors.dateOfBirth ? 'reg-dob-error' : undefined}
           className={inputClass(!!fieldErrors.dateOfBirth)}
-          style={{ boxShadow: fieldErrors.dateOfBirth ? undefined : 'inset 0 1px 1px rgba(0,0,0,0.2)', colorScheme: 'dark' }}
+          style={Object.assign({ colorScheme: 'dark' }, fieldErrors.dateOfBirth ? undefined : { backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' })}
         />
         {fieldErrors.dateOfBirth && (
-          <p id="reg-dob-error" role="alert" className="text-xs" style={{ color: 'rgb(252 165 165)' }}>
+          <p id="reg-dob-error" role="alert" className="text-xs text-destructive">
             {fieldErrors.dateOfBirth}
           </p>
         )}

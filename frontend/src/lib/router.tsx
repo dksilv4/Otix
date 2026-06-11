@@ -51,6 +51,7 @@ function useCleanQuitSignal() {
 // ── Lazy-loaded page components ──
 
 const AuthPage = lazy(() => import("@auth/pages/auth-page").then(m => ({ default: m.AuthPage })))
+const RegisterPage = lazy(() => import("@/features/auth/pages/register-page").then(m => ({ default: m.RegisterPage })))
 const MediaDetail = lazy(() => import("@media/organisms/media-detail").then(m => ({ default: m.MediaDetail })))
 const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({ default: m.DkUiShowcase })))
 const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page").then(m => ({ default: m.DashboardPage })))
@@ -279,7 +280,7 @@ const authLoginRoute = createRoute({
 const authRegisterRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/register",
-  component: AuthPage,
+  component: RegisterPage,
 })
 
 // ── Loading test ──

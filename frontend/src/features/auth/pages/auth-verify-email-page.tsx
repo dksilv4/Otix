@@ -4,6 +4,7 @@ import { Check, Loader2, Mail, ShieldAlert } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth'
 import { AuthHeader } from '@/features/auth'
+import { AuthCard } from '@/features/auth/molecules/auth-card'
 import { Logo } from '@ui/atoms/logo'
 import { apiClient } from '@/lib/api-client'
 import { extractErrorMessage } from '../utils'
@@ -42,14 +43,9 @@ export function VerifyEmailPage() {
 
   if (!search.token) {
     return (
-      <div id="verify-email-page" className="flex min-h-screen items-center justify-center p-4">
-        <div
-          className="w-full max-w-sm rounded-[2rem] p-8 text-center"
-          style={{
-            backgroundColor: 'var(--dk-surface-base)',
-            animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
+      <div id="verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
+        <div className="dk-auth-bg" />
+        <AuthCard>
           <div className="mb-6 flex justify-center">
             <Logo className="h-16" />
           </div>
@@ -61,20 +57,15 @@ export function VerifyEmailPage() {
           >
             Go to Sign In
           </button>
-        </div>
+        </AuthCard>
       </div>
     )
   }
 
   return (
-    <div id="verify-email-page" className="flex min-h-screen items-center justify-center p-4">
-      <div
-        className="w-full max-w-sm rounded-[2rem] p-8 text-center"
-        style={{
-          backgroundColor: 'var(--dk-surface-base)',
-          animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
+    <div id="verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="dk-auth-bg" />
+      <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />
         </div>
@@ -92,7 +83,7 @@ export function VerifyEmailPage() {
               className="flex flex-col items-center gap-3"
             >
               <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
-              <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>Verifying your email...</p>
+              <p className="text-sm text-muted-foreground">Verifying your email...</p>
             </motion.div>
           )}
 
@@ -106,7 +97,7 @@ export function VerifyEmailPage() {
                 <Check className="h-7 w-7 text-green-500" />
               </div>
               <p className="text-sm font-medium">Email Verified</p>
-              <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+              <p className="text-sm text-muted-foreground">
                 Your email has been verified successfully.
               </p>
               <button
@@ -130,14 +121,13 @@ export function VerifyEmailPage() {
               </div>
               <p className="text-sm font-medium">Verification Failed</p>
               {errorMessage && (
-                <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{errorMessage}</p>
+                <p className="text-sm text-muted-foreground">{errorMessage}</p>
               )}
               {isAuthenticated && (
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors hover:bg-white/10"
-                  style={{ color: 'rgba(255, 255, 255, 0.5)' }}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/10"
                 >
                   <Mail className="h-4 w-4" />
                   Resend Verification Email
@@ -153,7 +143,7 @@ export function VerifyEmailPage() {
             </motion.div>
           )}
         </div>
-      </div>
+      </AuthCard>
     </div>
   )
 }

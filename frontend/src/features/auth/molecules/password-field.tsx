@@ -50,26 +50,21 @@ export function PasswordField({
           required={required}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
-          className={'flex min-h-[52px] w-full rounded-xl px-5 pr-12 text-base outline-none transition-all placeholder:text-white/30' + (error ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)] focus:shadow-[0_0_0_1px_rgb(248_113_113_/_0.5)]' : '')}
-          style={error ? undefined : { boxShadow: "inset 0 1px 1px rgba(0,0,0,0.2)" }}
-          onFocus={(e) => {
-            if (!error) {
-              e.currentTarget.style.boxShadow = "inset 0 1px 1px rgba(0,0,0,0.2)"
-            }
-          }}
+          className={'flex min-h-[52px] w-full rounded-xl px-5 pr-12 text-base outline-none transition-all placeholder:text-muted-foreground/50' + (error ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)] focus:shadow-[0_0_0_1px_rgb(248_113_113_/_0.5)]' : '')}
+          style={error ? undefined : { backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 transition-colors hover:text-white/60"
-          style={{ color: "color-mix(in srgb, white 25%, transparent)" }}
+          style={{ color: "var(--muted-foreground)" }}
           aria-label={visible ? 'Hide password' : 'Show password'}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
       {error && (
-        <p id={errorId} role="alert" className="text-xs" style={{ color: "rgb(252 165 165)" }}>
+        <p id={errorId} role="alert" className="text-xs text-destructive">
           {error}
         </p>
       )}

@@ -1,8 +1,9 @@
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Loader2, Check, ShieldAlert, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AuthHeader } from '../molecules/auth-header'
+import { AuthCard } from '../molecules/auth-card'
 import { PasswordField } from '../molecules/password-field'
 import { PasswordStrengthBar } from '../atoms/password-strength-bar'
 import { Logo } from '@ui/atoms/logo'
@@ -21,14 +22,9 @@ export function ResetPasswordPage() {
 
   if (!search.token) {
     return (
-      <div id="reset-password-page" className="flex min-h-screen items-center justify-center p-4">
-        <div
-          className="w-full max-w-sm rounded-[2rem] p-8 text-center"
-          style={{
-            backgroundColor: 'var(--dk-surface-base)',
-            animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
+      <div id="reset-password-page" className="relative flex min-h-screen items-center justify-center p-4">
+        <div className="dk-auth-bg" />
+        <AuthCard>
           <div className="mb-6 flex justify-center">
             <Logo className="h-16" />
           </div>
@@ -39,7 +35,7 @@ export function ResetPasswordPage() {
           >
             Request a New Link
           </Link>
-        </div>
+        </AuthCard>
       </div>
     )
   }
@@ -71,14 +67,9 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div id="reset-password-page" className="flex min-h-screen items-center justify-center p-4">
-      <div
-        className="w-full max-w-sm rounded-[2rem] p-8 text-center"
-        style={{
-          backgroundColor: 'var(--dk-surface-base)',
-          animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
+    <div id="reset-password-page" className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="dk-auth-bg" />
+      <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />
         </div>
@@ -98,13 +89,13 @@ export function ResetPasswordPage() {
               <Check className="h-7 w-7 text-green-500" />
             </div>
             <p className="text-sm font-medium">Password Reset</p>
-            <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+            <p className="text-sm text-muted-foreground">
               Your password has been reset successfully. You can now sign in with your new password.
             </p>
             <button
               type="button"
               onClick={() => navigate({ to: '/auth/login' })}
-              className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+              className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20"
             >
               Go to Sign In
             </button>
@@ -115,8 +106,8 @@ export function ResetPasswordPage() {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm"
-                style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'rgb(252 165 165)' }}
+                className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-destructive"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--destructive) 10%, transparent)' }}
               >
                 <ShieldAlert className="h-4 w-4 shrink-0" />
                 {errorMessage}
@@ -149,7 +140,7 @@ export function ResetPasswordPage() {
             <button
               type="submit"
               disabled={state === 'submitting'}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-medium transition-colors hover:bg-white/20 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20 disabled:opacity-50"
             >
               {state === 'submitting' ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -162,14 +153,13 @@ export function ResetPasswordPage() {
         <div className="mt-6">
           <Link
             to="/auth/login"
-            className="inline-flex items-center gap-1.5 text-xs transition-colors hover:text-white/80"
-            style={{ color: 'rgba(255, 255, 255, 0.4)' }}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-white/80"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to sign in
           </Link>
         </div>
-      </div>
+      </AuthCard>
     </div>
   )
 }

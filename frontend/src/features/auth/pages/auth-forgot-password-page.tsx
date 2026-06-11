@@ -1,8 +1,9 @@
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Mail, Loader2, ArrowLeft, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { AuthHeader } from '../molecules/auth-header'
+import { AuthCard } from '../molecules/auth-card'
 import { Logo } from '@ui/atoms/logo'
 import { apiClient } from '@/lib/api-client'
 import { extractErrorMessage } from '../utils'
@@ -28,15 +29,9 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div id="forgot-password-page" className="flex min-h-screen items-center justify-center p-4">
-      <div
-        id="forgot-password-card"
-        className="w-full max-w-sm rounded-[2rem] p-8 text-center"
-        style={{
-          backgroundColor: 'var(--dk-surface-base)',
-          animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
+    <div id="forgot-password-page" className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="dk-auth-bg" />
+      <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />
         </div>
@@ -60,16 +55,16 @@ export function ForgotPasswordPage() {
               <Check className="h-7 w-7 text-green-500" />
             </div>
             <p className="text-sm font-medium">Email Sent</p>
-            <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-              If an account exists for <strong>{email}</strong>, you'll receive a password reset link shortly.
+            <p className="text-sm text-muted-foreground">
+              If an account exists for <strong className="text-foreground">{email}</strong>, you'll receive a password reset link shortly.
             </p>
-            <p className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.3)' }}>
+            <p className="text-xs text-muted-foreground/60">
               The link expires in 2 hours. Check your spam folder if you don't see it.
             </p>
             <button
               type="button"
               onClick={() => navigate({ to: '/auth/login' })}
-              className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+              className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20"
             >
               Return to Sign In
             </button>
@@ -87,8 +82,8 @@ export function ForgotPasswordPage() {
                 autoComplete="email"
                 required
                 autoFocus
-                className="flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-white/30"
-                style={{ boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.2)' }}
+                className="flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50"
+                style={{ backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
               />
             </div>
 
@@ -96,8 +91,8 @@ export function ForgotPasswordPage() {
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl px-4 py-2 text-sm"
-                style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'rgb(252 165 165)' }}
+                className="rounded-xl px-4 py-2 text-sm text-destructive"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--destructive) 10%, transparent)' }}
               >
                 {errorMessage}
               </motion.p>
@@ -106,7 +101,7 @@ export function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={state === 'sending' || !email.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-medium transition-colors hover:bg-white/20 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20 disabled:opacity-50"
             >
               {state === 'sending' ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -121,14 +116,13 @@ export function ForgotPasswordPage() {
         <div className="mt-6">
           <Link
             to="/auth/login"
-            className="inline-flex items-center gap-1.5 text-xs transition-colors hover:text-white/80"
-            style={{ color: 'rgba(255, 255, 255, 0.4)' }}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-white/80"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to sign in
           </Link>
         </div>
-      </div>
+      </AuthCard>
     </div>
   )
 }
