@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Link, useNavigate as useNavigateRouter } from '@tanstack/react-router'
-import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring } from 'framer-motion'
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useSpring, type MotionValue } from 'framer-motion'
 import { discoverQueries } from '@discover/discover-queries'
 import { mediaQueries } from '@media/media-queries'
 import { Badge } from '@ui/atoms/badge'
@@ -82,18 +82,35 @@ function getSlideAnimation(id: string) {
   }
 }
 
+interface HeroItem {
+  id: string
+  posterUrl?: string | null
+  textlessPosterUrl?: string | null
+  title: string
+  year?: number
+  mediaType?: string
+  overview?: string
+  backdropUrl?: string | null
+}
+
+interface HeroDetail {
+  title?: string
+  logoUrl?: string
+  mediaType?: string
+}
+
 interface DiscoverHeroCardProps {
-  item: any
+  item: HeroItem
   dist: number
   slideIndex: number
   isActive: boolean
   cardOffset: number
-  detail: any
+  detail: HeroDetail | undefined
   activeId: string | undefined
   bgImage: string | null
-  yScroll: any
-  yScrollLogo: any
-  handleCardClick: (item: any, index: number, isActive: boolean) => void
+  yScroll: MotionValue<number>
+  yScrollLogo: MotionValue<number>
+  handleCardClick: (item: HeroItem, index: number, isActive: boolean) => void
 }
 
 function DiscoverHeroCard({
@@ -179,7 +196,7 @@ function DiscoverHeroCard({
   // ── Gyroscope tilt (phone orientation, when not touching) ──
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' &&
-      ('ontouchstart' in window || (navigator as any).maxTouchPoints > 0)
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0)
     if (!isMobile || isFar) return
 
     let active = true

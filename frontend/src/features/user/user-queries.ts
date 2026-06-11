@@ -265,12 +265,44 @@ export const userQueries = {
       staleTime: 1000 * 60 * 5,
     }),
 
+  continueWatching: () =>
+    queryOptions({
+      queryKey: ['user', 'me', 'continue'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<ContinueItem[]>('/users/me/continue')
+        return data
+      },
+      staleTime: 1000 * 60,
+    }),
+
+  friendsActivity: () =>
+    queryOptions({
+      queryKey: ['user', 'me', 'friends', 'activity'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<FriendActivityEvent[]>('/users/me/friends/activity')
+        return data
+      },
+      staleTime: 1000 * 30,
+    }),
+
   moodTimeline: (username: string) =>
     queryOptions({
       queryKey: ['user', username, 'mood-timeline'],
       queryFn: async () => {
         const { data } = await apiClient.get<{ checkins: MoodCheckin[] }>(`/users/${username}/mood-timeline`)
         return data.checkins
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  activityHeatmap: (weeks = 12) =>
+    queryOptions({
+      queryKey: ['user', 'me', 'activity-heatmap', weeks],
+      queryFn: async () => {
+        const { data } = await apiClient.get<ActivityHeatmapResponse>('/users/me/activity-heatmap', {
+          params: { weeks },
+        })
+        return data
       },
       staleTime: 1000 * 60 * 5,
     }),
@@ -293,6 +325,18 @@ export const userQueries = {
         return data
       },
       staleTime: 1000 * 60 * 30,
+    }),
+
+  dailyActivity: (day: string) =>
+    queryOptions({
+      queryKey: ['user', 'me', 'daily-activity', day],
+      queryFn: async () => {
+        const { data } = await apiClient.get<DailyActivityResponse>('/users/me/daily-activity', {
+          params: { day },
+        })
+        return data
+      },
+      staleTime: 1000 * 60 * 2,
     }),
 
   ratingDistribution: (username: string) =>
@@ -338,6 +382,45 @@ export interface LibraryStats {
   mostActiveHour: number | null
 }
 
+export interface ActivityHeatmapEntry {
+  date: string
+  workout: number
+  movie: number
+  show: number
+  music: number
+}
+
+export interface ActivityHeatmapResponse {
+  weeks: number
+  dates: ActivityHeatmapEntry[]
+}
+
+export interface ContinueItem extends MediaItemSummary {
+  interactionType: string
+  interactedAt: string
+  episodeContext: string | null
+}
+
+export interface FriendActivityEvent {
+  type: 'review' | 'interaction' | 'episode_watched'
+  timestamp: string
+  summary: string
+  score?: number | null
+  content?: string | null
+  interactionType?: string
+  mediaItem?: {
+    id: string
+    title: string
+    mediaType: string
+    posterUrl: string | null
+  }
+  user: {
+    id: string
+    username: string
+    avatarUrl: string | null
+  }
+}
+
 export interface HallOfFameItem {
   id: string
   title: string
@@ -357,6 +440,59 @@ export interface RatingDistributionItem {
 export interface RatingDistribution {
   distribution: RatingDistributionItem[]
   totalRatings: number
+}
+
+export interface DailyReviewItem {
+  id: string
+  media_item_id: string
+  media_title: string
+  media_type: string
+  poster_url: string | null
+  score: number | null
+  content_preview: string | null
+  created_at: string
+}
+
+export interface DailyInteractionItem {
+  id: string
+  media_item_id: string
+  media_title: string
+  media_type: string
+  poster_url: string | null
+  interaction_type: string
+  created_at: string
+}
+
+export interface DailyEpisodeItem {
+  id: string
+  show_id: string
+  show_title: string
+  poster_url: string | null
+  season_number: number
+  episode_number: number
+  created_at: string
+}
+
+export interface DailyWorkoutItem {
+  id: string
+  started_at: string
+  completed_at: string | null
+  exercise_count: number
+}
+
+export interface DailyMoodItem {
+  mood: string
+  feeling: string | null
+  note: string | null
+}
+
+export interface DailyActivityResponse {
+  date: string
+  reviews: DailyReviewItem[]
+  interactions: DailyInteractionItem[]
+  episodes: DailyEpisodeItem[]
+  workouts: DailyWorkoutItem[]
+  mood: DailyMoodItem | null
 }
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'

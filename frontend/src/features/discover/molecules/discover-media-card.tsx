@@ -6,10 +6,11 @@ import type { MediaItemSummary } from '@media/media-queries'
 
 interface DiscoverMediaCardProps {
   item: MediaItemSummary
+  subtitle?: string | null
   className?: string
 }
 
-export const DiscoverMediaCard = memo(function DiscoverMediaCard({ item, className }: DiscoverMediaCardProps) {
+export const DiscoverMediaCard = memo(function DiscoverMediaCard({ item, subtitle, className }: DiscoverMediaCardProps) {
   return (
     <MediaCard
       id={item.id}
@@ -22,6 +23,7 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({ item, classNa
       avgRating={item.avgRating}
       ratingCount={item.ratingCount}
       isAdult={item.isAdult}
+      subtitle={subtitle}
       className={className}
       artistName={item.albumArtistName}
     />

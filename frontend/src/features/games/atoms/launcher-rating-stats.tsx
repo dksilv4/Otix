@@ -1,10 +1,10 @@
 import { useParams } from '@tanstack/react-router'
-import { useLocalGame } from '@/features/game-scanner/game-queries'
+import { useLauncherGame } from '@/features/games/hooks/use-launcher-game'
 
 export function LauncherRatingStats() {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
-  const { data: g } = useLocalGame(gameId)
+  const { game: g } = useLauncherGame(gameId)
   const avgRating = (g?.data?.avgRating as number | undefined) ?? null
   const ratingCount = (g?.data?.ratingCount as number) ?? 0
 

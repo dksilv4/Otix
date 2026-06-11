@@ -1,52 +1,26 @@
 @reference "../../../_tailwind-ref.css";
 
-.dk-discover-media-carousel {
-  @apply relative;
+@keyframes dk-discover-carousel-tilt {
+  0%, 100% { transform: perspective(800px) rotateY(-1.2deg) rotateX(0.3deg); }
+  33% { transform: perspective(800px) rotateY(1.2deg) rotateX(-0.3deg); }
+  66% { transform: perspective(800px) rotateY(-0.6deg) rotateX(0.6deg); }
 }
 
-.dk-discover-media-carousel__scroll {
-  @apply flex overflow-x-auto;
-
-  gap: var(--carousel-gap, 1.25rem);
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--carousel-gap, 1.25rem);
-  scroll-behavior: smooth;
-  padding-left: var(--carousel-gap, 1.25rem);
-  padding-right: var(--carousel-gap, 1.25rem);
+.dk-discover-carousel__track {
+  @apply flex gap-3 overflow-x-auto px-4 lg:px-8 pb-2;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
     display: none;
   }
 }
 
-.dk-discover-media-carousel__item {
-  @apply shrink-0;
+.dk-discover-carousel__card {
+  @apply flex-shrink-0;
+  animation: dk-discover-carousel-tilt 6s ease-in-out infinite;
+  width: 200px;
 }
 
-.dk-discover-media-carousel__arrow {
-  @apply absolute top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-md;
-
-  background: var(--dk-surface-glass);
-  box-shadow: var(--dk-shadow-glass);
-  color: hsl(var(--foreground) / 0.7);
-  transition: opacity var(--dk-duration-fast) ease;
-
-  &:hover {
-    color: hsl(var(--foreground));
-  }
-}
-
-.dk-discover-media-carousel__arrow--left {
-  @apply left-4;
-}
-
-.dk-discover-media-carousel__arrow--right {
-  @apply right-4;
-}
-
-.dk-discover-media-carousel__arrow--hidden {
-  opacity: 0;
-  pointer-events: none;
+.dk-discover-carousel__skeleton {
+  @apply w-full aspect-[2/3] rounded-xl;
 }

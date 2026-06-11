@@ -7,7 +7,7 @@ import { userQueries, useClaimBadge } from '../user-queries'
 import type { BadgeDef } from '../user-queries'
 import { BadgeRenderer } from '../molecules/badge-renderer'
 import { Skeleton } from '@ui/atoms/skeleton'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import './profile-achievements-section.scss'
 
 // Define the 8 progressive series mapping achievement keys in order

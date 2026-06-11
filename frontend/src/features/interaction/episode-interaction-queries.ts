@@ -1,9 +1,13 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { episodeInteractionKeys } from './episode-interaction-keys'
 import { mediaKeys } from '@/features/media/media-keys'
 import { interactionKeys } from './interaction-keys'
+
+export const episodeInteractionKeys = {
+  all: () => ['episode-interactions'] as const,
+  forShow: (mediaId: string) => [...episodeInteractionKeys.all(), 'show', mediaId] as const,
+}
 
 export interface EpisodeInteractionState {
   episodeId: string

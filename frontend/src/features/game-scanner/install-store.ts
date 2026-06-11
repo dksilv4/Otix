@@ -5,7 +5,7 @@
 // Persists to localStorage and rehydrates from backend on refresh.
 
 import { useState, useEffect, useCallback } from 'react'
-import type { InstallProgress, InstallResult } from './types'
+import type { InstallProgress, InstallResult, InstallPhase } from './types'
 import { hasDesktopAPI } from './storage'
 
 const LS_KEY = 'otix_game_installs'
@@ -77,9 +77,8 @@ function removeInstall(isoPath: string): void {
 function ensureIpcListening(): void {
   if (_ipcUnsub) return
   if (!hasDesktopAPI()) return
-  const api = (window as any).desktopAPI
-  if (!api?.onInstallProgress) return
-  _ipcUnsub = api.onInstallProgress((p: InstallProgress & { installId?: string; isoPath?: string }) => {
+  if (!window.desktopAPI?.onInstallProgress) return
+  _ipcUnsub = window.desktopAPI.onInstallProgress((p: InstallProgress & { installId?: string; isoPath?: string }) => {
     const path = p.isoPath
     if (!path) return // no routing info — ignore
     const existing = _installs.get(path)
@@ -114,11 +113,10 @@ function hydrateFromStorage(): void {
 
 async function syncWithBackend(): Promise<void> {
   if (!hasDesktopAPI()) return
-  const api = (window as any).desktopAPI
-  if (!api?.getActiveInstalls) return
+  if (!window.desktopAPI?.getActiveInstalls) return
   try {
     const active: Array<{ installId: string; isoPath: string; targetDir: string; gameTitle: string; startTime: number; phase: string; progress: number; message: string }>
-      = await api.getActiveInstalls()
+      = await window.desktopAPI.getActiveInstalls()
 
     const backendIsoPaths = new Set(active.map(i => i.isoPath))
 
@@ -130,7 +128,7 @@ async function syncWithBackend(): Promise<void> {
         gameTitle: info.gameTitle,
         targetDir: info.targetDir,
         installId: info.installId,
-        progress: { phase: info.phase as any, progress: info.progress, message: info.message },
+        progress: { phase: info.phase as InstallPhase, progress: info.progress, message: info.message },
         result: null,
         error: null,
       })
@@ -241,8 +239,7 @@ export function cancelInstallByIsoPath(isoPath: string): void {
   const entry = _installs.get(isoPath)
   if (!entry) return
   try {
-    const api = (window as any).desktopAPI
-    if (api?.cancelInstall) api.cancelInstall(isoPath)
+    if (window.desktopAPI?.cancelInstall) window.desktopAPI.cancelInstall(isoPath)
   } catch {}
   removeInstall(isoPath)
 }

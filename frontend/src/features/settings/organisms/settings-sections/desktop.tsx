@@ -21,7 +21,7 @@ export function DesktopSection() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
 
-  const api = (window as any).desktopAPI as {
+  const api = window.desktopAPI as unknown as {
     getDesktopSettings: () => Promise<DesktopSettingsData>
     setDesktopSettings: (s: Partial<DesktopSettingsData>) => Promise<DesktopSettingsData>
   } | undefined

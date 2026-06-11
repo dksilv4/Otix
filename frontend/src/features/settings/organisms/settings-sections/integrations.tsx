@@ -2,7 +2,7 @@
 import './integrations.scss'
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/sse-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'

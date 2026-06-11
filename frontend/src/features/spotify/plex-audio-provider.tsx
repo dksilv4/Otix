@@ -194,8 +194,8 @@ export function PlexAudioProvider({ children }: { children: React.ReactNode }) {
 
       audio.src = streamUrl
       await audio.play()
-    } catch (e: any) {
-      const msg = e?.message || String(e)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
       // Ignore AbortError from rapid track changes — the next play will supersede.
       if (e instanceof DOMException && e.name === "AbortError") return
       console.error("[PlexAudio] play() failed:", msg)

@@ -5,7 +5,7 @@ import { Pause, Play, Film, Tv, Music, User, Monitor, HardDrive } from 'lucide-r
 import { apiClient } from '@/lib/api-client'
 import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { useDesktopPlatform } from '@/lib/desktop-platform'
 import './plex-now-playing.scss'
 

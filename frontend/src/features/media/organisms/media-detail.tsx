@@ -3,7 +3,6 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 
-import { useMediaDetail } from '../hooks/use-media-detail'
 import { usePageMeta } from '@/lib/page-context'
 import { useAuth } from '@/features/auth'
 
@@ -29,7 +28,12 @@ import { InteractionSection } from '@/features/interaction/molecules/interaction
 import { WhereToWatchSection } from './where-to-watch-section'
 
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched, useMarkShowWatched } from '@/features/interaction/episode-interaction-queries'
-import type { MediaItemDetail } from '../media-queries'
+import { useQuery } from '@tanstack/react-query'
+import { mediaQueries, type MediaItemDetail } from '../media-queries'
+
+function useMediaDetail(id: string) {
+  return useQuery(mediaQueries.detail(id))
+}
 
 
 import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
@@ -475,7 +479,7 @@ function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTit
                     title: installEntry!.gameTitle ?? 'Game',
                     id: installEntry!.result!.installDir,
                     platform: 'pc',
-                  } as any);
+                  } as Parameters<NonNullable<typeof window.desktopAPI>['launchGame']>[0]);
                 } catch (e) {
                   console.error('Failed to launch:', e);
                 }

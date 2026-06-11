@@ -80,20 +80,6 @@ const DkMediaCard = memo(function DkMediaCard({
 
       <div className="dk-media-card__gradient-overlay" />
 
-      {subtitle && (
-        <div className="dk-media-card__subtitle">
-          <span
-            className="dk-media-card__subtitle-badge"
-            style={{
-              color: subtitleColor ?? '#e2e8f0',
-              backgroundColor: 'rgba(0,0,0,0.65)',
-            }}
-          >
-            {subtitle}
-          </span>
-        </div>
-      )}
-
       {showTypeBadge && (
         <div className="dk-media-card__type-badge">
           <span
@@ -136,6 +122,9 @@ const DkMediaCard = memo(function DkMediaCard({
       )}
 
       <div className="dk-media-card__caption">
+        {subtitle && (
+          <p className="dk-media-card__subtitle" style={subtitleColor ? { color: subtitleColor } : undefined}>{subtitle}</p>
+        )}
         <p className="dk-media-card__title">{title}</p>
         {artistName && (
           <p className="dk-media-card__artist">{artistName}</p>

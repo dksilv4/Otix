@@ -1,6 +1,6 @@
 // TODO: Review this file
 export { DiscoverFeed } from './organisms/discover-feed'
-export { HomePage } from './organisms/home-page'
+export { DiscoverPage } from './pages/home-page'
 export { ChatSearchInput } from './molecules/chat-search-input'
 export { DiscoverHero } from './organisms/discover-hero'
 export { MediaSection } from './organisms/media-section'
@@ -10,4 +10,4 @@ export { SearchSortBar, SORT_OPTIONS, TYPE_OPTIONS } from './molecules/search-so
 export type { SortValue, TypeValue } from './molecules/search-sort-bar'
 
 export { discoverQueries } from './discover-queries'
-export { discoverKeys } from './discover-keys'
+export { discoverKeys } from './discover-queries'

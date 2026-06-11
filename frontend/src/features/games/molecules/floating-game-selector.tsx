@@ -1,28 +1,51 @@
-import {useCallback} from 'react'
+import {useCallback, useMemo} from 'react'
 import {useNavigate, useParams} from '@tanstack/react-router'
 import {Gamepad2, Menu} from 'lucide-react'
 import {useNavigation} from '@navigation/providers/navigation-provider'
 import {useLocalGames} from '@/features/game-scanner/game-queries'
+import {usePopularGames} from '@/features/games/games-queries'
+import {hasDesktopAPI} from '@/lib/desktop-api'
 import {toDisplayGame} from '@/features/games/launcher-utils'
 import GameThumbList from '@/features/games/molecules/game-thumb-list'
+import type {DisplayGame, LauncherPlatform} from '@/features/games/types'
 
 export function FloatingGameSelector() {
     const {toggle: toggleNav} = useNavigation()
     const navigate = useNavigate()
     const p = useParams({strict: false})
     const activeGameId = (p as Record<string, string>).gameId || null
+    const isDesktop = hasDesktopAPI()
 
-    const {data: localGames = []} = useLocalGames({installed: true, sortBy: 'last_played_at', sortDir: 'desc'})
+    const {data: localGames = []} = useLocalGames(
+        isDesktop ? {installed: true, sortBy: 'last_played_at', sortDir: 'desc'} : undefined,
+    )
+    const {data: popularGames = []} = usePopularGames()
 
-    const games = localGames.map(toDisplayGame)
+    const games: DisplayGame[] = useMemo(() => {
+        if (isDesktop) return localGames.map(toDisplayGame)
+        return popularGames.slice(0, 20).map((g) => ({
+            id: g.id,
+            title: g.title,
+            posterUrl: g.posterUrl ?? null,
+            iconUrl: g.posterUrl ?? g.iconUrl ?? undefined,
+            backdropUrl: g.backdropUrl ?? undefined,
+            playtime: '',
+            achievements: '',
+            isDefault: false,
+            isInstalled: false,
+            platform: 'unknown' as LauncherPlatform,
+        }))
+    }, [isDesktop, localGames, popularGames])
 
     const handleSelectGame = useCallback((id: string) => {
         navigate({to: '/game/$gameId', params: {gameId: id}})
-        requestAnimationFrame(() => {
-            const el = document.getElementById('launcher-main-panel')
-            if (el) el.scrollTo({top: 0, behavior: 'smooth'})
-        })
-    }, [navigate])
+        if (isDesktop) {
+            requestAnimationFrame(() => {
+                const el = document.getElementById('launcher-main-panel')
+                if (el) el.scrollTo({top: 0, behavior: 'smooth'})
+            })
+        }
+    }, [navigate, isDesktop])
 
     const goToLibrary = useCallback(() => {
         navigate({to: '/library'})

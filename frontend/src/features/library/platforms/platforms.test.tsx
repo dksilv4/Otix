@@ -100,8 +100,8 @@ describe("Platforms Component Suite", () => {
     it("renders steam platform definition basics", () => {
       expect(steamPlatform.id).toBe("steam")
       expect(steamPlatform.label).toBe("Steam")
-      expect(steamPlatform.requiresConnection({ steamId: "yes" } as any)).toBe(true)
-      expect(steamPlatform.requiresConnection({} as any)).toBe(false)
+      expect(steamPlatform.requiresConnection({ steamId: "yes" } as { steamId?: string })).toBe(true)
+      expect(steamPlatform.requiresConnection({} as { steamId?: string })).toBe(false)
     })
 
     it("renders EmptyState correctly and responds to scan trigger", async () => {
@@ -115,38 +115,41 @@ describe("Platforms Component Suite", () => {
       expect(mockScan).toHaveBeenCalled()
     })
 
-    it("renders DashboardSection correctly", () => {
+    it("renders OverviewModule correctly", () => {
       vi.mocked(useLibraryTab).mockReturnValue({
-        data: { pages: [{ items: [{ id: "game-1", title: "Portal 2", mediaType: "game", steamPlaytimeForever: 120 }] }] },
+        data: { pages: [{ items: [{ id: "game-1", title: "Portal 2", mediaType: "game", steamPlaytimeForever: 120, steamRtimeLastPlayed: 1781193895 }] }] },
         isLoading: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
+      vi.mocked(useSteamStatus).mockReturnValue({
+        data: { gameCount: 1, lastScannedAt: null },
+      } as unknown as Record<string, unknown>)
 
-      const Dashboard = steamPlatform.DashboardSection
-      render(<Dashboard />)
+      const Dashboard = steamPlatform.OverviewModule
+      render(<Dashboard expanded={true} />)
       expect(screen.getByText("Portal 2")).toBeInTheDocument()
       expect(screen.getByText("2h")).toBeInTheDocument()
     })
 
     it("renders Content correctly with game and handles unmatched toggle", async () => {
       vi.mocked(useLibraryTab).mockReturnValue({
-        data: { pages: [{ items: [{ id: "game-1", title: "Portal 2", mediaType: "game", steamPlaytimeForever: 120, steamPlaytime2weeks: 30, steamRtimeLastPlayed: Math.floor(Date.now() / 1000 - 3600) }] }] },
+        data: { pages: [{ items: [{ id: "game-1", title: "Portal 2", mediaType: "game", steamPlaytimeForever: 120, steamRtimeLastPlayed: 1781193895, steamPlaytime2weeks: 30, steamRtimeLastPlayed: Math.floor(Date.now() / 1000 - 3600) }] }] },
         isLoading: false,
         isError: false,
         fetchNextPage: vi.fn(),
         hasNextPage: false,
         isFetchingNextPage: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       vi.mocked(useSteamStatus).mockReturnValue({
         data: { gameCount: 1, lastScannedAt: new Date().toISOString() },
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       vi.mocked(useSteamLibraryScan).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
         data: null,
         error: null,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       const mockRefetch = vi.fn()
       vi.mocked(useUnmatchedSteamGames).mockReturnValue({
@@ -156,7 +159,7 @@ describe("Platforms Component Suite", () => {
         fetchNextPage: vi.fn(),
         isFetchingNextPage: false,
         refetch: mockRefetch,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       const Content = steamPlatform.Content
       render(<Content />)
@@ -174,17 +177,20 @@ describe("Platforms Component Suite", () => {
     it("renders plex platform definition basics", () => {
       expect(plexPlatform.id).toBe("plex")
       expect(plexPlatform.label).toBe("Plex")
-      expect(plexPlatform.requiresConnection({ plexId: "yes" } as any)).toBe(true)
+      expect(plexPlatform.requiresConnection({ plexId: "yes" } as { plexId?: string | null })).toBe(true)
     })
 
-    it("renders DashboardSection correctly", () => {
+    it("renders OverviewModule correctly", () => {
       vi.mocked(useLibraryTab).mockReturnValue({
-        data: { pages: [{ items: [{ id: "movie-1", title: "Inception", mediaType: "movie", plexViewCount: 2 }] }] },
+        data: { pages: [{ items: [{ id: "movie-1", title: "Inception", mediaType: "movie", plexViewCount: 2, plexLastViewedAt: new Date().toISOString() }] }] },
         isLoading: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
+      vi.mocked(usePlexStatus).mockReturnValue({
+        data: { itemCount: 1, lastScannedAt: null },
+      } as unknown as Record<string, unknown>)
 
-      const Dashboard = plexPlatform.DashboardSection
-      render(<Dashboard />)
+      const Dashboard = plexPlatform.OverviewModule
+      render(<Dashboard expanded={true} />)
       expect(screen.getByText("Inception")).toBeInTheDocument()
       expect(screen.getByText("Viewed 2 times")).toBeInTheDocument()
     })
@@ -197,11 +203,11 @@ describe("Platforms Component Suite", () => {
         fetchNextPage: vi.fn(),
         hasNextPage: false,
         isFetchingNextPage: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       vi.mocked(usePlexStatus).mockReturnValue({
         data: { itemCount: 1, lastScannedAt: new Date().toISOString() },
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       // plex.tsx now calls streamPlexSync directly, not the hook
       vi.mocked(streamPlexSync).mockResolvedValue({ total: 10, matched: 8, seeded: 2 })
@@ -222,16 +228,23 @@ describe("Platforms Component Suite", () => {
     it("renders spotify platform definition basics", () => {
       expect(spotifyPlatform.id).toBe("spotify")
       expect(spotifyPlatform.label).toBe("Spotify")
-      expect(spotifyPlatform.requiresConnection({ spotifyId: "yes" } as any)).toBe(true)
+      expect(spotifyPlatform.requiresConnection({ spotifyId: "yes" } as { spotifyId?: string | null })).toBe(true)
     })
 
-    it("renders DashboardSection correctly", () => {
+    it("renders OverviewModule correctly", () => {
+      vi.mocked(useLibraryTab).mockReturnValue({
+        data: { pages: [{ items: [{ id: "album-1", title: "Discovery", mediaType: "music", posterUrl: "abc" }] }] },
+        isLoading: false,
+      } as unknown as Record<string, unknown>)
+      vi.mocked(useSpotifyStatus).mockReturnValue({
+        data: { trackCount: 10, lastScannedAt: null },
+      } as unknown as Record<string, unknown>)
       vi.mocked(useSpotifyLikedTracks).mockReturnValue({
         data: { pages: [{ tracks: [], total: 42, nextOffset: null, hasMore: false }] },
-      } as any)
+      } as unknown as Record<string, unknown>)
 
-      const Dashboard = spotifyPlatform.DashboardSection
-      render(<Dashboard />)
+      const Dashboard = spotifyPlatform.OverviewModule
+      render(<Dashboard expanded={true} />)
       expect(screen.getByText("Liked Songs")).toBeInTheDocument()
       expect(screen.getByText("42 tracks")).toBeInTheDocument()
     })
@@ -240,17 +253,17 @@ describe("Platforms Component Suite", () => {
       vi.mocked(useLibraryTab).mockReturnValue({
         data: { pages: [{ items: [{ id: "album-1", title: "Discovery", mediaType: "music", posterUrl: "abc" }] }] },
         isLoading: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
       vi.mocked(useSpotifyLikedTracks).mockReturnValue({
         data: { pages: [{ tracks: [], total: 10, nextOffset: null, hasMore: false }] },
-      } as any)
+      } as unknown as Record<string, unknown>)
       vi.mocked(useSpotifyStatus).mockReturnValue({
         data: { trackCount: 10 },
-      } as any)
+      } as unknown as Record<string, unknown>)
       vi.mocked(useSpotifyLibraryScan).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       const Content = spotifyPlatform.Content
       render(<Content />)
@@ -269,15 +282,15 @@ describe("Platforms Component Suite", () => {
         isError: false,
         hasNextPage: false,
         isFetchingNextPage: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       vi.mocked(useSpotifyStatus).mockReturnValue({
         data: { trackCount: 1 },
-      } as any)
+      } as unknown as Record<string, unknown>)
       vi.mocked(useSpotifyLibraryScan).mockReturnValue({
         mutate: vi.fn(),
         isPending: false,
-      } as any)
+      } as unknown as Record<string, unknown>)
 
       const Content = spotifyPlatform.Content
       render(<Content />)

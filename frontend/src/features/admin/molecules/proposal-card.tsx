@@ -4,8 +4,50 @@ import { Check, X, ChevronDown, Bot, Undo2, ThumbsUp, ThumbsDown } from 'lucide-
 import { cn } from '@/lib/utils'
 import { ExperimentGuard } from '@/features/experiments/molecules/experiment-guard'
 import type { MediaEditProposal, ImageOverrideItem } from '../admin-edit-queries'
-import { IMAGE_TYPE_LABELS, FIELD_LABELS, changeSummary, statusBadge } from './proposal-card-utils'
 import './proposal-card.scss'
+
+const IMAGE_TYPE_LABELS: Record<string, string> = {
+  poster: 'Poster',
+  backdrop: 'Backdrop',
+  logo: 'Logo',
+  textless_poster: 'Textless Poster',
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  title: 'Title',
+  overview: 'Overview',
+  tagline: 'Tagline',
+  status: 'Status',
+  release_date: 'Release Date',
+  original_language: 'Original Language',
+  runtime: 'Runtime',
+}
+
+function changeSummary(proposal: MediaEditProposal): string {
+  const parts: string[] = []
+  const changedFields = Object.keys(proposal.changes ?? {})
+  if (changedFields.length > 0) {
+    parts.push('Changed ' + changedFields.join(', '))
+  }
+  if (proposal.imageOverrides && proposal.imageOverrides.length > 0) {
+    const types = proposal.imageOverrides.map(
+      (o) => `${IMAGE_TYPE_LABELS[o.imageType] ?? o.imageType} (${o.languageCode})`,
+    )
+    parts.push('Overrode ' + types.join(', '))
+  }
+  return parts.join('; ') || 'No changes recorded'
+}
+
+function statusBadge(status: string) {
+  switch (status) {
+    case 'approved':
+      return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: 'Approved' }
+    case 'rejected':
+      return { bg: 'bg-red-500/10', text: 'text-red-400', label: 'Rejected' }
+    default:
+      return { bg: 'bg-amber-500/10', text: 'text-amber-400', label: 'Pending' }
+  }
+}
 
 export function ProposalCard({
   proposal,

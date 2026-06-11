@@ -119,67 +119,210 @@
   color: oklch(0.5 0 0);
 }
 
-/* ── Overview ── */
-.dk-library-spotify__overview {
-  @apply space-y-8;
-}
-
-/* ── Section ── */
+/* ── Overview section ── */
 .dk-library-spotify__section {
   @apply space-y-4;
 }
 
-.dk-library-spotify__section-header {
-  @apply flex items-center justify-between;
+/* ── Hero area ── */
+.dk-library-spotify__hero {
+  @apply relative overflow-hidden rounded-2xl p-5;
 }
 
-.dk-library-spotify__section-title {
-  @apply text-sm font-semibold uppercase tracking-wider;
-  color: oklch(0.5 0 0);
+.dk-library-spotify__hero-bg {
+  @apply absolute inset-0;
+  background: linear-gradient(160deg, #1DB954 0%, #169c46 25%, #0d5c2a 55%, #000000 100%);
 }
 
-.dk-library-spotify__section-link {
-  @apply text-xs transition-colors;
-  color: oklch(0.5 0 0);
+.dk-library-spotify__hero-content {
+  @apply relative z-10;
 }
 
-.dk-library-spotify__section-link:hover {
-  color: inherit;
+.dk-library-spotify__hero-top {
+  @apply flex items-center justify-between mb-4;
 }
 
-/* ── Liked card ── */
-.dk-library-spotify__liked-card {
-  @apply flex items-center gap-4 p-4 rounded-2xl w-full text-left transition-colors;
-  background-color: var(--dk-surface-glass);
+.dk-library-spotify__hero-brand-icon {
+  @apply h-5 w-5;
+  color: #1DB954;
 }
 
-.dk-library-spotify__liked-card:hover {
-  background-color: var(--dk-surface-elevated);
+.dk-library-spotify__hero-brand-label {
+  @apply text-sm font-semibold;
+  color: #1DB954;
 }
 
-.dk-library-spotify__liked-card-bg {
-  @apply w-12 h-12 rounded-xl flex items-center justify-center shrink-0;
-  background: linear-gradient(135deg, oklch(0.7 0.15 330), oklch(0.55 0.15 330));
+.dk-library-spotify__hero-link {
+  @apply text-xs font-medium transition-colors;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.dk-library-spotify__liked-card-icon {
-  @apply h-5 w-5 text-white;
+.dk-library-spotify__hero-link:hover {
+  color: rgba(255, 255, 255, 1);
 }
 
-.dk-library-spotify__liked-card-info {
+.dk-library-spotify__hero-title {
+  @apply text-xl font-bold mb-2;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dk-library-spotify__hero-stats {
+  @apply flex flex-wrap items-center gap-x-1.5 text-sm;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dk-library-spotify__hero-stat {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dk-library-spotify__hero-dot {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Quick links row ── */
+.dk-library-spotify__quick-links {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.dk-library-spotify__quick-link {
+  @apply flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 border;
+}
+
+.dk-library-spotify__quick-link:hover {
+  @apply scale-[1.02];
+}
+
+.dk-library-spotify__quick-link--liked {
+  background: linear-gradient(135deg, oklch(0.7 0.15 330 / 0.15), oklch(0.55 0.15 330 / 0.10));
+  border-color: oklch(0.7 0.15 330 / 0.25);
+}
+
+.dk-library-spotify__quick-link--liked:hover {
+  background: linear-gradient(135deg, oklch(0.7 0.15 330 / 0.25), oklch(0.55 0.15 330 / 0.18));
+  border-color: oklch(0.7 0.15 330 / 0.4);
+}
+
+.dk-library-spotify__quick-link--library {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.10), rgba(29, 185, 84, 0.05));
+  border-color: rgba(29, 185, 84, 0.20);
+}
+
+.dk-library-spotify__quick-link--library:hover {
+  background: linear-gradient(135deg, rgba(29, 185, 84, 0.18), rgba(29, 185, 84, 0.10));
+  border-color: rgba(29, 185, 84, 0.35);
+}
+
+.dk-library-spotify__quick-link-icon {
+  @apply w-10 h-10 rounded-xl flex items-center justify-center shrink-0;
+}
+
+.dk-library-spotify__quick-link--liked .dk-library-spotify__quick-link-icon {
+  @apply h-5 w-5;
+}
+
+.dk-library-spotify__quick-link--library .dk-library-spotify__quick-link-icon {
+  @apply h-5 w-5;
+  color: #1DB954;
+}
+
+.dk-library-spotify__quick-link-text {
   @apply min-w-0;
 }
 
-.dk-library-spotify__liked-card-title {
-  @apply text-sm font-semibold;
+.dk-library-spotify__quick-link-title {
+  @apply text-sm font-semibold block;
 }
 
-.dk-library-spotify__liked-card-subtitle {
-  @apply text-xs;
+.dk-library-spotify__quick-link-sub {
+  @apply text-xs block mt-0.5;
   color: oklch(0.5 0 0);
 }
 
-/* ── Track list ── */
+/* ── Album carousel ── */
+.dk-library-spotify__carousel {
+  @apply space-y-3;
+}
+
+.dk-library-spotify__carousel-header {
+  @apply flex items-center justify-between;
+}
+
+.dk-library-spotify__carousel-title {
+  @apply text-sm font-semibold;
+  color: oklch(0.6 0 0);
+}
+
+.dk-library-spotify__carousel-link {
+  @apply text-xs font-medium transition-colors;
+  color: oklch(0.5 0 0);
+}
+
+.dk-library-spotify__carousel-link:hover {
+  color: inherit;
+}
+
+.dk-library-spotify__carousel-track {
+  @apply flex gap-3 overflow-x-auto pb-2;
+  scrollbar-width: none;
+}
+
+.dk-library-spotify__carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.dk-library-spotify__carousel-card {
+  @apply flex-shrink-0 w-[150px];
+}
+
+.dk-library-spotify__carousel-art {
+  @apply relative w-[150px] h-[150px] rounded-xl overflow-hidden mb-2;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__carousel-img {
+  @apply w-full h-full object-cover;
+}
+
+.dk-library-spotify__carousel-placeholder {
+  @apply w-full h-full flex items-center justify-center;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-spotify__carousel-overlay {
+  @apply absolute inset-0 flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dk-library-spotify__carousel-art:hover .dk-library-spotify__carousel-overlay {
+  opacity: 1;
+}
+
+.dk-library-spotify__carousel-play {
+  @apply w-10 h-10 rounded-full flex items-center justify-center;
+  background: rgba(29, 185, 84, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.dk-library-spotify__carousel-art:hover .dk-library-spotify__carousel-play {
+  transform: scale(1.05);
+}
+
+.dk-library-spotify__carousel-card-title {
+  @apply text-sm font-medium truncate;
+}
+
+.dk-library-spotify__carousel-card-artist {
+  @apply text-xs truncate;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Dashboard ── */
+.dk-library-spotify__dashboard {
+  @apply space-y-4;
+}
 .dk-library-spotify__track-list {
   @apply flex flex-col;
 }
@@ -333,7 +476,7 @@
   color: oklch(0.5 0 0);
 }
 
-/* ── Dashboard ── */
-.dk-library-spotify__dashboard {
-  @apply space-y-4;
+/* ── Media item (album card wrapper) ── */
+.dk-library-spotify__media-item {
+  @apply space-y-1;
 }

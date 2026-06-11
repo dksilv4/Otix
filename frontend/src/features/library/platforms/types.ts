@@ -24,12 +24,17 @@ export interface PlatformEmptyStateProps {
   scanError?: Error | null
 }
 
+export interface OverviewModuleProps {
+  expanded?: boolean
+  onToggle?: () => void
+}
+
 export interface PlatformDefinition {
   id: string
   label: string
   icon: ReactNode
   requiresConnection: (user: User | null) => boolean
   EmptyState: ComponentType<PlatformEmptyStateProps>
-  DashboardSection: ComponentType
+  OverviewModule: ComponentType<OverviewModuleProps>
   Content: ComponentType
 }

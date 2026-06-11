@@ -1,7 +1,6 @@
 import { Helmet } from "react-helmet-async"
 import { useSpotifyPlaylists } from "../api/spotify-playlists-api"
 import { PlaylistList } from "../organisms/playlist-list"
-import "./spotify-playlists-page.scss"
 
 export function SpotifyPlaylistsPage() {
   const { data, isLoading, error } = useSpotifyPlaylists()

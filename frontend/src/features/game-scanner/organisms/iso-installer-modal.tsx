@@ -119,7 +119,7 @@ export function IsoInstallerModal({
   const handleSelectIso = useCallback(async () => {
     if (hasDesktopAPI()) {
       try {
-        const selected = await (window as any).desktopAPI.selectIso();
+        const selected = await window.desktopAPI!.selectIso();
         if (selected) setIsoPath(selected);
       } catch {
         setError("Failed to select ISO file");
@@ -130,7 +130,7 @@ export function IsoInstallerModal({
   const handleSelectTargetDir = useCallback(async () => {
     if (hasDesktopAPI()) {
       try {
-        const dir = await (window as any).desktopAPI.selectDirectory();
+        const dir = await window.desktopAPI!.selectDirectory();
         if (dir) {
           // Append game title so user picks the library root, not the game folder
           const title = deriveGameTitle(isoPath);
@@ -160,8 +160,7 @@ export function IsoInstallerModal({
     storeStart(isoPath, gameTitle, targetDir);
 
     try {
-      const api = (window as any).desktopAPI;
-      const res: InstallResult = await api.installGame(isoPath, targetDir, gameTitle);
+      const res: InstallResult = await window.desktopAPI!.installGame(isoPath, targetDir, gameTitle);
       storeComplete(isoPath, res);
       // Update game in storage so main page sees it as installed (pc, not iso)
       if (res.success) {
@@ -172,9 +171,9 @@ export function IsoInstallerModal({
       if (!res.success && res.error) {
         setError(res.error);
       }
-    } catch (err: any) {
-      storeFail(isoPath, err.message || "Installation failed unexpectedly");
-      setError(err.message || "Installation failed unexpectedly");
+    } catch (err: unknown) {
+      storeFail(isoPath, err instanceof Error ? err.message : "Installation failed unexpectedly");
+      setError(err instanceof Error ? err.message : "Installation failed unexpectedly");
     }
   }, [isoPath, targetDir, isInstallingThis, games, onClose, storeStart, storeComplete, storeFail]);
 

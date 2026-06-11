@@ -28,7 +28,15 @@
   --dk-surface-glass-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-hover: oklch(0 0 0 / 0.06);
   --dk-surface-ghost-active: oklch(0 0 0 / 0.1);
+  --dk-surface-ghost: oklch(0 0 0 / 0.04);
+  --dk-surface-field: oklch(0.9 0 0);
+  --dk-surface-elevated: oklch(0.85 0 0);
   --dk-separator: oklch(0 0 0 / 0.08);
+  --dk-border: oklch(0 0 0 / 0.12);
+  --dk-border-accent: oklch(0.705 0.213 47.604 / 0.3);
+  --dk-muted-foreground: oklch(0.552 0.016 285.938);
+  --dk-blur-sm: 4px;
+  --dk-blur-2xl: 40px;
 }
 
 [data-theme='dark'] {
@@ -40,7 +48,13 @@
   --dk-surface-glass-hover: oklch(1 0 0 / 0.08);
   --dk-surface-ghost-hover: oklch(1 0 0 / 0.06);
   --dk-surface-ghost-active: oklch(1 0 0 / 0.1);
+  --dk-surface-ghost: oklch(1 0 0 / 0.04);
+  --dk-surface-field: oklch(0.2 0 0);
+  --dk-surface-elevated: oklch(0.25 0 0);
   --dk-separator: oklch(1 0 0 / 0.1);
+  --dk-border: oklch(1 0 0 / 0.1);
+  --dk-border-accent: oklch(0.705 0.213 47.604 / 0.3);
+  --dk-muted-foreground: oklch(0.705 0.015 286.067);
 }
 
 /* ═══════════════════════════════════════════════

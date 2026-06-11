@@ -204,29 +204,191 @@
   @apply space-y-4;
 }
 
-.dk-library-plex__section-header {
+/* ── Hero ── */
+.dk-library-plex__hero {
+  @apply relative overflow-hidden rounded-2xl p-5;
+}
+
+.dk-library-plex__hero-bg {
+  @apply absolute inset-0;
+  background: linear-gradient(160deg, #e5a00d 0%, #c4880a 25%, #7a5306 55%, #1a1100 100%);
+}
+
+.dk-library-plex__hero-content {
+  @apply relative z-10;
+}
+
+.dk-library-plex__hero-top {
+  @apply flex items-center justify-between mb-4;
+}
+
+.dk-library-plex__hero-brand-icon {
+  @apply h-5 w-5;
+  color: #e5a00d;
+}
+
+.dk-library-plex__hero-brand-label {
+  @apply text-sm font-semibold;
+  color: #e5a00d;
+}
+
+.dk-library-plex__hero-link {
+  @apply text-xs font-medium transition-colors;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dk-library-plex__hero-link:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.dk-library-plex__hero-title {
+  @apply text-xl font-bold mb-2;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dk-library-plex__hero-stats {
+  @apply flex flex-wrap items-center gap-x-1.5 text-sm;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dk-library-plex__hero-stat {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dk-library-plex__hero-dot {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Quick links ── */
+.dk-library-plex__quick-links {
+  @apply grid grid-cols-2 gap-3;
+}
+
+.dk-library-plex__quick-link {
+  @apply flex items-center gap-3 p-4 rounded-xl text-left transition-all duration-200 border;
+}
+
+.dk-library-plex__quick-link:hover {
+  @apply scale-[1.02];
+}
+
+.dk-library-plex__quick-link--recent {
+  background: linear-gradient(135deg, rgba(229, 160, 13, 0.12), rgba(229, 160, 13, 0.05));
+  border-color: rgba(229, 160, 13, 0.20);
+}
+
+.dk-library-plex__quick-link--recent:hover {
+  background: linear-gradient(135deg, rgba(229, 160, 13, 0.20), rgba(229, 160, 13, 0.10));
+  border-color: rgba(229, 160, 13, 0.35);
+}
+
+.dk-library-plex__quick-link--library {
+  background: linear-gradient(135deg, rgba(229, 160, 13, 0.08), rgba(229, 160, 13, 0.03));
+  border-color: rgba(229, 160, 13, 0.15);
+}
+
+.dk-library-plex__quick-link--library:hover {
+  background: linear-gradient(135deg, rgba(229, 160, 13, 0.15), rgba(229, 160, 13, 0.08));
+  border-color: rgba(229, 160, 13, 0.30);
+}
+
+.dk-library-plex__quick-link-icon {
+  @apply h-5 w-5 shrink-0;
+  color: #e5a00d;
+}
+
+.dk-library-plex__quick-link-text {
+  @apply min-w-0;
+}
+
+.dk-library-plex__quick-link-title {
+  @apply text-sm font-semibold block;
+}
+
+.dk-library-plex__quick-link-sub {
+  @apply text-xs block mt-0.5;
+  color: oklch(0.5 0 0);
+}
+
+/* ── Carousel ── */
+.dk-library-plex__carousel {
+  @apply space-y-3;
+}
+
+.dk-library-plex__carousel-header {
   @apply flex items-center justify-between;
 }
 
-.dk-library-plex__section-title {
-  @apply text-sm font-semibold uppercase tracking-wider;
+.dk-library-plex__carousel-title {
+  @apply text-sm font-semibold;
+  color: oklch(0.6 0 0);
+}
+
+.dk-library-plex__carousel-link {
+  @apply text-xs font-medium transition-colors;
   color: oklch(0.5 0 0);
 }
 
-.dk-library-plex__section-link {
-  @apply text-xs transition-colors;
-  color: oklch(0.5 0 0);
-}
-
-.dk-library-plex__section-link:hover {
+.dk-library-plex__carousel-link:hover {
   color: inherit;
 }
 
-.dk-library-plex__dashboard-view {
-  @apply mt-1.5;
+.dk-library-plex__carousel-track {
+  @apply flex gap-3 overflow-x-auto pb-2;
+  scrollbar-width: none;
 }
 
-.dk-library-plex__dashboard-view .dk-library-plex__view-count {
-  font-size: 11px;
+.dk-library-plex__carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.dk-library-plex__carousel-card {
+  @apply flex-shrink-0 w-[150px];
+}
+
+.dk-library-plex__carousel-art {
+  @apply relative w-[150px] h-[150px] rounded-xl overflow-hidden mb-2;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-plex__carousel-img {
+  @apply w-full h-full object-cover;
+}
+
+.dk-library-plex__carousel-placeholder {
+  @apply w-full h-full flex items-center justify-center;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-library-plex__carousel-overlay {
+  @apply absolute inset-0 flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dk-library-plex__carousel-art:hover .dk-library-plex__carousel-overlay {
+  opacity: 1;
+}
+
+.dk-library-plex__carousel-play {
+  @apply w-10 h-10 rounded-full flex items-center justify-center;
+  background: rgba(229, 160, 13, 0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.dk-library-plex__carousel-art:hover .dk-library-plex__carousel-play {
+  transform: scale(1.05);
+}
+
+.dk-library-plex__carousel-card-title {
+  @apply text-sm font-medium truncate;
+}
+
+.dk-library-plex__carousel-card-sub {
+  @apply text-xs truncate;
   color: oklch(0.5 0 0);
 }
+
+/* ── Dashboard view (legacy) ── */

@@ -1,20 +1,23 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import date, datetime, timedelta, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.api._utils import get_db
+from otix.api._utils import get_current_user, get_db
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import Episode, MediaItem, Season
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.review import Review
 from otix.domain.user import User
+from otix.domain.workout import Workout
 from otix.infrastructure.database import async_session
 from otix.schemas.user import MoodCheckinOut, MoodTimelineOut
 
@@ -23,27 +26,11 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/{username}/activity")
-async def get_user_activity(
-    username: str,
-    request: Request,
-    limit: int = Query(20, ge=1, le=50),
-    db: AsyncSession = Depends(get_db),
+async def _fetch_user_activity_events(
+    user_id: str,
+    limit: int = 20,
 ) -> list[dict]:
-    """Get a user's recent activity timeline."""
-    ip = request.client.host if request.client else None
-
-    try:
-        user = await db.scalar(select(User).where(User.username == username))
-        if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    except Exception:
-        await db.rollback()
-        logger.exception("failed to fetch user for activity", username=username, ip=ip)
-        raise
-
-    user_id = user.id
-
+    """Fetch activity events for a given user. Shared by activity and friend-feed endpoints."""
     async def _fetch_reviews():
         async with async_session() as s:
             result = await s.execute(
@@ -112,8 +99,31 @@ async def get_user_activity(
         })
 
     events.sort(key=lambda e: e["timestamp"], reverse=True)
-    logger.info("user activity fetched", username=username, count=len(events), ip=ip)
     return events[:limit]
+
+
+@router.get("/{username}/activity")
+async def get_user_activity(
+    username: str,
+    request: Request,
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Get a user's recent activity timeline."""
+    ip = request.client.host if request.client else None
+
+    try:
+        user = await db.scalar(select(User).where(User.username == username))
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    except Exception:
+        await db.rollback()
+        logger.exception("failed to fetch user for activity", username=username, ip=ip)
+        raise
+
+    events = await _fetch_user_activity_events(user.id, limit=limit)
+    logger.info("user activity fetched", username=username, count=len(events), ip=ip)
+    return events
 
 
 @router.get("/{username}/mood-timeline", response_model=MoodTimelineOut)
@@ -148,3 +158,98 @@ async def get_user_mood_timeline(
             for c in checkins
         ]
     )
+
+
+class ActivityHeatmapEntry(BaseModel):
+    date: str
+    workout: int = 0
+    movie: int = 0
+    show: int = 0
+    music: int = 0
+
+
+class ActivityHeatmapResponse(BaseModel):
+    weeks: int
+    dates: list[ActivityHeatmapEntry]
+
+
+@router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)
+async def get_my_activity_heatmap(
+    request: Request,
+    weeks: int = Query(12, ge=4, le=52),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ActivityHeatmapResponse:
+    """Get combined activity heatmap data for the authenticated user.
+
+    Returns daily counts for workout, movie, show, and music activity
+    over the past N weeks.
+    """
+    ip = request.client.host if request.client else None
+    today = date.today()
+    start_date = today - timedelta(days=weeks * 7 - 1)
+    start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+
+    user_id = current_user.id
+    date_map: dict[str, dict[str, int]] = {}
+
+    def _ensure(d: str) -> dict[str, int]:
+        if d not in date_map:
+            date_map[d] = {"workout": 0, "movie": 0, "show": 0, "music": 0}
+        return date_map[d]
+
+    # 1. Workouts
+    workout_date = func.date(Workout.started_at)
+    result = await db.execute(
+        select(workout_date.label("date"), func.count(Workout.id).label("count"))
+        .where(Workout.user_id == user_id, Workout.started_at >= start_dt)
+        .group_by(workout_date)
+        .order_by(workout_date)
+    )
+    for row in result:
+        _ensure(row.date.isoformat())["workout"] = row.count
+
+    # 2. Media interactions (movie, show, music)
+    interaction_date = func.date(UserMediaInteraction.created_at)
+    result = await db.execute(
+        select(
+            interaction_date.label("date"),
+            MediaItem.media_type,
+            func.count(UserMediaInteraction.media_item_id).label("count"),
+        )
+        .join(MediaItem, UserMediaInteraction.media_item_id == MediaItem.id)
+        .where(
+            UserMediaInteraction.user_id == user_id,
+            UserMediaInteraction.created_at >= start_dt,
+            MediaItem.media_type.in_(["movie", "show", "music"]),
+        )
+        .group_by(interaction_date, MediaItem.media_type)
+        .order_by(interaction_date)
+    )
+    for row in result:
+        key = row.media_type
+        if key in ("movie", "show", "music"):
+            _ensure(row.date.isoformat())[key] += row.count
+
+    # 3. Episode interactions (counts as "show" activity)
+    episode_date = func.date(UserEpisodeInteraction.created_at)
+    result = await db.execute(
+        select(episode_date.label("date"), func.count(UserEpisodeInteraction.episode_id).label("count"))
+        .where(UserEpisodeInteraction.user_id == user_id, UserEpisodeInteraction.created_at >= start_dt)
+        .group_by(episode_date)
+        .order_by(episode_date)
+    )
+    for row in result:
+        _ensure(row.date.isoformat())["show"] += row.count
+
+    # Build full date range
+    dates_list: list[ActivityHeatmapEntry] = []
+    cursor = start_date
+    while cursor <= today:
+        key = cursor.isoformat()
+        entry = date_map.get(key, {"workout": 0, "movie": 0, "show": 0, "music": 0})
+        dates_list.append(ActivityHeatmapEntry(date=key, **entry))
+        cursor += timedelta(days=1)
+
+    logger.info("activity heatmap fetched", user_id=user_id, weeks=weeks, ip=ip)
+    return ActivityHeatmapResponse(weeks=weeks, dates=dates_list)

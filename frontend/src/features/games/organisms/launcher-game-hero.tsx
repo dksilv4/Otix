@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
-import { useLocalGame } from '@/features/game-scanner/game-queries'
+import { useLauncherGame } from '@/features/games/hooks/use-launcher-game'
 import { heroImage } from '@/features/games/launcher-utils'
 import { LauncherGameStats } from '@/features/games/molecules/launcher-game-stats'
 import { LauncherFpsStats } from '@/features/games/molecules/launcher-fps-stats'
@@ -13,7 +13,7 @@ import { LauncherGameButtons } from '@/features/games/organisms/launcher-game-bu
 export function LauncherGameHero() {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
-  const { data: g } = useLocalGame(gameId)
+  const { game: g } = useLauncherGame(gameId)
   const detail = g?.data
 
   const backdropUrl = useMemo(() => {

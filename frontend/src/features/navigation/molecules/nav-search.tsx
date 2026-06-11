@@ -107,8 +107,7 @@ export function NavSearch() {
  e.preventDefault()
  if (activeIndex >= 0 && suggestions[activeIndex]) {
  const item = suggestions[activeIndex]
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
- navigate({ to: `/media/${item.mediaType}/${item.id}` as any })
+ navigate({ to: `/media/${item.mediaType}/${item.id}` as string })
  collapse()
  } else {
  submit()
@@ -180,7 +179,7 @@ export function NavSearch() {
  <Link
  key={item.id}
  // eslint-disable-next-line @typescript-eslint/no-explicit-any
- to={`/media/${item.mediaType}/${item.id}` as any}
+ to={`/media/${item.mediaType}/${item.id}` as string}
  onClick={() => collapse()}
  className={cn(
   'dk-nav-search__item',

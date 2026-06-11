@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router'
-import { useLocalGame } from '@/features/game-scanner/game-queries'
+import { useLauncherGame } from '@/features/games/hooks/use-launcher-game'
 
 function LogoImage({ src, alt }: { src: string; alt: string }) {
   return (
@@ -31,7 +31,7 @@ function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | nu
 export function LauncherGameDetailInfo() {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
-  const { data: g } = useLocalGame(gameId)
+  const { game: g } = useLauncherGame(gameId)
   const d = g?.data
 
   if (!g) return null

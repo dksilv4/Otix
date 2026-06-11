@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useState } from 'react'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'
