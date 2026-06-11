@@ -31,7 +31,7 @@
 
 /* ── Title bar offset variations ── */
 .dk-floating-pill--offset-default {
-  top: 3rem;
+  top: 1rem;
 }
 
 .dk-floating-pill--offset-desktop {
@@ -55,12 +55,5 @@
 
 /* ── Main content ── */
 .dk-main-content {
-  @apply flex min-h-screen;
-}
-
-.dk-main-content--desktop {
-}
-
-.dk-main-content__inner {
-  @apply flex-1;
+  display: flex;
 }

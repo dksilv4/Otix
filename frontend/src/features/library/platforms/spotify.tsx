@@ -1,8 +1,8 @@
 // TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
-import { useInView } from "framer-motion"
+import { useInView, motion, AnimatePresence } from "framer-motion"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { HeartIcon, ListPlus, RefreshCw } from "lucide-react"
+import { HeartIcon, ListPlus, RefreshCw, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
@@ -19,7 +19,7 @@ import { TrackInlineActions } from "@/features/media/molecules/track-inline-acti
 import { useRateTrack } from "@/features/media/media-queries"
 import { useToast } from "@/features/dk-ui/molecules/toast"
 import { SpotifyIcon } from "@/features/dk-ui/atoms/spotify-icon"
-import { registerPlatform } from "./registry"
+import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
 import "./spotify.scss"
 
@@ -313,7 +313,7 @@ function spotifySearchForView(view: SpotifyView) {
 
 // ── Main content ──
 
-function SpotifyTabContent() {
+export function SpotifyTabContent() {
  const likedLoadMoreRef = useRef<HTMLDivElement>(null)
  const likedInView = useInView(likedLoadMoreRef, { margin: '0px 0px 800px 0px' })
  const navigate = useNavigate()
@@ -480,41 +480,94 @@ function SpotifyTabContent() {
 
 // ── Dashboard section ──
 
-function SpotifyDashboardSection() {
+function SpotifyOverviewModule({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) {
  const navigate = useNavigate()
+ const { data, isLoading } = useLibraryTab("spotify")
+ const { data: status } = useSpotifyStatus()
  const likedTracksQuery = useSpotifyLikedTracks()
  const likedTotal = likedTracksQuery.data?.pages[0]?.total ?? 0
 
+ const allItems = useMemo(
+  () => data?.pages.flatMap((page) => page.items) ?? [],
+  [data]
+ )
+ const albumCount = data?.pages[0]?.items.length ?? 0
+
+ if (isLoading || allItems.length === 0) return null
+
  return (
- <div className="dk-library-spotify__dashboard">
- <div className="dk-library-spotify__section-header">
- <h2 className="dk-library-spotify__section-title">
- Spotify
- </h2>
- <button
- onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" } })}
- className="dk-library-spotify__section-link"
- >
- View all
- </button>
- </div>
- <button
- type="button"
- onClick={() => navigate({ to: "/library/$tab", params: { tab: "spotify" }, search: { view: "liked" } as never })}
- className="dk-library-spotify__liked-card"
- >
- <div className="dk-library-spotify__liked-card-bg">
- <HeartIcon className="dk-library-spotify__liked-card-icon" />
- </div>
- <div className="dk-library-spotify__liked-card-info">
- <p className="dk-library-spotify__liked-card-title">Liked Songs</p>
- <p className="dk-library-spotify__liked-card-subtitle">{likedTotal} tracks</p>
- </div>
- </button>
+ <div className="dk-library-spotify__section">
+  {/* Hero area - clickable to toggle */}
+  <div className="dk-library-spotify__hero" onClick={onToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle?.(); } }}>
+   <div className="dk-library-spotify__hero-bg" />
+   <div className="dk-library-spotify__hero-content">
+    <div className="dk-library-spotify__hero-top">
+     <div className="flex items-center gap-2">
+      <SpotifyIcon className="dk-library-spotify__hero-brand-icon" />
+      <span className="dk-library-spotify__hero-brand-label">Spotify</span>
+     </div>
+     <div className="flex items-center gap-2">
+      <button
+       onClick={(e) => { e.stopPropagation(); navigate({ to: "/library/spotify" }); }}
+       className="dk-library-spotify__hero-link"
+      >
+       View all
+      </button>
+      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} style={{ color: "rgba(255,255,255,0.5)" }} />
+     </div>
+    </div>
+    <h2 className="dk-library-spotify__hero-title">Music Library</h2>
+    <p className="dk-library-spotify__hero-stats">
+     <span className="dk-library-spotify__hero-stat">{likedTotal} liked tracks</span>
+     <span className="dk-library-spotify__hero-dot">&middot;</span>
+     <span className="dk-library-spotify__hero-stat">{albumCount} albums</span>
+     <span className="dk-library-spotify__hero-dot">&middot;</span>
+     <span className="dk-library-spotify__hero-stat">{status?.trackCount?.toLocaleString() ?? '-'} total tracks</span>
+    </p>
+   </div>
+  </div>
+
+  <AnimatePresence initial={false}>
+  {expanded && (
+  <motion.div
+   initial={{ height: 0, opacity: 0 }}
+   animate={{ height: "auto", opacity: 1 }}
+   exit={{ height: 0, opacity: 0 }}
+   transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+   className="overflow-hidden"
+   style={{ paddingLeft: "1.25rem", paddingRight: "1.25rem" }}
+  >
+  {/* Quick links row */}
+  <div className="dk-library-spotify__quick-links">
+   <button
+    type="button"
+    onClick={() => navigate({ to: "/library/spotify", search: { view: "liked" } })}
+    className="dk-library-spotify__quick-link dk-library-spotify__quick-link--liked"
+   >
+    <HeartIcon className="dk-library-spotify__quick-link-icon" />
+    <div className="dk-library-spotify__quick-link-text">
+     <span className="dk-library-spotify__quick-link-title">Liked Songs</span>
+     <span className="dk-library-spotify__quick-link-sub">{likedTotal} tracks</span>
+    </div>
+   </button>
+   <button
+    type="button"
+    onClick={() => navigate({ to: "/library/spotify" })}
+    className="dk-library-spotify__quick-link dk-library-spotify__quick-link--library"
+   >
+    <SpotifyIcon className="dk-library-spotify__quick-link-icon" />
+    <div className="dk-library-spotify__quick-link-text">
+     <span className="dk-library-spotify__quick-link-title">Your Library</span>
+     <span className="dk-library-spotify__quick-link-sub">{albumCount} albums</span>
+    </div>
+   </button>
+  </div>
+  </motion.div>
+  )}
+  </AnimatePresence>
  </div>
  )
 }
-
 // ── Register ──
 
 export const spotifyPlatform: PlatformDefinition = {
@@ -523,7 +576,7 @@ export const spotifyPlatform: PlatformDefinition = {
  icon: <SpotifyIcon className="dk-library-spotify__icon" />,
  requiresConnection: (user) => !!user?.spotifyId,
  EmptyState: (props) => <SpotifyEmptyState {...props} />,
- DashboardSection: SpotifyDashboardSection,
+ OverviewModule: SpotifyOverviewModule,
  Content: SpotifyTabContent,
 }
 

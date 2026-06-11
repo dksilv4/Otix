@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from '@tanstack/react-router'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkAvatar } from '@/features/dk-ui/atoms/avatar'

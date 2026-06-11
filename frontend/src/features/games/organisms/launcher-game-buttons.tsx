@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useLocalGame } from '@/features/game-scanner/game-queries'
+import { useLauncherGame } from '@/features/games/hooks/use-launcher-game'
 import { LauncherPlayButton } from '@/features/games/organisms/launcher-play-button'
 import { OpenFolderButton } from '@/features/games/atoms/open-folder-button'
 import { PickExeButton } from '@/features/games/atoms/pick-exe-button'
@@ -9,7 +9,7 @@ import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-install
 
 export function LauncherGameButtons() {
   const {gameId} = useParams({ strict: false })
-  const { data: g } = useLocalGame(gameId)
+  const { game: g } = useLauncherGame(gameId)
 
   const [isInstallerOpen, setIsInstallerOpen] = useState(false)
 

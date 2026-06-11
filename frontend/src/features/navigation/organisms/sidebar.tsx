@@ -11,8 +11,8 @@ import {
   InformationCircleIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/solid"
-import { Gamepad2 } from "lucide-react"
-import { useAuth } from "@/features/auth/auth-provider"
+import { Gamepad2, Compass } from "lucide-react"
+import { useAuth } from "@/lib/auth"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigation } from "@navigation/providers/navigation-provider"
 import { cn } from "@/lib/utils"
@@ -34,8 +34,8 @@ function NavLink({ to, icon, label, params }: { to: string; icon: React.ReactNod
 
   return (
     <Link
-      to={to as any}
-      params={params as any}
+      to={to as string}
+      params={params as Record<string, string> | undefined}
       onClick={() => close()}
       className={cn(
         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
@@ -62,18 +62,19 @@ export function MenuDropdown() {
 
   const links = [
     { to: "/", icon: <HomeIcon className="h-[18px] w-[18px]" />, label: "Home", params: undefined },
+    { to: "/discover", icon: <Compass className="h-[18px] w-[18px]" />, label: "Discover", params: undefined },
     { to: "/search", icon: <MagnifyingGlassIcon className="h-[18px] w-[18px]" />, label: "Chat", params: undefined },
     { to: "/game", icon: <Gamepad2 className="h-[18px] w-[18px]" />, label: "Games", params: undefined },
     { to: "/library", icon: <BookmarkIcon className="h-[18px] w-[18px]" />, label: "Library", params: undefined },
     ...(user ? [
       { to: "/u/$username" as string, icon: <UserCircleIcon className="h-[18px] w-[18px]" />, label: "Profile", params: { username: user.username } },
-      { to: "/notifications" as string, icon: <BellIcon className="h-[18px] w-[18px]" />, label: "Notifications", params: undefined as any },
+      { to: "/notifications" as string, icon: <BellIcon className="h-[18px] w-[18px]" />, label: "Notifications", params: undefined },
     ] : []),
     ...(user?.isAdmin ? [
-      { to: "/admin" as string, icon: <ShieldCheckIcon className="h-[18px] w-[18px]" />, label: "Admin", params: undefined as any },
+      { to: "/admin" as string, icon: <ShieldCheckIcon className="h-[18px] w-[18px]" />, label: "Admin", params: undefined },
     ] : []),
     ...(user?.isAdmin && isElectron ? [
-      { to: "/downloads" as string, icon: <ArrowDownTrayIcon className="h-[18px] w-[18px]" />, label: "Downloads", params: undefined as any },
+      { to: "/downloads" as string, icon: <ArrowDownTrayIcon className="h-[18px] w-[18px]" />, label: "Downloads", params: undefined },
     ] : []),
     { to: "/about", icon: <InformationCircleIcon className="h-[18px] w-[18px]" />, label: "About", params: undefined },
     { to: "/settings", icon: <Cog6ToothIcon className="h-[18px] w-[18px]" />, label: "Settings", params: undefined },

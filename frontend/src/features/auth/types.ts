@@ -1,4 +1,5 @@
-// TODO: Review this file
+// ── API / data types ──
+
 export interface User {
   id: string
   email: string
@@ -64,4 +65,19 @@ export interface AuthState {
   register: (email: string, username: string, password: string, dateOfBirth: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+}
+
+export type AuthFormMode = 'login' | 'register'
+
+export type ForgotPasswordPageState = 'idle' | 'sending' | 'sent' | 'error'
+export type ResetPasswordPageState = 'idle' | 'submitting' | 'success' | 'error'
+export type VerifyEmailPageState = 'verifying' | 'success' | 'error' | 'sending'
+
+export type CallbackService = 'google' | 'plex' | 'spotify' | 'tmdb' | 'steam' | 'steam-connect'
+
+export interface StandardServiceConfig {
+  endpoint: string
+  loadingColor?: string
+  validateParams?: (params: URLSearchParams) => string | null
+  buildBody: (params: URLSearchParams) => Record<string, unknown> | null
 }

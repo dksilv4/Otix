@@ -35,8 +35,7 @@ export function ScannersSection() {
 
   const handleAddGamePath = useCallback(async () => {
     if (!isDesktop) return
-    const api = (window as any).desktopAPI
-    const dir = await api.selectDirectory()
+    const dir = await window.desktopAPI!.selectDirectory()
     if (!dir) return
     const updated = [...gamePaths, dir]
     setGamePathsState(updated)
@@ -51,8 +50,7 @@ export function ScannersSection() {
 
   const handleAddIsoPath = useCallback(async () => {
     if (!isDesktop) return
-    const api = (window as any).desktopAPI
-    const dir = await api.selectDirectory()
+    const dir = await window.desktopAPI!.selectDirectory()
     if (!dir) return
     const updated = [...isoPaths, dir]
     setIsoPathsState(updated)
@@ -217,8 +215,7 @@ export function ScannersSection() {
     if (!isDesktop) return
     setScanning(true)
     try {
-      const api = (window as any).desktopAPI
-      const scanned = await api.scanPaths(gamePaths, isoPaths)
+      const scanned = await window.desktopAPI!.scanPaths(gamePaths, isoPaths)
       if (scanned && scanned.length > 0) {
         setScannedGames(scanned)
         setScannedGamesState(scanned)
@@ -252,7 +249,7 @@ export function ScannersSection() {
     setScannedGamesState([])
     setGameCount(0)
     if (hasDesktopAPI()) {
-      (window as any).desktopAPI.saveScannedGames([]).catch(() => {})
+      window.desktopAPI!.saveScannedGames([]).catch(() => {})
     }
   }, [])
 

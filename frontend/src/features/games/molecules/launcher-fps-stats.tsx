@@ -1,7 +1,43 @@
-import { useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { useLiveFps } from '@/features/games/hooks/use-live-fps'
+import { getDesktopAPI } from '@/lib/desktop-api'
+import type { LiveFpsSnapshot } from '@/lib/desktop-api'
 import { useGamePlaytime } from '@/features/games/hooks/use-launcher-playtime'
+
+const MAX_HISTORY = 60
+
+interface LiveFpsData {
+  snapshot: LiveFpsSnapshot | null
+  history: number[]
+}
+
+function useLiveFps(gameId?: string): LiveFpsData {
+  const [snapshot, setSnapshot] = useState<LiveFpsSnapshot | null>(null)
+  const historyRef = useRef<number[]>([])
+
+  useEffect(() => {
+    const api = getDesktopAPI()
+    if (!api?.onFpsUpdate) return
+
+    setSnapshot(null)
+    historyRef.current = []
+
+    const unsub = api.onFpsUpdate((data) => {
+      if (gameId && data.gameId !== gameId) return
+      setSnapshot(data)
+      if (data.currentFps > 0) {
+        historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), data.currentFps]
+      }
+    })
+
+    return () => {
+      unsub()
+      setSnapshot(null)
+    }
+  }, [gameId])
+
+  return { snapshot, history: historyRef.current }
+}
 
 export function LauncherFpsStats() {
   const p = useParams({ strict: false })

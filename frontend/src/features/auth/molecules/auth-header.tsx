@@ -1,6 +1,4 @@
-import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
-import './auth-header.scss'
 
 interface AuthHeaderProps {
   title: string
@@ -11,17 +9,14 @@ interface AuthHeaderProps {
 
 export function AuthHeader({ title, subtitle, className, children }: AuthHeaderProps) {
   return (
-    <div className={cn('dk-auth-header', className)}>
+    <div id="auth-header" className={'mb-8 text-center' + (className ? ' ' + className : '')}>
       {children}
       <h2
-        className="dk-auth-header__title"
-        style={{
-          backgroundImage: 'linear-gradient(135deg, var(--primary), oklch(0.546 0.245 262.881))',
-        }}
+        className="bg-gradient-to-r from-primary via-primary to-accent-foreground bg-clip-text text-[2rem] font-extrabold leading-tight tracking-[-0.03em] text-transparent sm:text-[2.5rem]"
       >
         {title}
       </h2>
-      <p className="dk-auth-header__subtitle">{subtitle}</p>
+      <p className="mt-2 text-base" style={{ color: "rgba(255, 255, 255, 0.3)" }}>{subtitle}</p>
     </div>
   )
 }

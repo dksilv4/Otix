@@ -3,10 +3,99 @@ import { useCallback, useMemo, useState } from 'react';
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api';
 import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/game-scanner/game-queries';
 import { useGameDetail, useGameGenres, usePopularGames } from '@/features/games/games-queries';
-import { buildGameShelves } from '@/features/games/_utils';
 
-import type { GamesTab } from '../types';
+import type { GamesTab, CatalogGame, ShelfRow } from '../types';
 import type { LocalGame } from '@/features/game-scanner/types';
+
+// ── Filtering ────────────────────────────────────────────────────────
+
+function filterGamesByTab(
+  games: LocalGame[],
+  tab: GamesTab,
+  searchQuery: string,
+): LocalGame[] {
+  let result = games
+  if (tab === "matched") result = result.filter((g) => g.data?.id)
+  if (tab === "unmatched") result = result.filter((g) => !g.data?.id)
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase()
+    result = result.filter(
+      (g) =>
+        g.title.toLowerCase().includes(q) ||
+        g.platform.toLowerCase().includes(q) ||
+        g.installDir.toLowerCase().includes(q),
+    )
+  }
+  return result
+}
+
+// ── Shelves ──────────────────────────────────────────────────────────
+
+function buildGameShelves(
+  matchedGames: LocalGame[],
+  unmatchedGames: LocalGame[],
+  localGames: LocalGame[],
+  popularGames: CatalogGame[],
+): ShelfRow[] {
+  const rows: ShelfRow[] = []
+
+  if (matchedGames.length > 0) {
+    rows.push({
+      id: "matched",
+      label: "Installed Games",
+      icon: "✓",
+      games: matchedGames.slice(0, 12),
+    })
+  }
+
+  const suggested = localGames.filter((g) => g.matchSuggestion)
+  if (suggested.length > 0) {
+    rows.push({
+      id: "suggested",
+      label: "Suggested Matches",
+      icon: "🔗",
+      games: suggested.slice(0, 8),
+    })
+  }
+
+  const unmatched = unmatchedGames.filter((g) => !g.matchSuggestion)
+  if (unmatched.length > 0) {
+    rows.push({
+      id: "unmatched",
+      label: "Unmatched Games",
+      icon: "🔍",
+      games: unmatched.slice(0, 8),
+    })
+  }
+
+  if (popularGames.length > 0) {
+    rows.push({
+      id: "popular",
+      label: "Popular on Otix",
+      icon: "🔥",
+      games: [],
+      catalogGames: popularGames.slice(0, 12),
+    })
+  }
+
+  return rows
+}
+
+function carryOverExistingMatches(
+  scanned: LocalGame[],
+  previousGames: LocalGame[],
+): LocalGame[] {
+  const carryOver = new Map<string, LocalGame>()
+  for (const g of previousGames) {
+    if (g.data?.id || g.matchSuggestion) carryOver.set(g.id, g)
+  }
+  return scanned.map((g) => {
+    if (g.data?.id || g.matchSuggestion) return g
+    const prev = carryOver.get(g.id)
+    if (!prev) return g
+    return { ...g, ...prev }
+  })
+}
 
 // ── UI State ────────────────────────────────────────────────────────
 

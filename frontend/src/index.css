@@ -89,15 +89,15 @@
 }
 
 [data-theme='dark'] {
-  --background: oklch(0.141 0.005 285.823);
+  --background: var(--dk-surface-root);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.141 0.005 285.823);
+  --card: var(--dk-surface-base);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.141 0.005 285.823);
+  --popover: var(--dk-surface-overlay);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.705 0.213 47.604);
   --primary-foreground: oklch(0.141 0.005 285.823);
-  --secondary: oklch(0.274 0.006 286.033);
+  --secondary: var(--dk-surface-raised);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
   --muted-foreground: oklch(0.705 0.015 286.067);
@@ -118,7 +118,7 @@
   --media-game: oklch(0.624 0.21 306.551);
   --media-music: oklch(0.78 0.16 75);
 
-  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar: var(--dk-surface-raised);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.705 0.213 47.604);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -128,56 +128,10 @@
   --sidebar-ring: oklch(0.705 0.213 47.604);
 }
 
-/* ── Auth page variables ── */
-:root {
-  --auth-glass-bg: oklch(1 0 0 / 0.08);
-  --auth-glass-bg-hover: oklch(1 0 0 / 0.14);
-  --auth-glass-highlight: oklch(1 0 0 / 0.12);
-  --auth-glass-shadow: oklch(0 0 0 / 0.25);
-  --auth-glass-shadow-sm: oklch(0 0 0 / 0.15);
-  --auth-error-bg: oklch(0.577 0.245 27.325 / 0.1);
-  --auth-error-border: oklch(0.577 0.245 27.325 / 0.25);
-  --auth-success: oklch(0.627 0.194 149.214);
-  --auth-warning: oklch(0.795 0.184 86.047);
-  --auth-info: oklch(0.546 0.245 262.881);
-}
-
-[data-theme='dark'] {
-  --auth-glass-bg: oklch(1 0 0 / 0.04);
-  --auth-glass-bg-hover: oklch(1 0 0 / 0.08);
-  --auth-glass-highlight: oklch(1 0 0 / 0.06);
-  --auth-glass-shadow: oklch(0 0 0 / 0.5);
-  --auth-glass-shadow-sm: oklch(0 0 0 / 0.3);
-  --auth-error-bg: oklch(0.396 0.141 25.723 / 0.15);
-  --auth-error-border: oklch(0.396 0.141 25.723 / 0.3);
-}
-
-/* ── Auth keyframes ── */
+/* ── Auth card fade-in (shared with auth pages and dialog) ── */
 @keyframes authFormFadeIn {
   from { opacity: 0; transform: translateY(20px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-8px); }
-  40% { transform: translateX(8px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
-}
-
-@keyframes successPop {
-  0% { transform: scale(0.5) translateY(10px); opacity: 0; }
-  70% { transform: scale(1.1) translateY(0); opacity: 1; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-
-/* ── Aurora gradient background ── */
-.auth-aurora-bg {
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 60% at 80% 100%, rgba(96, 165, 250, 0.12) 0%, transparent 50%),
-    linear-gradient(135deg, #0a0b1e 0%, #1a1b2e 50%, #16213e 100%);
 }
 
 /* ── Scrollbar hide utility ── */
@@ -233,6 +187,9 @@
 }
 
 @layer base {
+  html {
+    position: relative;
+  }
   * {
     border-color: var(--border);
   }

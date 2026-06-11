@@ -23,18 +23,7 @@ export function IntelligenceSection() {
   const [originalPrompt, setOriginalPrompt] = useState('')
   const unsubs = useRef<(() => void)[]>([])
 
-  const api = (window as any).desktopAPI as {
-    aiGetStatus: () => Promise<AiModelStatus>
-    aiGetDownloadProgress: () => Promise<number | null>
-    aiGetLoadingProgress: () => Promise<number | null>
-    aiDownloadModel: () => Promise<void>
-    aiDeleteModel: () => Promise<void>
-    aiGetSystemPrompt: () => Promise<string>
-    aiSetSystemPrompt: (p: string) => Promise<void>
-    onAiDownloadProgress: (cb: (p: number) => void) => () => void
-    onAiLoadingProgress: (cb: (p: number) => void) => () => void
-    onAiStatusChanged: (cb: (s: AiModelStatus) => void) => () => void
-  } | undefined
+  const api = window.desktopAPI
 
   useEffect(() => {
     if (!api?.aiGetStatus) return

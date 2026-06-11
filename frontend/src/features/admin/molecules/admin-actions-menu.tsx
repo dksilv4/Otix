@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { useToast } from '@/features/dk-ui/molecules/toast'
 import { connectTaskSseStream } from '@/lib/sse-client'
 import { mediaKeys } from '@/features/media/media-keys'

@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router'
-import { useLocalGame } from '@/features/game-scanner/game-queries'
+import { useLauncherGame } from '@/features/games/hooks/use-launcher-game'
 
 interface CompanyEntry {
   id: string
@@ -11,7 +11,7 @@ interface CompanyEntry {
 export function LauncherGameCompanies() {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
-  const { data: g } = useLocalGame(gameId)
+  const { game: g } = useLauncherGame(gameId)
   const companies = g?.data?.involvedCompanies as CompanyEntry[] | undefined
 
   if (!companies || companies.length === 0) return null

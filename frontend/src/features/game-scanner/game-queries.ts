@@ -1,8 +1,32 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
-import { subscribeToGameDbChanges } from './db-sync';
+import { getDesktopAPI } from '@/lib/desktop-api';
 import { useEffect } from 'react';
 import type { LocalGame } from './types';
+
+type Listener = () => void;
+
+const listeners = new Set<Listener>();
+let unsub: (() => void) | null = null;
+
+function subscribeToGameDbChanges(listener: Listener): () => void {
+  listeners.add(listener);
+  if (!unsub) {
+    const api = getDesktopAPI();
+    if (api?.onGamesDbChanged) {
+      unsub = api.onGamesDbChanged(() => {
+        listeners.forEach((fn) => fn());
+      });
+    }
+  }
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0 && unsub) {
+      unsub();
+      unsub = null;
+    }
+  };
+}
 
 // ── Filter type (mirrors GameFilter in desktop game-storage-service) ──
 

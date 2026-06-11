@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FileCode } from 'lucide-react'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { LauncherPlaytimeStats } from '@/features/games/atoms/launcher-playtime-stats'
 import { LauncherRatingStats } from '@/features/games/atoms/launcher-rating-stats'
 import { LauncherCloudSyncStat } from '@/features/games/atoms/launcher-cloud-sync-stat'

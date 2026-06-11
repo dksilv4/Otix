@@ -138,10 +138,10 @@ export interface DesktopAPI {
   getLocalGamesMap(): Promise<Record<string, LocalGame>>
   saveLocalGamesMapEntry(mediaId: string, game: LocalGame | null): Promise<void>
   onGamesUpdated(cb: () => void): () => void
-  getScannedGamesFiltered(filter: any): Promise<LocalGame[]>
+  getScannedGamesFiltered(filter: Record<string, unknown>): Promise<LocalGame[]>
   getGameById(id: string): Promise<LocalGame | null>
-  getGameCount(filter: any): Promise<number>
-  acceptSuggestion(gameId: string, suggestion: any): Promise<void>
+  getGameCount(filter: Record<string, unknown>): Promise<number>
+  acceptSuggestion(gameId: string, suggestion: Record<string, unknown>): Promise<void>
   rejectSuggestion(gameId: string, suggestionMediaId: string): Promise<void>
   onGamesDbChanged(cb: () => void): () => void
   getRunningGame(): Promise<RunningGameData | null>

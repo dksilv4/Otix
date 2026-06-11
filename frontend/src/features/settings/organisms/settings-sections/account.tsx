@@ -3,13 +3,41 @@ import './account.scss'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { apiClient } from '@/lib/api-client'
-import { fetchSessions, revokeSession, revokeOtherSessions, type SessionInfo } from '@/features/auth/session-queries'
 import { DkButton } from '@/features/dk-ui/atoms/button'
 import { DkInput } from '@/features/dk-ui/atoms/input'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { cn } from '@/lib/utils'
 import { Check, Shield, ShieldAlert, Loader2, Monitor } from 'lucide-react'
 import { SectionHeader } from './profile'
+
+interface SessionInfo {
+  sessionKey: string
+  ipAddress: string | null
+  userAgent: string | null
+  lastSeenAt: string | null
+  createdAt: string | null
+}
+
+interface SessionListData {
+  sessions: SessionInfo[]
+  currentSessionKey: string | null
+}
+
+async function fetchSessions(): Promise<SessionListData> {
+  const { data } = await apiClient.get('/auth/sessions')
+  return data as SessionListData
+}
+
+async function revokeSession(sessionKey: string): Promise<void> {
+  await apiClient.delete(`/auth/sessions/${sessionKey}`)
+}
+
+async function revokeOtherSessions(): Promise<number> {
+  const { data } = await apiClient.delete('/auth/sessions')
+  const msg = data.message as string
+  const match = msg.match(/Revoked (\d+)/)
+  return match ? parseInt(match[1], 10) : 0
+}
 
 function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
   const [mode, setMode] = useState<'idle' | 'setup' | 'enabling' | 'disabling'>('idle')

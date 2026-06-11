@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Download, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/features/auth/auth-provider';
+import { useAuth } from '@/lib/auth';
 import { useExperiment } from '@/features/experiments/experiments-provider';
 import { useDownloads } from '../use-downloads';
 import { DownloadCard } from '../molecules/download-card';

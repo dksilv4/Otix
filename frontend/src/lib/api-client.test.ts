@@ -58,7 +58,7 @@ describe('apiClient', () => {
     const form = new FormData()
     form.append('avatar', new Blob(['x']), 'avatar.txt')
     let seenConfig: InternalAxiosRequestConfig | undefined
-    const testAdapter = async (config: any) => {
+    const testAdapter = async (config: InternalAxiosRequestConfig) => {
       seenConfig = config
       return jsonResponse(config, { ok: true })
     }
@@ -73,7 +73,7 @@ describe('apiClient', () => {
 
   it('does not camelize non-json response payloads', async () => {
     const { apiClient } = await import('./api-client')
-    const testAdapter = async (config: any) => ({
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => ({
       data: { still_snake: true },
       status: 200,
       statusText: 'OK',
@@ -90,8 +90,11 @@ describe('apiClient', () => {
 
   it('normalizes FastAPI 422 validation errors in error response', async () => {
     const { apiClient } = await import('./api-client')
-    const testAdapter = async (config: any) => {
-      const err = new Error('Request failed with status code 422') as any
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      const err = new Error('Request failed with status code 422') as unknown as {
+        response: { data: { detail: Array<{ loc: string[]; msg: string }> }; status: number; statusText: string; headers: Record<string, string> }
+        config: InternalAxiosRequestConfig
+      }
       err.response = {
         data: {
           detail: [
@@ -113,21 +116,24 @@ describe('apiClient', () => {
     await expect(apiClient.post('/validation')).rejects.toThrowError()
     try {
       await apiClient.post('/validation')
-    } catch (e: any) {
-      expect(e.response.data.detail).toBe('password: field required; username: too short')
+    } catch (e: unknown) {
+      expect((e as { response: { data: { detail: string } } }).response.data.detail).toBe('password: field required; username: too short')
     }
   })
 
   it('triggers token refresh flow on 401 error', async () => {
     const { apiClient } = await import('./api-client')
     let requestCount = 0
-    const testAdapter = async (config: any) => {
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       requestCount++
       if (config.url?.includes('/auth/refresh')) {
         return jsonResponse(config, { access_token: 'new-token-999' })
       }
       if (requestCount === 1) {
-        const err = new Error('Unauthorized') as any
+        const err = new Error('Unauthorized') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
         err.response = {
           status: 401,
           headers: {},
@@ -155,10 +161,13 @@ describe('apiClient', () => {
     })
 
     let requestCount = 0
-    const testAdapter = async (config: any) => {
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       requestCount++
       if (config.url?.includes('/auth/refresh')) {
-        const err = new Error('Refresh failed') as any
+        const err = new Error('Refresh failed') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
         err.response = {
           status: 401,
           headers: {},
@@ -169,7 +178,10 @@ describe('apiClient', () => {
         throw err
       }
       if (requestCount === 1) {
-        const err = new Error('Unauthorized') as any
+        const err = new Error('Unauthorized') as unknown as {
+          response: { status: number; headers: Record<string, string>; data: string; config: InternalAxiosRequestConfig }
+          config: InternalAxiosRequestConfig
+        }
         err.response = {
           status: 401,
           headers: {},

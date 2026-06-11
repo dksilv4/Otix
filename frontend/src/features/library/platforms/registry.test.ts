@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { describe, expect, it, beforeEach } from "vitest"
-import { registerPlatform, getPlatform, getAllPlatforms, getConnectedPlatforms, getPlatformTabs, clearRegistry } from "./registry"
+import { registerPlatform, getPlatform, getAllPlatforms, getConnectedPlatforms, getPlatformTabs, clearRegistry } from "./index"
 import type { PlatformDefinition } from "./types"
 import type { User } from "@/features/auth/types"
 
@@ -11,7 +11,7 @@ function makePlatform(id: string, requiresConnection: (user: User | null) => boo
     icon: null,
     requiresConnection,
     EmptyState: () => null,
-    DashboardSection: () => null,
+    OverviewModule: () => null,
     Content: () => null,
   }
 }

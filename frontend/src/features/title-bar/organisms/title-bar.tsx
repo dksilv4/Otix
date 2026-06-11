@@ -16,7 +16,7 @@ function MacOSTitleBar() {
 
 function WindowsLinuxTitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
-  const api = (window as any).desktopAPI as {
+  const api = window.desktopAPI as unknown as {
     isWindowMaximized: () => Promise<boolean>
     onMaximizedChanged: (cb: (maximized: boolean) => void) => () => void
     minimizeWindow: () => Promise<void>

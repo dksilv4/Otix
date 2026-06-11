@@ -139,9 +139,9 @@ vi.mock("@/features/dk-ui/molecules/toast", () => ({
 }))
 
 // Import after mocks
-import { LibraryPage } from "./library-page"
-import { useAuth } from "@/features/auth/auth-provider"
-import { useParams } from "@tanstack/react-router"
+import { LibraryListsPage } from "./pages/library-lists-page"
+import { LibraryWatchlistPage } from "./pages/library-core-tab-pages"
+import { useAuth } from "@/lib/auth"
 import { useLibraryTab } from "./library-queries"
 
 function createMediaItem(overrides: Record<string, unknown> = {}) {
@@ -164,79 +164,19 @@ function createMediaItem(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe("LibraryPage", () => {
+describe("Library tab pages", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useParams).mockReturnValue({ tab: "watchlist" } as never)
-  })
-
-  it("renders the library header", () => {
-    render(<LibraryPage />)
-    expect(screen.getByText("Library")).toBeInTheDocument()
-    expect(screen.getByText("Your saved, liked, watched items, and lists.")).toBeInTheDocument()
-  })
-
-  it("renders the tab bar with overview and core tabs", () => {
-    render(<LibraryPage />)
-    expect(screen.getByText("Overview")).toBeInTheDocument()
-    expect(screen.getByText("Watchlist")).toBeInTheDocument()
-    expect(screen.getByText("Liked")).toBeInTheDocument()
-    expect(screen.getByText("Watched")).toBeInTheDocument()
-    expect(screen.getByText("Played")).toBeInTheDocument()
-    expect(screen.getByText("Listened")).toBeInTheDocument()
-    expect(screen.getByText("Lists")).toBeInTheDocument()
-  })
-
-  it("highlights the active tab", () => {
-    vi.mocked(useParams).mockReturnValue({ tab: "like" } as never)
-    render(<LibraryPage />)
-    const likedTab = screen.getByText("Liked").closest("button")
-    expect(likedTab?.className).toContain("bg-primary/15")
-  })
-
-  it("navigates when a tab is clicked", async () => {
-    render(<LibraryPage />)
-    await userEvent.click(screen.getByText("Liked"))
-    expect(mockNavigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "/library/$tab",
-        params: { tab: "like" },
-      })
-    )
-  })
-
-  it("shows platform tabs for connected user", () => {
-    render(<LibraryPage />)
-    expect(screen.getByText("Overview")).toBeInTheDocument()
-    expect(screen.getByText("Steam")).toBeInTheDocument()
-    expect(screen.getByText("Plex")).toBeInTheDocument()
-    expect(screen.getByText("Spotify")).toBeInTheDocument()
-    expect(screen.getByText("Wishlist")).toBeInTheDocument()
-  })
-
-  it("hides platform tabs when not connected", () => {
-    vi.mocked(useAuth).mockReturnValue({
-      user: { id: "1", email: "test@test.com", username: "test", isVerified: true, twoFactorEnabled: false },
-      isLoading: false,
-      isAuthenticated: true,
-    } as never)
-    render(<LibraryPage />)
-    expect(screen.queryByText("Steam")).not.toBeInTheDocument()
-    expect(screen.queryByText("Plex")).not.toBeInTheDocument()
-    expect(screen.queryByText("Spotify")).not.toBeInTheDocument()
-    expect(screen.queryByText("Wishlist")).not.toBeInTheDocument()
   })
 
   it("renders the lists tab content with empty state", () => {
-    vi.mocked(useParams).mockReturnValue({ tab: "lists" } as never)
-    render(<LibraryPage />)
+    render(<LibraryListsPage />)
     expect(screen.getByText("No lists yet")).toBeInTheDocument()
     expect(screen.getByText("New List")).toBeInTheDocument()
   })
 
   it("renders empty state for core tabs", () => {
-    vi.mocked(useParams).mockReturnValue({ tab: "watchlist" } as never)
-    render(<LibraryPage />)
+    render(<LibraryWatchlistPage />)
     expect(screen.getByText("No Watchlist items yet")).toBeInTheDocument()
   })
 
@@ -249,8 +189,7 @@ describe("LibraryPage", () => {
       hasNextPage: false,
       isFetchingNextPage: false,
     } as never)
-    vi.mocked(useParams).mockReturnValue({ tab: "watchlist" } as never)
-    render(<LibraryPage />)
+    render(<LibraryWatchlistPage />)
     expect(screen.getByText("End of list")).toBeInTheDocument()
   })
 
@@ -263,7 +202,7 @@ describe("LibraryPage", () => {
       hasNextPage: false,
       isFetchingNextPage: false,
     } as never)
-    render(<LibraryPage />)
+    render(<LibraryWatchlistPage />)
     // Skeleton grid renders 12 pulse divs inside a MediaGrid
     const pulseDivs = document.querySelectorAll(".animate-pulse")
     expect(pulseDivs.length).toBe(12)

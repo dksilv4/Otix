@@ -41,11 +41,10 @@ export function useRunningGame() {
 
   // Subscribe to game detection events
   useEffect(() => {
-    const api = (window as any).desktopAPI
-    if (!api) return
+    if (!window.desktopAPI) return
 
     // Check if a game is already running
-    api.getRunningGame().then((game: RunningGameData | null) => {
+    window.desktopAPI.getRunningGame().then((game: RunningGameData | null) => {
       if (game) {
         setRunningGame(game)
         startTimer(game.startTime)
@@ -53,7 +52,7 @@ export function useRunningGame() {
     }).catch(() => {})
 
     // Listen for game started
-    const unsubStart = api.onGameStarted((data: RunningGameData) => {
+    const unsubStart = window.desktopAPI.onGameStarted((data: RunningGameData) => {
       setRunningGame(data)
       startTimer(data.startTime)
     })

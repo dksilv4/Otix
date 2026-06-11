@@ -2,7 +2,7 @@ import { lazy, useEffect } from "react"
 import { createRouter, createRootRoute, createRoute, Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 import { AppLayout } from "@ui/organisms/app-layout"
-import { LoadingPage } from "@ui/organisms/loading-page"
+import { LoadingPage } from "@ui/pages/loading-page"
 import { NotFoundPage } from "@/components/not-found"
 import { getDesktopAPI } from "@/lib/desktop-api"
 
@@ -28,14 +28,12 @@ function useRestoreLastRoute() {
     const saved = localStorage.getItem(LAST_ROUTE_KEY)
     if (!saved) return
     if (saved === location.href) return
+    // Don't redirect away from auth pages
+    if (location.pathname.startsWith('/auth') || location.pathname === '/loading') return
 
-    // Wait briefly for auth state then redirect
-    const t = setTimeout(() => {
-      localStorage.removeItem(LAST_ROUTE_KEY)
-      window.history.replaceState(null, '', saved)
-    }, 100)
-    return () => clearTimeout(t)
-  }, [location.href])
+    localStorage.removeItem(LAST_ROUTE_KEY)
+    window.history.replaceState(null, '', saved)
+  }, []) // only run on mount
 }
 
 /** Listen for clean-quit IPC from Electron main and clear saved route. */
@@ -52,38 +50,44 @@ function useCleanQuitSignal() {
 
 // ── Lazy-loaded page components ──
 
-const AuthPage = lazy(() => import("@auth/organisms/auth-page").then(m => ({ default: m.AuthPage })))
+const AuthPage = lazy(() => import("@auth/pages/auth-page").then(m => ({ default: m.AuthPage })))
 const MediaDetail = lazy(() => import("@media/organisms/media-detail").then(m => ({ default: m.MediaDetail })))
 const DkUiShowcase = lazy(() => import("@/features/dk-ui/showcase").then(m => ({ default: m.DkUiShowcase })))
-const HomePage = lazy(() => import("@discover/organisms/home-page").then(m => ({ default: m.HomePage })))
+const DashboardPage = lazy(() => import("@/features/dashboard/pages/dashboard-page").then(m => ({ default: m.DashboardPage })))
+const DiscoverPage = lazy(() => import("@discover/pages/home-page").then(m => ({ default: m.DiscoverPage })))
 const PersonDetail = lazy(() => import("@person/organisms/person-detail").then(m => ({ default: m.PersonDetail })))
-const CompanyDetail = lazy(() => import("@company/organisms/company-detail").then(m => ({ default: m.CompanyDetail })))
-const LibraryPage = lazy(() => import("@/features/library/library-page").then(m => ({ default: m.LibraryPage })))
+const CompanyDetailPage = lazy(() => import("@company/pages/company-detail-page").then(m => ({ default: m.CompanyDetailPage })))
+const LibraryLayout = lazy(() => import("@/features/library/pages/library-layout").then(m => ({ default: m.LibraryLayout })))
+const LibraryOverviewPage = lazy(() => import("@/features/library/pages/library-overview-page").then(m => ({ default: m.LibraryOverviewPage })))
+const LibraryGamesPage = lazy(() => import("@/features/library/pages/library-games-page").then(m => ({ default: m.LibraryGamesPage })))
+const LibraryWatchlistPage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryWatchlistPage })))
+const LibraryLikePage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryLikePage })))
+const LibraryWatchedPage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryWatchedPage })))
+const LibraryPlayedPage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryPlayedPage })))
+const LibraryListenedPage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryListenedPage })))
+const LibraryOwnedPage = lazy(() => import("@/features/library/pages/library-core-tab-pages").then(m => ({ default: m.LibraryOwnedPage })))
+const LibraryIntegrationSteamSection = lazy(() => import("@/features/library/pages/library-integration-steam-section").then(m => ({ default: m.LibraryIntegrationSteamSection })))
+const LibraryIntegrationPlexSection = lazy(() => import("@/features/library/pages/library-integration-plex-section").then(m => ({ default: m.LibraryIntegrationPlexSection })))
+const LibraryIntegrationSpotifySection = lazy(() => import("@/features/library/pages/library-integration-spotify-section").then(m => ({ default: m.LibraryIntegrationSpotifySection })))
+const LibraryWishlistPage = lazy(() => import("@/features/library/pages/library-wishlist-page").then(m => ({ default: m.LibraryWishlistPage })))
+const LibraryListsPage = lazy(() => import("@/features/library/pages/library-lists-page").then(m => ({ default: m.LibraryListsPage })))
 const ListDetail = lazy(() => import("@/features/list/organisms/list-detail").then(m => ({ default: m.ListDetail })))
-const SettingsPage = lazy(() => import("@/features/settings/organisms/settings-page").then(m => ({ default: m.SettingsPage })))
-const UserProfilePage = lazy(() => import("@/features/user/organisms/user-profile-page").then(m => ({ default: m.UserProfilePage })))
-const WorkoutPage = lazy(() => import("@/features/workout/organisms/workout-page").then(m => ({ default: m.WorkoutPage })))
-const NotificationsPage = lazy(() => import("@/features/notifications/organisms/notifications-page").then(m => ({ default: m.NotificationsPage })))
-const BrowsePage = lazy(() => import("@/features/browse/organisms/browse-page").then(m => ({ default: m.BrowsePage })))
-const VerifyEmailPage = lazy(() => import("@auth/organisms/verify-email-page").then(m => ({ default: m.VerifyEmailPage })))
-const ForgotPasswordPage = lazy(() => import("@auth/organisms/forgot-password-page").then(m => ({ default: m.ForgotPasswordPage })))
-const ResetPasswordPage = lazy(() => import("@auth/organisms/reset-password-page").then(m => ({ default: m.ResetPasswordPage })))
-const SteamCallbackPage = lazy(() => import("@auth/organisms/steam-callback-page").then(m => ({ default: m.SteamCallbackPage })))
-const SteamConnectCallbackPage = lazy(() => import("@auth/organisms/steam-connect-callback-page").then(m => ({ default: m.SteamConnectCallbackPage })))
-const PlexConnectCallbackPage = lazy(() => import("@auth/organisms/plex-connect-callback-page").then(m => ({ default: m.PlexConnectCallbackPage })))
-const SpotifyConnectCallbackPage = lazy(() => import("@auth/organisms/spotify-connect-callback-page").then(m => ({ default: m.SpotifyConnectCallbackPage })))
-const GoogleConnectCallbackPage = lazy(() => import("@auth/organisms/google-connect-callback-page").then(m => ({ default: m.GoogleConnectCallbackPage })))
-const TmdbConnectCallbackPage = lazy(() => import("@auth/organisms/tmdb-connect-callback-page").then(m => ({ default: m.TmdbConnectCallbackPage })))
-const AdminHomePage = lazy(() => import("@/features/admin/organisms/admin-home-page").then(m => ({ default: m.AdminHomePage })))
-const AdminDashboardPage = lazy(() => import("@/features/admin/organisms/admin-dashboard-page").then(m => ({ default: m.AdminDashboardPage })))
-const AdminProposalsPage = lazy(() => import("@/features/admin/organisms/admin-proposals-page").then(m => ({ default: m.AdminProposalsPage })))
-const AdminExperimentsPage = lazy(() => import("@/features/admin/organisms/admin-experiments-page").then(m => ({ default: m.AdminExperimentsPage })))
-const AdminBlogPostPage = lazy(() => import("@/features/admin/organisms/admin-blog-post-page").then(m => ({ default: m.AdminBlogPostPage })))
-const AdminHydrationPage = lazy(() => import("@/features/admin/organisms/admin-hydration-page").then(m => ({ default: m.AdminHydrationPage })))
-const SearchPage = lazy(() => import("@discover/organisms/search-page").then(m => ({ default: m.SearchPage })))
-const AboutPage = lazy(() => import("@/features/about/organisms/about-page").then(m => ({ default: m.AboutPage })))
-const AboutProfilePage = lazy(() => import("@/features/about/organisms/about-profile-page").then(m => ({ default: m.AboutProfilePage })))
-const AboutAchievementsPage = lazy(() => import("@/features/about/organisms/about-achievements-page").then(m => ({ default: m.AboutAchievementsPage })))
+const SettingsPage = lazy(() => import("@/features/settings/pages/settings-page").then(m => ({ default: m.SettingsPage })))
+const UserProfilePage = lazy(() => import("@/features/user/pages/user-profile-page").then(m => ({ default: m.UserProfilePage })))
+const WorkoutPage = lazy(() => import("@/features/workout/pages/workout-page").then(m => ({ default: m.WorkoutPage })))
+const NotificationsPage = lazy(() => import("@/features/notifications/pages/notifications-page").then(m => ({ default: m.NotificationsPage })))
+const BrowsePage = lazy(() => import("@/features/browse/pages/browse-page").then(m => ({ default: m.BrowsePage })))
+const VerifyEmailPage = lazy(() => import("@auth/pages/auth-verify-email-page").then(m => ({ default: m.VerifyEmailPage })))
+const ForgotPasswordPage = lazy(() => import("@auth/pages/auth-forgot-password-page").then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import("@auth/pages/auth-reset-password-page").then(m => ({ default: m.ResetPasswordPage })))
+const CallbackPage = lazy(() => import("@auth/pages/auth-callback-page").then(m => ({ default: m.CallbackPage })))
+const AdminHomePage = lazy(() => import("@/features/admin/pages/admin-home-page").then(m => ({ default: m.AdminHomePage })))
+const AdminDashboardPage = lazy(() => import("@/features/admin/pages/admin-dashboard-page").then(m => ({ default: m.AdminDashboardPage })))
+const AdminProposalsPage = lazy(() => import("@/features/admin/pages/admin-proposals-page").then(m => ({ default: m.AdminProposalsPage })))
+const AdminExperimentsPage = lazy(() => import("@/features/admin/pages/admin-experiments-page").then(m => ({ default: m.AdminExperimentsPage })))
+const AdminBlogPostPage = lazy(() => import("@/features/admin/pages/admin-blog-post-page").then(m => ({ default: m.AdminBlogPostPage })))
+const AdminHydrationPage = lazy(() => import("@/features/admin/pages/admin-hydration-page").then(m => ({ default: m.AdminHydrationPage })))
+const SearchPage = lazy(() => import("@discover/pages/search-page").then(m => ({ default: m.SearchPage })))
 const DownloadQueuePage = lazy(() => import("@/features/downloads/organisms/download-queue").then(m => ({ default: m.DownloadQueuePage })))
 const SpotifyPlaylistsPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlists-page").then(m => ({ default: m.SpotifyPlaylistsPage })))
 const SpotifyPlaylistDetailPage = lazy(() => import("@/features/spotify/playlists/pages/spotify-playlist-detail-page").then(m => ({ default: m.SpotifyPlaylistDetailPage })))
@@ -122,10 +126,13 @@ const rootRoute = createRootRoute({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: HomePage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    type: (search.type as string) || 'all',
-  } as { type?: string }),
+  component: DashboardPage,
+})
+
+const discoverRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/discover",
+  component: DiscoverPage,
 })
 
 const mediaDetailRoute = createRoute({
@@ -147,7 +154,7 @@ const personDetailRoute = createRoute({
 const companyDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/company/$companyId",
-  component: CompanyDetail,
+  component: CompanyDetailPage,
 })
 
 // ── Library ──
@@ -155,21 +162,99 @@ const companyDetailRoute = createRoute({
 function LibraryDefault() {
   const navigate = useNavigate()
   useEffect(() => {
-    navigate({ to: "/library/$tab", params: { tab: "overview" }, replace: true })
+    navigate({ to: "/library/overview", replace: true })
   }, [navigate])
   return <LoadingPage />
 }
 
-const libraryIndexRoute = createRoute({
+const libraryLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/library",
+  component: LibraryLayout,
+})
+
+const libraryIndexRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "/",
   component: LibraryDefault,
 })
 
-const libraryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/library/$tab",
-  component: LibraryPage,
+const libraryOverviewRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "overview",
+  component: LibraryOverviewPage,
+})
+
+const libraryGamesRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "games",
+  component: LibraryGamesPage,
+})
+
+const libraryWatchlistRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "watchlist",
+  component: LibraryWatchlistPage,
+})
+
+const libraryLikeRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "like",
+  component: LibraryLikePage,
+})
+
+const libraryWatchedRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "watched",
+  component: LibraryWatchedPage,
+})
+
+const libraryPlayedRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "played",
+  component: LibraryPlayedPage,
+})
+
+const libraryListenedRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "listened",
+  component: LibraryListenedPage,
+})
+
+const libraryOwnedRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "owned",
+  component: LibraryOwnedPage,
+})
+
+const librarySteamRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "steam",
+  component: LibraryIntegrationSteamSection,
+})
+
+const libraryPlexRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "plex",
+  component: LibraryIntegrationPlexSection,
+})
+
+const librarySpotifyRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "spotify",
+  component: LibraryIntegrationSpotifySection,
+})
+
+const libraryWishlistRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "wishlist",
+  component: LibraryWishlistPage,
+})
+
+const libraryListsRoute = createRoute({
+  getParentRoute: () => libraryLayoutRoute,
+  path: "lists",
+  component: LibraryListsPage,
 })
 
 // ── Lists ──
@@ -245,42 +330,12 @@ const resetPasswordRoute = createRoute({
   component: ResetPasswordPage,
 })
 
-// ── OAuth callback routes ──
+// ── OAuth callback route ──
 
-const steamCallbackRoute = createRoute({
+const callbackRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/auth/steam/callback",
-  component: SteamCallbackPage,
-})
-
-const steamConnectCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/steam/connect/callback",
-  component: SteamConnectCallbackPage,
-})
-
-const plexConnectCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/plex/connect/callback",
-  component: PlexConnectCallbackPage,
-})
-
-const spotifyConnectCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/spotify/connect/callback",
-  component: SpotifyConnectCallbackPage,
-})
-
-const tmdbConnectCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/tmdb/connect/callback",
-  component: TmdbConnectCallbackPage,
-})
-
-const googleConnectCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/google/connect/callback",
-  component: GoogleConnectCallbackPage,
+  path: "/auth/callback/$service",
+  component: CallbackPage,
 })
 
 // ── Browse & Notifications ──
@@ -356,25 +411,6 @@ const adminHydrationRoute = createRoute({
   component: AdminHydrationPage,
 })
 
-
-const aboutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/about",
-  component: AboutPage,
-})
-
-const aboutProfileRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/about/profile",
-  component: AboutProfilePage,
-})
-
-const aboutAchievementsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/about/achievements",
-  component: AboutAchievementsPage,
-})
-
 const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/downloads",
@@ -424,11 +460,26 @@ const gamesDetailRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  discoverRoute,
   mediaDetailRoute,
   personDetailRoute,
   companyDetailRoute,
-  libraryIndexRoute,
-  libraryRoute,
+  libraryLayoutRoute.addChildren([
+    libraryIndexRoute,
+    libraryOverviewRoute,
+    libraryGamesRoute,
+    libraryWatchlistRoute,
+    libraryLikeRoute,
+    libraryWatchedRoute,
+    libraryPlayedRoute,
+    libraryListenedRoute,
+    libraryOwnedRoute,
+    librarySteamRoute,
+    libraryPlexRoute,
+    librarySpotifyRoute,
+    libraryWishlistRoute,
+    libraryListsRoute,
+  ]),
   listDetailRoute,
   settingsRoute,
   userProfileRoute,
@@ -439,12 +490,7 @@ const routeTree = rootRoute.addChildren([
   verifyEmailRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
-  steamCallbackRoute,
-  spotifyConnectCallbackRoute,
-  steamConnectCallbackRoute,
-  plexConnectCallbackRoute,
-  tmdbConnectCallbackRoute,
-  googleConnectCallbackRoute,
+  callbackRoute,
   browseRoute,
   notificationsRoute,
   dkUiRoute,
@@ -456,9 +502,6 @@ const routeTree = rootRoute.addChildren([
   adminHydrationRoute,
   gamesRoute.addChildren([gamesDetailRoute]),
   searchRoute,
-  aboutRoute,
-  aboutProfileRoute,
-  aboutAchievementsRoute,
   downloadsRoute,
   spotifyPlaylistsRoute,
   spotifyPlaylistDetailRoute,

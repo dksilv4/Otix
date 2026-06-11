@@ -1,12 +1,11 @@
 // TODO: Review this file
-import "./spotify-playlist-detail-page.scss"
 import { useState } from "react"
 import { Helmet } from "react-helmet-async"
 import { useParams, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useSpotifyPlaylist, useSubscribePlaylist, useUnsubscribePlaylist, useSyncPlaylist } from "../api/spotify-playlists-api"
 import { PlaylistDetail } from "../organisms/playlist-detail"
-import { LoadingPage } from "@ui/organisms/loading-page"
+import { LoadingPage } from "@ui/pages/loading-page"
 
 export function SpotifyPlaylistDetailPage() {
   const { id } = useParams({ from: "/library/spotify/playlists/$id" })

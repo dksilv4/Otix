@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { DkSwitch } from '@/features/dk-ui/atoms/switch'
 import { SectionHeader } from './profile'

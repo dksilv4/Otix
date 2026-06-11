@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Trash2, Pencil, Shield, ThumbsUp, ThumbsDown, Clock } from "lucide-react"
 import { StarRating } from "@ui/atoms/star-rating"
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { useReviewVoteCounts, useVoteReview } from "../review-vote-queries"
 import type { ReviewWithUserOut } from "../review-queries"
 import './review-card.scss'

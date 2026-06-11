@@ -103,8 +103,8 @@ export function useDownloads(userId: string | undefined) {
       const result = await window.desktopAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor);
       await fetchDownloads();
       return result;
-    } catch (err: any) {
-      return { error: err.message ?? 'Unknown error' };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err.message : 'Unknown error' };
     } finally {
       setLoading(false);
     }
@@ -213,7 +213,7 @@ export function useConnectionTest() {
   const testNzbplanet = useCallback(async (apiKey: string) => {
     console.log('[useConnectionTest] testNzbplanet called, apiKey length:', apiKey?.length ?? 0, 'isDesktop:', isDesktop());
     if (!isDesktop()) {
-      console.error('[useConnectionTest] NOT in Electron — window.desktopAPI is', typeof window !== 'undefined' ? (window as any).desktopAPI : 'window undefined');
+      console.error('[useConnectionTest] NOT in Electron — window.desktopAPI is', typeof window !== 'undefined' ? window.desktopAPI : 'window undefined');
       return false;
     }
     setTestingNzbplanet(true);
@@ -222,8 +222,8 @@ export function useConnectionTest() {
       const result = await window.desktopAPI!.downloadsTestNzbplanet(apiKey);
       console.log('[useConnectionTest] result:', result);
       return result;
-    } catch (err: any) {
-      console.error('[useConnectionTest] error:', err.message, err);
+    } catch (err: unknown) {
+      console.error('[useConnectionTest] error:', err instanceof Error ? err.message : err);
       return false;
     } finally {
       setTestingNzbplanet(false);

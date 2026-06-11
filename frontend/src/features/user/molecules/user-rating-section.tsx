@@ -2,12 +2,69 @@
 import './user-rating-section.scss'
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Star } from 'lucide-react'
 import { StarInput } from '@/features/review/molecules/star-input'
-import { useAuth } from '@/features/auth/auth-provider'
-import { userRatingQueries, useRateUser } from '../user-rating-queries'
+import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/lib/auth'
 import { userQueries } from '../user-queries'
+
+interface UserRatingOut {
+  raterId: string
+  ratedUserId: string
+  score: number
+  createdAt: string
+  updatedAt: string
+}
+
+interface UserReputationOut {
+  avgUserRating: number | null
+  userRatingCount: number
+  compositeScore: number | null
+  components: { contribution: number; trust: number; tenure: number }
+}
+
+const userRatingKeys = {
+  myRating: (username: string) => ['user-rating', 'my', username] as const,
+  reputation: (username: string) => ['user', username, 'reputation'] as const,
+}
+
+const userRatingQueries = {
+  myRating: (username: string) =>
+    queryOptions({
+      queryKey: userRatingKeys.myRating(username),
+      queryFn: async () => {
+        const { data } = await apiClient.get<UserRatingOut | null>(`/users/${username}/rating`)
+        return data
+      },
+      staleTime: 1000 * 60,
+    }),
+
+  reputation: (username: string) =>
+    queryOptions({
+      queryKey: userRatingKeys.reputation(username),
+      queryFn: async () => {
+        const { data } = await apiClient.get<UserReputationOut>(`/users/${username}/reputation`)
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+}
+
+function useRateUser(username: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (score: number) => {
+      const { data } = await apiClient.put<UserRatingOut>(`/users/${username}/rating`, { score })
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: userRatingKeys.myRating(username) })
+      qc.invalidateQueries({ queryKey: ['user', username] })
+      qc.invalidateQueries({ queryKey: userRatingKeys.reputation(username) })
+    },
+  })
+}
 
 interface UserRatingSectionProps {
   username: string

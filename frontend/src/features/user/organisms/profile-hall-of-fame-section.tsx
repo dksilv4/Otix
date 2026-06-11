@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Crown, Plus, Search, X } from 'lucide-react'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { userQueries, useUpdateHallOfFame } from '../user-queries'
 import type { MediaItemSummary } from '@/features/media/media-queries'
 import { apiClient } from '@/lib/api-client'

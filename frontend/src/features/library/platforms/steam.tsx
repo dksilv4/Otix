@@ -1,8 +1,8 @@
 // TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
-import { useInView } from "framer-motion"
+import { useInView, motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "@tanstack/react-router"
-import { RefreshCw, EyeOffIcon } from "lucide-react"
+import { RefreshCw, EyeOffIcon, Play, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
@@ -14,7 +14,7 @@ import {
   type UnmatchedGame,
 } from "../library-queries"
 import { SteamIcon } from "@/features/dk-ui/atoms/steam-icon"
-import { registerPlatform } from "./registry"
+import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
 import "./steam.scss"
 
@@ -319,56 +319,143 @@ function SteamTabContent() {
 
 // ── Dashboard section ──
 
-function SteamDashboardSection() {
+function SteamOverviewModule({ expanded, onToggle }: { expanded?: boolean; onToggle?: () => void } = {}) {
   const navigate = useNavigate()
   const { data, isLoading } = useLibraryTab("steam")
-  const items = useMemo(
-    () => data?.pages.flatMap((page) => page.items.slice(0, 5)) ?? [],
+  const { data: status } = useSteamStatus()
+
+  const allItems = useMemo(
+    () => data?.pages.flatMap((page) => page.items) ?? [],
     [data]
   )
 
-  if (isLoading || items.length === 0) return null
+  const recentlyPlayed = useMemo(
+    () => [...allItems]
+      .filter(item => item.steamRtimeLastPlayed)
+      .sort((a, b) => (b.steamRtimeLastPlayed || 0) - (a.steamRtimeLastPlayed || 0))
+      .slice(0, 8),
+    [allItems]
+  )
+
+  const playedThisWeek = useMemo(
+    () => allItems.filter(item => (item.steamPlaytime2weeks ?? 0) > 0).length,
+    [allItems]
+  )
+
+  if (isLoading || allItems.length === 0) return null
 
   return (
     <div className="dk-library-steam__section">
-      <div className="dk-library-steam__section-header">
-        <h2 className="dk-library-steam__section-title">
-          Steam
-        </h2>
+      {/* Hero area - clickable to toggle */}
+      <div className="dk-library-steam__hero" onClick={onToggle} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle?.(); } }}>
+        <div className="dk-library-steam__hero-bg" />
+        <div className="dk-library-steam__hero-content">
+          <div className="dk-library-steam__hero-top">
+            <div className="flex items-center gap-2">
+              <SteamIcon className="dk-library-steam__hero-brand-icon" />
+              <span className="dk-library-steam__hero-brand-label">Steam</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); navigate({ to: "/library/steam" }); }}
+                className="dk-library-steam__hero-link"
+              >
+                View all
+              </button>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} style={{ color: "rgba(255,255,255,0.5)" }} />
+            </div>
+          </div>
+          <h2 className="dk-library-steam__hero-title">Game Library</h2>
+          <p className="dk-library-steam__hero-stats">
+            <span className="dk-library-steam__hero-stat">{status?.gameCount ?? allItems.length} games</span>
+            <span className="dk-library-steam__hero-dot">&middot;</span>
+            <span className="dk-library-steam__hero-stat">{recentlyPlayed.length} recently played</span>
+            <span className="dk-library-steam__hero-dot">&middot;</span>
+            <span className="dk-library-steam__hero-stat">{playedThisWeek} played this week</span>
+          </p>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+      {expanded && (
+      <motion.div
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: "auto", opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+        className="overflow-hidden"
+        style={{ paddingLeft: "1.25rem", paddingRight: "1.25rem" }}
+      >
+      {/* Quick links */}
+      <div className="dk-library-steam__quick-links">
         <button
-          onClick={() => navigate({ to: "/library/$tab", params: { tab: "steam" } })}
-          className="dk-library-steam__section-link"
+          type="button"
+          onClick={() => navigate({ to: "/library/steam" })}
+          className="dk-library-steam__quick-link dk-library-steam__quick-link--recent"
         >
-          View all
+          <Play className="dk-library-steam__quick-link-icon" />
+          <div className="dk-library-steam__quick-link-text">
+            <span className="dk-library-steam__quick-link-title">Recently played</span>
+            <span className="dk-library-steam__quick-link-sub">{recentlyPlayed.length} games</span>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate({ to: "/library/steam" })}
+          className="dk-library-steam__quick-link dk-library-steam__quick-link--library"
+        >
+          <SteamIcon className="dk-library-steam__quick-link-icon" />
+          <div className="dk-library-steam__quick-link-text">
+            <span className="dk-library-steam__quick-link-title">All Games</span>
+            <span className="dk-library-steam__quick-link-sub">{status?.gameCount ?? allItems.length} games</span>
+          </div>
         </button>
       </div>
-      <MediaGrid>
-        {items.map((item) => (
-          <div key={item.id} className="dk-library-steam__media-item">
-            <MediaCard
-              id={item.id}
-              mediaType={item.mediaType as "movie" | "show" | "game"}
-              title={item.title}
-              posterUrl={item.posterUrl}
-              textlessPosterUrl={item.textlessPosterUrl}
-              logoUrl={item.logoUrl}
-              releaseDate={item.releaseDate}
-              isAdult={item.isAdult}
-            />
-            {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
-              <div className="dk-library-steam__dashboard-playtime">
-                <span className="dk-library-steam__playtime-text">
-                  {formatPlaytime(item.steamPlaytimeForever)}
-                </span>
-              </div>
-            )}
+
+      {/* Carousel */}
+      {recentlyPlayed.length > 0 && (
+        <div className="dk-library-steam__carousel">
+          <div className="dk-library-steam__carousel-header">
+            <h3 className="dk-library-steam__carousel-title">Recently played</h3>
+            <button
+              onClick={() => navigate({ to: "/library/steam" })}
+              className="dk-library-steam__carousel-link"
+            >
+              Show all
+            </button>
           </div>
-        ))}
-      </MediaGrid>
+          <div className="dk-library-steam__carousel-track">
+            {recentlyPlayed.map((item) => (
+              <div key={item.id} className="dk-library-steam__carousel-card">
+                <div className="dk-library-steam__carousel-art">
+                  {item.posterUrl ? (
+                    <img src={item.posterUrl} alt={item.title} className="dk-library-steam__carousel-img" loading="lazy" />
+                  ) : (
+                    <div className="dk-library-steam__carousel-placeholder">
+                      <SteamIcon className="h-8 w-8 text-[#66c0f4]/30" />
+                    </div>
+                  )}
+                  <div className="dk-library-steam__carousel-overlay">
+                    <div className="dk-library-steam__carousel-play">
+                      <Play className="h-5 w-5 text-white ml-0.5" />
+                    </div>
+                  </div>
+                </div>
+                <p className="dk-library-steam__carousel-card-title">{item.title}</p>
+                {item.steamPlaytimeForever != null && item.steamPlaytimeForever > 0 && (
+                  <p className="dk-library-steam__carousel-card-sub">{formatPlaytime(item.steamPlaytimeForever)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   )
 }
-
 // ── Register ──
 
 export const steamPlatform: PlatformDefinition = {
@@ -377,7 +464,7 @@ export const steamPlatform: PlatformDefinition = {
   icon: <SteamIcon className="dk-library-steam__icon" />,
   requiresConnection: (user) => !!user?.steamId,
   EmptyState: (props) => <SteamEmptyState {...props} />,
-  DashboardSection: SteamDashboardSection,
+  OverviewModule: SteamOverviewModule,
   Content: SteamTabContent,
 }
 

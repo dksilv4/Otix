@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { isDesktop } from '@/lib/desktop-api'
 import { useToast } from '@/features/dk-ui/molecules/toast'
@@ -396,8 +396,8 @@ export function SpotifyPlayerProvider({ children }: { children: React.ReactNode 
           id: item.id,
           uri: item.uri,
           name: item.name,
-          artist: (item.artists ?? []).map((a: any) => a.name).join(', '),
-          artists: (item.artists ?? []).map((a: any) => ({ name: a.name, uri: a.uri })),
+          artist: (item.artists ?? []).map((a: { name: string }) => a.name).join(', '),
+          artists: (item.artists ?? []).map((a: { name: string; uri: string }) => ({ name: a.name, uri: a.uri })),
           albumName: item.album?.name ?? '',
           albumArt: item.album?.images?.[0]?.url ?? null,
           durationMs: item.duration_ms ?? 0,

@@ -2,8 +2,7 @@
 
 /* ── Now Playing Panel ── */
 .dk-now-playing__panel {
-  @apply fixed flex flex-col;
-  overflow: visible;
+  @apply fixed flex flex-col overflow-y-auto;
 }
 
 .dk-now-playing__sections {

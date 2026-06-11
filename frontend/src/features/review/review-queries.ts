@@ -1,7 +1,12 @@
 // TODO: Review this file
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { reviewKeys } from './review-keys'
+
+export const reviewKeys = {
+  all: () => ['reviews'] as const,
+  myReview: (mediaId: string) => [...reviewKeys.all(), 'my', mediaId] as const,
+  list: (mediaId: string) => [...reviewKeys.all(), 'list', mediaId] as const,
+}
 import type { MediaRatingOut } from './rating-queries'
 
 export interface ReviewOut {

@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CloudRain, Frown, Laugh, Meh, Smile } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { showXPToast } from '@/features/dk-ui/atoms/xp-toast'
-import { useAuth } from '@/features/auth/auth-provider'
+import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 

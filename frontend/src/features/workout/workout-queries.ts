@@ -7,7 +7,16 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { workoutKeys } from './workout-keys'
+
+export const workoutKeys = {
+  all: () => ['workouts'] as const,
+  list: () => [...workoutKeys.all(), 'list'] as const,
+  today: () => [...workoutKeys.all(), 'today'] as const,
+  heatmap: (weeks?: number) => [...workoutKeys.all(), 'heatmap', weeks ?? 12] as const,
+  detail: (id: string) => [...workoutKeys.all(), 'detail', id] as const,
+  exercises: () => ['exercises'] as const,
+  categories: () => ['exercises', 'categories'] as const,
+}
 
 export interface SetData {
   reps: number
