@@ -107,7 +107,7 @@ export function UserMenu({ bare }: { bare?: boolean }) {
               </div>
             </Link>
 
-            <div className="my-1 border-t" style={{ borderColor: "rgba(255, 255, 255, 0.06)" }} />
+            <div className="my-1 border-t" style={{ borderColor: "var(--dk-separator)" }} />
 
             <button
               type="button"

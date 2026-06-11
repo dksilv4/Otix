@@ -66,8 +66,8 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -8, height: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'rgb(252 165 165)' }}
+            className="overflow-hidden rounded-xl px-4 py-3 text-sm text-destructive"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--destructive) 10%, transparent)' }}
           >
             {authError}
           </motion.div>
@@ -90,11 +90,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           required
           aria-invalid={!!fieldErrors.identity}
           aria-describedby={fieldErrors.identity ? 'identity-error' : undefined}
-          className={'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-white/30' + (fieldErrors.identity ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')}
-          style={{ boxShadow: fieldErrors.identity ? undefined : 'inset 0 1px 1px rgba(0,0,0,0.2)' }}
+          className={'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50' + (fieldErrors.identity ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')}
+          style={fieldErrors.identity ? undefined : { backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
         />
         {fieldErrors.identity && (
-          <p id="identity-error" role="alert" className="text-xs" style={{ color: 'rgb(252 165 165)' }}>
+          <p id="identity-error" role="alert" className="text-xs text-destructive">
             {fieldErrors.identity}
           </p>
         )}
@@ -114,8 +114,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
       <div className="flex justify-end">
         <Link
           to="/auth/forgot-password"
-          className="text-xs transition-colors hover:text-white/80"
-          style={{ color: 'rgba(255, 255, 255, 0.4)' }}
+          className="text-xs text-muted-foreground transition-colors hover:text-white/80"
         >
           Forgot password?
         </Link>

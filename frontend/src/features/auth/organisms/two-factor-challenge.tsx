@@ -40,7 +40,7 @@ export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengePr
         </div>
       </div>
 
-      <p className="text-center text-sm" style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+      <p className="text-center text-sm text-muted-foreground">
         Enter the 6-digit code from your authenticator app.
       </p>
 
@@ -48,8 +48,8 @@ export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengePr
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl px-4 py-2 text-center text-sm"
-          style={{ backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'rgb(252 165 165)' }}
+          className="rounded-xl px-4 py-2 text-center text-sm text-destructive"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--destructive) 10%, transparent)' }}
         >
           {error}
         </motion.div>
@@ -66,7 +66,7 @@ export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengePr
           placeholder="000000"
           autoFocus
           className="h-14 w-36 rounded-xl text-center text-2xl tracking-[0.25em] outline-none"
-          style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', boxShadow: 'inset 0 1px 1px rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
         />
       </div>
 
@@ -92,8 +92,7 @@ export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengePr
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 text-xs transition-colors hover:text-white/80"
-          style={{ color: 'rgba(255, 255, 255, 0.4)' }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-white/80"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to sign in

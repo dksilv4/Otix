@@ -4,6 +4,7 @@ import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { apiClient } from '@/lib/api-client'
 import { extractErrorMessage } from '../utils'
+import { AuthCard } from '../molecules/auth-card'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -136,11 +137,12 @@ export function CallbackPage() {
   const cfg = service ? SERVICES[service] : null
   if (!cfg) {
     return (
-      <div id="callback-page" className="flex min-h-screen items-center justify-center p-4">
+      <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
+        <div className="dk-auth-bg" />
         <Helmet><title>Invalid - Otix</title></Helmet>
-        <div className="w-full max-w-sm rounded-[2rem] p-8 text-center" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
-          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>Invalid callback URL.</p>
-        </div>
+        <AuthCard>
+          <p className="text-sm text-muted-foreground">Invalid callback URL.</p>
+        </AuthCard>
       </div>
     )
   }
@@ -149,9 +151,10 @@ export function CallbackPage() {
   const desc = error ? error : done ? (cfg.successMsg ?? `Your ${cfg.name} account has been linked successfully.`) : (cfg.loadingMsg ?? `Verifying with ${cfg.name}...`)
 
   return (
-    <div id="callback-page" className="flex min-h-screen items-center justify-center p-4">
+    <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
+      <div className="dk-auth-bg" />
       <Helmet><title>{error ? 'Link Failed' : title} - Otix</title></Helmet>
-      <div className="w-full max-w-sm rounded-[2rem] p-8 text-center" style={{ backgroundColor: 'var(--dk-surface-base)', animation: 'authFormFadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+      <AuthCard>
         <div className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${done ? 'bg-green-500/10' : error ? 'bg-red-500/10' : 'bg-white/5'}`}>
           {done ? <Check className="h-7 w-7 text-green-500" /> : error ? <XCircle className="h-7 w-7 text-red-500" /> : <Loader2 className="h-7 w-7 animate-spin" style={{ color: cfg.loadingColor ?? 'var(--primary)' }} />}
         </div>
@@ -171,7 +174,7 @@ export function CallbackPage() {
             </button>
           </div>
         )}
-      </div>
+      </AuthCard>
     </div>
   )
 }
