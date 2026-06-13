@@ -1,35 +1,37 @@
 import { useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useNavigate, useRouter } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { AuthHeader } from '@/features/auth'
-import { AuthCard } from '@/features/auth/molecules/auth-card'
-import { RegisterForm } from '@/features/auth'
-import { Logo } from '@ui/atoms/logo'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { AuthHeader } from '@auth/components/molecules/auth-header'
+import { RegisterForm } from '@auth/components/organisms/auth-register-form'
+import { Logo } from '@/old-features/dk-ui/atoms/logo'
 
 export function RegisterPage() {
   const navigate = useNavigate()
-  const router = useRouter()
-  const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') || '/' : '/'
+  const redirect = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('redirect') || '/'
+    : '/'
   const canGoBack = typeof window !== 'undefined' && window.history.length > 1
 
   const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
 
   return (
-    <div id="register-page" className="relative flex min-h-screen items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center p-4">
       <Helmet>
         <title>Create Account - Otix</title>
         <meta name="description" content="Create an account on Otix to track movies, shows, games, and music." />
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <div className="dk-auth-bg" />
+      <AuthBackground />
 
       {canGoBack && (
         <div className="fixed left-4 top-4 z-50">
           <button
             type="button"
-            onClick={() => router.history.back()}
+            onClick={() => window.history.back()}
             className="flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-lg transition-colors hover:bg-white/10"
             aria-label="Go back"
           >
