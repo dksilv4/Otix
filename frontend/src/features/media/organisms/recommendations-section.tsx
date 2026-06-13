@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { MediaCarousel } from '@discover/molecules/media-carousel'
+import { Carousel } from '@ui/molecules/carousel'
+import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
 import './recommendations-section.scss'
@@ -23,7 +24,11 @@ export function RecommendationsSection({ mediaId, className }: RecommendationsSe
         <h2 className="dk-media-recommendations__title">Recommendations</h2>
         <span className="dk-media-recommendations__description">For you</span>
       </div>
-      <MediaCarousel items={items} isLoading={isLoading} />
+      <Carousel isLoading={isLoading}>
+        {items.map((item) => (
+          <DiscoverMediaCard key={item.id} item={item} />
+        ))}
+      </Carousel>
     </section>
   )
 }

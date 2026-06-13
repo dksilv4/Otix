@@ -1,29 +1,28 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
-import './badge.scss'
 
 const badgeVariants = cva(
-  'dk-badge',
+  'inline-flex items-center gap-1 text-xs font-semibold',
   {
     variants: {
       variant: {
-        default: 'dk-badge--default',
-        secondary: 'dk-badge--secondary',
-        success: 'dk-badge--success',
-        warning: 'dk-badge--warning',
-        destructive: 'dk-badge--destructive',
-        muted: 'dk-badge--muted',
-        movie: 'dk-badge--movie',
-        show: 'dk-badge--show',
-        game: 'dk-badge--game',
-        music: 'dk-badge--music',
-        outline: 'dk-badge--outline',
+        default: 'bg-primary/10 text-primary',
+        secondary: 'bg-secondary text-secondary-foreground',
+        success: 'bg-green-500/10 text-green-600 dark:text-green-400',
+        warning: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+        destructive: 'bg-destructive/10 text-destructive',
+        muted: 'bg-muted text-muted-foreground',
+        movie: 'text-white shadow-sm',
+        show: 'text-white shadow-sm',
+        game: 'text-white shadow-sm',
+        music: 'text-white shadow-sm',
+        outline: 'border border-input text-foreground',
       },
       size: {
-        sm: 'dk-badge--sm',
-        md: 'dk-badge--md',
-        lg: 'dk-badge--lg',
+        sm: 'px-2 py-0 text-[0.625rem] rounded-md',
+        md: 'px-2.5 py-0.5 text-xs rounded-lg',
+        lg: 'px-3 py-1 text-sm rounded-xl',
       },
     },
     defaultVariants: {
@@ -51,7 +50,10 @@ function DkBadge({ className, variant, size, removable, onRemove, children, ...p
   return (
     <span
       className={cn(badgeVariants({ variant, size }), className)}
-      style={variant && mediaColors[variant] ? { backgroundColor: mediaColors[variant] } : undefined}
+      style={{
+        transition: 'color var(--dk-duration-fast) var(--dk-ease-out), background-color var(--dk-duration-fast) var(--dk-ease-out)',
+        ...(variant && mediaColors[variant] ? { backgroundColor: mediaColors[variant] } : {}),
+      }}
       {...props}
     >
       {children}
@@ -59,10 +61,10 @@ function DkBadge({ className, variant, size, removable, onRemove, children, ...p
         <button
           type="button"
           onClick={onRemove}
-          className="dk-badge__remove"
+          className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 [[data-theme='dark']_&]:hover:bg-white/10"
           aria-label="Remove"
         >
-          <X className="dk-badge__close-icon" />
+          <X className="h-3 w-3" />
         </button>
       )}
     </span>

@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import './tabs.scss'
 
 interface TabsContextValue {
   value: string
@@ -32,7 +31,10 @@ function DkTabList({ children, className }: { children: ReactNode; className?: s
   return (
     <div
       role="tablist"
-      className={cn('dk-tab-list', className)}
+      className={cn(
+        'inline-flex gap-1 rounded-2xl p-1 bg-[color-mix(in_srgb,var(--muted)_50%,transparent)]',
+        className,
+      )}
     >
       {children}
     </div>
@@ -50,8 +52,11 @@ function DkTab({ value, children, className }: { value: string; children: ReactN
       aria-selected={isActive}
       onClick={() => ctx.onChange(value)}
       className={cn(
-        'dk-tab',
-        isActive ? 'dk-tab--active' : 'dk-tab--inactive',
+        'rounded-xl px-4 py-2 text-sm font-medium',
+        'transition-all duration-[var(--dk-duration-fast)] ease-[var(--dk-ease-out)]',
+        isActive
+          ? 'bg-[var(--dk-surface-base)] text-[var(--foreground)] shadow-[var(--dk-shadow-sm)]'
+          : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--dk-surface-ghost-hover)]',
         className,
       )}
     >
@@ -66,7 +71,7 @@ function DkTabPanel({ value, children, className }: { value: string; children: R
   if (ctx.value !== value) return null
 
   return (
-    <div role="tabpanel" className={cn('dk-tab-panel', className)}>
+    <div role="tabpanel" className={cn('pt-4', className)}>
       {children}
     </div>
   )

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { MediaCarousel } from '@discover/molecules/media-carousel'
+import { Carousel } from '@ui/molecules/carousel'
+import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
 import './similar-section.scss'
@@ -21,7 +22,11 @@ export function SimilarSection({ mediaId, mediaType, className }: SimilarSection
   return (
     <section className={cn('dk-media-similar-section', className)}>
       <h2 className="dk-media-similar-section__heading">Similar</h2>
-      <MediaCarousel items={items} isLoading={isLoading} />
+      <Carousel isLoading={isLoading}>
+        {items.map((item) => (
+          <DiscoverMediaCard key={item.id} item={item} />
+        ))}
+      </Carousel>
     </section>
   )
 }

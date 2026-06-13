@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { DkSkeleton } from "./skeleton"
-import './image.scss'
 
 interface DkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallback?: ReactNode
@@ -13,21 +12,22 @@ function DkImage({ className, src, alt, fallback, onError, ...props }: DkImagePr
 
   if (hasError || !src) {
     return (
-      <div className={cn("dk-image__fallback", className)}>
+      <div className={cn("flex items-center justify-center text-xs bg-muted text-muted-foreground", className)}>
         {fallback || alt?.[0]?.toUpperCase() || "?"}
       </div>
     )
   }
 
   return (
-    <div className={cn("dk-image", className)}>
-      {isLoading && <DkSkeleton className="dk-image__skeleton" />}
+    <div className={cn("relative overflow-hidden", className)}>
+      {isLoading && <DkSkeleton className="absolute inset-0" />}
       <img
         src={src}
         alt={alt}
         loading="lazy"
         decoding="async"
-        className={cn("dk-image__img", isLoading ? "dk-image__img--loading" : "dk-image__img--loaded")}
+        className={cn("h-full w-full object-cover", isLoading ? "opacity-0" : "opacity-100")}
+        style={{ transition: 'opacity var(--dk-duration-normal, 300ms) ease' }}
         onLoad={() => setIsLoading(false)}
         onError={(e) => {
           setHasError(true)

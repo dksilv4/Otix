@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect, Suspense, lazy, useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate, Link } from '@tanstack/react-router'
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format, subDays, addDays, isToday, parseISO } from 'date-fns'
 import { useAuth } from '@/lib/auth'
 import { userQueries, type DailyActivityResponse } from '@/features/user/user-queries'
-import { discoverQueries } from '@/features/discover'
-import { MediaCarousel } from '@discover/molecules/media-carousel'
+import { Carousel } from '@ui/molecules/carousel'
+import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
 import {
   Play, Star, Eye, Tv, Flame,
   Bookmark, Smile, ChevronLeft, ChevronRight,
@@ -64,12 +64,9 @@ function HomeDashboard({ username }: { username: string }) {
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
   const [selectedDay, setSelectedDay] = useState(todayStr)
 
-  const heroQuery = useInfiniteQuery(discoverQueries.hero())
   const profileQuery = useQuery(userQueries.profile(username))
   const dailyQuery = useQuery(userQueries.dailyActivity(selectedDay))
   const continueQuery = useQuery(userQueries.continueWatching())
-
-  const heroBackdrop = heroQuery.data?.pages[0]?.items?.[0]?.backdropUrl ?? null
 
   const goToPrevDay = useCallback(() => {
     setSelectedDay((d) => format(subDays(parseISO(d), 1), 'yyyy-MM-dd'))
@@ -100,30 +97,11 @@ function HomeDashboard({ username }: { username: string }) {
       <Suspense fallback={null}>
         <AnimatedShaderBackground mode="idle" />
       </Suspense>
-
       <div className="relative z-10">
         {/* ─── Hero ─── */}
         <div className="relative w-full h-[55vh] min-h-[400px] overflow-hidden">
-          {/* Backdrop image */}
-          {heroBackdrop && (
-            <div className="absolute inset-0">
-              <img
-                src={heroBackdrop}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-
-          {/* Gradient overlay — always present even without backdrop */}
-          <div
-            className={cn(
-              'absolute inset-0',
-              heroBackdrop
-                ? 'bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/70 to-[#0a0a0f]/30'
-                : 'bg-gradient-to-br from-primary/10 via-[#0a0a0f] to-[#0a0a0f]',
-            )}
-          />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-[#0a0a0f] to-[#0a0a0f]" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0f]/40 to-transparent" />
 
           {/* Content on hero */}
@@ -245,11 +223,15 @@ function HomeDashboard({ username }: { username: string }) {
                 <Play className="h-4 w-4 text-primary" />
                 <h2 className="text-sm font-semibold text-foreground/80">Continue</h2>
               </div>
-              <MediaCarousel
-                items={continueQuery.data}
-                isLoading={continueQuery.isLoading}
-                getSubtitle={(item) => 'episodeContext' in item ? (item as { episodeContext: string | null }).episodeContext : null}
-              />
+              <Carousel isLoading={continueQuery.isLoading}>
+                {continueQuery.data?.map((item) => (
+                  <DiscoverMediaCard
+                    key={item.id}
+                    item={item}
+                    subtitle={'episodeContext' in item ? (item as { episodeContext: string | null }).episodeContext : null}
+                  />
+                ))}
+              </Carousel>
             </motion.section>
           )}
         </div>
