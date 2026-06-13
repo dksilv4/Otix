@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Check, Loader2, Mail, ShieldAlert } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useAuth } from '@/features/auth'
-import { AuthHeader } from '@/features/auth'
-import { AuthCard } from '@/features/auth/molecules/auth-card'
-import { Logo } from '@ui/atoms/logo'
+import { useAuth } from '@auth'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { AuthHeader } from '@auth/components/molecules/auth-header'
+import { Logo } from '@/old-features/dk-ui/atoms/logo'
 import { apiClient } from '@/lib/api-client'
-import { extractErrorMessage } from '../utils'
-import type { VerifyEmailPageState } from '../types'
+import { extractErrorMessage } from '@auth/utils'
+import type { VerifyEmailPageState } from '@auth/types'
 
 export function VerifyEmailPage() {
   const navigate = useNavigate()
@@ -43,8 +44,8 @@ export function VerifyEmailPage() {
 
   if (!search.token) {
     return (
-      <div id="verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
-        <div className="dk-auth-bg" />
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <AuthBackground />
         <AuthCard>
           <div className="mb-6 flex justify-center">
             <Logo className="h-16" />
@@ -63,8 +64,8 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <div id="verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="dk-auth-bg" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthBackground />
       <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />
