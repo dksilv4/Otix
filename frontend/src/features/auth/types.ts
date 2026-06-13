@@ -1,5 +1,3 @@
-// ── API / data types ──
-
 export interface User {
   id: string
   email: string

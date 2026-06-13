@@ -1,4 +1,3 @@
-// TODO: Review this file
 export function calculatePasswordStrength(password: string): number {
   let score = 0
   if (password.length >= 8) score += 25

@@ -11,12 +11,12 @@ import { MotionPreferenceProvider } from '@/lib/motion-preference'
 import { ThemeProvider } from '@/lib/theme'
 import { LogoPreferenceProvider } from '@/lib/logo-preference'
 import { AuthProvider } from '@/features/auth'
-import { ExperimentsProvider } from '@/features/experiments/experiments-provider'
+import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/page-context'
-import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provider'
-import { PlexAudioProvider } from '@/features/spotify/plex-audio-provider'
-import { PlayerProvider } from '@/features/spotify/use-player'
-import { DkToastProvider } from '@/features/dk-ui/molecules/toast'
+import { SpotifyPlayerProvider } from '@/old-features/spotify/spotify-player-provider'
+import { PlexAudioProvider } from '@/old-features/spotify/plex-audio-provider'
+import { PlayerProvider } from '@/old-features/spotify/use-player'
+import { DkToastProvider } from '@/old-features/dk-ui/molecules/toast'
 import { getDesktopPlatform } from '@/lib/desktop-platform'
 import './index.css'
 
@@ -61,8 +61,8 @@ createRoot(document.getElementById('root')!).render(
           <MotionPreferenceProvider>
             <ThemeProvider>
               <LogoPreferenceProvider>
-              <AuthProvider>
-                <ExperimentsProvider>
+                <FeatureProvider>
+                <AuthProvider>
                   <DkToastProvider>
                     <SpotifyPlayerProvider>
                       <PlexAudioProvider>
@@ -74,8 +74,8 @@ createRoot(document.getElementById('root')!).render(
                       </PlexAudioProvider>
                     </SpotifyPlayerProvider>
                   </DkToastProvider>
-                </ExperimentsProvider>
               </AuthProvider>
+              </FeatureProvider>
               </LogoPreferenceProvider>
             </ThemeProvider>
           </MotionPreferenceProvider>
