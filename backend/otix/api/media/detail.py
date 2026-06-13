@@ -120,8 +120,9 @@ async def _patch_user_detail(
         )
 
 
-@media_router.get("/{media_id}", response_model=MediaItemDetail)
+@media_router.get("/{media_type}/{media_id}", response_model=MediaItemDetail)
 async def get_media_item(
+    media_type: str,
     media_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
