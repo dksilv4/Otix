@@ -6,12 +6,13 @@ import { cn } from '@/lib/utils'
 
 interface RecommendationsSectionProps {
   mediaId: string
+  mediaType: string
   className?: string
 }
 
-export function RecommendationsSection({ mediaId, className }: RecommendationsSectionProps) {
+export function RecommendationsSection({ mediaId, mediaType, className }: RecommendationsSectionProps) {
   const { data, isLoading } = useQuery(
-    mediaQueries.recommendations(mediaId, { limit: 20 }),
+    mediaQueries.recommendations(mediaType, mediaId, { limit: 20 }),
   )
 
   const items = data?.items ?? []

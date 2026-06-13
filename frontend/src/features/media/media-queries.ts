@@ -263,11 +263,11 @@ export interface MediaListResponse {
 }
 
 export const mediaQueries = {
-  detail: (id: string) =>
+  detail: (mediaType: string, id: string) =>
     queryOptions({
-      queryKey: mediaKeys.detail(id),
+      queryKey: mediaKeys.detail(mediaType, id),
       queryFn: async () => {
-        const { data } = await apiClient.get<MediaItemDetail>(`/media/${id}`)
+        const { data } = await apiClient.get<MediaItemDetail>(`/media/${mediaType}/${id}`)
         return data
       },
       enabled: !!id,
@@ -389,25 +389,24 @@ export const mediaQueries = {
       enabled: params.query.length > 0,
     }),
 
-  similar: (id: string, opts?: { mediaType?: string; limit?: number }) =>
+  similar: (mediaType: string, id: string, opts?: { limit?: number }) =>
     queryOptions({
-      queryKey: mediaKeys.similar(id, opts?.mediaType),
+      queryKey: mediaKeys.similar(mediaType, id),
       queryFn: async () => {
         const params: Record<string, string | number> = { limit: opts?.limit ?? 20 }
-        if (opts?.mediaType) params.media_type = opts.mediaType
-        const { data } = await apiClient.get<MediaListResponse>(`/media/${id}/similar`, { params })
+        const { data } = await apiClient.get<MediaListResponse>(`/media/${mediaType}/${id}/similar`, { params })
         return data
       },
       staleTime: 1000 * 60 * 60 * 24, // 1 day — embeddings are deterministic
       gcTime: 1000 * 60 * 60 * 24 * 7, // keep in cache for 7 days
     }),
 
-  recommendations: (id: string, opts?: { limit?: number }) =>
+  recommendations: (mediaType: string, id: string, opts?: { limit?: number }) =>
     queryOptions({
-      queryKey: mediaKeys.recommendations(id),
+      queryKey: mediaKeys.recommendations(mediaType, id),
       queryFn: async () => {
         const params: Record<string, number> = { limit: opts?.limit ?? 20 }
-        const { data } = await apiClient.get<MediaListResponse>(`/media/${id}/recommendations`, { params })
+        const { data } = await apiClient.get<MediaListResponse>(`/media/${mediaType}/${id}/recommendations`, { params })
         return data
       },
       staleTime: 1000 * 60 * 60 * 24, // 1 day — embeddings are deterministic

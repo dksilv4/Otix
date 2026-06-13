@@ -122,9 +122,10 @@ function InteractionButton({
  supportsFill,
  active,
  mediaId,
+ mediaType,
  onClick,
-}: ButtonDef & { active: boolean; mediaId: string; onClick?: () => void }) {
- const toggle = useToggleInteraction(mediaId)
+}: ButtonDef & { active: boolean; mediaId: string; mediaType: string; onClick?: () => void }) {
+ const toggle = useToggleInteraction(mediaType, mediaId)
  const [localActive, setLocalActive] = useState<boolean | null>(null)
  const prevActiveRef = useRef(active)
 
@@ -253,6 +254,7 @@ function InteractionSection({
  {...btn}
  active={interactions?.[btn.type] ?? false}
  mediaId={mediaId}
+ mediaType={mediaType}
  onClick={
  isWatchedBtn
  ? () => {

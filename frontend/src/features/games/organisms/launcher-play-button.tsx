@@ -21,7 +21,7 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
   const { data: g } = useLocalGame(gameId)
   const { activeInstalls, cancelInstall } = useInstallProgress()
 
-  const isInstalled = !!g?.exePath && g?.platform !== 'iso'
+  const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
   const isIncompatible = g?.platform === 'iso' && osName !== 'Windows'
   const mediaId = g?.data?.id
 

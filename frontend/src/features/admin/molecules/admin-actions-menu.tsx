@@ -46,7 +46,7 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
   if (!user?.isAdmin) return null
 
   const refreshMedia = () => {
-    queryClient.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+    queryClient.invalidateQueries({ queryKey: mediaKeys.detail(media.mediaType, mediaId) })
   }
 
   const startRehydrate = async () => {

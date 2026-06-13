@@ -67,7 +67,7 @@ const COUNT_KEY: Record<InteractionType, keyof InteractionCounts> = {
   listened: 'listenedCount',
 }
 
-export function useToggleInteraction(mediaId: string) {
+export function useToggleInteraction(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
@@ -91,7 +91,7 @@ export function useToggleInteraction(mediaId: string) {
     onMutate: async ({ type, active }) => {
       // Cancel in-flight queries so they don't overwrite our optimistic update
       const interactionKey = interactionKeys.forMedia(mediaId)
-      const detailKey = mediaKeys.detail(mediaId)
+      const detailKey = mediaKeys.detail(mediaType, mediaId)
       await qc.cancelQueries({ queryKey: interactionKey })
       await qc.cancelQueries({ queryKey: detailKey })
 
@@ -161,12 +161,12 @@ export function useToggleInteraction(mediaId: string) {
         )
       }
       if (context?.prevDetail) {
-        qc.setQueryData(mediaKeys.detail(mediaId), context.prevDetail)
+        qc.setQueryData(mediaKeys.detail(mediaType, mediaId), context.prevDetail)
       }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'list'] })
     },
   })
