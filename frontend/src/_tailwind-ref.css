@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "./features/dk-ui/tokens.css";
+@import "./old-features/dk-ui/tokens.css";
 
 /* ── shadcn/ui CSS variables (new-york, zinc) ── */
 @theme inline {

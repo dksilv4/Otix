@@ -2,14 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Loader2, Check, ShieldAlert, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { AuthHeader } from '../molecules/auth-header'
-import { AuthCard } from '../molecules/auth-card'
-import { PasswordField } from '../molecules/password-field'
-import { PasswordStrengthBar } from '../atoms/password-strength-bar'
-import { Logo } from '@ui/atoms/logo'
+import { AuthHeader } from '@auth/components/molecules/auth-header'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { PasswordField } from '@auth/components/molecules/auth-password-field'
+import { PasswordStrengthBar } from '@auth/components/atoms/auth-password-strength-bar'
+import { Logo } from '@/old-features/dk-ui/atoms/logo'
 import { apiClient } from '@/lib/api-client'
-import { extractErrorMessage } from '../utils'
-import type { ResetPasswordPageState } from '../types'
+import { extractErrorMessage } from '@auth/utils'
+import type { ResetPasswordPageState } from '@auth/types'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -22,8 +23,8 @@ export function ResetPasswordPage() {
 
   if (!search.token) {
     return (
-      <div id="reset-password-page" className="relative flex min-h-screen items-center justify-center p-4">
-        <div className="dk-auth-bg" />
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <AuthBackground />
         <AuthCard>
           <div className="mb-6 flex justify-center">
             <Logo className="h-16" />
@@ -67,8 +68,8 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div id="reset-password-page" className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="dk-auth-bg" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthBackground />
       <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />

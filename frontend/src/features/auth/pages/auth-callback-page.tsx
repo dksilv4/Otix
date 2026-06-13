@@ -3,8 +3,9 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { apiClient } from '@/lib/api-client'
-import { extractErrorMessage } from '../utils'
-import { AuthCard } from '../molecules/auth-card'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { extractErrorMessage } from '@auth/utils'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -137,8 +138,8 @@ export function CallbackPage() {
   const cfg = service ? SERVICES[service] : null
   if (!cfg) {
     return (
-      <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
-        <div className="dk-auth-bg" />
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <AuthBackground />
         <Helmet><title>Invalid - Otix</title></Helmet>
         <AuthCard>
           <p className="text-sm text-muted-foreground">Invalid callback URL.</p>
@@ -151,8 +152,8 @@ export function CallbackPage() {
   const desc = error ? error : done ? (cfg.successMsg ?? `Your ${cfg.name} account has been linked successfully.`) : (cfg.loadingMsg ?? `Verifying with ${cfg.name}...`)
 
   return (
-    <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="dk-auth-bg" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthBackground />
       <Helmet><title>{error ? 'Link Failed' : title} - Otix</title></Helmet>
       <AuthCard>
         <div className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${done ? 'bg-green-500/10' : error ? 'bg-red-500/10' : 'bg-white/5'}`}>
