@@ -1,7 +1,6 @@
 // TODO: Review this file
 import { forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils'
-import './input.scss'
 
 interface DkInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string
@@ -17,11 +16,11 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
     const hintId = `${inputId}-hint`
 
     return (
-      <div className="dk-input">
+      <div className="space-y-1.5">
         {label && (
-          <label htmlFor={inputId} className="dk-input__label">
+          <label htmlFor={inputId} className="text-sm font-medium text-foreground">
             {label}
-            {required && <span className="dk-input__required">*</span>}
+            {required && <span className="ml-0.5 text-destructive">*</span>}
           </label>
         )}
         <input
@@ -33,20 +32,21 @@ const DkInput = forwardRef<HTMLInputElement, DkInputProps>(
             error ? errorId : hint ? hintId : undefined
           }
           className={cn(
-            'dk-input__field',
-            error && 'dk-input__field--error',
-            props.disabled && 'dk-input__field--disabled',
+            'flex h-12 w-full rounded-xl px-4 text-base bg-[var(--dk-surface-glass)] backdrop-blur-[12px] hover:bg-[var(--dk-surface-glass-hover)] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:[--tw-ring-color:var(--dk-ring-color)] placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_50%,transparent)]',
+            error && 'shadow-[0_0_0_2px_color-mix(in_srgb,var(--destructive)_40%,transparent)] focus:[--tw-ring-color:color-mix(in_srgb,var(--destructive)_40%,transparent)]',
+            props.disabled && 'opacity-40 cursor-not-allowed',
             className,
           )}
+          style={{ transition: 'all var(--dk-duration-fast) var(--dk-ease-out)' }}
           {...props}
         />
         {hint && !error && (
-          <p id={hintId} className="dk-input__hint">
+          <p id={hintId} className="text-xs text-muted-foreground">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} role="alert" className="dk-input__error">
+          <p id={errorId} role="alert" className="text-xs text-destructive">
             {error}
           </p>
         )}

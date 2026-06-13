@@ -1,12 +1,12 @@
-// TODO: Review this file
 import { memo, useMemo, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import { discoverQueries } from '@discover/discover-queries'
-import { MediaCarousel } from '@discover/molecules/media-carousel'
-import './media-section.scss'
+import { Carousel } from '@ui/molecules/carousel'
+import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
+import type { MediaItemSummary } from '@media/media-queries'
 
 const IN_VIEW_OPTIONS = { once: true, margin: '0px 0px 200px 0px' } as const
 
@@ -49,35 +49,53 @@ export const MediaSection = memo(function MediaSection({ title, mediaType, listT
   if (isEmpty) return null
 
   return (
-    <section ref={ref} className="dk-discover-section">
-      <div className="dk-discover-section__header">
-        <div className="dk-discover-section__title-wrapper">
-          <h2 className="dk-discover-section__title">
-            {title}
-            {total != null && (
-              <span className="dk-discover-section__count">
-                {total.toLocaleString()}
+    <div ref={ref} className="relative">
+      <header className="absolute top-0 left-0 right-0 z-[2] px-8 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2
+              className="inline-flex flex-col items-start px-4 py-1.5 rounded-full text-sm font-semibold text-foreground backdrop-blur-md"
+              style={{
+                background: 'var(--dk-surface-glass)',
+                boxShadow: 'var(--dk-shadow-glass)',
+              }}
+            >
+              {reason && (
+                <span className="text-[11px] font-normal text-muted-foreground leading-none pb-0.5">{reason}</span>
+              )}
+              <span className="inline-flex items-center gap-2">
+                {title}
+                {total != null && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {total.toLocaleString()}
+                  </span>
+                )}
               </span>
-            )}
-          </h2>
+            </h2>
+          </div>
+          {mediaType && (
+            <Link
+              to="/browse/$type"
+              params={{ type: mediaType }}
+              search={search}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-active)] transition-colors"
+              style={{ background: 'var(--dk-surface-ghost-hover)' }}
+            >
+              View all
+              <ArrowRightIcon className="h-3 w-3" />
+            </Link>
+          )}
         </div>
-        {mediaType && (
-          <Link
-            to="/browse/$type"
-            params={{ type: mediaType }}
-            search={search}
-            className="dk-discover-section__view-all"
-          >
-            View all
-            <ArrowRightIcon className="h-3 w-3" />
-          </Link>
-        )}
-      </div>
-      {reason && (
-        <p className="dk-discover-section__reason">{reason}</p>
-      )}
-
-      <MediaCarousel items={items} isLoading={showSkeleton} />
-    </section>
+      </header>
+      <Carousel
+        className={reason ? 'pt-[76px]' : 'pt-14'}
+        isLoading={showSkeleton}
+        showArrows
+      >
+        {items.map((item: MediaItemSummary) => (
+          <DiscoverMediaCard key={item.id} item={item} />
+        ))}
+      </Carousel>
+    </div>
   )
 })

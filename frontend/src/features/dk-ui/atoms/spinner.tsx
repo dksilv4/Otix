@@ -1,18 +1,17 @@
 // TODO: Review this file
 import { cn } from '@/lib/utils'
-import './spinner.scss'
 
 function DkSpinner({ className }: { className?: string }) {
   return (
     <svg
-      className={cn('dk-spinner', className)}
+      className={cn('animate-spin', className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
       <circle
-        className="dk-spinner__track"
+        className="opacity-25"
         cx="12"
         cy="12"
         r="10"
@@ -20,7 +19,7 @@ function DkSpinner({ className }: { className?: string }) {
         strokeWidth="4"
       />
       <path
-        className="dk-spinner__arc"
+        className="opacity-75"
         fill="currentColor"
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
       />

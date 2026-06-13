@@ -21,7 +21,6 @@ import {API_BASE_URL} from '@/lib/api-client'
 import {useSseStream} from '@/lib/use-sse-stream'
 import type {SseEvent} from '@/lib/sse-client'
 import type {ReactNode} from 'react'
-import './app-layout.scss'
 
 const RECONNECT_DELAYS = [3000, 10000, 30000]
 
@@ -87,10 +86,10 @@ function MenuToggle() {
             variant="ghost"
             size="sm"
             onClick={toggle}
-            className="dk-nav-btn"
+            className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
             aria-label="Toggle menu"
         >
-            <Menu className="dk-nav-btn__icon"/>
+            <Menu className="h-5 w-5"/>
         </DkButton>
     )
 }
@@ -106,10 +105,10 @@ function BackButton() {
             variant="ghost"
             size="sm"
             onClick={() => router.history.back()}
-            className="dk-nav-btn"
+            className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
             aria-label="Go back"
         >
-            <ArrowLeft className="dk-nav-btn__icon"/>
+            <ArrowLeft className="h-5 w-5"/>
         </DkButton>
     )
 }
@@ -126,7 +125,7 @@ function AppShell({children}: { children: ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
     // On Electron, adjust floating pill positions to clear the title bar
-    const titleBarOffset = isDesktop ? 'dk-floating-pill--offset-desktop' : 'dk-floating-pill--offset-default'
+    const titleBarOffset = isDesktop ? 'top-12' : 'top-4'
 
     const handleToggleSidebar = useCallback(() => {
         setIsSidebarOpen((prev) => !prev)
@@ -138,16 +137,34 @@ function AppShell({children}: { children: ReactNode }) {
 
     useNotificationToasts()
 
+    const floatingPillClasses = 'fixed z-[9999] flex items-center rounded-[2rem] gap-1 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]'
+
     return (
-        <div className="dk-app-shell">
+        <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
             <TitleBar/>
 
             {/* Left floating pill — hidden in game launcher (it has its own picker) */}
             {!location.pathname.startsWith('/game') && (
-                <div id={'menu-nav-left'} className={cn('dk-floating-pill dk-floating-pill--left', titleBarOffset, navLogo && 'dk-floating-pill--left-w-logo')} data-menu-trigger>
+                <div
+                    id={'menu-nav-left'}
+                    className={cn(
+                        floatingPillClasses,
+                        'left-3 px-2 py-1.5',
+                        titleBarOffset,
+                        navLogo && 'pr-4',
+                    )}
+                    style={{
+                        transition: 'all 300ms var(--dk-ease-out)',
+                        background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+                        backgroundImage: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
+                    }}
+                    data-menu-trigger
+                >
                     {showBackButton && <BackButton/>}
                     <MenuToggle/>
-                    {navLogo ? (<img src={navLogo} alt="" className="dk-nav-logo-img"/>) : (
+                    {navLogo ? (
+                        <img src={navLogo} alt="" className="h-7 object-contain max-w-[120px]"/>
+                    ) : (
                         <Link to="/" className="flex items-center pr-2">
                             <DkLogo/>
                         </Link>
@@ -156,7 +173,19 @@ function AppShell({children}: { children: ReactNode }) {
             )}
 
             <MenuDropdown/>
-            <div id={'menu-nav-right'} className={cn('dk-floating-pill dk-floating-pill--right', titleBarOffset)}>
+            <div
+                id={'menu-nav-right'}
+                className={cn(
+                    floatingPillClasses,
+                    'right-4 px-2 py-1.5',
+                    titleBarOffset,
+                )}
+                style={{
+                    transition: 'all 300ms var(--dk-ease-out)',
+                    background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+                    backgroundImage: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
+                }}
+            >
                 <NowPlayingButton
                     bare
                     isPinned={isPinned}
@@ -168,7 +197,7 @@ function AppShell({children}: { children: ReactNode }) {
                 <UserMenu bare/>
             </div>
 
-            <main className="dk-main-content w-full">
+            <main className="flex w-full">
                 {children}
             </main>
 

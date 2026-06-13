@@ -1,6 +1,5 @@
 import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
-import './switch.scss'
 
 interface DkSwitchProps {
   checked: boolean
@@ -12,8 +11,10 @@ interface DkSwitchProps {
 
 const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
   ({ checked, onCheckedChange, disabled, label, className }, ref) => {
+    const trackTransition = 'all var(--dk-duration-fast) var(--dk-ease-out)'
+
     return (
-      <label className={cn('dk-switch', disabled && 'dk-switch--disabled', className)}>
+      <label className={cn('inline-flex items-center gap-3', disabled && 'opacity-40', className)}>
         <button
           ref={ref}
           type="button"
@@ -22,15 +23,21 @@ const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
           disabled={disabled}
           onClick={() => onCheckedChange(!checked)}
           className={cn(
-            'dk-switch__track',
-            checked ? 'dk-switch__track--on' : 'dk-switch__track--off',
+            'relative h-6 w-11 rounded-full',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--dk-ring-color)]',
+            checked ? 'bg-primary' : 'bg-[var(--muted)]',
           )}
+          style={{ transition: trackTransition }}
         >
           <span
-            className={cn('dk-switch__thumb', checked && 'dk-switch__thumb--on')}
+            className={cn(
+              'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm',
+              checked && 'translate-x-5',
+            )}
+            style={{ transition: trackTransition }}
           />
         </button>
-        {label && <span className="dk-switch__label">{label}</span>}
+        {label && <span className="text-sm">{label}</span>}
       </label>
     )
   },

@@ -1,6 +1,5 @@
 import logoSvg from '@/assets/otix-logo.svg?raw'
 import { cn } from '@/lib/utils'
-import './infinity-spinner.scss'
 
 const logoViewBox = logoSvg.match(/viewBox="([^"]+)"/)?.[1] ?? '0 0 2048 2048'
 const allPathsHtml = (logoSvg.match(/<path\b[^>]*\/>/g) ?? []).join('')
@@ -14,7 +13,7 @@ function DkInfinitySpinner({ className }: { className?: string }) {
   return (
     <div
       aria-label="Loading"
-      className={cn('otix-infinity-loader dk-infinity-spinner', className)}
+      className={cn('otix-infinity-loader relative h-full w-full', className)}
       role="status"
     >
       <span className="sr-only">Loading</span>

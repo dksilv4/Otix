@@ -1,7 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import './dialog.scss'
 
 interface DkDialogProps {
   open: boolean
@@ -31,11 +30,11 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
   if (!open) return null
 
   return (
-    <div className="dk-dialog__backdrop">
+    <div className="fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4">
       {/* Overlay */}
       <div
         ref={overlayRef}
-        className="dk-dialog__overlay"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
 
@@ -44,21 +43,25 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={cn('dk-dialog__panel', className)}
+        className={cn(
+          'relative w-full max-w-md rounded-3xl p-8 bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-dialog)]',
+          className,
+        )}
+        style={{ animation: 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' }}
       >
         {title && (
-          <div className="dk-dialog__header">
-            <div className="dk-dialog__header-text">
-              <h2 className="dk-dialog__title">{title}</h2>
-              {description && <p className="dk-dialog__description">{description}</p>}
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              {description && <p className="text-sm text-[var(--muted-foreground)]">{description}</p>}
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="dk-dialog__close"
+              className="shrink-0 rounded-xl p-1.5 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
               aria-label="Close dialog"
             >
-              <X className="dk-dialog__close-icon" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
@@ -67,10 +70,10 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="dk-dialog__close--absolute"
+            className="absolute top-4 right-4 rounded-xl p-1.5 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
             aria-label="Close dialog"
           >
-            <X className="dk-dialog__close-icon" />
+            <X className="h-4 w-4" />
           </button>
         )}
 
