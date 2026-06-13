@@ -29,16 +29,17 @@ _SIMILAR_TTL = 60
 # ── Similar items ────────────────────────────────────────────────
 
 
-@media_router.get("/{media_id}/similar", response_model=MediaItemListResponse)
+@media_router.get("/{media_type}/{media_id}/similar", response_model=MediaItemListResponse)
 async def get_similar_media(
+    media_type: str,
     media_id: str,
-    media_type: str | None = Query(None, description="Filter similar items to a specific media type"),
+    filter_media_type: str | None = Query(None, alias="media_type", description="Filter similar items to a specific media type"),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
     exclude_adult = should_exclude_adult(current_user)
-    cache_key = f"media:similar:{media_id}:{media_type or ''}:{limit}:adult{0 if exclude_adult else 1}"
+    cache_key = f"media:similar:{media_id}:{filter_media_type or ''}:{limit}:adult{0 if exclude_adult else 1}"
     redis = await get_redis()
     cached = await redis.get(cache_key)
     if cached:
@@ -57,7 +58,7 @@ async def get_similar_media(
     service = MediaService(db)
     items = await service.similar_media(
         media_id=media_id,
-        media_type=media_type,
+        media_type=filter_media_type,
         limit=limit,
         exclude_adult=exclude_adult,
     )
@@ -91,8 +92,9 @@ async def get_similar_media(
 _RECOMMENDATIONS_TTL = 60
 
 
-@media_router.get("/{media_id}/recommendations", response_model=MediaItemListResponse)
+@media_router.get("/{media_type}/{media_id}/recommendations", response_model=MediaItemListResponse)
 async def get_recommendations(
+    media_type: str,
     media_id: str,
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
