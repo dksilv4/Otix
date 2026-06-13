@@ -3,7 +3,6 @@ import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
-import './recommendations-section.scss'
 
 interface RecommendationsSectionProps {
   mediaId: string
@@ -19,10 +18,10 @@ export function RecommendationsSection({ mediaId, className }: RecommendationsSe
   if (!isLoading && items.length === 0) return null
 
   return (
-    <section className={cn('dk-media-recommendations', className)}>
-      <div className="dk-media-recommendations__header">
-        <h2 className="dk-media-recommendations__title">Recommendations</h2>
-        <span className="dk-media-recommendations__description">For you</span>
+    <section className={cn('space-y-4', className)}>
+      <div className="flex items-baseline gap-3 px-4 lg:px-8">
+        <h2 className="text-lg font-semibold">Recommendations</h2>
+        <span className="text-sm text-muted-foreground">For you</span>
       </div>
       <Carousel isLoading={isLoading}>
         {items.map((item) => (

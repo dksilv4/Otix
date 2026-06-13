@@ -1,6 +1,5 @@
 // TODO: Review this file
 import { useRef, useLayoutEffect } from 'react'
-import './collection-section.scss'
 import { MediaCard } from '@ui/molecules/media-card'
 import { cn } from '@/lib/utils'
 
@@ -65,22 +64,22 @@ export function CollectionSection({ collection, currentMediaId, className }: Col
   if (collection.movies.length === 0) return null
 
   return (
-    <section className={cn('dk-media-collection', className)}>
-      <div className="dk-media-collection__header">
-        <h2 className="dk-media-collection__title">{collection.name}</h2>
-        <span className="dk-media-collection__count">
+    <section className={cn('space-y-4', className)}>
+      <div className="flex items-baseline gap-3">
+        <h2 className="text-lg font-semibold">{collection.name}</h2>
+        <span className="text-sm text-muted-foreground">
           {collection.movies.length} movie{collection.movies.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {collection.overview && (
-        <p className="dk-media-collection__overview">
+        <p className="max-w-2xl text-sm text-muted-foreground line-clamp-2">
           {collection.overview}
         </p>
       )}
 
-      <div ref={scrollRef} className="dk-media-collection__scroll">
-        <div ref={innerRef} className="dk-media-collection__inner">
+      <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div ref={innerRef} className="flex gap-3">
           {collection.movies.map((movie) => {
             const isCurrent = movie.id === currentMediaId
 
@@ -88,10 +87,10 @@ export function CollectionSection({ collection, currentMediaId, className }: Col
               <div
                 key={movie.id}
                 className={cn(
-                  'dk-media-collection__card',
-                  isCurrent && 'dk-media-collection__card--current',
+                  'shrink-0 -mt-2 rounded-lg',
+                  isCurrent && 'ring-2 ring-primary',
                 )}
-                style={{ width: 'var(--card-width)' }}
+                style={{ width: 'var(--card-width)', minWidth: '9rem' }}
               >
                 <MediaCard
                   id={movie.id}

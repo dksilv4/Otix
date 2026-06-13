@@ -6,10 +6,11 @@ import { cn } from '@/lib/utils'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/features/spotify/use-player'
 import type { PlexTrackInfo } from '@/features/spotify/plex-audio-provider'
-import { TrackInlineActions } from '../molecules/track-inline-actions'
-import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/features/library/library-queries'
+import { AudioFeatureRow } from './media-music-audio-feature-row'
+import { MetaItem } from './media-music-meta-item'
+import { TrackRow } from './media-music-track-row'
+import { useSaveSpotifyTrack, usePlexAlbumTracks } from '@/features/library/library-queries'
 import { useToast } from '@/features/dk-ui/molecules/toast'
-import './music-section.scss'
 
 interface MusicSectionProps {
  album: AlbumDetail
@@ -42,43 +43,6 @@ const ALBUM_AUDIO_FEATURE_ORDER = [
  ['speechiness', 'Speech'],
 ] as const
 
-function AudioFeatureRow({
- featKey,
- label,
- features,
-}: {
- featKey: string
- label: string
- features: Record<string, unknown>
-}) {
- const raw = features[featKey]
- if (raw == null || typeof raw !== 'number') return null
-
- if (featKey === 'tempo') {
- return (
- <div className="dk-media-music-section__audio-feature">
- <div className="dk-media-music-section__audio-feature-label-row">
- <span className="text-muted-foreground">{label}</span>
- <span className="dk-media-music-section__audio-feature-value">{Math.round(raw)} BPM</span>
- </div>
- </div>
- )
- }
-
- const pct = Math.round(Math.min(1, Math.max(0, raw)) * 100)
- return (
- <div className="dk-media-music-section__audio-feature">
- <div className="dk-media-music-section__audio-feature-label-row">
- <span className="text-muted-foreground">{label}</span>
- <span className="dk-media-music-section__audio-feature-value">{pct}%</span>
- </div>
- <div className="dk-media-music-section__audio-feature-bar-bg">
- <div className="dk-media-music-section__audio-feature-bar-fill" style={{ width: `${pct}%` }} />
- </div>
- </div>
- )
-}
-
 function renderAlbumAudioFeatures(features: Record<string, unknown> | null | undefined) {
  if (!features || typeof features !== 'object') return null
  const hasAny = ALBUM_AUDIO_FEATURE_ORDER.some(([k]) => {
@@ -87,201 +51,16 @@ function renderAlbumAudioFeatures(features: Record<string, unknown> | null | und
  })
  if (!hasAny) return null
  return (
- <div className="dk-media-music-section__audio-features">
- <h3 className="dk-media-music-section__subheading">
+ <div className="space-y-3">
+ <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
  Audio features
  </h3>
- <div className="dk-media-music-section__audio-feature-grid">
+ <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
  {ALBUM_AUDIO_FEATURE_ORDER.map(([key, label]) => (
  <AudioFeatureRow key={key} featKey={key} label={label} features={features} />
  ))}
  </div>
  </div>
- )
-}
-
-function MetaItem({ label, value }: { label: string; value: string | null | undefined }) {
- if (value == null || value === '') return null
- return (
- <div>
- <dt className="dk-media-music-section__meta-label">{label}</dt>
- <dd className="dk-media-music-section__meta-value">{value}</dd>
- </div>
- )
-}
-
-function TrackRow({
- track,
- showDisc,
- isPlaying,
- spotifyLiked,
- savingSpotify,
- rating,
- ratingPending,
- onPlay,
- onToggle,
- onSaveSpotify,
- onRate,
- isReady,
- plexRatingKey,
- isPlexPlaying,
- onPlexPlay,
- playbackPlatform,
-}: {
- track: TrackOut
- showDisc: boolean
- isPlaying: boolean
- isReady: boolean
- spotifyLiked: boolean
- savingSpotify: boolean
- rating: { myRating?: number | null; avgRating?: number | null; ratingCount: number }
- ratingPending: boolean
- onPlay: (uris: string[]) => void
- onToggle: () => void
- onSaveSpotify: (spotifyId: string) => void
- onRate: (trackId: string, score: number) => void
- plexRatingKey?: string | null
- isPlexPlaying?: boolean
- onPlexPlay?: () => void
- playbackPlatform?: 'spotify' | 'plex'
-}) {
- const feats = track.audioFeatures
- const mini =
- feats && typeof feats === 'object'
- ? (['energy', 'danceability'] as const)
- .map((k) => {
- const v = feats[k]
- return typeof v === 'number' ? `${k.slice(0, 3)} ${Math.round(v * 100)}%` : null
- })
- .filter(Boolean)
- .join(' · ')
- : ''
-
- const canPlaySpotify = !!track.spotifyId && isReady
- const canPlayPlex = !!plexRatingKey
- const preferPlex = playbackPlatform === 'plex' && canPlayPlex
- const handleRowClick = () => {
- if (preferPlex) return
- if (!canPlaySpotify) return
- if (isPlaying) {
- onToggle()
- } else {
- onPlay([`spotify:track:${track.spotifyId}`])
- }
- }
- const cellClass = cn(
- 'dk-media-music-section__cell',
- isPlaying ? 'dk-media-music-section__cell--playing-spotify' : isPlexPlaying ? 'dk-media-music-section__cell--playing-plex' : 'dk-media-music-section__cell--idle',
- )
-
- return (
- <tr
- onClick={handleRowClick}
- className={cn(
- 'dk-media-music-section__track-row',
- (canPlaySpotify && !preferPlex) && 'dk-media-music-section__track-row--clickable',
- )}
- >
- <td className={cn(cellClass, 'dk-media-music-section__cell--number')}>
- {showDisc ? `${track.discNumber}.${track.trackNumber}` : track.trackNumber}
- </td>
- <td className={cn(cellClass, 'dk-media-music-section__cell--title')}>
- <div className="dk-media-music-section__track-title">{track.title}</div>
- {mini && <div className="dk-media-music-section__track-features">{mini}</div>}
- </td>
- <td className={cn(cellClass, 'dk-media-music-section__cell--time')}>
- {formatMs(track.durationMs)}
- </td>
- <td className={cn(cellClass, 'dk-media-music-section__cell--actions')}>
- <TrackInlineActions
- trackId={track.id}
- spotifyId={track.spotifyId}
- spotifyLiked={spotifyLiked}
- savingSpotify={savingSpotify}
- myRating={rating.myRating}
- ratingPending={ratingPending}
- onSaveSpotify={onSaveSpotify}
- onRate={onRate}
- className="dk-media-music-section__track-actions"
- />
- </td>
- <td className={cn(cellClass, 'dk-media-music-section__cell--play')}>
- {preferPlex ? (
- <button
- type="button"
- onClick={(e) => {
- e.stopPropagation()
- onPlexPlay?.()
- }}
- className={cn(
- 'dk-media-music-section__play-btn',
- isPlexPlaying
- ? 'dk-media-music-section__play-btn--plex-active'
- : 'dk-media-music-section__play-btn--plex-inactive',
- )}
- >
- {isPlexPlaying ? (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
- </svg>
- ) : (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
- </svg>
- )}
- </button>
- ) : track.spotifyId ? (
- <div
- className={cn(
- 'dk-media-music-section__play-indicator',
- isPlaying
- ? 'dk-media-music-section__play-indicator--active'
- : 'dk-media-music-section__play-indicator--inactive',
- )}
- >
- {isPlaying ? (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
- </svg>
- ) : (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
- </svg>
- )}
- </div>
- ) : track.previewUrl ? (
- <audio controls className="h-7 w-[120px] max-w-[28vw] sm:w-32" preload="none">
- <source src={track.previewUrl} type="audio/mpeg" />
- </audio>
- ) : canPlayPlex ? (
- <button
- type="button"
- onClick={(e) => {
- e.stopPropagation()
- onPlexPlay?.()
- }}
- className={cn(
- 'dk-media-music-section__play-btn',
- isPlexPlaying
- ? 'dk-media-music-section__play-btn--plex-active'
- : 'dk-media-music-section__play-btn--plex-inactive',
- )}
- >
- {isPlexPlaying ? (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
- </svg>
- ) : (
- <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
- <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
- </svg>
- )}
- </button>
- ) : (
- <span className="dk-media-music-section__play-empty">—</span>
- )}
- </td>
- </tr>
  )
 }
 
@@ -399,32 +178,32 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  }
 
  return (
- <section className={cn('dk-media-music-section', className)}>
- <div className="dk-media-music-section__header">
+ <section className={cn('space-y-8', className)}>
+ <div className="flex items-center gap-2">
  <Music2 className="h-5 w-5 text-amber-500" aria-hidden />
- <h2 className="dk-media-music-section__heading">Album</h2>
+ <h2 className="text-lg font-semibold">Album</h2>
  </div>
 
  {/* Release metadata */}
- <div className="dk-media-music-section__release-card">
- <h3 className="dk-media-music-section__subheading">
+ <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--dk-surface-base)', boxShadow: 'var(--dk-shadow-sm)' }}>
+ <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
  Release details
  </h3>
- <dl className="dk-media-music-section__meta-grid">
+ <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
  <MetaItem label="Release type" value={album.releaseType} />
  <MetaItem label="Format" value={album.format} />
  <MetaItem label="Catalog #" value={album.catalogNumber} />
  <MetaItem label="Barcode" value={album.barcode} />
  <div>
- <dt className="dk-media-music-section__meta-label">Tracks</dt>
- <dd className="dk-media-music-section__meta-value--plain">
+ <dt className="text-xs text-muted-foreground">Tracks</dt>
+ <dd className="text-sm font-medium">
  {allTracks.length || album.trackCount}
  {album.discCount > 1 ? ` · ${album.discCount} discs` : ''}
  </dd>
  </div>
  <div>
- <dt className="dk-media-music-section__meta-label">Total length</dt>
- <dd className="dk-media-music-section__meta-value--plain">
+ <dt className="text-xs text-muted-foreground">Total length</dt>
+ <dd className="text-sm font-medium">
  {formatMs(
  album.durationMs ??
  (allTracks.length > 0
@@ -435,24 +214,22 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  </div>
  {album.spotifyPopularity != null && (
  <div>
- <dt className="dk-media-music-section__meta-label">Spotify popularity</dt>
- <dd className="dk-media-music-section__meta-value--plain">{album.spotifyPopularity}/100</dd>
+ <dt className="text-xs text-muted-foreground">Spotify popularity</dt>
+ <dd className="text-sm font-medium">{album.spotifyPopularity}/100</dd>
  </div>
  )}
  </dl>
 
- <div className="dk-media-music-section__actions">
+ <div className="mt-4 flex flex-wrap items-center gap-2">
  {/* Platform picker — shown when album is on both Spotify and Plex */}
  {hasBothPlatforms && (
- <div className="dk-media-music-section__platform-picker">
+ <div className="flex items-center rounded-lg p-0.5 mr-1" style={{ backgroundColor: 'rgba(255,255,255,0.04)', boxShadow: '0 0 0 1px rgba(255,255,255,0.06)' }}>
  <button
  type="button"
  onClick={() => setPlaybackPlatform('spotify')}
  className={cn(
- 'dk-media-music-section__platform-btn',
- playbackPlatform === 'spotify'
- ? 'dk-media-music-section__platform-btn--active-spotify'
- : '',
+ 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
+ playbackPlatform === 'spotify' && 'bg-[#1DB954] text-black shadow-sm',
  )}
  >
  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -464,10 +241,8 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  type="button"
  onClick={() => setPlaybackPlatform('plex')}
  className={cn(
- 'dk-media-music-section__platform-btn',
- playbackPlatform === 'plex'
- ? 'dk-media-music-section__platform-btn--active-plex'
- : '',
+ 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
+ playbackPlatform === 'plex' && 'bg-amber-500 text-black shadow-sm',
  )}
  >
  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -485,7 +260,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  const uris = allTracks.filter(t => t.spotifyId).map(t => `spotify:track:${t.spotifyId}` as string)
  if (uris.length > 0) playSpotifyQueue(uris)
  }}
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--spotify-play"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954] px-3 py-1.5 text-xs font-medium text-black transition-colors hover:bg-[#1DB954]/90"
  >
  <Play className="h-3.5 w-3.5 fill-current" />
  Play Album
@@ -505,14 +280,14 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  )
  if (info.length > 0) playPlexAlbum(info)
  }}
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--plex-play"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/30"
  >
  <Play className="h-3.5 w-3.5 fill-current" />
  Play on Plex
  </button>
  )}
  {hasPlex && !plexReady && (
- <span className="dk-media-music-section__plex-notice">
+ <span className="text-[11px] text-amber-500/60">
  Plex connection unavailable — re-sync in Settings
  </span>
  )}
@@ -521,7 +296,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  href={album.spotifyUrl}
  target="_blank"
  rel="noopener noreferrer"
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--link-spotify"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-[#1DB954]/20 px-3 py-1.5 text-xs font-medium text-[#1DB954] transition-colors hover:bg-[#1DB954]/30"
  >
  <ExternalLink className="h-3.5 w-3.5" />
  Spotify
@@ -532,7 +307,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  href={`https://musicbrainz.org/release/${album.musicbrainzId}`}
  target="_blank"
  rel="noopener noreferrer"
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--link-musicbrainz"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500/20 px-3 py-1.5 text-xs font-medium text-orange-400 transition-colors hover:bg-orange-500/30"
  >
  <ExternalLink className="h-3.5 w-3.5" />
  MusicBrainz
@@ -543,7 +318,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  href={`https://musicbrainz.org/release-group/${album.musicbrainzReleaseGroupId}`}
  target="_blank"
  rel="noopener noreferrer"
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--link-releasegroup"
+ className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500/10 px-3 py-1.5 text-xs font-medium text-orange-300/90 transition-colors hover:bg-orange-500/25"
  >
  <Disc3 className="h-3.5 w-3.5" />
  Release group
@@ -554,7 +329,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  href={album.previewUrl}
  target="_blank"
  rel="noopener noreferrer"
- className="dk-media-music-section__action-btn dk-media-music-section__action-btn--preview"
+ className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:underline"
  >
  Album preview
  </a>
@@ -563,7 +338,7 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  </div>
 
  {error && (
- <div className="dk-media-music-section__error">
+ <div className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-400">
  Playback error: {error}
  </div>
  )}
@@ -571,22 +346,22 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  {renderAlbumAudioFeatures(album.audioFeatures)}
 
  {/* Track list */}
- <div className="dk-media-music-section__tracklist">
- <h3 className="dk-media-music-section__subheading">
+ <div className="space-y-3">
+ <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
  Tracks ({allTracks.length || album.trackCount})
  </h3>
  {allTracks.length === 0 ? (
- <p className="dk-media-music-section__empty">No track listing synced yet.</p>
+ <p className="text-sm text-muted-foreground">No track listing synced yet.</p>
  ) : (
- <div className="dk-media-music-section__table-wrapper">
- <table className="dk-media-music-section__table">
+ <div className="overflow-x-auto">
+ <table className="w-full min-w-[320px] border-separate border-spacing-y-1 text-left text-sm">
  <thead>
- <tr className="dk-media-music-section__thead-row">
- <th className="dk-media-music-section__th dk-media-music-section__th--number">#</th>
- <th className="dk-media-music-section__th dk-media-music-section__th--title">Title</th>
- <th className="dk-media-music-section__th dk-media-music-section__th--time">Time</th>
- <th className="dk-media-music-section__th dk-media-music-section__th--rate">Rate</th>
- <th className="dk-media-music-section__th dk-media-music-section__th--play">Play</th>
+ <tr className="text-xs uppercase tracking-wider text-muted-foreground">
+ <th className="w-10 pb-1.5 pr-2 text-right font-medium">#</th>
+ <th className="pb-1.5 pr-3 font-medium">Title</th>
+ <th className="w-20 pb-1.5 pr-3 text-right font-medium hidden sm:table-cell">Time</th>
+ <th className="w-[290px] pb-1.5 pr-3 text-right font-medium hidden md:table-cell">Rate</th>
+ <th className="w-10 pb-1.5 text-center font-medium">Play</th>
  </tr>
  </thead>
  <tbody>
@@ -666,12 +441,12 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  </div>
 
  {album.spotifyId && (
- <p className="dk-media-music-section__footnote">
- Spotify ID: <span className="dk-media-music-section__footnote-code">{album.spotifyId}</span>
+ <p className="text-[11px] text-muted-foreground">
+ Spotify ID: <span className="font-mono">{album.spotifyId}</span>
  {album.musicbrainzId && (
  <>
  {' · '}
- MB Release: <span className="dk-media-music-section__footnote-code">{album.musicbrainzId}</span>
+ MB Release: <span className="font-mono">{album.musicbrainzId}</span>
  </>
  )}
  </p>
