@@ -439,13 +439,14 @@ export function DiscoverHero({ className }: { className?: string }) {
     const nextIndex = (activeIndex + 1) % items.length
     const toFetch = [items[activeIndex], items[nextIndex]]
     for (const item of toFetch) {
-      if (item) queryClient.prefetchQuery(mediaQueries.detail(item.id))
+      if (item) queryClient.prefetchQuery(mediaQueries.detail(item.mediaType ?? 'movie', item.id))
     }
   }, [items, activeIndex, queryClient])
 
   // Fetch detail only for the active item
+  const activeMediaType = activeItem?.mediaType ?? 'movie'
   const detailQuery = useQuery({
-    ...mediaQueries.detail(activeId ?? ''),
+    ...mediaQueries.detail(activeMediaType, activeId ?? ''),
     enabled: !!activeId,
     placeholderData: keepPreviousData,
   })

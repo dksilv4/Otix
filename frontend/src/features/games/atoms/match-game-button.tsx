@@ -31,7 +31,7 @@ export function MatchGameButton({ game }: Props) {
       onClick={handleClick}
       className="px-5.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
     >
-      Play
+      Match to Play
     </button>
   )
 }

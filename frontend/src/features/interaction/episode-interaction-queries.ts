@@ -100,7 +100,7 @@ export function useToggleEpisodeWatched(mediaId: string) {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
     },
   })
@@ -124,7 +124,7 @@ export function useMarkShowWatched(mediaId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
     },
   })
@@ -154,7 +154,7 @@ export function useMarkSeasonWatched(mediaId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaId) })
+      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
     },
   })

@@ -58,7 +58,7 @@ export function useRunningGame() {
     })
 
     // Listen for game ended
-    const unsubEnd = api.onGameEnded(() => {
+    const unsubEnd = window.desktopAPI.onGameEnded(() => {
       setRunningGame(null)
       clearTimer()
       setElapsedMs(0)

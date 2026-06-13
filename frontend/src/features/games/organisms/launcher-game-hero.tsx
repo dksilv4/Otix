@@ -56,9 +56,10 @@ export function LauncherGameHero() {
         </div>
       )}
 
-      <div className="absolute z-10 bottom-8 pointer-events-auto flex items-start gap-3" style={{ left: 'calc(76px + 1.5rem)' }}>
-        <LauncherGameStats />
-        <LauncherFpsStats />
+      <div className="absolute z-10 bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
+        <div className="flex items-start gap-3">
+          <LauncherGameStats />
+        </div>
       </div>
       <div className="absolute inset-0 z-10 pointer-events-none">
         <LauncherGameCompanies />

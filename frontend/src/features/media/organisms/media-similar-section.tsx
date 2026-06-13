@@ -12,7 +12,7 @@ interface SimilarSectionProps {
 
 export function SimilarSection({ mediaId, mediaType, className }: SimilarSectionProps) {
   const { data, isLoading } = useQuery(
-    mediaQueries.similar(mediaId, { mediaType, limit: 20 }),
+    mediaQueries.similar(mediaType, mediaId, { limit: 20 }),
   )
 
   const items = data?.items ?? []

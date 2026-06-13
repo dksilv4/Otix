@@ -137,7 +137,7 @@ export const gameDetailOptions = (id: string) =>
     queryKey: gameKeys.detail(id),
     queryFn: async (): Promise<CatalogGameDetail | null> => {
       try {
-        const { data } = await apiClient.get<MediaItemDetailResponse>(`/media/${id}`)
+        const { data } = await apiClient.get<MediaItemDetailResponse>(`/media/game/${id}`)
         return toCatalogGameDetail(data)
       } catch {
         return null

@@ -34,8 +34,8 @@ import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched, 
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, type MediaItemDetail } from '../media-queries'
 
-function useMediaDetail(id: string) {
-  return useQuery(mediaQueries.detail(id))
+function useMediaDetail(mediaType: string, id: string) {
+  return useQuery(mediaQueries.detail(mediaType, id))
 }
 
 
@@ -104,7 +104,7 @@ export function MediaDetail() {
 
   const { isDesktop } = useDesktopPlatform()
 
-  const { data, isLoading, isError } = useMediaDetail(mediaId)
+  const { data, isLoading, isError } = useMediaDetail(mediaType, mediaId)
   const isShowDetail = data?.mediaType === 'show'
   const episodeInteractions = useEpisodeInteractions(mediaId, { enabled: isShowDetail })
   const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
@@ -332,7 +332,7 @@ export function MediaDetail() {
         <SimilarSection mediaId={detail.id} mediaType={displayType} />
 
         {/* Recommendations (personalized via embedding centroid) */}
-        <RecommendationsSection mediaId={detail.id} />
+        <RecommendationsSection mediaId={detail.id} mediaType={displayType} />
 
         {/* Companies */}
         {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (

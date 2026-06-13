@@ -49,8 +49,8 @@ const DkMediaCard = memo(function DkMediaCard({
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
   const queryClient = useQueryClient()
   const handlePrefetch = useCallback(() => {
-    queryClient.prefetchQuery(mediaQueries.detail(id))
-  }, [queryClient, id])
+    queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
+  }, [queryClient, mediaType, id])
 
   const imageUrl = textlessPosterUrl || posterUrl || undefined
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
