@@ -3,7 +3,6 @@ import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
-import './similar-section.scss'
 
 interface SimilarSectionProps {
   mediaId: string
@@ -20,8 +19,8 @@ export function SimilarSection({ mediaId, mediaType, className }: SimilarSection
   if (!isLoading && items.length === 0) return null
 
   return (
-    <section className={cn('dk-media-similar-section', className)}>
-      <h2 className="dk-media-similar-section__heading">Similar</h2>
+    <section className={cn('space-y-4', className)}>
+      <h2 className="px-4 lg:px-8 text-lg font-semibold">Similar</h2>
       <Carousel isLoading={isLoading}>
         {items.map((item) => (
           <DiscoverMediaCard key={item.id} item={item} />

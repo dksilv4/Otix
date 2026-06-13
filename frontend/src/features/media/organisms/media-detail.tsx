@@ -8,24 +8,27 @@ import { useAuth } from '@/features/auth'
 
 
 import { MediaHero } from './media-hero'
-import { MovieSection } from './movie-section'
-import { ShowSection } from './show-section'
-import { GameSection } from './game-section'
-import { MusicSection } from './music-section'
-import { ArtistAlbumsSection } from './artist-albums-section'
-import { SimilarSection } from './similar-section'
-import { RecommendationsSection } from './recommendations-section'
-import { CastCrewList } from './cast-crew-list'
-import { CollectionSection } from './collection-section'
+import { MovieSection } from './media-movie-section'
+import { ShowSection } from './media-show-section'
+import { GameSection } from './media-game-section'
+import { MusicSection } from './media-music-section'
+import { ArtistAlbumsSection } from './media-artist-albums-section'
+import { SimilarSection } from './media-similar-section'
+import { RecommendationsSection } from './media-recommendations-section'
+import { CastCrewList } from './media-cast-crew-list'
+import { CollectionSection } from './media-collection-section'
 import { DeferredSection } from '@ui/molecules/deferred-section'
-import { Skeleton } from '@ui/atoms/skeleton'
 import { Badge } from '@ui/atoms/badge'
 import { ReviewSection } from '@/features/review/organisms/review-section'
 import { ReviewsListSection } from '@/features/review/organisms/reviews-list-section'
 import { RatingsSection } from '@/features/review/organisms/ratings-section'
 import { ReviewActionButton } from '@/features/review/molecules/review-action-button'
 import { InteractionSection } from '@/features/interaction/molecules/interaction-buttons'
-import { WhereToWatchSection } from './where-to-watch-section'
+import { WhereToWatchSection } from './media-where-to-watch-section'
+import { SectionSkeleton } from './media-detail-section-skeleton'
+import { DetailSkeleton } from './media-detail-skeleton'
+import { ErrorState } from './media-detail-error-state'
+import { DownloadGameButton } from './media-download-game-button'
 
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched, useMarkShowWatched } from '@/features/interaction/episode-interaction-queries'
 import { useQuery } from '@tanstack/react-query'
@@ -37,153 +40,11 @@ function useMediaDetail(id: string) {
 
 
 import { AdminActionsMenu } from '@/features/admin/molecules/admin-actions-menu'
-import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDesktopPlatform } from '@/lib/desktop-platform'
-import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
-import type { HypervisorConfirmResponse } from '@/features/downloads/types'
-import { DkDialog } from '@/features/dk-ui/molecules/dialog'
-import { useExperiment } from '@/features/experiments/experiments-provider'
-import { useLocalGames } from '@/features/game-scanner/game-queries'
-import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
-import { useInstallProgress } from '@/features/game-scanner/install-store'
-import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
-
-import './media-detail.scss'
 
 
-// ── Skeleton ──
 
-function SectionSkeleton({ height = 200 }: { height?: number }) {
-  return (
-    <div
-      aria-hidden="true"
-      className="dk-media-detail__section-skeleton"
-      style={{
-        minHeight: height,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
-      }}
-    />
-  )
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="dk-media-detail__skeleton">
-      {/* Hero skeleton — matches MediaHero layout */}
-      <div className="dk-media-detail__skeleton-hero">
-        {/* Backdrop placeholder with subtle shimmer */}
-        <div className="dk-media-detail__skeleton-hero-bg">
-          <div className="dk-media-detail__skeleton-hero-shimmer" />
-          <div className="dk-media-detail__skeleton-hero-overlay" />
-        </div>
-
-        {/* Content */}
-        <div className="dk-media-detail__skeleton-hero-content">
-          <div className="dk-media-detail__skeleton-hero-flex">
-            {/* Poster */}
-            <div className="dk-media-detail__skeleton-hero-poster">
-              <Skeleton className="aspect-[2/3] w-full rounded-2xl" />
-            </div>
-
-            {/* Info */}
-            <div className="dk-media-detail__skeleton-hero-info">
-              {/* Logo / title */}
-              <Skeleton className="mb-2 h-12 w-56 sm:h-14 lg:h-16" />
-              {/* Tagline */}
-              <Skeleton className="h-4 w-72 sm:h-5 sm:w-80" />
-              {/* Badges row */}
-              <div className="dk-media-detail__skeleton-hero-badges">
-                <Skeleton className="h-7 w-16 rounded-full" />
-                <Skeleton className="h-7 w-14 rounded-full" />
-                <Skeleton className="h-7 w-20 rounded-full" />
-              </div>
-              {/* Overview */}
-              <div className="dk-media-detail__skeleton-hero-overview">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-11/12" />
-                <Skeleton className="h-3 w-5/6" />
-              </div>
-              {/* Genre badges */}
-              <div className="dk-media-detail__skeleton-hero-genres">
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-5 w-14 rounded-full" />
-                <Skeleton className="h-5 w-18 rounded-full" />
-                <Skeleton className="h-5 w-12 rounded-full" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Action buttons skeleton */}
-      <div className="dk-media-detail__skeleton-actions">
-        <div className="dk-media-detail__skeleton-actions-grid">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 rounded-xl" />
-          ))}
-        </div>
-      </div>
-
-      {/* Cast/crew skeleton */}
-      <div className="dk-media-detail__skeleton-cast">
-        <Skeleton className="mb-4 h-5 w-32" />
-        <div className="dk-media-detail__skeleton-cast-scroll">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="dk-media-detail__skeleton-cast-item">
-              <Skeleton className="mx-auto h-20 w-20 rounded-full" />
-              <Skeleton className="mx-auto mt-2 h-3 w-16" />
-              <Skeleton className="mx-auto mt-1 h-3 w-12" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Error ──
-
-function ErrorState({ mediaType }: { mediaType: string }) {
-  const typeLabel =
-    mediaType === 'movie'
-      ? 'Movie'
-      : mediaType === 'show'
-        ? 'Show'
-        : mediaType === 'music'
-          ? 'Album'
-          : 'Game'
-
-  return (
-    <div className="dk-media-detail__error">
-      <div className="dk-media-detail__error-card">
-        <div className="dk-media-detail__error-icon">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 text-destructive"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v2m0 4h.01M12 3l9.66 16.5H2.34L12 3z"
-            />
-          </svg>
-        </div>
-        <h3 className="dk-media-detail__error-title">{typeLabel} Not Found</h3>
-        <p className="dk-media-detail__error-desc">
-          Could not load details for this {typeLabel.toLowerCase()}. It may have been removed or the ID is incorrect.
-        </p>
-        <a href="/" className="dk-media-detail__error-link">
-          Go back home
-        </a>
-      </div>
-    </div>
-  )
-}
 
 // ── Type guards ──
 
@@ -230,418 +91,8 @@ function seoDescription(overview?: string | null, title?: string): string {
   return `Details for ${title || 'this title'} on Otix`
 }
 
-function isTitleMatch(gameTitle: string, mediaTitle: string): boolean {
-  if (!gameTitle || !mediaTitle) return false;
-  const norm = (str: string) => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // strip punctuation
-      .replace(/\bii\b/g, '2')
-      .replace(/\biii\b/g, '3')
-      .replace(/\biv\b/g, '4')
-      .replace(/\bv\b/g, '5')
-      .replace(/\bvi\b/g, '6')
-      .replace(/\bvii\b/g, '7')
-      .replace(/\bviii\b/g, '8')
-      .replace(/\bix\b/g, '9')
-      .replace(/\bx\b/g, '10')
-      .replace(/\s+/g, '') // remove all spaces
-      .trim();
-  };
-  return norm(gameTitle) === norm(mediaTitle);
-}
 
-// ── Page ──
 
-function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTitle: string }) {
-  const { user } = useAuth();
-  const { enabled: downloadsEnabled } = useExperiment('download_integration');
-  const { downloads, searchAndDownload, cancelDownload, pollQueue } = useDownloads(user?.id);
-  const { config: dlConfig } = useDownloadConfig(user?.id);
-  const [searching, setSearching] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [postProcessing, setPostProcessing] = useState(false);
-  const [isInstallerOpen, setIsInstallerOpen] = useState(false);
-  const { data: scannedGames = [] } = useLocalGames();
-  const [localGame, setLocalGame] = useState<LocalGame | null>(null);
-  const [hvDialogOpen, setHvDialogOpen] = useState(false);
-  const [hvCountdown, setHvCountdown] = useState(10);
-  const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null);
-  const { installs: allInstalls } = useInstallProgress();
-
-  // Load local game map entry on mount / media change
-  useEffect(() => {
-    let currentLocal: LocalGame | null = null;
-    try {
-      const map = getLocalGamesMap();
-      currentLocal = map[mediaId] || null;
-      setLocalGame(currentLocal);
-    } catch {
-      setLocalGame(null);
-    }
-
-    // Auto-link if not in localGames map but matched by title
-    if (!currentLocal && mediaTitle) {
-      const match = scannedGames.find(g => g.data?.id === mediaId) ||
-                    scannedGames.find(g => isTitleMatch(g.title, mediaTitle));
-      if (match) {
-        setLocalGamesMapEntry(mediaId, match);
-        setLocalGame(match);
-      }
-    }
-  }, [mediaId, mediaTitle]);
-
-  // Hypervisor confirmation countdown — auto-dismiss after 10s
-  useEffect(() => {
-    if (!hvDialogOpen) {
-      setHvCountdown(10);
-      return;
-    }
-    if (hvCountdown <= 0) {
-      setHvDialogOpen(false);
-      setErrorMsg('Hypervisor download cancelled (timeout).');
-      return;
-    }
-    const timer = setTimeout(() => setHvCountdown(c => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [hvDialogOpen, hvCountdown]);
-
-  if (!window.desktopAPI || !user?.isAdmin) return null;
-
-  const matchingScannedGame = scannedGames.find(g => g.data?.id === mediaId) || localGame;
-  const isInstalled = matchingScannedGame && matchingScannedGame.platform !== 'iso';
-  
-  if (!downloadsEnabled && !matchingScannedGame) return null;
-
-  // Find existing download for this media item (most recent first)
-  const existingDownload = downloads.find(d => d.mediaItemId === mediaId);
-  const isDownloading = existingDownload && existingDownload.status !== 'completed' && existingDownload.status !== 'failed';
-  const isCompleted = existingDownload?.status === 'completed';
-  const isIsoAvailable = (matchingScannedGame && matchingScannedGame.platform === 'iso') || !!(existingDownload?.isoPath) || (isCompleted && existingDownload?.isoPath);
-  const isoPath = existingDownload?.isoPath || (matchingScannedGame?.platform === 'iso' ? matchingScannedGame.exePath : null);
-
-  const handleDownload = async () => {
-    setSearching(true);
-    setErrorMsg('');
-    const result = await searchAndDownload(user!.id, mediaId, mediaTitle);
-    if ('hypervisorAvailable' in result) {
-      setHvPending(result);
-      setHvCountdown(10);
-      setHvDialogOpen(true);
-    } else if ('error' in result) {
-      setErrorMsg(result.error);
-    }
-    setSearching(false);
-  };
-
-  const handleHvConfirm = async () => {
-    setHvDialogOpen(false);
-    setHvPending(null);
-    setSearching(true);
-    setErrorMsg('');
-    const result = await searchAndDownload(user!.id, mediaId, mediaTitle, true);
-    if ('hypervisorAvailable' in result || 'error' in result) {
-      setErrorMsg(result.error ?? '');
-    }
-    setSearching(false);
-  };
-
-  const handleHvDismiss = () => {
-    setHvDialogOpen(false);
-    setHvPending(null);
-    setErrorMsg('Hypervisor download cancelled.');
-  };
-
-  // Status display helpers
-  const statusConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }> = {
-    queued: { icon: Clock, label: 'Queued in SABnzbd', color: 'text-amber-400' },
-    downloading: { icon: Loader2, label: 'Downloading...', color: 'text-blue-400' },
-    processing: { icon: Loader2, label: 'Unpacking/Verifying...', color: 'text-purple-400' },
-    completed: { icon: CheckCircle2, label: 'Download complete', color: 'text-green-400' },
-    failed: { icon: XCircle, label: 'Download failed', color: 'text-red-400' },
-  };
-
-  // 1. Installed: matchingScannedGame exists and is not 'iso'
-  if (isInstalled && matchingScannedGame) {
-    const handlePlay = async () => {
-      try {
-        await window.desktopAPI!.launchGame(matchingScannedGame);
-      } catch (err) {
-        console.error('Failed to launch game:', err);
-      }
-    };
-
-    return (
-      <div className="dk-media-detail__dl-row">
-        <button
-          onClick={handlePlay}
-          className="dk-media-detail__dl-btn-play"
-        >
-          <Play className="h-4 w-4 fill-current" />
-          Play
-        </button>
-        <p className="dk-media-detail__dl-meta">
-          {matchingScannedGame.platform === 'steam' ? 'Launch via Steam' : 'Installed locally'}
-        </p>
-      </div>
-    );
-  }
-
-  // 2. Downloading: active download in progress
-  if (downloadsEnabled && isDownloading && existingDownload) {
-    const cfg = statusConfig[existingDownload.status] || statusConfig.processing;
-    const Icon = cfg.icon;
-    const pct = existingDownload.percentage ?? 0;
-
-    return (
-      <div className="dk-media-detail__dl-status-group">
-        <div className={cn('dk-media-detail__dl-status-text', cfg.color)}>
-          <Icon className={cn('dk-media-detail__dl-status-icon', (existingDownload.status === 'downloading' || existingDownload.status === 'processing') && 'animate-spin')} />
-          <span>{cfg.label}</span>
-          {existingDownload.nzbName && (
-            <span className="dk-media-detail__dl-status-label">
-              — {existingDownload.nzbName}
-            </span>
-          )}
-          <span className="dk-media-detail__dl-status-pct">{pct}%</span>
-        </div>
-        <div className="dk-media-detail__dl-progress">
-          <div
-            className="dk-media-detail__dl-progress-bar"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="dk-media-detail__dl-actions">
-          <button
-            onClick={pollQueue}
-            className="dk-media-detail__dl-btn-refresh"
-          >
-            Refresh status
-          </button>
-          <button
-            onClick={() => cancelDownload(existingDownload.id)}
-            className="dk-media-detail__dl-btn-cancel"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 2b. Install in progress (ISO install) — show progress even when modal is closed
-  const installEntry = isoPath
-    ? allInstalls.find((i) => i.isoPath?.toLowerCase() === isoPath.toLowerCase())
-    : undefined;
-  const isInstallingThis = installEntry?.active === true;
-  const justInstalled = !installEntry?.active && installEntry?.result?.success === true;
-
-  if (isInstallingThis) {
-    return (
-      <div className="dk-media-detail__dl-status-group">
-        <div className="dk-media-detail__dl-status-text text-blue-400">
-          <Loader2 className="dk-media-detail__dl-status-icon animate-spin" />
-          <span>Installing {installEntry!.gameTitle ?? 'game'}...</span>
-        </div>
-        <div className="dk-media-detail__dl-progress overflow-hidden">
-          <div
-            className="dk-media-detail__dl-progress-bar w-full animate-pulse"
-          />
-        </div>
-        <p className="dk-media-detail__dl-meta">
-          {installEntry!.progress?.message ?? installEntry!.progress?.phase ?? 'Starting...'}
-        </p>
-      </div>
-    );
-  }
-
-  // 2c. Install just completed — keep showing success briefly
-  if (justInstalled) {
-    return (
-      <div className="dk-media-detail__dl-iso-group">
-        <div className="dk-media-detail__dl-iso-status">
-          <CheckCircle2 className="h-4 w-4" />
-          <span>Installation Complete</span>
-          {installEntry!.result?.installDir && (
-            <span className="dk-media-detail__dl-iso-path">
-              {installEntry!.result.installDir}
-            </span>
-          )}
-        </div>
-        <div className="dk-media-detail__dl-iso-actions">
-          {installEntry!.result?.gameExe && (
-            <button
-              onClick={async () => {
-                try {
-                  await window.desktopAPI!.launchGame({
-                    exePath: installEntry!.result!.gameExe!,
-                    installDir: installEntry!.result!.installDir,
-                    title: installEntry!.gameTitle ?? 'Game',
-                    id: installEntry!.result!.installDir,
-                    platform: 'pc',
-                  } as Parameters<NonNullable<typeof window.desktopAPI>['launchGame']>[0]);
-                } catch (e) {
-                  console.error('Failed to launch:', e);
-                }
-              }}
-              className="dk-media-detail__dl-btn-play"
-            >
-              <Play className="h-4 w-4 fill-current" />
-              Play
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 3. ISO Available / Ready to Install
-  if (isIsoAvailable) {
-    return (
-      <>
-        <div className="dk-media-detail__dl-iso-group">
-          <div className="dk-media-detail__dl-iso-status">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>ISO Available</span>
-            {isoPath && (
-              <span className="dk-media-detail__dl-iso-path">
-                {isoPath}
-              </span>
-            )}
-          </div>
-          <div className="dk-media-detail__dl-iso-actions">
-            <button
-              onClick={() => setIsInstallerOpen(true)}
-              className="dk-media-detail__dl-btn-install"
-            >
-              <Disc className="h-4 w-4" />
-              Install
-            </button>
-            {downloadsEnabled && dlConfig && existingDownload?.status === 'completed' && (
-              <button
-                onClick={async () => {
-                  setPostProcessing(true);
-                  try {
-                    await window.desktopAPI!.downloadsPostProcess(
-                      existingDownload.id,
-                      dlConfig.id,
-                      dlConfig.sabnzbdCompletePath ?? undefined,
-                      dlConfig.downloadPath ?? undefined,
-                    );
-                    await pollQueue();
-                  } finally {
-                    setPostProcessing(false);
-                  }
-                }}
-                disabled={postProcessing}
-                className="dk-media-detail__dl-btn-move"
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                {postProcessing ? 'Moving...' : 'Move to library'}
-              </button>
-            )}
-          </div>
-          {downloadsEnabled && (
-            <button
-              onClick={handleDownload}
-              className="dk-media-detail__dl-btn-redownload"
-            >
-              Re-download
-            </button>
-          )}
-        </div>
-
-        <IsoInstallerModal
-          open={isInstallerOpen}
-          onClose={() => setIsInstallerOpen(false)}
-          games={scannedGames}
-          initialIsoPath={isoPath || undefined}
-        />
-      </>
-    );
-  }
-
-  // 4. Failed download
-  if (downloadsEnabled && existingDownload?.status === 'failed') {
-    return (
-      <div className="dk-media-detail__dl-failed-group">
-        <div className="dk-media-detail__dl-failed-status">
-          <XCircle className="h-4 w-4" />
-          <span>Download failed</span>
-        </div>
-        {existingDownload.errorMessage && (
-          <p className="dk-media-detail__dl-failed-msg">{existingDownload.errorMessage}</p>
-        )}
-        <button
-          onClick={handleDownload}
-          className="dk-media-detail__dl-btn-retry"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-
-  // 5. Download Available
-  if (downloadsEnabled) {
-    return (
-      <div className="dk-media-detail__dl-dl-row">
-        <button
-          onClick={handleDownload}
-          disabled={searching}
-          className="dk-media-detail__dl-btn-download"
-        >
-          {searching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4" />
-          )}
-          {searching ? 'Searching...' : 'Download ISO'}
-        </button>
-        {errorMsg && (
-          <p className="dk-media-detail__dl-error">{errorMsg}</p>
-        )}
-      </div>
-    );
-  }
-
-  // ── Hypervisor confirmation dialog ──
-  return (
-    <>
-      {null}
-      <DkDialog
-        open={hvDialogOpen}
-        onOpenChange={(open) => { if (!open) handleHvDismiss(); }}
-      >
-        <div className="dk-media-detail__dl-hv-dialog">
-          <p className="dk-media-detail__dl-hv-text">
-            Only hypervisor-tagged releases found for <strong>{hvPending?.gameName ?? 'this game'}</strong>.
-            These often require VM setup and may not run natively.
-          </p>
-          <p className="dk-media-detail__dl-hv-countdown">
-            Auto-dismissing in <span className="dk-media-detail__dl-hv-countdown-num">{hvCountdown}</span>s
-          </p>
-          <div className="dk-media-detail__dl-hv-actions">
-            <button
-              onClick={handleHvConfirm}
-              className="dk-media-detail__dl-hv-btn-confirm"
-            >
-              Download HV version
-            </button>
-            <button
-              onClick={handleHvDismiss}
-              className="dk-media-detail__dl-hv-btn-skip"
-            >
-              Skip
-            </button>
-          </div>
-        </div>
-      </DkDialog>
-    </>
-  );
-}
-
-type LocalGame = import('@/features/game-scanner/types').LocalGame;
 
 export function MediaDetail() {
   const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
@@ -726,7 +177,7 @@ export function MediaDetail() {
     null
 
   return (
-    <div className={cn('dk-media-detail', isDesktop && 'dk-media-detail--desktop')}>
+    <div className={cn('animate-fade-in space-y-12 pb-16', isDesktop && 'pt-[var(--title-bar-height,38px)]')}>
       {/* ── SEO ── */}
       <Helmet>
         <title>{`${titleWithYear} - Otix`}</title>
@@ -750,7 +201,7 @@ export function MediaDetail() {
       </Helmet>
 
       {/* ── Hero ── */}
-      <div ref={heroRef}>
+      <div ref={heroRef} className="">
         <MediaHero
           mediaType={displayType}
           title={detail.title}
@@ -776,7 +227,7 @@ export function MediaDetail() {
       </div>
 
       {/* ── Content sections ── */}
-      <div className="dk-media-detail__content">
+      <div className="max-w-[calc(100vw)]">
         {/* Interactions — Like, Watchlist, Watched, Played */}
         <InteractionSection
           mediaId={detail.id}
@@ -805,7 +256,7 @@ export function MediaDetail() {
 
         {/* Unified game action button (Play / Install / Download) */}
         {detail.mediaType === 'game' && (
-          <div className="dk-media-detail__game-actions">
+          <div className="flex flex-wrap items-center gap-4">
             <DownloadGameButton mediaId={detail.id} mediaTitle={detail.title} />
           </div>
         )}
@@ -852,7 +303,7 @@ export function MediaDetail() {
           />
         )}
         {detail.mediaType === 'music' && !detail.album && (
-          <p className="dk-media-detail__sync-msg">
+          <p className="text-center text-sm text-muted-foreground">
             Album details are still syncing for this release.
           </p>
         )}
@@ -885,9 +336,9 @@ export function MediaDetail() {
 
         {/* Companies */}
         {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
-          <section className="dk-media-detail__companies">
-            <h2 className="dk-media-detail__companies-title">Companies</h2>
-            <div className="dk-media-detail__companies-list">
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Companies</h2>
+            <div className="flex flex-wrap gap-1.5">
               {detail.involvedCompanies.map((ic) => {
                 const roles: string[] = []
                 if (ic.production) roles.push('Production')
@@ -901,10 +352,10 @@ export function MediaDetail() {
                     to="/company/$companyId"
                     params={{ companyId: ic.company.id }}
                   >
-                    <Badge variant="secondary" className="dk-media-detail__badge-company">
+                    <Badge variant="secondary" className="gap-1.5 border-white/10 bg-white/5 transition-colors hover:bg-white/10">
                       {ic.company.name}
                       {roles.length > 0 && (
-                        <span className="dk-media-detail__badge-company-roles">
+                        <span className="text-[10px] text-muted-foreground">
                           {roles.join('/')}
                         </span>
                       )}
@@ -949,8 +400,8 @@ export function MediaDetail() {
         </DeferredSection>
 
         {/* Metadata footer */}
-        <footer className="dk-media-detail__footer">
-          <div className="dk-media-detail__footer-meta">
+        <footer className="border-t border-border pt-6 text-xs text-muted-foreground">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             <span>Completeness: {Math.round(detail.completenessScore * 100)}%</span>
             <span aria-hidden="true">·</span>
             <span>Updated {new Date(detail.updatedAt).toLocaleDateString()}</span>

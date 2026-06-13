@@ -5,7 +5,6 @@ import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
 import { Calendar, Clock, ExternalLink, Languages } from 'lucide-react'
-import './media-hero.scss'
 
 interface Genre {
   id: string
@@ -111,51 +110,73 @@ export function MediaHero({
   const languageDisplay = originalLanguage ? languageName(originalLanguage) : null
 
   return (
-    <div className={cn('dk-media-hero', className)}>
+    <div className={cn('relative flex min-h-[65vh] items-end overflow-hidden rounded-bl-3xl rounded-br-3xl  lg:min-h-[75vh]', className)}>
       {/* Backdrop with cinematic gradient */}
       {heroBackdrop && (<>
-        <div className="dk-media-hero__backdrop">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <img
             src={backdropSrc(heroBackdrop)}
             alt=""
-            className="dk-media-hero__backdrop-image"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: 'center 20%', animation: 'kenBurns 25s ease-out forwards' }}
           />
-          <div className="dk-media-hero__backdrop-gradient" />
-          <div className="dk-media-hero__backdrop-radial--primary" />
-          <div className="dk-media-hero__backdrop-radial--accent" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to top, hsl(var(--background) / 0.7) 0%, hsl(var(--background) / 0.4) 30%, hsl(var(--background) / 0.1) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              background: 'radial-gradient(circle at 20% 30%, hsl(var(--primary)) 0%, transparent 40%)',
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{
+              background: 'radial-gradient(circle at 80% 20%, hsl(var(--accent)) 0%, transparent 40%)',
+            }}
+          />
         </div>
         {/* Image darken for text readability */}
-        <div className="dk-media-hero__darken" />
+        <div
+          className="pointer-events-none absolute inset-0 z-[1]"
+          style={{ backgroundColor: 'hsl(var(--background) / 0.25)' }}
+        />
       </>)}
 
       {/* Content */}
-      <div className="dk-media-hero__content">
-        <div className="dk-media-hero__inner">
+      <div
+        className="relative z-10 mx-auto w-full lg:max-w-7xl px-4 pb-12 pt-24 sm:px-6 lg:px-8"
+        style={{ animation: 'heroFadeIn 0.6s ease-out forwards' }}
+      >
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 lg:gap-12">
           {/* Poster */}
-          <div className="dk-media-hero__poster">
-            <div className="dk-media-hero__poster-inner">
+          <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">
+            <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
               <Image
                 src={posterUrl || undefined}
                 alt={`${title} poster`}
-                className={cn('dk-media-hero__poster-image', mediaType === 'music' ? 'dk-media-hero__poster-image--square' : 'dk-media-hero__poster-image--portrait')}
+                className={cn('w-full', mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]')}
                 fallback={title[0]}
               />
             </div>
           </div>
 
           {/* Info */}
-          <div className="dk-media-hero__info">
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
             {/* Logo or title */}
             {hasLogo ? (
               <img
                 src={logo}
                 alt={title}
-                className="dk-media-hero__logo"
+                className="mb-2 max-h-24 max-w-[85%] object-contain sm:max-h-24 sm:max-w-[55%] lg:max-h-28 lg:max-w-[45%]"
                 style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))' }}
               />
             ) : (
               <h1
-                className="dk-media-hero__title"
+                className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl"
                 style={{ textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}
               >
                 {title}
@@ -165,7 +186,7 @@ export function MediaHero({
             {/* Tagline */}
             {tagline && (
               <p
-                className="dk-media-hero__tagline"
+                className="max-w-[60ch] text-base italic text-muted-foreground sm:text-lg"
                 style={{ textShadow: '0 1px 12px rgba(0,0,0,0.5)' }}
               >
                 {tagline}
@@ -173,7 +194,7 @@ export function MediaHero({
             )}
 
             {/* Meta tags row */}
-            <div className="dk-media-hero__meta-tags">
+            <div className="flex flex-wrap gap-2">
               {certification && (
                 <Link
                   to="/browse/$type"
@@ -182,7 +203,7 @@ export function MediaHero({
                 >
                   <Badge
                     variant="secondary"
-                    className="dk-media-hero__badge dk-media-hero__badge--interactive"
+                    className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur transition-colors hover:bg-white/20"
                   >
                     {certification}
                   </Badge>
@@ -191,7 +212,7 @@ export function MediaHero({
               {isAdult && (
                 <Badge
                   variant="destructive"
-                  className="dk-media-hero__badge dk-media-hero__badge--adult"
+                  className="gap-1.5 border-0 bg-red-600 px-3 py-1.5 text-sm font-semibold backdrop-blur font-bold"
                 >
                   18+
                 </Badge>
@@ -199,43 +220,44 @@ export function MediaHero({
               {isAnime ? (
                 <Badge
                   variant="secondary"
-                  className="dk-media-hero__badge dk-media-hero__badge--anime"
+                  className="gap-1.5 border-0 bg-gradient-to-r from-pink-500 to-rose-500 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur"
+                  style={{ boxShadow: '0 0 12px rgba(236, 72, 153, 0.3)' }}
                 >
                   Anime
                 </Badge>
               ) : (
                 <Badge
                   variant={mediaType}
-                  className="dk-media-hero__badge"
+                  className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur"
                 >
                   {MEDIA_TYPE_LABEL[mediaType]}
                 </Badge>
               )}
               {year && (
-                <Badge variant="secondary" className="dk-media-hero__badge">
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
                   <Calendar className="h-3.5 w-3.5" />
                   {year}
                 </Badge>
               )}
               {formattedRuntime && (
-                <Badge variant="secondary" className="dk-media-hero__badge">
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
                   <Clock className="h-3.5 w-3.5" />
                   {formattedRuntime}
                 </Badge>
               )}
               {formattedAlbumLength && (
-                <Badge variant="secondary" className="dk-media-hero__badge">
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
                   <Clock className="h-3.5 w-3.5" />
                   {formattedAlbumLength}
                 </Badge>
               )}
               {status && (
-                <Badge variant="secondary" className="dk-media-hero__badge dk-media-hero__badge--status">
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm capitalize backdrop-blur">
                   {status.replace(/_/g, ' ')}
                 </Badge>
               )}
               {languageDisplay && (
-                <Badge variant="secondary" className="dk-media-hero__badge">
+                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/10 px-3 py-1.5 text-sm font-semibold backdrop-blur">
                   <Languages className="h-3.5 w-3.5" />
                   {languageDisplay}
                 </Badge>
@@ -245,7 +267,7 @@ export function MediaHero({
             {/* Overview */}
             {overview && (
               <p
-                className="dk-media-hero__overview"
+                className="max-w-2xl text-sm leading-relaxed text-foreground/85 sm:text-left"
                 style={{ textShadow: '0 2px 16px rgba(0,0,0,0.7)' }}
               >
                 {overview.length > 400 ? overview.slice(0, 400) + '…' : overview}
@@ -253,7 +275,7 @@ export function MediaHero({
             )}
 
             {/* Genres + YouTube link */}
-            <div className="dk-media-hero__actions">
+            <div className="flex flex-wrap items-center gap-1.5">
               {genres && genres.length > 0 &&
                 genres.map((g) => (
                   <Link
@@ -262,7 +284,7 @@ export function MediaHero({
                     params={{ type: mediaType }}
                     search={{ genre: g.slug }}
                   >
-                    <Badge variant="secondary" className="dk-media-hero__badge--genre">
+                    <Badge variant="secondary" className="border border-white/10 bg-white/5 transition-colors hover:bg-white/10">
                       {g.name}
                     </Badge>
                   </Link>
@@ -272,7 +294,7 @@ export function MediaHero({
                   href={youtubeUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="dk-media-hero__youtube-link"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-600/90 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-500"
                 >
                   Watch on YouTube
                   <ExternalLink size={12} />

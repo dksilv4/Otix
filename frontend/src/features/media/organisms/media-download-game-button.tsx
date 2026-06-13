@@ -1,5 +1,4 @@
-// TODO: Review this file
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/features/auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
 import type { HypervisorConfirmResponse } from '@/features/downloads/types'
@@ -8,10 +7,9 @@ import { useExperiment } from '@/features/experiments/experiments-provider'
 import { useLocalGames } from '@/features/game-scanner/game-queries'
 import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/game-scanner/storage'
 import { IsoInstallerModal } from '@/features/game-scanner/organisms/iso-installer-modal'
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { useInstallProgress } from '@/features/game-scanner/install-store'
 import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import './download-game-button.scss'
 
 type LocalGame = import('@/features/game-scanner/types').LocalGame;
 
@@ -36,7 +34,7 @@ function isTitleMatch(gameTitle: string, mediaTitle: string): boolean {
   return norm(gameTitle) === norm(mediaTitle);
 }
 
-export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTitle: string }) {
+export function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTitle: string }) {
   const { user } = useAuth();
   const { enabled: downloadsEnabled } = useExperiment('download_integration');
   const { downloads, searchAndDownload, cancelDownload, pollQueue } = useDownloads(user?.id);
@@ -50,8 +48,8 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
   const [hvDialogOpen, setHvDialogOpen] = useState(false);
   const [hvCountdown, setHvCountdown] = useState(10);
   const [hvPending, setHvPending] = useState<HypervisorConfirmResponse | null>(null);
+  const { installs: allInstalls } = useInstallProgress();
 
-  // Load local game map entry on mount / media change
   useEffect(() => {
     let currentLocal: LocalGame | null = null;
     try {
@@ -62,7 +60,6 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
       setLocalGame(null);
     }
 
-    // Auto-link if not in localGames map but matched by title
     if (!currentLocal && mediaTitle) {
       const match = scannedGames.find(g => g.data?.id === mediaId) ||
                     scannedGames.find(g => isTitleMatch(g.title, mediaTitle));
@@ -73,7 +70,6 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     }
   }, [mediaId, mediaTitle, scannedGames]);
 
-  // Hypervisor confirmation countdown — auto-dismiss after 10s
   useEffect(() => {
     if (!hvDialogOpen) {
       setHvCountdown(10);
@@ -95,7 +91,6 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
 
   if (!downloadsEnabled && !matchingScannedGame) return null;
 
-  // Find existing download for this media item (most recent first)
   const existingDownload = downloads.find(d => d.mediaItemId === mediaId);
   const isDownloading = existingDownload && existingDownload.status !== 'completed' && existingDownload.status !== 'failed';
   const isCompleted = existingDownload?.status === 'completed';
@@ -134,16 +129,14 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     setErrorMsg('Hypervisor download cancelled.');
   };
 
-  // Status display helpers
   const statusConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string; color: string }> = {
-    queued: { icon: Clock, label: 'Queued in SABnzbd', color: 'amber' },
-    downloading: { icon: Loader2, label: 'Downloading...', color: 'blue' },
-    processing: { icon: Loader2, label: 'Unpacking/Verifying...', color: 'purple' },
-    completed: { icon: CheckCircle2, label: 'Download complete', color: 'green' },
-    failed: { icon: XCircle, label: 'Download failed', color: 'red' },
+    queued: { icon: Clock, label: 'Queued in SABnzbd', color: 'text-amber-400' },
+    downloading: { icon: Loader2, label: 'Downloading...', color: 'text-blue-400' },
+    processing: { icon: Loader2, label: 'Unpacking/Verifying...', color: 'text-purple-400' },
+    completed: { icon: CheckCircle2, label: 'Download complete', color: 'text-green-400' },
+    failed: { icon: XCircle, label: 'Download failed', color: 'text-red-400' },
   };
 
-  // 1. Installed: matchingScannedGame exists and is not 'iso'
   if (isInstalled && matchingScannedGame) {
     const handlePlay = async () => {
       try {
@@ -154,55 +147,54 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     };
 
     return (
-      <div className="dk-media-download-game-btn__row">
+      <div className="flex items-center gap-3">
         <button
           onClick={handlePlay}
-          className="dk-media-download-game-btn__primary-btn dk-media-download-game-btn__primary-btn--play"
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-95"
         >
           <Play className="h-4 w-4 fill-current" />
           Play
         </button>
-        <p className="dk-media-download-game-btn__info dk-media-download-game-btn__info--muted">
+        <p className="text-xs text-muted-foreground">
           {matchingScannedGame.platform === 'steam' ? 'Launch via Steam' : 'Installed locally'}
         </p>
       </div>
     );
   }
 
-  // 2. Downloading: active download in progress
   if (downloadsEnabled && isDownloading && existingDownload) {
     const cfg = statusConfig[existingDownload.status] || statusConfig.processing;
     const Icon = cfg.icon;
     const pct = existingDownload.percentage ?? 0;
 
     return (
-      <div className="dk-media-download-game-btn__stack">
-        <div className={cn('dk-media-download-game-btn__status', `dk-media-download-game-btn__status--${cfg.color}`)}>
+      <div className="space-y-2">
+        <div className={cn('flex items-center gap-2 text-xs font-medium', cfg.color)}>
           <Icon className={cn('h-4 w-4', (existingDownload.status === 'downloading' || existingDownload.status === 'processing') && 'animate-spin')} />
           <span>{cfg.label}</span>
           {existingDownload.nzbName && (
-            <span className="dk-media-download-game-btn__status-nzb">
+            <span className="max-w-[200px] truncate text-muted-foreground">
               — {existingDownload.nzbName}
             </span>
           )}
-          <span className="dk-media-download-game-btn__status-pct">{pct}%</span>
+          <span className="tabular-nums ml-1">{pct}%</span>
         </div>
-        <div className="dk-media-download-game-btn__progress">
+        <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
           <div
-            className="dk-media-download-game-btn__progress-fill"
+            className="h-full rounded-full bg-blue-500 transition-[width] duration-700"
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="dk-media-download-game-btn__btn-row">
+        <div className="flex items-center gap-2">
           <button
             onClick={pollQueue}
-            className="dk-media-download-game-btn__text-btn dk-media-download-game-btn__text-btn--muted"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             Refresh status
           </button>
           <button
             onClick={() => cancelDownload(existingDownload.id)}
-            className="dk-media-download-game-btn__text-btn dk-media-download-game-btn__text-btn--red"
+            className="text-xs text-red-400 transition-colors hover:text-red-300"
           >
             Cancel
           </button>
@@ -211,24 +203,85 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     );
   }
 
-  // 3. ISO Available / Ready to Install
+  const installEntry = isoPath
+    ? allInstalls.find((i) => i.isoPath?.toLowerCase() === isoPath.toLowerCase())
+    : undefined;
+  const isInstallingThis = installEntry?.active === true;
+  const justInstalled = !installEntry?.active && installEntry?.result?.success === true;
+
+  if (isInstallingThis) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs font-medium text-blue-400">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Installing {installEntry!.gameTitle ?? 'game'}...</span>
+        </div>
+        <div className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
+          <div className="h-full w-full animate-pulse rounded-full bg-blue-500" />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {installEntry!.progress?.message ?? installEntry!.progress?.phase ?? 'Starting...'}
+        </p>
+      </div>
+    );
+  }
+
+  if (justInstalled) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs font-medium text-green-400">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>Installation Complete</span>
+          {installEntry!.result?.installDir && (
+            <span className="max-w-[250px] truncate text-muted-foreground text-[10px]">
+              {installEntry!.result.installDir}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {installEntry!.result?.gameExe && (
+            <button
+              onClick={async () => {
+                try {
+                  await window.desktopAPI!.launchGame({
+                    exePath: installEntry!.result!.gameExe!,
+                    installDir: installEntry!.result!.installDir,
+                    title: installEntry!.gameTitle ?? 'Game',
+                    id: installEntry!.result!.installDir,
+                    platform: 'pc',
+                  } as Parameters<NonNullable<typeof window.desktopAPI>['launchGame']>[0]);
+                } catch (e) {
+                  console.error('Failed to launch:', e);
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all duration-200 hover:bg-emerald-400 active:scale-95"
+            >
+              <Play className="h-4 w-4 fill-current" />
+              Play
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (isIsoAvailable) {
     return (
       <>
-        <div className="dk-media-download-game-btn__stack">
-          <div className="dk-media-download-game-btn__status dk-media-download-game-btn__status--green">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-green-400">
             <CheckCircle2 className="h-4 w-4" />
             <span>ISO Available</span>
             {isoPath && (
-              <span className="dk-media-download-game-btn__status-path">
+              <span className="max-w-[250px] truncate text-muted-foreground text-[10px]">
                 {isoPath}
               </span>
             )}
           </div>
-          <div className="dk-media-download-game-btn__btn-row">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsInstallerOpen(true)}
-              className="dk-media-download-game-btn__primary-btn dk-media-download-game-btn__primary-btn--install"
+              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-600/25 transition-all duration-200 hover:bg-green-500 active:scale-95"
             >
               <Disc className="h-4 w-4" />
               Install
@@ -250,7 +303,7 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
                   }
                 }}
                 disabled={postProcessing}
-                className="dk-media-download-game-btn__surface-btn dk-media-download-game-btn__surface-btn--move"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-raised)] px-3 py-2 text-xs font-medium transition-colors hover:bg-[var(--dk-surface-glass)] disabled:opacity-50"
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 {postProcessing ? 'Moving...' : 'Move to library'}
@@ -260,7 +313,7 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
           {downloadsEnabled && (
             <button
               onClick={handleDownload}
-              className="dk-media-download-game-btn__text-btn dk-media-download-game-btn__text-btn--muted dk-media-download-game-btn__text-btn--block"
+              className="block text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
               Re-download
             </button>
@@ -277,20 +330,19 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     );
   }
 
-  // 4. Failed download
   if (downloadsEnabled && existingDownload?.status === 'failed') {
     return (
-      <div className="dk-media-download-game-btn__stack">
-        <div className="dk-media-download-game-btn__status dk-media-download-game-btn__status--red">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-xs font-medium text-red-400">
           <XCircle className="h-4 w-4" />
           <span>Download failed</span>
         </div>
         {existingDownload.errorMessage && (
-          <p className="dk-media-download-game-btn__info dk-media-download-game-btn__info--red">{existingDownload.errorMessage}</p>
+          <p className="text-xs text-red-400">{existingDownload.errorMessage}</p>
         )}
         <button
           onClick={handleDownload}
-          className="dk-media-download-game-btn__text-btn dk-media-download-game-btn__text-btn--blue"
+          className="text-xs text-blue-400 transition-colors hover:text-blue-300"
         >
           Try again
         </button>
@@ -298,14 +350,13 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
     );
   }
 
-  // 5. Download Available
   if (downloadsEnabled) {
     return (
-      <div className="dk-media-download-game-btn__row">
+      <div className="flex items-center gap-3">
         <button
           onClick={handleDownload}
           disabled={searching}
-          className="dk-media-download-game-btn__primary-btn dk-media-download-game-btn__primary-btn--download"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-200 hover:bg-blue-400 active:scale-95 disabled:opacity-50"
         >
           {searching ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -315,13 +366,12 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
           {searching ? 'Searching...' : 'Download ISO'}
         </button>
         {errorMsg && (
-          <p className="dk-media-download-game-btn__info dk-media-download-game-btn__info--red">{errorMsg}</p>
+          <p className="text-xs text-red-400">{errorMsg}</p>
         )}
       </div>
     );
   }
 
-  // ── Hypervisor confirmation dialog ──
   return (
     <>
       {null}
@@ -329,24 +379,24 @@ export default function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: s
         open={hvDialogOpen}
         onOpenChange={(open) => { if (!open) handleHvDismiss(); }}
       >
-        <div className="dk-media-download-game-btn__stack dk-media-download-game-btn__stack--lg">
-          <p className="dk-media-download-game-btn__hv-desc">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
             Only hypervisor-tagged releases found for <strong>{hvPending?.gameName ?? 'this game'}</strong>.
             These often require VM setup and may not run natively.
           </p>
-          <p className="dk-media-download-game-btn__hv-countdown">
-            Auto-dismissing in <span className="dk-media-download-game-btn__hv-value">{hvCountdown}</span>s
+          <p className="text-xs text-muted-foreground">
+            Auto-dismissing in <span className="font-mono font-bold text-foreground">{hvCountdown}</span>s
           </p>
-          <div className="dk-media-download-game-btn__dialog-btn-row">
+          <div className="flex gap-3 pt-2">
             <button
               onClick={handleHvConfirm}
-              className="dk-media-download-game-btn__primary-btn dk-media-download-game-btn__primary-btn--hv-confirm"
+              className="flex-1 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-400 active:scale-95"
             >
               Download HV version
             </button>
             <button
               onClick={handleHvDismiss}
-              className="dk-media-download-game-btn__surface-btn dk-media-download-game-btn__surface-btn--hv-skip"
+              className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--dk-surface-glass)]"
             >
               Skip
             </button>
