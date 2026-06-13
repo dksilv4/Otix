@@ -46,6 +46,12 @@ end
 redis.call('SET', key .. ':tokens', tokens)
 redis.call('SET', key .. ':last', now)
 
+-- Auto-expire so inactive rate-limit keys don't accumulate in Redis
+local window = math.ceil(burst / rate)
+local ttl = math.max(window + 300, 300)
+redis.call('EXPIRE', key .. ':tokens', ttl)
+redis.call('EXPIRE', key .. ':last', ttl)
+
 return {allowed, tostring(tokens), tostring(wait)}
 """
 

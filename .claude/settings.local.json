@@ -595,6 +595,7 @@
       "Bash(rm -f \"$\\(pwd\\)/pm_test.csv\")",
       "Bash(logman start *)",
       "Bash(logman update *)",
+<<<<<<< Updated upstream
       "PowerShell(git update-ref *)",
       "PowerShell(git rm *)",
       "PowerShell(git checkout-index *)",
@@ -618,6 +619,21 @@
       "Bash(headroom.exe --help)",
       "PowerShell(Join-Path *)",
       "PowerShell($scripts = \"$env:LOCALAPPDATA\\\\Packages\\\\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\\\\LocalCache\\\\local-packages\\\\Python312\\\\Scripts\\\\headroom.exe\"; if \\(Test-Path $scripts\\) { Write-Output \"EXISTS: $scripts\" } else { Write-Output \"NOT FOUND\" })"
+=======
+      "Bash(cat tailwind.config.*)",
+      "Bash(cat tailwind.config.*s)",
+      "Bash(sed -i '' \"s|@/features/media/molecules/track-inline-actions|@/features/media/molecules/media-track-inline-actions|g\" src/features/library/platforms/spotify.tsx)",
+      "Bash(sed -i '' \"s|from '../molecules/track-inline-actions'|from '../molecules/media-track-inline-actions'|g\" src/features/media/organisms/music-section.tsx)",
+      "Bash(sed -i '' \"s|from './artist-albums-section'|from './media-artist-albums-section'|g\" src/features/media/organisms/media-detail.tsx)",
+      "Bash(sed -i '' \"s|from './collection-section'|from './media-collection-section'|g\" src/features/media/organisms/media-detail.tsx)",
+      "Bash(sed -i '' \"s|from './movie-section'|from './media-movie-section'|g\" src/features/media/organisms/media-detail.tsx)",
+      "Bash(sed -i '' \"s|from './recommendations-section'|from './media-recommendations-section'|g\" src/features/media/organisms/media-detail.tsx)",
+      "Bash(sed -i '' \"s|from './similar-section'|from './media-similar-section'|g\" src/features/media/organisms/media-detail.tsx)",
+      "mcp__serena__replace_content",
+      "Bash(npx puppeteer *)",
+      "Bash('#menu-nav-left')",
+      "Bash('#menu-nav-right')"
+>>>>>>> Stashed changes
     ]
   },
   "outputStyle": "default"
