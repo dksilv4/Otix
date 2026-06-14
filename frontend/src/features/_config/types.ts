@@ -54,5 +54,6 @@ export type FeatureOverrides = Partial<Record<FeatureName, boolean>>
 
 export interface FeatureDefinition {
   label: string
+  enabled?: boolean
   dependsOn?: FeatureName[]
 }

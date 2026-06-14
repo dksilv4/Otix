@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (data.twoFactorRequired && data.challengeToken) {
       setTwoFactorChallenge({ challengeToken: data.challengeToken })
-      return
+      return data
     }
 
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = me.data as User
     await mergeIntegrations(user)
     setUser(user)
+    return data
   }, [])
 
   const verifyTwoFactor = useCallback(async (code: string) => {
