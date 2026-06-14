@@ -24,7 +24,11 @@
       transition: background-color 0.15s;
 
       &:hover {
-        background-color: color-mix(in srgb, white 6%, transparent);
+        background-color: var(--dk-surface-ghost-hover);
+      }
+
+      &:active {
+        background-color: var(--dk-surface-ghost-active);
       }
     }
   }

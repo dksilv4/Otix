@@ -1,4 +1,4 @@
-import './nav-search.scss'
+
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from '@tanstack/react-router'
 import { Search, Film, Tv, Gamepad2, Music } from 'lucide-react'
@@ -130,8 +130,11 @@ export function NavSearch() {
  <div
  ref={containerRef}
  className={cn(
-  'dk-nav-search',
-  expanded ? 'dk-nav-search--expanded' : 'dk-nav-search--collapsed',
+  'flex items-center relative transition-all duration-300 rounded-full',
+  expanded
+    ? 'w-64 px-2.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]'
+    : 'w-8 h-8 justify-center',
+  expanded && 'bg-[var(--dk-surface-glass)] bg-gradient-to-r from-transparent via-indigo-500/[0.04] to-transparent',
  )}
  >
  {expanded ? (
@@ -143,7 +146,7 @@ export function NavSearch() {
  onChange={handleInputChange}
  onKeyDown={handleKeyDown}
  placeholder="Search..."
- className="dk-nav-search__input"
+ className="w-full bg-transparent border-0 outline-none shadow-none text-sm ring-0 focus:ring-0 focus:ring-offset-0 text-foreground placeholder:text-muted-foreground/50"
  />
 
  <AnimatePresence>
@@ -153,7 +156,7 @@ export function NavSearch() {
  animate={{ opacity: 1, y: 0, scale: 1 }}
  exit={{ opacity: 0, y: -8, scale: 0.96 }}
  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
- className="dk-nav-search__dropdown"
+ className="absolute right-0 z-[9999] top-[calc(100%+0.75rem)] w-80 max-h-[22rem] overflow-y-auto p-2 rounded-2xl flex flex-col gap-0.5 bg-[var(--dk-surface-overlay)] backdrop-blur-[20px] shadow-[var(--dk-shadow-glass)]"
  role="listbox"
  >
  {suggestions.map((item, idx) => {
@@ -175,6 +178,14 @@ export function NavSearch() {
 
  const year = item.releaseDate ? new Date(item.releaseDate).getFullYear() : null
 
+	 const badgeClass = item.mediaType === 'movie'
+	   ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
+	   : item.mediaType === 'show'
+	   ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/10'
+	   : item.mediaType === 'game'
+	   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
+	   : 'bg-purple-500/10 text-purple-400 border-purple-500/10'
+
  return (
  <Link
  key={item.id}
@@ -182,8 +193,8 @@ export function NavSearch() {
  to={`/media/${item.mediaType}/${item.id}` as string}
  onClick={() => collapse()}
  className={cn(
-  'dk-nav-search__item',
-  idx === activeIndex && 'dk-nav-search__item--active',
+  'flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-all duration-150 hover:bg-white/5',
+  idx === activeIndex && 'bg-white/[0.08] scale-[1.01]',
  )}
  role="option"
  aria-selected={idx === activeIndex}
@@ -192,23 +203,23 @@ export function NavSearch() {
  <img
  src={item.posterUrl}
  alt=""
- className="dk-nav-search__poster"
+ className="w-9 h-12 rounded object-cover shrink-0 shadow-md bg-white/5"
  />
  ) : (
- <div className="dk-nav-search__poster-placeholder">
+ <div className="w-9 h-12 rounded flex items-center justify-center shrink-0 bg-white/5">
  <Icon className="w-5 h-5 text-muted-foreground" />
  </div>
  )}
- <div className="dk-nav-search__info">
- <h4 className="dk-nav-search__title">
+ <div className="min-w-0 flex-1">
+ <h4 className="text-sm font-semibold truncate leading-tight text-foreground">
  {item.title}
  </h4>
  <div className="flex items-center gap-1.5 mt-1">
- <span className={cn('dk-nav-search__badge', `dk-nav-search__badge--${item.mediaType}`)}>
+ <span className={cn('text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border', badgeClass)}>
  {typeName}
  </span>
  {year && (
- <span className="dk-nav-search__year">
+ <span className="text-xs text-muted-foreground/60">
  &middot; {year}
  </span>
  )}
@@ -224,7 +235,7 @@ export function NavSearch() {
  ) : (
  <button
  onClick={() => setExpanded(true)}
- className="dk-nav-search__trigger"
+ className="rounded-full w-8 h-8 flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]"
  aria-label="Search"
  >
  <Search className="h-4 w-4 text-muted-foreground" />
