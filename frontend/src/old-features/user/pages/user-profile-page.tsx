@@ -20,9 +20,9 @@ import {
 
 import {DkAvatar} from '@/old-features/dk-ui/atoms/avatar'
 import {DkButton} from '@/old-features/dk-ui/atoms/button'
-import {PlexIcon} from '@/old-features/dk-ui/atoms/plex-icon'
-import {SteamIcon} from '@/old-features/dk-ui/atoms/steam-icon'
-import {TmdbIcon} from '@/old-features/dk-ui/atoms/tmdb-icon'
+import SteamIcon from '@/assets/provider-logos/steam.svg?react'
+import PlexIcon from '@/assets/provider-logos/plex.svg?react'
+import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
 
 import {Skeleton} from '@ui/atoms/skeleton'
 import {useAuth} from '@/lib/auth'

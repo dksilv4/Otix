@@ -50,7 +50,12 @@
 
 .dk-interaction__glow {
   @apply pointer-events-none absolute inset-0 opacity-30;
-  background: radial-gradient(circle at 50% 50%, var(--tw-gradient-from), transparent 70%);
+
+  &--red     { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-red-500) 15%, transparent), transparent 70%); }
+  &--sky     { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-sky-500) 15%, transparent), transparent 70%); }
+  &--emerald { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-emerald-500) 15%, transparent), transparent 70%); }
+  &--violet  { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-violet-500) 15%, transparent), transparent 70%); }
+  &--amber   { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-amber-500) 15%, transparent), transparent 70%); }
 }
 
 /* ── Label under icon ───────────────────────────── */

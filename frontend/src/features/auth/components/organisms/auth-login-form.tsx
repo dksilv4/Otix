@@ -1,5 +1,5 @@
 import { useState, useRef, type FormEvent } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Loader2, Check, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@auth'
@@ -12,6 +12,10 @@ interface LoginFormProps {
 
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const { login } = useAuth()
+  const navigate = useNavigate()
+  const search = useSearch({ strict: false }) as { redirect?: string }
+  const redirect = search.redirect || '/'
+
   const [identity, setIdentity] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<{ identity?: string; password?: string }>({})
@@ -37,9 +41,13 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 
     setIsSubmitting(true)
     try {
-      await login(identity, password)
-      setShowSuccess(true)
-      setTimeout(onSuccess, 600)
+      const result = await login(identity, password)
+      if (result && result.twoFactorRequired) {
+        navigate({ to: '/auth/two-factor', search: { redirect } })
+      } else {
+        setShowSuccess(true)
+        setTimeout(onSuccess, 600)
+      }
     } catch (err) {
       setAuthError(extractErrorMessage(err))
     } finally {
@@ -136,7 +144,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           id="login-submit"
           disabled={isSubmitting || showSuccess}
           className={
-            'flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
+            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
             (showSuccess ? 'bg-green-500' : 'bg-white/10 hover:bg-white/20') +
             ' disabled:opacity-50'
           }
