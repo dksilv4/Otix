@@ -83,6 +83,27 @@ async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
     return url, state
 
 
+async def build_google_login_url() -> tuple[str, str]:
+    """Build the Google OAuth2 authorization URL for login and return (url, state)."""
+    state = secrets.token_urlsafe(32)
+    redis = await get_redis()
+    payload = {"v": "1", "flow": "login"}
+    await redis.set(_state_key(state), json.dumps(payload), ex=STATE_TTL)
+
+    callback = f"{settings.frontend_base_url}/auth/callback/google-login"
+    params = {
+        "client_id": settings.google_client_id,
+        "response_type": "code",
+        "redirect_uri": callback,
+        "state": state,
+        "scope": " ".join(SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    url = f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    return url, state
+
+
 async def exchange_code_for_tokens(code: str) -> dict:
     """Exchange an authorization code for access/refresh tokens.
 
@@ -180,6 +201,59 @@ async def consume_state(state: str) -> str | None:
         return payload.get("user_id")
     except (json.JSONDecodeError, TypeError):
         return None
+
+
+async def find_or_create_google_user(
+    session: AsyncSession,
+    google_id: str,
+    email: str = "",
+    name: str = "",
+    avatar_url: str | None = None,
+    access_token: str | None = None,
+    refresh_token: str | None = None,
+    expires_in: int = 3600,
+) -> User:
+    """Find an existing user by google_id or create a new one."""
+    user = await session.scalar(select(User).where(User.google_id == google_id))
+    if user is not None:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+        return user
+
+    base_username = re.sub(r"[^a-zA-Z0-9_-]", "", name.split("@")[0] if "@" in name else name)[:64]
+    if not base_username:
+        base_username = f"google_{google_id[:8]}"
+
+    username = base_username
+    suffix = 1
+    while True:
+        existing = await session.scalar(select(User).where(User.username == username))
+        if existing is None:
+            break
+        username = f"{base_username}_{suffix}"
+        suffix += 1
+
+    from otix.services.auth.auth_service import hash_password
+
+    user_email = email or f"google_{google_id}@user.otix"
+    user = User(
+        email=user_email,
+        username=username,
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        google_id=google_id,
+        google_email=email or None,
+        google_name=name or None,
+        google_avatar_url=avatar_url,
+        google_access_token=access_token,
+        google_refresh_token=refresh_token,
+        google_token_expires_at=datetime.now(UTC) + timedelta(seconds=expires_in) if expires_in else None,
+        is_verified=True,
+        avatar_url=avatar_url,
+    )
+    session.add(user)
+    await session.flush()
+    logger.info("google user created", user_id=user.id, google_id=google_id)
+    return user
 
 
 async def link_google_to_user(session: AsyncSession, user: User | None = None, code: str = "", state: str = "") -> None:

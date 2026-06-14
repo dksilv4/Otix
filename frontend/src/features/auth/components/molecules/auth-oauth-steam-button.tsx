@@ -29,5 +29,5 @@ export function SteamOAuthButton() {
     )
 }
 
-SteamOAuthButton.featureName = 'auth:steam' as FeatureName
+SteamOAuthButton.featureName = 'auth:oauth:steam' as FeatureName
 

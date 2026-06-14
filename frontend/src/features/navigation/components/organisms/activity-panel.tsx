@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useNavigate, Link } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ListMusic,
   Pause,
@@ -20,10 +20,12 @@ import {
   AlertCircle,
   RefreshCw,
   Gamepad2,
+  BellRing,
+  LayoutGrid,
 } from 'lucide-react'
 import { useDownloads } from '@/old-features/downloads/use-downloads'
 import { motion, AnimatePresence } from 'framer-motion'
-import { usePlayer } from './use-player'
+import { usePlayer } from '@/old-features/spotify/use-player'
 import { PlexSessionList } from './plex-now-playing'
 import type { PlexSession } from './plex-now-playing'
 import { apiClient } from '@/lib/api-client'
@@ -34,7 +36,10 @@ import { useInstallProgress } from '@/old-features/game-scanner/install-store'
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop-api'
 import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
-import './now-playing-view.scss'
+import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
+import { notificationQueries, useMarkRead, useMarkAllRead } from '@/old-features/notifications/notification-queries'
+import type { Notification } from '@/old-features/notifications/notification-queries'
+import './activity-panel.scss'
 
 // ── palette utils ──
 
@@ -251,7 +256,7 @@ export interface NowPlayingViewProps {
 
 export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
   const navigate = useNavigate()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, isAuthenticated } = useAuth()
   const { installs, dismissInstall, cancelInstall } = useInstallProgress()
   const {
     source,
@@ -343,6 +348,63 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
       return getProgress(b) - getProgress(a)
     })
   const hasDownloads = activeAndRecentDownloads.length > 0
+
+  // ── Notifications ──
+
+  const queryClient = useQueryClient()
+  const markRead = useMarkRead()
+  const markAllRead = useMarkAllRead()
+
+  const { data: unreadData } = useQuery({
+    ...notificationQueries.unreadCount(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  })
+
+  const { data: listData } = useQuery({
+    ...notificationQueries.list(),
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  })
+
+  const notifications = listData?.items ?? []
+  const unreadCount = unreadData?.count ?? 0
+
+  function formatTimeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    return `${Math.floor(hours / 24)}d ago`
+  }
+
+  const handleNotifAction = async (notification: Notification, action: 'accept' | 'reject') => {
+    const meta = notification.metadataJson as Record<string, unknown>
+    const requestId = meta.requestId as string | undefined
+    if (!requestId) return
+    try {
+      await apiClient.post(`/friends/requests/${requestId}/${action}`)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['friends'] })
+      if (action === 'accept' && currentUser?.username) {
+        queryClient.invalidateQueries({ queryKey: ['user', currentUser.username] })
+      }
+    } catch { /* ignore */ }
+  }
+
+  const handleListAction = async (notification: Notification, action: 'accept' | 'decline') => {
+    const listId = notification.metadataJson?.listId as string | undefined
+    if (!listId) return
+    try {
+      await apiClient.post(`/list/${listId}/collaborators/${action}`)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] })
+      queryClient.invalidateQueries({ queryKey: ['list'] })
+    } catch { /* ignored */ }
+  }
 
   // Close volume slider on click outside
   useEffect(() => {
@@ -509,8 +571,10 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
           style={{
             width: PANEL_WIDTH,
             right: PANEL_MARGIN,
-            top: desktop ? 100 : 60,
-            maxHeight: `calc(100vh - 100px - ${PANEL_MARGIN}px)`,
+            top: desktop ? 100 : 72,
+            maxHeight: desktop
+              ? `calc(100vh - 100px - ${PANEL_MARGIN}px)`
+              : `calc(100vh - 72px - ${PANEL_MARGIN}px)`,
             zIndex: 9998,
           }}
           drag="x"
@@ -1228,7 +1292,125 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
             )}
           </AnimatePresence>
 
-          {/* 5. Empty/Placeholder State Container */}
+          {/* 5. Notifications */}
+          <AnimatePresence mode="popLayout">
+            {isAuthenticated && notifications.length > 0 && (
+              <motion.div
+                key="section-notifications"
+                variants={sectionVariants}
+                exit="exit"
+                layout
+              >
+                <div className="dk-now-playing__notifications">
+                  <div className="dk-now-playing__notifications-header">
+                    <div className="flex items-center gap-2">
+                      <BellRing className="h-4 w-4 text-white/50" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-white/50">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="text-[10px] font-bold tabular-nums text-primary/70">({unreadCount})</span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => markAllRead.mutate()}
+                        disabled={markAllRead.isPending}
+                        className="text-[11px] font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  {notifications.slice(0, 10).map((n) => (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        "flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors",
+                        !n.isRead && "bg-white/[0.03]",
+                      )}
+                    >
+                      <DkAvatar
+                        name={
+                          n.type === 'friend_request' ? '?' :
+                          n.type === 'friend_rejected' ? '✕' :
+                          n.type === 'friend_removed' ? '−' :
+                          n.type === 'list_invitation' ? '👥' : ''
+                        }
+                        size="sm"
+                        className="shrink-0 mt-0.5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-white/80">{n.title}</p>
+                        {n.body && (
+                          <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{n.body}</p>
+                        )}
+                        <p className="text-[10px] mt-1 text-white/30">{formatTimeAgo(n.createdAt)}</p>
+
+                        {n.type === 'friend_request' && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => handleNotifAction(n, 'accept')}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleNotifAction(n, 'reject')}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-white/10 text-white/60 hover:bg-white/[0.08] transition-colors cursor-pointer"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+
+                        {n.type === 'list_invitation' && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => handleListAction(n, 'accept')}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleListAction(n, 'decline')}
+                              className="rounded-lg px-2.5 py-1 text-[11px] font-semibold bg-white/10 text-white/60 hover:bg-white/[0.08] transition-colors cursor-pointer"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {!n.isRead && (
+                        <button
+                          type="button"
+                          onClick={() => markRead.mutate(n.id)}
+                          className="shrink-0 mt-1 cursor-pointer"
+                        >
+                          <span className="block h-2 w-2 rounded-full bg-primary" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  <Link
+                    to="/notifications"
+                    onClick={onClose}
+                    className="block w-full py-2 text-center text-[11px] font-medium text-white/40 hover:text-white/80 transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.06]"
+                  >
+                    View all
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 6. Empty/Placeholder State Container */}
           <AnimatePresence mode="popLayout">
             {!currentTrack && !hasDownloads && installs.length === 0 && plexSessions.length === 0 && !runningGame && (
               <motion.div
@@ -1237,9 +1419,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                 exit="exit"
               >
                 <div className="dk-now-playing__empty">
-                  <p className="dk-now-playing__empty-text">
-                    No current activity
-                  </p>
+                  <LayoutGrid className="h-6 w-6 text-white/[0.06]" />
                 </div>
               </motion.div>
             )}

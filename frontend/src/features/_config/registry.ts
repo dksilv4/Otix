@@ -4,7 +4,12 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     // AUTH
     'auth': {label: 'Authentication', enabled: true},
     'auth:social': {label: 'Social login buttons', enabled: true, dependsOn: ['auth']},
-    'auth:steam': {label: 'Steam login', enabled: true, dependsOn: ['auth']},
+    'auth:oauth': {label: 'OAuth login providers', enabled: true, dependsOn: ['auth']},
+    'auth:oauth:steam': {label: 'Steam login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
+    'auth:oauth:google': {label: 'Google login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
+    'auth:oauth:spotify': {label: 'Spotify login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
+    'auth:oauth:plex': {label: 'Plex login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
+    'auth:oauth:tmdb': {label: 'TMDb login', enabled: true, dependsOn: ['auth', 'auth:oauth']},
     'auth:two-factor': {label: 'Two-factor authentication', enabled: true, dependsOn: ['auth']},
     //
 
