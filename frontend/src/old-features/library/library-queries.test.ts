@@ -21,14 +21,17 @@ import {
   type SpotifyLikedTracks
 } from './library-queries'
 
-// Mock apiClient
+// Mock apiClient and config
 vi.mock('@/lib/api-client', () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
   },
+}))
+vi.mock('@/lib/config', () => ({
   API_BASE_URL: '',
+  ACCESS_TOKEN_KEY: 'otix-access-token',
 }))
 
 
