@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { Shield, Pencil, RefreshCw, ChevronDown, X } from 'lucide-react'
 import type { MediaItemDetail } from '@/old-features/media/media-queries'
 import './admin-actions-menu.scss'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface Props {
   mediaId: string
@@ -58,7 +59,7 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
     setRehydrateLog(['Queueing rehydration task...'])
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       const terminal = await connectTaskSseStream(
         {
           createEndpoint: `/media/${mediaId}/rehydrate`,

@@ -4,7 +4,7 @@ import { Cloud, RefreshCw, AlertCircle } from 'lucide-react'
 import { useLauncherGame } from '@/old-features/games/hooks/use-launcher-game'
 import { useSaveLocations } from '@/old-features/games/games-queries'
 import { getDesktopAPI } from '@/lib/desktop-api'
-import { API_BASE_URL } from '@/lib/api-client'
+import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/lib/config'
 
 function getErrorMessage(err: unknown, fallback = 'An error occurred.'): string {
   return err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
@@ -123,7 +123,7 @@ function useCloudSync({ gameId, gameTitle, serverLocations, refetchServerLocatio
 
         if (candidate && !cloudSettings.isPathConfirmed) {
           setConfirmingPath(true)
-          const token = localStorage.getItem('otix-access-token') || ''
+          const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
           await api.saveConfirmPath(gameId, candidate, API_BASE_URL, token ? `Bearer ${token}` : '')
           if (cancelled) return
           const updated = await api.saveGetCloudSettings(gameId)
@@ -154,7 +154,7 @@ function useCloudSync({ gameId, gameTitle, serverLocations, refetchServerLocatio
       try {
         const settings = await api.saveGetCloudSettings(gid)
         if (settings && settings.autoSync) {
-          const token = localStorage.getItem('otix-access-token') || ''
+          const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
           await api.saveSyncCloud(gid, gTitle, 'default', API_BASE_URL, token ? `Bearer ${token}` : '')
           if (gid === gid) {
             const updated = await api.saveGetCloudSettings(gid)
@@ -184,7 +184,7 @@ function useCloudSync({ gameId, gameTitle, serverLocations, refetchServerLocatio
     setSyncError(null)
     setSuccessMsg(null)
     try {
-      const token = localStorage.getItem('otix-access-token') || ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
       await api.saveConfirmPath(gameId, pathUrl, API_BASE_URL, token ? `Bearer ${token}` : '')
       setSuccessMsg("Save location confirmed successfully!")
       const updated = await api.saveGetCloudSettings(gameId)
@@ -206,7 +206,7 @@ function useCloudSync({ gameId, gameTitle, serverLocations, refetchServerLocatio
         await api.saveSetOverride(gameId, selected)
         setOverridePath(selected)
         setDetectedPath(selected)
-        const token = localStorage.getItem('otix-access-token') || ''
+        const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
         await api.saveConfirmPath(gameId, selected, API_BASE_URL, token ? `Bearer ${token}` : '')
         const updated = await api.saveGetCloudSettings(gameId)
         setCloudSettings(updated)
@@ -242,7 +242,7 @@ function useCloudSync({ gameId, gameTitle, serverLocations, refetchServerLocatio
     setSyncError(null)
     setSuccessMsg(null)
     try {
-      const token = localStorage.getItem('otix-access-token') || ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) || ''
       const res = await api.saveSyncCloud(gameId, gameTitle, 'default', API_BASE_URL, token ? `Bearer ${token}` : '')
       if (res.success) {
         setSuccessMsg(res.message || 'Sync successful!')

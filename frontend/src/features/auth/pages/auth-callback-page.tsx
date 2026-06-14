@@ -7,7 +7,7 @@ import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { extractErrorMessage } from '@auth/utils'
 
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface ServiceCfg {
   name: string

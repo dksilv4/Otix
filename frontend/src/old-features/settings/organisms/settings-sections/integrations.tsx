@@ -18,6 +18,7 @@ import { isDesktop } from '@/lib/desktop-api'
 import { openExternal } from '@/lib/open-external'
 import { useDownloadConfig, useConnectionTest } from '@/old-features/downloads/use-downloads'
 import { useFeature } from '@/features/_config'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle, ListMusic, Film, Tv, Music } from 'lucide-react'
 import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
 import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
@@ -707,7 +708,7 @@ export function IntegrationsSection() {
     setYoutubeProgress({ phase: 'Starting sync...' })
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/youtube/sync',
@@ -779,7 +780,7 @@ export function IntegrationsSection() {
     setSpotifyProgress({ phase: 'Starting sync...' })
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/spotify/sync',
@@ -844,7 +845,7 @@ export function IntegrationsSection() {
     setSpotifyRecentlyPlayedMessage('')
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       const terminal = await connectTaskSseStream(
         {
           createEndpoint: '/integrations/spotify/recently-played/sync',
@@ -930,7 +931,7 @@ export function IntegrationsSection() {
     const progressKey = (server: string, library: string) => `${server}:${library}`
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/plex/sync',

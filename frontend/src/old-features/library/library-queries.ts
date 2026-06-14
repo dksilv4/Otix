@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient, API_BASE_URL } from "@/lib/api-client"
+import { apiClient } from "@/lib/api-client"
+import { API_BASE_URL, ACCESS_TOKEN_KEY } from "@/lib/config"
 import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/sse-client"
 import { getScannedGames, setScannedGames } from "@/old-features/game-scanner/storage"
 import { libraryKeys } from "./library-keys"
@@ -107,7 +108,7 @@ export interface PlexSyncResult {
 export async function streamPlexSync(
   onEvent?: (event: { type: string; [key: string]: unknown }) => void,
 ): Promise<PlexSyncResult> {
-  const token = localStorage.getItem("otix-access-token") ?? ""
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ""
 
   const terminal = await connectTaskSseStream(
     {
@@ -193,7 +194,7 @@ export async function streamPlexLibrarySync(
   libraryId: string,
   onEvent?: (event: { type: string; [key: string]: unknown }) => void,
 ): Promise<PlexSyncResult> {
-  const token = localStorage.getItem("otix-access-token") ?? ""
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ""
 
   // POST with library_id body — can't use connectTaskSseStream because
   // it doesn't send a request body.
