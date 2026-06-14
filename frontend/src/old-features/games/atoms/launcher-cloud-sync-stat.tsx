@@ -285,7 +285,7 @@ export function LauncherCloudSyncStat() {
   const sync = useCloudSync({
     gameId: gameId || '',
     gameTitle: g?.data?.title || g?.title || '',
-    serverLocations,
+    serverLocations: serverLocations ?? undefined,
     refetchServerLocations,
   })
 

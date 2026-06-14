@@ -62,7 +62,6 @@ export function useMatchLocalGames() {
         const match = matchMap.get(game.title);
         if (match && match.matchedMedia) {
           const media = match.matchedMedia;
-          const isNewMatch = !game.data?.id;
           const autoAcceptNew = match.confidence >= 0.9;
 
           // Always refresh data for already-matched game, only auto-match new ones at high confidence
@@ -90,11 +89,12 @@ export function useMatchLocalGames() {
             otixIconUrl: media.iconUrl,
             otixLogoUrl: media.logoUrl,
             otixMatchSuggestion: {
+              id: media.id,
               mediaId: media.id,
               title: media.title,
               slug: media.slug,
             },
-          };
+          } as LocalGame;
         }
         return game;
       });

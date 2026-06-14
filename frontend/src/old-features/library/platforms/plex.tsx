@@ -105,9 +105,7 @@ export function PlexTabContent() {
     if (value) s.mediaType = value
     if (sortBy) s.sortBy = sortBy
     navigate({
-      to: "/library/$tab",
-      params: { tab: "plex" },
-      search: s,
+      to: "/library/plex",
       replace: true,
     })
   }
@@ -118,9 +116,7 @@ export function PlexTabContent() {
     if (mediaType) s.mediaType = mediaType
     if (value) s.sortBy = value
     navigate({
-      to: "/library/$tab",
-      params: { tab: "plex" },
-      search: s,
+      to: "/library/plex",
       replace: true,
     })
   }

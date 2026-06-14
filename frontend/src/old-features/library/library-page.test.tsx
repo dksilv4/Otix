@@ -1,7 +1,6 @@
 // TODO: Review this file
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { render as originalRender, screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
@@ -141,7 +140,6 @@ vi.mock("@/old-features/dk-ui/molecules/toast", () => ({
 // Import after mocks
 import { LibraryListsPage } from "./pages/library-lists-page"
 import { LibraryWatchlistPage } from "./pages/library-core-tab-pages"
-import { useAuth } from "@/lib/auth"
 import { useLibraryTab } from "./library-queries"
 
 function createMediaItem(overrides: Record<string, unknown> = {}) {

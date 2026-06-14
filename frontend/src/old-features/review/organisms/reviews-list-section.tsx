@@ -8,7 +8,7 @@ import { ReviewCard } from "../molecules/review-card"
 import { ReviewComposer } from "../molecules/review-composer"
 import { reviewQueries } from "../review-queries"
 import { cn } from "@/lib/utils"
-import type { ReviewWithUserOut } from "../review-queries"
+import type { ReviewWithUserOut, ReviewOut } from "../review-queries"
 import "./reviews-list-section.scss"
 
 interface ReviewsListSectionProps {
@@ -119,7 +119,7 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
  >
  <ReviewComposer
  mediaId={mediaId}
- existingReview={editTarget}
+ existingReview={editTarget as ReviewOut}
  existingRating={editTarget?.rating ?? null}
  onClose={() => { setComposerOpen(false); setEditTarget(null) }}
  />

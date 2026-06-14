@@ -148,7 +148,7 @@ export async function connectTaskSseStream(
   config: TaskStreamConfig,
   onEvent?: (event: SseEvent) => void,
 ): Promise<SseEvent> {
-  const baseUrl = config.baseUrl ?? API_BASE_URL
+  const baseUrl = API_BASE_URL
   const { token, signal } = config
 
   // ── 1. Create the background task ──────────────────────────────
