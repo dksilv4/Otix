@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { Music, Download, Gamepad2 } from 'lucide-react'
+import { LayoutGrid, Download, Gamepad2 } from 'lucide-react'
 import { useDownloads } from '@/old-features/downloads/use-downloads'
-import { usePlayer } from './use-player'
-import type { PlexSession } from './plex-now-playing'
+import { usePlayer } from '@/old-features/spotify/use-player'
+import type { PlexSession } from '../organisms/plex-now-playing'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
-import './now-playing-button.scss'
+import { notificationQueries } from '@/old-features/notifications/notification-queries'
+import './nav-activity-button.scss'
 
 interface PlexSessionsResponse {
   sessions: PlexSession[]
@@ -50,6 +51,13 @@ export function NowPlayingButton({
 
   const { user: currentUser } = useAuth()
 
+  const { data: unreadNotifs } = useQuery({
+    ...notificationQueries.unreadCount(),
+    enabled: !!currentUser,
+    refetchInterval: 30000,
+  })
+  const unreadCount = unreadNotifs?.count ?? 0
+
   const { data: plexSessions = [] } = useQuery({
     queryKey: ['plex', 'sessions'],
     queryFn: async () => {
@@ -84,7 +92,7 @@ export function NowPlayingButton({
         data-now-playing-trigger
         onClick={handleClick}
         className={cn(
-          'dk-spotify__button',
+          'dk-spotify__button outline-none focus:outline-none focus-visible:outline-none',
           isPinned && 'dk-spotify__button--pinned',
           isSidebarOpen && 'dk-spotify__button--sidebar',
           !hasLocalPlayback && hasPlex && 'dk-spotify__button--plex',
@@ -128,7 +136,7 @@ export function NowPlayingButton({
         ) : hasPlex ? (
           <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
         ) : (
-          <Music className="h-5 w-5 text-muted-foreground" />
+          <LayoutGrid className="h-5 w-5 text-muted-foreground" />
         )}
         {hasPlex && !hasLocalPlayback && (
           <span className="dk-spotify__badge dk-spotify__badge--plex">
@@ -140,9 +148,12 @@ export function NowPlayingButton({
             {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
           </span>
         )}
+        {unreadCount > 0 && (
+          <span className="dk-spotify__badge dk-spotify__badge--notifications">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
       </button>
-
-      {/* Dropdown removed - always slide in panel instead */}
     </>
   )
 }

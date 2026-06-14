@@ -21,15 +21,12 @@
 
   /* Sidebar open indicator */
   &--sidebar {
-    @apply ring-1;
-    --ring-color: rgba(168, 85, 247, 0.5);
     background: rgba(168, 85, 247, 0.06);
   }
 
   /* Plex session active (no local playback) */
   &--plex {
-    @apply ring-1;
-    --ring-color: rgba(229, 160, 13, 0.40);
+    background: rgba(229, 160, 13, 0.06);
   }
 
   /* Bare square mode */
@@ -37,7 +34,11 @@
     @apply w-8 h-8;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--dk-surface-ghost-hover);
+    }
+
+    &:active {
+      background: var(--dk-surface-ghost-active);
     }
   }
 }
@@ -82,4 +83,9 @@
 .dk-spotify__badge--download {
   @apply -top-1.5 -right-1.5 h-3.5 min-w-[14px] px-[3px] bg-blue-500;
   font-size: 9px;
+}
+
+.dk-spotify__badge--notifications {
+  @apply -top-0.5 -left-0.5 h-4 min-w-4 px-1 bg-primary text-primary-foreground;
+  font-size: 10px;
 }

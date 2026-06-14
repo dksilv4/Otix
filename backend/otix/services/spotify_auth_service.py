@@ -92,6 +92,77 @@ async def build_spotify_link_url(user_id: str | None = None) -> tuple[str, str]:
     return url, state
 
 
+async def build_spotify_login_url() -> tuple[str, str]:
+    """Build the Spotify OAuth2 authorization URL for login."""
+    state = secrets.token_urlsafe(32)
+    redis = await get_redis()
+    await redis.set(_state_key(state), json.dumps({"v": "1", "flow": "login"}), ex=STATE_TTL)
+
+    callback = f"{settings.frontend_base_url}/auth/callback/spotify-login"
+    params = {
+        "client_id": settings.spotify_client_id,
+        "response_type": "code",
+        "redirect_uri": callback,
+        "state": state,
+        "scope": " ".join(SCOPES),
+    }
+    url = f"{SPOTIFY_AUTH_URL}?{urllib.parse.urlencode(params)}"
+    return url, state
+
+
+async def find_or_create_spotify_user(
+    session: AsyncSession,
+    spotify_id: str,
+    display_name: str = "",
+    email: str = "",
+    avatar_url: str | None = None,
+    access_token: str | None = None,
+    refresh_token: str | None = None,
+    expires_in: int = 3600,
+) -> User:
+    """Find an existing user by spotify_id or create a new one."""
+    user = await session.scalar(select(User).where(User.spotify_id == spotify_id))
+    if user is not None:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+        return user
+
+    base_username = re.sub(r"[^a-zA-Z0-9_-]", "", (display_name or email)[:64])[:64]
+    if not base_username:
+        base_username = f"spotify_{spotify_id[:8]}"
+
+    username = base_username
+    suffix = 1
+    while True:
+        existing = await session.scalar(select(User).where(User.username == username))
+        if existing is None:
+            break
+        username = f"{base_username}_{suffix}"
+        suffix += 1
+
+    from otix.services.auth.auth_service import hash_password
+
+    user_email = email or f"spotify_{spotify_id}@user.otix"
+    user = User(
+        email=user_email,
+        username=username,
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        spotify_id=spotify_id,
+        spotify_username=display_name or None,
+        spotify_email=email or None,
+        spotify_avatar_url=avatar_url,
+        spotify_access_token=access_token,
+        spotify_refresh_token=refresh_token,
+        spotify_token_expires_at=datetime.now(UTC) + timedelta(seconds=expires_in) if expires_in else None,
+        is_verified=True,
+        avatar_url=avatar_url,
+    )
+    session.add(user)
+    await session.flush()
+    logger.info("spotify user created", user_id=user.id, spotify_id=spotify_id)
+    return user
+
+
 async def exchange_code_for_tokens(code: str) -> dict:
     """Exchange an authorization code for access/refresh tokens.
 

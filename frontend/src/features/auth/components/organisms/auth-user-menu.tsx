@@ -81,9 +81,9 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
         onClick={() => setOpen(!open)}
         className={
           bare
-            ? 'cursor-pointer rounded-full transition-all hover:opacity-85 active:scale-95 flex h-8 w-8 items-center justify-center'
+            ? 'cursor-pointer rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] flex h-8 w-8 items-center justify-center'
             : pillClasses +
-              ' cursor-pointer rounded-full transition-all hover:opacity-85 active:scale-95'
+              ' cursor-pointer rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]'
         }
         style={pillStyle}
       >
