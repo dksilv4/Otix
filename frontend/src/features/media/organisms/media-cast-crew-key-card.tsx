@@ -17,6 +17,7 @@ const roleLabel: Record<string, string> = {
 }
 
 export function KeyCrewCard({ credit }: { credit: CreditItem }) {
+  if (!credit.person) return null
   return (
     <Link
       to="/person/$personId"

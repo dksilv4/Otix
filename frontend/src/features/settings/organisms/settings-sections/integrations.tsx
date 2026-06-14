@@ -354,7 +354,7 @@ export function IntegrationsSection() {
     lastItems: number
     lastTime: number
   }>>({})
-  const [animTick, setAnimTick] = useState(0)
+  const [, setAnimTick] = useState(0)
 
   // Smooth progress animation loop — moves displayed toward real at observed rate
   useEffect(() => {
@@ -708,7 +708,7 @@ export function IntegrationsSection() {
 
     try {
       const token = localStorage.getItem('otix-access-token') ?? ''
-      const terminal = await connectTaskSseStream(
+      await connectTaskSseStream(
         {
           createEndpoint: '/integrations/youtube/sync',
           streamEndpoint: (taskId: string) => `/integrations/youtube/sync/${taskId}/stream`,
@@ -716,7 +716,7 @@ export function IntegrationsSection() {
           token,
           signal: abortController.signal,
         },
-        (event) => {
+        (event: SseEvent) => {
           switch (event.type) {
             case 'sync_started':
               setYoutubeProgress({ phase: 'Connected to YouTube...' })
@@ -780,7 +780,7 @@ export function IntegrationsSection() {
 
     try {
       const token = localStorage.getItem('otix-access-token') ?? ''
-      const terminal = await connectTaskSseStream(
+      await connectTaskSseStream(
         {
           createEndpoint: '/integrations/spotify/sync',
           streamEndpoint: (taskId: string) => `/integrations/spotify/sync/${taskId}/stream`,
@@ -788,7 +788,7 @@ export function IntegrationsSection() {
           token,
           signal: abortController.signal,
         },
-        (event) => {
+        (event: SseEvent) => {
           switch (event.type) {
             case 'sync_started':
               setSpotifyProgress({ phase: 'Connected to Spotify...' })
@@ -853,7 +853,7 @@ export function IntegrationsSection() {
           token,
           signal: abortController.signal,
         },
-        (event) => {
+        (_event: SseEvent) => {
           // Progress events — not displayed inline for this sync
         },
       )
@@ -931,7 +931,7 @@ export function IntegrationsSection() {
 
     try {
       const token = localStorage.getItem('otix-access-token') ?? ''
-      const terminal = await connectTaskSseStream(
+      await connectTaskSseStream(
         {
           createEndpoint: '/integrations/plex/sync',
           streamEndpoint: (taskId: string) => `/integrations/plex/sync/${taskId}/stream`,
@@ -939,7 +939,7 @@ export function IntegrationsSection() {
           token,
           signal: abortController.signal,
         },
-        (event) => {
+        (event: SseEvent) => {
           switch (event.type) {
             case 'server_found':
               break
@@ -1038,7 +1038,7 @@ export function IntegrationsSection() {
               break
             }
             case 'sync_complete':
-              setPlexSyncResult(event)
+              setPlexSyncResult(event as unknown as PlexSyncResult)
               setPlexMessage(
                 `Synced ${event.total} Plex items from ${event.libraries} libraries on ${event.servers} server(s). Seeded ${event.seeded} new catalog items.`,
               )

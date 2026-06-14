@@ -1,7 +1,6 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { mediaKeys } from '@/features/media/media-keys'
 import { interactionKeys } from './interaction-keys'
 
 export const episodeInteractionKeys = {

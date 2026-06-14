@@ -7,28 +7,6 @@ import { useGameDetail, useGameGenres, usePopularGames } from '@/features/games/
 import type { GamesTab, CatalogGame, ShelfRow } from '../types';
 import type { LocalGame } from '@/features/game-scanner/types';
 
-// ── Filtering ────────────────────────────────────────────────────────
-
-function filterGamesByTab(
-  games: LocalGame[],
-  tab: GamesTab,
-  searchQuery: string,
-): LocalGame[] {
-  let result = games
-  if (tab === "matched") result = result.filter((g) => g.data?.id)
-  if (tab === "unmatched") result = result.filter((g) => !g.data?.id)
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase()
-    result = result.filter(
-      (g) =>
-        g.title.toLowerCase().includes(q) ||
-        g.platform.toLowerCase().includes(q) ||
-        g.installDir.toLowerCase().includes(q),
-    )
-  }
-  return result
-}
-
 // ── Shelves ──────────────────────────────────────────────────────────
 
 function buildGameShelves(
@@ -79,22 +57,6 @@ function buildGameShelves(
   }
 
   return rows
-}
-
-function carryOverExistingMatches(
-  scanned: LocalGame[],
-  previousGames: LocalGame[],
-): LocalGame[] {
-  const carryOver = new Map<string, LocalGame>()
-  for (const g of previousGames) {
-    if (g.data?.id || g.matchSuggestion) carryOver.set(g.id, g)
-  }
-  return scanned.map((g) => {
-    if (g.data?.id || g.matchSuggestion) return g
-    const prev = carryOver.get(g.id)
-    if (!prev) return g
-    return { ...g, ...prev }
-  })
 }
 
 // ── UI State ────────────────────────────────────────────────────────

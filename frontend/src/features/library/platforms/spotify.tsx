@@ -321,8 +321,7 @@ export function SpotifyTabContent() {
  const view = parseSpotifyView(search)
  const setSpotifyView = (nextView: SpotifyView) => {
  navigate({
- to: '/library/$tab',
- params: { tab: 'spotify' },
+ to: '/library/spotify',
  search: spotifySearchForView(nextView) as never,
  })
  }

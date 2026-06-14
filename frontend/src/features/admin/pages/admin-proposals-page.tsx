@@ -66,12 +66,12 @@ export function AdminProposalsPage() {
     }
   }
 
-  const handleReject = async (proposal: MediaEditProposal, reason: string | null) => {
+  const handleReject = async (proposal: MediaEditProposal, reason?: string) => {
     try {
       await rejectMutation.mutateAsync({
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
-        reason,
+        reason: reason ?? null,
       })
       showXPToast(ADMIN_XP.PROPOSAL_REJECT)
       toast({ title: 'Proposal rejected', variant: 'success' })

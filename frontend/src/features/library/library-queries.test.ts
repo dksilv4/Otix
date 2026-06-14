@@ -141,9 +141,9 @@ describe('Library Query Hooks', () => {
       headers: { 'Content-Type': 'text/event-stream' },
     })
 
-    global.fetch = vi.fn()
+    vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(postResponse)
-      .mockResolvedValueOnce(streamResponse)
+      .mockResolvedValueOnce(streamResponse))
 
     const { result } = renderHook(() => usePlexLibraryScan(), { wrapper: createWrapper() })
     result.current.mutate()

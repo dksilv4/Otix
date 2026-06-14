@@ -160,7 +160,7 @@ export function IsoInstallerModal({
     storeStart(isoPath, gameTitle, targetDir);
 
     try {
-      const res: InstallResult = await window.desktopAPI!.installGame(isoPath, targetDir, gameTitle);
+      const res = await window.desktopAPI!.installGame(isoPath, targetDir, gameTitle) as unknown as InstallResult;
       storeComplete(isoPath, res);
       // Update game in storage so main page sees it as installed (pc, not iso)
       if (res.success) {
@@ -182,7 +182,6 @@ export function IsoInstallerModal({
   }, [onClose]);
 
   const progress = entry?.progress;
-  const progressPct = progress?.progress ?? 0;
   const currentPhase = progress?.phase;
   const isDone = entry?.result?.success === true || (progress?.phase === 'done' && !entry?.active);
   const isError = error && !entry?.active && !isDone;

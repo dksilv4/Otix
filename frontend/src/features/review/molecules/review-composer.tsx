@@ -24,7 +24,7 @@ interface ReviewComposerProps {
 }
 
 function ReviewComposer({ mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
- const [score, setScore] = useState<number>(existingRating?.score ?? existingReview?.score ?? 0)
+ const [score, setScore] = useState<number>(existingRating?.score ?? 0)
  const [title, setTitle] = useState(existingReview?.title ?? "")
  const [content, setContent] = useState(existingReview?.content ?? "")
  const [isSpoiler, setIsSpoiler] = useState(existingReview?.isSpoiler ?? false)

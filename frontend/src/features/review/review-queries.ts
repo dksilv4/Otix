@@ -27,6 +27,7 @@ export interface ReviewWithUserOut {
   title: string | null
   content: string | null
   isSpoiler: boolean
+  isPrivate: boolean
   createdAt: string
   updatedAt: string
   cooldownUntil: string | null

@@ -2,8 +2,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { isDesktop } from '@/lib/desktop-api'
 
-export const API_BASE_URL = isDesktop() ? 'http://127.0.0.1:8000/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
-const BASE_URL = API_BASE_URL
+export const API_BASE_URL = isDesktop() ? 'https://otix.app/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
+const BASE_URL = 'https://otix.app/api'
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 

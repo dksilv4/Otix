@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router"
-import { cn } from "@/lib/utils"
 import { isDesktop } from "@/lib/desktop-api"
 import { useLocalGames } from "@/features/game-scanner/game-queries"
 import { GameCard } from "@/features/game-scanner/molecules/game-card"
@@ -21,10 +20,7 @@ export function LocalGamesOverviewSection() {
         </h2>
         <button
           onClick={() =>
-            navigate({
-              to: "/library/$tab",
-              params: { tab: "local-game" },
-            })
+            navigate({ to: "/library/games" })
           }
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
@@ -39,10 +35,7 @@ export function LocalGamesOverviewSection() {
           <button
             type="button"
             onClick={() =>
-              navigate({
-                to: "/library/$tab",
-                params: { tab: "local-game" },
-              })
+              navigate({ to: "/library/games" })
             }
             className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
           >

@@ -22,13 +22,15 @@ export function CreditRow({ label, items }: { label: string; items: CreditItem[]
         aria-label={`${label} credits`}
       >
         {items.map((c) => (
-          <PersonCard
-            key={c.id}
-            id={c.person.id}
-            name={c.person.name}
-            imageUrl={c.person.photoUrl}
-            role={c.characterName || c.role}
-          />
+          c.person ? (
+            <PersonCard
+              key={c.id}
+              id={c.person.id}
+              name={c.person.name}
+              imageUrl={c.person.photoUrl}
+              role={c.characterName || c.role}
+            />
+          ) : null
         ))}
       </div>
     </div>
