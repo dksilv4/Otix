@@ -44,4 +44,6 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BA
 
 EXPOSE 8000
 
-CMD ["uvicorn", "entrypoints.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run migrations then start uvicorn — prevents schema-drift issues when
+# the lifespan handler's async migration call is suppressed or fails.
+CMD ["bash", "entrypoints/start-api.sh"]

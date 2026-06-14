@@ -28,6 +28,9 @@ async def lifespan(app: FastAPI) -> Any:
 
     # Run pending database migrations before accepting requests.
     # Alembic acquires an advisory lock so concurrent API containers don't race.
+    # The CMD entrypoint script (start-api.sh) also runs migrations before the
+    # process starts — this is a second safety net for dev/`--reload` mode where
+    # the script is skipped.
     try:
         import asyncio
 
@@ -42,7 +45,7 @@ async def lifespan(app: FastAPI) -> Any:
         logger.info("migrations applied")
     except Exception:
         setup_logging()
-        logger.exception("migrations failed — continuing startup")
+        logger.exception("lifespan migration failed — check your database connection and run 'alembic upgrade head' manually")
 
     await get_redis()
 
