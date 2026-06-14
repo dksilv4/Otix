@@ -9,9 +9,10 @@ export const discoverKeys = {
   hero: () => [...discoverKeys.all(), 'hero'] as const,
   sections: () => [...discoverKeys.all(), 'sections'] as const,
 }
+import { IS_DEV } from '@/lib/config'
 import type { MediaItemSummary } from '@media/media-queries'
 
-const gcTime = import.meta.env.DEV ? 0 : 1000 * 60 * 60 * 24
+const gcTime = IS_DEV ? 0 : 1000 * 60 * 60 * 24
 
 export interface DiscoverListResponse {
   items: MediaItemSummary[]

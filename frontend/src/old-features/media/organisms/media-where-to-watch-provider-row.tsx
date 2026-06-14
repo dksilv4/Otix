@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react"
 import { PlexIcon } from "@/old-features/dk-ui/atoms/plex-icon"
 import type { MediaWatchProvider } from "@/old-features/media/media-queries"
 import { cn } from "@/lib/utils"
-import { API_BASE_URL } from "@/lib/api-client"
+import { API_BASE_URL } from "@/lib/config"
 
 export function ProviderRow({ provider }: { provider: MediaWatchProvider }) {
   const isPlex = provider.watchProvider.slug === "plex"

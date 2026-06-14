@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api-client'
 import { extractErrorMessage } from '../utils'
 import { AuthCard } from '../molecules/auth-card'
 
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface ServiceCfg {
   name: string

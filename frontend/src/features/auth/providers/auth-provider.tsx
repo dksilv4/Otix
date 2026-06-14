@@ -5,7 +5,7 @@ import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
 import { AuthContext } from '@auth/hooks/use-auth'
 import { useDeepLink } from '@auth/hooks/use-deep-link'
 
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
