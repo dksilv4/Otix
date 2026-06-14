@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils"
 import logoSvg from "@/assets/otix-logo.svg?raw"
 import igdbLogo from "@/assets/provider-logos/igdb.svg"
 import imdbLogo from "@/assets/provider-logos/imdb.svg"
-import { SteamIcon } from "@/old-features/dk-ui/atoms/steam-icon"
-import { PlexIcon } from "@/old-features/dk-ui/atoms/plex-icon"
+import SteamIcon from "@/assets/provider-logos/steam.svg?react"
+import PlexIcon from "@/assets/provider-logos/plex.svg?react"
 
 function isSteamProvider(key: string): boolean {
   return key === "steam_user" || key === "steam_metacritic"

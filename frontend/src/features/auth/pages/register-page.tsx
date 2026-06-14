@@ -1,19 +1,18 @@
 import { useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { AuthHeader } from '@auth/components/molecules/auth-header'
 import { RegisterForm } from '@auth/components/organisms/auth-register-form'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'
+import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 
 export function RegisterPage() {
   const navigate = useNavigate()
   const redirect = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('redirect') || '/'
     : '/'
-  const canGoBack = typeof window !== 'undefined' && window.history.length > 1
 
   const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
 
@@ -27,18 +26,7 @@ export function RegisterPage() {
 
       <AuthBackground />
 
-      {canGoBack && (
-        <div className="fixed left-4 top-4 z-50">
-          <button
-            type="button"
-            onClick={() => window.history.back()}
-            className="flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-lg transition-colors hover:bg-white/10"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        </div>
-      )}
+      <AuthBackButton />
 
       <AuthCard>
         <div className="mb-6 flex justify-center">

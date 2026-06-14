@@ -16,13 +16,12 @@
 
 .dk-review-ratings__glow {
   @apply absolute inset-0 opacity-40 pointer-events-none;
-  background-image: radial-gradient(circle at 30% 50%, var(--tw-gradient-from), transparent 70%);
 
-  &--positive { @apply from-emerald-500/15; }
-  &--medium   { @apply from-sky-500/15; }
-  &--low      { @apply from-amber-500/15; }
-  &--critical { @apply from-red-500/15; }
-  &--muted    { @apply from-primary/10; }
+  &--positive { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-emerald-500) 15%, transparent), transparent 70%); }
+  &--medium   { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-sky-500) 15%, transparent), transparent 70%); }
+  &--low      { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-amber-500) 15%, transparent), transparent 70%); }
+  &--critical { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-red-500) 15%, transparent), transparent 70%); }
+  &--muted    { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 70%); }
 }
 
 .dk-review-ratings__watermark {

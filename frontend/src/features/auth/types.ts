@@ -57,7 +57,7 @@ export interface AuthState {
   isLoading: boolean
   isAuthenticated: boolean
   twoFactorChallenge: TwoFactorChallenge | null
-  login: (identity: string, password: string) => Promise<void>
+  login: (identity: string, password: string) => Promise<LoginResponse>
   verifyTwoFactor: (code: string) => Promise<void>
   cancelTwoFactor: () => void
   register: (email: string, username: string, password: string, dateOfBirth: string) => Promise<void>
