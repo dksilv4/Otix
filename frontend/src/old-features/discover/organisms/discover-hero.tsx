@@ -266,7 +266,7 @@ function DiscoverHeroCard({
         >
           {/* If active, render the panning backdrop with Ken Burns */}
           {isActive && bgImage ? (() => {
-            const anim = getSlideAnimation(activeId)
+            const anim = getSlideAnimation(activeId ?? '')
             return (
               <motion.div
                 className="dk-discover-hero__card-backdrop"
@@ -527,7 +527,7 @@ export function DiscoverHero({ className }: { className?: string }) {
   }, [items.length, isPaused, tick])
 
   // Click handler to route to detail or step slides
-  const handleCardClick = useCallback((item: typeof items[0], index: number, isActive: boolean) => {
+  const handleCardClick = useCallback((item: HeroItem, index: number, isActive: boolean) => {
     if (isTransitioning) return
     if (isActive) {
       const mediaType = (detail?.mediaType || item.mediaType) as 'movie' | 'show' | 'game' | 'music'
@@ -623,7 +623,7 @@ export function DiscoverHero({ className }: { className?: string }) {
               slideIndex={slideIndex}
               isActive={isActive}
               cardOffset={cardOffset}
-              detail={isActive ? detail : null}
+              detail={isActive && detail ? detail as HeroDetail : undefined}
               activeId={activeId}
               bgImage={bgImage}
               yScroll={yScroll}
@@ -651,10 +651,10 @@ export function DiscoverHero({ className }: { className?: string }) {
                   <Badge
                     className={cn(
                       'text-white border-none text-[11px]',
-                      MEDIA_TYPE_COLOR[detail.mediaType],
+                      MEDIA_TYPE_COLOR[detail.mediaType as keyof typeof MEDIA_TYPE_COLOR],
                     )}
                   >
-                    {MEDIA_TYPE_LABEL[detail.mediaType] ?? 'Media'}
+                    {MEDIA_TYPE_LABEL[detail.mediaType as keyof typeof MEDIA_TYPE_LABEL] ?? 'Media'}
                   </Badge>
 
                   {detail.avgRating != null && detail.ratingCount > 0 && (

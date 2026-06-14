@@ -2,8 +2,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { isDesktop } from '@/lib/desktop-api'
 
-export const API_BASE_URL = isDesktop() ? 'http://127.0.0.1:8000/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
-const BASE_URL = API_BASE_URL
+export const API_BASE_URL = isDesktop() ? 'https://otix.app/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
 
 const ACCESS_TOKEN_KEY = 'otix-access-token'
 
@@ -65,7 +64,7 @@ let refreshQueue: Array<{
 
 async function refreshAccessToken(): Promise<string> {
   const authClient = axios.create({
-    baseURL: BASE_URL,
+    baseURL: API_BASE_URL,
     withCredentials: true,
     headers: { 'Content-Type': 'application/json' },
   })
@@ -78,7 +77,7 @@ async function refreshAccessToken(): Promise<string> {
 // ── Axios instance ────────────────────────────────────────────────────
 
 export const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true, // for httpOnly refresh cookie
   headers: { 'Content-Type': 'application/json' },
   timeout: 15_000, // 15s — prevent forever-hanging requests (Docker/Win networking etc.)

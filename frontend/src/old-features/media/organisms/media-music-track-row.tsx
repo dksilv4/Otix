@@ -1,7 +1,6 @@
 import type { TrackOut } from '../media-queries'
 import { TrackInlineActions } from '../molecules/media-track-inline-actions'
 import { cn } from '@/lib/utils'
-import type { PlexAlbumTrack } from '@/old-features/library/library-queries'
 
 function formatMs(ms: number | null | undefined): string {
   if (ms == null || ms <= 0) return '—'

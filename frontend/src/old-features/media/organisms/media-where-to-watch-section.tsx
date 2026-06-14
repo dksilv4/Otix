@@ -1,6 +1,4 @@
 // TODO: Review this file
-import { ExternalLink } from "lucide-react"
-import { PlexIcon } from "@/old-features/dk-ui/atoms/plex-icon"
 import type { MediaWatchProvider } from "@/old-features/media/media-queries"
 import { cn } from "@/lib/utils"
 import { ProviderRow } from "./media-where-to-watch-provider-row"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { getDesktopAPI } from '@/lib/desktop-api'
 import type { LiveFpsSnapshot } from '@/lib/desktop-api'

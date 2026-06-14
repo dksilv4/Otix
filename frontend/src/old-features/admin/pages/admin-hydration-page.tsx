@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { useAdminHydration } from '../admin-queries'
 import { Check, X, Minus, Loader2, AlertTriangle, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { MEDIA_TYPE_LABEL } from '@/constants/media'
+import { MEDIA_TYPE_LABEL, type MediaType } from '@/constants/media'
 
 const MEDIA_TYPE_TABS = [
   { value: undefined, label: 'All' },
@@ -188,7 +188,7 @@ export function AdminHydrationPage() {
       {data && (
         <p className="dk-admin-hydration__stats">
           Showing {data.items.length} of {data.total.toLocaleString()} media items
-          {mediaType ? ` (${MEDIA_TYPE_LABEL[mediaType] ?? mediaType})` : ''}
+          {mediaType ? ` (${MEDIA_TYPE_LABEL[mediaType as MediaType] ?? mediaType})` : ''}
           {search ? ` matching "${search}"` : ''}
         </p>
       )}
@@ -388,7 +388,7 @@ export function AdminHydrationPage() {
 
                       <td className="dk-admin-hydration__cell dk-admin-hydration__cell--type">
                         <span className="dk-admin-hydration__type-badge">
-                          {MEDIA_TYPE_LABEL[item.mediaType] ?? item.mediaType}
+                          {MEDIA_TYPE_LABEL[item.mediaType as MediaType] ?? item.mediaType}
                         </span>
                       </td>
 

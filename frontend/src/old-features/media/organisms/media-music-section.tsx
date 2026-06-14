@@ -9,7 +9,7 @@ import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
 import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
-import { useSaveSpotifyTrack, usePlexAlbumTracks } from '@/old-features/library/library-queries'
+import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 interface MusicSectionProps {

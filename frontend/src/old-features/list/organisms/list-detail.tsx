@@ -139,7 +139,7 @@ export function ListDetail() {
  async function handleDelete() {
  if (!confirm("Delete this list?")) return
  await deleteList.mutateAsync(listId)
- navigate({ to: "/library/$tab", params: { tab: "watchlist" } })
+ navigate({ to: "/library/watchlist" })
  }
 
  async function handleRemoveItem(mediaItemId: string) {

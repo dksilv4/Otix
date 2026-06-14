@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { userQueries, type ActivityHeatmapEntry } from '@/old-features/user/user-queries'
+import { userQueries, type ActivityHeatmapResponse } from '@/old-features/user/user-queries'
 import { cn } from '@/lib/utils'
 
 type ActivityType = 'workout' | 'movie' | 'show' | 'music'
