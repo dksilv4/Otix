@@ -71,7 +71,7 @@ export type ForgotPasswordPageState = 'idle' | 'sending' | 'sent' | 'error'
 export type ResetPasswordPageState = 'idle' | 'submitting' | 'success' | 'error'
 export type VerifyEmailPageState = 'verifying' | 'success' | 'error' | 'sending'
 
-export type CallbackService = 'google' | 'plex' | 'spotify' | 'tmdb' | 'steam' | 'steam-connect'
+export type CallbackService = 'google' | 'google-login' | 'plex' | 'plex-login' | 'spotify' | 'spotify-login' | 'tmdb' | 'tmdb-login' | 'steam' | 'steam-connect'
 
 export interface StandardServiceConfig {
   endpoint: string

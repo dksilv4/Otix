@@ -6,7 +6,11 @@ import {AuthCard} from '@auth/components/molecules/auth-card'
 import {AuthHeader} from '@auth/components/molecules/auth-header'
 import {LoginForm} from '@auth/components/organisms/auth-login-form'
 import {OAuthContainer} from '@auth/components/organisms/auth-oauth-container'
-import {SteamOAuthButton} from '@auth/components/molecules/auth-steam-oauth-button'
+import {GoogleOAuthButton} from '@auth/components/molecules/auth-oauth-google-button'
+import {SpotifyOAuthButton} from '@auth/components/molecules/auth-oauth-spotify-button'
+import {PlexOAuthButton} from '@auth/components/molecules/auth-oauth-plex-button'
+import {TmdbOAuthButton} from '@auth/components/molecules/auth-oauth-tmdb-button'
+import {SteamOAuthButton} from '@auth/components/molecules/auth-oauth-steam-button'
 import {Logo} from '@/old-features/dk-ui/atoms/logo'
 import {AuthBackButton} from '@auth/components/molecules/auth-back-button'
 
@@ -54,6 +58,10 @@ export function AuthPage() {
             </AuthCard>
 
             <OAuthContainer id="auth-oauth">
+                <GoogleOAuthButton/>
+                <SpotifyOAuthButton/>
+                <PlexOAuthButton/>
+                <TmdbOAuthButton/>
                 <SteamOAuthButton/>
             </OAuthContainer>
         </div>

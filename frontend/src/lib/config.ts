@@ -9,7 +9,7 @@ export const IS_PROD = import.meta.env.PROD
 export const IS_TEST = import.meta.env.TEST
 
 // API Configuration
-export const API_BASE_URL = 'https://otix.app/api'
+export const API_BASE_URL = 'http://localhost:8000/api'
 
 // Local Storage Keys
 export const ACCESS_TOKEN_KEY = 'otix-access-token'
