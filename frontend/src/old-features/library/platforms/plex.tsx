@@ -14,7 +14,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { libraryKeys } from "../library-keys"
 import { DkDropdown } from "@/old-features/dk-ui/atoms/dropdown"
-import { PlexIcon } from "@/old-features/dk-ui/atoms/plex-icon"
+import PlexIcon from "@/assets/provider-logos/plex.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
 import "./plex.scss"

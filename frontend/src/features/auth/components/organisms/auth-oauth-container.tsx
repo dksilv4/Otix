@@ -10,7 +10,7 @@ export function OAuthContainer({
   return (
     <div
       id={id}
-      className="w-full max-w-sm rounded-[2rem] p-6 text-center"
+      className="w-full max-w-sm rounded-[2rem] p-6 text-center [&:has(>div:empty)]:hidden"
       style={{
         backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.4)',
         backdropFilter: 'blur(24px)',

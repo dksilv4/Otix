@@ -82,6 +82,7 @@ const VerifyEmailPage = lazy(() => import("@auth/pages/auth-verify-email-page").
 const ForgotPasswordPage = lazy(() => import("@auth/pages/auth-forgot-password-page").then(m => ({ default: m.ForgotPasswordPage })))
 const ResetPasswordPage = lazy(() => import("@auth/pages/auth-reset-password-page").then(m => ({ default: m.ResetPasswordPage })))
 const CallbackPage = lazy(() => import("@auth/pages/auth-callback-page").then(m => ({ default: m.CallbackPage })))
+const TwoFactorPage = lazy(() => import("@auth/pages/auth-two-factor-page").then(m => ({ default: m.TwoFactorPage })))
 const AdminHomePage = lazy(() => import("@/old-features/admin/pages/admin-home-page").then(m => ({ default: m.AdminHomePage })))
 const AdminDashboardPage = lazy(() => import("@/old-features/admin/pages/admin-dashboard-page").then(m => ({ default: m.AdminDashboardPage })))
 const AdminProposalsPage = lazy(() => import("@/old-features/admin/pages/admin-proposals-page").then(m => ({ default: m.AdminProposalsPage })))
@@ -331,6 +332,15 @@ const resetPasswordRoute = createRoute({
   component: ResetPasswordPage,
 })
 
+const authTwoFactorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/two-factor",
+  component: TwoFactorPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: (search.redirect as string) || '/',
+  } as { redirect?: string }),
+})
+
 // ── OAuth callback route ──
 
 const callbackRoute = createRoute({
@@ -491,6 +501,7 @@ const routeTree = rootRoute.addChildren([
   verifyEmailRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
+  authTwoFactorRoute,
   callbackRoute,
   browseRoute,
   notificationsRoute,

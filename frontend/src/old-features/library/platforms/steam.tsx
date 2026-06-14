@@ -13,7 +13,7 @@ import {
   useSteamStatus,
   type UnmatchedGame,
 } from "../library-queries"
-import { SteamIcon } from "@/old-features/dk-ui/atoms/steam-icon"
+import SteamIcon from "@/assets/provider-logos/steam.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
 import "./steam.scss"
