@@ -1,10 +1,8 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { isDesktop } from '@/lib/desktop-api'
+import { API_BASE_URL, ACCESS_TOKEN_KEY } from './config'
+export { API_BASE_URL }
 
-export const API_BASE_URL = isDesktop() ? 'https://otix.app/api' : (import.meta.env.VITE_API_BASE_URL || '/api')
-
-const ACCESS_TOKEN_KEY = 'otix-access-token'
 
 // ── Case conversion utilities ────────────────────────────────────────
 

@@ -14,7 +14,7 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { createSseStream, type SseEvent } from './sse-client'
 
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+import { ACCESS_TOKEN_KEY } from './config'
 const DEFAULT_RECONNECT_DELAYS = [3_000, 10_000, 30_000, 60_000]
 
 export interface UseSseStreamOptions {

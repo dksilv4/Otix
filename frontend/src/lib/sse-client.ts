@@ -14,7 +14,7 @@
  * the same auth middleware used by REST endpoints.
  */
 
-import { API_BASE_URL } from './api-client'
+import { API_BASE_URL } from './config'
 
 // ── Types ──────────────────────────────────────────────────────────
 

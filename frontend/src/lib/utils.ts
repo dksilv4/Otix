@@ -14,9 +14,11 @@ export function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
-export const isDev = import.meta.env.DEV
-export const isProd = import.meta.env.PROD
-export const isTest = import.meta.env.TEST
+import { IS_DEV, IS_PROD, IS_TEST } from "./config"
+
+export const isDev = IS_DEV
+export const isProd = IS_PROD
+export const isTest = IS_TEST
 
 /** Human-readable OS name. Used in >1 place, so lives in utils. */
 export const osName: string = (() => {
