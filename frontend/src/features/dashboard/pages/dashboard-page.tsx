@@ -206,7 +206,7 @@ function HomeDashboard({ username }: { username: string }) {
                   <div className="h-5 w-5 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 </div>
               ) : daily ? (
-                <DailyTimeline daily={daily} username={username} />
+                <DailyTimeline daily={daily} />
               ) : null}
             </motion.div>
           </AnimatePresence>
@@ -249,7 +249,7 @@ interface TimelineGroup {
   items: React.ReactNode[]
 }
 
-function DailyTimeline({ daily, username }: { daily: DailyActivityResponse; username: string }) {
+function DailyTimeline({ daily }: { daily: DailyActivityResponse }) {
   const groups: TimelineGroup[] = []
 
   // Mood check-in

@@ -96,7 +96,7 @@ export function NowPlayingButton({
           <div className="dk-spotify__game-wrapper">
             {runningGame.game.iconUrl || runningGame.game.posterUrl ? (
               <img
-                src={runningGame.game.iconUrl || runningGame.game.posterUrl}
+                src={runningGame.game.iconUrl || runningGame.game.posterUrl || undefined}
                 alt=""
                 className="dk-spotify__album-art"
               />

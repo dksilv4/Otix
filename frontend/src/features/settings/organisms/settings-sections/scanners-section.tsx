@@ -9,14 +9,18 @@ import { useClaimGame } from "@/features/library/library-queries"
 import { apiClient } from "@/lib/api-client"
 import type { LocalGame } from "@/features/game-scanner/types"
 
-interface ScanPath {
-  path: string
-  type: "game" | "iso"
-}
-
 export function ScannersSection() {
-  const { data: scannedGames = [] } = useLocalGames();
+  const { data: serverGames = [] } = useLocalGames();
+  const [scannedGames, setScannedGames] = useState<LocalGame[]>(serverGames);
+  const [gameCount, setGameCount] = useState(serverGames.length);
   const rejectSuggestion = useRejectSuggestion();
+
+  // Sync from server on data change
+  useEffect(() => {
+    setScannedGames(serverGames);
+    setScannedGames(serverGames);
+    setGameCount(serverGames.length);
+  }, [serverGames]);
 
   const [gamePaths, setGamePathsState] = useState<string[]>(() => getScanPaths())
   const [isoPaths, setIsoPathsState] = useState<string[]>(() => getIsoPaths())
@@ -30,7 +34,6 @@ export function ScannersSection() {
   const matchSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isDesktop = hasDesktopAPI()
-  const gameCount = scannedGames.length
   const [lastScan, setLastScan] = useState<string | null>(() => localStorage.getItem('otix-last-scan'))
 
   const handleAddGamePath = useCallback(async () => {
@@ -75,7 +78,7 @@ export function ScannersSection() {
       const result = await matchMutation.mutateAsync(scannedGames)
       if (!result) return
       setScannedGames(result)
-      setScannedGamesState(result)
+      setScannedGames(result)
     } catch (err) {
       console.error("Match failed:", err)
     } finally {
@@ -91,7 +94,7 @@ export function ScannersSection() {
       return { ...g, otixMatchVerified: true, otixClaimed: true }
     })
     setScannedGames(withClaimed)
-    setScannedGamesState(withClaimed)
+    setScannedGames(withClaimed)
 
     // Claim each newly verified game on the backend (fire-and-forget).
     for (const mediaId of newlyClaimed) {
@@ -123,10 +126,10 @@ export function ScannersSection() {
       ? updated.map((g) => (g.id === game.id ? { ...g, otixClaimed: true } : g))
       : updated
     setScannedGames(final)
-    setScannedGamesState(final)
+    setScannedGames(final)
 
     if (!game.otixClaimed) {
-      claimMutation.mutate(sug.mediaId)
+      if (sug.mediaId) claimMutation.mutate(sug.mediaId)
     }
   }, [scannedGames, claimMutation])
 
@@ -147,7 +150,7 @@ export function ScannersSection() {
         : g,
     )
     setScannedGames(updated)
-    setScannedGamesState(updated)
+    setScannedGames(updated)
   }, [scannedGames])
 
   // ── Manual match search ────────────────────────────────────────────
@@ -195,7 +198,7 @@ export function ScannersSection() {
         : g,
     )
     setScannedGames(updated)
-    setScannedGamesState(updated)
+    setScannedGames(updated)
     setMatchingGameId(null)
     setMatchResults(null)
     setMatchSearch("")
@@ -207,7 +210,7 @@ export function ScannersSection() {
         g.id === gameId ? { ...g, otixClaimed: true } : g,
       )
       setScannedGames(withClaimed)
-      setScannedGamesState(withClaimed)
+      setScannedGames(withClaimed)
     }
   }, [scannedGames, claimMutation])
 
@@ -218,7 +221,7 @@ export function ScannersSection() {
       const scanned = await window.desktopAPI!.scanPaths(gamePaths, isoPaths)
       if (scanned && scanned.length > 0) {
         setScannedGames(scanned)
-        setScannedGamesState(scanned)
+        setScannedGames(scanned)
         setGameCount(scanned.length)
       }
       const now = new Date().toLocaleString()
@@ -231,7 +234,7 @@ export function ScannersSection() {
           const result = await matchMutation.mutateAsync(scanned)
           if (result) {
             setScannedGames(result)
-            setScannedGamesState(result)
+            setScannedGames(result)
           }
         } catch {
           // match is best-effort
@@ -246,7 +249,7 @@ export function ScannersSection() {
 
   const handleDeleteAllGames = useCallback(async () => {
     setScannedGames([])
-    setScannedGamesState([])
+    setScannedGames([])
     setGameCount(0)
     if (hasDesktopAPI()) {
       window.desktopAPI!.saveScannedGames([]).catch(() => {})
@@ -554,12 +557,11 @@ export function ScannersSection() {
                         </button>
                         <button
                           onClick={() => {
-                            rejectSuggestion(game, game.matchSuggestion?.id ?? "")
+                            rejectSuggestion.mutate({ gameId: game.id, suggestionMediaId: game.matchSuggestion?.id ?? "" })
                             const updated = scannedGames.map((g) =>
                               g.id === game.id ? { ...g, otixMatchSuggestion: undefined, otixConfidence: undefined } : g,
                             )
                             setScannedGames(updated)
-                            setScannedGamesState(updated)
                           }}
                           className="dk-settings-scanners__suggest-btn dk-settings-scanners__suggest-btn--deny"
                         >
@@ -657,14 +659,13 @@ export function ScannersSection() {
                               g.id === game.id ? { ...g, otixMatchVerified: true } : g,
                             )
                             setScannedGames(updated)
-                            setScannedGamesState(updated)
                             if (game.data?.id && !game.otixClaimed) {
                               claimMutation.mutate(game.data?.id)
                               const claimed = updated.map((g) =>
                                 g.id === game.id ? { ...g, otixClaimed: true } : g,
                               )
                               setScannedGames(claimed)
-                              setScannedGamesState(claimed)
+                              setScannedGames(claimed)
                             }
                           }}
                           className="dk-settings-scanners__text-btn dk-settings-scanners__text-btn--verify"

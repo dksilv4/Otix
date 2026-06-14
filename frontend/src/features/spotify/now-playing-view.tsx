@@ -13,7 +13,6 @@ import {
   VolumeX,
   ChevronLeft,
   Clock,
-  Disc,
   Download,
   Loader2,
   X,
@@ -475,14 +474,14 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
       y: 0,
       scale: 1,
       filter: 'blur(0px)',
-      transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+      transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const },
     },
     exit: {
       opacity: 0,
       y: -12,
       scale: 0.97,
       filter: 'blur(2px)',
-      transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
+      transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const },
     },
   }
 
@@ -544,7 +543,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       <div className="dk-now-playing__game-art">
                         {runningGame.game.iconUrl || runningGame.game.posterUrl ? (
                           <img
-                            src={runningGame.game.iconUrl || runningGame.game.posterUrl}
+                            src={runningGame.game.iconUrl || runningGame.game.posterUrl || undefined}
                             alt={runningGame.game.title}
                             className="dk-now-playing__game-img"
                           />
@@ -559,7 +558,7 @@ export function NowPlayingView({ open, onClose }: NowPlayingViewProps) {
                       </div>
                       <div className="dk-now-playing__game-info">
                         <p className="dk-now-playing__game-label">Now Playing</p>
-                        <h3 className="dk-now-playing__game-title">{runningGame.game.data?.title || runningGame.game.title}</h3>
+                        <h3 className="dk-now-playing__game-title">{runningGame.game.title}</h3>
                         <div className="dk-now-playing__game-meta">
                           <span className="dk-now-playing__game-platform">{runningGame.game.platform.toUpperCase()}</span>
                           <span className="dk-now-playing__game-sep">·</span>

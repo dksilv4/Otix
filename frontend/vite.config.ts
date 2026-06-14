@@ -6,9 +6,6 @@ import path from 'node:path'
 export default defineConfig({
   base: '/',
   plugins: [react()],
-  esbuild: {
-    jsx: 'automatic',
-  },
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {

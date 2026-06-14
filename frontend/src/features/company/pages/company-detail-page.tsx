@@ -12,6 +12,7 @@ interface CompanyDetail {
   id: string
   name: string
   slug: string
+  description: string | null
   logoUrl: string | null
   originCountry: string | null
   followerCount: number

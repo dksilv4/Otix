@@ -121,6 +121,7 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
                 played: false,
                 started: false,
                 listened: false,
+                owned: false,
                 [type]: active,
               },
           [countKey]: (prevDetail[countKey] || 0) + (active ? 1 : -1),

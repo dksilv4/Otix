@@ -99,6 +99,7 @@ export function SearchPage() {
 
       try {
         const api = window.desktopAPI
+        if (!api) return
 
         const context = [
           ...messages.map((m) => ({
@@ -192,7 +193,7 @@ export function SearchPage() {
                 <>
                   {aiStatus === 'loading' && <Loader2 className="h-3 w-3 animate-spin" />}
                   {aiStatus === 'error' && <AlertCircle className="h-3 w-3" />}
-                  {(aiStatus !== 'loading' && aiStatus !== 'error') && <Brain className={cn('h-3 w-3', aiStatus === 'loading' && 'animate-pulse')} />}
+                  {(aiStatus !== 'loading' && aiStatus !== 'error') && <Brain className="h-3 w-3" />}
                   {aiStatus === 'ready' && 'Model ready'}
                   {aiStatus === 'downloading' && 'Downloading model...'}
                   {aiStatus === 'loading' && (aiLoadingProgress != null ? `Loading model ${aiLoadingProgress}%` : 'Loading model...')}
@@ -288,7 +289,7 @@ export function SearchPage() {
             aiDownloadProgress={aiDownloadProgress}
             aiLoadingProgress={aiLoadingProgress}
             activeMode="discover"
-            onAiStatusClick={() => navigate('/settings?section=intelligence')}
+            onAiStatusClick={() => navigate({ to: '/settings', search: { section: 'intelligence' } })}
           />
           {!aiAvailable && (
             <div className="flex items-center justify-center gap-2 mt-2 text-[10px] text-muted-foreground/30">

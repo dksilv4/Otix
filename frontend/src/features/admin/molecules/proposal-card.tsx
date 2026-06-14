@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useState } from 'react'
-import { Check, X, ChevronDown, Bot, Undo2, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { X, ChevronDown, Bot, Undo2, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ExperimentGuard } from '@/features/experiments/molecules/experiment-guard'
 import type { MediaEditProposal, ImageOverrideItem } from '../admin-edit-queries'
@@ -56,9 +56,18 @@ export function ProposalCard({
   onRollback,
 }: {
   proposal: MediaEditProposal
-  onApprove: (id: string) => void
-  onReject: (id: string, reason?: string) => void
-  onRollback: (id: string) => void
+  onApprove: (proposal: MediaEditProposal) => void
+  onReject: (proposal: MediaEditProposal, reason?: string) => void
+  onRollback?: (proposal: MediaEditProposal) => void
+  currentUserId?: string
+  showMediaInfo?: boolean
+  isTrustedUser?: boolean
+  isApproving?: boolean
+  isRejecting?: boolean
+  isUndoing?: boolean
+  onUndo?: (proposal: MediaEditProposal) => void
+  onVote?: (proposal: MediaEditProposal, voteType: 'up' | 'down') => void
+  onRemoveVote?: (proposal: MediaEditProposal) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -67,17 +76,17 @@ export function ProposalCard({
 
   return (
     <div className={cn('dk-proposal-card', `dk-proposal-card--${proposal.status}`)}>
-      <ExperimentGuard flag="admin_edit">
+      <ExperimentGuard feature="admin_edit">
         <div className="dk-proposal-card__header">
           <div className="dk-proposal-card__meta">
             <span className={cn('dk-proposal-card__badge', badge.bg, badge.text)}>{badge.label}</span>
             <span className="dk-proposal-card__date">
               {new Date(proposal.createdAt).toLocaleDateString()}
             </span>
-            {proposal.submittedBy && (
+            {proposal.proposer?.username && (
               <span className="dk-proposal-card__author">
                 <Bot className="h-3 w-3" />
-                {proposal.submittedBy}
+                {proposal.proposer.username}
               </span>
             )}
           </div>
@@ -127,9 +136,9 @@ export function ProposalCard({
                   <div key={i} className="dk-proposal-card__image-override">
                     <span>{IMAGE_TYPE_LABELS[override.imageType] ?? override.imageType}</span>
                     <span className="dk-proposal-card__image-lang">{override.languageCode}</span>
-                    {override.imageUrl && (
+                    {override.url && (
                       <img
-                        src={override.imageUrl}
+                        src={override.url}
                         alt={`${override.imageType} preview`}
                         className="dk-proposal-card__image-preview"
                       />
@@ -143,7 +152,7 @@ export function ProposalCard({
               <div className="dk-proposal-card__actions">
                 <button
                   type="button"
-                  onClick={() => onApprove(proposal.id)}
+                  onClick={() => onApprove(proposal)}
                   className="dk-proposal-card__btn dk-proposal-card__btn--approve"
                 >
                   <ThumbsUp className="h-3.5 w-3.5" />
@@ -167,13 +176,13 @@ export function ProposalCard({
                       className="dk-proposal-card__reject-input"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          onReject(proposal.id, rejectReason || undefined)
+                          onReject(proposal, rejectReason || undefined)
                         }
                       }}
                     />
                     <button
                       type="button"
-                      onClick={() => onReject(proposal.id, rejectReason || undefined)}
+                      onClick={() => onReject(proposal, rejectReason || undefined)}
                       className="dk-proposal-card__btn dk-proposal-card__btn--confirm-reject"
                     >
                       <X className="h-3 w-3" />
@@ -187,7 +196,7 @@ export function ProposalCard({
             {proposal.status !== 'pending' && (
               <button
                 type="button"
-                onClick={() => onRollback(proposal.id)}
+                onClick={() => onRollback?.(proposal)}
                 className="dk-proposal-card__btn dk-proposal-card__btn--rollback"
               >
                 <Undo2 className="h-3.5 w-3.5" />

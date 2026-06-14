@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
 import { getDesktopAPI } from '@/lib/desktop-api';
 import { useEffect } from 'react';
-import type { LocalGame } from './types';
 
 type Listener = () => void;
 
@@ -68,7 +67,7 @@ export function useLocalGames(filter?: GamesFilter) {
 
   return useQuery({
     queryKey: localGameKeys.list(filter),
-    queryFn: () => fetchGames(filter),
+    queryFn: () => fetchGames(filter as Record<string, unknown>),
     staleTime: 30_000,
   });
 }
@@ -95,7 +94,7 @@ export function useLocalGame(id: string | undefined) {
 export function useLocalGameCount(filter?: GamesFilter) {
   return useQuery({
     queryKey: localGameKeys.count(filter),
-    queryFn: () => fetchGameCount(filter),
+    queryFn: () => fetchGameCount(filter as Record<string, unknown>),
     staleTime: 30_000,
   });
 }
@@ -105,7 +104,7 @@ export function useLocalGameCount(filter?: GamesFilter) {
 export function useAcceptSuggestion() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ gameId, suggestion }: { gameId: string; suggestion: unknown }) =>
+    mutationFn: ({ gameId, suggestion }: { gameId: string; suggestion: Record<string, unknown> }) =>
       acceptSuggestionOnServer(gameId, suggestion),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: localGameKeys.all });
