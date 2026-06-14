@@ -7,7 +7,7 @@ import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { useDownloadConfig } from '@/old-features/downloads/use-downloads'
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop-api'
-import { FolderKanban, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 const NAMING_PRESETS = [
   { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },

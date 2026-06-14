@@ -27,6 +27,10 @@ export interface Game {
   }[]
   isFree?: boolean
   hasMultiplayer?: boolean
+  confidence?: number
+  avgRating?: number | null
+  ratingCount?: number
+  mediaId?: string
 }
 
 export interface LocalGame {
@@ -40,9 +44,23 @@ export interface LocalGame {
   localIconUrl?: string
   iconUrl?: string
   posterUrl?: string
+  textlessPosterUrl?: string | null
+  logoUrl?: string | null
   updateFiles?: UpdateFile[]
   data?: Game
   matchSuggestion?: Game
+  description?: string | null
+  otixMediaId?: string | null
+  otixMediaTitle?: string | null
+  otixMediaSlug?: string | null
+  otixConfidence?: number
+  otixPosterUrl?: string | null
+  otixTextlessPosterUrl?: string | null
+  otixLogoUrl?: string | null
+  otixMatchSuggestion?: Game | null
+  otixMatchVerified?: boolean
+  otixClaimed?: boolean
+  lastPlayedAt?: string | null
 }
 
 export const LAUNCHER_PLATFORMS = [

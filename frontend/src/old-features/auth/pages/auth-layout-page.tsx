@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Outlet, useRouter } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import { AuthBackground } from '@/old-features/auth/molecules/auth-card'
+import { AuthBackground } from '@/old-features/auth/atoms/auth-background'
 
 export function AuthLayout() {
   const router = useRouter()

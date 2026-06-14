@@ -43,14 +43,11 @@ export function LauncherGameDetailInfo() {
   const isFree = d?.isFree as boolean | undefined
   const hasMultiplayer = d?.hasMultiplayer as boolean | undefined
   const genres = d?.genres as { id: string; name: string }[] | undefined
-  const ttb = formatTimeToBeat(d?.game?.timeToBeat as Record<string, unknown> | undefined)
+  const ttb = formatTimeToBeat((d as unknown as Record<string, unknown>)?.timeToBeat as Record<string, unknown> | undefined)
 
   // Read from g.data (hydrated) or from the LocalGame directly
   const avgRating = (d?.avgRating as number | undefined) ?? null
   const ratingCount = (d?.ratingCount as number) ?? 0
-
-  // Game metadata (not in g.data — from local fields)
-  const isIso = g.platform === 'iso'
 
   return (
     <>

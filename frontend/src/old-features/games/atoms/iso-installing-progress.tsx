@@ -4,7 +4,7 @@ import { Loader2, X } from 'lucide-react'
 
 interface InstallInfo {
   isoPath: string
-  progress?: { message?: string }
+  progress?: { message?: string; phase?: string; progress?: number } | null
 }
 
 interface Props {

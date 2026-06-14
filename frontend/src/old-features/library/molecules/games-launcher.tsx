@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import {
   Search, Play, Download, Gamepad2, X, RefreshCw,
-  ExternalLink, Star, Check, Folder, Circle, Disc,
+  ExternalLink, Star, Check, Folder, Circle,
 } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
@@ -88,30 +88,6 @@ function gameGradient(title: string): string {
   return `linear-gradient(135deg, oklch(0.22 0.07 ${h}), oklch(0.14 0.04 ${(h + 60) % 360}))`
 }
 
-function gameGradientDark(title: string): string {
-  const h = gameHue(title)
-  const h2 = (h + 60) % 360
-  const h3 = (h + 120) % 360
-  return `linear-gradient(135deg, oklch(0.18 0.06 ${h}) 0%, oklch(0.13 0.04 ${h2}) 50%, oklch(0.1 0.03 ${h3}) 100%)`
-}
-
-// ── Rich hero background — gradient base + radial accent ───────────
-
-function heroBackground(title: string, backdropUrl?: string | null): React.CSSProperties {
-  if (backdropUrl) {
-    return {
-      background: `linear-gradient(to top, rgba(8,8,18,0.97) 0%, rgba(8,8,18,0.55) 45%, rgba(8,8,18,0.1) 100%), url(${backdropUrl}) center / cover`,
-    }
-  }
-  const h = gameHue(title)
-  return {
-    background: [
-      `radial-gradient(ellipse 80% 60% at 30% 20%, oklch(0.3 0.08 ${h} / 0.15) 0%, transparent 100%)`,
-      `radial-gradient(ellipse 60% 50% at 70% 80%, oklch(0.3 0.08 ${(h + 120) % 360} / 0.1) 0%, transparent 100%)`,
-      `linear-gradient(135deg, oklch(0.18 0.06 ${h}) 0%, oklch(0.13 0.04 ${(h + 60) % 360}) 50%, oklch(0.1 0.03 ${(h + 120) % 360}) 100%)`,
-    ].join(", "),
-  }
-}
 
 // ── Game card (for local detected game) ───────────────────────────
 
@@ -432,9 +408,9 @@ function HeroSection({
               )}
 
               {/* Developer / Publisher + Game modes */}
-              {(detail?.involvedCompanies?.length > 0 || detail?.gameModes?.length > 0) && (
+              {((detail?.involvedCompanies?.length ?? 0) > 0 || (detail?.gameModes?.length ?? 0) > 0) && (
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/40">
-                  {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
+                  {detail?.involvedCompanies && detail.involvedCompanies.length > 0 && (
                     <span>
                       {detail.involvedCompanies.filter((c) => c.developer).slice(0, 2).map((c) => c.company.name).join(" & ")}
                       {detail.involvedCompanies.some((c) => c.publisher) && (
@@ -442,7 +418,7 @@ function HeroSection({
                       )}
                     </span>
                   )}
-                  {detail.gameModes && detail.gameModes.length > 0 && (
+                  {detail?.gameModes && detail.gameModes.length > 0 && (
                     <span className="flex items-center gap-1.5">
                       {detail.involvedCompanies?.length > 0 && <span className="opacity-30">·</span>}
                       {detail.gameModes.slice(0, 3).map((m) => m.gameMode.name).join(", ")}
@@ -688,10 +664,9 @@ function LocalShelfRow({
 
 // ── Empty state for grid ──────────────────────────────────────────
 
-function EmptyGridState({ activeTab, search, hasGames }: {
+function EmptyGridState({ activeTab, search }: {
   activeTab: GamesTab
   search: string
-  hasGames: boolean
 }) {
   if (search) {
     return (
@@ -844,8 +819,6 @@ export function GamesLauncher() {
         const matched = filtered.filter(g => g.data?.id).length
         const suggested = filtered.filter(g => g.matchSuggestion).length
         console.log(`[Re-match] matched: ${matched}, suggested: ${suggested}`)
-        setGames(filtered)
-        setScannedGames(filtered)
         if (matched > 0 || suggested > 0) {
           setMatchNotice({ matched, suggested })
           setTimeout(() => setMatchNotice(null), 5000)
@@ -889,7 +862,7 @@ export function GamesLauncher() {
     if (!game.matchSuggestion) return
     const api = getDesktopAPI()
     if (api?.acceptSuggestion) {
-      api.acceptSuggestion(game.id, game.matchSuggestion).catch(console.error)
+      api.acceptSuggestion(game.id, game.matchSuggestion as unknown as Record<string, unknown>).catch(console.error)
     }
   }, [])
 
@@ -1078,7 +1051,7 @@ export function GamesLauncher() {
 
       {/* ── Game grid ── */}
       {filtered.length === 0 ? (
-        <EmptyGridState activeTab={activeTab} search={search} hasGames={games.length > 0} />
+        <EmptyGridState activeTab={activeTab} search={search} />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {filtered.map((game) => (

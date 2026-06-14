@@ -230,7 +230,7 @@ function HomeExperience() {
         <div className="fixed right-4 md:right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-3">
           {navSections.map((section, idx) => {
             const isActive = idx === activeSectionIndex
-            const mType = section.mediaType
+            const mType = 'mediaType' in section ? section.mediaType : null
             const colorConfig = mType ? MEDIA_DOT_COLORS[mType] : null
 
             return (

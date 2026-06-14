@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { render, screen, fireEvent } from "@testing-library/react"
 
-import { TrackInlineActions } from "./track-inline-actions"
+import { TrackInlineActions } from "./media-track-inline-actions"
 
 describe("TrackInlineActions", () => {
   it("returns null if not savable and not ratable", () => {

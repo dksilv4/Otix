@@ -92,7 +92,7 @@ describe('apiClient', () => {
     const { apiClient } = await import('./api-client')
     const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       const err = new Error('Request failed with status code 422') as unknown as {
-        response: { data: { detail: Array<{ loc: string[]; msg: string }> }; status: number; statusText: string; headers: Record<string, string> }
+        response: { data: { detail: Array<{ loc: string[]; msg: string }> }; status: number; statusText: string; headers: Record<string, string>; config: InternalAxiosRequestConfig }
         config: InternalAxiosRequestConfig
       }
       err.response = {
