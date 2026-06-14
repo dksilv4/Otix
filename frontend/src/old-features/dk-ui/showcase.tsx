@@ -419,8 +419,8 @@ export function DkUiShowcase() {
  />
 
  <div className="grid gap-6 sm:grid-cols-5">
- {['none', 'sm', 'md', 'lg', 'xl'].map((level) => (
- <DkCard key={level} elevation={level as 'none' | 'sm' | 'md' | 'lg' | 'xl'} className="flex h-32 items-center justify-center">
+ {['none', 'sm', 'md', 'lg', 'glass'].map((level) => (
+ <DkCard key={level} elevation={level as 'none' | 'sm' | 'md' | 'lg' | 'glass'} className="flex h-32 items-center justify-center">
  <div className="text-center space-y-1">
  <p className="text-xs font-semibold">{level}</p>
  <p className="text-[0.625rem] text-muted-foreground font-mono">dk-shadow-{level}</p>

@@ -19,7 +19,7 @@ export function useDownloadConfig(userId: string | undefined) {
     if (!userId || !isDesktop()) return;
     setLoading(true);
     try {
-      const c = await window.desktopAPI!.downloadsGetConfig(userId);
+      const c = await window.desktopAPI!.downloadsGetConfig(userId) as unknown as DownloadConfig;
       setConfig(c);
     } catch (err) {
       console.error('Failed to fetch download config:', err);
@@ -30,7 +30,7 @@ export function useDownloadConfig(userId: string | undefined) {
 
   const saveConfig = useCallback(async (cfg: Omit<DownloadConfig, 'id'> & { id?: string }) => {
     if (!isDesktop()) throw new Error('Not in Electron');
-    const saved = await window.desktopAPI!.downloadsSaveConfig(cfg);
+    const saved = await window.desktopAPI!.downloadsSaveConfig(cfg as Record<string, unknown>) as unknown as DownloadConfig;
     setConfig(saved);
     return saved;
   }, []);
@@ -53,9 +53,9 @@ export function useNzbSearch() {
     if (!isDesktop()) return [];
     setSearching(true);
     try {
-      const r = await window.desktopAPI!.downloadsSearch(query, apiKey);
+      const r = await window.desktopAPI!.downloadsSearch(query, apiKey) as unknown as NZBResult[];
       setResults(r);
-      const best = await window.desktopAPI!.downloadsAutoPick(r, allowHypervisor);
+      const best = await window.desktopAPI!.downloadsAutoPick(r as unknown as Record<string, unknown>[], allowHypervisor) as unknown as NZBResult | null;
       setBestPick(best);
       return r;
     } catch (err) {
@@ -83,8 +83,7 @@ export function useDownloads(userId: string | undefined) {
       return;
     }
     try {
-      const d = await window.desktopAPI!.downloadsGetUserDownloads(userId);
-      console.log('[useDownloads] fetched', d.length, 'downloads:', d.map(x => ({ id: x.id, mediaItemId: x.mediaItemId, status: x.status })));
+      const d = await window.desktopAPI!.downloadsGetUserDownloads(userId) as unknown as Download[];
       setDownloads(d);
     } catch (err) {
       console.error('Failed to fetch downloads:', err);
@@ -100,7 +99,7 @@ export function useDownloads(userId: string | undefined) {
     if (!isDesktop()) return { error: 'Not in Electron' };
     setLoading(true);
     try {
-      const result = await window.desktopAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor);
+      const result = await window.desktopAPI!.downloadsSearchAndDownload(uid, mediaItemId, gameName, allowHypervisor) as unknown as { download: Download } | { error: string } | HypervisorConfirmResponse;
       await fetchDownloads();
       return result;
     } catch (err: unknown) {
@@ -159,7 +158,7 @@ export function useWishlistDownloads(userId: string | undefined) {
   const fetchTracking = useCallback(async () => {
     if (!userId || !isDesktop()) return;
     try {
-      const t = await window.desktopAPI!.downloadsGetWishlistTracking(userId);
+      const t = await window.desktopAPI!.downloadsGetWishlistTracking(userId) as unknown as WishlistTrackingEntry[];
       setTracking(t);
     } catch (err) {
       console.error('Failed to fetch wishlist tracking:', err);

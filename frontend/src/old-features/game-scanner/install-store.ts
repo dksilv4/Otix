@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { InstallProgress, InstallResult, InstallPhase } from './types'
+import type { InstallProgressEvent } from '@/lib/desktop-api'
 import { hasDesktopAPI } from './storage'
 
 const LS_KEY = 'otix_game_installs'
@@ -78,16 +79,16 @@ function ensureIpcListening(): void {
   if (_ipcUnsub) return
   if (!hasDesktopAPI()) return
   if (!window.desktopAPI?.onInstallProgress) return
-  _ipcUnsub = window.desktopAPI.onInstallProgress((p: InstallProgress & { installId?: string; isoPath?: string }) => {
-    const path = p.isoPath
+  _ipcUnsub = window.desktopAPI.onInstallProgress((event: InstallProgressEvent) => {
+    const path = event.isoPath
     if (!path) return // no routing info — ignore
     const existing = _installs.get(path)
     if (existing) {
       _installs.set(path, {
         ...existing,
         active: true,
-        progress: p,
-        installId: p.installId ?? existing.installId,
+        progress: event as InstallProgress,
+        installId: event.installId ?? existing.installId,
       })
       persist()
       emit()

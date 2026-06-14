@@ -1,6 +1,6 @@
 /* ── Typed Desktop API — strongly-typed wrapper around window.desktopAPI ── */
 
-import type { LocalGame } from '@/features/game-scanner/types'
+import type { LocalGame } from '@/old-features/game-scanner/types'
 
 // ── API types ────────────────────────────────────────────────────────
 
@@ -186,6 +186,41 @@ export interface DesktopAPI {
 
   // Install verification
   checkInstallDir(dir: string): Promise<InstallCheckResult>
+
+  // ── Legacy Electron IPC methods ──────────────────────────────────────
+
+  // Download management (legacy naming)
+  downloadsGetConfig(userId: string): Promise<Record<string, unknown>>
+  downloadsSaveConfig(cfg: Record<string, unknown>): Promise<Record<string, unknown>>
+  downloadsSearch(query: string, apiKey: string): Promise<Record<string, unknown>[]>
+  downloadsAutoPick(results: Record<string, unknown>[], allowHypervisor?: boolean): Promise<Record<string, unknown>>
+  downloadsGetUserDownloads(userId: string): Promise<Record<string, unknown>[]>
+  downloadsSearchAndDownload(uid: string, mediaItemId: string | null, gameName: string, allowHypervisor?: boolean): Promise<Record<string, unknown>>
+  downloadsPollQueue(userId: string): Promise<void>
+  downloadsDelete(id: string): Promise<void>
+  downloadsGetWishlistTracking(userId: string): Promise<Record<string, unknown>[]>
+  downloadsScanWishlist(userId: string, games: { id: string; title: string }[]): Promise<Record<string, unknown>[]>
+  downloadsSkipWishlistItem(userId: string, mediaItemId: string): Promise<void>
+  downloadsTestSabnzbd(host: string, port: number, apiKey: string, useSsl: boolean): Promise<boolean>
+  downloadsTestNzbplanet(apiKey: string): Promise<boolean>
+  downloadsPostProcess(...args: unknown[]): Promise<void>
+  downloadsGetPathMappings(configId: string): Promise<Record<string, unknown>[]>
+  downloadsAddPathMapping(configId: string, sourcePath: string, destPath: string): Promise<Record<string, unknown>>
+  downloadsRemovePathMapping(id: string): Promise<void>
+  downloadsPreviewNamingTemplate(template: string, title: string): Promise<{ valid: boolean; result?: string }>
+
+  // ISO install (legacy)
+  installGame(isoPath: string, targetDir: string, gameTitle: string): Promise<Record<string, unknown>>
+  selectDirectory(): Promise<string | null>
+  selectIso(): Promise<string | null>
+  mountIso(path: string): Promise<{ setupPath?: string }>
+  dismountIso(path: string): Promise<void>
+  applyCrack(...args: unknown[]): Promise<void>
+  launchSetup(path: string): Promise<void>
+
+  // Legacy game management (Record-style)
+  saveLocalGamesMapEntry(mediaId: string, game: Record<string, unknown>): Promise<void>
+  updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void>
 
   // AI model management
   aiGetStatus: () => Promise<AiModelStatus>

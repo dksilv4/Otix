@@ -43,7 +43,7 @@ function preserveInstallStatus(games: LocalGame[]): LocalGame[] {
 
 // ── Async IPC fetchers (single source of truth: SQLite) ──────────
 
-export async function fetchGames(filter?: unknown): Promise<LocalGame[]> {
+export async function fetchGames(filter?: Record<string, unknown>): Promise<LocalGame[]> {
   if (!hasDesktopAPI()) return [];
   const api = getDesktopAPI()!;
   const games = filter ? await api.getScannedGamesFiltered(filter) : await api.getScannedGames();
@@ -57,10 +57,10 @@ export async function fetchGameById(id: string): Promise<LocalGame | null> {
   return api.getGameById(id);
 }
 
-export async function fetchGameCount(filter?: unknown): Promise<number> {
+export async function fetchGameCount(filter?: Record<string, unknown>): Promise<number> {
   if (!hasDesktopAPI()) return 0;
   const api = getDesktopAPI()!;
-  return api.getGameCount(filter || {});
+  return api.getGameCount(filter || {} as Record<string, unknown>);
 }
 
 export async function fetchScanPaths(): Promise<{ game: string[]; iso: string[] }> {
@@ -191,7 +191,7 @@ export function setLocalGamesMapEntry(mediaId: string, game: LocalGame | null): 
 
 // ── Suggestions (forwarded to desktop service) ────────────────────
 
-export async function acceptSuggestionOnServer(gameId: string, suggestion: unknown): Promise<void> {
+export async function acceptSuggestionOnServer(gameId: string, suggestion: Record<string, unknown>): Promise<void> {
   if (!hasDesktopAPI()) return;
   await getDesktopAPI()!.acceptSuggestion(gameId, suggestion);
   invalidateCache();
