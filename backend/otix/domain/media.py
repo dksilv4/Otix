@@ -74,6 +74,12 @@ class MediaItem(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),
         CheckConstraint("completeness_score >= 0 AND completeness_score <= 1", name="ck_completeness_score"),
+        Index(
+            "ix_media_items_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
     # Type-specific backrefs
