@@ -100,14 +100,14 @@ const DkMediaCard = memo(function DkMediaCard({
 
       {/* Type Badge */}
       {showTypeBadge && (
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-3 left-3">
           <span
             className={cn(
-              'inline-flex items-center p-1.5 rounded-full text-white',
+              'inline-flex items-center p-2 rounded-full text-white',
               MEDIA_TYPE_COLOR[mediaType] ?? 'bg-muted-foreground',
             )}
           >
-            {TypeIcon && <TypeIcon className="h-3 w-3" />}
+            {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
           </span>
         </div>
       )}

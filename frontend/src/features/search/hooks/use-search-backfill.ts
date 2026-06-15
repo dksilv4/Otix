@@ -12,7 +12,10 @@ export function useSearchBackfill(
   const polledIdsRef = useRef<Set<string>>(new Set())
 
   const { data: pollData } = useQuery({
-    ...mediaQueries.pollSearch(query, currentIds),
+    ...mediaQueries.pollSearch({
+      query,
+      knownIds: Array.from(currentIds).join(','),
+    }),
     enabled: !!query && currentIds.size > 0 && hasMore,
   })
 
