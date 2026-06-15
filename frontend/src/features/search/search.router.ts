@@ -9,11 +9,13 @@ export function createSearchRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => rootRoute,
     path: '/search',
     component: SearchPage,
-    validateSearch: (search: Record<string, unknown>) => ({
-      q: (search.q as string) || '',
-      type: (search.type as string) || 'all',
-      sort: (search.sort as string) || '',
-    }),
+    validateSearch: (search: Record<string, unknown>) => {
+      const result: Record<string, string> = {}
+      if (search.q) result.q = search.q as string
+      if (search.type && search.type !== 'all') result.type = search.type as string
+      if (search.sort) result.sort = search.sort as string
+      return result
+    },
   })
 
   return [searchRoute]

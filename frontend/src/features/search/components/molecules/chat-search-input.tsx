@@ -55,11 +55,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    const currentDisplay = inputValue.replace(MEDIA_TYPE_REGEX, '').trimStart()
-    if (value !== currentDisplay) {
-      setInputValue(value)
-    }
-  }, [value, inputValue])
+    setInputValue((current) => {
+      const currentDisplay = current.replace(MEDIA_TYPE_REGEX, '').trimStart()
+      if (value !== currentDisplay) {
+        return value
+      }
+      return current
+    })
+  }, [value])
 
   const parsedType = useMemo(() => {
     const match = inputValue.match(MEDIA_TYPE_REGEX)

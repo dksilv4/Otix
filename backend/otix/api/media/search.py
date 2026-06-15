@@ -9,7 +9,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import (
@@ -38,19 +38,23 @@ from otix.schemas.media import (
     LocalGameMatchResponse,
     MediaItemListResponse,
     MediaItemSummary,
+    PersonSearchResult,
     SeedFromTitlesRequest,
     SeedFromTitlesResponse,
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
+    StructuredSearchResponse,
     SyncLocalGamesRequest,
     SyncLocalGamesResponse,
     TrackSearchResult,
 )
+from otix.lib.levels import compute_level_info
 from otix.services.company_service import CompanyService
 from otix.services.external_id_service import ExternalIDService
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService, should_exclude_adult
+from otix.services.people_service import PeopleService
 from otix.services.search_log_service import log_search
 from otix.tasks.sync.search import BACKFILL_RESULT_THRESHOLD as BACKFILL_THRESHOLD
 
@@ -436,6 +440,137 @@ async def search_media(
             summary.user_interactions = UserInteractionState(**state)
 
     return response
+
+
+@media_router.get("/search/grouped", response_model=StructuredSearchResponse)
+async def search_grouped(
+    q: str = Query(..., min_length=1, description="Search query"),
+    media_type_limit: int = Query(10, ge=1, le=25),
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> StructuredSearchResponse:
+    """Structured search — results grouped by media_type with tracks, people, and users.
+
+    Runs per-type searches concurrently for a complete overview of all result
+    categories in a single response. The frontend renders each group as its
+    own carousel or section.
+    """
+    exclude_adult = should_exclude_adult(current_user)
+
+    async def _search_type(mt: str) -> tuple[str, list[MediaItemSummary], int]:
+        async with async_session() as session:
+            svc = MediaService(session)
+            items, total, _ = await svc.search_media(
+                query_str=q,
+                media_type=mt,
+                page=1,
+                page_size=media_type_limit,
+                exclude_adult=exclude_adult,
+            )
+            return mt, [MediaItemSummary.model_validate(i) for i in items], total
+
+    async def _search_tracks_() -> list[TrackSearchResult]:
+        async with async_session() as session:
+            svc = MediaService(session)
+            tracks = await svc.search_tracks(query_str=q, limit=20)
+
+        track_ids = [t.id for t in tracks]
+        spotify_id_map: dict[str, str] = {}
+        if track_ids:
+            eid_by_entity = await ExternalIDService(db).batch_find_by_entity_ids("track", track_ids)
+            for entity_id, pairs in eid_by_entity.items():
+                for provider, external_id in pairs:
+                    if provider == "spotify":
+                        spotify_id_map[entity_id] = external_id
+
+        results: list[TrackSearchResult] = []
+        for t in tracks:
+            album_item = t.album.media_item
+            artist_name = None
+            if album_item.credits:
+                artist_credit = next(
+                    (c for c in album_item.credits if c.role in ("artist", "primary") and c.person),
+                    album_item.credits[0] if album_item.credits[0].person else None,
+                )
+                if artist_credit and artist_credit.person:
+                    artist_name = artist_credit.person.name
+            results.append(
+                TrackSearchResult(
+                    id=t.id,
+                    title=t.title,
+                    track_number=t.track_number,
+                    disc_number=t.disc_number,
+                    duration_ms=t.duration_ms,
+                    preview_url=t.preview_url,
+                    spotify_id=spotify_id_map.get(t.id),
+                    avg_rating=t.avg_rating,
+                    rating_count=t.rating_count,
+                    album_id=t.album.media_item_id,
+                    album_title=album_item.title,
+                    album_poster_url=album_item.poster_url,
+                    album_artist_name=artist_name,
+                    album_slug=album_item.slug,
+                )
+            )
+        return results
+
+    async def _search_people_() -> list[PersonSearchResult]:
+        async with async_session() as session:
+            svc = PeopleService(session)
+            people = await svc.search_people(query_str=q, limit=10)
+            return [PersonSearchResult.model_validate(p) for p in people]
+
+    async def _search_users_() -> list[UserSearchResult]:
+        async with async_session() as session:
+            from otix.schemas.user import UserSearchResult as UserSearchResultSchema
+
+            stmt = (
+                select(User)
+                .where(User.username.ilike(f"%{q}%"), User.is_active.is_(True))
+                .order_by(User.username)
+                .limit(10)
+            )
+            result = await session.scalars(stmt)
+            items = []
+            for user in list(result):
+                gamification = compute_level_info(user.total_xp)
+                items.append(
+                    UserSearchResultSchema(
+                        id=user.id,
+                        username=user.username,
+                        avatar_url=user.avatar_url,
+                        bio=user.bio,
+                        level=gamification["level"],
+                        level_title=gamification["level_title"],
+                        is_admin=user.is_admin,
+                    )
+                )
+            return items
+
+    # Run all searches concurrently
+    type_results, tracks, people, users = await asyncio.gather(
+        asyncio.gather(*[_search_type(mt) for mt in ("movie", "show", "game", "music")]),
+        _search_tracks_(),
+        _search_people_(),
+        _search_users_(),
+    )
+
+    grouped: dict[str, list[MediaItemSummary]] = {"movie": [], "show": [], "game": [], "music": []}
+    total_all = 0
+    for mt, items, type_total in type_results:
+        grouped[mt] = items
+        total_all += type_total
+
+    return StructuredSearchResponse(
+        movies=grouped["movie"],
+        shows=grouped["show"],
+        games=grouped["game"],
+        music=grouped["music"],
+        tracks=tracks,
+        people=people,
+        users=users,
+        total=total_all,
+    )
 
 
 @media_router.post("/match-local-games")
