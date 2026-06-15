@@ -262,6 +262,31 @@ export interface MediaListResponse {
   backfillPending?: boolean
 }
 
+export interface PersonSearchResult {
+  id: string
+  name: string
+  photoUrl: string | null
+}
+
+export interface StructuredSearchResponse {
+  movies: MediaItemSummary[]
+  shows: MediaItemSummary[]
+  games: MediaItemSummary[]
+  music: MediaItemSummary[]
+  tracks: TrackSearchResult[]
+  people: PersonSearchResult[]
+  users: Array<{
+    id: string
+    username: string
+    avatarUrl: string | null
+    bio: string | null
+    level: number
+    levelTitle: string
+    isAdmin: boolean
+  }>
+  total: number
+}
+
 export const mediaQueries = {
   detail: (mediaType: string, id: string) =>
     queryOptions({
@@ -370,6 +395,19 @@ export const mediaQueries = {
       initialPageParam: 1,
       staleTime: 1000 * 60 * 5,
       enabled: params.query.length > 0,
+    }),
+
+  structuredSearch: (query: string) =>
+    queryOptions({
+      queryKey: ['media', 'search', 'structured', query],
+      queryFn: async () => {
+        const { data } = await apiClient.get<StructuredSearchResponse>('/media/search/grouped', {
+          params: { q: query, media_type_limit: 10 },
+        })
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+      enabled: query.length > 0,
     }),
 
   pollSearch: (params: Omit<SearchParams, 'page'> & { knownIds: string }) =>

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.interaction import UserInteractionState
+from otix.schemas.user import UserSearchResult
 
 # ── Nested relation schemas ──────────────────────────────────────
 
@@ -146,6 +147,29 @@ class MediaItemListResponse(PaginatedResponse):
     tracks: list[TrackSearchResult] = Field(default_factory=list)
     total: int | None = None
     backfill_pending: bool = False
+
+
+class PersonSearchResult(BaseModel):
+    """Minimal person schema for grouped search results."""
+
+    id: str
+    name: str
+    photo_url: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class StructuredSearchResponse(BaseModel):
+    """Search results grouped by type, with tracks, people, and users."""
+
+    movies: list[MediaItemSummary] = Field(default_factory=list)
+    shows: list[MediaItemSummary] = Field(default_factory=list)
+    games: list[MediaItemSummary] = Field(default_factory=list)
+    music: list[MediaItemSummary] = Field(default_factory=list)
+    tracks: list[TrackSearchResult] = Field(default_factory=list)
+    people: list[PersonSearchResult] = Field(default_factory=list)
+    users: list[UserSearchResult] = Field(default_factory=list)
+    total: int = 0
 
 
 class ExternalGameResult(BaseModel):
