@@ -123,3 +123,42 @@ class CompanyService:
         await self.session.delete(rating)
         await self.session.flush()
         return True
+
+    async def search_companies(
+        self,
+        query_str: str,
+        limit: int = 50,
+        query_embedding: list[float] | None = None,
+    ) -> list[Company]:
+        from sqlalchemy import union
+
+        fts_q = select(Company.id).where(Company.name.op("%")(query_str), Company.embedding.isnot(None))
+        branches = [fts_q]
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_q = (
+                select(Company.id)
+                .where(Company.embedding.isnot(None))
+                .order_by(Company.embedding.cosine_distance(query_embedding))
+                .limit(limit)
+            )
+            branches.append(vector_q)
+
+        matched_ids = union(*branches).subquery()
+
+        base_q = select(Company).where(
+            Company.id.in_(select(matched_ids)),
+            Company.embedding.isnot(None),
+        )
+
+        sim = func.similarity(Company.name, query_str)
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_sim = func.coalesce(1 - Company.embedding.cosine_distance(query_embedding), 0)
+        else:
+            vector_sim = 0
+
+        order = (sim * 5 + vector_sim * 5).desc()
+        q = base_q.order_by(order).limit(limit)
+
+        result = await self.session.scalars(q)
+        return list(result)
+

@@ -46,6 +46,18 @@ async def lifespan(app: FastAPI) -> Any:
 
     await get_redis()
 
+    # Pre-warm query embedding service in the background
+    async def pre_warm_embedding():
+        try:
+            from otix.api.media._utils import _embed_query
+            logger.info("pre-warming embedding service...")
+            await _embed_query("warmup")
+            logger.info("embedding service warmed up successfully")
+        except Exception:
+            logger.exception("failed to pre-warm embedding service")
+
+    asyncio.create_task(pre_warm_embedding())
+
     yield
 
     await close_redis()
