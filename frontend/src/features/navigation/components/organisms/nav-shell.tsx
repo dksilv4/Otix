@@ -25,6 +25,7 @@ function NavShellInner({ children, isPinned, isSidebarOpen, onToggleSidebar }: N
   )
 }
 
+/** Top-level navigation layout wrapper providing pill navigation, sidebar, and routing context. */
 export function NavShell({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) {
   return (
     <NavigationProvider>

@@ -7,6 +7,7 @@ const iconBg = cn(
   "bg-[var(--dk-surface-ghost-active)]",
 )
 
+/** Atom navigation link with icon and label for the sidebar. */
 export function NavLink({ to, icon, label, params }: { to: string; icon: React.ReactNode; label: string; params?: Record<string, string> }) {
   const location = useLocation()
   const { close } = useNavigation()

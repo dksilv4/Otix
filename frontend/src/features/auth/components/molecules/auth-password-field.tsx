@@ -14,6 +14,7 @@ interface PasswordFieldProps {
   className?: string
 }
 
+/** Password input with visibility toggle and error display. */
 export const PasswordField = ({
   id: idProp,
   name,

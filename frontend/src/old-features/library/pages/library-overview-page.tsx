@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { LayoutDashboardIcon } from "lucide-react"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/providers/auth"
 import { getConnectedPlatforms } from "../platforms"
 import type { PlatformDefinition } from "../platforms"
 import { LocalGamesOverviewSection } from "../molecules/local-games-overview-section"

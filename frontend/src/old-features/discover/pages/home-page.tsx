@@ -8,7 +8,7 @@ import { DiscoverHero } from '@/old-features/discover/organisms/discover-hero'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 import { cn } from '@/lib/utils'
 import { MediaSection } from '@/old-features/discover'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/providers/auth'
 import {
   User,
   ArrowRight,

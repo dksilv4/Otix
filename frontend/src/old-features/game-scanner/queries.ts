@@ -1,6 +1,6 @@
 // frontend/src/features/game-scanner/queries.ts
 import { useMutation } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api-client";
+import { apiClient } from "@/lib/api/client";
 import type { LocalGame } from "./types";
 
 interface MatchResult {

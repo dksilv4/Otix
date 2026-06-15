@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { interactionKeys } from './interaction-keys'
 import { mediaKeys } from '@/old-features/media/media-keys'
 import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@/old-features/media/media-queries'

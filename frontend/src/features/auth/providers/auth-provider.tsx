@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { apiClient } from '@/lib/api-client'
-import { queryClient } from '@/lib/query-client'
+import { apiClient } from '@/lib/api/client'
+import { queryClient } from '@/lib/query/client'
 import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
 import { AuthContext } from '@auth/hooks/use-auth'
 import { useDeepLink } from '@auth/hooks/use-deep-link'

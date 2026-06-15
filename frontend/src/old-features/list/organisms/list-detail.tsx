@@ -16,12 +16,12 @@ import {
 } from "lucide-react"
 import "./list-detail.scss"
 import { cn } from "@/lib/utils"
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api/client"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { SearchField } from "@ui/molecules/search-field"
 import { DkTabs, DkTabList, DkTab } from "@/old-features/dk-ui/molecules/tabs"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/providers/auth"
 import { type MediaListResponse } from "@/old-features/media/media-queries"
 import {
  useListDetail,

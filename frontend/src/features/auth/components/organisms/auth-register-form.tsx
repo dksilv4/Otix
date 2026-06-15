@@ -10,6 +10,7 @@ interface RegisterFormProps {
   onSuccess: () => void
 }
 
+/** Registration form organism with email, username, date of birth, and password fields. */
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const { register } = useAuth()
   const [email, setEmail] = useState('')

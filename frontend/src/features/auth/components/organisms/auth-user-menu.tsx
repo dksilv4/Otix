@@ -4,23 +4,35 @@ import { LogOut, User, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@auth'
 import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
+import { usePanelContext } from '@activity/providers/panel-context'
 
+/** User avatar trigger with dropdown containing profile link and sign out. */
 export const UserMenu = ({ bare }: { bare?: boolean }) => {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const { setUserMenuOpen } = usePanelContext()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const toggle = useCallback(() => {
+    setOpen(prev => {
+      const next = !prev
+      setUserMenuOpen(next)
+      return next
+    })
+  }, [setUserMenuOpen])
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') setOpen(false)
-  }, [])
+    if (e.key === 'Escape') { setOpen(false); setUserMenuOpen(false) }
+  }, [setUserMenuOpen])
 
   const handleClickOutside = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.closest('[data-user-menu-trigger]')) return
     if (containerRef.current && !containerRef.current.contains(target)) {
       setOpen(false)
+      setUserMenuOpen(false)
     }
-  }, [])
+  }, [setUserMenuOpen])
 
   useEffect(() => {
     if (!open) return
@@ -78,7 +90,7 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
       <button
         type="button"
         data-user-menu-trigger
-        onClick={() => setOpen(!open)}
+        onClick={() => toggle()}
         className={
           bare
             ? 'cursor-pointer rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] flex h-8 w-8 items-center justify-center'
@@ -98,16 +110,12 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute right-0 top-full z-[9999] mt-2 w-56 flex-col gap-0.5 rounded-[1.5rem] p-3 backdrop-blur-xl"
-            style={{
-              backgroundColor: 'var(--dk-surface-overlay)',
-              boxShadow: 'var(--dk-shadow-glass)',
-            }}
+            className="absolute right-0 top-full z-[9999] mt-2 w-[300px] flex-col gap-0.5 p-3 dk-surface"
           >
             <Link
               to="/u/$username"
               params={{ username: user?.username || '' }}
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); setUserMenuOpen(false) }}
               className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
@@ -127,7 +135,7 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
             <button
               type="button"
               onClick={() => {
-                setOpen(false)
+                setOpen(false); setUserMenuOpen(false)
                 logout()
               }}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"

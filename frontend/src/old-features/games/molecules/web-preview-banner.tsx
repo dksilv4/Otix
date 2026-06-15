@@ -1,6 +1,6 @@
 /* ── WebPreviewBanner — shown when running outside Electron desktop app ── */
 
-import { isDesktop } from '@/lib/desktop-api'
+import { isDesktop } from '@/lib/desktop/api'
 
 export function WebPreviewBanner({ id }: { id?: string }) {
   const desktop = isDesktop()

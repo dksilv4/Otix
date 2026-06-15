@@ -1,5 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
 
+/** Fixed-position back-navigation button for auth pages. (molecule) */
 export function AuthBackButton() {
   const canGoBack = typeof window !== 'undefined' && window.history.length > 1
 

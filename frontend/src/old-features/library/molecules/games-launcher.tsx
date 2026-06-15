@@ -5,7 +5,7 @@ import {
 } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 import { cn } from "@/lib/utils"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop-api"
+import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
 import { useLocalGames, useRejectSuggestion } from "@/old-features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/old-features/game-scanner/queries"
 import { useGameDetail, usePopularGames } from "@/old-features/games/games-queries"

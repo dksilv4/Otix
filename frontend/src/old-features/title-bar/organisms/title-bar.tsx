@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useDesktopPlatform } from '@/lib/desktop-platform'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { cn } from '@/lib/utils'
 import { Minus, Square, Maximize2, X } from 'lucide-react'
 import './title-bar.scss'

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react"
 import { ListIcon, PlusIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/providers/auth"
 import {
  useUserLists,
  useAddToList,

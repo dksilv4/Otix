@@ -10,7 +10,7 @@ import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import { useCreateProposal, useMediaAssets, ADMIN_XP, type ImageOverrideItem, type MediaAsset } from '../admin-edit-queries'
 import type { MediaItemDetail } from '@/old-features/media/media-queries'
 import { PositionModal } from '@/old-features/settings/molecules/position-modal'
-import { encodePositionInUrl } from '@/lib/image-position'
+import { encodePositionInUrl } from '@/lib/utils/image-position'
 
 import { showXPToast } from '@/old-features/dk-ui/atoms/xp-toast'
 import { Move, Trash2, Check, Image, Loader2 } from 'lucide-react'

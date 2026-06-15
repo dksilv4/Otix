@@ -1,5 +1,4 @@
 import { createContext, useContext } from 'react'
-import type { ReactNode } from 'react'
 
 export interface NavigationContextValue {
   isOpen: boolean

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
-import { getDesktopAPI } from '@/lib/desktop-api';
+import { getDesktopAPI } from '@/lib/desktop/api';
 import { useEffect } from 'react';
 
 type Listener = () => void;

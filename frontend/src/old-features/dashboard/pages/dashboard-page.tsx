@@ -4,10 +4,10 @@ import { useNavigate, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format, subDays, addDays, isToday, parseISO } from 'date-fns'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/providers/auth'
 import { userQueries, type DailyActivityResponse } from '@/old-features/user/user-queries'
 import { Carousel } from '@ui/molecules/carousel'
-import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
+import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import {
   Play, Star, Eye, Tv, Flame,
   Bookmark, Smile, ChevronLeft, ChevronRight,

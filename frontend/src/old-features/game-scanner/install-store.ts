@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { InstallProgress, InstallResult, InstallPhase } from './types'
-import type { InstallProgressEvent } from '@/lib/desktop-api'
+import type { InstallProgressEvent } from '@/lib/desktop/api'
 import { hasDesktopAPI } from './storage'
 
 const LS_KEY = 'otix_game_installs'

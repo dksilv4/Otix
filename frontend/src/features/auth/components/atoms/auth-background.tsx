@@ -1,3 +1,4 @@
+/** Animated gradient background canvas for auth pages. (atom) */
 export const AuthBackground = () => (
   <div
     className="fixed inset-0 overflow-hidden"

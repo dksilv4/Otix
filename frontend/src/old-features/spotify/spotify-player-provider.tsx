@@ -1,8 +1,8 @@
 // TODO: Review this file
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { useAuth } from '@/lib/auth'
-import { apiClient } from '@/lib/api-client'
-import { isDesktop } from '@/lib/desktop-api'
+import { useAuth } from '@/lib/providers/auth'
+import { apiClient } from '@/lib/api/client'
+import { isDesktop } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 
