@@ -1,29 +1,87 @@
-import { useState } from 'react'
+import { lazy, useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useSearch } from '@tanstack/react-router'
+import { useSearch, useNavigate } from '@tanstack/react-router'
+import { cn } from '@/lib/utils'
 import { SearchInput } from '@search/components/molecules/chat-search-input'
 import { SearchResults } from '@search/components/organisms/search-results'
 import { SearchSortBar } from '@search/components/molecules/search-sort-bar'
 import type { SortValue, TypeValue } from '@search/types'
-import { useDebouncedInput } from '@search/hooks/use-debounced-input'
+
+const AnimatedShaderBackground = lazy(() => import('@/components/animated-shader-background'))
 
 export function SearchPage() {
-  const search = useSearch({ from: '/search' }) as Record<string, unknown>
-  const urlQ = (search.q as string) || ''
-  const urlType = (search.type as string) || 'all'
-  const urlSort = (search.sort as string) || ''
+  const search = useSearch({ from: '/search' })
+  const navigate = useNavigate({ from: '/search' })
 
-  // Search filter state
-  const [searchType, setSearchType] = useState<TypeValue>(urlType as TypeValue)
-  const [searchSort, setSearchSort] = useState<SortValue>((urlSort as SortValue) || 'relevance')
+  const urlQ = search.q ?? ''
+  const urlType = (search.type ?? 'all') as TypeValue
+  const urlSort = (search.sort ?? '') as SortValue
+
+  // Local input state for responsive typing
   const [inputValue, setInputValue] = useState(urlQ)
+  const [searchType, setSearchType] = useState<TypeValue>(urlType)
+  const [searchSort, setSearchSort] = useState<SortValue>(urlSort)
 
-  // Debounced search input for the SearchResults component
-  const debounced = useDebouncedInput(inputValue, () => {}, 300)
+  // Sync URL → local state when URL changes externally (back/forward nav)
+  const prevUrlQRef = useRef(urlQ)
+  useEffect(() => {
+    if (prevUrlQRef.current !== urlQ) {
+      prevUrlQRef.current = urlQ
+      setInputValue(urlQ)
+      setSearchType(urlType)
+      setSearchSort(urlSort)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQ, urlType, urlSort])
 
-  // The active search query: prefer the debounced input value when available,
-  // falling back to the URL query parameter.
-  const activeQuery = debounced.displayValue || urlQ || ''
+  // Navigation helper
+  const updateUrl = (q: string) => {
+    void navigate({
+      search: {
+        q: q || undefined,
+        type: searchType !== 'all' ? searchType : undefined,
+        sort: searchSort || undefined,
+      },
+      replace: true,
+    })
+  }
+
+  // SearchInput fires onChange after its internal debounce settles
+  const handleInputChange = (val: string) => {
+    setInputValue(val)
+    updateUrl(val)
+  }
+
+  // Immediate URL update on Enter / arrow click
+  const handleSubmit = () => {
+    if (inputValue) updateUrl(inputValue)
+  }
+
+  const handleTypeChange = (type: TypeValue) => {
+    setSearchType(type)
+    void navigate({
+      search: {
+        q: urlQ || undefined,
+        type: type !== 'all' ? type : undefined,
+        sort: searchSort || undefined,
+      },
+      replace: true,
+    })
+  }
+
+  const handleSortChange = (sort: SortValue) => {
+    setSearchSort(sort)
+    void navigate({
+      search: {
+        q: urlQ || undefined,
+        type: searchType !== 'all' ? searchType : undefined,
+        sort: sort || undefined,
+      },
+      replace: true,
+    })
+  }
+
+  const hasSearch = !!urlQ
 
   return (
     <div
@@ -38,31 +96,50 @@ export function SearchPage() {
         />
       </Helmet>
 
-      <div className="mx-auto flex w-full max-w-[800px] flex-col px-4 pt-6">
+      <AnimatedShaderBackground mode="idle" />
+
+      <div className="relative z-10 mx-auto flex w-full flex-1 flex-col">
+        {/* Push input to center when empty */}
+        {!hasSearch && <div className="flex-1" />}
+
         {/* Search input */}
-        <SearchInput
-          value={inputValue}
-          onChange={setInputValue}
-          placeholder="Search movies, shows, games, music..."
-        />
-
-        {/* Type / sort filters */}
-        <SearchSortBar
-          type={searchType}
-          sort={searchSort}
-          onTypeChange={setSearchType}
-          onSortChange={setSearchSort}
-          className="mt-4"
-        />
-
-        {/* Search results */}
-        <div className="mt-6 flex-1">
-          <SearchResults
-            query={activeQuery}
-            type={searchType}
-            sort={searchSort}
-          />
+        <div className={cn('w-full px-4', hasSearch ? 'pt-6' : '')}>
+          <div className={cn('mx-auto', hasSearch ? 'max-w-[700px]' : 'w-full max-w-[600px]')}>
+            <SearchInput
+              value={inputValue}
+              onChange={handleInputChange}
+              onSubmit={handleSubmit}
+              placeholder="Search movies, shows, games, music..."
+            />
+          </div>
         </div>
+
+        {hasSearch ? (
+          <>
+            {/* Type / sort filters */}
+            <div className="mx-auto w-full max-w-[700px] px-4">
+              <SearchSortBar
+                type={searchType}
+                sort={searchSort}
+                onTypeChange={handleTypeChange}
+                onSortChange={handleSortChange}
+                className="mt-4"
+              />
+            </div>
+
+            {/* Search results */}
+            <div className="mt-6 flex-1">
+              <SearchResults
+                query={urlQ}
+                type={searchType}
+                sort={searchSort}
+              />
+            </div>
+          </>
+        ) : (
+          /* Push input to center when empty */
+          <div className="flex-1" />
+        )}
       </div>
     </div>
   )
