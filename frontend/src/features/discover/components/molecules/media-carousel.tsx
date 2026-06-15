@@ -7,12 +7,18 @@ interface MediaCarouselProps {
   items: MediaItemSummary[]
   isLoading?: boolean
   className?: string
+  title?: string
+  viewAllLink?: string
+  viewAllSearch?: Record<string, any>
 }
 
 export const MediaCarousel = memo(function MediaCarousel({
   items,
   isLoading = false,
   className,
+  title,
+  viewAllLink,
+  viewAllSearch,
 }: MediaCarouselProps) {
   return (
     <Carousel
@@ -21,6 +27,9 @@ export const MediaCarousel = memo(function MediaCarousel({
       gap={12}
       showArrows
       isLoading={isLoading}
+      title={title}
+      viewAllLink={viewAllLink}
+      viewAllSearch={viewAllSearch}
     >
       {items.map((item) => (
         <DiscoverMediaCard key={item.id} item={item} />

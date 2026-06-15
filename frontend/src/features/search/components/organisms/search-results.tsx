@@ -73,18 +73,109 @@ interface SearchResultsProps {
 function SectionHeader({ title, count }: { title: string; count: number }) {
   return (
     <div className="mb-4 flex items-center gap-2 px-4 lg:px-8">
-      <h2 className="text-lg font-semibold text-foreground/80">{title}</h2>
-      <span className="text-sm text-muted-foreground/50">
-        {count.toLocaleString()} result{count !== 1 ? 's' : ''}
+      <h2 className="text-xl font-bold text-white/90">{title}</h2>
+      <span className="text-sm text-muted-foreground/60 mt-1">
+        &middot; {count.toLocaleString()} result{count !== 1 ? 's' : ''}
       </span>
     </div>
   )
 }
 
+function renderBestResultItem(item: any) {
+  const mediaType = item.mediaType
+
+  if (mediaType === 'user') {
+    return (
+      <Link
+        to="/u/$username"
+        params={{ username: item.username }}
+        className="group relative flex w-full aspect-[2/3] flex-col items-center justify-center rounded-xl bg-white/[0.03] p-6 text-center ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
+      >
+        <div className="flex flex-col items-center justify-center">
+          {item.avatarUrl ? (
+            <Image
+              src={item.avatarUrl}
+              alt={item.username}
+              className="h-24 w-24 rounded-full object-cover ring-2 ring-white/10"
+              fallback={
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/[0.04]">
+                  <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
+                </div>
+              }
+            />
+          ) : (
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/[0.04]">
+              <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
+            </div>
+          )}
+          <div className="mt-4">
+            {item.levelTitle && (
+              <p className="text-[10px] tracking-wider text-muted-foreground/40 uppercase">{item.levelTitle}</p>
+            )}
+            <h3 className="mt-1 max-w-[180px] truncate text-base font-bold text-foreground/90">
+              {item.username}
+            </h3>
+            <p className="text-[10px] text-muted-foreground/50 mt-1 uppercase font-semibold">User</p>
+          </div>
+        </div>
+      </Link>
+    )
+  }
+
+  if (mediaType === 'person') {
+    return (
+      <PersonCard
+        id={item.id}
+        name={item.name}
+        imageUrl={item.photoUrl}
+        role="Artist"
+        className="!w-full aspect-[2/3]"
+      />
+    )
+  }
+
+  if (mediaType === 'track') {
+    return (
+      <Link
+        to="/media/music/$mediaId"
+        params={{ mediaId: item.albumId }}
+        className="group relative flex w-full aspect-[2/3] flex-col rounded-xl bg-white/[0.03] p-4 ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
+      >
+        <div className="relative flex-1 w-full overflow-hidden rounded-lg">
+          {item.albumPosterUrl ? (
+            <Image
+              src={item.albumPosterUrl}
+              alt={item.title}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
+              <Music className="h-12 w-12 text-muted-foreground/30" />
+            </div>
+          )}
+          <div className="absolute top-2 left-2 z-10 rounded bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white/95 uppercase">
+            Track
+          </div>
+        </div>
+        <div className="mt-3 shrink-0 text-left w-full">
+          <h3 className="truncate text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
+            {item.title}
+          </h3>
+          <p className="truncate text-xs text-muted-foreground/50">
+            {item.albumArtistName || 'Unknown Artist'}
+          </p>
+        </div>
+      </Link>
+    )
+  }
+
+  return <DiscoverMediaCard item={item} />
+}
+
 export function SearchResults({ query, type, sort }: SearchResultsProps) {
   const isAllTypes = type === 'all'
-  const isPeopleOnly = type === 'people'
-  const isUsersOnly = type === 'users'
+  const isPeopleOnly = type === 'person'
+  const isUsersOnly = type === 'user'
 
   // ── Grouped search (type === 'all') ───────────────────────────────
   const {
@@ -189,11 +280,41 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
           </p>
         )}
 
+        {/* Best Results */}
+        {g?.bestResults && g.bestResults.length > 0 && (
+          <section className="mb-10">
+            <Carousel
+              title="Best Results"
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
+              {g.bestResults.map((item, i) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
+                >
+                  {renderBestResultItem(item)}
+                </motion.div>
+              ))}
+            </Carousel>
+          </section>
+        )}
+
         {/* Users */}
         {g?.users && g.users.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Users" count={g.users.length} />
-            <Carousel minItemWidth={160} gap={12} showArrows>
+            <Carousel
+              title="Users"
+              subtitle={`· ${g.usersCount.toLocaleString()} result${g.usersCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'user', sort }}
+              minItemWidth={160}
+              gap={12}
+              showArrows
+            >
               {g.users.map((user, i) => (
                 <motion.div
                   key={user.id}
@@ -240,8 +361,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* People / Artists */}
         {g?.people && g.people.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Artists" count={g.people.length} />
-            <Carousel minItemWidth={140} gap={12} showArrows>
+            <Carousel
+              title="Artists"
+              subtitle={`· ${g.peopleCount.toLocaleString()} result${g.peopleCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'person', sort }}
+              minItemWidth={140}
+              gap={12}
+              showArrows
+            >
               {g.people.map((person, i) => (
                 <motion.div
                   key={person.id}
@@ -265,7 +393,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Tracks */}
         {g?.tracks && g.tracks.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Tracks" count={g.tracks.length} />
+            <SectionHeader title="Tracks" count={g.tracksCount} />
             <div className="mx-auto max-w-[900px] space-y-1 px-4 lg:px-8">
               {g.tracks.map((track, i) => (
                 <motion.div
@@ -313,8 +441,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Movies */}
         {g?.movies && g.movies.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Movies" count={g.movies.length} />
-            <Carousel minItemWidth={180} gap={16} showArrows className="px-4 lg:px-8">
+            <Carousel
+              title="Movies"
+              subtitle={`· ${g.moviesCount.toLocaleString()} result${g.moviesCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'movie', sort }}
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
               {g.movies.map((item, i) => (
                 <motion.div
                   key={item.id}
@@ -332,8 +467,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Shows */}
         {g?.shows && g.shows.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Shows" count={g.shows.length} />
-            <Carousel minItemWidth={180} gap={16} showArrows className="px-4 lg:px-8">
+            <Carousel
+              title="Shows"
+              subtitle={`· ${g.showsCount.toLocaleString()} result${g.showsCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'show', sort }}
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
               {g.shows.map((item, i) => (
                 <motion.div
                   key={item.id}
@@ -351,8 +493,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Games */}
         {g?.games && g.games.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Games" count={g.games.length} />
-            <Carousel minItemWidth={180} gap={16} showArrows className="px-4 lg:px-8">
+            <Carousel
+              title="Games"
+              subtitle={`· ${g.gamesCount.toLocaleString()} result${g.gamesCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'game', sort }}
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
               {g.games.map((item, i) => (
                 <motion.div
                   key={item.id}
@@ -370,8 +519,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Music */}
         {g?.music && g.music.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Music" count={g.music.length} />
-            <Carousel minItemWidth={180} gap={16} showArrows className="px-4 lg:px-8">
+            <Carousel
+              title="Music"
+              subtitle={`· ${g.musicCount.toLocaleString()} result${g.musicCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, type: 'music', sort }}
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
               {g.music.map((item, i) => (
                 <motion.div
                   key={item.id}
@@ -499,47 +655,6 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         </MediaGrid>
       )}
 
-      {/* Tracks (returned alongside paginated results) */}
-      {tracks.length > 0 && (
-        <section className="mb-8 mt-8">
-          <SectionHeader title="Tracks" count={tracks.length} />
-          <div className="mx-auto max-w-[900px] space-y-1 px-4 lg:px-8">
-            {tracks.map((track, i) => (
-              <motion.div
-                key={track.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
-              >
-                <Link
-                  to="/media/$mediaType/$mediaId"
-                  params={{ mediaType: 'music', mediaId: track.albumId }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.04]"
-                >
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded">
-                    {track.albumPosterUrl ? (
-                      <Image src={track.albumPosterUrl} alt={track.albumTitle} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
-                        <Music className="h-5 w-5 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-sm font-medium text-foreground/80">{track.title}</h3>
-                    <p className="truncate text-xs text-muted-foreground/50">
-                      {track.albumArtistName || 'Unknown Artist'} &mdash; {track.albumTitle}
-                    </p>
-                  </div>
-                  {track.durationMs != null && (
-                    <span className="shrink-0 text-xs text-muted-foreground/40">{formatTrackDuration(track.durationMs)}</span>
-                  )}
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Loading more */}
       {isFetchingNextPage && <SearchSkeleton count={12} />}

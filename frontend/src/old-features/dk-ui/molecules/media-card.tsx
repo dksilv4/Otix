@@ -89,12 +89,19 @@ const DkMediaCard = memo(function DkMediaCard({
         />
       </div>
 
-      {/* Gradient Overlay */}
+      {/* Gradient Overlay — light scrim, poster stays visible */}
       <div
         className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100"
         style={{
-          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.35), transparent)',
-          transition: 'opacity 500ms var(--dk-ease-out)',
+          background: [
+            'linear-gradient(to top,',
+            'rgba(0,0,0,0.55) 0%,',
+            'rgba(0,0,0,0.35) 20%,',
+            'rgba(0,0,0,0.15) 45%,',
+            'rgba(0,0,0,0.04) 70%,',
+            'rgba(0,0,0,0) 100%)',
+          ].join(' '),
+          transition: 'opacity 600ms var(--dk-ease-out)',
         }}
       />
 
@@ -155,10 +162,16 @@ const DkMediaCard = memo(function DkMediaCard({
 
       {/* Caption */}
       <div
-        className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-6 pointer-events-none opacity-0 translate-y-[6px] group-hover:opacity-100 group-hover:translate-y-0"
+        className="absolute bottom-0 left-0 right-0 px-3 pb-3 pt-8 pointer-events-none opacity-0 translate-y-[6px] group-hover:opacity-100 group-hover:translate-y-0"
         style={{
-          transition: 'all 400ms var(--dk-ease-out)',
-          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 60%, transparent)',
+          transition: 'opacity 500ms var(--dk-ease-out), transform 450ms var(--dk-ease-out)',
+          background: [
+            'linear-gradient(to top,',
+            'rgba(0,0,0,0.60) 0%,',
+            'rgba(0,0,0,0.40) 35%,',
+            'rgba(0,0,0,0.10) 70%,',
+            'rgba(0,0,0,0) 100%)',
+          ].join(' '),
         }}
       >
         {subtitle && (

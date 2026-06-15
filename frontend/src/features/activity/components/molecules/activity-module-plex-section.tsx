@@ -1,31 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api/client'
-import { useAuth } from '@/lib/providers/auth'
-import { useFeature } from '@/features/_config'
-import { PlexSessionList } from '../organisms/activity-module-plex'
-import type { PlexSession } from '../organisms/activity-module-plex'
+import { usePlexSessions } from '../../hooks/use-plex-sessions'
+import { ActivityModulePlexList } from '../organisms/activity-module-plex-list'
 import { ActivityModuleSection } from './activity-module-section'
-
-interface PlexSessionsResponse {
-  sessions: PlexSession[]
-}
 
 /** Inline Plex streaming section showing active sessions for the activity panel. */
 export function ActivityModulePlexSection() {
-  const { user: currentUser } = useAuth()
-  const plexEnabled = useFeature('integration:plex')
-
-  const { data: plexSessions = [] } = useQuery({
-    queryKey: ['plex', 'sessions'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<PlexSessionsResponse>('/integrations/plex/sessions')
-      return data.sessions ?? []
-    },
-    refetchInterval: 15000,
-    staleTime: 10000,
-    retry: false,
-    enabled: plexEnabled && !!currentUser?.plexId,
-  })
+  const { data: plexSessions = [] } = usePlexSessions()
 
   if (plexSessions.length === 0) return null
 
@@ -37,7 +16,7 @@ export function ActivityModulePlexSection() {
           Plex &middot; {plexSessions.length} streaming
         </span>
       </div>
-      <PlexSessionList sessions={plexSessions} />
+      <ActivityModulePlexList sessions={plexSessions} />
     </ActivityModuleSection>
   )
 }

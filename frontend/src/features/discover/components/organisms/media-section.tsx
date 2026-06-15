@@ -45,21 +45,15 @@ export const MediaSection = memo(function MediaSection({
       viewport={{ once: true, margin: '-100px' }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between mb-4 px-4 lg:px-8">
-        <h2 className="text-xl font-bold text-white/90">{title}</h2>
-        <Link
-          to="/search"
-          search={{ q: '', type: mediaType, sort: '' }}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-white/80 transition-colors"
-        >
-          View All <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
-
       {showSkeleton ? (
         <MediaSectionSkeleton />
       ) : (
-        <MediaCarousel items={items} />
+        <MediaCarousel
+          items={items}
+          title={title}
+          viewAllLink="/search"
+          viewAllSearch={{ q: '', type: mediaType, sort: '' }}
+        />
       )}
     </motion.section>
   )

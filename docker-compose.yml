@@ -284,11 +284,11 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-    command: celery -A otix.infrastructure.celery worker -Q embedding -c 2 -n otix-embedding@%h --loglevel WARNING
+    command: celery -A otix.infrastructure.celery worker -Q embedding -c 1 -n otix-embedding@%h --loglevel WARNING
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
         reservations:
           memory: 512M
   beat:

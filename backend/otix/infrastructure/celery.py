@@ -109,6 +109,16 @@ _beat_schedule: dict = {
         "task": "maintenance.backfill_embeddings",
         "schedule": crontab(minute="*/5"),
     },
+    # Person embedding backfill (every 5 min until all people have embeddings)
+    "backfill-person-embeddings": {
+        "task": "maintenance.backfill_person_embeddings",
+        "schedule": crontab(minute="*/5"),
+    },
+    # Company embedding backfill (every 5 min until all companies have embeddings)
+    "backfill-company-embeddings": {
+        "task": "maintenance.backfill_company_embeddings",
+        "schedule": crontab(minute="*/5"),
+    },
     # OMDb enrichment scan (every 30 min at off-peak minutes)
     "enrich-omdb": {
         "task": "maintenance.enrich_omdb",

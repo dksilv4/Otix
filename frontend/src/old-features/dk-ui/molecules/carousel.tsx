@@ -1,5 +1,7 @@
 import { type ReactNode, type Ref, Children, forwardRef, useRef, useState, useLayoutEffect, useCallback } from 'react'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
+import { Link } from '@tanstack/react-router'
+import { ArrowRight } from 'lucide-react'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -10,12 +12,29 @@ interface CarouselProps {
   gap?: number
   showArrows?: boolean
   header?: ReactNode
+  title?: string
+  subtitle?: ReactNode
+  viewAllLink?: string
+  viewAllSearch?: Record<string, any>
   isLoading?: boolean
   skeleton?: ReactNode
 }
 
 export const Carousel = forwardRef(function Carousel(
-  { children, className, minItemWidth = 250, gap = 20, showArrows = true, header, isLoading, skeleton }: CarouselProps,
+  {
+    children,
+    className,
+    minItemWidth = 250,
+    gap = 20,
+    showArrows = true,
+    header,
+    title,
+    subtitle,
+    viewAllLink,
+    viewAllSearch,
+    isLoading,
+    skeleton,
+  }: CarouselProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -78,9 +97,33 @@ export const Carousel = forwardRef(function Carousel(
 
   return (
     <div ref={ref} className={cn('relative', className)}>
-      {header && (
-        <div className="relative z-[2] pb-3 px-8">
-          {header}
+      {(title || header) && (
+        <div className="relative z-[2] pb-3 px-8 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {title ? (
+              <>
+                <h2 className="text-xl font-bold text-white/90">{title}</h2>
+                {subtitle && (
+                  <span className="text-sm text-muted-foreground/60 mt-1">
+                    {subtitle}
+                  </span>
+                )}
+              </>
+            ) : (
+              header
+            )}
+          </div>
+          {viewAllLink && (
+            <Link
+              to={viewAllLink as any}
+              search={viewAllSearch}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-active)] transition-colors"
+              style={{ background: 'var(--dk-surface-ghost-hover)' }}
+            >
+              View All
+              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Link>
+          )}
         </div>
       )}
       <div className="relative group/carousel">
