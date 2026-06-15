@@ -9,6 +9,7 @@ interface TwoFactorChallengeProps {
   onCancel: () => void
 }
 
+/** Two-factor authentication TOTP challenge form. */
 export function TwoFactorChallenge({ onSuccess, onCancel }: TwoFactorChallengeProps) {
   const { verifyTwoFactor } = useAuth()
   const [code, setCode] = useState('')

@@ -3,10 +3,11 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from '@tanstack/react-router'
 import { Search, Film, Tv, Gamepad2, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItemSummary } from '@/old-features/media/media-queries'
 
+/** Expandable search input with autocomplete suggestions for media across all types. */
 export function NavSearch() {
  const navigate = useNavigate()
  const location = useLocation()

@@ -1,8 +1,8 @@
 // TODO: Review this file
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api/client"
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from "@/lib/config"
-import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/sse-client"
+import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/api/sse-client"
 import { getScannedGames, setScannedGames } from "@/old-features/game-scanner/storage"
 import { libraryKeys } from "./library-keys"
 

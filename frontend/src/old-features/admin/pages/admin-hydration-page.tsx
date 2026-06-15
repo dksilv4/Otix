@@ -2,7 +2,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link, Navigate } from '@tanstack/react-router'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/providers/auth'
 import { useAdminHydration } from '../admin-queries'
 import { Check, X, Minus, Loader2, AlertTriangle, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'

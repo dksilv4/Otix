@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { DiskSpaceWidget } from '@/old-features/games/molecules/disk-space-widget'
 import { LauncherScanWidget } from '@/old-features/games/molecules/scan-widget'
 

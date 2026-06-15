@@ -1,10 +1,11 @@
 import {OAuthButton} from '@/features/auth'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
-import {openExternal} from '@/lib/open-external'
-import {apiClient} from '@/lib/api-client'
+import {openExternal} from '@/lib/utils/open-external'
+import {apiClient} from '@/lib/api/client'
 import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
+/** TMDb OAuth login button, gated by the auth:oauth:tmdb feature flag. */
 export function TmdbOAuthButton() {
     const enabled = useFeature(TmdbOAuthButton.featureName)
     if (!enabled) return null

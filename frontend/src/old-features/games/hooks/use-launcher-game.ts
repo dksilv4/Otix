@@ -1,6 +1,6 @@
 import { useLocalGame } from '@/old-features/game-scanner/game-queries'
 import { useGameDetail } from '@/old-features/games/games-queries'
-import { hasDesktopAPI } from '@/lib/desktop-api'
+import { hasDesktopAPI } from '@/lib/desktop/api'
 import type { LocalGame } from '@/old-features/games/types'
 
 export function useLauncherGame(gameId: string | undefined) {

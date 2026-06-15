@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 
 export const workoutKeys = {
   all: () => ['workouts'] as const,

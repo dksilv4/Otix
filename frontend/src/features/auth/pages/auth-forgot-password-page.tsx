@@ -6,7 +6,7 @@ import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { AuthHeader } from '@auth/components/molecules/auth-header'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { extractErrorMessage } from '@auth/utils'
 import type { ForgotPasswordPageState } from '@auth/types'
 

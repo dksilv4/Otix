@@ -6,7 +6,7 @@ import { Bell, CheckCheck, UserPlus, UserCheck, UserX, UserMinus, Heart, Message
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useAuth } from '@/old-features/auth'
 import { notificationQueries, useMarkRead, useMarkAllRead, type Notification } from '../notification-queries'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@ui/atoms/skeleton'
 

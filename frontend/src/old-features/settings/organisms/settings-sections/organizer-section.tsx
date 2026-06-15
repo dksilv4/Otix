@@ -1,12 +1,12 @@
 // TODO: Review this file
 import './organizer-section.scss'
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/providers/auth'
 import { DkButton } from '@/old-features/dk-ui/atoms/button'
 import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { useDownloadConfig } from '@/old-features/downloads/use-downloads'
 import { cn } from '@/lib/utils'
-import { isDesktop } from '@/lib/desktop-api'
+import { isDesktop } from '@/lib/desktop/api'
 import { CheckCircle2 } from 'lucide-react'
 
 const NAMING_PRESETS = [

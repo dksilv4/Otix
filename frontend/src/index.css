@@ -354,6 +354,15 @@
   animation: shine 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+/* ── Shared floating surface for dropdowns, panels, and overlays ── */
+.dk-surface {
+  background-color: var(--dk-surface-overlay);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--dk-shadow-glass);
+  border-radius: 1.5rem;
+}
+
 /* ── Prefers reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

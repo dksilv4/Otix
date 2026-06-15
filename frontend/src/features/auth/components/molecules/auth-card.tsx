@@ -5,6 +5,7 @@ interface AuthCardProps {
   className?: string
 }
 
+/** Glass-morphism card container for auth form content. (molecule) */
 export const AuthCard = ({ children, className }: AuthCardProps) => (
   <div
     className={'relative w-full max-w-sm rounded-[2rem] p-8 text-center' + (className ? ' ' + className : '')}

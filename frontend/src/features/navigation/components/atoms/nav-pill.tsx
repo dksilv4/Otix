@@ -5,11 +5,12 @@ interface NavPillProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
 }
 
+/** Atom glass-styled container for the floating navigation pill. */
 export function NavPill({ children, className, style: _style, ...props }: NavPillProps) {
   return (
     <div
       className={cn(
-        "fixed z-[9999] flex items-center rounded-[2rem] gap-0.5",
+        "fixed z-[9999] flex items-center rounded-[2rem] gap-1.5",
         "shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]",
         className,
       )}

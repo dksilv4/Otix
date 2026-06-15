@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+/** Glassmorphism container for grouping OAuth provider buttons. */
 export function OAuthContainer({
   id,
   children,

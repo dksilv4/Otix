@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Brain, Download, Trash2, Loader2, AlertCircle } from 'lucide-react'
-import { useDesktopPlatform } from '@/lib/desktop-platform'
-import type { AiModelStatus } from '@/lib/desktop-api'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
+import type { AiModelStatus } from '@/lib/desktop/api'
 import { cn } from '@/lib/utils'
 
 const AI_STATUS_CFG: Record<AiModelStatus, { dot: string; label: string }> = {

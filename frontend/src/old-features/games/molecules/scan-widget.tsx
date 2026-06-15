@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 export function LauncherScanWidget({ id }: { id?: string }) {

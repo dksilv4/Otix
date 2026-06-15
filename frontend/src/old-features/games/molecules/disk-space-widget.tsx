@@ -1,8 +1,8 @@
 /* ── DiskSpaceWidget — self-contained multi-drive storage usage ── */
 
 import { useState, useEffect } from 'react'
-import { getDesktopAPI } from '@/lib/desktop-api'
-import { useDesktopPlatform } from '@/lib/desktop-platform'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { DriveRow } from '@/old-features/games/atoms/drive-row'
 
 interface DiskInfo {

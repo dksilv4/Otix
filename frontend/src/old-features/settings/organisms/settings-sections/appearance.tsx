@@ -1,9 +1,9 @@
 // TODO: Review this file
 import { useState, useEffect } from 'react'
-import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/shader-quality'
-import { useMotionPreference, MOTION_OPTIONS } from '@/lib/motion-preference'
-import { useLogoPreference, LOGO_VARIANTS, type LogoVariant } from '@/lib/logo-preference'
-import type { ThemeSetting } from '@/lib/theme'
+import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
+import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
+import { useLogoPreference, LOGO_VARIANTS, type LogoVariant } from '@/lib/providers/logo-preference'
+import type { ThemeSetting } from '@/lib/providers/theme'
 import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'

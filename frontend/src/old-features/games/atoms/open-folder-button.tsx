@@ -1,6 +1,6 @@
 /* ── OpenFolderButton — reveals game exe in file explorer ── */
 
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
 import {useLocalGame} from "@/old-features/game-scanner/game-queries.ts";

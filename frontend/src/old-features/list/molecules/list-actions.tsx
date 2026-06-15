@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Heart, Download, X, Copy, Check, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/old-features/auth'
 import {
  useLikeList,
