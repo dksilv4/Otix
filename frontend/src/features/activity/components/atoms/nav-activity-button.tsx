@@ -2,18 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { LayoutGrid, Download, Gamepad2 } from 'lucide-react'
 import { useDownloads } from '@/old-features/downloads/use-downloads'
 import { usePlayer } from '@/old-features/spotify/use-player'
-import type { PlexSession } from '../organisms/activity-module-plex'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
-import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/providers/auth'
 import { cn } from '@/lib/utils'
-import { useFeature } from '@/features/_config'
 import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
 import { notificationQueries } from '@/old-features/notifications/notification-queries'
-
-interface PlexSessionsResponse {
-  sessions: PlexSession[]
-}
+import { usePlexSessions } from '../../hooks/use-plex-sessions'
 
 const GLASS_STYLE: React.CSSProperties = {
   background: `linear-gradient(135deg, var(--dk-surface-glass), var(--dk-surface-glass-hover))`,
@@ -60,7 +54,6 @@ export function ActivityModuleButton({
   const { runningGame } = useRunningGame()
 
   const { user: currentUser } = useAuth()
-  const plexEnabled = useFeature('integration:plex')
 
   const { data: unreadNotifs } = useQuery({
     ...notificationQueries.unreadCount(),
@@ -69,17 +62,8 @@ export function ActivityModuleButton({
   })
   const unreadCount = unreadNotifs?.count ?? 0
 
-  const { data: plexSessions = [] } = useQuery({
-    queryKey: ['plex', 'sessions'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<PlexSessionsResponse>('/integrations/plex/sessions')
-      return data.sessions ?? []
-    },
-    refetchInterval: 15000,
-    staleTime: 10000,
-    retry: false,
-    enabled: plexEnabled && !!currentUser?.plexId,
-  })
+  const { data: plexSessions = [] } = usePlexSessions()
+
 
   const { downloads } = useDownloads(currentUser?.id)
   const activeDownloads = downloads.filter(d => d.status === 'queued' || d.status === 'downloading' || d.status === 'processing')

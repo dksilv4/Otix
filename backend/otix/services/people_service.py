@@ -149,12 +149,36 @@ class PeopleService:
         self,
         query_str: str,
         limit: int = 50,
+        query_embedding: list[float] | None = None,
     ) -> list[Person]:
-        q = (
-            select(Person)
-            .where(Person.name.ilike(f"%{query_str}%"))
-            .order_by(Person.name)
-            .limit(limit)
+        from sqlalchemy import union
+
+        fts_q = select(Person.id).where(Person.name.op("%")(query_str), Person.embedding.isnot(None))
+        branches = [fts_q]
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_q = (
+                select(Person.id)
+                .where(Person.embedding.isnot(None))
+                .order_by(Person.embedding.cosine_distance(query_embedding))
+                .limit(limit)
+            )
+            branches.append(vector_q)
+
+        matched_ids = union(*branches).subquery()
+
+        base_q = select(Person).where(
+            Person.id.in_(select(matched_ids)),
+            Person.embedding.isnot(None),
         )
+
+        sim = func.similarity(Person.name, query_str)
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_sim = func.coalesce(1 - Person.embedding.cosine_distance(query_embedding), 0)
+        else:
+            vector_sim = 0
+
+        order = (sim * 5 + vector_sim * 5).desc()
+        q = base_q.order_by(order).limit(limit)
+
         result = await self.session.scalars(q)
         return list(result)

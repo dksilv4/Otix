@@ -431,16 +431,50 @@ class MediaService:
         # OR conditions force PostgreSQL into a sequential scan; UNION lets each
         # branch use its dedicated index (GIN on search_vector, GiST trigram on
         # title, GIN trigram on people.name + FK on media_credits).
-        fts_ids = select(MediaItem.id).where(MediaItem.search_vector.op("@@")(tsquery))
-        fuzzy_ids = select(MediaItem.id).where(MediaItem.title.op("%")(query_str))
+        # Restricted to only items that have embeddings populated.
+        fts_ids = (
+            select(MediaItem.id)
+            .where(
+                MediaItem.search_vector.op("@@")(tsquery),
+                MediaItem.embedding.isnot(None),
+            )
+        )
+        fuzzy_ids = (
+            select(MediaItem.id)
+            .where(
+                MediaItem.title.op("%")(query_str),
+                MediaItem.embedding.isnot(None),
+            )
+        )
         credit_ids = (
             select(MediaItem.id)
             .join(MediaCredit, MediaCredit.media_item_id == MediaItem.id)
             .join(Person, Person.id == MediaCredit.person_id)
-            .where(Person.name.op("%")(query_str))
+            .where(
+                Person.name.op("%")(query_str),
+                MediaItem.embedding.isnot(None),
+            )
         )
 
-        matched_ids = union(fts_ids, fuzzy_ids, credit_ids).subquery()
+        branches = [fts_ids, fuzzy_ids, credit_ids]
+
+        # If query embedding is available, add vector similarity candidates
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_q = (
+                select(MediaItem.id)
+                .where(MediaItem.embedding.isnot(None))
+            )
+            if media_type:
+                vector_q = vector_q.where(MediaItem.media_type == media_type)
+            if exclude_adult:
+                vector_q = vector_q.where(MediaItem.is_adult.isnot(True))
+            vector_q = (
+                vector_q.order_by(MediaItem.embedding.cosine_distance(query_embedding))
+                .limit(50)
+            )
+            branches.append(vector_q)
+
+        matched_ids = union(*branches).subquery()
 
         # Whether an item was matched via credit/person (for ranking boost).
         credit_person_match = (
@@ -454,7 +488,10 @@ class MediaService:
             .exists()
         )
 
-        base_q = select(MediaItem).where(MediaItem.id.in_(select(matched_ids)))
+        base_q = select(MediaItem).where(
+            MediaItem.id.in_(select(matched_ids)),
+            MediaItem.embedding.isnot(None),
+        )
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
         if exclude_adult:
@@ -502,7 +539,18 @@ class MediaService:
 
         # Only count on page 1 (for "X results" display).
         if page == 1:
-            count_q = select(func.count()).select_from(matched_ids)
+            count_q = (
+                select(func.count())
+                .select_from(MediaItem)
+                .where(
+                    MediaItem.id.in_(select(matched_ids)),
+                    MediaItem.embedding.isnot(None),
+                )
+            )
+            if media_type:
+                count_q = count_q.where(MediaItem.media_type == media_type)
+            if exclude_adult:
+                count_q = count_q.where(MediaItem.is_adult.isnot(True))
             total_result = await self.session.execute(count_q)
             total = total_result.scalar_one()
         else:

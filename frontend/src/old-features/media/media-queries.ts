@@ -251,6 +251,7 @@ export interface TrackSearchResult {
   albumPosterUrl: string | null
   albumArtistName: string | null
   albumSlug: string
+  mediaType?: 'track'
 }
 
 export interface MediaListResponse {
@@ -266,25 +267,37 @@ export interface PersonSearchResult {
   id: string
   name: string
   photoUrl: string | null
+  mediaType?: 'person'
+}
+
+export interface UserSearchResult {
+  id: string
+  username: string
+  avatarUrl: string | null
+  bio: string | null
+  level: number
+  levelTitle: string
+  isAdmin: boolean
+  mediaType?: 'user'
 }
 
 export interface StructuredSearchResponse {
+  bestResults: Array<MediaItemSummary | PersonSearchResult | UserSearchResult | TrackSearchResult>
   movies: MediaItemSummary[]
   shows: MediaItemSummary[]
   games: MediaItemSummary[]
   music: MediaItemSummary[]
   tracks: TrackSearchResult[]
   people: PersonSearchResult[]
-  users: Array<{
-    id: string
-    username: string
-    avatarUrl: string | null
-    bio: string | null
-    level: number
-    levelTitle: string
-    isAdmin: boolean
-  }>
+  users: UserSearchResult[]
   total: number
+  moviesCount: number
+  showsCount: number
+  gamesCount: number
+  musicCount: number
+  tracksCount: number
+  peopleCount: number
+  usersCount: number
 }
 
 export const mediaQueries = {

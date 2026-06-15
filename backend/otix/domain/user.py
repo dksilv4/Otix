@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
@@ -101,6 +102,16 @@ class User(Base, TimestampMixin):
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     notification_preferences: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_users_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
     @property
     def hof_ids(self) -> dict[str, list[str]]:

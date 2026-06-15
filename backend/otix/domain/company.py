@@ -4,8 +4,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
 
@@ -27,6 +28,16 @@ class Company(Base, HasExternalIDs):
 
     logo_url: Mapped[str | None] = mapped_column(String(2000))
     origin_country: Mapped[str | None] = mapped_column(String(10))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_companies_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",

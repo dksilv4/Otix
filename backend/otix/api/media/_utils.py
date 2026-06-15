@@ -57,10 +57,17 @@ async def _embed_query(q: str) -> list[float] | None:
 
     loop = asyncio.get_running_loop()
     try:
-        embedding = await loop.run_in_executor(_embed_pool, _do_embed_sync, q)
+        embedding = await asyncio.wait_for(
+            loop.run_in_executor(_embed_pool, _do_embed_sync, q),
+            timeout=2.0
+        )
         if embedding:
             await redis.set(emb_key, json.dumps(embedding), ex=EMBEDDING_CACHE_TTL)
         return embedding
+    except asyncio.TimeoutError:
+        import structlog
+        structlog.get_logger(__name__).warning("query embedding timed out, falling back to keyword search", query=q)
+        return None
     except (concurrent.futures.process.BrokenProcessPool, Exception):
         # Subprocess crashed (onnx segfault, OOM, etc.) — disable embedding
         # for the rest of this worker's lifetime by replacing the pool with

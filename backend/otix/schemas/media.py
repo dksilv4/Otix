@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Self
+from typing import Self, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -138,6 +138,7 @@ class TrackSearchResult(BaseModel):
     album_poster_url: str | None = None
     album_artist_name: str | None = None
     album_slug: str
+    media_type: str = "track"
 
     model_config = {"from_attributes": True}
 
@@ -155,6 +156,7 @@ class PersonSearchResult(BaseModel):
     id: str
     name: str
     photo_url: str | None = None
+    media_type: str = "person"
 
     model_config = {"from_attributes": True}
 
@@ -162,6 +164,7 @@ class PersonSearchResult(BaseModel):
 class StructuredSearchResponse(BaseModel):
     """Search results grouped by type, with tracks, people, and users."""
 
+    best_results: list[Union[MediaItemSummary, PersonSearchResult, UserSearchResult, TrackSearchResult]] = Field(default_factory=list)
     movies: list[MediaItemSummary] = Field(default_factory=list)
     shows: list[MediaItemSummary] = Field(default_factory=list)
     games: list[MediaItemSummary] = Field(default_factory=list)
@@ -170,6 +173,13 @@ class StructuredSearchResponse(BaseModel):
     people: list[PersonSearchResult] = Field(default_factory=list)
     users: list[UserSearchResult] = Field(default_factory=list)
     total: int = 0
+    movies_count: int = 0
+    shows_count: int = 0
+    games_count: int = 0
+    music_count: int = 0
+    tracks_count: int = 0
+    people_count: int = 0
+    users_count: int = 0
 
 
 class ExternalGameResult(BaseModel):
@@ -389,6 +399,12 @@ class CompanyOut(BaseModel):
     user_rating: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class CompanySearchListResponse(BaseModel):
+    items: list[CompanyOut]
+    total: int | None = None
+    has_more: bool
 
 
 class CompanyRatingBody(BaseModel):

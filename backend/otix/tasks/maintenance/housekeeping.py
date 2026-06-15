@@ -158,6 +158,99 @@ async def _backfill_embeddings() -> dict:
     return {"enqueued": enqueued}
 
 
+@app.task(name="maintenance.backfill_user_embeddings")
+def backfill_user_embeddings() -> dict:
+    """Enqueue batch embedding generation for users that lack one."""
+    return run_async(_backfill_user_embeddings())
+
+
+async def _backfill_user_embeddings() -> dict:
+    from sqlalchemy import select
+    from otix.domain.user import User
+
+    async with async_session() as session:
+        result = await session.execute(select(User.id).where(User.embedding.is_(None)).limit(1000))
+        rows = result.all()
+
+        all_ids = [row[0] for row in rows]
+        enqueued = 0
+        for i in range(0, len(all_ids), _BACKFILL_BATCH_SIZE):
+            batch = all_ids[i : i + _BACKFILL_BATCH_SIZE]
+            app.send_task("embedding.generate_user_batch", args=[batch])
+            enqueued += len(batch)
+
+        if enqueued:
+            logger.info(
+                "backfill_user_embeddings: enqueued batch tasks",
+                count=enqueued,
+                batches=len(all_ids) // _BACKFILL_BATCH_SIZE + 1,
+            )
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.backfill_person_embeddings")
+def backfill_person_embeddings() -> dict:
+    """Enqueue batch embedding generation for people that lack one."""
+    return run_async(_backfill_person_embeddings())
+
+
+async def _backfill_person_embeddings() -> dict:
+    from sqlalchemy import select
+    from otix.domain.people import Person
+
+    async with async_session() as session:
+        result = await session.execute(select(Person.id).where(Person.embedding.is_(None)).limit(1000))
+        rows = result.all()
+
+        all_ids = [row[0] for row in rows]
+        enqueued = 0
+        for i in range(0, len(all_ids), _BACKFILL_BATCH_SIZE):
+            batch = all_ids[i : i + _BACKFILL_BATCH_SIZE]
+            app.send_task("embedding.generate_person_batch", args=[batch])
+            enqueued += len(batch)
+
+        if enqueued:
+            logger.info(
+                "backfill_person_embeddings: enqueued batch tasks",
+                count=enqueued,
+                batches=len(all_ids) // _BACKFILL_BATCH_SIZE + 1,
+            )
+
+    return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.backfill_company_embeddings")
+def backfill_company_embeddings() -> dict:
+    """Enqueue batch embedding generation for companies that lack one."""
+    return run_async(_backfill_company_embeddings())
+
+
+async def _backfill_company_embeddings() -> dict:
+    from sqlalchemy import select
+    from otix.domain.company import Company
+
+    async with async_session() as session:
+        result = await session.execute(select(Company.id).where(Company.embedding.is_(None)).limit(1000))
+        rows = result.all()
+
+        all_ids = [row[0] for row in rows]
+        enqueued = 0
+        for i in range(0, len(all_ids), _BACKFILL_BATCH_SIZE):
+            batch = all_ids[i : i + _BACKFILL_BATCH_SIZE]
+            app.send_task("embedding.generate_company_batch", args=[batch])
+            enqueued += len(batch)
+
+        if enqueued:
+            logger.info(
+                "backfill_company_embeddings: enqueued batch tasks",
+                count=enqueued,
+                batches=len(all_ids) // _BACKFILL_BATCH_SIZE + 1,
+            )
+
+    return {"enqueued": enqueued}
+
+
 @app.task(name="maintenance.search_gap_report")
 def search_gap_report() -> dict:
     """Analyze search_logs for zero/low-result queries from the last 24h."""

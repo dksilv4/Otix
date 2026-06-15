@@ -9,7 +9,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import (
@@ -31,6 +31,7 @@ from otix.lib.sse import SseStreamConfig, create_sse_response
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     CompanyOut,
+    CompanySearchListResponse,
     GenreOut,
     ImportGameResponse,
     LocalGameMatch,
@@ -246,9 +247,35 @@ async def get_company_by_slug(
     if not id and not slug:
         raise HTTPException(status_code=400, detail="Provide id or slug")
     result = await CompanyService.get_by_id_or_slug(db, id=id, slug=slug)
-    if not result:
+    if result is None:
         raise HTTPException(status_code=404, detail="Company not found")
     return CompanyOut.model_validate(result)
+
+
+@media_router.get("/search/companies", response_model=CompanySearchListResponse)
+async def search_companies(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+) -> CompanySearchListResponse:
+    """Search companies by name using hybrid vector-keyword queries."""
+    query_embedding = await _call_embed_query(q)
+    
+    service = CompanyService(db)
+    companies = await service.search_companies(
+        query_str=q,
+        limit=limit + 1,
+        query_embedding=query_embedding,
+    )
+    
+    has_more = len(companies) > limit
+    if has_more:
+        companies = companies[:limit]
+        
+    return CompanySearchListResponse(
+        items=[CompanyOut.model_validate(c) for c in companies],
+        has_more=has_more,
+    )
 
 
 @media_router.get("/certifications", response_model=list[str])
@@ -456,6 +483,7 @@ async def search_grouped(
     own carousel or section.
     """
     exclude_adult = should_exclude_adult(current_user)
+    query_embedding = await _call_embed_query(q)
 
     async def _search_type(mt: str) -> tuple[str, list[MediaItemSummary], int]:
         async with async_session() as session:
@@ -465,12 +493,17 @@ async def search_grouped(
                 media_type=mt,
                 page=1,
                 page_size=media_type_limit,
+                query_embedding=query_embedding,
                 exclude_adult=exclude_adult,
             )
             return mt, [MediaItemSummary.model_validate(i) for i in items], total
 
-    async def _search_tracks_() -> list[TrackSearchResult]:
+    async def _search_tracks_() -> tuple[list[TrackSearchResult], int]:
+        from otix.domain.media import Track
         async with async_session() as session:
+            count_q = select(func.count(Track.id)).where(Track.title.ilike(f"%{q}%"))
+            total = await session.scalar(count_q) or 0
+            
             svc = MediaService(session)
             tracks = await svc.search_tracks(query_str=q, limit=20)
 
@@ -512,27 +545,73 @@ async def search_grouped(
                     album_slug=album_item.slug,
                 )
             )
-        return results
+        return results, total
 
-    async def _search_people_() -> list[PersonSearchResult]:
+    async def _search_people_() -> tuple[list[PersonSearchResult], int]:
+        from otix.domain.people import Person
         async with async_session() as session:
+            count_q = select(func.count(Person.id)).where(Person.name.ilike(f"%{q}%"), Person.embedding.isnot(None))
+            total = await session.scalar(count_q) or 0
+            
             svc = PeopleService(session)
-            people = await svc.search_people(query_str=q, limit=10)
-            return [PersonSearchResult.model_validate(p) for p in people]
+            people = await svc.search_people(query_str=q, limit=10, query_embedding=query_embedding)
+            return [PersonSearchResult.model_validate(p) for p in people], total
 
-    async def _search_users_() -> list[UserSearchResult]:
+    async def _search_users_() -> tuple[list[UserSearchResult], int]:
+        from otix.domain.user import User
         async with async_session() as session:
+            count_q = select(func.count(User.id)).where(
+                User.username.ilike(f"%{q}%"),
+                User.is_active == True,
+                User.embedding.isnot(None),
+            )
+            total = await session.scalar(count_q) or 0
+            
             from otix.schemas.user import UserSearchResult as UserSearchResultSchema
+
+            fts_stmt = (
+                select(User.id)
+                .where(
+                    User.username.ilike(f"%{q}%"),
+                    User.is_active == True,
+                    User.embedding.isnot(None),
+                )
+            )
+            branches = [fts_stmt]
+            if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+                vector_stmt = (
+                    select(User.id)
+                    .where(User.is_active == True, User.embedding.isnot(None))
+                    .order_by(User.embedding.cosine_distance(query_embedding))
+                    .limit(10)
+                )
+                branches.append(vector_stmt)
+
+            matched_ids = union(*branches).subquery()
 
             stmt = (
                 select(User)
-                .where(User.username.ilike(f"%{q}%"), User.is_active.is_(True))
-                .order_by(User.username)
-                .limit(10)
+                .where(
+                    User.id.in_(select(matched_ids)),
+                    User.is_active == True,
+                    User.embedding.isnot(None),
+                )
             )
+
+            sim = func.similarity(User.username, q)
+            if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+                vector_sim = func.coalesce(1 - User.embedding.cosine_distance(query_embedding), 0)
+            else:
+                vector_sim = 0
+
+            order = (sim * 5 + vector_sim * 5).desc()
+            stmt = stmt.order_by(order).limit(10)
+
             result = await session.scalars(stmt)
+            users = list(result)
+            
             items = []
-            for user in list(result):
+            for user in users:
                 gamification = compute_level_info(user.total_xp)
                 items.append(
                     UserSearchResultSchema(
@@ -545,31 +624,131 @@ async def search_grouped(
                         is_admin=user.is_admin,
                     )
                 )
-            return items
+            return items, total
+
+    async def _search_best_results() -> list[MediaItemSummary]:
+        async with async_session() as session:
+            svc = MediaService(session)
+            items, _, _ = await svc.search_media(
+                query_str=q,
+                media_type=None,
+                page=1,
+                page_size=3,
+                query_embedding=query_embedding,
+                exclude_adult=exclude_adult,
+            )
+            return [MediaItemSummary.model_validate(i) for i in items]
 
     # Run all searches concurrently
-    type_results, tracks, people, users = await asyncio.gather(
+    type_results, (tracks_list, tracks_count), (people_list, people_count), (users_list, users_count), best_media = await asyncio.gather(
         asyncio.gather(*[_search_type(mt) for mt in ("movie", "show", "game", "music")]),
         _search_tracks_(),
         _search_people_(),
         _search_users_(),
+        _search_best_results(),
     )
+
+    # Score candidates for media-agnostic best results
+    candidates = []
+    # top 3 media items
+    for i, item in enumerate(best_media[:3]):
+        candidates.append((item, i))
+    # top 2 people
+    for i, item in enumerate(people_list[:2]):
+        candidates.append((item, i))
+    # top 2 users
+    for i, item in enumerate(users_list[:2]):
+        candidates.append((item, i))
+    # top 2 tracks
+    for i, item in enumerate(tracks_list[:2]):
+        candidates.append((item, i))
+
+    scored = []
+    seen = set()
+    for item, pos in candidates:
+        mtype = getattr(item, "media_type", "unknown")
+        ukey = (mtype, item.id)
+        if ukey in seen:
+            continue
+        seen.add(ukey)
+
+        # Get name/title for scoring
+        name = ""
+        if hasattr(item, "title"):
+            name = item.title
+        elif hasattr(item, "name"):
+            name = item.name
+        elif hasattr(item, "username"):
+            name = item.username
+
+        name_lower = name.lower().strip()
+        q_lower = q.lower().strip()
+
+        score = 0.0
+        if name_lower == q_lower:
+            score += 10.0
+        elif name_lower.startswith(q_lower):
+            score += 5.0
+        elif q_lower in name_lower:
+            score += 2.0
+
+        # Preference bias
+        if mtype in ("movie", "show", "game", "music"):
+            score += 0.5
+        elif mtype == "person":
+            score += 0.3
+        elif mtype == "user":
+            score += 0.2
+        else: # track
+            score += 0.1
+
+        # Position penalty
+        score -= pos * 0.1
+
+        scored.append((score, item))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    best_results = [item for _, item in scored[:3]]
 
     grouped: dict[str, list[MediaItemSummary]] = {"movie": [], "show": [], "game": [], "music": []}
     total_all = 0
+    movie_count = 0
+    show_count = 0
+    game_count = 0
+    music_count = 0
+
     for mt, items, type_total in type_results:
         grouped[mt] = items
         total_all += type_total
+        if mt == "movie":
+            movie_count = type_total
+        elif mt == "show":
+            show_count = type_total
+        elif mt == "game":
+            game_count = type_total
+        elif mt == "music":
+            music_count = type_total
+
+    # Add other categories' counts to total_all
+    total_all += tracks_count + people_count + users_count
 
     return StructuredSearchResponse(
+        best_results=best_results,
         movies=grouped["movie"],
         shows=grouped["show"],
         games=grouped["game"],
         music=grouped["music"],
-        tracks=tracks,
-        people=people,
-        users=users,
+        tracks=tracks_list,
+        people=people_list,
+        users=users_list,
         total=total_all,
+        movies_count=movie_count,
+        shows_count=show_count,
+        games_count=game_count,
+        music_count=music_count,
+        tracks_count=tracks_count,
+        people_count=people_count,
+        users_count=users_count,
     )
 
 

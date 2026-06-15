@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, func, union
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from otix.api.media._utils import _embed_query
 
 from otix.api._utils import get_current_user, get_db
 from otix.domain.user import User
@@ -28,12 +30,42 @@ async def search_users(
     ip = request.client.host if request.client else None
 
     try:
+        query_embedding = await _embed_query(q)
+
+        fts_stmt = (
+            select(User.id)
+            .where(User.username.ilike(f"%{q}%"), User.is_active == True, User.embedding.isnot(None))
+        )
+        branches = [fts_stmt]
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_stmt = (
+                select(User.id)
+                .where(User.is_active == True, User.embedding.isnot(None))
+                .order_by(User.embedding.cosine_distance(query_embedding))
+                .limit(limit)
+            )
+            branches.append(vector_stmt)
+
+        matched_ids = union(*branches).subquery()
+
         stmt = (
             select(User)
-            .where(User.username.ilike(f"%{q}%"), User.is_active == True)  # noqa: E712
-            .order_by(User.username)
-            .limit(limit)
+            .where(
+                User.id.in_(select(matched_ids)),
+                User.is_active == True,
+                User.embedding.isnot(None),
+            )
         )
+
+        sim = func.similarity(User.username, q)
+        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            vector_sim = func.coalesce(1 - User.embedding.cosine_distance(query_embedding), 0)
+        else:
+            vector_sim = 0
+
+        order = (sim * 5 + vector_sim * 5).desc()
+        stmt = stmt.order_by(order).limit(limit)
+
         result = await db.scalars(stmt)
         users = list(result)
     except Exception:
