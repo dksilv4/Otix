@@ -9,7 +9,7 @@ import { mediaQueries, type MediaItemSummary } from '@/old-features/media/media-
 import { SORT_OPTIONS } from '@/old-features/discover/molecules/search-sort-bar'
 import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
 import { cn } from '@/lib/utils'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/old-features/auth'
 import { MediaCard } from '@ui/molecules/media-card'
 import './browse-page.scss'

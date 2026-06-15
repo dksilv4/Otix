@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth'
-import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/lib/providers/auth'
+import { apiClient } from '@/lib/api/client'
 import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { SectionHeader } from './profile'
 import './notifications.scss'

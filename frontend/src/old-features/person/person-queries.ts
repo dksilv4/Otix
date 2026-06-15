@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 
 export interface EpisodeInfo {
   episodeNumber: number

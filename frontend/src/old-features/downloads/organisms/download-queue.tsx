@@ -2,13 +2,13 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Download, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/providers/auth';
 import { useFeature } from '@/features/_config';
 import { useDownloads } from '../use-downloads';
 import { DownloadCard } from '../molecules/download-card';
 import { DkButton } from '@/old-features/dk-ui/atoms/button';
 import { cn } from '@/lib/utils';
-import { isDesktop } from '@/lib/desktop-api';
+import { isDesktop } from '@/lib/desktop/api';
 import './download-queue.scss';
 
 export function DownloadQueuePage() {

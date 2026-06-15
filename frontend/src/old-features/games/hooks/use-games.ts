@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api';
+import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api';
 import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/old-features/game-scanner/game-queries';
 import { useGameDetail, useGameGenres, usePopularGames } from '@/old-features/games/games-queries';
 

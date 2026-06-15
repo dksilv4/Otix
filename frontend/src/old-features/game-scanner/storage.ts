@@ -1,6 +1,6 @@
 // frontend/src/features/game-scanner/storage.ts
 import type { LocalGame } from './types';
-import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop-api';
+import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop/api';
 import { mergeDuplicateGames } from './storage-utils';
 
 // ── In-memory cache (hot reads, invalidated on DB change) ─────────

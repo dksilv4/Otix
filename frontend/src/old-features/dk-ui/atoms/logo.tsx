@@ -1,5 +1,5 @@
 // TODO: Review this file
-import { useLogoPreference, type LogoVariant } from '@/lib/logo-preference'
+import { useLogoPreference, type LogoVariant } from '@/lib/providers/logo-preference'
 import infinitySvg from '@/assets/otix-logo.svg?raw'
 import premiumSvg from '@/assets/otix-logo-premium.svg?raw'
 import monolineSvg from '@/assets/otix-logo-monoline.svg?raw'

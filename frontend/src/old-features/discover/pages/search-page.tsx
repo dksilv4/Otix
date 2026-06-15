@@ -5,7 +5,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { ChatSearchInput } from '../molecules/chat-search-input'
 import { AlertCircle, Brain, Loader2, MessageSquare, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AiModelStatus } from '@/lib/desktop-api'
+import type { AiModelStatus } from '@/lib/desktop/api'
 
 interface ChatMessage {
   id: string

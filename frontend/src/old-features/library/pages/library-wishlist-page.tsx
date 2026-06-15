@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/providers/auth"
 import { WishlistTabContent } from "../molecules/wishlist-tab-content"
 
 export function LibraryWishlistPage() {

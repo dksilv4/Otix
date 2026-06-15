@@ -1,10 +1,11 @@
 import {OAuthButton} from '@/features/auth'
 import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
-import {openExternal} from '@/lib/open-external'
-import {apiClient} from '@/lib/api-client'
+import {openExternal} from '@/lib/utils/open-external'
+import {apiClient} from '@/lib/api/client'
 import {useFeature} from '@/features/_config'
 import type {FeatureName} from "@/features/_config/types.ts";
 
+/** Spotify OAuth login button, gated by the auth:oauth:spotify feature flag. */
 export function SpotifyOAuthButton() {
     const enabled = useFeature(SpotifyOAuthButton.featureName)
     if (!enabled) return null

@@ -1,7 +1,7 @@
 /* ── PlayGameButton — launch installed game ── */
 
 import { Play } from 'lucide-react'
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import type { LocalGame } from '@/old-features/games/types'
 

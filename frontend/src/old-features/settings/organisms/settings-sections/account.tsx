@@ -2,7 +2,7 @@
 import './account.scss'
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { DkButton } from '@/old-features/dk-ui/atoms/button'
 import { DkInput } from '@/old-features/dk-ui/atoms/input'
 import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'

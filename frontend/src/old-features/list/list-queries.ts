@@ -5,7 +5,7 @@ import {
   useQueryClient,
   useInfiniteQuery,
 } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api/client"
 import { listKeys } from "./list-keys"
 
 // ── Types ──────────────────────────────────────────────

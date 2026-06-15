@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import {
   getSpotifyLikedTracksNextPageParam,
   useLibraryTab,
@@ -22,7 +22,7 @@ import {
 } from './library-queries'
 
 // Mock apiClient and config
-vi.mock('@/lib/api-client', () => ({
+vi.mock('@/lib/api/client', () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),

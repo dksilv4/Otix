@@ -6,7 +6,7 @@ import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } f
 import { useLocalGames, useRejectSuggestion } from "@/old-features/game-scanner/game-queries"
 import { useMatchLocalGames } from "@/old-features/game-scanner/queries"
 import { useClaimGame } from "@/old-features/library/library-queries"
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api/client"
 import type { LocalGame } from "@/old-features/game-scanner/types"
 
 export function ScannersSection() {

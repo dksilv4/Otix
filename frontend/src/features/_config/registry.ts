@@ -25,6 +25,8 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'downloads': {label: 'Download queue', enabled: true, dependsOn: ['auth', 'dk-ui']},
     'experiments': {label: 'A/B experiments', enabled: true},
     'game-scanner': {label: 'Game scanner integration', enabled: true, dependsOn: ['auth', 'dk-ui']},
+    'integration': {label: 'Third-party integrations', enabled: true},
+    'integration:plex': {label: 'Plex media server integration', enabled: true, dependsOn: ['integration']},
     'games': {label: 'Games hub', enabled: true, dependsOn: ['auth', 'dk-ui']},
     'games:launcher': {label: 'Game launcher', enabled: true, dependsOn: ['games']},
     'interaction': {label: 'Reaction / interaction buttons', enabled: true, dependsOn: ['auth', 'dk-ui']},

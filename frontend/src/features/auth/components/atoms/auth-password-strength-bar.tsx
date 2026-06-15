@@ -12,6 +12,7 @@ const TIER_STYLES: Record<string, { bar: string; label: string }> = {
   strong: { bar: 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]', label: 'text-green-500' },
 }
 
+/** Visual password strength indicator with tiered bar and label feedback. (atom) */
 export const PasswordStrengthBar = ({ password, className }: PasswordStrengthBarProps) => {
   if (!password) return null
 

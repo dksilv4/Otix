@@ -3,7 +3,7 @@ import { useParams } from '@tanstack/react-router'
 import { Cloud, RefreshCw, AlertCircle } from 'lucide-react'
 import { useLauncherGame } from '@/old-features/games/hooks/use-launcher-game'
 import { useSaveLocations } from '@/old-features/games/games-queries'
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/lib/config'
 
 function getErrorMessage(err: unknown, fallback = 'An error occurred.'): string {

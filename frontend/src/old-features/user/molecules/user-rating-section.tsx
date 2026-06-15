@@ -5,8 +5,8 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Star } from 'lucide-react'
 import { StarInput } from '@/old-features/review/molecules/star-input'
-import { apiClient } from '@/lib/api-client'
-import { useAuth } from '@/lib/auth'
+import { apiClient } from '@/lib/api/client'
+import { useAuth } from '@/lib/providers/auth'
 import { userQueries } from '../user-queries'
 
 interface UserRatingOut {
