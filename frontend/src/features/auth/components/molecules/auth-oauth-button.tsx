@@ -1,6 +1,7 @@
 import {useState, type ReactNode} from 'react'
 import {Loader2} from 'lucide-react'
 
+/** Reusable circular button that initiates an OAuth provider flow with loading state. (molecule) */
 export function OAuthButton({
                                 icon,
                                 ariaLabel,

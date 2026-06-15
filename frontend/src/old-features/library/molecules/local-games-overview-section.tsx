@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
-import { isDesktop } from "@/lib/desktop-api"
+import { isDesktop } from "@/lib/desktop/api"
 import { useLocalGames } from "@/old-features/game-scanner/game-queries"
 import { GameCard } from "@/old-features/game-scanner/molecules/game-card"
 

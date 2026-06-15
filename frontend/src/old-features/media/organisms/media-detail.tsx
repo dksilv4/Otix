@@ -3,7 +3,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 
-import { usePageMeta } from '@/lib/page-context'
+import { usePageMeta } from '@/lib/providers/page-context'
 import { useAuth } from '@/old-features/auth'
 
 
@@ -41,7 +41,7 @@ function useMediaDetail(mediaType: string, id: string) {
 
 import { AdminActionsMenu } from '@/old-features/admin/molecules/admin-actions-menu'
 import { cn } from '@/lib/utils'
-import { useDesktopPlatform } from '@/lib/desktop-platform'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
 
 
 

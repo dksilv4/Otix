@@ -1,0 +1,5 @@
+export { getDesktopAPI, hasDesktopAPI, isDesktop, clearDesktopAPICache } from './api'
+export type { DesktopSettingsData, DesktopAPI } from './api'
+export type { DesktopPlatformInfo } from './platform'
+export { getDesktopPlatform, useDesktopPlatform } from './platform'
+export { Desktop } from './component'

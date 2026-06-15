@@ -7,6 +7,7 @@ interface AuthHeaderProps {
   children?: ReactNode
 }
 
+/** Title and subtitle header block for auth pages. (molecule) */
 export const AuthHeader = ({ title, subtitle, className, children }: AuthHeaderProps) => (
   <div className={'mb-8 text-center' + (className ? ' ' + className : '')}>
     {children}

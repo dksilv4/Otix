@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react"
 import { useRouter } from "@tanstack/react-router"
 import { DkButton } from "@dk-ui/atoms/button"
 
+/** Atom button to navigate back in browser history. */
 export function BackButton() {
   const router = useRouter()
   const canGoBack = typeof window !== "undefined" && window.history.length > 1

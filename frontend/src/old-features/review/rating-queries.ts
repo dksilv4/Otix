@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 
 export interface MediaRatingOut {
   userId: string

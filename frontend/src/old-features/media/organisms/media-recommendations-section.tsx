@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Carousel } from '@ui/molecules/carousel'
-import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
+import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { mediaQueries } from '../media-queries'
 import { cn } from '@/lib/utils'
 

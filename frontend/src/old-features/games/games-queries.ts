@@ -1,5 +1,5 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
-import { apiClient } from "@/lib/api-client"
+import { apiClient } from "@/lib/api/client"
 import type { CatalogGame, CatalogGameDetail } from "./types"
 
 // ── Raw API response shapes (snake_case from backend → camelCase by axios interceptor) ──

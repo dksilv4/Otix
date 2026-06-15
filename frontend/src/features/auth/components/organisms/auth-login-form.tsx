@@ -10,6 +10,7 @@ interface LoginFormProps {
   onSuccess: () => void
 }
 
+/** Login form organism with identity/password fields, validation, and 2FA redirect. */
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const { login } = useAuth()
   const navigate = useNavigate()

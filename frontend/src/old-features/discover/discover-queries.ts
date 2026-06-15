@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 
 export const discoverKeys = {
   all: () => ['discover'] as const,

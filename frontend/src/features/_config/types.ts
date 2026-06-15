@@ -18,6 +18,8 @@ export type FeatureName =
   | 'downloads'
   | 'experiments'
   | 'game-scanner'
+  | 'integration'
+  | 'integration:plex'
   | 'games'
   | 'games:launcher'
   | 'interaction'

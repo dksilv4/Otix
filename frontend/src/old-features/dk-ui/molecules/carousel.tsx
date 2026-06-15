@@ -88,10 +88,10 @@ export const Carousel = forwardRef(function Carousel(
           <button
             type="button"
             onClick={() => scrollByPage(-1)}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
+            className="absolute left-6 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
             aria-label="Previous items"
           >
-            <div className="bg-background/80 backdrop-blur-md rounded-full p-1.5 shadow-md ring-1 ring-white/10 hover:bg-background/90 transition-colors">
+            <div className="bg-background/15 backdrop-blur-xl rounded-full p-2 shadow-xl ring-1 ring-white/20 hover:bg-background/30 transition-all">
               <ChevronLeftIcon className="h-5 w-5" />
             </div>
           </button>
@@ -131,10 +131,10 @@ export const Carousel = forwardRef(function Carousel(
           <button
             type="button"
             onClick={() => scrollByPage(1)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
+            className="absolute right-6 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
             aria-label="Next items"
           >
-            <div className="bg-background/80 backdrop-blur-md rounded-full p-1.5 shadow-md ring-1 ring-white/10 hover:bg-background/90 transition-colors">
+            <div className="bg-background/15 backdrop-blur-xl rounded-full p-2 shadow-xl ring-1 ring-white/20 hover:bg-background/30 transition-all">
               <ChevronRightIcon className="h-5 w-5" />
             </div>
           </button>

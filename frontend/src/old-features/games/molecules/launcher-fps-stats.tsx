@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
-import { getDesktopAPI } from '@/lib/desktop-api'
-import type { LiveFpsSnapshot } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import type { LiveFpsSnapshot } from '@/lib/desktop/api'
 import { useGamePlaytime } from '@/old-features/games/hooks/use-launcher-playtime'
 
 const MAX_HISTORY = 60

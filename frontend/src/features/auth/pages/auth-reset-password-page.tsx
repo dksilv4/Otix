@@ -8,7 +8,7 @@ import { AuthCard } from '@auth/components/molecules/auth-card'
 import { PasswordField } from '@auth/components/molecules/auth-password-field'
 import { PasswordStrengthBar } from '@auth/components/atoms/auth-password-strength-bar'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { extractErrorMessage } from '@auth/utils'
 import type { ResetPasswordPageState } from '@auth/types'
 

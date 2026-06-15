@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getDesktopAPI } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
 
 export function FpsPermissionDialog() {
   const [show, setShow] = useState(false)

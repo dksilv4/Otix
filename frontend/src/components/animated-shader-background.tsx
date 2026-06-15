@@ -2,7 +2,7 @@
 import './animated-shader-background.scss'
 import { useEffect, useRef, useState } from 'react'
 import { Scene, OrthographicCamera, WebGLRenderer, ShaderMaterial, Vector2, PlaneGeometry, Mesh } from 'three'
-import { useShaderQuality } from '@/lib/shader-quality'
+import { useShaderQuality } from '@/lib/providers/shader-quality'
 
 type ShaderMode = 'idle' | 'active'
 type QualityTier = 'low' | 'medium' | 'high' | 'ultra'

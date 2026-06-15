@@ -3,8 +3,9 @@ import { Outlet } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "@/old-features/title-bar/organisms/title-bar"
 import { XPToastContainer } from "@/old-features/dk-ui/atoms/xp-toast"
-import { NowPlayingView } from "@navigation/components/organisms/activity-panel"
+import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { useNotificationToasts } from "../../hooks/use-notification-toasts"
+import { PanelProvider } from "@activity/providers/panel-context"
 
 const PIN_KEY = "otix_spotify_player_pinned"
 
@@ -29,14 +30,16 @@ export function RootLayout() {
     <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
       <TitleBar />
 
-      <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
-        <main className="">
-          <Outlet />
-        </main>
-      </NavShell>
+      <PanelProvider>
+        <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
+          <main className="">
+            <Outlet />
+          </main>
+        </NavShell>
 
-      <XPToastContainer />
-      <NowPlayingView open={isSidebarOpen} onClose={handleCloseSidebar} />
+        <XPToastContainer />
+        <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
+      </PanelProvider>
     </div>
   )
 }

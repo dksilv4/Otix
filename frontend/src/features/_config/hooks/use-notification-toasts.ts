@@ -1,10 +1,10 @@
 import { useCallback } from "react"
-import { useAuth } from "@/lib/auth"
+import { useAuth } from "@/lib/providers/auth"
 import { useToast } from "@/old-features/dk-ui/molecules/toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { API_BASE_URL } from "@/lib/config"
-import { useSseStream } from "@/lib/use-sse-stream"
-import type { SseEvent } from "@/lib/sse-client"
+import { useSseStream } from "@/lib/hooks/use-sse-stream"
+import type { SseEvent } from "@/lib/api/sse-client"
 
 interface NotificationEvent extends SseEvent {
   id: string

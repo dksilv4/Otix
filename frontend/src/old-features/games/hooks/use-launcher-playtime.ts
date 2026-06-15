@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getDesktopAPI } from '@/lib/desktop-api'
-import type { FpsStatsData } from '@/lib/desktop-api'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import type { FpsStatsData } from '@/lib/desktop/api'
 
 export interface PlaytimeInfo {
   totalMinutes: number

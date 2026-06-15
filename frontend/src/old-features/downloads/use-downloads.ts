@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { isDesktop } from '@/lib/desktop-api';
+import { isDesktop } from '@/lib/desktop/api';
 import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry, HypervisorConfirmResponse } from './types';
 
 // ── Config ──

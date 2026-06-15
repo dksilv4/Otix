@@ -6,7 +6,7 @@ import { DkImage } from '@dk-ui/atoms/image'
 import { mediaQueries } from '@media/media-queries'
 import { cn } from '@/lib/utils'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
-import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/image-position'
+import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
 
 interface DkMediaCardProps {
   id: string
