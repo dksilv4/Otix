@@ -1,23 +1,20 @@
-// TODO: Review this file
-import { Link } from '@tanstack/react-router'
-import type { MovieDetail } from '../media-queries'
+import { Link, useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import { mediaQueries, formatCurrency } from '@media'
 import { cn } from '@/lib/utils'
 
 interface MovieSectionProps {
-  movie: MovieDetail
   className?: string
 }
 
-function formatCurrency(amount?: number): string {
-  if (!amount) return ''
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+export function MovieSection({ className }: MovieSectionProps = {}) {
+  const params = useParams({ strict: false }) as { mediaId?: string }
+  const mediaId = params.mediaId || ''
 
-export function MovieSection({ movie, className }: MovieSectionProps) {
+  const { data } = useQuery(mediaQueries.detail('movie', mediaId))
+  if (!data || !data.movie) return null
+  const movie = data.movie
+
   if (movie.runtime == null && movie.budget == null && movie.revenue == null) return null
 
   const profitAbs = movie.revenue != null && movie.budget != null && movie.budget > 0
@@ -27,25 +24,18 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
   const isProfitable = hasProfit && profitAbs > 0
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <h2 className="text-lg font-semibold">Details</h2>
+    <section className={cn(className)}>
+      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 ">
 
-      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {movie.runtime != null && movie.runtime > 0 && (
-          <div className="rounded-xl bg-card p-4">
-            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Runtime</dt>
-            <dd className="mt-1 text-sm font-semibold">{movie.runtime} min</dd>
-          </div>
-        )}
         {movie.budget != null && movie.budget > 0 && (
           <Link
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'budget' }}
-            className="rounded-xl bg-card p-4 hover:bg-card/70 transition-colors"
+            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</dt>
-            <dd className="mt-1 text-sm font-semibold">{formatCurrency(movie.budget)}</dd>
+            <dd className="mt-1 text-sm font-semibold text-white">{formatCurrency(movie.budget)}</dd>
           </Link>
         )}
         {movie.revenue != null && movie.revenue > 0 && (
@@ -53,11 +43,11 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'revenue' }}
-            className="rounded-xl bg-card p-4 hover:bg-card/70 transition-colors"
+            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</dt>
             <dd className="mt-1 flex items-center gap-2">
-              <span className="text-sm font-semibold">{formatCurrency(movie.revenue)}</span>
+              <span className="text-sm font-semibold text-white">{formatCurrency(movie.revenue)}</span>
               {movie.revenueRank && (
                 <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold bg-primary/10 text-primary">
                   #{movie.revenueRank}
@@ -71,7 +61,7 @@ export function MovieSection({ movie, className }: MovieSectionProps) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={isProfitable ? { sort: 'profit' } : { sort: 'profit', dir: 'asc' }}
-            className="rounded-xl bg-card p-4 hover:bg-card/70 transition-colors"
+            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {isProfitable ? 'Profit' : 'Loss'}

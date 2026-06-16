@@ -1,16 +1,18 @@
 import { memo } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 interface DiscoverMediaCardProps {
   item: MediaItemSummary
   showTypeBadge?: boolean
+  subtitle?: string | null
   className?: string
 }
 
 export const DiscoverMediaCard = memo(function DiscoverMediaCard({
   item,
   showTypeBadge = true,
+  subtitle,
   className,
 }: DiscoverMediaCardProps) {
   return (
@@ -26,6 +28,8 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
       ratingCount={item.ratingCount}
       showTypeBadge={showTypeBadge}
       isAdult={item.isAdult}
+      subtitle={subtitle}
+      artistName={item.albumArtistName}
       className={className}
     />
   )

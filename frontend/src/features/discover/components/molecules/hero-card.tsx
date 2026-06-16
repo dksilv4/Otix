@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useCardTilt } from '@discover/hooks/use-card-tilt'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 interface HeroCardProps {
   item: MediaItemSummary
