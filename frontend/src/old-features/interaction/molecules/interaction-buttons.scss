@@ -8,7 +8,6 @@
 
 .dk-interaction__unauthed-card {
   @apply rounded-3xl p-6 text-center;
-  background-color: var(--dk-surface-base);
 }
 
 .dk-interaction__unauthed-link {
@@ -34,12 +33,7 @@
 
 .dk-interaction__btn {
   @apply relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl px-3 py-3;
-  background-color: var(--dk-surface-base);
   transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  &:hover {
-    background-color: var(--dk-surface-glass);
-  }
 
   &--pending {
     @apply pointer-events-none;

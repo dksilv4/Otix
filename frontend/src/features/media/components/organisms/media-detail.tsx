@@ -1,20 +1,22 @@
 import {Link, useParams} from '@tanstack/react-router'
 import {Helmet} from 'react-helmet-async'
 import {useAuth} from '@/old-features/auth'
+import {Building2} from 'lucide-react'
 
 import {MediaHero} from './media-hero'
 import {MediaGeneralDetails} from './media-general-details'
 import {SignInCTA} from './media-signin-cta'
-import {MovieSection} from './media-movie-section'
-import {ShowSection} from './media-show-section'
-import {GameSection} from './media-game-section'
-import {MusicSection} from './media-music-section'
-import {ArtistAlbumsSection} from './media-artist-albums-section'
+import {MovieSection} from '@media/movie/components/organisms/media-movie-section'
+import {ShowSection} from '@media/show/components/organisms/media-show-section'
+import {GameSection} from '@media/game/components/organisms/media-game-section'
+import {MusicSection} from '@media/music/components/organisms/media-music-section'
+import {ArtistAlbumsSection} from '@media/music/components/organisms/media-artist-albums-section'
 import {MoreLikeThisSection} from './media-more-like-this-section'
 import {CastCrewList} from './media-cast-crew-list'
 import {CollectionSection} from './media-collection-section'
 import {DeferredSection} from '@ui/molecules/deferred-section'
 import {Badge} from '@ui/atoms/badge'
+import {Image} from '@ui/atoms/image'
 import {ReviewSection} from '@/old-features/review/organisms/review-section'
 import {ReviewsListSection} from '@/old-features/review/organisms/reviews-list-section'
 import {RatingsSection} from '@/old-features/review/organisms/ratings-section'
@@ -24,7 +26,7 @@ import {WhereToWatchSection} from './media-where-to-watch-section'
 import {SectionSkeleton} from './media-detail-section-skeleton'
 import {DetailSkeleton} from './media-detail-skeleton'
 import {ErrorState} from './media-detail-error-state'
-import {DownloadGameButton} from './media-download-game-button'
+import {DownloadGameButton} from '@media/game/components/organisms/media-download-game-button'
 
 import {useEpisodeInteractions, useMarkShowWatched} from '@/old-features/interaction/episode-interaction-queries'
 import {useQuery} from '@tanstack/react-query'
@@ -81,7 +83,8 @@ export function MediaDetail() {
                 <meta name="twitter:title" content={`${titleWithYear} - Otix`}/>
                 <meta name="twitter:description" content={seoDescription(detail.overview, detail.title)}/>
                 {detail.posterUrl && <meta name="twitter:image" content={detail.posterUrl}/>}
-                <link rel="canonical" href={window.location.origin + `/media/${displayType}/${detail.slug || mediaId}`}/>
+                <link rel="canonical"
+                      href={window.location.origin + `/media/${displayType}/${detail.slug || mediaId}`}/>
                 {detail.logoUrl && <link rel="preload" as="image" href={detail.logoUrl} fetchPriority="high"/>}
             </Helmet>
 
@@ -89,10 +92,11 @@ export function MediaDetail() {
             <MediaHero/>
 
             {/* ── Content sections — overlaps hero for floating depth ── */}
-            <div className="flex flex-1 flex-col mx-auto w-full max-w-6xl px-6 space-y-8 -mt-10 relative z-10">
+            <div
+                className="glass-card flex flex-1 flex-col mx-auto w-full max-w-6xl px-6 py-6 space-y-8 mt-8 relative z-10">
 
                 {/* ── Main content card (the only glass surface) ── */}
-                <div className="glass-card p-6 sm:p-8 space-y-6" style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.08), var(--dk-shadow-glass)' }}>
+                <div className="space-y-6" style={{boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.08), var(--dk-shadow-glass)'}}>
                     {!isAuthenticated && <SignInCTA/>}
 
                     <MediaGeneralDetails/>
@@ -110,7 +114,7 @@ export function MediaDetail() {
                     {/* Activity + Ratings — inside the main card, not a separate box */}
                     {isAuthenticated && (
                         <>
-                            <hr className="border-white/5" />
+                            <hr className="border-white/5"/>
                             <InteractionSection
                                 mediaId={detail.id}
                                 mediaType={displayType}
@@ -138,53 +142,53 @@ export function MediaDetail() {
 
                             {detail.mediaType === 'game' && (
                                 <div className="flex flex-wrap items-center gap-4">
-                                    <DownloadGameButton />
+                                    <DownloadGameButton/>
                                 </div>
                             )}
 
                             <RatingsSection
+                                overallRating={detail.overallRating}
+                                overallRatingSource={detail.overallRatingSource}
                                 avgRating={detail.avgRating}
                                 ratingCount={detail.ratingCount}
-                                externalRatings={detail.externalRatings}
                             />
                         </>
                     )}
 
                     {!isAuthenticated && (
                         <>
-                            <hr className="border-white/5" />
+                            <hr className="border-white/5"/>
                             <RatingsSection
+                                overallRating={detail.overallRating}
+                                overallRatingSource={detail.overallRatingSource}
                                 avgRating={detail.avgRating}
                                 ratingCount={detail.ratingCount}
-                                externalRatings={detail.externalRatings}
                             />
                         </>
                     )}
+
+                    {/* ── Reviews — deserves its own glass surface, distinct from main content ── */}
+                    <div className="">
+                        <DeferredSection
+                            fallback={<SectionSkeleton height={120}/>}
+                            rootMargin="200px 0px"
+                        >
+                            <ReviewSection mediaId={detail.id}/>
+                        </DeferredSection>
+
+                        <DeferredSection
+                            fallback={<SectionSkeleton height={260}/>}
+                            rootMargin="400px 0px"
+                        >
+                            <ReviewsListSection mediaId={detail.id}/>
+                        </DeferredSection>
+                    </div>
                 </div>
 
-                {/* ── Discovery — open flow, no boxes ── */}
-                <ArtistAlbumsSection />
 
-                {detail.collection && <CollectionSection />}
-
-                <MoreLikeThisSection/>
-
-                {/* ── Cast & Crew (deferred) — open flow ── */}
-                <DeferredSection
-                    fallback={<SectionSkeleton height={260}/>}
-                    rootMargin="400px 0px"
-                >
-                    <CastCrewList />
-                </DeferredSection>
-
-                {/* ── Where to Watch — open flow ── */}
-                <WhereToWatchSection />
-
-                {/* ── Companies — open flow, only if present ── */}
+                {/* ── Companies — logo cards with glass-inset ── */}
                 {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold">Companies</h2>
-                        <div className="flex flex-wrap gap-1.5">
+                        <section className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                             {detail.involvedCompanies.map((ic) => {
                                 const roles: string[] = []
                                 if (ic.production) roles.push('Production')
@@ -197,38 +201,57 @@ export function MediaDetail() {
                                         key={ic.id}
                                         to="/company/$companyId"
                                         params={{companyId: ic.company.id}}
+                                        className="glass-inset flex flex-col items-center gap-2.5 p-4 text-center transition-all duration-200 hover:scale-[1.02]"
                                     >
-                                        <Badge variant="secondary" className="gap-1.5 border-0 bg-white/5 transition-colors hover:bg-white/10">
-                                            {ic.company.name}
+                                        {ic.company.logoUrl ? (
+                                            <div className="flex h-10 w-10 items-center justify-center">
+                                                <img
+                                                    src={ic.company.logoUrl}
+                                                    alt={ic.company.name}
+                                                    className="max-h-10 max-w-full object-contain brightness-0 invert opacity-80"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-muted-foreground">
+                                                <Building2 className="h-5 w-5"/>
+                                            </div>
+                                        )}
+                                        <div className="min-w-0 w-full">
+                                            <p className="text-xs font-semibold truncate">{ic.company.name}</p>
                                             {roles.length > 0 && (
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    {roles.join('/')}
-                                                </span>
+                                                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                                    {roles.join(' · ')}
+                                                </p>
                                             )}
-                                        </Badge>
+                                        </div>
                                     </Link>
                                 )
                             })}
-                        </div>
-                    </section>
+                        </section>
                 )}
 
-                {/* ── Reviews — deserves its own glass surface, distinct from main content ── */}
-                <div className="glass-card p-6 sm:p-8 space-y-5">
-                    <DeferredSection
-                        fallback={<SectionSkeleton height={120}/>}
-                        rootMargin="200px 0px"
-                    >
-                        <ReviewSection mediaId={detail.id}/>
-                    </DeferredSection>
+                {/* ── Where to Watch — button that opens modal ── */}
 
-                    <DeferredSection
-                        fallback={<SectionSkeleton height={260}/>}
-                        rootMargin="400px 0px"
-                    >
-                        <ReviewsListSection mediaId={detail.id}/>
-                    </DeferredSection>
-                </div>
+                <WhereToWatchSection/>
+
+
+                {/* ── Discovery — open flow, no boxes ── */}
+                <ArtistAlbumsSection/>
+
+                {detail.collection && <CollectionSection/>}
+
+                <MoreLikeThisSection/>
+
+                {/* ── Cast & Crew (deferred) — open flow ── */}
+                <DeferredSection
+                    fallback={<SectionSkeleton height={260}/>}
+                    rootMargin="400px 0px"
+                >
+                    <CastCrewList/>
+                </DeferredSection>
+
+
             </div>
         </div>
     )

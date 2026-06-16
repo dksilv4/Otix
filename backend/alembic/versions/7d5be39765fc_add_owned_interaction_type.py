@@ -21,13 +21,16 @@ def upgrade() -> None:
         "DROP CONSTRAINT IF EXISTS ck_interaction_type"
     )
     op.execute(
-        "ALTER TABLE user_media_interactions "
-        "ADD CONSTRAINT ck_interaction_type CHECK ("
-        "interaction_type IN ("
-        "'rated', 'watched', 'liked', 'watchlisted', "
-        "'played', 'reviewed', 'started', 'listened', 'owned'"
-        ")"
-        ")"
+        "DO $$ BEGIN "
+        "  ALTER TABLE user_media_interactions "
+        "  ADD CONSTRAINT ck_interaction_type CHECK ("
+        "  interaction_type IN ("
+        "  'rated', 'watched', 'liked', 'watchlisted', "
+        "  'played', 'reviewed', 'started', 'listened', 'owned'"
+        "  )); "
+        "EXCEPTION WHEN duplicate_object THEN "
+        "  NULL; "
+        "END $$"
     )
 
 

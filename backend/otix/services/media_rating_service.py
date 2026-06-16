@@ -8,6 +8,7 @@ from otix.domain.media import MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.infrastructure.celery import app
 from otix.lib.xp import RATE_MEDIA
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 
 class MediaRatingService:
@@ -30,6 +31,9 @@ class MediaRatingService:
             .where(MediaItem.id == media_item_id)
             .values(avg_rating=avg, rating_count=cnt)
         )
+
+        # Recompute the blended overall rating
+        await compute_and_store_overall_rating(self.session, media_item_id)
 
     async def get_my_rating(self, user_id: str, media_item_id: str) -> MediaItemRating | None:
         return await self.session.scalar(

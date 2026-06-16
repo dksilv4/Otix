@@ -15,10 +15,10 @@ export function ProviderRow({ provider }: { provider: MediaWatchProvider }) {
 
   const inner = (
     <div
-      className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-150 ${hasUrl ? 'cursor-pointer hover:bg-white/[0.04]' : ''}`}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${hasUrl ? 'cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)]' : ''}`}
     >
       {isPlex ? (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg text-[#e5a00d]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-[#e5a00d]">
           <PlexIcon className="h-5 w-5" />
         </div>
       ) : provider.watchProvider.logoUrl ? (

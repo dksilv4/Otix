@@ -14,7 +14,9 @@
 
 .dk-review-section__card {
   @apply rounded-3xl;
-  background: var(--dk-surface-base);
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+  transition: background var(--dk-duration-fast) var(--dk-ease-out);
 
   &--loading {
     @apply p-8;

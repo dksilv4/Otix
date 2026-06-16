@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from '@tanstack/react-router'
-import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo } from '@media'
+import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo, useMediaParams } from '@media'
 import { Badge } from '@ui/atoms/badge'
 import { PlatformIcon } from './media-game-platform-icon'
 
@@ -9,8 +8,7 @@ interface GameSectionProps {
 }
 
 export function GameSection({ className }: GameSectionProps = {}) {
-  const params = useParams({ strict: false }) as { mediaId?: string }
-  const mediaId = params.mediaId || ''
+  const { mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail('game', mediaId))
   if (!data || !data.game) return null

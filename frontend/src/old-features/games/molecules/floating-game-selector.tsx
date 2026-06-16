@@ -1,7 +1,7 @@
 import {useCallback, useMemo} from 'react'
 import {useNavigate, useParams} from '@tanstack/react-router'
 import {Gamepad2, Menu} from 'lucide-react'
-import {useNavigation} from '@navigation/providers/navigation-provider'
+import {useNavigation} from '@navigation'
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
 import {usePopularGames} from '@/old-features/games/games-queries'
 import {hasDesktopAPI} from '@/lib/desktop/api'

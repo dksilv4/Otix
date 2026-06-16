@@ -18,6 +18,7 @@ export default defineConfig({
       '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
       '@search': path.resolve(__dirname, 'src/features/search'),
+      '@launcher': path.resolve(__dirname, 'src/features/launcher'),
       '@person': path.resolve(__dirname, 'src/old-features/person'),
       '@company': path.resolve(__dirname, 'src/old-features/company'),
       '@user': path.resolve(__dirname, 'src/old-features/user'),

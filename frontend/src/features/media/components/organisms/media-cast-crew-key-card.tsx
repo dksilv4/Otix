@@ -22,9 +22,9 @@ export function KeyCrewCard({ credit }: { credit: CreditItem }) {
     <Link
       to="/person/$personId"
       params={{ personId: credit.person.id }}
-      className="flex items-center gap-3 rounded-xl bg-card p-3 hover:bg-card/80 transition-[background-color]"
+      className="glass-inset flex items-center gap-3 p-3 transition-all duration-200 hover:scale-[1.02]"
     >
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-primary/20">
+      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white/10">
         <Image
           src={credit.person.photoUrl}
           alt={credit.person.name}
@@ -34,7 +34,7 @@ export function KeyCrewCard({ credit }: { credit: CreditItem }) {
       </div>
       <div className="min-w-0">
         <p className="text-sm font-semibold truncate">{credit.person.name}</p>
-        <Badge variant="secondary" className="mt-0.5 text-[10px]">
+        <Badge variant="secondary" className="mt-0.5 text-[10px] bg-white/5 border-0">
           {roleLabel[credit.role] ?? credit.role}
         </Badge>
       </div>

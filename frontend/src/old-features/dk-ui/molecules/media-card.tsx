@@ -57,10 +57,14 @@ const DkMediaCard = memo(function DkMediaCard({
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
 
+  const linkProps = useMemo(() => ({
+    to: '/media/$mediaType/$mediaId' as const,
+    params,
+  }), [params])
+
   return (
     <Link
-      to="/media/$mediaType/$mediaId"
-      params={params}
+      {...(linkProps as any)}
       onMouseEnter={handlePrefetch}
       className={cn(
         'group relative block overflow-hidden rounded-lg',

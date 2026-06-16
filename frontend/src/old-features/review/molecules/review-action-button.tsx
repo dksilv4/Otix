@@ -40,7 +40,7 @@ export function ReviewActionButton({ mediaId, className }: ReviewActionButtonPro
       <button
         type="button"
         onClick={() => setComposerOpen(true)}
-        className={cn('dk-review-action-button', className)}
+        className={cn('dk-review-action-button glass-inset', className)}
       >
         {(hasRating || hasReview) && (
           <div className="dk-review-action-button__glow" />
