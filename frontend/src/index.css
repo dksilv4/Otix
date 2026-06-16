@@ -375,6 +375,57 @@
   background: var(--dk-surface-ghost-hover);
 }
 
+/* ── Glass scroll button — circular, for carousel navigation ── */
+.glass-scroll-btn {
+  background: var(--dk-surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--dk-shadow-glass);
+  color: hsl(var(--foreground) / 0.7);
+  transition: color var(--dk-duration-fast) var(--dk-ease-out);
+}
+.glass-scroll-btn:hover {
+  color: hsl(var(--foreground));
+}
+
+/* ── Glass tab — pill-shaped season/episode selector ── */
+.glass-tab {
+  background: var(--dk-surface-glass);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  transition: background var(--dk-duration-fast) var(--dk-ease-out);
+}
+.glass-tab:hover {
+  background: var(--dk-surface-glass-hover);
+}
+.glass-tab-active {
+  background: hsl(var(--foreground));
+  box-shadow: none;
+}
+
+/* ── Glass episode card ── */
+.glass-episode-card {
+  background: var(--dk-surface-glass);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  transition: box-shadow var(--dk-duration-fast) var(--dk-ease-out);
+}
+.glass-episode-card:hover {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+/* ── Glass badge — thumbnail overlay label (episode number, rating, runtime) ── */
+.glass-badge {
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ── Glass surface raised — elevated panel with solid background ── */
+.glass-surface-raised {
+  background: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+  border-radius: var(--dk-radius-2xl);
+}
+
 /* ── Shared floating surface for dropdowns, panels, and overlays ── */
 .dk-surface {
   background-color: var(--dk-surface-overlay);

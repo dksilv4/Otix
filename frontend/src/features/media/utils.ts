@@ -1,4 +1,4 @@
-import type { MediaItemDetail, EpisodeOut, ExternalRatingOut } from './queries/media-queries'
+import type { MediaItemDetail, EpisodeOut, ExternalRatingOut, SeasonOut } from './queries/media-queries'
 
 // ── Type guards ──
 
@@ -40,6 +40,13 @@ export function formatMusicCreditsLine(credits: MediaItemDetail['credits']): str
 export function formatYear(dateStr?: string | null): string {
   if (!dateStr) return ''
   return dateStr.slice(0, 4)
+}
+
+export function formatDate(dateStr?: string | null): string | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
 export function seoDescription(overview?: string | null, title?: string): string {
@@ -168,6 +175,11 @@ export function groupByRole(credits: CreditItem[]) {
 
 export function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
   return episode.externalRatings?.find((r) => r.provider === "tmdb" && r.score > 0)
+}
+
+export function getPreferredSeason(seasons: SeasonOut[]): number {
+  if (seasons.length === 0) return 0
+  return seasons[seasons.length - 1].seasonNumber
 }
 
 export function scoreToColor(score: number, maxScore: number = 10): string {
