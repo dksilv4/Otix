@@ -1,108 +1,93 @@
-// TODO: Review this file
-import { useRef, useLayoutEffect } from 'react'
+import { useRef } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
-import { cn } from '@/lib/utils'
+import { useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import { mediaQueries, formatYear } from '@media'
+import { Link } from '@tanstack/react-router'
+import { Image } from '@ui/atoms/image'
 
-const BASE_ITEM_WIDTH = 144 // matches w-36 (9rem)
-const BASE_GAP = 12         // matches gap-3
-
-interface CollectionMovie {
-  id: string
-  title: string
-  posterUrl: string | null
-  releaseDate: string | null
-  slug: string
-  isAdult?: boolean
-}
-
-interface CollectionSectionProps {
-  collection: {
-    id: string
-    name: string
-    overview: string | null
-    posterUrl: string | null
-    backdropUrl: string | null
-    movies: CollectionMovie[]
-  }
-  currentMediaId: string
-  className?: string
-}
-
-export function CollectionSection({ collection, currentMediaId, className }: CollectionSectionProps) {
+export function CollectionSection({ className }: { className?: string } = {}) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
 
-  // Smart sizing — perfectly fill visible area, no partial overflow
-  useLayoutEffect(() => {
-    const scrollEl = scrollRef.current
-    const innerEl = innerRef.current
-    if (!scrollEl || !innerEl || collection.movies.length === 0) return
+  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
+  const mediaType = params.mediaType || 'movie'
+  const mediaId = params.mediaId || ''
 
-    const update = () => {
-      const scrollStyle = getComputedStyle(scrollEl)
-      const innerStyle = getComputedStyle(innerEl)
-      const gap = parseFloat(innerStyle.columnGap) || BASE_GAP
-      const visibleWidth = scrollEl.getBoundingClientRect().width
-      const padLeft = parseFloat(scrollStyle.paddingLeft) || 0
-      const padRight = parseFloat(scrollStyle.paddingRight) || 0
-      const contentWidth = Math.max(0, visibleWidth - padLeft - padRight)
+  const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  if (!data || !data.collection) return null
+  const collection = data.collection
+  const currentMediaId = data.id
+  const movies = collection.movies
 
-      let count = Math.floor((contentWidth + gap) / (BASE_ITEM_WIDTH + gap))
-      count = Math.max(2, Math.min(count, collection.movies.length))
-
-      const totalGaps = (count - 1) * gap
-      const cardWidth = Math.max(0, Math.floor((contentWidth - totalGaps) / count))
-      innerEl.style.setProperty('--card-width', `${cardWidth}px`)
-    }
-
-    const observer = new ResizeObserver(update)
-    observer.observe(scrollEl)
-    update()
-    return () => observer.disconnect()
-  }, [collection.movies.length])
-
-  if (collection.movies.length === 0) return null
+  if (movies.length === 0) return null
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <div className="flex items-baseline gap-3">
-        <h2 className="text-lg font-semibold">{collection.name}</h2>
-        <span className="text-sm text-muted-foreground">
-          {collection.movies.length} movie{collection.movies.length !== 1 ? 's' : ''}
-        </span>
+    <section className={`space-y-4 ${className || ''}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        {collection.posterUrl && (
+          <div className="shrink-0 w-10 h-14 rounded-lg overflow-hidden ring-1 ring-white/10">
+            <Image
+              src={collection.posterUrl}
+              alt={collection.name}
+              className="h-full w-full object-cover"
+              fallback={collection.name[0]}
+            />
+          </div>
+        )}
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-lg font-semibold">{collection.name}</h2>
+          <span className="text-sm text-muted-foreground/60">
+            {movies.length} film{movies.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {collection.overview && (
-        <p className="max-w-2xl text-sm text-muted-foreground line-clamp-2">
+        <p className="text-sm leading-relaxed text-muted-foreground/70 line-clamp-2">
           {collection.overview}
         </p>
       )}
 
-      <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div ref={innerRef} className="flex gap-3">
-          {collection.movies.map((movie) => {
+      {/* Scrollable row */}
+      <div ref={scrollRef} className="overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-3">
+          {movies.map((movie) => {
             const isCurrent = movie.id === currentMediaId
+            const year = formatYear(movie.releaseDate)
 
             return (
-              <div
+              <Link
                 key={movie.id}
-                className={cn(
-                  'shrink-0 -mt-2 rounded-lg',
-                  isCurrent && 'ring-2 ring-primary',
-                )}
-                style={{ width: 'var(--card-width)', minWidth: '9rem' }}
+                to="/media/$mediaType/$mediaId"
+                params={{ mediaType: 'movie', mediaId: movie.id }}
+                className="shrink-0 w-36 sm:w-40 lg:w-44 group"
               >
-                <MediaCard
-                  id={movie.id}
-                  mediaType="movie"
-                  title={movie.title}
-                  posterUrl={movie.posterUrl}
-                  releaseDate={movie.releaseDate}
-                  showTypeBadge={false}
-                  zoomed={false}
-                  isAdult={movie.isAdult}
-                />
-              </div>
+                <div
+                  className={`relative overflow-hidden rounded-xl transition-all duration-300 ${
+                    isCurrent
+                      ? 'ring-1 ring-primary/30'
+                      : 'ring-1 ring-white/5 hover:ring-white/10'
+                  }`}
+                >
+                  <MediaCard
+                    id={movie.id}
+                    mediaType="movie"
+                    title={movie.title}
+                    posterUrl={movie.posterUrl}
+                    releaseDate={movie.releaseDate}
+                    showTypeBadge={false}
+                    zoomed={false}
+                    isAdult={movie.isAdult}
+                  />
+
+                  {year && (
+                    <span className="absolute bottom-2 left-2 rounded-md px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/50 glass-badge">
+                      {year}
+                    </span>
+                  )}
+                </div>
+              </Link>
             )
           })}
         </div>

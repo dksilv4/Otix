@@ -30,7 +30,6 @@ import {useEpisodeInteractions, useMarkShowWatched} from '@/old-features/interac
 import {useQuery} from '@tanstack/react-query'
 import {formatYear, isGame, isMovie, isMusic, isShow, mediaQueries, mediaTypeFromParam, seoDescription} from '@media'
 import {AdminActionsMenu} from '@/old-features/admin/molecules/admin-actions-menu'
-import {cn} from '@/lib/utils'
 import {useDesktopPlatform} from '@/lib/desktop/platform'
 
 function useMediaDetail(mediaType: string, id: string) {
@@ -63,7 +62,7 @@ export function MediaDetail() {
 
 
     return (
-        <div className={cn('animate-fade-in pb-16', isDesktop && 'pt-[var(--title-bar-height,38px)]')}>
+        <div className={`animate-fade-in pb-16 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
             {/* ── SEO ── */}
             <Helmet>
                 <title>{`${titleWithYear} - Otix`}</title>
@@ -89,11 +88,11 @@ export function MediaDetail() {
             {/* ── Hero ── */}
             <MediaHero/>
 
-            {/* ── Content sections ── */}
-            <div className="flex flex-1 flex-col mx-auto w-full max-w-6xl px-6 space-y-6">
+            {/* ── Content sections — overlaps hero for floating depth ── */}
+            <div className="flex flex-1 flex-col mx-auto w-full max-w-6xl px-6 space-y-8 -mt-10 relative z-10">
 
-                {/* ── Group 1: About ── */}
-                <div className="glass-card p-6 sm:p-8 space-y-5">
+                {/* ── Main content card (the only glass surface) ── */}
+                <div className="glass-card p-6 sm:p-8 space-y-6" style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.08), var(--dk-shadow-glass)' }}>
                     {!isAuthenticated && <SignInCTA/>}
 
                     <MediaGeneralDetails/>
@@ -107,145 +106,115 @@ export function MediaDetail() {
                             Album details are still syncing for this release.
                         </p>
                     )}
+
+                    {/* Activity + Ratings — inside the main card, not a separate box */}
+                    {isAuthenticated && (
+                        <>
+                            <hr className="border-white/5" />
+                            <InteractionSection
+                                mediaId={detail.id}
+                                mediaType={displayType}
+                                userInteractions={detail.userInteractions}
+                                onShowWatchedToggle={
+                                    isShowDetail
+                                        ? (active) => markShowWatched.mutate(active)
+                                        : undefined
+                                }
+                                showEpisodeInfo={
+                                    isShowDetail && episodeInteractions.data
+                                        ? (() => {
+                                            const eps = Object.values(episodeInteractions.data.episodes)
+                                            return {
+                                                watched: eps.filter((e) => e.watched).length,
+                                                total: eps.length,
+                                            }
+                                        })()
+                                        : undefined
+                                }
+                            >
+                                <ReviewActionButton mediaId={detail.id}/>
+                                <AdminActionsMenu mediaId={detail.id} media={detail}/>
+                            </InteractionSection>
+
+                            {detail.mediaType === 'game' && (
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <DownloadGameButton />
+                                </div>
+                            )}
+
+                            <RatingsSection
+                                avgRating={detail.avgRating}
+                                ratingCount={detail.ratingCount}
+                                externalRatings={detail.externalRatings}
+                            />
+                        </>
+                    )}
+
+                    {!isAuthenticated && (
+                        <>
+                            <hr className="border-white/5" />
+                            <RatingsSection
+                                avgRating={detail.avgRating}
+                                ratingCount={detail.ratingCount}
+                                externalRatings={detail.externalRatings}
+                            />
+                        </>
+                    )}
                 </div>
 
-                {/* ── Group 2: Your Activity ── */}
-                {isAuthenticated && (
-                    <div className="glass-card p-6 sm:p-8 space-y-5">
-                        <InteractionSection
-                            mediaId={detail.id}
-                            mediaType={displayType}
-                            userInteractions={detail.userInteractions}
-                            onShowWatchedToggle={
-                                isShowDetail
-                                    ? (active) => markShowWatched.mutate(active)
-                                    : undefined
-                            }
-                            showEpisodeInfo={
-                                isShowDetail && episodeInteractions.data
-                                    ? (() => {
-                                        const eps = Object.values(episodeInteractions.data.episodes)
-                                        return {
-                                            watched: eps.filter((e) => e.watched).length,
-                                            total: eps.length,
-                                        }
-                                    })()
-                                    : undefined
-                            }
-                        >
-                            <ReviewActionButton mediaId={detail.id}/>
-                            <AdminActionsMenu mediaId={detail.id} media={detail}/>
-                        </InteractionSection>
+                {/* ── Discovery — open flow, no boxes ── */}
+                <ArtistAlbumsSection />
 
-                        {/* Unified game action button (Play / Install / Download) */}
-                        {detail.mediaType === 'game' && (
-                            <div className="flex flex-wrap items-center gap-4">
-                                <DownloadGameButton mediaId={detail.id} mediaTitle={detail.title}/>
-                            </div>
-                        )}
+                {detail.collection && <CollectionSection />}
 
-                        {/* Ratings — Otix community + external */}
-                        <RatingsSection
-                            avgRating={detail.avgRating}
-                            ratingCount={detail.ratingCount}
-                            externalRatings={detail.externalRatings}
-                        />
-                    </div>
-                )}
-
-                {/* Ratings for unauthenticated users (no interaction buttons) */}
-                {!isAuthenticated && (
-                    <div className="glass-card p-6 sm:p-8">
-                        <RatingsSection
-                            avgRating={detail.avgRating}
-                            ratingCount={detail.ratingCount}
-                            externalRatings={detail.externalRatings}
-                        />
-                    </div>
-                )}
-
-                {/* ── Group 3: Discovery (full-bleed carousels, no glass card) ── */}
-
-                {/* Other albums by same artist */}
-                {detail.mediaType === 'music' && (() => {
-                    const primaryArtist = detail.credits.find((c) => c.role === 'primary')
-                    if (primaryArtist) {
-                        return (
-                            <ArtistAlbumsSection
-                                artistPersonId={primaryArtist.person.id}
-                                artistName={primaryArtist.person.name}
-                                currentMediaId={detail.id}
-                            />
-                        )
-                    }
-                    return null
-                })()}
-
-                {/* Collection (movies only) */}
-                {detail.collection && (
-                    <CollectionSection collection={detail.collection} currentMediaId={detail.id}/>
-                )}
-
-                {/* Similar + Recommendations (merged, tabbed) */}
                 <MoreLikeThisSection/>
 
-                {/* ── Group 4: Details ── */}
-                {(detail.involvedCompanies?.length > 0 || detail.credits?.length > 0 || detail.watchProviders?.length > 0) && (
-                    <div className="glass-card p-6 sm:p-8 space-y-6">
-                        {/* Companies */}
-                        {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
-                            <section className="space-y-3">
-                                <h2 className="text-lg font-semibold">Companies</h2>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {detail.involvedCompanies.map((ic) => {
-                                        const roles: string[] = []
-                                        if (ic.production) roles.push('Production')
-                                        if (ic.developer) roles.push('Dev')
-                                        if (ic.publisher) roles.push('Pub')
-                                        if (ic.porting) roles.push('Port')
-                                        if (ic.supporting) roles.push('Support')
-                                        return (
-                                            <Link
-                                                key={ic.id}
-                                                to="/company/$companyId"
-                                                params={{companyId: ic.company.id}}
-                                            >
-                                                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/5 transition-colors hover:bg-white/10">
-                                                    {ic.company.name}
-                                                    {roles.length > 0 && (
-                                                        <span className="text-[10px] text-muted-foreground">
-                                                            {roles.join('/')}
-                                                        </span>
-                                                    )}
-                                                </Badge>
-                                            </Link>
-                                        )
-                                    })}
-                                </div>
-                            </section>
-                        )}
+                {/* ── Cast & Crew (deferred) — open flow ── */}
+                <DeferredSection
+                    fallback={<SectionSkeleton height={260}/>}
+                    rootMargin="400px 0px"
+                >
+                    <CastCrewList />
+                </DeferredSection>
 
-                        {/* Cast & Crew (deferred) */}
-                        {detail.credits && detail.credits.length > 0 && (
-                            <DeferredSection
-                                fallback={<SectionSkeleton height={260}/>}
-                                rootMargin="400px 0px"
-                            >
-                                <CastCrewList credits={detail.credits}/>
-                            </DeferredSection>
-                        )}
+                {/* ── Where to Watch — open flow ── */}
+                <WhereToWatchSection />
 
-                        {/* Where to Watch */}
-                        <WhereToWatchSection
-                            watchProviders={detail.watchProviders}
-                            mediaType={displayType}
-                        />
-                    </div>
+                {/* ── Companies — open flow, only if present ── */}
+                {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
+                    <section className="space-y-3">
+                        <h2 className="text-lg font-semibold">Companies</h2>
+                        <div className="flex flex-wrap gap-1.5">
+                            {detail.involvedCompanies.map((ic) => {
+                                const roles: string[] = []
+                                if (ic.production) roles.push('Production')
+                                if (ic.developer) roles.push('Dev')
+                                if (ic.publisher) roles.push('Pub')
+                                if (ic.porting) roles.push('Port')
+                                if (ic.supporting) roles.push('Support')
+                                return (
+                                    <Link
+                                        key={ic.id}
+                                        to="/company/$companyId"
+                                        params={{companyId: ic.company.id}}
+                                    >
+                                        <Badge variant="secondary" className="gap-1.5 border-0 bg-white/5 transition-colors hover:bg-white/10">
+                                            {ic.company.name}
+                                            {roles.length > 0 && (
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {roles.join('/')}
+                                                </span>
+                                            )}
+                                        </Badge>
+                                    </Link>
+                                )
+                            })}
+                        </div>
+                    </section>
                 )}
 
-                {/* ── Group 5: Reviews ── */}
+                {/* ── Reviews — deserves its own glass surface, distinct from main content ── */}
                 <div className="glass-card p-6 sm:p-8 space-y-5">
-                    {/* User reviews — Your Rating */}
                     <DeferredSection
                         fallback={<SectionSkeleton height={120}/>}
                         rootMargin="200px 0px"
@@ -253,7 +222,6 @@ export function MediaDetail() {
                         <ReviewSection mediaId={detail.id}/>
                     </DeferredSection>
 
-                    {/* User reviews — Community Reviews */}
                     <DeferredSection
                         fallback={<SectionSkeleton height={260}/>}
                         rootMargin="400px 0px"

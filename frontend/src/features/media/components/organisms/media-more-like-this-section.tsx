@@ -5,7 +5,6 @@ import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { mediaQueries } from '@media/queries/media-queries'
 import { useAuth } from '@/old-features/auth'
-import { cn } from '@/lib/utils'
 
 interface MoreLikeThisSectionProps {
   className?: string
@@ -57,7 +56,7 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
   const items = resolvedTab === 'similar' ? similarItems : forYouItems
 
   return (
-    <section className={cn('space-y-4', className)}>
+    <section className={`space-y-4 ${className || ''}`}>
       <div className="flex items-center gap-3 px-4 lg:px-8">
         <h2 className="text-lg font-semibold">More Like This</h2>
 
@@ -68,12 +67,11 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors border-0 backdrop-blur',
+                className={`px-3 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors border-0 backdrop-blur ${
                   resolvedTab === tab.key
                     ? 'bg-white/10 text-white'
-                    : 'bg-white/5 hover:bg-white/10 text-white/70',
-                )}
+                    : 'bg-white/5 hover:bg-white/10 text-white/70'
+                }`}
               >
                 {tab.label}
               </button>
