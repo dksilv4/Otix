@@ -1,6 +1,6 @@
 import { lazy, useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useSearch, useNavigate } from '@tanstack/react-router'
+import { useSearch, useNavigate, Outlet } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { SearchInput } from '@search/components/molecules/chat-search-input'
 import { SearchResults } from '@search/components/organisms/search-results'
@@ -141,6 +141,7 @@ export function SearchPage() {
           <div className="flex-1" />
         )}
       </div>
+      <Outlet />
     </div>
   )
 }

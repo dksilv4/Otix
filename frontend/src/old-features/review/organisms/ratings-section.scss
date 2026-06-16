@@ -6,13 +6,6 @@
   @apply space-y-4;
 }
 
-/* ── Otix Community Rating Card ──────────────────────── */
-
-.dk-review-ratings__card {
-  @apply relative overflow-hidden rounded-3xl;
-  background-color: var(--dk-surface-base);
-  box-shadow: var(--dk-shadow-sm);
-}
 
 .dk-review-ratings__glow {
   @apply absolute inset-0 opacity-40 pointer-events-none;

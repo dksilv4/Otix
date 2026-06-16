@@ -56,6 +56,7 @@ class ReviewWithUserOut(BaseModel):
     title: str | None = None
     content: str | None = None
     is_spoiler: bool = False
+    is_private: bool = False
     created_at: datetime
     updated_at: datetime
     cooldown_until: datetime | None = None

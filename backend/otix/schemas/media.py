@@ -29,16 +29,6 @@ class GenreOut(BaseModel):
         return data
 
 
-class ExternalRatingOut(BaseModel):
-    id: str
-    provider: str
-    score: float
-    max_score: float
-    vote_count: int | None = None
-
-    model_config = {"from_attributes": True}
-
-
 class MediaCreditPersonOut(BaseModel):
     id: str
     name: str
@@ -65,7 +55,6 @@ class EpisodeOut(BaseModel):
     runtime: int | None = None
     air_date: date | None = None
     still_url: str | None = None
-    external_ratings: list[ExternalRatingOut] = []
 
     model_config = {"from_attributes": True}
 
@@ -99,6 +88,8 @@ class MediaItemSummary(BaseModel):
     popularity: float
     avg_rating: float | None = None
     rating_count: int = 0
+    overall_rating: float | None = None
+    overall_rating_source: str | None = None
     like_count: int = 0
     watchlist_count: int = 0
     watched_count: int = 0
@@ -560,6 +551,8 @@ class MediaItemDetail(BaseModel):
 
     avg_rating: float | None = None
     rating_count: int = 0
+    overall_rating: float | None = None
+    overall_rating_source: str | None = None
     like_count: int = 0
     watchlist_count: int = 0
     watched_count: int = 0
@@ -579,7 +572,6 @@ class MediaItemDetail(BaseModel):
     youtube_channel_title: str | None = None
 
     genres: list[GenreOut] = []
-    external_ratings: list[ExternalRatingOut] = []
     credits: list[MediaCreditOut] = []
     involved_companies: list[InvolvedCompanyOut] = []
     releases: list[MediaReleaseOut] = []

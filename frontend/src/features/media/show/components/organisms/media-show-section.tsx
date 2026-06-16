@@ -1,15 +1,13 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { AnimatePresence } from "framer-motion"
-import { ChevronLeft, ChevronRight, Star, CheckCircle2, Circle } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react"
 import { Image } from "@ui/atoms/image"
 import { DkDialog } from "@dk-ui/molecules/dialog"
-import { EpisodeHeatmap } from "./media-show-episode-heatmap"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
 import { useQuery } from '@tanstack/react-query'
-import { mediaQueries, formatDate, formatRuntime, getTmdbRating, getPreferredSeason, type SeasonOut, type EpisodeOut, type ExternalRatingOut } from "@media"
+import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut, type EpisodeOut } from "@media"
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/old-features/interaction/episode-interaction-queries"
-import { useParams } from "@tanstack/react-router"
 
 interface ShowSectionProps {
   className?: string
@@ -19,8 +17,7 @@ interface ShowSectionProps {
 export function ShowSection({
   className,
 }: ShowSectionProps = {}) {
-  const params = useParams({ strict: false }) as { mediaId?: string }
-  const mediaId = params.mediaId || ''
+  const { mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail('show', mediaId))
   const show = data?.show
@@ -197,11 +194,6 @@ export function ShowSection({
  )}
  </div>
 
- {/* Episode ratings heatmap */}
- {hasEpisodes && (
- <EpisodeHeatmap episodes={currentSeason.episodes} />
- )}
-
  {/* Watch progress */}
  {hasEpisodes && currentSeason.seasonNumber !== 0 && (
  <SeasonProgressBar watched={seasonProgress.watched} total={seasonProgress.total} />
@@ -285,12 +277,6 @@ export function ShowSection({
  <span className="absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums" className="glass-badge">
  E{episode.episodeNumber}
  </span>
- {getTmdbRating(episode) && (
- <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums text-amber-400" className="glass-badge">
- <Star className="h-2.5 w-2.5 fill-amber-400 stroke-amber-400" />
- {getTmdbRating(episode)!.score.toFixed(1)}
- </span>
- )}
  {runtime && (
  <span className="absolute bottom-1.5 right-1.5 rounded-md px-1.5 py-0.5 font-medium text-[10px] tabular-nums text-muted-foreground" className="glass-badge">
  {runtime}

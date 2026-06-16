@@ -20,15 +20,19 @@ depends_on: str | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "media_releases",
-        sa.Column(
-            "release_type",
-            sa.String(20),
-            nullable=True,
-            comment="TMDB release type: premiere, theatrical_limited, theatrical, digital, physical, tv",
-        ),
-    )
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c["name"] for c in inspector.get_columns("media_releases")]
+    if "release_type" not in columns:
+        op.add_column(
+            "media_releases",
+            sa.Column(
+                "release_type",
+                sa.String(20),
+                nullable=True,
+                comment="TMDB release type: premiere, theatrical_limited, theatrical, digital, physical, tv",
+            ),
+        )
 
 
 def downgrade() -> None:

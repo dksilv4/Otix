@@ -1,11 +1,10 @@
-import {useParams} from '@tanstack/react-router'
 import {Badge} from '@ui/atoms/badge'
 import {Image} from '@ui/atoms/image'
 import {MEDIA_TYPE_LABEL} from '@/constants/media'
 import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
-import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL} from '@media'
+import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, useMediaParams} from '@media'
 
 interface MediaHeroProps {
     className?: string
@@ -14,9 +13,7 @@ interface MediaHeroProps {
 export function MediaHero({
                               className,
                           }: MediaHeroProps = {}) {
-    const params = useParams({strict: false}) as { mediaType?: string; mediaId?: string }
-    const mediaType = params.mediaType as 'movie' | 'show' | 'game' | 'music' || 'movie'
-    const mediaId = params.mediaId || ''
+    const {mediaType, mediaId} = useMediaParams()
 
     const {user} = useAuth()
     const {data} = useQuery(mediaQueries.detail(mediaType, mediaId))
@@ -64,18 +61,18 @@ export function MediaHero({
 
 
     return (
-        <div className={`relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl lg:min-h-[50vh] mx-6 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
+        <div className={`relative flex min-h-[45vh] items-end  rounded-3xl lg:min-h-[50vh] mx-12 mt-20 pb-14 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
             {/* Backdrop with cinematic gradient */}
             {heroBackdrop && (
-                <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+                <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">
                     <img
                         src={backdropSrc(heroBackdrop)}
                         alt=""
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-cover brightness-50"
                         style={{objectPosition: 'center 20%', animation: 'kenBurns 25s ease-out forwards'}}
                     />
                     <div
-                        className="absolute inset-0"
+                        className="fixed inset-0"
                         style={{
                             background: 'linear-gradient(to top, color-mix(in oklab, var(--background) 95%, transparent) 0%, color-mix(in oklab, var(--background) 70%, transparent) 35%, color-mix(in oklab, var(--background) 30%, transparent) 100%)',
                         }}
@@ -83,17 +80,17 @@ export function MediaHero({
                 </div>
             )}
             {/* Image darken for text readability */}
-            <div
-                className="pointer-events-none absolute inset-0 z-[1]"
-                style={{ backgroundColor: 'color-mix(in oklab, var(--background) 50%, transparent)' }}
-            />
+            {/*<div*/}
+            {/*    className="pointer-events-none absolute inset-0 z-[1]"*/}
+            {/*    style={{ backgroundColor: 'color-mix(in oklab, var(--background) 50%, transparent)' }}*/}
+            {/*/>*/}
 
             {/* Content (Inside the Hero banner) */}
             <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-6 pb-2 pt-24 sm:px-6 lg:px-6" style={{animation: 'heroFadeIn 0.6s ease-out forwards'}}>
                 <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-start sm:gap-8 lg:gap-12">
                     {/* Poster — floats below hero, overlapping content card */}
                     <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64 translate-y-10">
-                        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+                        <div className="overflow-hidden rounded-2xl shadow-2xl">
                             <Image
                                 src={posterUrl || undefined}
                                 alt={`${title} poster`}

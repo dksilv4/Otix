@@ -1,14 +1,13 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { mediaQueries, formatCurrency } from '@media'
+import { mediaQueries, formatCurrency, useMediaParams } from '@media'
 
 interface MovieSectionProps {
   className?: string
 }
 
 export function MovieSection({ className }: MovieSectionProps = {}) {
-  const params = useParams({ strict: false }) as { mediaId?: string }
-  const mediaId = params.mediaId || ''
+  const { mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail('movie', mediaId))
   if (!data || !data.movie) return null

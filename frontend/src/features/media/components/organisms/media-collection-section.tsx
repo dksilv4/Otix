@@ -1,17 +1,14 @@
 import { useRef } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
-import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { mediaQueries, formatYear } from '@media'
+import { mediaQueries, formatYear, useMediaParams } from '@media'
 import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
 
 export function CollectionSection({ className }: { className?: string } = {}) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
-  const mediaType = params.mediaType || 'movie'
-  const mediaId = params.mediaId || ''
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
   if (!data || !data.collection) return null

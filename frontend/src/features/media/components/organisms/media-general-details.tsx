@@ -1,16 +1,14 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@ui/atoms/badge'
 import { ExternalLink } from 'lucide-react'
 import {
   mediaQueries,
-  mediaTypeFromParam
+  useMediaParams
 } from '@media'
 
 export function MediaGeneralDetails() {
-  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
-  const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
-  const mediaId = params.mediaId || ''
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
 

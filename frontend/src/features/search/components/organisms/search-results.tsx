@@ -137,8 +137,8 @@ function renderBestResultItem(item: any) {
   if (mediaType === 'track') {
     return (
       <Link
-        to="/media/music/$mediaId"
-        params={{ mediaId: item.albumId }}
+        to="/media/$mediaType/$mediaId"
+        params={{ mediaType: 'music', mediaId: item.albumId }}
         className="group relative flex w-full aspect-[2/3] flex-col rounded-xl bg-white/[0.03] p-4 ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
       >
         <div className="relative flex-1 w-full overflow-hidden rounded-lg">

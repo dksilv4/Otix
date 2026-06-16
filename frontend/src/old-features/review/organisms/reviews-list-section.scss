@@ -14,7 +14,8 @@
 
 .dk-review__placeholder {
   @apply rounded-2xl p-8 text-center;
-  background-color: var(--dk-surface-base);
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
 }
 
 .dk-review__placeholder-text {
@@ -33,7 +34,8 @@
 
 .dk-review__skeleton {
   @apply rounded-2xl p-5 space-y-3;
-  background-color: var(--dk-surface-base);
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
 }
 
 .dk-review__skeleton-row {

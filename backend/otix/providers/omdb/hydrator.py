@@ -15,6 +15,7 @@ from otix.domain.asset import ExternalRating
 from otix.domain.media import ExternalID, MediaItem
 from otix.providers.omdb.client import OMDbProvider
 from otix.providers.omdb.transformer import omdb_to_ratings
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 
 class OMDbHydrator:
@@ -41,7 +42,9 @@ class OMDbHydrator:
         if not ratings:
             return False
 
-        return await self._upsert_ratings(ratings)
+        added = await self._upsert_ratings(ratings)
+        await compute_and_store_overall_rating(self.session, media_item.id)
+        return added
 
     async def _resolve_imdb_id(self, media_item_id: str) -> str | None:
         ext_id = await self.session.scalar(

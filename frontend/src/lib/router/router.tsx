@@ -1,4 +1,4 @@
-import { createRouter, createRootRoute } from "@tanstack/react-router"
+import { createRouter, createRootRoute, createRouteMask } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 import { LoadingPage } from "@ui/pages/loading-page"
 import { NotFoundPage } from "@/components/not-found"
@@ -8,6 +8,7 @@ import { createAuthRoutes } from '@auth/auth.router'
 import { createDiscoverRoutes } from '@discover/discover.router'
 import { createSearchRoutes } from '@search/search.router'
 import { createMediaRoutes } from '@media/media.router'
+import { createLauncherRoutes } from '@launcher/launcher.router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -19,6 +20,7 @@ const routeTree = rootRoute.addChildren([
   ...createDiscoverRoutes(rootRoute),
   ...createSearchRoutes(rootRoute),
   ...createMediaRoutes(rootRoute),
+  ...createLauncherRoutes(rootRoute),
 ])
 
 export interface RouterContext {

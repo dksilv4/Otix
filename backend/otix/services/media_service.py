@@ -346,7 +346,6 @@ class MediaService:
             select(MediaItem)
             .options(
                 selectinload(MediaItem.genres).joinedload(MediaGenre.genre),
-                selectinload(MediaItem.external_ratings),
                 selectinload(MediaItem.credits).joinedload(MediaCredit.person),
                 selectinload(MediaItem.involved_companies).joinedload(InvolvedCompany.company),
                 selectinload(MediaItem.releases),
@@ -360,8 +359,7 @@ class MediaService:
                 .joinedload(Movie.media_item),
                 joinedload(MediaItem.show)
                 .selectinload(Show.seasons)
-                .selectinload(Season.episodes)
-                .selectinload(Episode.external_ratings),
+                .selectinload(Season.episodes),
                 joinedload(MediaItem.game).selectinload(Game._external_ids),
                 joinedload(MediaItem.album).selectinload(Album._external_ids),
                 joinedload(MediaItem.album).selectinload(Album.tracks).selectinload(Track._external_ids),
