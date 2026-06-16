@@ -2,7 +2,7 @@
 import { useRef, useLayoutEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MediaCard } from '@ui/molecules/media-card'
-import { mediaQueries } from '../media-queries'
+import { mediaQueries } from '@media/queries/media-queries'
 import { cn } from '@/lib/utils'
 
 const BASE_ITEM_WIDTH = 144 // matches w-36 (9rem)

@@ -10,7 +10,7 @@ export const discoverKeys = {
   sections: () => [...discoverKeys.all(), 'sections'] as const,
 }
 import { IS_DEV } from '@/lib/config'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 const gcTime = IS_DEV ? 0 : 1000 * 60 * 60 * 24
 

@@ -1,14 +1,6 @@
-import type { TrackOut } from '../media-queries'
-import { TrackInlineActions } from '../molecules/media-track-inline-actions'
+import { type TrackOut, formatMs } from '@media'
+import { TrackInlineActions } from '@media/components/molecules/media-track-inline-actions'
 import { cn } from '@/lib/utils'
-
-function formatMs(ms: number | null | undefined): string {
-  if (ms == null || ms <= 0) return '—'
-  const totalSec = Math.round(ms / 1000)
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 export function TrackRow({
   track,

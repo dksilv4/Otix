@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Star, CheckCircle2, Circle } from "lucide-react"
@@ -8,16 +7,13 @@ import { DkDialog } from "@dk-ui/molecules/dialog"
 import { EpisodeHeatmap } from "./media-show-episode-heatmap"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
-import type { ShowDetail, SeasonOut, EpisodeOut, ExternalRatingOut } from "../media-queries"
-import type { EpisodeInteractionState } from "@/old-features/interaction/episode-interaction-queries"
-
+import { useQuery } from '@tanstack/react-query'
+import { mediaQueries, type SeasonOut, type EpisodeOut, type ExternalRatingOut } from "@media"
+import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/old-features/interaction/episode-interaction-queries"
+import { useParams } from "@tanstack/react-router"
 
 interface ShowSectionProps {
- show: ShowDetail
- className?: string
- episodeInteractions?: Record<string, EpisodeInteractionState>
- onToggleEpisodeWatched?: (episodeId: string, active: boolean) => void
- onMarkSeasonWatched?: (seasonNumber: number, active: boolean) => void
+  className?: string
 }
 
 function formatDate(dateStr?: string | null): string | null {
@@ -48,12 +44,25 @@ function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
 
 
 export function ShowSection({
- show,
- className,
- episodeInteractions,
- onToggleEpisodeWatched,
- onMarkSeasonWatched,
-}: ShowSectionProps) {
+  className,
+}: ShowSectionProps = {}) {
+  const params = useParams({ strict: false }) as { mediaId?: string }
+  const mediaId = params.mediaId || ''
+
+  const { data } = useQuery(mediaQueries.detail('show', mediaId))
+  const show = data?.show
+
+  const episodeInteractionsQuery = useEpisodeInteractions(mediaId, { enabled: !!show })
+  const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
+  const markSeasonWatched = useMarkSeasonWatched(mediaId)
+
+  if (!show) return null
+
+  const episodeInteractions = episodeInteractionsQuery.data?.episodes
+  const onToggleEpisodeWatched = (episodeId: string, active: boolean) =>
+    toggleEpisodeWatched.mutate({ episodeId, active })
+  const onMarkSeasonWatched = (seasonNumber: number, active: boolean) =>
+    markSeasonWatched.mutate({ seasonNumber, active })
  const seasons = useMemo(() => {
  if (!show.seasons || show.seasons.length === 0) return []
  return [...show.seasons]

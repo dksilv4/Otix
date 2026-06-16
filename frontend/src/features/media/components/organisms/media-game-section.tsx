@@ -1,47 +1,28 @@
-// TODO: Review this file
-import type { GameDetail } from '../media-queries'
+import { useQuery } from '@tanstack/react-query'
+import { useParams } from '@tanstack/react-router'
+import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo } from '@media'
 import { Badge } from '@ui/atoms/badge'
 import { cn } from '@/lib/utils'
 import { PlatformIcon } from './media-game-platform-icon'
 
 interface GameSectionProps {
-  game: GameDetail
-  platforms?: Array<{ id: string; platform: { id: string; name: string; slug: string; logoImageId?: string } }>
-  gameModes?: Array<{ id: string; gameMode: { id: string; name: string; slug: string } }>
-  steamPlaytimeForever?: number | null
-  steamPlaytime2weeks?: number | null
-  steamRtimeLastPlayed?: number | null
   className?: string
 }
 
-function formatNumber(n?: number): string {
-  if (n == null) return ''
-  return new Intl.NumberFormat('en-US').format(n)
-}
+export function GameSection({ className }: GameSectionProps = {}) {
+  const params = useParams({ strict: false }) as { mediaId?: string }
+  const mediaId = params.mediaId || ''
 
-function formatPlaytime(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`
-  const hours = minutes / 60
-  if (hours < 1) return `${Math.round(hours * 10) / 10}h`
-  return `${Math.round(hours)}h`
-}
+  const { data } = useQuery(mediaQueries.detail('game', mediaId))
+  if (!data || !data.game) return null
 
-function formatMinutesToHours(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (h > 0 && m > 0) return `${h}h ${m}m`
-  if (h > 0) return `${h}h`
-  return `${m}m`
-}
+  const game = data.game
+  const platforms = data.platforms
+  const gameModes = data.gameModes
+  const steamPlaytimeForever = data.steamPlaytimeForever
+  const steamPlaytime2weeks = data.steamPlaytime2weeks
+  const steamRtimeLastPlayed = data.steamRtimeLastPlayed
 
-function formatDaysAgo(unixTimestamp: number): string {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return "Today"
-  if (days === 1) return "1 day ago"
-  return `${days} days ago`
-}
-
-export function GameSection({ game, platforms, gameModes, steamPlaytimeForever, steamPlaytime2weeks, steamRtimeLastPlayed, className }: GameSectionProps) {
   const hasModes = gameModes && gameModes.length > 0
   const hasPlatforms = platforms && platforms.length > 0
   const hasSteamStats =

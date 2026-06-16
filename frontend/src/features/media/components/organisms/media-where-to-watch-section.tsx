@@ -1,5 +1,5 @@
 // TODO: Review this file
-import type { MediaWatchProvider } from "@/old-features/media/media-queries"
+import type { MediaWatchProvider } from "@media/queries/media-queries"
 import { cn } from "@/lib/utils"
 import { ProviderRow } from "./media-where-to-watch-provider-row"
 
