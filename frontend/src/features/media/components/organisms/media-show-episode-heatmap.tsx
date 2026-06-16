@@ -1,5 +1,4 @@
 import { type EpisodeOut, getTmdbRating, scoreToColor } from "@media"
-import { cn } from "@/lib/utils"
 
 export function EpisodeHeatmap({ episodes }: { episodes: EpisodeOut[] }) {
   const sorted = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber)
@@ -18,11 +17,9 @@ export function EpisodeHeatmap({ episodes }: { episodes: EpisodeOut[] }) {
           <div
             key={ep.id}
             title={tooltip}
-            className={cn(
-              "transition-colors w-3 h-3 rounded-[3px]",
-              color,
-              rating && "cursor-help hover:shadow-[0_0_0_1px_rgb(255_255_255_/_0.3)]",
-            )}
+            className={`transition-colors w-3 h-3 rounded-[3px] ${color} ${
+              rating ? "cursor-help hover:shadow-[0_0_0_1px_rgb(255_255_255_/_0.3)]" : ""
+            }`}
           />
         )
       })}

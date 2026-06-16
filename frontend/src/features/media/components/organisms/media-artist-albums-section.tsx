@@ -1,26 +1,23 @@
-// TODO: Review this file
-import { useRef, useLayoutEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useParams } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
-import { mediaQueries } from '@media/queries/media-queries'
-import { cn } from '@/lib/utils'
+import { mediaQueries } from '@media'
 
-const BASE_ITEM_WIDTH = 144 // matches w-36 (9rem)
-const BASE_GAP = 12         // matches gap-3
+export function ArtistAlbumsSection({ className }: { className?: string } = {}) {
+  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
+  const mediaType = params.mediaType || 'music'
+  const mediaId = params.mediaId || ''
 
-interface ArtistAlbumsSectionProps {
-  artistPersonId: string
-  artistName: string
-  currentMediaId: string
-  className?: string
-}
+  const { data: detailData } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  if (!detailData || detailData.mediaType !== 'music') return null
 
-export function ArtistAlbumsSection({
-  artistPersonId,
-  artistName,
-  currentMediaId,
-  className,
-}: ArtistAlbumsSectionProps) {
+  const primaryArtist = detailData.credits?.find((c) => c.role === 'primary')
+  if (!primaryArtist) return null
+
+  const artistPersonId = primaryArtist.person.id
+  const artistName = primaryArtist.person.name
+  const currentMediaId = detailData.id
+
   const { data, isLoading } = useQuery(
     mediaQueries.list({
       type: 'music',
@@ -43,53 +40,21 @@ export function ArtistAlbumsSection({
       return acc
     }, { items: [] as NonNullable<typeof data>['items'], seen: new Set<string>() }).items
 
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  // Smart sizing — perfectly fill visible area, no partial overflow
-  useLayoutEffect(() => {
-    const scrollEl = scrollRef.current
-    const listEl = listRef.current
-    if (!scrollEl || !listEl || albums.length === 0) return
-
-    const update = () => {
-      const scrollStyle = getComputedStyle(scrollEl)
-      const listStyle = getComputedStyle(listEl)
-      const gap = parseFloat(listStyle.columnGap) || BASE_GAP
-      const visibleWidth = scrollEl.getBoundingClientRect().width
-      const padLeft = parseFloat(scrollStyle.paddingLeft) || 0
-      const padRight = parseFloat(scrollStyle.paddingRight) || 0
-      const contentWidth = Math.max(0, visibleWidth - padLeft - padRight)
-
-      let count = Math.floor((contentWidth + gap) / (BASE_ITEM_WIDTH + gap))
-      count = Math.max(2, Math.min(count, albums.length))
-
-      const totalGaps = (count - 1) * gap
-      const cardWidth = Math.max(0, Math.floor((contentWidth - totalGaps) / count))
-      listEl.style.setProperty('--card-width', `${cardWidth}px`)
-    }
-
-    const observer = new ResizeObserver(update)
-    observer.observe(scrollEl)
-    update()
-    return () => observer.disconnect()
-  }, [albums.length])
-
   if (isLoading || albums.length === 0) return null
 
   return (
-    <section className={cn('space-y-4', className)}>
-      <div className="flex items-baseline gap-3">
+    <section className={`space-y-4 ${className || ''}`}>
+      <div className="flex items-baseline gap-2">
         <h2 className="text-lg font-semibold">More by {artistName}</h2>
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground/70">
           {albums.length} album{albums.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div ref={scrollRef} className="-mx-4 overflow-x-auto px-4 pb-1 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div ref={listRef} className="flex gap-3">
+      <div className="overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-3">
           {albums.map((album) => (
-            <div key={album.id} className="shrink-0 -mt-2 rounded-lg" style={{ width: 'var(--card-width)', minWidth: '9rem' }}>
+            <div key={album.id} className="shrink-0 w-36 sm:w-40 lg:w-44">
               <MediaCard
                 id={album.id}
                 mediaType="music"
