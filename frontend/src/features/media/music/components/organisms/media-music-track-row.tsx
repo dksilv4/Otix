@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type TrackOut, formatMs } from '@media'
 import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
-import { TrackInlineActions } from '@media/components/molecules/media-track-inline-actions'
+import { TrackInlineActions } from '@media/music/components/molecules/media-track-inline-actions'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import { useRateTrack } from '@media/queries/media-queries'
 import { useSaveSpotifyTrack } from '@/old-features/library/library-queries'

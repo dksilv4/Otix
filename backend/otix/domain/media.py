@@ -62,6 +62,8 @@ class MediaItem(Base, TimestampMixin):
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0)
+    overall_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    overall_rating_source: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     like_count: Mapped[int] = mapped_column(Integer, default=0)
     watchlist_count: Mapped[int] = mapped_column(Integer, default=0)
     watched_count: Mapped[int] = mapped_column(Integer, default=0)

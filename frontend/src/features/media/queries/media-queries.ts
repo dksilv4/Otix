@@ -63,6 +63,8 @@ export interface MediaItemDetail {
   completenessScore: number
   avgRating?: number | null
   ratingCount: number
+  overallRating?: number | null
+  overallRatingSource?: string | null
   likeCount: number
   watchlistCount: number
   watchedCount: number
@@ -79,7 +81,6 @@ export interface MediaItemDetail {
   createdAt: string
   updatedAt: string
   genres: Array<{ id: string; name: string; slug: string }>
-  externalRatings: Array<{ id: string; provider: string; score: number; maxScore: number; voteCount?: number }>
   credits: Array<{
     id: string
     person: { id: string; name: string; photoUrl?: string }
@@ -136,14 +137,6 @@ export interface MovieDetail {
   isAnime: boolean
 }
 
-export interface ExternalRatingOut {
-  id: string
-  provider: string
-  score: number
-  maxScore: number
-  voteCount?: number | null
-}
-
 export interface EpisodeOut {
   id: string
   episodeNumber: number
@@ -152,7 +145,6 @@ export interface EpisodeOut {
   runtime?: number | null
   airDate?: string | null
   stillUrl?: string | null
-  externalRatings: ExternalRatingOut[]
 }
 
 export interface SeasonOut {

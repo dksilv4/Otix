@@ -1,4 +1,4 @@
-import type { MediaItemDetail, EpisodeOut, ExternalRatingOut, SeasonOut } from './queries/media-queries'
+import type { MediaItemDetail, SeasonOut } from './queries/media-queries'
 
 // ── Type guards ──
 
@@ -173,9 +173,6 @@ export function groupByRole(credits: CreditItem[]) {
   return { cast, directors, writers, producers, composers, crew }
 }
 
-export function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
-  return episode.externalRatings?.find((r) => r.provider === "tmdb" && r.score > 0)
-}
 
 export function getPreferredSeason(seasons: SeasonOut[]): number {
   if (seasons.length === 0) return 0

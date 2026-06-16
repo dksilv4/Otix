@@ -33,7 +33,7 @@ vi.mock("@tanstack/react-router", () => ({
   useParams: vi.fn(() => ({ tab: "watchlist" })),
   useNavigate: vi.fn(() => mockNavigate),
   useSearch: vi.fn(() => ({})),
-  Link: ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => React.createElement("a", props as Record<string, unknown>, children),
+  Link: ({ children, to, search, params, ...props }: any) => React.createElement("a", { href: to, ...props }, children),
 }))
 
 // Mock auth

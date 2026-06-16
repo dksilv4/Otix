@@ -113,7 +113,7 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="dk-admin-actions__trigger"
+            className="dk-admin-actions__trigger glass-inset"
           >
             <Shield className="relative h-5 w-5 text-amber-400" />
             <span className="dk-admin-actions__label">

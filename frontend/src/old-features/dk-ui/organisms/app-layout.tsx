@@ -143,8 +143,8 @@ function AppShell({children}: { children: ReactNode }) {
         <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
             <TitleBar/>
 
-            {/* Left floating pill — hidden in game launcher (it has its own picker) */}
-            {!location.pathname.startsWith('/game') && (
+            {/* Left floating pill — hidden in launcher (it has its own picker) */}
+            {!location.pathname.startsWith('/game') && !location.pathname.startsWith('/launcher') && (
                 <div
                     id={'menu-nav-left'}
                     className={cn(

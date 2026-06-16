@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { useParams } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
-import { mediaQueries } from '@media'
+import { mediaQueries, useMediaParams } from '@media'
 
 export function ArtistAlbumsSection({ className }: { className?: string } = {}) {
-  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
-  const mediaType = params.mediaType || 'music'
-  const mediaId = params.mediaId || ''
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data: detailData } = useQuery(mediaQueries.detail(mediaType, mediaId))
   if (!detailData || detailData.mediaType !== 'music') return null

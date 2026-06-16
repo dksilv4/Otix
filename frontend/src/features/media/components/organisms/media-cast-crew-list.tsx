@@ -1,8 +1,8 @@
-import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { KeyCrewCard } from './media-cast-crew-key-card'
 import { CreditRow } from './media-cast-crew-credit-row'
-import { groupByRole, mediaQueries, mediaTypeFromParam } from '@media'
+import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
+import { groupByRole, mediaQueries, useMediaParams } from '@media'
 
 interface CreditItem {
   id: string
@@ -13,9 +13,7 @@ interface CreditItem {
 }
 
 export function CastCrewList({ className }: { className?: string } = {}) {
-  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
-  const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
-  const mediaId = params.mediaId || ''
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
   if (!data || !data.credits || data.credits.length === 0) return null
@@ -25,21 +23,22 @@ export function CastCrewList({ className }: { className?: string } = {}) {
   const keyCrew = [...directors, ...writers, ...producers]
 
   return (
-    <div className={`space-y-8 ${className || ''}`}>
+    <div className={`glass-card p-6 sm:p-8 space-y-6 ${className || ''}`}>
+      <h2 className="text-lg font-semibold">Cast & Crew</h2>
+
       {keyCrew.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-3">Key Crew</h2>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <Carousel title="Key Crew" minItemWidth={260} gap={10} showArrows={false}>
             {keyCrew.map((c) => (
               <KeyCrewCard key={c.id} credit={c} />
             ))}
-          </div>
+          </Carousel>
         </section>
       )}
 
       {(cast.length > 0 || composers.length > 0 || crew.length > 0) && (
         <section className="space-y-5">
-          <h2 className="text-lg font-semibold">Cast & Crew</h2>
+          {keyCrew.length > 0 && <hr className="border-white/5" />}
           <CreditRow label="Cast" items={cast} />
           <CreditRow label="Composers" items={composers} />
           <CreditRow label="Crew" items={crew} />

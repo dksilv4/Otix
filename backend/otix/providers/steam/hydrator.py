@@ -27,6 +27,7 @@ from otix.providers.steam.transformer import (
     extract_review_summary,
     extract_screenshot_urls,
 )
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 
 class SteamHydrator:
@@ -127,6 +128,9 @@ class SteamHydrator:
                     game.review_summary = summary
                 if score > 0:
                     await self._upsert_steam_user_rating(game, score, total)
+
+        # Keep the media-level overall rating in sync
+        await compute_and_store_overall_rating(self.session, game.media_item_id)
 
     # ── Companies ──────────────────────────────────────────────────
 

@@ -132,10 +132,7 @@ export function DiscoverHero({ className }: { className?: string }) {
       if (itemIndex === activeIndex) {
         navigate({
           to: '/media/$mediaType/$mediaId',
-          params: {
-            mediaType: item.mediaType as 'movie' | 'show' | 'game' | 'music',
-            mediaId: item.id,
-          },
+          params: { mediaType: item.mediaType, mediaId: item.id },
         })
       } else {
         navigateTo(itemIndex)
@@ -418,12 +415,7 @@ export function DiscoverHero({ className }: { className?: string }) {
         {activeItem && (
           <Link
             to="/media/$mediaType/$mediaId"
-            params={{
-              mediaType: (
-                heroDetail?.mediaType || activeItem.mediaType
-              ) as 'movie' | 'show' | 'game' | 'music',
-              mediaId: activeItem.id,
-            }}
+            params={{ mediaType: (heroDetail?.mediaType || activeItem.mediaType) as string, mediaId: activeItem.id }}
             className={cn(
               'text-[11px] font-bold text-white/80 hover:text-white',
               'flex items-center gap-1 transition-colors',

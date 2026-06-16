@@ -1,4 +1,5 @@
 import { PersonCard } from '@person/molecules/person-card'
+import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
 
 interface CreditItem {
   id: string
@@ -17,10 +18,7 @@ export function CreditRow({ label, items }: { label: string; items: CreditItem[]
         {label}
       </h4>
 
-      <div
-        className="flex gap-3 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none pb-2"
-        aria-label={`${label} credits`}
-      >
+      <Carousel minItemWidth={128} gap={12} showArrows={false}>
         {items.map((c) => (
           c.person ? (
             <PersonCard
@@ -32,7 +30,7 @@ export function CreditRow({ label, items }: { label: string; items: CreditItem[]
             />
           ) : null
         ))}
-      </div>
+      </Carousel>
     </div>
   )
 }

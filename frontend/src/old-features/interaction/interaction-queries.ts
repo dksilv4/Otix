@@ -101,30 +101,40 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
 
       // 1. Update standalone interaction cache
       if (prevInteraction) {
+        const isWatchedActive = type === 'watched' && active
         qc.setQueryData<UserInteractionState>(interactionKey, {
           ...prevInteraction,
           [type]: active,
+          ...(isWatchedActive ? { watchlisted: false } : {}),
         })
       }
 
       // 2. Update userInteractions inside the media detail cache
       if (prevDetail) {
         const countKey = COUNT_KEY[type]
+        const isWatchedActive = type === 'watched' && active
         qc.setQueryData<MediaItemDetail>(detailKey, {
           ...prevDetail,
-          userInteractions: prevDetail.userInteractions
-            ? { ...prevDetail.userInteractions, [type]: active }
-            : {
-                liked: false,
-                watchlisted: false,
-                watched: false,
-                played: false,
-                started: false,
-                listened: false,
-                owned: false,
-                [type]: active,
-              },
+          userInteractions: (() => {
+            const base = prevDetail.userInteractions
+              ? { ...prevDetail.userInteractions, [type]: active }
+              : {
+                  liked: false,
+                  watchlisted: false,
+                  watched: false,
+                  played: false,
+                  started: false,
+                  listened: false,
+                  owned: false,
+                  [type]: active,
+                }
+            if (isWatchedActive) base.watchlisted = false
+            return base
+          })(),
           [countKey]: (prevDetail[countKey] || 0) + (active ? 1 : -1),
+          ...(isWatchedActive
+            ? { watchlistCount: Math.max(0, (prevDetail.watchlistCount || 0) - 1) }
+            : {}),
         })
       }
 
@@ -138,13 +148,17 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
         if (!prevList?.items) continue
         const itemIdx = prevList.items.findIndex((i: MediaItemSummary) => i.id === mediaId)
         if (itemIdx === -1) continue
+        const isWatchedActive = type === 'watched' && active
         const updatedItems = [...prevList.items]
         const prevItem = updatedItems[itemIdx]
         updatedItems[itemIdx] = {
           ...prevItem,
-          userInteractions: prevItem.userInteractions
-            ? { ...prevItem.userInteractions, [type]: active }
-            : undefined,
+          userInteractions: (() => {
+            if (!prevItem.userInteractions) return undefined
+            const base = { ...prevItem.userInteractions, [type]: active }
+            if (isWatchedActive) base.watchlisted = false
+            return base
+          })(),
         }
         qc.setQueryData<MediaListResponse>(listKey, {
           ...prevList,
