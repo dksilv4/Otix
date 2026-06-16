@@ -5,8 +5,8 @@ export function SignInCTA() {
   const location = useLocation()
 
   return (
-    <div className="mx-auto w-full lg:max-w-7xl px-6 lg:px-8 mt-6">
-      <div className="relative overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 backdrop-blur-2xl shadow-2xl transition-all duration-300 hover:border-neutral-700/80 hover:bg-neutral-900/85 group">
+    <div>
+      <div className="glass-card relative overflow-hidden p-8 transition-all duration-300 group">
         {/* Apple-like soft structural glow */}
         <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-white/[0.02] blur-3xl group-hover:bg-white/[0.04] transition-all duration-500" />
         

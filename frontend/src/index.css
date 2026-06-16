@@ -354,6 +354,27 @@
   animation: shine 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
+/* ── Floating glass card — primary content container ── */
+.glass-card {
+  background: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
+  border-radius: var(--dk-radius-3xl);
+  transition: background var(--dk-duration-normal) var(--dk-ease-out);
+}
+
+/* ── Subtle inner glass surface — nested within glass-card ── */
+.glass-inset {
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+  border-radius: var(--dk-radius-xl);
+  transition: background var(--dk-duration-fast) var(--dk-ease-out);
+}
+.glass-inset:hover {
+  background: var(--dk-surface-ghost-hover);
+}
+
 /* ── Shared floating surface for dropdowns, panels, and overlays ── */
 .dk-surface {
   background-color: var(--dk-surface-overlay);

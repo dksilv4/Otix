@@ -32,7 +32,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'budget' }}
-            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
+            className="glass-inset px-4 py-3 transition-all"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Budget</dt>
             <dd className="mt-1 text-sm font-semibold text-white">{formatCurrency(movie.budget)}</dd>
@@ -43,7 +43,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={{ sort: 'revenue' }}
-            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
+            className="glass-inset px-4 py-3 transition-all"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</dt>
             <dd className="mt-1 flex items-center gap-2">
@@ -61,7 +61,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
             to="/browse/$type"
             params={{ type: 'movie' }}
             search={isProfitable ? { sort: 'profit' } : { sort: 'profit', dir: 'asc' }}
-            className="border-l-2 border-primary/20 pl-3 py-1 hover:border-primary/50 transition-colors"
+            className="glass-inset px-4 py-3 transition-all"
           >
             <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {isProfitable ? 'Profit' : 'Loss'}
