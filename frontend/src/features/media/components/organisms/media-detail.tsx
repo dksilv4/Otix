@@ -10,8 +10,7 @@ import {ShowSection} from './media-show-section'
 import {GameSection} from './media-game-section'
 import {MusicSection} from './media-music-section'
 import {ArtistAlbumsSection} from './media-artist-albums-section'
-import {SimilarSection} from './media-similar-section'
-import {RecommendationsSection} from './media-recommendations-section'
+import {MoreLikeThisSection} from './media-more-like-this-section'
 import {CastCrewList} from './media-cast-crew-list'
 import {CollectionSection} from './media-collection-section'
 import {DeferredSection} from '@ui/molecules/deferred-section'
@@ -64,7 +63,7 @@ export function MediaDetail() {
 
 
     return (
-        <div className={cn('animate-fade-in  pb-16', isDesktop && 'pt-[var(--title-bar-height,38px)]')}>
+        <div className={cn('animate-fade-in pb-16', isDesktop && 'pt-[var(--title-bar-height,38px)]')}>
             {/* ── SEO ── */}
             <Helmet>
                 <title>{`${titleWithYear} - Otix`}</title>
@@ -90,14 +89,15 @@ export function MediaDetail() {
             {/* ── Hero ── */}
             <MediaHero/>
 
-
             {/* ── Content sections ── */}
-            <div className="flex flex-1 flex-col mx-auto max-w-[80%] px-8 space-y-8">
-                {/* Type-specific details */}
-            {!isAuthenticated && <SignInCTA />}
+            <div className="flex flex-1 flex-col mx-auto w-full max-w-6xl px-6 space-y-6">
 
-                <MediaGeneralDetails/>
-                <div className="mx-auto w-full lg:max-w-7xl px-6 lg:px-8">
+                {/* ── Group 1: About ── */}
+                <div className="glass-card p-6 sm:p-8 space-y-5">
+                    {!isAuthenticated && <SignInCTA/>}
+
+                    <MediaGeneralDetails/>
+
                     {isMovie(detail) && <MovieSection/>}
                     {isShow(detail) && <ShowSection/>}
                     {isGame(detail) && <GameSection/>}
@@ -109,47 +109,62 @@ export function MediaDetail() {
                     )}
                 </div>
 
-                {/* Interactions — Like, Watchlist, Watched, Played */}
+                {/* ── Group 2: Your Activity ── */}
                 {isAuthenticated && (
-                    <InteractionSection
-                        mediaId={detail.id}
-                        mediaType={displayType}
-                        userInteractions={detail.userInteractions}
-                        onShowWatchedToggle={
-                            isShowDetail
-                                ? (active) => markShowWatched.mutate(active)
-                                : undefined
-                        }
-                        showEpisodeInfo={
-                            isShowDetail && episodeInteractions.data
-                                ? (() => {
-                                    const eps = Object.values(episodeInteractions.data.episodes)
-                                    return {
-                                        watched: eps.filter((e) => e.watched).length,
-                                        total: eps.length,
-                                    }
-                                })()
-                                : undefined
-                        }
-                    >
-                        <ReviewActionButton mediaId={detail.id}/>
-                        <AdminActionsMenu mediaId={detail.id} media={detail}/>
-                    </InteractionSection>
-                )}
+                    <div className="glass-card p-6 sm:p-8 space-y-5">
+                        <InteractionSection
+                            mediaId={detail.id}
+                            mediaType={displayType}
+                            userInteractions={detail.userInteractions}
+                            onShowWatchedToggle={
+                                isShowDetail
+                                    ? (active) => markShowWatched.mutate(active)
+                                    : undefined
+                            }
+                            showEpisodeInfo={
+                                isShowDetail && episodeInteractions.data
+                                    ? (() => {
+                                        const eps = Object.values(episodeInteractions.data.episodes)
+                                        return {
+                                            watched: eps.filter((e) => e.watched).length,
+                                            total: eps.length,
+                                        }
+                                    })()
+                                    : undefined
+                            }
+                        >
+                            <ReviewActionButton mediaId={detail.id}/>
+                            <AdminActionsMenu mediaId={detail.id} media={detail}/>
+                        </InteractionSection>
 
-                {/* Unified game action button (Play / Install / Download) */}
-                {detail.mediaType === 'game' && (
-                    <div className="flex flex-wrap items-center gap-4">
-                        <DownloadGameButton mediaId={detail.id} mediaTitle={detail.title}/>
+                        {/* Unified game action button (Play / Install / Download) */}
+                        {detail.mediaType === 'game' && (
+                            <div className="flex flex-wrap items-center gap-4">
+                                <DownloadGameButton mediaId={detail.id} mediaTitle={detail.title}/>
+                            </div>
+                        )}
+
+                        {/* Ratings — Otix community + external */}
+                        <RatingsSection
+                            avgRating={detail.avgRating}
+                            ratingCount={detail.ratingCount}
+                            externalRatings={detail.externalRatings}
+                        />
                     </div>
                 )}
 
-                {/* Ratings — Otix community + external */}
-                <RatingsSection
-                    avgRating={detail.avgRating}
-                    ratingCount={detail.ratingCount}
-                    externalRatings={detail.externalRatings}
-                />
+                {/* Ratings for unauthenticated users (no interaction buttons) */}
+                {!isAuthenticated && (
+                    <div className="glass-card p-6 sm:p-8">
+                        <RatingsSection
+                            avgRating={detail.avgRating}
+                            ratingCount={detail.ratingCount}
+                            externalRatings={detail.externalRatings}
+                        />
+                    </div>
+                )}
+
+                {/* ── Group 3: Discovery (full-bleed carousels, no glass card) ── */}
 
                 {/* Other albums by same artist */}
                 {detail.mediaType === 'music' && (() => {
@@ -171,87 +186,81 @@ export function MediaDetail() {
                     <CollectionSection collection={detail.collection} currentMediaId={detail.id}/>
                 )}
 
-                {/* Similar items (content-based, always shown) */}
-                <SimilarSection/>
+                {/* Similar + Recommendations (merged, tabbed) */}
+                <MoreLikeThisSection/>
 
-                {/* Recommendations (personalized via embedding centroid) */}
-                <RecommendationsSection/>
+                {/* ── Group 4: Details ── */}
+                {(detail.involvedCompanies?.length > 0 || detail.credits?.length > 0 || detail.watchProviders?.length > 0) && (
+                    <div className="glass-card p-6 sm:p-8 space-y-6">
+                        {/* Companies */}
+                        {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
+                            <section className="space-y-3">
+                                <h2 className="text-lg font-semibold">Companies</h2>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {detail.involvedCompanies.map((ic) => {
+                                        const roles: string[] = []
+                                        if (ic.production) roles.push('Production')
+                                        if (ic.developer) roles.push('Dev')
+                                        if (ic.publisher) roles.push('Pub')
+                                        if (ic.porting) roles.push('Port')
+                                        if (ic.supporting) roles.push('Support')
+                                        return (
+                                            <Link
+                                                key={ic.id}
+                                                to="/company/$companyId"
+                                                params={{companyId: ic.company.id}}
+                                            >
+                                                <Badge variant="secondary" className="gap-1.5 border-0 bg-white/5 transition-colors hover:bg-white/10">
+                                                    {ic.company.name}
+                                                    {roles.length > 0 && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            {roles.join('/')}
+                                                        </span>
+                                                    )}
+                                                </Badge>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+                            </section>
+                        )}
 
-                {/* Companies */}
-                {detail.involvedCompanies && detail.involvedCompanies.length > 0 && (
-                    <section className="space-y-3">
-                        <h2 className="text-lg font-semibold">Companies</h2>
-                        <div className="flex flex-wrap gap-1.5">
-                            {detail.involvedCompanies.map((ic) => {
-                                const roles: string[] = []
-                                if (ic.production) roles.push('Production')
-                                if (ic.developer) roles.push('Dev')
-                                if (ic.publisher) roles.push('Pub')
-                                if (ic.porting) roles.push('Port')
-                                if (ic.supporting) roles.push('Support')
-                                return (
-                                    <Link
-                                        key={ic.id}
-                                        to="/company/$companyId"
-                                        params={{companyId: ic.company.id}}
-                                    >
-                                        <Badge variant="secondary" className="gap-1.5 border-white/10 bg-white/5 transition-colors hover:bg-white/10">
-                                            {ic.company.name}
-                                            {roles.length > 0 && (
-                                                <span className="text-[10px] text-muted-foreground">
-                          {roles.join('/')}
-                        </span>
-                                            )}
-                                        </Badge>
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    </section>
+                        {/* Cast & Crew (deferred) */}
+                        {detail.credits && detail.credits.length > 0 && (
+                            <DeferredSection
+                                fallback={<SectionSkeleton height={260}/>}
+                                rootMargin="400px 0px"
+                            >
+                                <CastCrewList credits={detail.credits}/>
+                            </DeferredSection>
+                        )}
+
+                        {/* Where to Watch */}
+                        <WhereToWatchSection
+                            watchProviders={detail.watchProviders}
+                            mediaType={displayType}
+                        />
+                    </div>
                 )}
 
-                {/* Cast & Crew (deferred) */}
-                {detail.credits && detail.credits.length > 0 && (
+                {/* ── Group 5: Reviews ── */}
+                <div className="glass-card p-6 sm:p-8 space-y-5">
+                    {/* User reviews — Your Rating */}
+                    <DeferredSection
+                        fallback={<SectionSkeleton height={120}/>}
+                        rootMargin="200px 0px"
+                    >
+                        <ReviewSection mediaId={detail.id}/>
+                    </DeferredSection>
+
+                    {/* User reviews — Community Reviews */}
                     <DeferredSection
                         fallback={<SectionSkeleton height={260}/>}
                         rootMargin="400px 0px"
                     >
-                        <CastCrewList credits={detail.credits}/>
+                        <ReviewsListSection mediaId={detail.id}/>
                     </DeferredSection>
-                )}
-
-                {/* Where to Watch */}
-                <WhereToWatchSection
-                    watchProviders={detail.watchProviders}
-                    mediaType={displayType}
-                />
-
-                {/* User reviews — Your Rating */}
-                <DeferredSection
-                    fallback={<SectionSkeleton height={120}/>}
-                    rootMargin="200px 0px"
-                >
-                    <ReviewSection mediaId={detail.id}/>
-                </DeferredSection>
-
-                {/* User reviews — Community Reviews */}
-                <DeferredSection
-                    fallback={<SectionSkeleton height={260}/>}
-                    rootMargin="400px 0px"
-                >
-                    <ReviewsListSection mediaId={detail.id}/>
-                </DeferredSection>
-
-                {/* Metadata footer */}
-                <footer className="border-t border-border pt-6 text-xs text-muted-foreground">
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Completeness: {Math.round(detail.completenessScore * 100)}%</span>
-                        <span aria-hidden="true">·</span>
-                        <span>Updated {new Date(detail.updatedAt).toLocaleDateString()}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>ID: {detail.id}</span>
-                    </div>
-                </footer>
+                </div>
             </div>
         </div>
     )
