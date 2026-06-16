@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
-import { mediaQueries } from '@/old-features/media/media-queries'
-import { mediaKeys } from '@/old-features/media/media-keys'
+import { mediaQueries } from '@media/queries/media-queries'
+import { mediaKeys } from '@media/queries/media-keys'
 
 export function useSearchBackfill(
   query: string,

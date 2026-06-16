@@ -1,22 +1,5 @@
-import type { EpisodeOut, ExternalRatingOut } from "../media-queries"
+import { type EpisodeOut, getTmdbRating, scoreToColor } from "@media"
 import { cn } from "@/lib/utils"
-
-function getTmdbRating(episode: EpisodeOut): ExternalRatingOut | undefined {
-  return episode.externalRatings?.find((r) => r.provider === "tmdb" && r.score > 0)
-}
-
-function scoreToColor(score: number, maxScore: number = 10): string {
-  const t = Math.max(0, Math.min(1, score / maxScore))
-  if (t < 0.25) return "bg-blue-800/60"
-  if (t < 0.45) return "bg-blue-600/60"
-  if (t < 0.55) return "bg-emerald-600/60"
-  if (t < 0.65) return "bg-emerald-500/60"
-  if (t < 0.72) return "bg-lime-500/60"
-  if (t < 0.78) return "bg-yellow-500/60"
-  if (t < 0.84) return "bg-orange-500/60"
-  if (t < 0.90) return "bg-orange-600/70"
-  return "bg-red-500/70"
-}
 
 export function EpisodeHeatmap({ episodes }: { episodes: EpisodeOut[] }) {
   const sorted = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber)

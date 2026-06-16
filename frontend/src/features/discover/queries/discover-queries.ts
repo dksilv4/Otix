@@ -2,7 +2,7 @@ import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
 import { IS_DEV } from '@/lib/config'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 import type { PersonalizedSection } from '../types'
 
 const gcTime = IS_DEV ? 0 : 1000 * 60 * 60 * 24

@@ -37,9 +37,12 @@ interface DkBadgeProps
     VariantProps<typeof badgeVariants> {
   removable?: boolean
   onRemove?: () => void
+  show?: boolean
 }
 
-function DkBadge({ className, variant, size, removable, onRemove, children, ...props }: DkBadgeProps) {
+function DkBadge({ className, variant, size, removable, onRemove, show = true, children, ...props }: DkBadgeProps) {
+  if (!show || children == null || children === '' || children === false) return null
+
   const mediaColors: Record<string, string> = {
     movie: 'var(--media-movie)',
     show: 'var(--media-show)',

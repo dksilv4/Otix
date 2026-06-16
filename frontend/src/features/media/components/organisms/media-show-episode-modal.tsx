@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect } from "react"
 import { X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
-import type { EpisodeOut } from "../media-queries"
+import type { EpisodeOut } from "@media/queries/media-queries"
 
 const flipTransition = { duration: 0.32, ease: [0.16, 1, 0.3, 1] } as const
 

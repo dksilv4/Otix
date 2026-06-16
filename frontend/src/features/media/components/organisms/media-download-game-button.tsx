@@ -10,29 +10,9 @@ import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-ins
 import { useInstallProgress } from '@/old-features/game-scanner/install-store'
 import { Play, Download, Loader2, CheckCircle2, Clock, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isTitleMatch } from '@media'
 
 type LocalGame = import('@/old-features/game-scanner/types').LocalGame;
-
-function isTitleMatch(gameTitle: string, mediaTitle: string): boolean {
-  if (!gameTitle || !mediaTitle) return false;
-  const norm = (str: string) => {
-    return str
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\bii\b/g, '2')
-      .replace(/\biii\b/g, '3')
-      .replace(/\biv\b/g, '4')
-      .replace(/\bv\b/g, '5')
-      .replace(/\bvi\b/g, '6')
-      .replace(/\bvii\b/g, '7')
-      .replace(/\bviii\b/g, '8')
-      .replace(/\bix\b/g, '9')
-      .replace(/\bx\b/g, '10')
-      .replace(/\s+/g, '')
-      .trim();
-  };
-  return norm(gameTitle) === norm(mediaTitle);
-}
 
 export function DownloadGameButton({ mediaId, mediaTitle }: { mediaId: string; mediaTitle: string }) {
   const { user } = useAuth();

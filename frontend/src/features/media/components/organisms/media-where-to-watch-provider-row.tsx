@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react"
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
-import type { MediaWatchProvider } from "@/old-features/media/media-queries"
+import type { MediaWatchProvider } from "@media/queries/media-queries"
 import { cn } from "@/lib/utils"
 import { API_BASE_URL } from "@/lib/config"
 

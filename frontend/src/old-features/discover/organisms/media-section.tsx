@@ -3,10 +3,9 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import { discoverQueries } from '@discover/discover-queries'
+import { discoverQueries, DiscoverMediaCard } from '@discover'
 import { Carousel } from '@ui/molecules/carousel'
-import { DiscoverMediaCard } from '@discover/molecules/discover-media-card'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media'
 
 const IN_VIEW_OPTIONS = { once: true, margin: '0px 0px 200px 0px' } as const
 

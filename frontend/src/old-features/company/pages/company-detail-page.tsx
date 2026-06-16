@@ -6,7 +6,7 @@ import { Helmet } from 'react-helmet-async'
 import { Film, Tv, Gamepad2, Music, Building2, Star } from 'lucide-react'
 import { useInView } from 'framer-motion'
 import { apiClient } from '@/lib/api/client'
-import { mediaQueries, type MediaItemSummary } from '@/old-features/media/media-queries'
+import { mediaQueries, type MediaItemSummary } from '@media/queries/media-queries'
 
 interface CompanyDetail {
   id: string

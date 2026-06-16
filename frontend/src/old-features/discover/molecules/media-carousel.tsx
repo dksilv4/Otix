@@ -4,7 +4,7 @@ import { Skeleton } from '@ui/atoms/skeleton'
 import { cn } from '@/lib/utils'
 import { DiscoverMediaCard } from './discover-media-card'
 import './media-carousel.scss'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 interface MediaCarouselProps {
   items: MediaItemSummary[]

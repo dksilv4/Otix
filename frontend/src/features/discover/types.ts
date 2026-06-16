@@ -11,7 +11,7 @@ export interface PersonalizedSection {
 }
 
 export interface DiscoverListResponse {
-  items: import('@media/media-queries').MediaItemSummary[]
+  items: import('@media/queries/media-queries').MediaItemSummary[]
   nextCursor: string | null
   hasMore: boolean
   total: number | null
