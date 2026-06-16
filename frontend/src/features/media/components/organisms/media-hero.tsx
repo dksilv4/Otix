@@ -5,7 +5,7 @@ import {MEDIA_TYPE_LABEL} from '@/constants/media'
 import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
-import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries} from '@media'
+import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL} from '@media'
 
 interface MediaHeroProps {
     className?: string
@@ -63,10 +63,8 @@ export function MediaHero({
         backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
 
 
-    const GLASS_PILL = 'bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors'
-
     return (
-        <div className={`relative flex min-h-[40vh] items-end overflow-hidden rounded-3xl lg:min-h-[40vh] mt-18 mx-6 ${className || ''}`}>
+        <div className={`relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl lg:min-h-[50vh] mx-6 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
             {/* Backdrop with cinematic gradient */}
             {heroBackdrop && (
                 <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
@@ -91,10 +89,10 @@ export function MediaHero({
             />
 
             {/* Content (Inside the Hero banner) */}
-            <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-6 pb-6 pt-24 sm:px-6 lg:px-6" style={{animation: 'heroFadeIn 0.6s ease-out forwards'}}>
+            <div className="relative z-10 mx-auto w-full lg:max-w-7xl px-6 pb-2 pt-24 sm:px-6 lg:px-6" style={{animation: 'heroFadeIn 0.6s ease-out forwards'}}>
                 <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-start sm:gap-8 lg:gap-12">
-                    {/* Poster */}
-                    <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64">
+                    {/* Poster — floats below hero, overlapping content card */}
+                    <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64 translate-y-10">
                         <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
                             <Image
                                 src={posterUrl || undefined}

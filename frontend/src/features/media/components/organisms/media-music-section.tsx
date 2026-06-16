@@ -1,35 +1,18 @@
 import { useState, useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { mediaQueries, type TrackOut, formatMs } from '@media'
-import { useRateTrack } from '@media/queries/media-queries'
-import { cn } from '@/lib/utils'
+import { mediaQueries, type TrackOut, formatMs, ALBUM_AUDIO_FEATURE_ORDER, EMPTY_TRACKS } from '@media'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
 import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
-import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
 
 interface MusicSectionProps {
   className?: string
 }
-
-const EMPTY_TRACKS: TrackOut[] = []
-
-/** Spotify-style audio feature keys we show when present on album or tracks */
-const ALBUM_AUDIO_FEATURE_ORDER = [
- ['tempo', 'Tempo'],
- ['energy', 'Energy'],
- ['danceability', 'Dance'],
- ['valence', 'Valence'],
- ['acousticness', 'Acoustic'],
- ['instrumentalness', 'Instrumental'],
- ['liveness', 'Live'],
- ['speechiness', 'Speech'],
-] as const
 
 function renderAlbumAudioFeatures(features: Record<string, unknown> | null | undefined) {
  if (!features || typeof features !== 'object') return null
@@ -114,77 +97,16 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  const plexReady = !!plexBaseUrl && !!plexToken
  // Album art comes from Fanart/MusicBrainz (posterUrl) — never from Plex.
 
- // Helper: build a PlexTrackInfo for a single track (just credentials, no pre-built URL).
- // The provider resolves the Part key from Plex metadata at play time.
- const plexTrackInfo = (ratingKey: string, trackTitle: string, artist: string, durMs: number): PlexTrackInfo => ({
- id: ratingKey,
- ratingKey,
- title: trackTitle,
- artist,
- albumName: title || "",
- albumArt: posterUrl,
- durationMs: durMs || 0,
- plexBaseUrl: plexBaseUrl ?? null,
- plexToken: plexToken ?? null,
- })
-
- const saveSpotifyTrack = useSaveSpotifyTrack()
- const rateTrack = useRateTrack()
- const { toast } = useToast()
- const [likedSpotifyIds, setLikedSpotifyIds] = useState<Set<string>>(new Set())
- const [savingSpotifyId, setSavingSpotifyId] = useState<string | null>(null)
- const [ratingTrackId, setRatingTrackId] = useState<string | null>(null)
- const [ratingsByTrack, setRatingsByTrack] = useState<
- Record<string, { myRating?: number | null; avgRating?: number | null; ratingCount: number }>
- >({})
-
- const handleSaveSpotify = (spotifyId: string) => {
- setSavingSpotifyId(spotifyId)
- saveSpotifyTrack.mutate(spotifyId, {
- onSuccess: () => {
- setLikedSpotifyIds((current) => new Set(current).add(spotifyId))
- toast({ title: 'Added to Spotify liked songs', variant: 'success' })
- },
- onError: () => {
- toast({
- title: 'Could not save to Spotify',
- description: 'Check your Spotify connection and try again.',
- variant: 'error',
- })
- },
- onSettled: () => setSavingSpotifyId(null),
- })
- }
-
- const handleRateTrack = (trackId: string, score: number) => {
- setRatingTrackId(trackId)
- rateTrack.mutate({ trackId, score }, {
- onSuccess: (result) => {
- setRatingsByTrack((current) => ({
- ...current,
- [trackId]: {
- myRating: result.score,
- avgRating: result.avgRating,
- ratingCount: result.ratingCount,
- },
- }))
- },
- onError: () => {
- toast({ title: 'Could not save track rating', variant: 'error' })
- },
- onSettled: () => setRatingTrackId(null),
- })
- }
 
  return (
- <section className={cn('space-y-8', className)}>
+ <section className={`space-y-8 ${className || ''}`}>
  <div className="flex items-center gap-2">
  <Music2 className="h-5 w-5 text-amber-500" aria-hidden />
  <h2 className="text-lg font-semibold">Album</h2>
  </div>
 
  {/* Release metadata */}
- <div className="rounded-2xl p-5" style={{ backgroundColor: 'var(--dk-surface-base)', boxShadow: 'var(--dk-shadow-sm)' }}>
+ <div className="rounded-2xl p-5" className="glass-surface-raised">
  <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
  Release details
  </h3>
@@ -222,14 +144,11 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  <div className="mt-4 flex flex-wrap items-center gap-2">
  {/* Platform picker — shown when album is on both Spotify and Plex */}
  {hasBothPlatforms && (
- <div className="flex items-center rounded-lg p-0.5 mr-1" style={{ backgroundColor: 'rgba(255,255,255,0.04)', boxShadow: '0 0 0 1px rgba(255,255,255,0.06)' }}>
+ <div className="flex items-center rounded-lg p-0.5 mr-1" className="flex items-center rounded-lg p-0.5 mr-1" style={{ backgroundColor: 'rgba(255,255,255,0.04)', boxShadow: '0 0 0 1px rgba(255,255,255,0.06)' }}>
  <button
  type="button"
  onClick={() => setPlaybackPlatform('spotify')}
- className={cn(
- 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
- playbackPlatform === 'spotify' && 'bg-[#1DB954] text-black shadow-sm',
- )}
+ className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground ${playbackPlatform === 'spotify' ? 'bg-[#1DB954] text-black shadow-sm' : ''}`}
  >
  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
@@ -239,10 +158,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  <button
  type="button"
  onClick={() => setPlaybackPlatform('plex')}
- className={cn(
- 'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground',
- playbackPlatform === 'plex' && 'bg-amber-500 text-black shadow-sm',
- )}
+ className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all text-muted-foreground hover:text-foreground ${playbackPlatform === 'plex' ? 'bg-amber-500 text-black shadow-sm' : ''}`}
  >
  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
  <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm4.24 16L12 15.45 7.77 18l1.12-4.81-3.73-3.23 4.92-.42L12 5l1.92 4.54 4.92.42-3.73 3.23L16.23 18z" />
@@ -274,9 +190,17 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  console.warn("Plex connection info not available — try re-syncing Plex in Settings")
  return
  }
- const info: PlexTrackInfo[] = plexTracks.map(pt =>
- plexTrackInfo(pt.ratingKey, pt.title, pt.artist || artistName || "", pt.durationMs || 0),
- )
+          const info: PlexTrackInfo[] = plexTracks.map(pt => ({
+            id: pt.ratingKey,
+            ratingKey: pt.ratingKey,
+            title: pt.title,
+            artist: pt.artist || artistName || '',
+            albumName: title || '',
+            albumArt: posterUrl,
+            durationMs: pt.durationMs || 0,
+            plexBaseUrl: plexBaseUrl ?? null,
+            plexToken: plexToken ?? null,
+          }))
  if (info.length > 0) playPlexAlbum(info)
  }}
  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/30"
@@ -372,66 +296,29 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  plexByTrack.set(`${pt.discNumber}:${pt.trackNumber}`, pt)
  }
  }
+	 return allTracks.map((t) => {
+	 const plexMatch = plexByTrack.get(`${t.discNumber}:${t.trackNumber}`)
+	 const plexConnection = plexMatch ? {
+	 ratingKey: plexMatch.ratingKey,
+	 baseUrl: plexBaseUrl,
+	 token: plexToken,
+	 artist: plexMatch.artist || artistName || '',
+	 } : null
 
- return allTracks.map((t, i) => {
- const subsequentUris = allTracks
- .slice(i)
- .filter((tr) => tr.spotifyId)
- .map((tr) => `spotify:track:${tr.spotifyId}` as string)
-
- const plexMatch = plexByTrack.get(`${t.discNumber}:${t.trackNumber}`)
- const plexRatingKey = plexMatch?.ratingKey
- const isPlexPlaying = !!plexRatingKey && currentTrack?.id === plexRatingKey && source === 'plex'
-
- return (
+	 return (
  <TrackRow
  key={t.id}
  track={t}
  showDisc={multiDisc}
- isReady={spotifyIsReady}
- isPlaying={currentTrack?.id === t.spotifyId && source === 'spotify'}
- spotifyLiked={Boolean(t.spotifyId && likedSpotifyIds.has(t.spotifyId))}
- savingSpotify={savingSpotifyId === t.spotifyId}
- rating={ratingsByTrack[t.id] ?? {
- myRating: null,
- avgRating: t.avgRating ?? null,
- ratingCount: t.ratingCount ?? 0,
- }}
- ratingPending={ratingTrackId === t.id}
- onPlay={(uris) => playSpotifyQueue(uris.length > 1 ? uris : subsequentUris)}
- onToggle={togglePlay}
- onSaveSpotify={handleSaveSpotify}
- onRate={handleRateTrack}
- plexRatingKey={plexRatingKey}
- isPlexPlaying={isPlexPlaying}
  playbackPlatform={playbackPlatform}
- onPlexPlay={
- plexRatingKey
- ? () => {
- if (!plexReady) {
- console.warn("Plex connection info not available — try re-syncing Plex in Settings")
- return
- }
- const allPlexInfos: PlexTrackInfo[] = allTracks
- .map((tt) => {
- const pm = plexByTrack.get(`${tt.discNumber}:${tt.trackNumber}`)
- if (!pm) return null
- return plexTrackInfo(pm.ratingKey, tt.title, pm.artist || artistName || "", tt.durationMs || 0)
- })
- .filter(Boolean) as PlexTrackInfo[]
-
- if (allPlexInfos.length > 0) {
- const startIdx = allPlexInfos.findIndex(p => p.ratingKey === plexRatingKey)
- playPlexAlbum(allPlexInfos, startIdx >= 0 ? startIdx : 0)
- } else {
- playPlexTrack(plexTrackInfo(plexRatingKey, t.title, artistName || "", t.durationMs || 0))
- }
- }
- : undefined
- }
+ plexConnection={plexConnection}
+ allTracks={allTracks}
+ albumTitle={title || ''}
+ albumArt={posterUrl}
+ artistName={artistName}
  />
- )
- })
+	 )
+	 })
  })()}
  </tbody>
  </table>

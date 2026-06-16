@@ -1,7 +1,8 @@
-import { cn } from '@/lib/utils'
+import { useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { KeyCrewCard } from './media-cast-crew-key-card'
 import { CreditRow } from './media-cast-crew-credit-row'
-import { groupByRole } from '@media'
+import { groupByRole, mediaQueries, mediaTypeFromParam } from '@media'
 
 interface CreditItem {
   id: string
@@ -11,19 +12,20 @@ interface CreditItem {
   sortOrder: number
 }
 
-interface CastCrewListProps {
-  credits: CreditItem[]
-  className?: string
-}
+export function CastCrewList({ className }: { className?: string } = {}) {
+  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
+  const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
+  const mediaId = params.mediaId || ''
 
-export function CastCrewList({ credits, className }: CastCrewListProps) {
+  const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  if (!data || !data.credits || data.credits.length === 0) return null
+  const credits = data.credits
+
   const { cast, directors, writers, producers, composers, crew } = groupByRole(credits)
   const keyCrew = [...directors, ...writers, ...producers]
 
-  if (credits.length === 0) return null
-
   return (
-    <div className={cn('space-y-8', className)}>
+    <div className={`space-y-8 ${className || ''}`}>
       {keyCrew.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold mb-3">Key Crew</h2>

@@ -1,7 +1,6 @@
 import { ExternalLink } from "lucide-react"
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import type { MediaWatchProvider } from "@media/queries/media-queries"
-import { cn } from "@/lib/utils"
 import { API_BASE_URL } from "@/lib/config"
 
 export function ProviderRow({ provider }: { provider: MediaWatchProvider }) {
@@ -16,10 +15,7 @@ export function ProviderRow({ provider }: { provider: MediaWatchProvider }) {
 
   const inner = (
     <div
-      className={cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-150",
-        hasUrl && "cursor-pointer hover:bg-white/[0.04]",
-      )}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-150 ${hasUrl ? 'cursor-pointer hover:bg-white/[0.04]' : ''}`}
     >
       {isPlex ? (
         <div className="flex h-8 w-8 items-center justify-center rounded-lg text-[#e5a00d]">

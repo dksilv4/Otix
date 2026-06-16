@@ -3,25 +3,8 @@ import { X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
 import type { EpisodeOut } from "@media/queries/media-queries"
-
-const flipTransition = { duration: 0.32, ease: [0.16, 1, 0.3, 1] } as const
-
-function formatDate(dateStr?: string | null): string | null {
-  if (!dateStr) return null
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-}
-
-function formatRuntime(minutes?: number | null): string | null {
-  if (!minutes) return null
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    return `${h}h ${m}m`
-  }
-  return `${minutes}m`
-}
+import { formatDate, formatRuntime } from '@media'
+import { FLIP_TRANSITION } from '@media'
 
 interface EpisodeModalProps {
   episode: EpisodeOut
@@ -56,8 +39,7 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose }: Epi
         animate={{ opacity: showModal ? 1 : showClone ? 1 : 0 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
-        className="fixed inset-0"
-        style={{ zIndex: 50, background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}
+        className="fixed inset-0" style={{ zIndex: 50, background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}
       />
 
       <AnimatePresence>
@@ -81,7 +63,7 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose }: Epi
               borderRadius: 24,
             }}
             exit={{ opacity: 0 }}
-            transition={flipTransition}
+            transition={FLIP_TRANSITION}
             onAnimationComplete={() => setAnimDone(true)}
           >
             <Image
@@ -94,11 +76,11 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose }: Epi
                 </div>
               }
             />
-            <span className="absolute bottom-2 left-2 rounded-md px-2 py-1 font-semibold text-[10px] tabular-nums" style={{ background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}>
+            <span className="absolute bottom-2 left-2 rounded-md px-2 py-1 font-semibold text-[10px] tabular-nums glass-badge">
               E{episode.episodeNumber}
             </span>
             {runtime && (
-              <span className="absolute bottom-2 right-2 rounded-md px-2 py-1 font-medium text-[10px] tabular-nums text-muted-foreground" style={{ background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}>
+              <span className="absolute bottom-2 right-2 rounded-md px-2 py-1 font-medium text-[10px] tabular-nums text-muted-foreground glass-badge">
                 {runtime}
               </span>
             )}
@@ -116,20 +98,17 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose }: Epi
           animate={showModal ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0 }}
           transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg overflow-y-auto rounded-3xl"
-          style={{ maxHeight: '85vh', background: 'var(--dk-surface-base)', boxShadow: 'var(--dk-shadow-glass)' }}
+
+          className="glass-card relative w-full max-w-lg overflow-y-auto" style={{ maxHeight: '85vh' }}
         >
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full transition-colors"
-            style={{ background: 'var(--dk-surface-glass)', boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.06)' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--dk-surface-glass-hover)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'var(--dk-surface-glass)'}
+            className="glass-inset absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-full transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div ref={thumbRef} className="relative rounded-t-3xl overflow-hidden aspect-video" style={{ background: 'var(--dk-surface-glass)' }}>
+          <div ref={thumbRef} className="relative rounded-t-3xl overflow-hidden aspect-video glass-episode-card">
             <Image
               src={thumbSrc}
               alt={episode.name || `Episode ${episode.episodeNumber}`}
@@ -140,11 +119,11 @@ export function EpisodeModal({ episode, seasonPoster, sourceRect, onClose }: Epi
                 </div>
               }
             />
-            <span className="absolute bottom-2 left-2 rounded-md px-2 py-1 font-semibold text-[10px] tabular-nums" style={{ background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}>
+            <span className="absolute bottom-2 left-2 rounded-md px-2 py-1 font-semibold text-[10px] tabular-nums glass-badge">
               E{episode.episodeNumber}
             </span>
             {runtime && (
-              <span className="absolute bottom-2 right-2 rounded-md px-2 py-1 font-medium text-[10px] tabular-nums text-muted-foreground" style={{ background: 'hsl(var(--background) / 0.8)', backdropFilter: 'blur(4px)' }}>
+              <span className="absolute bottom-2 right-2 rounded-md px-2 py-1 font-medium text-[10px] tabular-nums text-muted-foreground glass-badge">
                 {runtime}
               </span>
             )}

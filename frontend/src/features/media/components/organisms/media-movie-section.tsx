@@ -1,7 +1,6 @@
 import { Link, useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatCurrency } from '@media'
-import { cn } from '@/lib/utils'
 
 interface MovieSectionProps {
   className?: string
@@ -24,7 +23,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
   const isProfitable = hasProfit && profitAbs > 0
 
   return (
-    <section className={cn(className)}>
+    <section className={className || ''}>
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 ">
 
         {movie.budget != null && movie.budget > 0 && (
@@ -68,10 +67,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
             </dt>
             <dd className="mt-1 flex items-center gap-2">
               <span
-                className={cn(
-                  'text-sm font-semibold',
-                  isProfitable ? 'text-emerald-400' : 'text-red-400',
-                )}
+                className={`text-sm font-semibold ${isProfitable ? 'text-emerald-400' : 'text-red-400'}`}
               >
                 {isProfitable ? '+' : '-'}{formatCurrency(Math.abs(profitAbs!))}
               </span>

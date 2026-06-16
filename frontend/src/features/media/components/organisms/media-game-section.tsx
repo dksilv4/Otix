@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo } from '@media'
 import { Badge } from '@ui/atoms/badge'
-import { cn } from '@/lib/utils'
 import { PlatformIcon } from './media-game-platform-icon'
 
 interface GameSectionProps {
@@ -35,7 +34,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
   if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !hasTimeToBeat && !game.website) return null
 
   return (
-    <section className={cn('space-y-6', className)}>
+    <section className={`space-y-6 ${className || ''}`}>
       {/* Platforms */}
       {hasPlatforms && (
         <div className="space-y-2">
@@ -47,7 +46,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
               <div
                 key={p.id}
                 className="flex items-center gap-2 rounded-xl px-3 py-2"
-                style={{ backgroundColor: 'var(--dk-surface-base)', boxShadow: 'var(--dk-shadow-xs)' }}
+                className="glass-inset flex items-center gap-2 rounded-xl px-3 py-2"
               >
                 <PlatformIcon slug={p.platform.slug} />
                 <span className="text-xs font-medium text-muted-foreground">
@@ -89,7 +88,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
             {steamPlaytime2weeks != null && steamPlaytime2weeks > 0 && (
               <div>
                 <dt className="text-xs text-muted-foreground">Recent (2 weeks)</dt>
-                <dd className={cn('text-sm font-medium', 'text-green-500')}>{formatPlaytime(steamPlaytime2weeks)}</dd>
+                <dd className="text-sm font-medium text-green-500">{formatPlaytime(steamPlaytime2weeks)}</dd>
               </div>
             )}
             {steamRtimeLastPlayed != null && (
@@ -157,7 +156,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
             {game.reviewSummary && (
               <div>
                 <dt className="text-xs text-muted-foreground">Reviews</dt>
-                <dd className={cn('text-sm font-medium', 'capitalize')}>
+                <dd className="text-sm font-medium capitalize">
                   {game.reviewSummary}
                 </dd>
               </div>
@@ -165,7 +164,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
             {game.isFree && (
               <div>
                 <dt className="text-xs text-muted-foreground">Price</dt>
-                <dd className={cn('text-sm font-medium', 'text-green-600 dark:text-green-400')}>Free</dd>
+                <dd className="text-sm font-medium text-green-600 dark:text-green-400">Free</dd>
               </div>
             )}
             {game.hasMultiplayer && (

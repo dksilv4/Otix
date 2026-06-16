@@ -1,12 +1,8 @@
-// TODO: Review this file
-import type { MediaWatchProvider } from "@media/queries/media-queries"
-import { cn } from "@/lib/utils"
+import { useParams } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import { mediaQueries, mediaTypeFromParam } from "@media"
+import type { MediaWatchProvider } from "@media"
 import { ProviderRow } from "./media-where-to-watch-provider-row"
-
-interface WhereToWatchSectionProps {
-  watchProviders: MediaWatchProvider[]
-  mediaType: string
-}
 
 const SECTION_CONFIG: Record<string, { label: string; colorMod: string; types: string[] }> = {
   stream: {
@@ -49,10 +45,17 @@ function groupBySection(providers: MediaWatchProvider[]): Array<{ key: string; l
   return result
 }
 
-export function WhereToWatchSection({ watchProviders, mediaType }: WhereToWatchSectionProps) {
-  if (!watchProviders || watchProviders.length === 0) return null
+export function WhereToWatchSection() {
+  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
+  const mediaType = mediaTypeFromParam(params.mediaType || 'movie')
+  const mediaId = params.mediaId || ''
 
-  if (!["movie", "show", "music"].includes(mediaType)) return null
+  const { data } = useQuery(mediaQueries.detail(mediaType, mediaId))
+  if (!data || !data.watchProviders || data.watchProviders.length === 0) return null
+
+  const watchProviders = data.watchProviders
+  const displayType = data.mediaType
+  if (!["movie", "show", "music"].includes(displayType)) return null
 
   const sections = groupBySection(watchProviders)
 
@@ -63,7 +66,7 @@ export function WhereToWatchSection({ watchProviders, mediaType }: WhereToWatchS
       <div className="flex flex-wrap gap-4">
         {sections.map((section) => (
           <div key={section.key} className="glass-inset min-w-[140px] flex-1 space-y-2 p-4">
-            <h3 className={cn("text-xs font-semibold uppercase tracking-wider", SECTION_COLOR[section.colorMod])}>
+            <h3 className={`text-xs font-semibold uppercase tracking-wider ${SECTION_COLOR[section.colorMod]}`}>
               {section.label}
             </h3>
             <div className="space-y-1">
