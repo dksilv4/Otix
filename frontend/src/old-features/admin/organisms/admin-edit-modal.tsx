@@ -8,7 +8,7 @@ import { DkButton } from '@/old-features/dk-ui/atoms/button'
 import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@/old-features/dk-ui/molecules/tabs'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import { useCreateProposal, useMediaAssets, ADMIN_XP, type ImageOverrideItem, type MediaAsset } from '../admin-edit-queries'
-import type { MediaItemDetail } from '@/old-features/media/media-queries'
+import type { MediaItemDetail } from '@media/queries/media-queries'
 import { PositionModal } from '@/old-features/settings/molecules/position-modal'
 import { encodePositionInUrl } from '@/lib/utils/image-position'
 

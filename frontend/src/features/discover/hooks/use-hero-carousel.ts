@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { discoverQueries } from '../queries/discover-queries'
-import { mediaQueries } from '@/old-features/media/media-queries'
+import { mediaQueries } from '@media/queries/media-queries'
 
 const AUTOPLAY_INTERVAL = 8000
 const SWIPE_THRESHOLD = 50

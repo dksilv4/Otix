@@ -1,16 +1,18 @@
+import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
-import { mediaQueries } from '../media-queries'
+import { mediaQueries } from '@media/queries/media-queries'
 import { cn } from '@/lib/utils'
 
 interface SimilarSectionProps {
-  mediaId: string
-  mediaType: string
   className?: string
 }
 
-export function SimilarSection({ mediaId, mediaType, className }: SimilarSectionProps) {
+export function SimilarSection({ className }: SimilarSectionProps = {}) {
+  const params = useParams({ strict: false }) as { mediaType?: string; mediaId?: string }
+  const mediaType = params.mediaType || 'movie'
+  const mediaId = params.mediaId || ''
   const { data, isLoading } = useQuery(
     mediaQueries.similar(mediaType, mediaId, { limit: 20 }),
   )

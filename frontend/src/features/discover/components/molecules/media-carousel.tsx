@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from './discover-media-card'
-import type { MediaItemSummary } from '@media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 interface MediaCarouselProps {
   items: MediaItemSummary[]

@@ -76,7 +76,7 @@ vi.mock("@/old-features/spotify/use-player", () => ({
 
 // Mock Media Queries
 const mockRateTrackMutate = vi.fn()
-vi.mock("@/old-features/media/media-queries", () => ({
+vi.mock("@media/queries/media-queries", () => ({
   useRateTrack: vi.fn(() => ({
     mutate: mockRateTrackMutate,
   })),

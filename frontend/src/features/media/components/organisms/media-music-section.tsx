@@ -1,7 +1,8 @@
-// TODO: Review this file
 import { useState, useMemo } from 'react'
-import type { AlbumDetail, TrackOut } from '../media-queries'
-import { useRateTrack } from '../media-queries'
+import { Link, useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import { mediaQueries, type TrackOut, formatMs } from '@media'
+import { useRateTrack } from '@media/queries/media-queries'
 import { cn } from '@/lib/utils'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/old-features/spotify/use-player'
@@ -13,23 +14,10 @@ import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 interface MusicSectionProps {
- album: AlbumDetail
- mediaItemId: string
- title: string
- posterUrl: string | null
- artistName: string | null
- className?: string
+  className?: string
 }
 
 const EMPTY_TRACKS: TrackOut[] = []
-
-function formatMs(ms: number | null | undefined): string {
- if (ms == null || ms <= 0) return '—'
- const totalSec = Math.round(ms / 1000)
- const m = Math.floor(totalSec / 60)
- const s = totalSec % 60
- return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 /** Spotify-style audio feature keys we show when present on album or tracks */
 const ALBUM_AUDIO_FEATURE_ORDER = [
@@ -64,8 +52,19 @@ function renderAlbumAudioFeatures(features: Record<string, unknown> | null | und
  )
 }
 
-export function MusicSection({ album, mediaItemId, title, posterUrl, artistName, className }: MusicSectionProps) {
- const tracks = album.tracks ?? EMPTY_TRACKS
+export function MusicSection({ className }: MusicSectionProps = {}) {
+  const params = useParams({ strict: false }) as { mediaId?: string }
+  const mediaId = params.mediaId || ''
+  const { data } = useQuery(mediaQueries.detail('music', mediaId))
+  if (!data || !data.album) return null
+
+  const album = data.album
+  const mediaItemId = data.id
+  const title = data.title
+  const posterUrl = data.posterUrl
+  const artistName = data.credits.find((c) => c.role === 'primary')?.person.name || null
+
+  const tracks = album.tracks ?? EMPTY_TRACKS
  const { playSpotifyQueue, currentTrack, spotifyIsReady, togglePlay, playPlexAlbum, playPlexTrack, source, error } = usePlayer()
  const { data: plexData } = usePlexAlbumTracks(mediaItemId)
  const plexTracks = plexData?.tracks

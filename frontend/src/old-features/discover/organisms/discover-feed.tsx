@@ -1,6 +1,6 @@
 import './discover-feed.scss'
-import { DiscoverHero } from '@discover/organisms/discover-hero'
-import { MediaSection } from '@discover/organisms/media-section'
+import { DiscoverHero } from './discover-hero'
+import { MediaSection } from './media-section'
 
 const sections = [
   { title: 'Movies', mediaType: 'movie' as const, listType: 'popular' },

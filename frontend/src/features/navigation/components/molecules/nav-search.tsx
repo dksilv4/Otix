@@ -5,7 +5,7 @@ import { Search, Film, Tv, Gamepad2, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { MediaItemSummary } from '@/old-features/media/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
 
 /** Expandable search input with autocomplete suggestions for media across all types. */
 export function NavSearch() {

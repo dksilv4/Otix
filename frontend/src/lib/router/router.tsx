@@ -7,6 +7,7 @@ import { RootLayout } from "@/features/_config/components/layout/root-layout"
 import { createAuthRoutes } from '@auth/auth.router'
 import { createDiscoverRoutes } from '@discover/discover.router'
 import { createSearchRoutes } from '@search/search.router'
+import { createMediaRoutes } from '@media/media.router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -17,6 +18,7 @@ const routeTree = rootRoute.addChildren([
   ...createAuthRoutes(rootRoute),
   ...createDiscoverRoutes(rootRoute),
   ...createSearchRoutes(rootRoute),
+  ...createMediaRoutes(rootRoute),
 ])
 
 export interface RouterContext {

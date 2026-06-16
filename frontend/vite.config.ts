@@ -13,7 +13,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
       '@auth': path.resolve(__dirname, 'src/features/auth'),
       '@ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
-      '@media': path.resolve(__dirname, 'src/old-features/media'),
+      '@media': path.resolve(__dirname, 'src/features/media'),
       '@discover': path.resolve(__dirname, 'src/features/discover'),
       '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
@@ -36,6 +36,11 @@ export default defineConfig({
       '/media': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+        },
       },
     },
   },
