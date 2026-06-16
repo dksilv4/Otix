@@ -3,11 +3,6 @@
 .dk-review-action-button {
   @apply relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl px-3 py-3 transition-all duration-150;
   isolation: isolate;
-  background-color: var(--dk-surface-base);
-
-  &:hover {
-    background-color: var(--dk-surface-glass);
-  }
 }
 
 .dk-review-action-button__glow {

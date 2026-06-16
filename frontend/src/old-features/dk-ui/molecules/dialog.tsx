@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,7 +30,7 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4">
       {/* Overlay */}
       <div
@@ -79,7 +80,8 @@ function DkDialog({ open, onOpenChange, title, description, children, className 
 
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

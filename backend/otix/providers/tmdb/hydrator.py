@@ -23,6 +23,7 @@ from otix.domain.company import Company, InvolvedCompany
 from otix.domain.franchise import Franchise, FranchiseItem
 from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.media import ExternalID, MediaItem, Movie
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 from otix.domain.people import MediaCredit, Person, PersonAsset
 from otix.domain.watch_provider import MediaWatchProvider, WatchProvider
 from otix.lib.collection_matcher import normalize_franchise_name
@@ -446,6 +447,9 @@ class TMDBHydrator:
                         vote_count=vote_count,
                     )
                 )
+
+        # Keep the media-level overall rating in sync
+        await compute_and_store_overall_rating(self.session, media_item.id)
 
     # ── Collection ───────────────────────────────────────────────
 

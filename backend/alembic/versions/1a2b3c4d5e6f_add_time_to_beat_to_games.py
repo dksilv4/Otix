@@ -18,7 +18,11 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("games", sa.Column("time_to_beat", JSONB, nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    columns = [c["name"] for c in inspector.get_columns("games")]
+    if "time_to_beat" not in columns:
+        op.add_column("games", sa.Column("time_to_beat", JSONB, nullable=True))
 
 
 def downgrade() -> None:

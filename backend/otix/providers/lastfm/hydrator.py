@@ -17,6 +17,7 @@ from otix.providers.lastfm.transformer import (
     extract_wiki_summary,
 )
 from otix.services.external_id_service import ExternalIDService
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 
 class LastFMHydrator:
@@ -97,6 +98,9 @@ class LastFMHydrator:
         listeners = extract_listeners(lfm_album)
         if listeners:
             self._upsert_rating_inline(album, "lastfm_listeners", float(listeners), 100000, rating_by_provider)
+
+        # Keep the media-level overall rating in sync
+        await compute_and_store_overall_rating(self._session, album.media_item_id)
 
     async def hydrate_artist(self, artist_name: str, artist_mbid: str | None = None) -> None:
         """Fetch artist info from Last.fm and update Person record if found."""

@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { mediaQueries, type TrackOut, formatMs, ALBUM_AUDIO_FEATURE_ORDER, EMPTY_TRACKS } from '@media'
+import { mediaQueries, type TrackOut, formatMs, ALBUM_AUDIO_FEATURE_ORDER, EMPTY_TRACKS, useMediaParams } from '@media'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
@@ -36,8 +35,7 @@ function renderAlbumAudioFeatures(features: Record<string, unknown> | null | und
 }
 
 export function MusicSection({ className }: MusicSectionProps = {}) {
-  const params = useParams({ strict: false }) as { mediaId?: string }
-  const mediaId = params.mediaId || ''
+  const { mediaId } = useMediaParams()
   const { data } = useQuery(mediaQueries.detail('music', mediaId))
   if (!data || !data.album) return null
 

@@ -157,7 +157,7 @@ function InteractionButton({
  onClick={handleClick}
  disabled={toggle.isPending}
  className={cn(
- 'dk-interaction__btn',
+ 'dk-interaction__btn glass-inset',
  toggle.isPending && 'dk-interaction__btn--pending',
  )}
  >
@@ -224,7 +224,7 @@ function InteractionSection({
  const listLabel = mediaType === 'game' || mediaType === 'music' ? 'wishlist' : 'watchlist'
  return (
  <section className={cn('dk-interaction', className)}>
- <div className="dk-interaction__unauthed-card">
+ <div className="dk-interaction__unauthed-card glass-inset">
  <p className="dk-interaction__unauthed-text">
  <Link to="/auth/login" search={{ redirect: location.href }} className="dk-interaction__unauthed-link">
  Sign in
@@ -251,8 +251,13 @@ function InteractionSection({
  return (
  <InteractionButton
  key={btn.type}
- {...btn}
- active={interactions?.[btn.type] ?? false}
+  {...btn}
+  label={
+    btn.type === 'watchlisted' && interactions?.watched
+      ? 'Rewatch'
+      : btn.label
+  }
+  active={interactions?.[btn.type] ?? false}
  mediaId={mediaId}
  mediaType={mediaType}
  onClick={

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Carousel } from '@ui/molecules/carousel'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { mediaQueries } from '@media/queries/media-queries'
+import { useMediaParams } from '@media'
 import { useAuth } from '@/old-features/auth'
 
 interface MoreLikeThisSectionProps {
@@ -16,12 +16,7 @@ export function MoreLikeThisSection({ className }: MoreLikeThisSectionProps) {
   const [activeTab, setActiveTab] = useState<Tab>('similar')
   const { isAuthenticated } = useAuth()
 
-  const params = useParams({ strict: false }) as {
-    mediaType?: string
-    mediaId?: string
-  }
-  const mediaType = params.mediaType || 'movie'
-  const mediaId = params.mediaId || ''
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data: similarData, isLoading: similarLoading } = useQuery(
     mediaQueries.similar(mediaType, mediaId, { limit: 20 }),

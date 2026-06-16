@@ -1,4 +1,5 @@
 import { Helmet } from 'react-helmet-async'
+import { Outlet } from '@tanstack/react-router'
 import { DiscoverFeed } from '@discover/components/organisms/discover-feed'
 
 export function DiscoverPage() {
@@ -14,6 +15,7 @@ export function DiscoverPage() {
       <div className="relative">
         <DiscoverFeed />
       </div>
+      <Outlet />
     </>
   )
 }

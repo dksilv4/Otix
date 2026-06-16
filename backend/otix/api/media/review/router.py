@@ -11,6 +11,7 @@ from otix.schemas.review import (
     ReviewCreate,
     ReviewOut,
     ReviewUpdate,
+    ReviewUserOut,
     ReviewWithUserOut,
 )
 from otix.services.media_rating_service import MediaRatingService
@@ -102,10 +103,11 @@ async def list_reviews(
             title=review.title,
             content=review.content,
             is_spoiler=review.is_spoiler,
+            is_private=review.is_private,
             created_at=review.created_at,
             updated_at=review.updated_at,
             cooldown_until=review.cooldown_until,
-            user=review.user,  # type: ignore
+            user=ReviewUserOut.model_validate(review.user),
             rating=MediaRatingOut.model_validate(rating) if rating else None,
         )
         for review, rating in items
