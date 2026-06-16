@@ -62,7 +62,7 @@ export function WhereToWatchSection({ watchProviders, mediaType }: WhereToWatchS
 
       <div className="flex flex-wrap gap-4">
         {sections.map((section) => (
-          <div key={section.key} className="min-w-[140px] flex-1 space-y-2">
+          <div key={section.key} className="glass-inset min-w-[140px] flex-1 space-y-2 p-4">
             <h3 className={cn("text-xs font-semibold uppercase tracking-wider", SECTION_COLOR[section.colorMod])}>
               {section.label}
             </h3>
