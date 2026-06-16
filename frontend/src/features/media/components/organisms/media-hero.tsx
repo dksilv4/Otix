@@ -1,8 +1,8 @@
-import {Link, useParams} from '@tanstack/react-router'
+import {useParams} from '@tanstack/react-router'
 import {Badge} from '@ui/atoms/badge'
 import {Image} from '@ui/atoms/image'
 import {MEDIA_TYPE_LABEL} from '@/constants/media'
-import {Calendar, Clock, ExternalLink, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'lucide-react'
+import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
 import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries} from '@media'
@@ -31,7 +31,6 @@ export function MediaHero({
         textlessPosterUrl,
         releaseDate,
         originalLanguage,
-        youtubeVideoId,
         isAdult,
     } = detail
     const isAnime = detail.movie?.isAnime || detail.show?.isAnime || false
@@ -63,9 +62,8 @@ export function MediaHero({
     const heroBackdrop =
         backdropUrl || (mediaType === 'music' && posterUrl ? posterUrl : null)
 
-    const youtubeUrl = youtubeVideoId
-        ? `https://www.youtube.com/watch?v=${youtubeVideoId}`
-        : null
+
+    const GLASS_PILL = 'bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors'
 
     return (
         <div className={`relative flex min-h-[40vh] items-end overflow-hidden rounded-3xl lg:min-h-[40vh] mt-18 mx-6 ${className || ''}`}>
@@ -138,7 +136,7 @@ export function MediaHero({
 
                         {/* Option 2 Borderless Glassmorphic Detail Pills */}
                         <div className="flex flex-wrap gap-2 mt-2">
-                            <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors">
+                            <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                 {mediaType === 'movie' && <Film className="h-3.5 w-3.5 text-primary" />}
                                 {mediaType === 'show' && <Tv className="h-3.5 w-3.5 text-primary" />}
                                 {mediaType === 'game' && <Gamepad2 className="h-3.5 w-3.5 text-primary" />}
@@ -146,30 +144,30 @@ export function MediaHero({
                                 {MEDIA_TYPE_LABEL[mediaType]}
                             </Badge>
                             {year && (
-                                <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors">
+                                <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                                     {year}
                                 </Badge>
                             )}
                             {(formattedRuntime || formattedAlbumLength) && (
-                                <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors">
+                                <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                     <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                     {formattedRuntime || formattedAlbumLength}
                                 </Badge>
                             )}
                             {languageDisplay && (
-                                <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors">
+                                <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                     <Languages className="h-3.5 w-3.5 text-muted-foreground" />
                                     {languageDisplay}
                                 </Badge>
                             )}
                             {status && (
-                                <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors capitalize">
+                                <Badge variant="secondary" className={`${GLASS_PILL} capitalize`}>
                                     {status.replace(/_/g, ' ')}
                                 </Badge>
                             )}
                             {certification && (
-                                <Badge variant="secondary" className="bg-white/5 hover:bg-white/10 text-white px-3 py-1.5 text-xs font-semibold backdrop-blur border-0 transition-colors">
+                                <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                     {certification}
                                 </Badge>
                             )}
