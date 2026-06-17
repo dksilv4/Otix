@@ -23,8 +23,9 @@ review_router = APIRouter(prefix="/media", tags=["review"])
 # ── Review CRUD ──
 
 
-@review_router.get("/{media_id}/review", response_model=ReviewOut | None)
+@review_router.get("/{media_type}/{media_id}/review", response_model=ReviewOut | None)
 async def get_my_review(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -33,8 +34,9 @@ async def get_my_review(
     return await service.get_my_review(user_id=current_user.id, media_item_id=media_id)
 
 
-@review_router.put("/{media_id}/review", response_model=ReviewOut)
+@review_router.put("/{media_type}/{media_id}/review", response_model=ReviewOut)
 async def upsert_review(
+    media_type: str,
     media_id: str,
     body: ReviewCreate,
     db: AsyncSession = Depends(get_db),
@@ -51,8 +53,9 @@ async def upsert_review(
     )
 
 
-@review_router.patch("/{media_id}/review", response_model=ReviewOut)
+@review_router.patch("/{media_type}/{media_id}/review", response_model=ReviewOut)
 async def update_review(
+    media_type: str,
     media_id: str,
     body: ReviewUpdate,
     db: AsyncSession = Depends(get_db),
@@ -69,8 +72,9 @@ async def update_review(
     return existing
 
 
-@review_router.delete("/{media_id}/review", status_code=status.HTTP_204_NO_CONTENT)
+@review_router.delete("/{media_type}/{media_id}/review", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_review(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -81,8 +85,9 @@ async def delete_review(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
 
-@review_router.get("/{media_id}/reviews", response_model=list[ReviewWithUserOut])
+@review_router.get("/{media_type}/{media_id}/reviews", response_model=list[ReviewWithUserOut])
 async def list_reviews(
+    media_type: str,
     media_id: str,
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(20, ge=1, le=50),
@@ -117,8 +122,9 @@ async def list_reviews(
 # ── Rating CRUD ──
 
 
-@review_router.get("/{media_id}/rating", response_model=MediaRatingOut | None)
+@review_router.get("/{media_type}/{media_id}/rating", response_model=MediaRatingOut | None)
 async def get_my_rating(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -127,8 +133,9 @@ async def get_my_rating(
     return await service.get_my_rating(user_id=current_user.id, media_item_id=media_id)
 
 
-@review_router.put("/{media_id}/rating", response_model=MediaRatingAggregateOut)
+@review_router.put("/{media_type}/{media_id}/rating", response_model=MediaRatingAggregateOut)
 async def upsert_rating(
+    media_type: str,
     media_id: str,
     body: MediaRatingCreate,
     db: AsyncSession = Depends(get_db),
@@ -147,8 +154,9 @@ async def upsert_rating(
     )
 
 
-@review_router.delete("/{media_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+@review_router.delete("/{media_type}/{media_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_rating(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

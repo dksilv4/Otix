@@ -13,6 +13,7 @@ import "./reviews-list-section.scss"
 
 interface ReviewsListSectionProps {
  mediaId: string
+  mediaType: string
  className?: string
 }
 
@@ -32,13 +33,13 @@ function ReviewCardSkeleton() {
  )
 }
 
-function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
+function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectionProps) {
  const { user } = useAuth()
  const [editTarget, setEditTarget] = useState<ReviewWithUserOut | null>(null)
  const [composerOpen, setComposerOpen] = useState(false)
 
  const { data: reviews, isLoading, isError, refetch } = useQuery({
- ...reviewQueries.list(mediaId),
+ ...reviewQueries.list(mediaType, mediaId),
  staleTime: 1000 * 30,
  })
 
