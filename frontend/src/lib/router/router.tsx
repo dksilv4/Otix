@@ -1,6 +1,5 @@
 import { createRouter, createRootRoute, createRouteMask } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
-import { LoadingPage } from "@ui/pages/loading-page"
 import { NotFoundPage } from "@/components/not-found"
 import { RootLayout } from "@/features/_config/components/layout/root-layout"
 
@@ -9,6 +8,7 @@ import { createDiscoverRoutes } from '@discover/discover.router'
 import { createSearchRoutes } from '@search/search.router'
 import { createMediaRoutes } from '@media/media.router'
 import { createLauncherRoutes } from '@launcher/launcher.router'
+import { createUserRoutes } from '@user/user.router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -21,6 +21,7 @@ const routeTree = rootRoute.addChildren([
   ...createSearchRoutes(rootRoute),
   ...createMediaRoutes(rootRoute),
   ...createLauncherRoutes(rootRoute),
+  ...createUserRoutes(rootRoute),
 ])
 
 export interface RouterContext {
@@ -31,7 +32,7 @@ export const router = createRouter({
   routeTree,
   context: {} as RouterContext,
   defaultPreload: "intent",
-  defaultPendingComponent: LoadingPage,
+  defaultPendingComponent: () => null,
   scrollRestoration: true,
 })
 
