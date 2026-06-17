@@ -17,7 +17,7 @@ export function ListsPreviewSection() {
           Your Lists
         </h2>
         <button
-          onClick={() => navigate({ to: "/library/lists" })}
+          onClick={() => navigate({ to: "/library" })}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           View all
@@ -30,7 +30,7 @@ export function ListsPreviewSection() {
         {lists.length > 3 && (
           <button
             type="button"
-            onClick={() => navigate({ to: "/library/lists" })}
+            onClick={() => navigate({ to: "/library" })}
             className="flex items-center justify-center rounded-3xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 p-6"
           >
             <span className="text-sm text-muted-foreground">

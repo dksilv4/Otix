@@ -32,6 +32,7 @@ import {useEpisodeInteractions, useMarkShowWatched} from '@/old-features/interac
 import {useQuery} from '@tanstack/react-query'
 import {formatYear, isGame, isMovie, isMusic, isShow, mediaQueries, mediaTypeFromParam, seoDescription} from '@media'
 import {AdminActionsMenu} from '@/old-features/admin/molecules/admin-actions-menu'
+import {AddToListButton} from '@list/molecules/add-to-list-button'
 import {useDesktopPlatform} from '@/lib/desktop/platform'
 
 function useMediaDetail(mediaType: string, id: string) {
@@ -50,8 +51,8 @@ export function MediaDetail() {
 
     const {data, isError} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
-    const episodeInteractions = useEpisodeInteractions(mediaId, {enabled: isShowDetail})
-    const markShowWatched = useMarkShowWatched(mediaId)
+    const episodeInteractions = useEpisodeInteractions(mediaType, mediaId, {enabled: isShowDetail})
+    const markShowWatched = useMarkShowWatched(mediaType, mediaId)
 
     // Route param not available yet during hard refresh — show skeleton, not error
     if (!mediaId) return <DetailSkeleton/>
@@ -136,8 +137,9 @@ export function MediaDetail() {
                                         : undefined
                                 }
                             >
-                                <ReviewActionButton mediaId={detail.id}/>
+                                <ReviewActionButton mediaId={detail.id} mediaType={displayType}/>
                                 <AdminActionsMenu mediaId={detail.id} media={detail}/>
+                                <AddToListButton mediaItemId={detail.id}/>
                             </InteractionSection>
 
                             {detail.mediaType === 'game' && (
@@ -173,14 +175,14 @@ export function MediaDetail() {
                             fallback={<SectionSkeleton height={120}/>}
                             rootMargin="200px 0px"
                         >
-                            <ReviewSection mediaId={detail.id}/>
+                            <ReviewSection mediaId={detail.id} mediaType={displayType}/>
                         </DeferredSection>
 
                         <DeferredSection
                             fallback={<SectionSkeleton height={260}/>}
                             rootMargin="400px 0px"
                         >
-                            <ReviewsListSection mediaId={detail.id}/>
+                            <ReviewsListSection mediaId={detail.id} mediaType={displayType}/>
                         </DeferredSection>
                     </div>
                 </div>

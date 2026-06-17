@@ -64,8 +64,8 @@ const IMAGE_TYPE_ALIASES: Record<string, string[]> = {
 
 export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
   const { toast } = useToast()
-  const createProposal = useCreateProposal(mediaId)
-  const { data: assetData, isLoading: assetsLoading } = useMediaAssets(mediaId)
+  const createProposal = useCreateProposal(media.mediaType, mediaId)
+  const { data: assetData, isLoading: assetsLoading } = useMediaAssets(media.mediaType, mediaId)
   const [tab, setTab] = useState('fields')
 
   // Fields state

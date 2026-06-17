@@ -1,11 +1,16 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { mediaKeys } from '@media/queries/media-keys'
 import { interactionKeys } from './interaction-keys'
+
+function emit(event: string, payload: unknown) {
+  try { (window as any).desktopAPI?.plugin?.emitEvent(event, payload) } catch {}
+}
 
 export const episodeInteractionKeys = {
   all: () => ['episode-interactions'] as const,
-  forShow: (mediaId: string) => [...episodeInteractionKeys.all(), 'show', mediaId] as const,
+  forShow: (mediaType: string, mediaId: string) => [...episodeInteractionKeys.all(), 'show', mediaType, mediaId] as const,
 }
 
 export interface EpisodeInteractionState {
@@ -35,14 +40,15 @@ export interface BulkMarkResponse {
 }
 
 export function useEpisodeInteractions(
+  mediaType: string,
   mediaId: string,
   { enabled = true }: { enabled?: boolean } = {},
 ) {
   return useQuery({
-    queryKey: episodeInteractionKeys.forShow(mediaId),
+    queryKey: episodeInteractionKeys.forShow(mediaType, mediaId),
     queryFn: async () => {
       const { data } = await apiClient.get<EpisodeInteractionsOut>(
-        `/media/${mediaId}/episode-interactions`,
+        `/media/${mediaType}/${mediaId}/episode-interactions`,
       )
       return data
     },
@@ -51,7 +57,7 @@ export function useEpisodeInteractions(
   })
 }
 
-export function useToggleEpisodeWatched(mediaId: string) {
+export function useToggleEpisodeWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
@@ -64,15 +70,15 @@ export function useToggleEpisodeWatched(mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<EpisodeToggleResponse>(
-          `/media/${mediaId}/episodes/${episodeId}/watched`,
+          `/media/${mediaType}/${mediaId}/episodes/${episodeId}/watched`,
         )
         return data
       }
-      await apiClient.delete(`/media/${mediaId}/episodes/${episodeId}/watched`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/episodes/${episodeId}/watched`)
       return null
     },
     onMutate: async ({ episodeId, active }) => {
-      const key = episodeInteractionKeys.forShow(mediaId)
+      const key = episodeInteractionKeys.forShow(mediaType, mediaId)
       await qc.cancelQueries({ queryKey: key })
 
       const prev = qc.getQueryData<EpisodeInteractionsOut>(key)
@@ -94,42 +100,44 @@ export function useToggleEpisodeWatched(mediaId: string) {
     },
     onError: (_err, _vars, context) => {
       if (context?.prev) {
-        qc.setQueryData(episodeInteractionKeys.forShow(mediaId), context.prev)
+        qc.setQueryData(episodeInteractionKeys.forShow(mediaType, mediaId), context.prev)
       }
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+    onSettled: (data, error, variables) => {
+      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
+      if (!error) emit('otix:media:watched', { mediaId, mediaType: 'show', episodeId: variables.episodeId })
     },
   })
 }
 
-export function useMarkShowWatched(mediaId: string) {
+export function useMarkShowWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
     mutationFn: async (active: boolean) => {
       if (active) {
         const { data } = await apiClient.put<BulkMarkResponse>(
-          `/media/${mediaId}/show-watched`,
+          `/media/${mediaType}/${mediaId}/show-watched`,
         )
         return data
       }
       const { data } = await apiClient.delete<BulkMarkResponse>(
-        `/media/${mediaId}/show-watched`,
+        `/media/${mediaType}/${mediaId}/show-watched`,
       )
       return data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
+      emit('otix:media:watched', { mediaId, mediaType: 'show', seasonNumber: 'all' })
     },
   })
 }
 
-export function useMarkSeasonWatched(mediaId: string) {
+export function useMarkSeasonWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
@@ -142,19 +150,20 @@ export function useMarkSeasonWatched(mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<BulkMarkResponse>(
-          `/media/${mediaId}/seasons/${seasonNumber}/watched`,
+          `/media/${mediaType}/${mediaId}/seasons/${seasonNumber}/watched`,
         )
         return data
       }
       const { data } = await apiClient.delete<BulkMarkResponse>(
-        `/media/${mediaId}/seasons/${seasonNumber}/watched`,
+        `/media/${mediaType}/${mediaId}/seasons/${seasonNumber}/watched`,
       )
       return data
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
-      qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
+      emit('otix:media:watched', { mediaId, mediaType: 'show', seasonNumber: variables.seasonNumber })
     },
   })
 }

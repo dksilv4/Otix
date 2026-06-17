@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 
 interface ReviewSectionProps {
  mediaId: string
+ mediaType: string
  className?: string
 }
 
@@ -48,16 +49,16 @@ function StarRow({ count, filled, size = "md" }: { count: number; filled: number
  )
 }
 
-function ReviewSection({ mediaId, className }: ReviewSectionProps) {
+function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
  const { isAuthenticated } = useAuth()
  const [composerOpen, setComposerOpen] = useState(false)
 
  const myReviewQuery = useQuery({
-   ...reviewQueries.myReview(mediaId),
+   ...reviewQueries.myReview(mediaType, mediaId),
    enabled: isAuthenticated,
  })
  const myRatingQuery = useQuery({
-   ...ratingQueries.myRating(mediaId),
+   ...ratingQueries.myRating(mediaType, mediaId),
    enabled: isAuthenticated,
  })
 
@@ -213,6 +214,7 @@ function ReviewSection({ mediaId, className }: ReviewSectionProps) {
      >
        <ReviewComposer
          mediaId={mediaId}
+         mediaType={mediaType}
          existingReview={review}
          existingRating={rating}
          onClose={() => setComposerOpen(false)}
