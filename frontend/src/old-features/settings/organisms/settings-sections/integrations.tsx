@@ -357,14 +357,15 @@ export function IntegrationsSection() {
   }>>({})
   const [, setAnimTick] = useState(0)
 
-  // Smooth progress animation loop — moves displayed toward real at observed rate
+  // Smooth progress animation loop — runs on rAF, only triggers re-render when animating
   useEffect(() => {
     let rafId: number
     function tick() {
       const anim = animStateRef.current
+      const keys = Object.keys(anim)
       let anyChanged = false
-      for (const key of Object.keys(anim)) {
-        const s = anim[key]
+      for (let i = 0; i < keys.length; i++) {
+        const s = anim[keys[i]]
         if (s.displayed >= s.real - 0.01) {
           if (s.displayed !== s.real) s.displayed = s.real
           continue
@@ -447,11 +448,7 @@ export function IntegrationsSection() {
   const [nzbplanetForm, setNzbplanetForm] = useState({ apiKey: '' })
   const [sabnzbdStatus, setSabnzbdStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
   const [nzbplanetStatus, setNzbplanetStatus] = useState<'idle' | 'ok' | 'fail'>('idle')
-  const [downloadPath, setDownloadPath] = useState('')
   const [sabnzbdCompletePath, setSabnzbdCompletePath] = useState('')
-  const [postProcessEnabled, setPostProcessEnabled] = useState(true)
-  const [autoSearch, setAutoSearch] = useState(false)
-  const [intervalHours, setIntervalHours] = useState(12)
   const [preferredRepackers, setPreferredRepackers] = useState('')
 
   useEffect(() => {
@@ -463,11 +460,7 @@ export function IntegrationsSection() {
         useSsl: dlConfig.sabnzbdUseSsl ?? false,
       })
       setNzbplanetForm({ apiKey: dlConfig.nzbplanetApiKey ?? '' })
-      setDownloadPath(dlConfig.downloadPath ?? '')
       setSabnzbdCompletePath(dlConfig.sabnzbdCompletePath ?? '')
-      setPostProcessEnabled(dlConfig.postProcessEnabled ?? true)
-      setAutoSearch(dlConfig.autoSearchWishlist ?? false)
-      setIntervalHours(dlConfig.wishlistIntervalHours ?? 12)
       setPreferredRepackers(dlConfig.preferredRepackers ?? '')
     }
   }, [dlConfig])
@@ -556,14 +549,21 @@ export function IntegrationsSection() {
     })
   }, [isAuthenticated, authLoading])
 
-  // Re-fetch integrations when the window regains focus — this catches
+  // Re-fetch integrations when the window regains visibility — this catches
   // the case where an OAuth flow completed in the system browser and the
-  // user has returned to the Electron app.
+  // user has returned to the Electron app. Debounce to avoid rapid re-fetches.
   useEffect(() => {
     if (!isAuthenticated) return
-    const onFocus = () => fetchIntegrations()
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
+    let lastFetch = 0
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastFetch < 30_000) return
+      lastFetch = now
+      fetchIntegrations()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [isAuthenticated])
 
   const handleConnect = async () => {
@@ -1734,32 +1734,6 @@ export function IntegrationsSection() {
                           <span className="text-xs text-muted-foreground">Use SSL</span>
                         </div>
                       </div>
-                      <div className="dk-settings-integrations__form-subsection">
-                        <p className="dk-settings-integrations__form-subsection-label">Path Mapping</p>
-                        <div>
-                          <label className="dk-settings-integrations__label">Completed Download Folder</label>
-                          <input type="text" value={sabnzbdCompletePath}
-                            onChange={e => setSabnzbdCompletePath(e.target.value)}
-                            placeholder="e.g. /mnt/user/downloads/completed"
-                            className="dk-settings-integrations__input" />
-                          <p className="dk-settings-integrations__input-hint">SABnzbd → Config → Folders → Completed Download Folder</p>
-                        </div>
-                        <div>
-                          <label className="dk-settings-integrations__label">ISO Library Path</label>
-                          <input type="text" value={downloadPath}
-                            onChange={e => setDownloadPath(e.target.value)}
-                            placeholder="e.g. D:\\Games\\ISOs"
-                            className="dk-settings-integrations__input" />
-                          <p className="dk-settings-integrations__input-hint">Where Otix moves completed ISO files.</p>
-                        </div>
-                        <div className="dk-settings-integrations__config-switch">
-                          <div>
-                            <p className="dk-settings-integrations__switch-title">Post-process after download</p>
-                            <p className="dk-settings-integrations__switch-desc">Automatically find and move ISOs to library</p>
-                          </div>
-                          <DkSwitch checked={postProcessEnabled} onCheckedChange={setPostProcessEnabled} />
-                        </div>
-                      </div>
                     </>
                   ) : (
                     <div className="dk-settings-integrations__form-section">
@@ -1824,10 +1798,6 @@ export function IntegrationsSection() {
                           sabnzbdUseSsl: sabnzbdForm.useSsl,
                           nzbplanetApiKey: nzbplanetForm.apiKey || null,
                           sabnzbdCompletePath: sabnzbdCompletePath || null,
-                          downloadPath: downloadPath || null,
-                          postProcessEnabled,
-                          autoSearchWishlist: autoSearch,
-                          wishlistIntervalHours: intervalHours,
                           preferredRepackers: preferredRepackers || null,
                         })
                       }}
@@ -1841,55 +1811,6 @@ export function IntegrationsSection() {
             </div>
           )
         })}
-      </div>
-
-      {/* ── Path mapping + auto-search ── */}
-      <div className="dk-settings-integrations__section">
-        <h3 className="dk-settings-integrations__section-title">Path Mapping</h3>
-        <p className="dk-settings-integrations__section-desc -mt-1">SABnzbd downloads to one folder. Otix moves completed ISOs to your game library.</p>
-        <div>
-          <label className="dk-settings-integrations__label">SABnzbd Completed Folder</label>
-          <input type="text" value={sabnzbdCompletePath}
-            onChange={e => setSabnzbdCompletePath(e.target.value)}
-            placeholder="e.g. /mnt/user/downloads/completed"
-            className="dk-settings-integrations__input" />
-          <p className="dk-settings-integrations__input-hint">SABnzbd → Config → Folders → Completed Download Folder</p>
-        </div>
-        <div>
-          <label className="dk-settings-integrations__label">ISO Library Path</label>
-          <input type="text" value={downloadPath}
-            onChange={e => setDownloadPath(e.target.value)}
-            placeholder="e.g. D:\\Games\\ISOs"
-            className="dk-settings-integrations__input" />
-          <p className="dk-settings-integrations__input-hint">Where Otix moves ISO files after download completes.</p>
-        </div>
-        <div className="dk-settings-integrations__config-switch">
-          <div>
-            <p className="dk-settings-integrations__switch-title">Post-process after download</p>
-            <p className="dk-settings-integrations__switch-desc">Automatically find and move ISOs to library</p>
-          </div>
-          <DkSwitch checked={postProcessEnabled} onCheckedChange={setPostProcessEnabled} />
-        </div>
-      </div>
-
-      <div className="dk-settings-integrations__section">
-        <h3 className="dk-settings-integrations__section-title">Auto-Search</h3>
-        <div className="dk-settings-integrations__config-switch">
-          <div>
-            <p className="dk-settings-integrations__switch-title">Auto-search wishlist</p>
-            <p className="dk-settings-integrations__switch-desc">Scan wishlist every {intervalHours}h for new downloads</p>
-          </div>
-          <DkSwitch checked={autoSearch} onCheckedChange={setAutoSearch} />
-        </div>
-        {autoSearch && (
-          <div>
-            <label className="dk-settings-integrations__label">Interval (hours)</label>
-            <input type="number" value={intervalHours}
-              onChange={e => setIntervalHours(parseInt(e.target.value) || 12)}
-              min={1} max={168}
-              className="dk-settings-integrations__input w-24" />
-          </div>
-        )}
       </div>
       </>)}
     </div>

@@ -236,9 +236,65 @@ export interface GameTrackEntry {
   lastUpdateCheck: string | null;
 }
 
-// ── Desktop settings ──
+// ── Plugin types (inlined for renderer consumption) ──
 
-export type AiModelStatus = 'not_available' | 'downloading' | 'loading' | 'ready' | 'error';
+export type PluginPermission =
+  | 'network:external'
+  | 'storage:local'
+  | 'events:subscribe'
+  | 'ui:settings'
+  | 'ui:media.actions'
+  | 'ui:list.actions'
+  | 'ui:nav.item'
+  | 'ui:dashboard.widget'
+  | 'notifications'
+  | 'worker:compute'
+  | 'api:proxy';
+
+export type PluginStatus = 'installed' | 'enabled' | 'disabled' | 'error';
+
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  repository: string;
+  status: PluginStatus;
+  error?: string;
+  manifest: any;
+  installedAt: string;
+  enabledAt?: string;
+}
+
+export interface RegistryEntry {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  repository: string;
+  path?: string;
+  icon?: string;
+  category?: string;
+  tags?: string[];
+  min_app_version?: string;
+  permissions: PluginPermission[];
+}
+
+export type PermissionDuration = 'once' | 'always';
+
+export interface PermissionRequest {
+  requestId: string;
+  pluginId: string;
+  pluginName: string;
+  permission: PluginPermission;
+  reason: string;
+}
+
+export type PermissionResponse =
+  | { granted: true; duration: PermissionDuration }
+  | { granted: false };
 
 export interface DesktopSettings {
   launchOnStartup: boolean;
@@ -246,8 +302,6 @@ export interface DesktopSettings {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
-  aiAddonEnabled: boolean;
-  aiModelStatus: AiModelStatus;
 }
 
 export interface IDesktopAPI {
@@ -401,18 +455,34 @@ export interface IDesktopAPI {
   getActiveInstalls: () => Promise<ActiveInstallInfo[]>;
   checkInstallDir: (installDir: string) => Promise<{ found: boolean; gameExe: string | null }>;
 
-  // ── AI Addon (local model via node-llama-cpp) ──
-  aiGetStatus: () => Promise<AiModelStatus>;
-  aiGetDownloadProgress: () => Promise<number | null>;
-  aiGetLoadingProgress: () => Promise<number | null>;
-  aiDownloadModel: () => Promise<void>;
-  aiDeleteModel: () => Promise<void>;
-  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => Promise<string | null>;
-  aiGetSystemPrompt: () => Promise<string>;
-  aiSetSystemPrompt: (prompt: string) => Promise<void>;
-  onAiDownloadProgress: (callback: (progress: number) => void) => () => void;
-  onAiLoadingProgress: (callback: (progress: number) => void) => () => void;
-  onAiStatusChanged: (callback: (status: AiModelStatus) => void) => () => void;
+  // ── Plugin system ──
+  plugin: {
+    list: () => Promise<PluginInfo[]>;
+    get: (id: string) => Promise<PluginInfo | null>;
+    install: (repoUrl: string, pluginPath?: string) => Promise<PluginInfo>;
+    uninstall: (id: string) => Promise<void>;
+    update: (id: string) => Promise<PluginInfo>;
+    enable: (id: string) => Promise<void>;
+    disable: (id: string) => Promise<void>;
+    reload: (id: string) => Promise<PluginInfo[]>;
+    discover: () => Promise<PluginInfo[]>;
+    getConfig: (pluginId: string) => Promise<Record<string, unknown>>;
+    setConfig: (pluginId: string, key: string, value: unknown) => Promise<void>;
+    respondToPermission: (requestId: string, response: PermissionResponse) => Promise<void>;
+    emitEvent: (eventName: string, payload: unknown) => Promise<void>;
+    onPermissionRequest: (callback: (request: PermissionRequest) => void) => () => void;
+    setAuthToken: (token: string) => Promise<void>;
+    getApiBaseUrl: () => Promise<string>;
+    setApiBaseUrl: (url: string) => Promise<void>;
+    testInstance: (url: string, apiKey: string) => Promise<{ success: boolean; message: string }>;
+    testConfig: (pluginId: string, configDraft: Record<string, unknown>) => Promise<{ success: boolean; message: string }>;
+    callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>;
+    getStatus: (pluginId: string) => Promise<Record<string, unknown> | null>;
+    fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
+    getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
+    addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
+    removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
+  };
 }
 
 declare global {

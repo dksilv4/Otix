@@ -1,11 +1,12 @@
 // TODO: Review this file
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { mediaKeys } from '@media/queries/media-keys'
 
 export const reviewKeys = {
   all: () => ['reviews'] as const,
-  myReview: (mediaId: string) => [...reviewKeys.all(), 'my', mediaId] as const,
-  list: (mediaId: string) => [...reviewKeys.all(), 'list', mediaId] as const,
+  myReview: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'my', mediaType, mediaId] as const,
+  list: (mediaType: string, mediaId: string) => [...reviewKeys.all(), 'list', mediaType, mediaId] as const,
 }
 import type { MediaRatingOut } from './rating-queries'
 
@@ -43,24 +44,24 @@ export interface ReviewCreatePayload {
 }
 
 export const reviewQueries = {
-  myReview: (mediaId: string) =>
+  myReview: (mediaType: string, mediaId: string) =>
     queryOptions({
-      queryKey: reviewKeys.myReview(mediaId),
+      queryKey: reviewKeys.myReview(mediaType, mediaId),
       queryFn: async () => {
-        const { data } = await apiClient.get<ReviewOut | null>(`/media/${mediaId}/review`)
+        const { data } = await apiClient.get<ReviewOut | null>(`/media/${mediaType}/${mediaId}/review`)
         return data
       },
       staleTime: 1000 * 60,
     }),
 
-  list: (mediaId: string, cursor?: string) =>
+  list: (mediaType: string, mediaId: string, cursor?: string) =>
     queryOptions({
-      queryKey: [...reviewKeys.list(mediaId), cursor],
+      queryKey: [...reviewKeys.list(mediaType, mediaId), cursor],
       queryFn: async () => {
         const params: Record<string, string> = { limit: '20' }
         if (cursor) params.cursor = cursor
         const { data } = await apiClient.get<ReviewWithUserOut[]>(
-          `/media/${mediaId}/reviews`,
+          `/media/${mediaType}/${mediaId}/reviews`,
           { params },
         )
         return data
@@ -69,34 +70,34 @@ export const reviewQueries = {
     }),
 }
 
-export function useUpsertReview(mediaId: string) {
+export function useUpsertReview(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: ReviewCreatePayload) => {
       const { data } = await apiClient.put<ReviewOut>(
-        `/media/${mediaId}/review`,
+        `/media/${mediaType}/${mediaId}/review`,
         payload,
       )
       return data
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaId) })
-      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaId) })
-      qc.invalidateQueries({ queryKey: ['media', 'detail', mediaId] })
+      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })
 }
 
-export function useDeleteReview(mediaId: string) {
+export function useDeleteReview(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      await apiClient.delete(`/media/${mediaId}/review`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/review`)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaId) })
-      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaId) })
-      qc.invalidateQueries({ queryKey: ['media', 'detail', mediaId] })
+      qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
+      qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
     },
   })
 }

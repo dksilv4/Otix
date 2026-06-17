@@ -56,6 +56,7 @@ export function AdminProposalsPage() {
   const handleApprove = async (proposal: MediaEditProposal) => {
     try {
       await approveMutation.mutateAsync({
+        mediaType: proposal.mediaType ?? 'movie',
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
       })
@@ -69,6 +70,7 @@ export function AdminProposalsPage() {
   const handleReject = async (proposal: MediaEditProposal, reason?: string) => {
     try {
       await rejectMutation.mutateAsync({
+        mediaType: proposal.mediaType ?? 'movie',
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
         reason: reason ?? null,
@@ -83,6 +85,7 @@ export function AdminProposalsPage() {
   const handleUndo = async (proposal: MediaEditProposal) => {
     try {
       await undoMutation.mutateAsync({
+        mediaType: proposal.mediaType ?? 'movie',
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
       })
@@ -95,6 +98,7 @@ export function AdminProposalsPage() {
   const handleVote = async (proposal: MediaEditProposal, voteType: 'up' | 'down') => {
     try {
       await voteMutation.mutateAsync({
+        mediaType: proposal.mediaType ?? 'movie',
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
         voteType,
@@ -107,6 +111,7 @@ export function AdminProposalsPage() {
   const handleRemoveVote = async (proposal: MediaEditProposal) => {
     try {
       await removeVoteMutation.mutateAsync({
+        mediaType: proposal.mediaType ?? 'movie',
         mediaId: proposal.mediaItemId,
         proposalId: proposal.id,
       })

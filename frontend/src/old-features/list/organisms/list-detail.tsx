@@ -47,7 +47,7 @@ const TYPE_TABS = [
 ]
 
 export function ListDetail() {
- const { listId } = useParams({ from: "/list/$listId" })
+ const { listId } = useParams({ from: "/library/$listId" })
  const navigate = useNavigate()
  const { user } = useAuth()
  const { data: list, isLoading, isError } = useListDetail(listId)
@@ -142,8 +142,8 @@ export function ListDetail() {
  navigate({ to: "/library/watchlist" })
  }
 
- async function handleRemoveItem(mediaItemId: string) {
- await removeItem.mutateAsync({ listId, mediaItemId })
+ async function handleRemoveItem(mediaItemId: string, mediaType: string) {
+ await removeItem.mutateAsync({ listId, mediaItemId, mediaType })
  }
 
  return (
@@ -296,7 +296,7 @@ export function ListDetail() {
  <button
  onClick={(e) => {
  e.preventDefault()
- addToList.mutate({ listId, mediaItemId: item.id })
+ addToList.mutate({ listId, mediaItemId: item.id, mediaType: item.mediaType })
  }}
  className="dk-list-detail__add-button"
  >
@@ -374,7 +374,7 @@ export function ListDetail() {
  <button
  onClick={(e) => {
  e.preventDefault()
- handleRemoveItem(item.id)
+ handleRemoveItem(item.id, item.mediaType)
  }}
  className="dk-list-detail__remove-btn"
  >

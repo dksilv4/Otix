@@ -8,6 +8,12 @@ import {
 import { apiClient } from "@/lib/api/client"
 import { listKeys } from "./list-keys"
 
+function emit(event: string, payload: unknown) {
+  try {
+    ;(window as any).desktopAPI?.plugin?.emitEvent(event, payload)
+  } catch {}
+}
+
 // ── Types ──────────────────────────────────────────────
 
 export interface UserListOut {
@@ -189,9 +195,11 @@ export function useAddToList() {
     mutationFn: async ({
       listId,
       mediaItemId,
+      mediaType,
     }: {
       listId: string
       mediaItemId: string
+      mediaType?: string
     }) => {
       const { data } = await apiClient.post<UserListOut>(
         "/list/" + listId + "/item",
@@ -202,6 +210,10 @@ export function useAddToList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
+      emit("otix:list:item_added", {
+        listId: vars.listId,
+        item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
+      })
     },
   })
 }
@@ -212,15 +224,21 @@ export function useRemoveFromList() {
     mutationFn: async ({
       listId,
       mediaItemId,
+      mediaType,
     }: {
       listId: string
       mediaItemId: string
+      mediaType?: string
     }) => {
       await apiClient.delete("/list/" + listId + "/item/" + mediaItemId)
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
+      emit("otix:list:item_removed", {
+        listId: vars.listId,
+        item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
+      })
     },
   })
 }
