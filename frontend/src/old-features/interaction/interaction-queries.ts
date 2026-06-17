@@ -5,6 +5,10 @@ import { interactionKeys } from './interaction-keys'
 import { mediaKeys } from '@media/queries/media-keys'
 import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@media/queries/media-queries'
 
+function emit(event: string, payload: unknown) {
+  try { (window as any).desktopAPI?.plugin?.emitEvent(event, payload) } catch {}
+}
+
 export interface UserInteractionState {
   liked: boolean
   watchlisted: boolean
@@ -42,14 +46,15 @@ const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started', 'li
 export type InteractionType = (typeof VALID_TYPES)[number]
 
 export function useUserInteractions(
+  mediaType: string,
   mediaId: string,
   { enabled = true }: { enabled?: boolean } = {},
 ) {
   return useQuery({
-    queryKey: interactionKeys.forMedia(mediaId),
+    queryKey: interactionKeys.forMedia(mediaType, mediaId),
     queryFn: async () => {
       const { data } = await apiClient.get<UserInteractionState>(
-        `/media/${mediaId}/interactions`,
+        `/media/${mediaType}/${mediaId}/interactions`,
       )
       return data
     },
@@ -80,17 +85,17 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<InteractionToggleResponse>(
-          `/media/${mediaId}/interactions/${type}`,
+          `/media/${mediaType}/${mediaId}/interactions/${type}`,
           {},
         )
         return data
       }
-      await apiClient.delete(`/media/${mediaId}/interactions/${type}`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/interactions/${type}`)
       return null
     },
     onMutate: async ({ type, active }) => {
       // Cancel in-flight queries so they don't overwrite our optimistic update
-      const interactionKey = interactionKeys.forMedia(mediaId)
+      const interactionKey = interactionKeys.forMedia(mediaType, mediaId)
       const detailKey = mediaKeys.detail(mediaType, mediaId)
       await qc.cancelQueries({ queryKey: interactionKey })
       await qc.cancelQueries({ queryKey: detailKey })
@@ -171,7 +176,7 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
     onError: (_err, _vars, context) => {
       if (context?.prevInteraction) {
         qc.setQueryData(
-          interactionKeys.forMedia(mediaId),
+          interactionKeys.forMedia(mediaType, mediaId),
           context.prevInteraction,
         )
       }
@@ -179,10 +184,13 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
         qc.setQueryData(mediaKeys.detail(mediaType, mediaId), context.prevDetail)
       }
     },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+    onSettled: (data, error, variables) => {
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'list'] })
+      if (variables.type === 'watched' && !error) {
+        emit('otix:media:watched', { mediaId, mediaType })
+      }
     },
   })
 }

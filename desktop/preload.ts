@@ -234,28 +234,37 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     return () => ipcRenderer.removeListener('installer:install-progress', handler);
   },
 
-  // ── AI Addon ──
-  aiGetStatus: () => ipcRenderer.invoke('ai:get-status'),
-  aiGetDownloadProgress: () => ipcRenderer.invoke('ai:get-download-progress'),
-  aiGetLoadingProgress: () => ipcRenderer.invoke('ai:get-loading-progress'),
-  aiDownloadModel: () => ipcRenderer.invoke('ai:download-model'),
-  aiDeleteModel: () => ipcRenderer.invoke('ai:delete-model'),
-  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => ipcRenderer.invoke('ai:chat', messages),
-  aiGetSystemPrompt: () => ipcRenderer.invoke('ai:get-system-prompt'),
-  aiSetSystemPrompt: (prompt: string) => ipcRenderer.invoke('ai:set-system-prompt', prompt),
-  onAiDownloadProgress: (callback: (p: number) => void) => {
-    const handler = (_event: any, p: number) => callback(p);
-    ipcRenderer.on('ai:download-progress', handler);
-    return () => ipcRenderer.removeListener('ai:download-progress', handler);
-  },
-  onAiLoadingProgress: (callback: (p: number) => void) => {
-    const handler = (_event: any, p: number) => callback(p);
-    ipcRenderer.on('ai:loading-progress', handler);
-    return () => ipcRenderer.removeListener('ai:loading-progress', handler);
-  },
-  onAiStatusChanged: (callback: (s: any) => void) => {
-    const handler = (_event: any, s: any) => callback(s);
-    ipcRenderer.on('ai:status-changed', handler);
-    return () => ipcRenderer.removeListener('ai:status-changed', handler);
+  // ── Plugin system ──
+  plugin: {
+    list: () => ipcRenderer.invoke('plugin:list'),
+    get: (id: string) => ipcRenderer.invoke('plugin:get', id),
+    install: (repoUrl: string, pluginPath?: string) => ipcRenderer.invoke('plugin:install', repoUrl, pluginPath),
+    uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id),
+    update: (id: string) => ipcRenderer.invoke('plugin:update', id),
+    enable: (id: string) => ipcRenderer.invoke('plugin:enable', id),
+    disable: (id: string) => ipcRenderer.invoke('plugin:disable', id),
+    reload: (id: string) => ipcRenderer.invoke('plugin:reload', id),
+    discover: () => ipcRenderer.invoke('plugin:discover'),
+    getConfig: (pluginId: string) => ipcRenderer.invoke('plugin:get-config', pluginId),
+    setConfig: (pluginId: string, key: string, value: unknown) => ipcRenderer.invoke('plugin:set-config', pluginId, key, value),
+    respondToPermission: (requestId: string, response: any) => ipcRenderer.invoke('plugin:respond-permission', requestId, response),
+    emitEvent: (eventName: string, payload: unknown) => ipcRenderer.invoke('plugin:emit-event', eventName, payload),
+    onPermissionRequest: (callback: (request: any) => void) => {
+      const handler = (_event: any, request: any) => callback(request);
+      ipcRenderer.on('plugin:permission-request', handler);
+      return () => ipcRenderer.removeListener('plugin:permission-request', handler);
+    },
+    setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token),
+    getApiBaseUrl: () => ipcRenderer.invoke('plugin:get-api-base-url'),
+    setApiBaseUrl: (url: string) => ipcRenderer.invoke('plugin:set-api-base-url', url),
+    testInstance: (url: string, apiKey: string) => ipcRenderer.invoke('plugin:test-instance', url, apiKey),
+    testConfig: (pluginId: string, configDraft: Record<string, unknown>) => ipcRenderer.invoke('plugin:test-config', pluginId, configDraft),
+    callData: (pluginId: string, method: string, ...args: unknown[]) =>
+      ipcRenderer.invoke('plugin:call-data', pluginId, method, ...args),
+    getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:status', pluginId),
+    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:marketplace', registryUrl),
+    getRepos: () => ipcRenderer.invoke('plugin:repos'),
+    addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
+    removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
   },
 });

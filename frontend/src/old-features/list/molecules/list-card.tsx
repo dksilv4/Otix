@@ -9,7 +9,7 @@ interface ListCardProps {
 export function ListCard({ list }: ListCardProps) {
  return (
  <Link
- to="/list/$listId"
+ to="/library/$listId"
  params={{ listId: list.id }}
  className="dk-list-card"
  >

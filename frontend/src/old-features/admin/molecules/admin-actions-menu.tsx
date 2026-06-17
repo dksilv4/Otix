@@ -62,8 +62,8 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       const terminal = await connectTaskSseStream(
         {
-          createEndpoint: `/media/${mediaId}/rehydrate`,
-          streamEndpoint: (taskId: string) => `/media/${mediaId}/rehydrate/${taskId}/stream`,
+          createEndpoint: `/media/${media.mediaType}/${mediaId}/rehydrate`,
+          streamEndpoint: (taskId: string) => `/media/${media.mediaType}/${mediaId}/rehydrate/${taskId}/stream`,
           terminalEvents: ['rehydrate_complete', 'error'],
           token,
           signal: controller.signal,

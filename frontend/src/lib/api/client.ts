@@ -176,12 +176,14 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${token}`
       }
       return apiClient(originalRequest)
-    } catch (refreshError) {
+    } catch (refreshError: any) {
       refreshFailed = true // block further refresh attempts until next login
       refreshQueue.forEach(({ reject }) => reject(refreshError))
       refreshQueue = []
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      window.dispatchEvent(new CustomEvent('auth:sessionExpired'))
+      if (refreshError.response?.status === 401 || refreshError.response?.status === 403) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
+        window.dispatchEvent(new CustomEvent('auth:sessionExpired'))
+      }
       return Promise.reject(refreshError)
     } finally {
       isRefreshing = false
