@@ -27,8 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = meRes.data as User
       await mergeIntegrations(user)
       return user
-    } catch {
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
+    } catch (error: any) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
+        window.desktopAPI?.plugin?.setAuthToken(null)
+      }
       return null
     }
   }
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) return
+    window.desktopAPI?.plugin?.setAuthToken(token)
     loadUser().then((user) => {
       setUser(user)
       setIsLoading(false)
@@ -47,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const handler = () => {
       setUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
+      window.desktopAPI?.plugin?.setAuthToken(null)
       queryClient.invalidateQueries({ queryKey: ['workout'] })
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
     }
@@ -60,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (data) => {
         if (data.action === 'auth/steam/callback' && data.params.accessToken) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
+          window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
           loadUser().then(setUser)
         }
 
@@ -81,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
+    window.desktopAPI?.plugin?.setAuthToken(data.accessToken!)
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
     await mergeIntegrations(user)
@@ -96,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       code,
     })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
+    window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
     setTwoFactorChallenge(null)
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
@@ -110,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (email: string, username: string, password: string, dateOfBirth: string) => {
     const res = await apiClient.post('/auth/register', { email, username, password, date_of_birth: dateOfBirth })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
+    window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
     const me = await apiClient.get('/auth/me')
     const user = me.data as User
     await mergeIntegrations(user)
@@ -123,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // ignore errors during logout
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY)
+    window.desktopAPI?.plugin?.setAuthToken(null)
     setUser(null)
     setTwoFactorChallenge(null)
     queryClient.clear()

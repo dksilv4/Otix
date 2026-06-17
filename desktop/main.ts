@@ -20,11 +20,17 @@ import { onFpsPermissionNeeded, ensurePresentMon } from './fps-capture';
 import { scheduledUpdateCheck, purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './save-daemon';
 import { registerSaveIPC } from './ipc/saves';
-import { registerClassifierIPC } from './ipc/classifier';
 import { populateKnownLocations } from './save-export';
+import { PermissionManager } from './plugin/permissions';
+import { PluginManager } from './plugin/plugin-manager';
+import { eventBus } from './plugin/event-bus';
+import { ensurePluginDb, seedDefaultRepo } from './plugin/plugin-db';
+import { registerPluginIPC } from './ipc/plugin';
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
+let pluginManager: PluginManager | null = null;
+let permissionManager: PermissionManager | null = null;
 let pendingDeepLink: string | null = null;
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -244,6 +250,26 @@ app.on('ready', async () => {
   purgeOldDeletedDownloads().catch(() => {});
   setInterval(() => purgeOldDeletedDownloads().catch(() => {}), 3600000);
 
+  // Fix SameSite cookies for cross-origin requests from file:// (frontend) to backend
+  const { session } = require('electron');
+  session.fromPartition('persist:main').webRequest.onHeadersReceived((details: any, callback: any) => {
+    let responseHeaders = details.responseHeaders || {};
+    const setCookie = responseHeaders['set-cookie'] || responseHeaders['Set-Cookie'];
+    if (setCookie) {
+      responseHeaders['set-cookie'] = setCookie.map((cookie: string) => {
+        let newCookie = cookie;
+        if (/SameSite=Lax/i.test(newCookie)) {
+          newCookie = newCookie.replace(/SameSite=Lax/ig, 'SameSite=None');
+        }
+        if (/SameSite=None/i.test(newCookie) && !/Secure/i.test(newCookie)) {
+          newCookie += '; Secure';
+        }
+        return newCookie;
+      });
+    }
+    callback({ cancel: false, responseHeaders });
+  });
+
   // Forward game detection events to renderer
   gameDetector.on('game:started', (runningGame) => {
     mainWindow?.webContents.send('game:started', runningGame);
@@ -358,6 +384,15 @@ app.on('ready', async () => {
     throw err;
   });
 
+  // ── Initialize plugin database ──
+  await ensurePluginDb().catch((err) => {
+    console.error('[main] Plugin DB init failed:', err);
+    throw err;
+  });
+
+  // Seed the default plugin repo if none exist (first run)
+  seedDefaultRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json');
+
   // Rehydrate any installs that were running before Electron last closed
   rehydrateActiveInstalls();
 
@@ -399,6 +434,17 @@ app.on('ready', async () => {
 
   createWindow();
 
+  // ── Initialize plugin system ──
+  const extensionsDir = path.join(app.getPath('userData'), 'extensions');
+  permissionManager = new PermissionManager();
+  pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'));
+  pluginManager.setWebContents(mainWindow!.webContents);
+  permissionManager.setWebContents(mainWindow!.webContents);
+  registerPluginIPC(pluginManager, permissionManager, mainWindow!);
+
+  // Fire-and-forget: discover and load enabled plugins (don't block window load)
+  pluginManager.discoverPlugins().then(() => pluginManager!.loadEnabledPlugins());
+
   // ── Load desktop settings and apply side effects ──
   const settings = loadDesktopSettings();
 
@@ -415,9 +461,6 @@ app.on('ready', async () => {
     // Register desktop settings IPC (needs window + tray references)
     registerDesktopSettingsIPC(mainWindow, tray)
 
-    // ── AI Addon (local model via node-llama-cpp) ──
-    registerClassifierIPC(mainWindow)
-
     // Handle startMinimized: hide window immediately
     if (settings.startMinimized && tray) {
       mainWindow.hide()
@@ -433,6 +476,7 @@ app.on('ready', async () => {
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {
     mainWindow?.webContents.send('app:clean-quit');
+    pluginManager?.shutdown().catch(() => {});
   });
 
   // ── Scheduled update check ──
@@ -452,6 +496,7 @@ app.on('ready', async () => {
 
 app.on('window-all-closed', () => {
   gameDetector?.stopAll();
+  pluginManager?.shutdown().catch(() => {});
   // Kill any running game install
   try {
     const { cancelCurrentInstall } = require('./installer');

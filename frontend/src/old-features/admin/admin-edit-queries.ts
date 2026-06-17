@@ -65,12 +65,12 @@ export interface MediaEditProposalList {
   total: number
 }
 
-export function useMediaAssets(mediaId: string) {
+export function useMediaAssets(mediaType: string, mediaId: string) {
   return useQuery({
     queryKey: [...adminEditKeys.forMedia(mediaId), 'assets'],
     queryFn: async () => {
       const { data } = await apiClient.get<MediaAssetList>(
-        `/media/${mediaId}/assets`
+        `/media/${mediaType}/${mediaId}/assets`
       )
       return data
     },
@@ -78,12 +78,12 @@ export function useMediaAssets(mediaId: string) {
   })
 }
 
-export function useMediaProposals(mediaId: string) {
+export function useMediaProposals(mediaType: string, mediaId: string) {
   return useQuery({
     queryKey: adminEditKeys.forMedia(mediaId),
     queryFn: async () => {
       const { data } = await apiClient.get<MediaEditProposalList>(
-        `/media/${mediaId}/edit-proposals`
+        `/media/${mediaType}/${mediaId}/edit-proposals`
       )
       return data
     },
@@ -91,12 +91,12 @@ export function useMediaProposals(mediaId: string) {
   })
 }
 
-export function useCreateProposal(mediaId: string) {
+export function useCreateProposal(mediaType: string, mediaId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (body: { changes: Record<string, unknown>; imageOverrides: ImageOverrideItem[] | null }) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals`,
+        `/media/${mediaType}/${mediaId}/edit-proposals`,
         body
       )
       return data
@@ -108,12 +108,12 @@ export function useCreateProposal(mediaId: string) {
   })
 }
 
-export function useApproveProposal(mediaId: string) {
+export function useApproveProposal(mediaType: string, mediaId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (proposalId: string) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/approve`
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/approve`
       )
       return data
     },
@@ -126,12 +126,12 @@ export function useApproveProposal(mediaId: string) {
   })
 }
 
-export function useUndoApproval(mediaId: string) {
+export function useUndoApproval(mediaType: string, mediaId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (proposalId: string) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/undo`
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/undo`
       )
       return data
     },
@@ -144,12 +144,12 @@ export function useUndoApproval(mediaId: string) {
   })
 }
 
-export function useRejectProposal(mediaId: string) {
+export function useRejectProposal(mediaType: string, mediaId: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ proposalId, reason }: { proposalId: string; reason: string | null }) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/reject`,
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/reject`,
         { rejectionReason: reason }
       )
       return data
@@ -203,9 +203,9 @@ export function useAdminAllProposals(
 export function useApproveAnyProposal() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ mediaId, proposalId }: { mediaId: string; proposalId: string }) => {
+    mutationFn: async ({ mediaType, mediaId, proposalId }: { mediaType: string; mediaId: string; proposalId: string }) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/approve`
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/approve`
       )
       return data
     },
@@ -221,16 +221,18 @@ export function useRejectAnyProposal() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({
+      mediaType,
       mediaId,
       proposalId,
       reason,
     }: {
+      mediaType: string
       mediaId: string
       proposalId: string
       reason: string | null
     }) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/reject`,
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/reject`,
         { rejectionReason: reason },
       )
       return data
@@ -244,9 +246,9 @@ export function useRejectAnyProposal() {
 export function useUndoAnyProposal() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ mediaId, proposalId }: { mediaId: string; proposalId: string }) => {
+    mutationFn: async ({ mediaType, mediaId, proposalId }: { mediaType: string; mediaId: string; proposalId: string }) => {
       const { data } = await apiClient.post<MediaEditProposal>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/undo`,
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/undo`,
       )
       return data
     },
@@ -264,16 +266,18 @@ export function useProposalVote() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({
+      mediaType,
       mediaId,
       proposalId,
       voteType,
     }: {
+      mediaType: string
       mediaId: string
       proposalId: string
       voteType: 'up' | 'down'
     }) => {
       const { data } = await apiClient.post<VoteResponse>(
-        `/media/${mediaId}/edit-proposals/${proposalId}/vote`,
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/vote`,
         { vote_type: voteType },
       )
       return data
@@ -288,14 +292,16 @@ export function useRemoveProposalVote() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({
+      mediaType,
       mediaId,
       proposalId,
     }: {
+      mediaType: string
       mediaId: string
       proposalId: string
     }) => {
       await apiClient.delete(
-        `/media/${mediaId}/edit-proposals/${proposalId}/vote`,
+        `/media/${mediaType}/${mediaId}/edit-proposals/${proposalId}/vote`,
       )
     },
     onSuccess: () => {

@@ -6,6 +6,8 @@ import { XPToastContainer } from "@/old-features/dk-ui/atoms/xp-toast"
 import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { useNotificationToasts } from "../../hooks/use-notification-toasts"
 import { PanelProvider } from "@activity/providers/panel-context"
+import { usePluginPermissions } from "@settings/hooks/usePluginPermissions"
+import { PluginPermissionModal } from "@settings/components/PluginPermissionModal"
 
 const PIN_KEY = "otix_spotify_player_pinned"
 
@@ -24,6 +26,14 @@ export function RootLayout() {
   const handleToggleSidebar = useCallback(() => setIsSidebarOpen((prev) => !prev), [])
   const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), [])
 
+  const {
+    currentRequest,
+    handleAllowOnce,
+    handleAllowAlways,
+    handleDeny,
+    isModalOpen,
+  } = usePluginPermissions()
+
   useNotificationToasts()
 
   return (
@@ -40,6 +50,13 @@ export function RootLayout() {
         <XPToastContainer />
         <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
       </PanelProvider>
+
+      <PluginPermissionModal
+        request={isModalOpen ? currentRequest : null}
+        onAllowOnce={(id) => handleAllowOnce()}
+        onAllowAlways={(id) => handleAllowAlways()}
+        onDeny={(id) => handleDeny()}
+      />
     </div>
   )
 }

@@ -2,20 +2,13 @@ import { app, BrowserWindow, Tray } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export type AiModelStatus = 'not_available' | 'downloading' | 'loading' | 'ready' | 'error';
-
 export interface DesktopSettings {
   launchOnStartup: boolean;
   minimizeToTray: boolean;
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
-  aiAddonEnabled: boolean;
-  aiModelStatus: AiModelStatus;
-  aiSystemPrompt: string;
 }
-
-const DEFAULT_PROMPT = 'You are a helpful assistant that helps users discover movies, TV shows, games, and music. You have access to a media library. Keep responses concise and friendly.';
 
 const DEFAULT_SETTINGS: DesktopSettings = {
   launchOnStartup: false,
@@ -23,9 +16,6 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   closeToTray: false,
   alwaysOnTop: false,
   startMinimized: false,
-  aiAddonEnabled: false,
-  aiModelStatus: 'not_available',
-  aiSystemPrompt: DEFAULT_PROMPT,
 };
 
 let cachedSettings: DesktopSettings | null = null;

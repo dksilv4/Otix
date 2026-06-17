@@ -55,7 +55,7 @@ interface ShareModalProps {
 
 export function ShareModal({ list, open, onClose }: ShareModalProps) {
  const [copied, setCopied] = useState(false)
- const shareUrl = `${window.location.origin}/list/${list.id}`
+ const shareUrl = `${window.location.origin}/library/${list.id}`
 
  const handleCopy = async () => {
  await navigator.clipboard.writeText(shareUrl)

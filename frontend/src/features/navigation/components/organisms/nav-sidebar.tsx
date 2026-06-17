@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
-import { Compass, Search, Gamepad2 } from "lucide-react"
+import { Compass, Search, Gamepad2, Settings, List } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 import { NavLink } from "@navigation/components/atoms/nav-link"
 import { cn } from "@/lib/utils"
@@ -61,6 +61,8 @@ export function MenuDropdown() {
           <NavLink to="/" icon={<Compass className="h-4 w-4" />} label="Discover" />
           <NavLink to="/search" icon={<Search className="h-4 w-4" />} label="Search" />
           <NavLink to="/launcher" icon={<Gamepad2 className="h-4 w-4" />} label="Launcher" />
+          <NavLink to="/library" icon={<List className="h-4 w-4" />} label="Library" />
+          <NavLink to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />
         </motion.div>
       )}
     </AnimatePresence>

@@ -17,14 +17,14 @@ interface ShowSectionProps {
 export function ShowSection({
   className,
 }: ShowSectionProps = {}) {
-  const { mediaId } = useMediaParams()
+  const { mediaType, mediaId } = useMediaParams()
 
   const { data } = useQuery(mediaQueries.detail('show', mediaId))
   const show = data?.show
 
-  const episodeInteractionsQuery = useEpisodeInteractions(mediaId, { enabled: !!show })
-  const toggleEpisodeWatched = useToggleEpisodeWatched(mediaId)
-  const markSeasonWatched = useMarkSeasonWatched(mediaId)
+  const episodeInteractionsQuery = useEpisodeInteractions(mediaType, mediaId, { enabled: !!show })
+  const toggleEpisodeWatched = useToggleEpisodeWatched(mediaType, mediaId)
+  const markSeasonWatched = useMarkSeasonWatched(mediaType, mediaId)
 
   if (!show) return null
 

@@ -214,7 +214,7 @@ function InteractionSection({
  const [confirmOpen, setConfirmOpen] = useState(false)
  const [confirmAction, setConfirmAction] = useState<boolean>(false)
 
- const { data: fetchedInteractions } = useUserInteractions(mediaId, {
+ const { data: fetchedInteractions } = useUserInteractions(mediaType, mediaId, {
  enabled: isAuthenticated && userInteractions == null,
  })
 

@@ -11,19 +11,20 @@ import './review-action-button.scss'
 
 interface ReviewActionButtonProps {
   mediaId: string
+  mediaType: string
   className?: string
 }
 
-export function ReviewActionButton({ mediaId, className }: ReviewActionButtonProps) {
+export function ReviewActionButton({ mediaId, mediaType, className }: ReviewActionButtonProps) {
   const { isAuthenticated } = useAuth()
   const [composerOpen, setComposerOpen] = useState(false)
 
   const myReviewQuery = useQuery({
-    ...reviewQueries.myReview(mediaId),
+    ...reviewQueries.myReview(mediaType, mediaId),
     enabled: isAuthenticated,
   })
   const myRatingQuery = useQuery({
-    ...ratingQueries.myRating(mediaId),
+    ...ratingQueries.myRating(mediaType, mediaId),
     enabled: isAuthenticated,
   })
 
@@ -63,6 +64,7 @@ export function ReviewActionButton({ mediaId, className }: ReviewActionButtonPro
       >
         <ReviewComposer
           mediaId={mediaId}
+          mediaType={mediaType}
           existingReview={review}
           existingRating={rating}
           onClose={() => setComposerOpen(false)}
