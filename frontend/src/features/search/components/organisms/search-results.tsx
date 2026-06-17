@@ -3,25 +3,22 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useInView } from 'framer-motion'
 import { motion } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
-import { UserRound, Music } from 'lucide-react'
+import { UserRound } from 'lucide-react'
 import { useSearchBackfill } from '@search/hooks/use-search-backfill'
 import { MediaGrid } from '@ui/molecules/media-grid'
 import { Carousel } from '@ui/molecules/carousel'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
+import { apiClient } from '@/lib/api/client'
 import { mediaQueries } from '@media/queries/media-queries'
+import type { MediaItemSummary } from '@media/queries/media-queries'
+import { useCuratedSections, type CuratedSectionConfig } from '@search/hooks/use-curated-sections'
 import { PersonCard } from '@/old-features/person/molecules/person-card'
 import { personQueries } from '@/old-features/person/person-queries'
 import { userQueries } from '@/old-features/user/user-queries'
+import { MediaCard } from '@dk-ui/molecules/media-card'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { TYPE_OPTIONS } from '@search/components/molecules/search-sort-bar'
-
-function formatTrackDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
-}
 
 function SearchSkeleton({ count = 12 }: { count?: number }) {
   return (
@@ -64,21 +61,36 @@ function SearchError() {
   )
 }
 
+/** Wraps music/track MediaCards in aspect-[2/3] so they match movie/show/game card heights in search, with blurred poster background. */
+function SearchMusicCardWrapper({ posterUrl, children }: { posterUrl?: string | null; children: React.ReactNode }) {
+  return (
+    <div className="group relative aspect-[2/3] rounded-lg overflow-hidden">
+      {posterUrl && (
+        <div className="absolute inset-0">
+          <Image
+            src={posterUrl}
+            alt=""
+            className="h-full w-full object-cover blur-2xl opacity-60 scale-110"
+          />
+        </div>
+      )}
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        {/* Border frame — album art lifts out of it on hover */}
+        <div className="absolute w-[75%] aspect-square rounded-xl border-[3px] border-white/10 transition-all duration-500 ease-out group-hover:border-white/5 group-hover:shadow-2xl group-hover:shadow-black/40" />
+
+        {/* Album art — scales up on hover, overlapping the border */}
+        <div className="relative z-10 w-[75%] transition-transform duration-500 ease-out group-hover:scale-[1.35]">
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface SearchResultsProps {
   query: string
   type: string
   sort: string
-}
-
-function SectionHeader({ title, count }: { title: string; count: number }) {
-  return (
-    <div className="mb-4 flex items-center gap-2 px-4 lg:px-8">
-      <h2 className="text-xl font-bold text-white/90">{title}</h2>
-      <span className="text-sm text-muted-foreground/60 mt-1">
-        &middot; {count.toLocaleString()} result{count !== 1 ? 's' : ''}
-      </span>
-    </div>
-  )
 }
 
 function renderBestResultItem(item: any) {
@@ -136,40 +148,77 @@ function renderBestResultItem(item: any) {
 
   if (mediaType === 'track') {
     return (
-      <Link
-        to="/media/$mediaType/$mediaId"
-        params={{ mediaType: 'music', mediaId: item.albumId }}
-        className="group relative flex w-full aspect-[2/3] flex-col rounded-xl bg-white/[0.03] p-4 ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
-      >
-        <div className="relative flex-1 w-full overflow-hidden rounded-lg">
-          {item.albumPosterUrl ? (
-            <Image
-              src={item.albumPosterUrl}
-              alt={item.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
-              <Music className="h-12 w-12 text-muted-foreground/30" />
-            </div>
-          )}
-          <div className="absolute top-2 left-2 z-10 rounded bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white/95 uppercase">
-            Track
-          </div>
-        </div>
-        <div className="mt-3 shrink-0 text-left w-full">
-          <h3 className="truncate text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">
-            {item.title}
-          </h3>
-          <p className="truncate text-xs text-muted-foreground/50">
-            {item.albumArtistName || 'Unknown Artist'}
-          </p>
-        </div>
-      </Link>
+      <SearchMusicCardWrapper posterUrl={item.albumPosterUrl}>
+        <MediaCard
+          id={item.albumId}
+          slug={item.albumSlug}
+          mediaType="music"
+          title={item.title}
+          posterUrl={item.albumPosterUrl}
+          artistName={item.albumArtistName}
+          subtitle={item.albumTitle}
+        />
+      </SearchMusicCardWrapper>
+    )
+  }
+
+  if (mediaType === 'music') {
+    return (
+      <SearchMusicCardWrapper posterUrl={item.posterUrl}>
+        <MediaCard
+          id={item.id}
+          slug={item.slug}
+          mediaType="music"
+          title={item.title}
+          posterUrl={item.posterUrl}
+          artistName={item.albumArtistName}
+          subtitle={item.subtitle}
+          year={item.year}
+        />
+      </SearchMusicCardWrapper>
     )
   }
 
   return <DiscoverMediaCard item={item} />
+}
+
+/** Fetches and renders one curated section carousel. */
+function CuratedSectionCarousel({ section }: { section: CuratedSectionConfig }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['curated-section', section.id],
+    queryFn: () =>
+      apiClient
+        .get<{ items: MediaItemSummary[] }>(`/discover/${section.mediaType}/popular`, {
+          params: {
+            genre: section.genre || undefined,
+            is_anime: section.isAnime || undefined,
+            language: section.language || undefined,
+            limit: 20,
+          },
+        })
+        .then((r) => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  if (isLoading) return null
+  if (!data?.items?.length) return null
+
+  return (
+    <section className="mb-10">
+      <Carousel title={section.title} minItemWidth={250} gap={12} showArrows>
+        {data.items.map((item, i) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
+          >
+            <DiscoverMediaCard item={item} />
+          </motion.div>
+        ))}
+      </Carousel>
+    </section>
+  )
 }
 
 export function SearchResults({ query, type, sort }: SearchResultsProps) {
@@ -249,6 +298,9 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
     }
   }, [isSentinelInView, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage])
 
+  // ── Curated sections ─────────────────────────────────────────────
+  const { sections: curatedSections } = useCuratedSections(isAllTypes ? query : '')
+
   // ── Determine what to render ──────────────────────────────────────
 
   // Grouped view (type === 'all')
@@ -278,6 +330,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
           <p className="mb-6 px-4 text-sm text-muted-foreground/50 lg:px-8">
             {g.total.toLocaleString()} result{g.total !== 1 ? 's' : ''}
           </p>
+        )}
+
+        {/* Curated sections based on query */}
+        {curatedSections.length > 0 && (
+          <div className="mb-8">
+            {curatedSections.map((section) => (
+              <CuratedSectionCarousel key={section.id} section={section} />
+            ))}
+          </div>
         )}
 
         {/* Best Results */}
@@ -393,8 +454,15 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         {/* Tracks */}
         {g?.tracks && g.tracks.length > 0 && (
           <section className="mb-10">
-            <SectionHeader title="Tracks" count={g.tracksCount} />
-            <div className="mx-auto max-w-[900px] space-y-1 px-4 lg:px-8">
+            <Carousel
+              title="Tracks"
+              subtitle={`· ${g.tracksCount.toLocaleString()} result${g.tracksCount !== 1 ? 's' : ''}`}
+              viewAllLink="/search"
+              viewAllSearch={{ q: query, sort }}
+              minItemWidth={250}
+              gap={12}
+              showArrows
+            >
               {g.tracks.map((track, i) => (
                 <motion.div
                   key={track.id}
@@ -402,39 +470,20 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                 >
-                  <Link
-                    to="/media/$mediaType/$mediaId"
-                    params={{ mediaType: 'music', mediaId: track.albumId }}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white/[0.04]"
-                  >
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded">
-                      {track.albumPosterUrl ? (
-                        <Image
-                          src={track.albumPosterUrl}
-                          alt={track.albumTitle}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-white/[0.04]">
-                          <Music className="h-5 w-5 text-muted-foreground/40" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-medium text-foreground/80">{track.title}</h3>
-                      <p className="truncate text-xs text-muted-foreground/50">
-                        {track.albumArtistName || 'Unknown Artist'} &mdash; {track.albumTitle}
-                      </p>
-                    </div>
-                    {track.durationMs != null && (
-                      <span className="shrink-0 text-xs text-muted-foreground/40">
-                        {formatTrackDuration(track.durationMs)}
-                      </span>
-                    )}
-                  </Link>
+                  <SearchMusicCardWrapper posterUrl={track.albumPosterUrl}>
+                    <MediaCard
+                      id={track.albumId}
+                      slug={track.albumSlug}
+                      mediaType="music"
+                      title={track.title}
+                      posterUrl={track.albumPosterUrl}
+                      artistName={track.albumArtistName}
+                      subtitle={track.albumTitle}
+                    />
+                  </SearchMusicCardWrapper>
                 </motion.div>
               ))}
-            </div>
+            </Carousel>
           </section>
         )}
 
@@ -535,7 +584,18 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                 >
-                  <DiscoverMediaCard item={item} />
+                  <SearchMusicCardWrapper posterUrl={item.posterUrl}>
+                    <MediaCard
+                      id={item.id}
+                      slug={item.slug}
+                      mediaType="music"
+                      title={item.title}
+                      posterUrl={item.posterUrl}
+                      artistName={item.albumArtistName}
+                      subtitle={item.subtitle}
+                      year={item.year}
+                    />
+                  </SearchMusicCardWrapper>
                 </motion.div>
               ))}
             </Carousel>
@@ -649,7 +709,20 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.03, 0.6), duration: 0.2 }}
             >
-              <DiscoverMediaCard item={item} />
+              {type === 'music' ? (
+                <SearchMusicCardWrapper posterUrl={item.posterUrl}>
+                  <MediaCard
+                    id={item.id}
+                    slug={item.slug}
+                    mediaType="music"
+                    title={item.title}
+                    posterUrl={item.posterUrl}
+                    artistName={item.albumArtistName}
+                    subtitle={item.subtitle}
+                    year={item.year}
+                  />
+                </SearchMusicCardWrapper>
+              ) : <DiscoverMediaCard item={item} />}
             </motion.div>
           ))}
         </MediaGrid>

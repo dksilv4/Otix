@@ -21,7 +21,7 @@ export default defineConfig({
       '@launcher': path.resolve(__dirname, 'src/features/launcher'),
       '@person': path.resolve(__dirname, 'src/old-features/person'),
       '@company': path.resolve(__dirname, 'src/old-features/company'),
-      '@user': path.resolve(__dirname, 'src/old-features/user'),
+      '@user': path.resolve(__dirname, 'src/features/user'),
       '@dk-ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
       '@desktop': path.resolve(__dirname, '../desktop'),
     },

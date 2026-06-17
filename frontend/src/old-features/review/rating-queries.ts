@@ -22,23 +22,23 @@ export const ratingKeys = {
 }
 
 export const ratingQueries = {
-  myRating: (mediaId: string) =>
+  myRating: (mediaType: string, mediaId: string) =>
     queryOptions({
       queryKey: ratingKeys.myRating(mediaId),
       queryFn: async () => {
-        const { data } = await apiClient.get<MediaRatingOut | null>(`/media/${mediaId}/rating`)
+        const { data } = await apiClient.get<MediaRatingOut | null>(`/media/${mediaType}/${mediaId}/rating`)
         return data
       },
       staleTime: 1000 * 60,
     }),
 }
 
-export function useUpsertRating(mediaId: string) {
+export function useUpsertRating(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (score: number) => {
       const { data } = await apiClient.put<MediaRatingAggregateOut>(
-        `/media/${mediaId}/rating`,
+        `/media/${mediaType}/${mediaId}/rating`,
         { score },
       )
       return data
@@ -50,11 +50,11 @@ export function useUpsertRating(mediaId: string) {
   })
 }
 
-export function useDeleteRating(mediaId: string) {
+export function useDeleteRating(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
-      await apiClient.delete(`/media/${mediaId}/rating`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/rating`)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaId) })

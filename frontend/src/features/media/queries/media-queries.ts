@@ -406,7 +406,7 @@ export const mediaQueries = {
       queryKey: ['media', 'search', 'structured', query],
       queryFn: async () => {
         const { data } = await apiClient.get<StructuredSearchResponse>('/media/search/grouped', {
-          params: { q: query, media_type_limit: 10 },
+          params: { q: query, media_type_limit: 10, best_results_limit: 10 },
         })
         return data
       },

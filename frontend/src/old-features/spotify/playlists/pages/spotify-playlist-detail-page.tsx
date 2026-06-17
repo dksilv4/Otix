@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useSpotifyPlaylist, useSubscribePlaylist, useUnsubscribePlaylist, useSyncPlaylist } from "../api/spotify-playlists-api"
 import { PlaylistDetail } from "../organisms/playlist-detail"
-import { LoadingPage } from "@ui/pages/loading-page"
+import { DkInfinitySpinner } from '@dk-ui/atoms/infinity-spinner'
 
 export function SpotifyPlaylistDetailPage() {
   const { id } = useParams({ from: "/library/spotify/playlists/$id" })
@@ -17,7 +17,7 @@ export function SpotifyPlaylistDetailPage() {
 
   const [isSyncing, setIsSyncing] = useState(false)
 
-  if (isLoading) return <LoadingPage />
+  if (isLoading) return <DkInfinitySpinner className="h-36 w-36 text-foreground/80" />
 
   if (error || !playlist) {
     return (

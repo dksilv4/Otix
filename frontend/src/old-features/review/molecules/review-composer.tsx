@@ -17,13 +17,14 @@ function isPastCooldown(cooldownUntil: string | null): boolean {
 
 interface ReviewComposerProps {
  mediaId: string
+  mediaType: string
  existingReview?: ReviewOut | null
  existingRating?: MediaRatingOut | null
  onClose: () => void
  onSaved?: () => void
 }
 
-function ReviewComposer({ mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
+function ReviewComposer({ mediaType, mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
  const [score, setScore] = useState<number>(existingRating?.score ?? 0)
  const [title, setTitle] = useState(existingReview?.title ?? "")
  const [content, setContent] = useState(existingReview?.content ?? "")
@@ -31,10 +32,10 @@ function ReviewComposer({ mediaId, existingReview, existingRating, onClose, onSa
  const [isPrivate, setIsPrivate] = useState(existingReview?.isPrivate ?? false)
  const [error, setError] = useState<string | null>(null)
 
- const upsertReview = useUpsertReview(mediaId)
- const deleteReview = useDeleteReview(mediaId)
- const upsertRating = useUpsertRating(mediaId)
- const deleteRating = useDeleteRating(mediaId)
+ const upsertReview = useUpsertReview(mediaType, mediaId)
+ const deleteReview = useDeleteReview(mediaType, mediaId)
+ const upsertRating = useUpsertRating(mediaType, mediaId)
+ const deleteRating = useDeleteRating(mediaType, mediaId)
 
  const reviewLocked = existingReview ? isPastCooldown(existingReview.cooldownUntil) : false
 
