@@ -38,7 +38,7 @@ export const ratingQueries = {
     }),
 }
 
-export function useUpsertRating(mediaId: string, mediaType: string) {
+export function useUpsertRating(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (score: number) => {
@@ -56,7 +56,7 @@ export function useUpsertRating(mediaId: string, mediaType: string) {
   })
 }
 
-export function useDeleteRating(mediaId: string, mediaType: string) {
+export function useDeleteRating(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {

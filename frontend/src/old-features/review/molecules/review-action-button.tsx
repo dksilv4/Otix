@@ -15,7 +15,7 @@ interface ReviewActionButtonProps {
   className?: string
 }
 
-export function ReviewActionButton({ mediaId, mediaType, className }: ReviewActionButtonProps) {
+export function ReviewActionButton({ mediaType, mediaId, className }: ReviewActionButtonProps) {
   const { isAuthenticated } = useAuth()
   const [composerOpen, setComposerOpen] = useState(false)
 
