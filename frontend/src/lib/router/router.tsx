@@ -10,6 +10,7 @@ import { createMediaRoutes } from '@media/media.router'
 import { createLauncherRoutes } from '@launcher/launcher.router'
 import { createSettingsRoutes } from '@settings/settings.router'
 import { createListRoutes } from '@/features/list/list.router'
+import { createUserRoutes } from '@user/user.router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -24,6 +25,7 @@ const routeTree = rootRoute.addChildren([
   ...createLauncherRoutes(rootRoute),
   ...createSettingsRoutes(rootRoute),
   ...createListRoutes(rootRoute),
+  ...createUserRoutes(rootRoute),
 ])
 
 export interface RouterContext {
@@ -34,6 +36,7 @@ export const router = createRouter({
   routeTree,
   context: {} as RouterContext,
   defaultPreload: "intent",
+  defaultPendingComponent: () => null,
   scrollRestoration: true,
 })
 

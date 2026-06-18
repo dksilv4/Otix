@@ -148,8 +148,8 @@ export const Carousel = forwardRef(function Carousel(
           )}
           style={{
             gap: `${gap}px`,
-            paddingInline: `${gap}px`,
-            scrollPaddingInline: `${gap}px`,
+            paddingInline: '44px',
+            scrollPaddingInline: '44px',
             scrollSnapType: 'x mandatory',
             touchAction: 'pan-y pinch-zoom',
           }}
