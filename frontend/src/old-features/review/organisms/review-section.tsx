@@ -213,6 +213,7 @@ function ReviewSection({ mediaId, mediaType, className }: ReviewSectionProps) {
        title={hasRatingOrReview ? "Edit Your Rating" : "Rate & Review"}
      >
        <ReviewComposer
+         mediaType={mediaType}
          mediaId={mediaId}
          mediaType={mediaType}
          existingReview={review}

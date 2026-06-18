@@ -137,7 +137,7 @@ export function MediaDetail() {
                                         : undefined
                                 }
                             >
-                                <ReviewActionButton mediaId={detail.id} mediaType={displayType}/>
+                                <ReviewActionButton mediaType={displayType} mediaId={detail.id}/>
                                 <AdminActionsMenu mediaId={detail.id} media={detail}/>
                                 <AddToListButton mediaItemId={detail.id}/>
                             </InteractionSection>
@@ -175,14 +175,14 @@ export function MediaDetail() {
                             fallback={<SectionSkeleton height={120}/>}
                             rootMargin="200px 0px"
                         >
-                            <ReviewSection mediaId={detail.id} mediaType={displayType}/>
+                            <ReviewSection mediaType={displayType} mediaId={detail.id}/>
                         </DeferredSection>
 
                         <DeferredSection
                             fallback={<SectionSkeleton height={260}/>}
                             rootMargin="400px 0px"
                         >
-                            <ReviewsListSection mediaId={detail.id} mediaType={displayType}/>
+                            <ReviewsListSection mediaType={displayType} mediaId={detail.id}/>
                         </DeferredSection>
                     </div>
                 </div>
@@ -210,7 +210,7 @@ export function MediaDetail() {
                                                 <img
                                                     src={ic.company.logoUrl}
                                                     alt={ic.company.name}
-                                                    className="max-h-10 max-w-full object-contain brightness-0 invert opacity-80"
+                                                    className="max-h-10 max-w-full object-contain opacity-80"
                                                 />
                                             </div>
                                         ) : (
