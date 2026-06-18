@@ -33,7 +33,7 @@ function ReviewCardSkeleton() {
  )
 }
 
-function ReviewsListSection({ mediaId, mediaType, className }: ReviewsListSectionProps) {
+function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectionProps) {
  const { user } = useAuth()
  const [editTarget, setEditTarget] = useState<ReviewWithUserOut | null>(null)
  const [composerOpen, setComposerOpen] = useState(false)

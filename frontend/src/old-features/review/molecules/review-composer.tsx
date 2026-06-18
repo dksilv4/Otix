@@ -24,7 +24,7 @@ interface ReviewComposerProps {
  onSaved?: () => void
 }
 
-function ReviewComposer({ mediaId, mediaType, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
+function ReviewComposer({ mediaType, mediaId, existingReview, existingRating, onClose, onSaved }: ReviewComposerProps) {
  const [score, setScore] = useState<number>(existingRating?.score ?? 0)
  const [title, setTitle] = useState(existingReview?.title ?? "")
  const [content, setContent] = useState(existingReview?.content ?? "")
@@ -34,8 +34,8 @@ function ReviewComposer({ mediaId, mediaType, existingReview, existingRating, on
 
  const upsertReview = useUpsertReview(mediaType, mediaId)
  const deleteReview = useDeleteReview(mediaType, mediaId)
- const upsertRating = useUpsertRating(mediaId, mediaType)
- const deleteRating = useDeleteRating(mediaId, mediaType)
+ const upsertRating = useUpsertRating(mediaType, mediaId)
+ const deleteRating = useDeleteRating(mediaType, mediaId)
 
  const reviewLocked = existingReview ? isPastCooldown(existingReview.cooldownUntil) : false
 
