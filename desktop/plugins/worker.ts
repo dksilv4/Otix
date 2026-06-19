@@ -20,22 +20,57 @@ function rpc(method: string, ...args: unknown[]): Promise<unknown> {
   })
 }
 
-// Handle responses from main process
-parentPort!.on('message', (msg: MainToWorkerMessage) => {
+// Plugin module reference - stored for callMethod RPCs from main
+let pluginModule: any = null
+
+// Handle all messages from main process
+parentPort!.on('message', async (msg: MainToWorkerMessage) => {
+  // Handle init message (sent after startup)
+  if (msg.type === 'init') {
+    // init is handled during startup sequence
+    return
+  }
+
+  // Handle responses to worker-to-main RPCs
   if (msg.type === 'rpc-result') {
     const resolve = pending.get(msg.id)
     if (resolve) {
       pending.delete(msg.id)
       resolve(msg.result)
     }
-  } else if (msg.type === 'rpc-error') {
+    return
+  }
+
+  if (msg.type === 'rpc-error') {
     const resolve = pending.get(msg.id)
     if (resolve) {
       pending.delete(msg.id)
       resolve(Promise.reject(new Error(msg.error)))
     }
+    return
   }
-  // 'init' messages are handled during startup sequence
+
+  // Handle main-to-worker method calls (invoked via PluginRuntime.callMethod)
+  // These come from the bridge as { type: 'rpc', id, method, args }
+  const rpcMsg = msg as any
+  if (rpcMsg.type === 'rpc' && rpcMsg.method) {
+    try {
+      if (typeof pluginModule?.[rpcMsg.method] === 'function') {
+        const result = await pluginModule[rpcMsg.method](...rpcMsg.args)
+        parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result } as MainToWorkerMessage)
+      } else {
+        parentPort!.postMessage({
+          type: 'rpc-error', id: rpcMsg.id,
+          error: `Export "${rpcMsg.method}" not found in plugin module`,
+        } as MainToWorkerMessage)
+      }
+    } catch (err: any) {
+      parentPort!.postMessage({
+        type: 'rpc-error', id: rpcMsg.id,
+        error: err.message,
+      } as MainToWorkerMessage)
+    }
+  }
 })
 
 // Build the sandboxed PluginContext — every method proxies through RPC
@@ -86,8 +121,8 @@ const ctx = {
 async function start(): Promise<void> {
   try {
     // Use require to load the plugin's main entry
-    const mod = require(pluginPath)
-    const entry = mod.default || mod.plugin
+    pluginModule = require(pluginPath)
+    const entry = pluginModule.default || pluginModule.plugin
     if (typeof entry === 'function') {
       const cleanup = entry(ctx)
       if (typeof cleanup === 'function') {

@@ -134,7 +134,7 @@ export function createWorkerBridge(deps: BridgeDependencies) {
       }
 
       worker.on('message', handler)
-      worker.postMessage({ type: 'rpc', id, method, args } as any)
+      worker.postMessage({ type: 'rpc', id, method, args } satisfies MainToWorkerMessage)
     })
   }
 
