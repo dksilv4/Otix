@@ -6,6 +6,7 @@ import migration003 from './migrations/downloads/003_active_installs'
 import migration004 from './migrations/downloads/004_scanned_games'
 import migration005 from './migrations/downloads/005_game_rejected'
 import migration006 from './migrations/downloads/006_game_update_tracking'
+import pluginsMigration001 from './migrations/plugins/001_initial'
 
 const downloadsMigrations = [
   migration001,
@@ -19,6 +20,9 @@ const downloadsMigrations = [
 export async function initAllDatabases(): Promise<void> {
   const downloadsService = createMigrationService('downloads')
   downloadsService.runMigrations(downloadsMigrations)
+
+  const pluginsService = createMigrationService('plugins')
+  pluginsService.runMigrations([pluginsMigration001])
 }
 
 export { closeAllConnections, getConnection, getDbPath, closeConnection } from './connection'
@@ -28,3 +32,5 @@ export { DownloadsRepository } from './repositories/downloads'
 export type { DownloadRow, CreateDownload } from './repositories/downloads'
 export { GamesRepository } from './repositories/games'
 export type { ScannedGameRow, CreateScannedGame } from './repositories/games'
+export { PluginsRepository } from './repositories/plugins'
+export type { PluginRegistryRow } from './repositories/plugins'
