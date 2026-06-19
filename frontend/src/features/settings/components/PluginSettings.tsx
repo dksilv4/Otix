@@ -1,50 +1,11 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2, Puzzle, ExternalLink, Trash2, CheckCircle2, XCircle, AlertCircle, Download, RefreshCw, Settings, X, Lock, Store, ChevronDown, ShieldCheck, Database, ArrowUpCircle } from 'lucide-react'
 import { useModal, SlidePanel } from '@/lib/modals'
 import { PluginConfigPanel } from './PluginConfigPanel'
-import { EpicPluginLogin } from './EpicPluginLogin'
+import type { PluginInfo, PluginManifest, PluginConfigField } from '@/features/settings/types/plugins'
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-interface PluginManifest {
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  min_app_version: string
-  icon?: string
-  permissions: string[]
-  config?: Record<string, PluginConfigField>
-  entry: { main: string; renderer?: string }
-  services?: string[]
-}
-
-interface PluginConfigField {
-  type: string
-  label: string
-  description?: string
-  default?: unknown
-  values?: string[]
-  items?: Record<string, PluginConfigField>
-  required?: boolean
-  advanced?: boolean
-}
-
-export interface PluginInfo {
-  id: string
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  status: 'installed' | 'enabled' | 'disabled' | 'error'
-  error?: string
-  manifest: PluginManifest
-  installedAt: string
-  enabledAt?: string
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RegistryEntry {
   id: string
@@ -85,7 +46,7 @@ export interface PluginAPI {
   removeRepo(url: string): Promise<{ url: string; label: string | null; added_at: string }[]>
 }
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PERMISSION_LABELS: Record<string, string> = {
   'api:proxy': 'API Proxy',
@@ -138,55 +99,8 @@ export function getPluginAPI(): PluginAPI | null {
   return desktopAPI?.plugin ?? null
 }
 
-// â”€â”€ Instance Test Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function InstanceTestButton({ item, field, idx }: { item: Record<string, unknown>; field: any; idx: number }) {
-  const api = getPluginAPI()
-  const [testing, setTesting] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
-
-  // Only show for list items that have radarr_url and radarr_api_key sub-fields
-  const hasUrl = field.items?.radarr_url
-  const hasApiKey = field.items?.radarr_api_key
-  if (!hasUrl || !hasApiKey) return null
-
-  async function handleTest() {
-    if (!api) return
-    setTesting(true)
-    setResult(null)
-    try {
-      const res = await api.testInstance(
-        String(item.radarr_url || 'http://localhost:7878'),
-        String(item.radarr_api_key || '')
-      )
-      setResult(res)
-    } catch (err) {
-      setResult({ success: false, message: err instanceof Error ? err.message : 'Test failed' })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  return (
-    <div>
-      <button
-        onClick={(e) => { e.stopPropagation(); handleTest() }}
-        disabled={testing}
-        className="text-[0.625rem] text-white/30 hover:text-white/60 transition-colors px-2 py-0.5 rounded-md border border-white/10 hover:border-white/20 disabled:opacity-50"
-      >
-        {testing ? '...' : 'Test'}
-      </button>
-      {result && (
-        <div className={`mt-1 text-[0.625rem] ${result.success ? 'text-green-400' : 'text-red-400'}`}>
-          {result.message}
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// â”€â”€ Marketplace Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Marketplace Card ──────────────────────────────────────────────────────────
 
 function MarketplaceCard({
   entry,
@@ -247,7 +161,7 @@ function MarketplaceCard({
   )
 }
 
-// â”€â”€ Marketplace Detail Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Marketplace Detail Panel ──────────────────────────────────────────────────
 
 function MarketplaceDetailPanel({
   entry,
@@ -336,7 +250,7 @@ function MarketplaceDetailPanel({
             onClick={() => (window as Window).desktopAPI?.openExternal?.(entry.repository)}
             className="text-xs text-primary/80 hover:text-primary flex items-center gap-1 truncate ml-4"
           >
-            {entry.repository.replace('https://github.com/', '')}
+            {entry.repository.replace(/^https?:\/\/[^\/]+\//, '').replace(/\/$/, '')}
             <ExternalLink className="h-3 w-3 shrink-0" />
           </button>
         </div>
@@ -406,7 +320,7 @@ function MarketplaceDetailPanel({
   )
 }
 
-// â”€â”€ Plugin Settings Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Plugin Settings Page ──────────────────────────────────────────────────────
 function PluginCard({
   plugin,
   onToggle,
@@ -671,7 +585,7 @@ export function PluginSettings() {
     }
   }, [api])
 
-  // â”€â”€ Marketplace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Marketplace ─────────────────────────────────────────────────────────────
 
   async function loadMarketplace() {
     if (!api) return
@@ -719,13 +633,16 @@ export function PluginSettings() {
     }
   }
 
-  // â”€â”€ Repo management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Repo management ─────────────────────────────────────────────────────────
 
   async function loadRepos() {
     if (!api) return
     try {
       setRepos(await api.getRepos())
-    } catch {}
+    } catch (err: any) {
+      console.error('Failed to load repos:', err)
+      setError(err?.message || 'Failed to load repos')
+    }
   }
 
   async function handleAddRepo() {
@@ -749,7 +666,10 @@ export function PluginSettings() {
     try {
       setRepos(await api.removeRepo(url))
       loadMarketplace()
-    } catch {}
+    } catch (err: any) {
+      console.error('Failed to remove repo:', err)
+      setError(err?.message || 'Failed to remove repo')
+    }
   }
 
   useEffect(() => {
@@ -763,7 +683,7 @@ export function PluginSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ipcReady])
 
-  // Detail panel â€” open via root modal system
+  // Detail panel — open via root modal system
   useEffect(() => {
     if (!selectedEntry) return
 
@@ -795,7 +715,6 @@ export function PluginSettings() {
         plugin={pluginData}
         api={api}
         onClose={() => setConfiguringPlugin(null)}
-        customRenderers={buildCustomRenderers(configuringPlugin, api)}
       />,
     )
 
@@ -820,8 +739,9 @@ export function PluginSettings() {
             prev.map((p) => (p.id === id ? { ...p, status: 'enabled' as const } : p)),
           )
         }
-      } catch {
-        // Revert handled by next fetch or user notification
+      } catch (err: any) {
+        console.error(`Failed to toggle plugin ${id}:`, err)
+        setError(`Failed to toggle plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setToggling((prev) => ({ ...prev, [id]: false }))
       }
@@ -837,8 +757,9 @@ export function PluginSettings() {
       try {
         await api.uninstall(id)
         setPlugins((prev) => prev.filter((p) => p.id !== id))
-      } catch {
-        // Error handled silently or surfaced elsewhere
+      } catch (err: any) {
+        console.error(`Failed to uninstall plugin ${id}:`, err)
+        setError(`Failed to uninstall plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setUninstalling((prev) => ({ ...prev, [id]: false }))
       }
@@ -856,8 +777,9 @@ export function PluginSettings() {
         setPlugins((prev) =>
           prev.map((p) => (p.id === id ? { ...p, status: 'enabled' as const } : p)),
         )
-      } catch {
-        // Reload error â€” state will be updated on next fetch
+      } catch (err: any) {
+        console.error(`Failed to reload plugin ${id}:`, err)
+        setError(`Failed to reload plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setReloading((prev) => ({ ...prev, [id]: false }))
       }
@@ -870,176 +792,7 @@ export function PluginSettings() {
     setConfiguringPlugin(plugin.id)
   }, [api])
 
-  // ── Plugin-specific custom field renderers ──
-  function buildCustomRenderers(pluginId: string, pluginApi: PluginAPI | null): Record<string, (props: {
-    field: any; value: unknown; onChange: (v: unknown) => void; parentItem?: Record<string, unknown>; idx?: number
-  }) => React.ReactNode | null> {
-    if (!pluginApi) return {}
-
-    // ── Epic Games auth section ──
-    if (pluginId === 'otix-epic-games') {
-      const EpicField = function EpicField() {
-        return <EpicPluginLogin pluginId={pluginId} api={pluginApi} />
-      }
-      return { _epic_login: EpicField }
-    }
-
-    // ── Radarr custom field renderers ──
-    if (pluginId !== 'otix-radarr') return {}
-
-    function getItemUrl(item?: Record<string, unknown>): string {
-      return String(item?.radarr_url || 'http://localhost:7878')
-    }
-
-    function getItemKey(item?: Record<string, unknown>): string {
-      return String(item?.radarr_api_key || '')
-    }
-
-    const QualityProfileField = function QPF({ value, onChange, parentItem, idx }: {
-      value: unknown; onChange: (v: unknown) => void; parentItem?: Record<string, unknown>; idx?: number
-    }) {
-      const [state, setState] = useState<{ profiles: { id: number; name: string }[]; loading: boolean }>({ profiles: [], loading: false })
-      if (idx === undefined || !parentItem) return null
-
-      const url = getItemUrl(parentItem)
-      const apiKey = getItemKey(parentItem)
-
-      async function fetchProfiles() {
-        setState(prev => ({ ...prev, loading: true }))
-        try {
-          const result = await pluginApi.callData(pluginId, 'getQualityProfiles', url, apiKey) as { id: number; name: string }[]
-          setState({ profiles: result || [], loading: false })
-        } catch {
-          setState(prev => ({ ...prev, loading: false }))
-        }
-      }
-
-      if (state.profiles.length === 0) {
-        return (
-          <div>
-            <label className="block text-xs text-white/40 mb-1">Quality Profile</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={value as string | number}
-                onChange={e => onChange(Number(e.target.value))}
-                placeholder="Enter profile ID"
-                className="flex-1 h-9 rounded-lg px-3 text-sm text-white bg-white/5 placeholder:text-white/20 focus:outline-none transition-colors"
-              />
-              <button
-                type="button"
-                onClick={fetchProfiles}
-                disabled={state.loading}
-                className="h-9 rounded-lg px-3 text-[0.625rem] font-medium border border-white/10 text-white/40 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50 shrink-0"
-              >
-                {state.loading ? '...' : 'Fetch profiles'}
-              </button>
-            </div>
-            {state.loading && <p className="text-xs text-white/30 mt-1">Loading...</p>}
-          </div>
-        )
-      }
-
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Quality Profile</label>
-          <select
-            value={String(value || '')}
-            onChange={e => onChange(Number(e.target.value))}
-            className="w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 focus:outline-none transition-colors appearance-none"
-          >
-            <option value="" className="bg-[var(--dk-surface-overlay)]">Select profile...</option>
-            {state.profiles.map(p => (
-              <option key={p.id} value={p.id} className="bg-[var(--dk-surface-overlay)]">{p.name} (ID: {p.id})</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={fetchProfiles}
-            className="text-[0.625rem] text-white/30 hover:text-white/60 transition-colors mt-1"
-          >
-            Refresh
-          </button>
-        </div>
-      )
-    }
-
-    const RootFolderField = function RFF({ value, onChange, parentItem, idx }: {
-      value: unknown; onChange: (v: unknown) => void; parentItem?: Record<string, unknown>; idx?: number
-    }) {
-      const [state, setState] = useState<{ folders: { id: number; path: string }[]; loading: boolean }>({ folders: [], loading: false })
-      if (idx === undefined || !parentItem) return null
-
-      const url = getItemUrl(parentItem)
-      const apiKey = getItemKey(parentItem)
-
-      async function fetchFolders() {
-        setState(prev => ({ ...prev, loading: true }))
-        try {
-          const result = await pluginApi.callData(pluginId, 'getRootFolders', url, apiKey) as { id: number; path: string }[]
-          setState({ folders: result || [], loading: false })
-        } catch {
-          setState(prev => ({ ...prev, loading: false }))
-        }
-      }
-
-      if (state.folders.length === 0) {
-        return (
-          <div>
-            <label className="block text-xs text-white/40 mb-1">Root Folder</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={value as string}
-                onChange={e => onChange(e.target.value)}
-                placeholder="/movies"
-                className="flex-1 h-9 rounded-lg px-3 text-sm text-white bg-white/5 placeholder:text-white/20 focus:outline-none transition-colors"
-              />
-              <button
-                type="button"
-                onClick={fetchFolders}
-                disabled={state.loading}
-                className="h-9 rounded-lg px-3 text-[0.625rem] font-medium border border-white/10 text-white/40 hover:text-white hover:border-white/20 transition-colors disabled:opacity-50 shrink-0"
-              >
-                {state.loading ? '...' : 'Fetch folders'}
-              </button>
-            </div>
-            {state.loading && <p className="text-xs text-white/30 mt-1">Loading...</p>}
-          </div>
-        )
-      }
-
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Root Folder</label>
-          <select
-            value={String(value || '')}
-            onChange={e => onChange(e.target.value)}
-            className="w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 focus:outline-none transition-colors appearance-none"
-          >
-            <option value="" className="bg-[var(--dk-surface-overlay)]">Select folder...</option>
-            {state.folders.map(f => (
-              <option key={f.id} value={f.path} className="bg-[var(--dk-surface-overlay)]">{f.path}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={fetchFolders}
-            className="text-[0.625rem] text-white/30 hover:text-white/60 transition-colors mt-1"
-          >
-            Refresh
-          </button>
-        </div>
-      )
-    }
-
-    return {
-      'instances.quality_profile_id': QualityProfileField,
-      'instances.root_folder_path': RootFolderField,
-    }
-  }
-
-  // â”€â”€ Browser mode fallback â”€â”€
+  // ── Browser mode fallback ──
 
   if (!api) {
     return (
@@ -1063,7 +816,7 @@ export function PluginSettings() {
     )
   }
 
-  // â”€â”€ Loading state â”€â”€
+  // ── Loading state ──
 
   if (loading) {
     return (
@@ -1086,7 +839,7 @@ export function PluginSettings() {
     )
   }
 
-  // â”€â”€ Error state â”€â”€
+  // ── Error state ──
 
   if (error) {
     return (

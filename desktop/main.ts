@@ -439,7 +439,7 @@ app.on('ready', async () => {
   permissionManager = new PermissionManager();
   pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
   permissionManager.setWebContents(mainWindow!.webContents);
-  registerPluginIPC(pluginManager, mainWindow!);
+  registerPluginIPC(pluginManager, mainWindow!, permissionManager);
 
   // Fire-and-forget: discover and load enabled plugins (don't block window load)
   const extraDirs = devExtensionsDir ? [devExtensionsDir] : undefined;

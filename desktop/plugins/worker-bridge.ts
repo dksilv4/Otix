@@ -120,16 +120,17 @@ export function createWorkerBridge(deps: BridgeDependencies) {
       }, 5000)
 
       const handler = (msg: WorkerToMainMessage) => {
-        // Match by response ID — the worker-side bridge (Task 3.3)
-        // will respond with a matching id
-        if ((msg as any).responseId === id) {
+        // The worker responds with { type: 'rpc-result', id, result }
+        // or { type: 'rpc-error', id, error }
+        if (msg.type === 'rpc-result' && msg.id === id) {
           clearTimeout(timeout)
           worker.off('message', handler)
-          if ((msg as any).error) {
-            reject(new Error((msg as any).error))
-          } else {
-            resolve((msg as any).result)
-          }
+          resolve(msg.result)
+        }
+        if (msg.type === 'rpc-error' && msg.id === id) {
+          clearTimeout(timeout)
+          worker.off('message', handler)
+          reject(new Error(msg.error))
         }
       }
 
@@ -180,9 +181,9 @@ async function executeMethod(
       return eventBus.on(eventName, (payload: unknown) => {
         if (worker) {
           worker.postMessage({
-            type: 'rpc-result',
-            id: 'event:' + eventName,
-            result: payload,
+            type: 'event',
+            event: eventName,
+            payload,
           } satisfies MainToWorkerMessage)
         }
       }, pluginId)

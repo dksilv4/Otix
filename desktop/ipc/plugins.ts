@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import type { PluginManager } from '../plugins/manager'
+import type { PermissionManager } from '../plugins/permissions'
 import { eventBus } from '../plugins/event-bus'
 
 function validateSender(event: Electron.IpcMainInvokeEvent): void {
@@ -18,6 +19,7 @@ function assertString(value: unknown, name: string): asserts value is string {
 export function registerPluginIPC(
   pluginManager: PluginManager,
   mainWindow: BrowserWindow,
+  permissionManager?: PermissionManager,
 ): void {
   // ── Query handlers (no sender validation needed) ──
   ipcMain.handle('plugin:list', async () => {
@@ -147,5 +149,19 @@ export function registerPluginIPC(
   ipcMain.handle('plugin:emit-event', async (event, eventName: string, payload: unknown) => {
     validateSender(event)
     eventBus.emit(eventName as any, payload)
+  })
+
+  // ── Permission responses ──
+  ipcMain.handle('plugin:respond-permission', async (_event, requestId: string, response: { granted: boolean; duration?: string }) => {
+    if (!permissionManager) throw new Error('PermissionManager not available')
+    permissionManager.respondToRequest(requestId, {
+      granted: response.granted,
+      duration: response.duration === 'always' ? 'always' : 'once',
+    })
+  })
+
+  // ── API base URL ──
+  ipcMain.handle('plugin:get-api-base-url', async () => {
+    return pluginManager.getApiBaseUrl()
   })
 }

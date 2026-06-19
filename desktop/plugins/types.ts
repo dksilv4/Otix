@@ -155,10 +155,13 @@ export type MainToWorkerMessage =
   | { type: 'rpc-result'; id: string; result: unknown }
   | { type: 'rpc-error'; id: string; error: string }
   | { type: 'rpc'; id: string; method: string; args: unknown[] }
+  | { type: 'event'; event: string; payload: unknown }
 
 export type WorkerToMainMessage =
   | { type: 'ready' }
   | { type: 'rpc'; id: string; method: string; args: unknown[] }
+  | { type: 'rpc-result'; id: string; result: unknown }
+  | { type: 'rpc-error'; id: string; error: string }
   | { type: 'log'; level: 'info' | 'warn' | 'error'; msg: string }
   | { type: 'slot-render'; id: string; location: string }
   | { type: 'handle-action'; id: string; actionKey: string; payload: unknown }

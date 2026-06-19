@@ -15,6 +15,7 @@ const migration: Migration = {
         repository TEXT NOT NULL DEFAULT '',
         source_path TEXT,
         status TEXT NOT NULL DEFAULT 'installed',
+        error TEXT,
         manifest_json TEXT NOT NULL DEFAULT '{}',
         installed_at TEXT NOT NULL DEFAULT (datetime('now')),
         enabled_at TEXT,

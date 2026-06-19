@@ -99,7 +99,7 @@ export function EpicMatchModal({
       media_type: 'game',
     }))
 
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+     
     ;(async () => {
       try {
         const apiBaseUrl = API_BASE_URL
