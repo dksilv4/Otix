@@ -31,6 +31,16 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
     return
   }
 
+  // Handle events pushed from the main process
+  if (msg.type === 'event') {
+    // Events are handled by the plugin via their event subscription mechanism
+    // Route to plugin event handler if one was registered
+    if (typeof pluginModule?.onEvent === 'function') {
+      pluginModule.onEvent(msg.event, msg.payload)
+    }
+    return
+  }
+
   // Handle responses to worker-to-main RPCs
   if (msg.type === 'rpc-result') {
     const resolve = pending.get(msg.id)

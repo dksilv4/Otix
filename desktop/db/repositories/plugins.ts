@@ -41,10 +41,10 @@ export class PluginsRepository {
     `).run(row)
   }
 
-  updateStatus(id: string, status: string): void {
+  updateStatus(id: string, status: string, error?: string): void {
     this.db.prepare(`
-      UPDATE plugin_registry SET status = ?, updated_at = datetime('now') WHERE id = ?
-    `).run(status, id)
+      UPDATE plugin_registry SET status = ?, error = ?, updated_at = datetime('now') WHERE id = ?
+    `).run(status, error ?? null, id)
   }
 
   setEnabled(id: string): void {

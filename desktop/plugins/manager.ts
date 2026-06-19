@@ -9,6 +9,7 @@ import { eventBus } from './event-bus'
 import { PluginsRepository } from '../db/repositories/plugins'
 
 import { fetchAllRegistries } from './marketplace'
+import { SlotRegistry } from './slots'
 import type {
   PluginManifest,
   PluginInfo,
@@ -45,8 +46,7 @@ export class PluginManager {
   private devExtensionsDir: string | undefined
   private apiBaseUrl = 'http://127.0.0.1:8000/api'
   private authToken = ''
-  // In-memory slot registry (SlotRegistry from Task 4.1 will replace this)
-  private slotRegistry: Map<string, { pluginId: string; label: string }[]> = new Map()
+  private slotRegistry: SlotRegistry = new SlotRegistry()
 
   constructor(
     extensionsDir: string,
@@ -186,17 +186,13 @@ export class PluginManager {
 
       // Register manifest slots
       for (const slot of info.manifest.slots || []) {
-        const existing = this.slotRegistry.get(slot.location) || []
-        existing.push({ pluginId, label: slot.label })
-        this.slotRegistry.set(slot.location, existing)
+        this.slotRegistry.register(pluginId, slot.location, slot.label)
       }
 
       // Register settings tabs under special slot
       const tabs = info.manifest.settings?.tabs || []
       if (tabs.length > 0) {
-        const existing = this.slotRegistry.get('settings/tabs') || []
-        existing.push({ pluginId, label: info.name })
-        this.slotRegistry.set('settings/tabs', existing)
+        this.slotRegistry.register(pluginId, 'settings/tabs', info.name)
       }
 
       this.pluginsRepo.setEnabled(pluginId)
@@ -218,13 +214,8 @@ export class PluginManager {
         this.runtimes.delete(pluginId)
       }
 
-      // Unregister slots
-      for (const [location, entries] of this.slotRegistry.entries()) {
-        this.slotRegistry.set(
-          location,
-          entries.filter((e) => e.pluginId !== pluginId),
-        )
-      }
+      // Unregister all slots for this plugin
+      this.slotRegistry.unregisterAll(pluginId)
 
       this.pluginsRepo.setDisabled(pluginId)
       console.log(`[PluginManager] Disabled plugin: ${pluginId}`)
@@ -448,11 +439,11 @@ export class PluginManager {
   getPluginsForSlot(
     location: string,
   ): { pluginId: string; label: string }[] {
-    return this.slotRegistry.get(location) || []
+    return this.slotRegistry.getPluginsForSlot(location)
   }
 
   async getSlotData(location: string): Promise<SlotContribution[]> {
-    const plugins = this.slotRegistry.get(location) || []
+    const plugins = this.slotRegistry.getPluginsForSlot(location)
     const results: SlotContribution[] = []
 
     for (const { pluginId, label } of plugins) {
@@ -469,12 +460,14 @@ export class PluginManager {
             ),
           ),
         ])
+        this.slotRegistry.resetFailures(pluginId, location)
         results.push({
           pluginId,
           label,
           data: (data as any) || { widgets: [] },
         })
       } catch (err: any) {
+        this.slotRegistry.recordFailure(pluginId, location)
         console.error(
           `[PluginManager] Slot render failed for ${pluginId} at ${location}:`,
           err.message,
@@ -742,12 +735,14 @@ export class PluginManager {
     }))
   }
 
-  addRepo(url: string, label?: string): void {
+  async addRepo(url: string, label?: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
     this.pluginsRepo.addRepo(url, label)
+    return this.pluginsRepo.getRepos()
   }
 
-  removeRepo(url: string): void {
+  async removeRepo(url: string): Promise<{ url: string; label: string | null; added_at: string }[]> {
     this.pluginsRepo.removeRepo(url)
+    return this.pluginsRepo.getRepos()
   }
 
   // ── Connection testing ──────────────────────────────────────────

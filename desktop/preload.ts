@@ -261,9 +261,9 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     testConfig: (pluginId: string, configDraft: Record<string, unknown>) => ipcRenderer.invoke('plugin:test-config', pluginId, configDraft),
     callData: (pluginId: string, method: string, ...args: unknown[]) =>
       ipcRenderer.invoke('plugin:call-data', pluginId, method, ...args),
-    getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:status', pluginId),
-    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:marketplace', registryUrl),
-    getRepos: () => ipcRenderer.invoke('plugin:repos'),
+    getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:get-status', pluginId),
+    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:fetch-marketplace', registryUrl),
+    getRepos: () => ipcRenderer.invoke('plugin:get-repos'),
     addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
     removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
     getSlotData: (location: string) => ipcRenderer.invoke('plugin:get-slot-data', location),
