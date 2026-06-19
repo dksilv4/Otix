@@ -26,7 +26,7 @@ const routeTree = rootRoute.addChildren([
   ...createMediaRoutes(rootRoute),
   ...createLauncherRoutes(rootRoute),
   ...createLibraryRoutes(rootRoute),
-  ...createSettingsRoutes(rootRoute),
+  ...createSettingsRoutes(rootRoute, []),
   ...createListRoutes(rootRoute),
   ...createUserRoutes(rootRoute),
   ...createPeopleRoutes(rootRoute),
