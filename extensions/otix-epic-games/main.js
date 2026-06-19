@@ -287,7 +287,7 @@ async function performScan(token, opts = {}) {
     }));
   }
 
-  // Phase 2.5: Deduplicate — Epic API sometimes returns duplicate items
+  // Phase 2.5: Deduplicate ï¿½ Epic API sometimes returns duplicate items
   const seenIds = new Set();
   enriched = enriched.filter(game => {
     const key = `${game.namespace}_${game.catalogItemId}`;
@@ -536,6 +536,34 @@ module.exports.data = {
       games: games.map(g => ({ ...g, platform: 'epic', id: `epic_local_${g.appName}` })),
       total: games.length,
     };
+  },
+
+  'slot.render': async (ctx, slotName) => {
+    // For library:scan slot â€” return status + actions
+    const rt = ctx.config.get('refresh_token');
+    const displayName = ctx.config.get('display_name');
+    const token = await _ensureToken(ctx);
+
+    if (slotName === 'library:scan') {
+      return {
+        type: 'scan',
+        label: 'Epic Games',
+        status: {
+          connected: !!token && !!rt,
+          displayName: displayName || 'Connected',
+        },
+        actions: {
+          scan: 'scan',
+          login: 'auth.login',
+          logout: 'auth.logout',
+          status: 'auth.status',
+        },
+      };
+    }
+    if (slotName === 'matching:epic-library') {
+      return { type: 'library', label: 'Epic Library' };
+    }
+    return null;
   },
 
   test: async (ctx, config) => {

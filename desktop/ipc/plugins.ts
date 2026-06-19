@@ -1,7 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { PluginManager } from '../plugins/manager';
 import { PermissionManager } from '../plugins/permissions';
-import { getPluginConfig, setPluginConfig, getPluginRepos, addPluginRepo, removePluginRepo } from '../plugins/db';
+import { PluginsRepository } from '../db';
+const pluginsRepo = new PluginsRepository();
 import { eventBus } from '../plugins/event-bus';
 import type { PermissionResponse } from '../plugins/types';
 import { fetchAllRegistries } from '../plugins/marketplace';
@@ -58,7 +59,7 @@ export function registerPluginIPC(
   // ── Plugin configuration ──
 
   ipcMain.handle('plugin:get-config', (_event, pluginId: string) => {
-    const raw = getPluginConfig(pluginId);
+    const raw = pluginsRepo.getConfig(pluginId);
     const parsed: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(raw)) {
       try {
@@ -71,7 +72,7 @@ export function registerPluginIPC(
   });
 
   ipcMain.handle('plugin:set-config', (_event, pluginId: string, key: string, value: unknown) => {
-    setPluginConfig(pluginId, key, JSON.stringify(value));
+    pluginsRepo.setConfig(pluginId, key, JSON.stringify(value));
   });
 
   // ── Permission management ──
@@ -152,19 +153,25 @@ export function registerPluginIPC(
     return { success: true, plugins: result.entries, errors: result.errors.length > 0 ? result.errors : undefined };
   });
 
+  // ── Slot data ──
+
+  ipcMain.handle('plugin:get-slot-data', async (_event, location: string) => {
+    return await pluginManager.getSlotData(location);
+  });
+
   // ── Repo management ──
 
   ipcMain.handle('plugin:repos', async () => {
-    return getPluginRepos();
+    return pluginsRepo.getRepos();
   });
 
   ipcMain.handle('plugin:add-repo', async (_event, url: string, label?: string) => {
-    addPluginRepo(url, label);
-    return getPluginRepos();
+    pluginsRepo.addRepo(url, label);
+    return pluginsRepo.getRepos();
   });
 
   ipcMain.handle('plugin:remove-repo', async (_event, url: string) => {
-    removePluginRepo(url);
-    return getPluginRepos();
+    pluginsRepo.removeRepo(url);
+    return pluginsRepo.getRepos();
   });
 }

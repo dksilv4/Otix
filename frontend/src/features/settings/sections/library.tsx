@@ -9,6 +9,8 @@ import { useMatchLocalGames } from '@/old-features/game-scanner/queries'
 import { useClaimGame } from '@/old-features/library/library-queries'
 import type { LocalGame } from '@/old-features/game-scanner/types'
 import { getDesktopAPI, hasDesktopAPI, isDesktop } from '@/lib/desktop/api'
+import { PluginSlot } from '../components/PluginSlot'
+import { getPluginAPI } from '../components/PluginSettings'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -322,6 +324,9 @@ function ScannersSection() {
           Add ISO Directory
         </button>
       </div>
+
+      {/* Plugin Extension Slots */}
+      <PluginSlot location="library:scan" pluginApi={getPluginAPI()!} />
 
       {/* Discovered Games */}
       <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">

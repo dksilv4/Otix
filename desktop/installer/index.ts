@@ -3,6 +3,8 @@ import { openSync, readSync, closeSync, statSync } from 'fs';
 import * as fs from 'fs/promises';
 import * as https from 'https';
 import * as path from 'path';
+import { getConnection } from '../db';
+const __installDb = getConnection('downloads');
 import { tmpdir } from 'os';
 import { createWriteStream, existsSync, readdirSync } from 'fs';
 import { cleanGameTitle } from '../game/parser';
@@ -825,26 +827,22 @@ interface PersistedInstall {
 
 function _addPersistedInstall(entry: PersistedInstall): void {
   try {
-    const { _run } = require('./db');
-    _run(
+    __installDb.prepare(
       `INSERT OR REPLACE INTO active_installs (install_id, pid, iso_path, target_dir, game_title, start_time)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [entry.installId, entry.pid, entry.isoPath, entry.targetDir, entry.gameTitle, entry.startTime],
-    );
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(entry.installId, entry.pid, entry.isoPath, entry.targetDir, entry.gameTitle, entry.startTime);
   } catch (e) { console.warn('[install-persist] write error:', e); }
 }
 
 function _removePersistedInstall(installId: string): void {
   try {
-    const { _run } = require('./db');
-    _run('DELETE FROM active_installs WHERE install_id = ?', [installId]);
+    __installDb.prepare('DELETE FROM active_installs WHERE install_id = ?').run(installId);
   } catch (e) { console.warn('[install-persist] remove error:', e); }
 }
 
 function _readPersistedInstalls(): PersistedInstall[] {
   try {
-    const { _all } = require('./db');
-    return (_all('SELECT * FROM active_installs') as any[]).map(r => ({
+    return (__installDb.prepare('SELECT * FROM active_installs').all() as any[]).map(r => ({
       installId: r.install_id,
       pid: r.pid,
       isoPath: r.iso_path,

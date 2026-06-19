@@ -13,6 +13,8 @@ const SettingsLibraryMatchingPage = lazy(() => import('./pages/settings-library-
 const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
+const SettingsMatchingPage = lazy(() => import('./pages/settings-matching-page').then(m => ({ default: m.SettingsMatchingPage })))
+const SettingsEpicLibraryPage = lazy(() => import('./pages/settings-epic-library-page').then(m => ({ default: m.SettingsEpicLibraryPage })))
 
 export function createSettingsRoutes(rootRoute: AnyRoute) {
   const settingsRoute = createRoute({
@@ -59,6 +61,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsIntegrationsPage,
   })
 
+  const settingsMatchingRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/matching',
+    component: SettingsMatchingPage,
+  })
+
   const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/library',
@@ -83,6 +91,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsDesktopPage,
   })
 
+  const settingsEpicLibraryRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/epic-library',
+    component: SettingsEpicLibraryPage,
+  })
+
   const settingsPluginsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/plugins',
@@ -97,10 +111,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     settingsAppearanceRoute,
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
+    settingsMatchingRoute,
     settingsLibraryRoute,
     settingsLibraryMatchingRoute,
     settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
+    settingsEpicLibraryRoute,
   ]
 }

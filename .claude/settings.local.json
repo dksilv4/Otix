@@ -75,7 +75,9 @@
       "WebFetch(domain:api.github.com)",
       "Bash(npx *)",
       "Bash(grep *)",
-      "Bash(rtk head *)"
+      "Bash(rtk head *)",
+      "PowerShell(python --version)",
+      "Bash(rtk tsc *)"
     ]
   }
 }

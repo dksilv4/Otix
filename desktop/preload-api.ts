@@ -478,6 +478,7 @@ export interface IDesktopAPI {
     testConfig: (pluginId: string, configDraft: Record<string, unknown>) => Promise<{ success: boolean; message: string }>;
     callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>;
     getStatus: (pluginId: string) => Promise<Record<string, unknown> | null>;
+    getSlotData: (location: string) => Promise<{pluginId: string; label: string; data: any}[]>;
     fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;

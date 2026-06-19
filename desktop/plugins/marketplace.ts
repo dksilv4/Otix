@@ -1,5 +1,5 @@
 import type { PluginPermission } from './types';
-import { getPluginRepos } from './db';
+import { PluginsRepository } from '../db';
 
 export interface RegistryEntry {
   id: string;
@@ -50,7 +50,8 @@ export async function fetchAllRegistries(): Promise<{ entries: RegistryEntry[]; 
   const errors: string[] = [];
   const seenIds = new Set<string>();
 
-  const repos = getPluginRepos();
+  const pluginsRepo = new PluginsRepository();
+  const repos = pluginsRepo.getRepos();
 
   if (repos.length === 0) {
     return { entries: [], errors: ['No plugin repos configured. Add a registry URL to discover plugins.'] };

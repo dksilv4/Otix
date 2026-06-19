@@ -1,12 +1,7 @@
 import { randomUUID } from 'crypto';
 import { WebContents } from 'electron';
 import { PluginPermission, PermissionRequest, PermissionResponse } from './types';
-import {
-  getGrantedPermissions,
-  grantPermission,
-  revokePermission,
-  revokeAllPermissions,
-} from './db';
+import { PluginsRepository } from '../db';
 
 interface PendingRequest {
   pluginId: string;
@@ -19,30 +14,31 @@ interface PendingRequest {
 export class PermissionManager {
   private webContents: WebContents | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
+  private pluginsRepo = new PluginsRepository();
 
   setWebContents(wc: WebContents): void {
     this.webContents = wc;
   }
 
   isGranted(pluginId: string, permission: PluginPermission): boolean {
-    const grants = getGrantedPermissions(pluginId);
+    const grants = this.pluginsRepo.getPermissions(pluginId);
     return grants.some(g => g.permission === permission);
   }
 
   getGranted(pluginId: string): PluginPermission[] {
-    return getGrantedPermissions(pluginId).map(g => g.permission);
+    return this.pluginsRepo.getPermissions(pluginId).map(g => g.permission as PluginPermission);
   }
 
   grant(pluginId: string, permission: PluginPermission): void {
-    grantPermission(pluginId, permission);
+    this.pluginsRepo.grantPermission(pluginId, permission, 'always');
   }
 
   revoke(pluginId: string, permission: PluginPermission): void {
-    revokePermission(pluginId, permission);
+    this.pluginsRepo.revokePermission(pluginId, permission);
   }
 
   revokeAll(pluginId: string): void {
-    revokeAllPermissions(pluginId);
+    this.pluginsRepo.deleteAllPermissions(pluginId);
   }
 
   async requestPermission(
@@ -109,7 +105,7 @@ export class PermissionManager {
     this.pendingRequests.delete(requestId);
 
     if (response.granted && response.duration === 'always') {
-      grantPermission(pending.pluginId, pending.permission);
+      this.pluginsRepo.grantPermission(pending.pluginId, pending.permission, 'always');
     }
 
     if (response.granted) {
