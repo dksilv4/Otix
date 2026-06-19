@@ -1,6 +1,7 @@
 // desktop/plugins/worker-bridge.ts
 import type { Worker } from 'worker_threads'
 import type { PluginPermission, MainToWorkerMessage, WorkerToMainMessage, PluginManifest } from './types'
+import type { IsolatedEventBus } from './event-bus'
 import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
 
@@ -22,7 +23,7 @@ export interface BridgeDependencies {
   pluginId: string
   manifest: PluginManifest
   worker: Worker
-  eventBus: any // IsolatedEventBus — rewritten in Task 3.4
+  eventBus: IsolatedEventBus
   pluginDb: Database.Database
   hasPermission: (permission: PluginPermission) => boolean
   requestPermission: (permission: PluginPermission) => Promise<boolean>
