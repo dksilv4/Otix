@@ -1,177 +1,151 @@
-import { ipcMain, BrowserWindow } from 'electron';
-import { PluginManager } from '../plugins/manager';
-import { PermissionManager } from '../plugins/permissions';
-import { PluginsRepository } from '../db';
-const pluginsRepo = new PluginsRepository();
-import { eventBus } from '../plugins/event-bus';
-import type { PermissionResponse } from '../plugins/types';
-import { fetchAllRegistries } from '../plugins/marketplace';
-import fs from 'fs';
-import path from 'path';
-import { app } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron'
+import type { PluginManager } from '../plugins/manager'
+import { eventBus } from '../plugins/event-bus'
+
+function validateSender(event: Electron.IpcMainInvokeEvent): void {
+  const mainWindow = BrowserWindow.getAllWindows()[0]
+  if (event.sender !== mainWindow?.webContents) {
+    throw new Error('IPC call from unauthorized sender')
+  }
+}
+
+function assertString(value: unknown, name: string): asserts value is string {
+  if (typeof value !== 'string') {
+    throw new Error(`${name} must be a string`)
+  }
+}
 
 export function registerPluginIPC(
   pluginManager: PluginManager,
-  permissionManager: PermissionManager,
-  mainWindow: BrowserWindow
+  mainWindow: BrowserWindow,
 ): void {
-  // ── Plugin CRUD ──
+  // ── Query handlers (no sender validation needed) ──
+  ipcMain.handle('plugin:list', async () => {
+    return await pluginManager.getAllPlugins()
+  })
 
-  ipcMain.handle('plugin:list', () => {
-    return pluginManager.getAllPlugins();
-  });
-
-  ipcMain.handle('plugin:get', (_event, id: string) => {
-    const plugins = pluginManager.getAllPlugins();
-    return plugins.find((p) => p.id === id) ?? null;
-  });
-
-  ipcMain.handle('plugin:install', async (_event, repoUrl: string, pluginPath?: string) => {
-    return await pluginManager.installFromGit(repoUrl, pluginPath);
-  });
-
-  ipcMain.handle('plugin:uninstall', async (_event, id: string) => {
-    await pluginManager.uninstall(id);
-  });
-
-  ipcMain.handle('plugin:enable', async (_event, id: string) => {
-    await pluginManager.enable(id);
-  });
-
-  ipcMain.handle('plugin:disable', async (_event, id: string) => {
-    await pluginManager.disable(id);
-  });
-
-  ipcMain.handle('plugin:update', async (_event, id: string) => {
-    return await pluginManager.updatePlugin(id);
-  });
-
-  ipcMain.handle('plugin:reload', async (_event, id: string) => {
-    await pluginManager.disable(id);
-    await pluginManager.enable(id);
-    return pluginManager.getAllPlugins();
-  });
+  ipcMain.handle('plugin:get', async (_event, id: string) => {
+    return pluginManager.getPlugin(id)
+  })
 
   ipcMain.handle('plugin:discover', async () => {
-    return await pluginManager.discoverPlugins();
-  });
+    return await pluginManager.discoverPlugins()
+  })
 
-  // ── Plugin configuration ──
+  ipcMain.handle('plugin:get-config', async (_event, pluginId: string) => {
+    return await pluginManager.getConfig(pluginId)
+  })
 
-  ipcMain.handle('plugin:get-config', (_event, pluginId: string) => {
-    const raw = pluginsRepo.getConfig(pluginId);
-    const parsed: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(raw)) {
-      try {
-        parsed[key] = JSON.parse(value as string);
-      } catch {
-        parsed[key] = value;
-      }
+  ipcMain.handle('plugin:get-status', async (_event, pluginId: string) => {
+    return await pluginManager.getPluginStatus(pluginId)
+  })
+
+  ipcMain.handle('plugin:get-repos', async () => {
+    return await pluginManager.getRepos()
+  })
+
+  ipcMain.handle('plugin:fetch-marketplace', async () => {
+    return await pluginManager.fetchMarketplace()
+  })
+
+  // ── Slot endpoints ──
+  ipcMain.handle('plugin:get-slot-data', async (_event, location: string) => {
+    return await pluginManager.getSlotData(location)
+  })
+
+  ipcMain.handle('plugin:get-page-slot-data', async (_event, pageId: string) => {
+    return await pluginManager.getPageSlotData(pageId)
+  })
+
+  ipcMain.handle('plugin:get-plugin-tabs', async () => {
+    return pluginManager.getPluginTabs()
+  })
+
+  // ── Mutating handlers (sender validation required) ──
+  ipcMain.handle('plugin:install', async (event, repoUrl: string, pluginPath?: string) => {
+    validateSender(event)
+    assertString(repoUrl, 'repoUrl')
+    return await pluginManager.installFromGit(repoUrl, pluginPath)
+  })
+
+  ipcMain.handle('plugin:uninstall', async (event, id: string) => {
+    validateSender(event)
+    assertString(id, 'id')
+    return await pluginManager.uninstall(id)
+  })
+
+  ipcMain.handle('plugin:update', async (event, id: string) => {
+    validateSender(event)
+    assertString(id, 'id')
+    return await pluginManager.updatePlugin(id)
+  })
+
+  ipcMain.handle('plugin:enable', async (event, id: string) => {
+    validateSender(event)
+    assertString(id, 'id')
+    return await pluginManager.enable(id)
+  })
+
+  ipcMain.handle('plugin:disable', async (event, id: string) => {
+    validateSender(event)
+    assertString(id, 'id')
+    return await pluginManager.disable(id)
+  })
+
+  ipcMain.handle('plugin:reload', async (event, id: string) => {
+    validateSender(event)
+    assertString(id, 'id')
+    await pluginManager.disable(id)
+    await pluginManager.enable(id)
+    return await pluginManager.getAllPlugins()
+  })
+
+  ipcMain.handle('plugin:set-config', async (event, pluginId: string, key: string, value: unknown) => {
+    validateSender(event)
+    return await pluginManager.setConfig(pluginId, key, value)
+  })
+
+  ipcMain.handle('plugin:set-auth-token', async (event, token: string) => {
+    validateSender(event)
+    pluginManager.setAuthToken(token)
+  })
+
+  ipcMain.handle('plugin:set-api-base-url', async (event, url: string) => {
+    validateSender(event)
+    const parsed = new URL(url)
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      throw new Error('API base URL must use http: or https: protocol')
     }
-    return parsed;
-  });
+    pluginManager.setApiBaseUrl(url)
+  })
 
-  ipcMain.handle('plugin:set-config', (_event, pluginId: string, key: string, value: unknown) => {
-    pluginsRepo.setConfig(pluginId, key, JSON.stringify(value));
-  });
+  ipcMain.handle('plugin:add-repo', async (event, url: string, label?: string) => {
+    validateSender(event)
+    assertString(url, 'url')
+    return await pluginManager.addRepo(url, label)
+  })
 
-  // ── Permission management ──
+  ipcMain.handle('plugin:remove-repo', async (event, url: string) => {
+    validateSender(event)
+    assertString(url, 'url')
+    return await pluginManager.removeRepo(url)
+  })
 
-  ipcMain.handle('plugin:respond-permission', (_event, requestId: string, response: PermissionResponse) => {
-    permissionManager.respondToRequest(requestId, response);
-  });
-
-  // ── Event bus bridge: renderer -> plugins ──
-
-  ipcMain.handle('plugin:emit-event', (_event, eventName: string, payload: unknown) => {
-    eventBus.emit(eventName as any, payload);
-  });
-
-  // ── Auth / API config ──
-
-  ipcMain.handle('plugin:set-auth-token', (_event, token: string) => {
-    pluginManager.setAuthToken(token);
-  });
-
-  ipcMain.handle('plugin:get-api-base-url', () => {
-    return pluginManager.getApiBaseUrl();
-  });
-
-  ipcMain.handle('plugin:set-api-base-url', (_event, url: string) => {
-    pluginManager.setApiBaseUrl(url);
-  });
-
-  // ── Plugin status ──
-
-  ipcMain.handle('plugin:status', async (_event, pluginId: string) => {
-    try {
-      return await pluginManager.getPluginStatus(pluginId);
-    } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  // ── Plugin data API ──
-
+  // ── Data calls ──
   ipcMain.handle('plugin:call-data', async (_event, pluginId: string, method: string, ...args: unknown[]) => {
-    return await pluginManager.callPluginData(pluginId, method, ...args);
-  });
-
-  // ── Connection testing ──
+    return await pluginManager.callPluginData(pluginId, method, ...args)
+  })
 
   ipcMain.handle('plugin:test-instance', async (_event, url: string, apiKey: string) => {
-    try {
-      const response = await fetch(`${url.replace(/\/+$/, '')}/api/v3/system/status`, {
-        headers: { 'X-Api-Key': apiKey },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return { success: true, message: `Connected (v${data.version || '?'})` };
-      }
-      if (response.status === 401) {
-        return { success: false, message: 'Authentication failed — check API Key.' };
-      }
-      return { success: false, message: `Connection failed (HTTP ${response.status}).` };
-    } catch (err) {
-      return { success: false, message: `Could not reach ${url}. Is it running?` };
-    }
-  });
+    return await pluginManager.testInstance(url, apiKey)
+  })
 
   ipcMain.handle('plugin:test-config', async (_event, pluginId: string, configDraft: Record<string, unknown>) => {
-    try {
-      const result = await pluginManager.testPluginConfig(pluginId, configDraft);
-      return result;
-    } catch (err) {
-      return { success: false, message: err instanceof Error ? err.message : String(err) };
-    }
-  });
+    return await pluginManager.testPluginConfig(pluginId, configDraft)
+  })
 
-  // ── Marketplace ──
-
-  ipcMain.handle('plugin:marketplace', async () => {
-    const result = await fetchAllRegistries();
-    return { success: true, plugins: result.entries, errors: result.errors.length > 0 ? result.errors : undefined };
-  });
-
-  // ── Slot data ──
-
-  ipcMain.handle('plugin:get-slot-data', async (_event, location: string) => {
-    return await pluginManager.getSlotData(location);
-  });
-
-  // ── Repo management ──
-
-  ipcMain.handle('plugin:repos', async () => {
-    return pluginsRepo.getRepos();
-  });
-
-  ipcMain.handle('plugin:add-repo', async (_event, url: string, label?: string) => {
-    pluginsRepo.addRepo(url, label);
-    return pluginsRepo.getRepos();
-  });
-
-  ipcMain.handle('plugin:remove-repo', async (_event, url: string) => {
-    pluginsRepo.removeRepo(url);
-    return pluginsRepo.getRepos();
-  });
+  ipcMain.handle('plugin:emit-event', async (event, eventName: string, payload: unknown) => {
+    validateSender(event)
+    eventBus.emit(eventName as any, payload)
+  })
 }
