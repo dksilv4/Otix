@@ -267,5 +267,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
     removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
     getSlotData: (location: string) => ipcRenderer.invoke('plugin:get-slot-data', location),
+    getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
+    getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
   },
 });

@@ -296,6 +296,14 @@ export type PermissionResponse =
   | { granted: true; duration: PermissionDuration }
   | { granted: false };
 
+export interface PluginSettingsTab {
+  id: string;
+  label: string;
+  icon: string;
+  path: string;
+  sections: { id: string; label: string; slot: string }[];
+}
+
 export interface DesktopSettings {
   launchOnStartup: boolean;
   minimizeToTray: boolean;
@@ -479,6 +487,8 @@ export interface IDesktopAPI {
     callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>;
     getStatus: (pluginId: string) => Promise<Record<string, unknown> | null>;
     getSlotData: (location: string) => Promise<{pluginId: string; label: string; data: any}[]>;
+    getPageSlotData: (pageId: string) => Promise<Record<string, {pluginId: string; label: string; data: any}[]>>;
+    getPluginTabs: () => Promise<PluginSettingsTab[]>;
     fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
