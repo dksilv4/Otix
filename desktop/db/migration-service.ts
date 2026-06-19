@@ -1,5 +1,5 @@
 // desktop/db/migration-service.ts
-import type Database from 'better-sqlite3'
+import Database from 'better-sqlite3'
 import { getConnection } from './connection'
 
 export interface Migration {
@@ -13,7 +13,7 @@ export interface SqlRunner {
 }
 
 class MigrationService {
-  private db: Database
+  private db: Database.Database
   private name: string
 
   constructor(dbName: string) {

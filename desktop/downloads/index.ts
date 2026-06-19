@@ -448,20 +448,6 @@ export interface GameTrackEntry {
   lastUpdateCheck: string | null;
 }
 
-function ensureTrackingTable(): void {
-  _run(`
-    CREATE TABLE IF NOT EXISTS game_update_tracking (
-      media_item_id TEXT NOT NULL,
-      media_item_title TEXT NOT NULL DEFAULT '',
-      downloaded_updates TEXT NOT NULL DEFAULT '[]',
-      last_update_check TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(media_item_id)
-    )
-  `);
-}
-
 function trackRowToObj(row: DbRow): GameTrackEntry {
   return {
     mediaItemId: row.media_item_id,
@@ -473,7 +459,6 @@ function trackRowToObj(row: DbRow): GameTrackEntry {
 
 export async function ensureGameTracked(mediaItemId: string, title: string): Promise<void> {
   await ensureDb();
-  ensureTrackingTable();
   _run('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)',
     [mediaItemId, title]);
 }
@@ -491,7 +476,6 @@ export async function recordUpdateDownload(
   mediaItemId: string, mediaTitle: string, updateTitle: string,
 ): Promise<void> {
   await ensureDb();
-  ensureTrackingTable();
   const tag = extractUpdateTag(updateTitle);
   const row = _get(
     'SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', [mediaItemId],
@@ -515,7 +499,6 @@ export async function recordUpdateDownload(
 
 export async function getTrackedGames(): Promise<GameTrackEntry[]> {
   await ensureDb();
-  ensureTrackingTable();
   return _all('SELECT * FROM game_update_tracking ORDER BY media_item_title').map(trackRowToObj);
 }
 
