@@ -9,6 +9,7 @@ const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-pa
 const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
 const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
 const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
+const SettingsLibraryMatchingPage = lazy(() => import('./pages/settings-library-matching-page').then(m => ({ default: m.SettingsLibraryMatchingPage })))
 const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
@@ -64,6 +65,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsLibraryPage,
   })
 
+  const settingsLibraryMatchingRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/library/matching',
+    component: SettingsLibraryMatchingPage,
+  })
+
   const settingsDownloadsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/downloads',
@@ -91,6 +98,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
     settingsLibraryRoute,
+    settingsLibraryMatchingRoute,
     settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
