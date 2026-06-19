@@ -4,7 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import { app } from 'electron'
 
-const connections = new Map<string, Database>()
+const connections = new Map<string, Database.Database>()
 
 export function getDbPath(name: string): string {
   const userData = app.getPath('userData')
@@ -15,7 +15,7 @@ export function getDbPath(name: string): string {
   return path.join(dbDir, `${name}.db`)
 }
 
-export function getConnection(name: string): Database {
+export function getConnection(name: string): Database.Database {
   const existing = connections.get(name)
   if (existing) return existing
 

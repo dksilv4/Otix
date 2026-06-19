@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 
 describe('MigrationService', () => {
-  let db: Database
+  let db: Database.Database
 
   beforeEach(() => {
     db = new Database(':memory:')
