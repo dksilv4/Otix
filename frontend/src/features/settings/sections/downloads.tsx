@@ -7,6 +7,24 @@ import { Loader2, ChevronDown, Server, Search, CheckCircle2, XCircle, Plus, Tras
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 
+const NAMING_PRESETS = [
+  { id: 'standard', label: 'Standard', template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}' },
+  { id: 'simple',   label: 'Simple',   template: '{Title}/{OriginalName}.{ext}' },
+]
+
+const TOKEN_DOCS = [
+  '{Title}        — Clean game title (e.g. "Stellar Blade")',
+  '{CleanTitle}   — cleanGameTitle() fallback',
+  '{Year}        — Release year (e.g. "2024")',
+  '{Edition}     — Edition tag (e.g. "GOTY Edition")',
+  '{Platform}    — Platform hint (e.g. "PC", "Multi")',
+  '{ReleaseGroup}— Scene release group (e.g. "ElAmigos")',
+  '{Version}     — Version number (e.g. "1.03")',
+  '{OriginalName}— Raw download folder name',
+  '{MediaType}   — "ISO", "PC", or "Update"',
+  '{ext}         — File extension (auto-filled)',
+]
+
 export function DownloadsSection() {
   const desktop = isDesktop()
   const { user } = useAuth()
@@ -27,6 +45,9 @@ export function DownloadsSection() {
   const [preferredRepackers, setPreferredRepackers] = useState('')
   const [allowHypervisor, setAllowHypervisor] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [autoOrganizeEnabled, setAutoOrganizeEnabled] = useState(false)
+  const [namingTemplate, setNamingTemplate] = useState(NAMING_PRESETS[0].template)
+  const [presetId, setPresetId] = useState('standard')
 
   useEffect(() => {
     if (dlConfig) {
@@ -105,6 +126,16 @@ export function DownloadsSection() {
       preferredRepackers: preferredRepackers || null,
       allowHypervisor,
     })
+  }
+
+  const handleSaveOrganizer = async () => {
+    if (!user) return
+    await saveConfig({
+      ...dlConfig,
+      userId: user.id,
+      autoOrganizeEnabled,
+      namingTemplate: namingTemplate || null,
+    } as any)
   }
 
   const isSabnzbdConnected = !!(dlConfig?.sabnzbdHost && dlConfig?.sabnzbdApiKey)
@@ -481,6 +512,76 @@ export function DownloadsSection() {
           Save Configuration
         </DkButton>
       )}
+
+      {/* ── Organizer ── */}
+      <div className="rounded-2xl p-6 space-y-4" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
+        <div>
+          <h3 className="text-sm font-semibold text-white">Organization</h3>
+          <p className="mt-0.5 text-xs text-white/60">
+            Control how downloaded games are automatically renamed and organized.
+          </p>
+        </div>
+
+        {/* Auto-organize toggle */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-white">Auto-Organize</p>
+            <p className="text-xs text-white/60 mt-0.5">
+              Automatically rename and sort downloaded games into organized folders.
+            </p>
+          </div>
+          <DkSwitch checked={autoOrganizeEnabled} onCheckedChange={setAutoOrganizeEnabled} />
+        </div>
+
+        {/* Naming template */}
+        <div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {NAMING_PRESETS.map((p: { id: string; label: string; template: string }) => (
+              <DkButton
+                key={p.id}
+                size="sm"
+                variant={presetId === p.id ? 'primary' : 'ghost'}
+                onClick={() => {
+                  setPresetId(p.id)
+                  setNamingTemplate(p.template)
+                }}
+              >
+                {p.label}
+              </DkButton>
+            ))}
+            <DkButton
+              size="sm"
+              variant={presetId === 'custom' ? 'primary' : 'ghost'}
+              onClick={() => setPresetId('custom')}
+            >
+              Custom
+            </DkButton>
+          </div>
+          <input
+            type="text"
+            value={namingTemplate}
+            onChange={(e) => { setNamingTemplate(e.target.value); setPresetId('custom') }}
+            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] placeholder:text-white/30"
+          />
+          <div className="mt-3">
+            <details className="group">
+              <summary className="cursor-pointer text-[11px] font-medium text-white/40 hover:text-white/60 transition-colors">
+                Available tokens
+              </summary>
+              <div className="mt-2 space-y-1">
+                {TOKEN_DOCS.map((doc: string) => (
+                  <p key={doc} className="text-[11px] font-mono text-white/30">{doc}</p>
+                ))}
+              </div>
+            </details>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <DkButton size="sm" variant="primary" onClick={handleSaveOrganizer}>
+              Save Template
+            </DkButton>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
