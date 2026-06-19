@@ -5,13 +5,11 @@ import type { AnyRoute } from '@tanstack/react-router'
 const SettingsLayout = lazy(() => import('./pages/settings-layout').then(m => ({ default: m.SettingsLayout })))
 const SettingsProfilePage = lazy(() => import('./pages/settings-profile-page').then(m => ({ default: m.SettingsProfilePage })))
 const SettingsAccountPage = lazy(() => import('./pages/settings-account-page').then(m => ({ default: m.SettingsAccountPage })))
-const SettingsPreferencesPage = lazy(() => import('./pages/settings-preferences-page').then(m => ({ default: m.SettingsPreferencesPage })))
 const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-page').then(m => ({ default: m.SettingsAppearancePage })))
 const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
 const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
-const SettingsScannersPage = lazy(() => import('./pages/settings-scanners-page').then(m => ({ default: m.SettingsScannersPage })))
+const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
 const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
-const SettingsOrganizerPage = lazy(() => import('./pages/settings-organizer-page').then(m => ({ default: m.SettingsOrganizerPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
 
@@ -42,12 +40,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsAccountPage,
   })
 
-  const settingsPreferencesRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/preferences',
-    component: SettingsPreferencesPage,
-  })
-
   const settingsAppearanceRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/appearance',
@@ -66,22 +58,16 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsIntegrationsPage,
   })
 
-  const settingsScannersRoute = createRoute({
+  const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
-    path: '/scanners',
-    component: SettingsScannersPage,
+    path: '/library',
+    component: SettingsLibraryPage,
   })
 
   const settingsDownloadsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/downloads',
     component: SettingsDownloadsPage,
-  })
-
-  const settingsOrganizerRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/organizer',
-    component: SettingsOrganizerPage,
   })
 
   const settingsDesktopRoute = createRoute({
@@ -101,13 +87,11 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     settingsIndexRoute,
     settingsProfileRoute,
     settingsAccountRoute,
-    settingsPreferencesRoute,
     settingsAppearanceRoute,
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
-    settingsScannersRoute,
+    settingsLibraryRoute,
     settingsDownloadsRoute,
-    settingsOrganizerRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
   ]
