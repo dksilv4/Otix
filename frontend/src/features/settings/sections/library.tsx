@@ -70,6 +70,7 @@ function ScannersSection() {
   const gamePaths = usePathList(getScanPaths, (p) => setScanPaths(p), 'gamePaths')
   const isoPaths = usePathList(getIsoPaths, (p) => setIsoPaths(p), 'isoPaths')
 
+  const navigate = useNavigate()
   const matchMutation = useMatchLocalGames()
   const claimMutation = useClaimGame()
   const [matching, setMatching] = useState(false)
@@ -348,6 +349,13 @@ function ScannersSection() {
             >
               <CheckCircle2 className="h-4 w-4" />
               Verify All Matches
+            </button>
+            <button
+              onClick={() => navigate({ to: '/settings/library/matching' })}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white/70 bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <Gamepad2 className="h-4 w-4" />
+              View Matching
             </button>
           </div>
         )}
