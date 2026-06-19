@@ -8,7 +8,11 @@
 
 import path from 'path';
 import fs from 'fs';
-import { _run, _get, _all, ensureDb, DbRow } from '../db';
+import { getConnection } from '../db';
+const __db = getConnection('downloads');
+type DbRow = Record<string, any>;
+const __get = (sql: string, ...params: any[]) => __db.prepare(sql).get(...params) as any;
+const __all = (sql: string, ...params: any[]) => __db.prepare(sql).all(...params) as any[];
 import { autoOrganizeDownload } from './organizer';
 
 function genId(): string {
@@ -458,9 +462,7 @@ function trackRowToObj(row: DbRow): GameTrackEntry {
 }
 
 export async function ensureGameTracked(mediaItemId: string, title: string): Promise<void> {
-  await ensureDb();
-  _run('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)',
-    [mediaItemId, title]);
+  __db.prepare('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)').run(mediaItemId, title);
 }
 
 function extractUpdateTag(title: string): string {
@@ -475,38 +477,30 @@ function extractUpdateTag(title: string): string {
 export async function recordUpdateDownload(
   mediaItemId: string, mediaTitle: string, updateTitle: string,
 ): Promise<void> {
-  await ensureDb();
-  const tag = extractUpdateTag(updateTitle);
-  const row = _get(
-    'SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', [mediaItemId],
-  );
+
+const tag = extractUpdateTag(updateTitle);
+  const row = __get('SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', mediaItemId);
   if (row) {
     const tags: string[] = JSON.parse(row.downloaded_updates || '[]');
     if (!tags.includes(tag)) {
       tags.push(tag);
-      _run(
-        "UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?",
-        [JSON.stringify(tags), mediaTitle, mediaItemId],
-      );
+      __db.prepare("UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?").run(JSON.stringify(tags), mediaTitle, mediaItemId);
     }
   } else {
-    _run(
-      'INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)',
-      [mediaItemId, mediaTitle, JSON.stringify([tag])],
-    );
+    __db.prepare('INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)').run(mediaItemId, mediaTitle, JSON.stringify([tag]));
   }
 }
 
 export async function getTrackedGames(): Promise<GameTrackEntry[]> {
-  await ensureDb();
-  return _all('SELECT * FROM game_update_tracking ORDER BY media_item_title').map(trackRowToObj);
+
+return __all('SELECT * FROM game_update_tracking ORDER BY media_item_title', ).map(trackRowToObj);
 }
 
 export async function checkGameForUpdates(
   mediaItemId: string, title: string, apiKey: string,
 ): Promise<{ newUpdates: NZBResult[]; error?: string }> {
-  await ensureDb();
-  try {
+
+try {
     const results = await searchNzbPlanet(title, apiKey);
     const gameResults = results.filter(r => {
       const cat = r.category.toLowerCase();
@@ -515,18 +509,13 @@ export async function checkGameForUpdates(
     const base = autoPickBest(gameResults);
     if (!base) return { newUpdates: [], error: 'No base release to anchor update matching' };
     const allUpdates = findMatchingUpdates(base.title, gameResults);
-    const row = _get(
-      'SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', [mediaItemId],
-    );
+    const row = __get('SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', mediaItemId);
     const downloaded: string[] = row ? JSON.parse(row.downloaded_updates || '[]') : [];
     const newUpdates = allUpdates.filter(u => {
       const tag = extractUpdateTag(u.title);
       return !downloaded.includes(tag);
     });
-    _run(
-      "UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?",
-      [mediaItemId],
-    );
+    __db.prepare("UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?").run(mediaItemId);
     return { newUpdates };
   } catch (err: any) {
     return { newUpdates: [], error: err.message };
@@ -534,8 +523,8 @@ export async function checkGameForUpdates(
 }
 
 export async function scheduledUpdateCheck(): Promise<{ game: string; queued: number }[]> {
-  await ensureDb();
-  const config = await getConfig();
+
+const config = await getConfig();
   if (!config || !config.nzbplanetApiKey || !config.sabnzbdHost || !config.sabnzbdApiKey) {
     console.log('[update-check] Skipping - SABnzbd or NZBPlanet not configured');
     return [];
@@ -744,20 +733,18 @@ function configRowToObj(row: DbRow): DownloadConfig {
 }
 
 export async function getConfig(_userId?: string): Promise<DownloadConfig | null> {
-  await ensureDb();
-  // Desktop app: single user, return first config regardless of user_id
-  const row = _get('SELECT * FROM download_configs ORDER BY updated_at DESC LIMIT 1', []);
+
+// Desktop app: single user, return first config regardless of user_id
+  const row = __get('SELECT * FROM download_configs ORDER BY updated_at DESC LIMIT 1', []);
   return row ? configRowToObj(row) : null;
 }
 
 export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: string }): Promise<DownloadConfig> {
-  const dbReady = await ensureDb();
-  if (!dbReady) throw new Error('Database failed to initialize — check console for details');
   // Desktop app: single config. Check for any existing row regardless of user_id
-  const existing = _get('SELECT id, user_id FROM download_configs LIMIT 1', []);
+  const existing = __get('SELECT id, user_id FROM download_configs LIMIT 1', []);
 
   if (existing) {
-    _run(`
+    __db.prepare(`
       UPDATE download_configs SET
         user_id = ?,
         sabnzbd_host = ?, sabnzbd_port = ?, sabnzbd_api_key = ?,
@@ -768,7 +755,7 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
         auto_organize_enabled = ?, naming_template = ?,
         updated_at = datetime('now')
       WHERE id = ?
-    `, [
+    `).run(
       config.userId,
       config.sabnzbdHost, config.sabnzbdPort, config.sabnzbdApiKey,
       config.sabnzbdUseSsl ? 1 : 0, config.nzbplanetApiKey,
@@ -777,27 +764,27 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
       config.preferredRepackers, config.allowHypervisor ? 1 : 0,
       config.autoOrganizeEnabled ? 1 : 0, config.namingTemplate ?? null,
       existing.id,
-    ]);
+    );
     const cfg = await getConfig();
     if (!cfg) throw new Error('Failed to retrieve saved config');
     return cfg;
   }
 
   const id = config.id || genId();
-  _run(`
+  __db.prepare(`
     INSERT INTO download_configs (id, user_id, sabnzbd_host, sabnzbd_port, sabnzbd_api_key,
       sabnzbd_use_ssl, nzbplanet_api_key, sabnzbd_complete_path, download_path,
       post_process_enabled, auto_search_wishlist, wishlist_interval_hours, preferred_repackers, allow_hypervisor,
       auto_organize_enabled, naming_template)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
+  `).run(
     id, config.userId, config.sabnzbdHost, config.sabnzbdPort, config.sabnzbdApiKey,
     config.sabnzbdUseSsl ? 1 : 0, config.nzbplanetApiKey,
     config.sabnzbdCompletePath, config.downloadPath, config.postProcessEnabled ? 1 : 0,
     config.autoSearchWishlist ? 1 : 0, config.wishlistIntervalHours,
     config.preferredRepackers, config.allowHypervisor ? 1 : 0,
     config.autoOrganizeEnabled ? 1 : 0, config.namingTemplate ?? null,
-  ]);
+  );
 
   const cfg = await getConfig();
   if (!cfg) throw new Error('Failed to retrieve saved config');
@@ -850,48 +837,48 @@ export async function createDownload(
   nzbResult: NZBResult,
   sabnzbdNzoId: string | null,
 ): Promise<Download> {
-  await ensureDb();
-  const id = genId();
-  _run(`
+
+const id = genId();
+  __db.prepare(`
     INSERT INTO downloads (id, user_id, media_item_id, media_item_title, sabnzbd_nzo_id, status,
       nzb_name, nzb_size, nzb_url)
     VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?)
-  `, [id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbResult.title, nzbResult.size, nzbResult.nzbUrl]);
+  `).run(id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbResult.title, nzbResult.size, nzbResult.nzbUrl);
 
   return (await getDownload(id))!;
 }
 
 export async function getDownload(id: string): Promise<Download | null> {
-  await ensureDb();
-  const row = _get('SELECT * FROM downloads WHERE id = ?', [id]);
+
+const row = __get('SELECT * FROM downloads WHERE id = ?', [id]);
   return row ? downloadRowToObj(row) : null;
 }
 
 export async function getUserDownloads(_userId?: string): Promise<Download[]> {
-  await ensureDb();
-  const rows = _all('SELECT * FROM downloads ORDER BY created_at DESC', []);
+
+const rows = __all('SELECT * FROM downloads ORDER BY created_at DESC', []);
   return rows.map(downloadRowToObj);
 }
 
 export async function updateDownloadStatus(id: string, status: string, errorMessage?: string, percentage?: number): Promise<void> {
-  await ensureDb();
-  if (status === 'completed') {
-    _run('UPDATE downloads SET status = ?, percentage = 100, completed_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?', [status, id]);
+
+if (status === 'completed') {
+    __db.prepare('UPDATE downloads SET status = ?, percentage = 100, completed_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?').run([status, id]);
   } else if (errorMessage) {
-    _run('UPDATE downloads SET status = ?, error_message = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?', [status, errorMessage, percentage ?? 0, id]);
+    __db.prepare('UPDATE downloads SET status = ?, error_message = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, errorMessage, percentage ?? 0, id]);
   } else {
-    _run('UPDATE downloads SET status = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?', [status, percentage ?? 0, id]);
+    __db.prepare('UPDATE downloads SET status = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, percentage ?? 0, id]);
   }
 }
 
 export async function updateDownloadIsoPath(id: string, isoPath: string): Promise<void> {
-  await ensureDb();
-  _run('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?', [isoPath, id]);
+
+__db.prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([isoPath, id]);
 }
 
 export async function deleteDownload(id: string): Promise<void> {
-  await ensureDb();
-  const dl = await getDownload(id);
+
+const dl = await getDownload(id);
   if (!dl) return;
 
   // Delete ISO files from disk
@@ -913,15 +900,15 @@ export async function deleteDownload(id: string): Promise<void> {
   }
 
   // Soft-delete: mark as deleted so it shows in Deleted tab
-  _run("UPDATE downloads SET status = 'deleted', iso_path = NULL, updated_at = datetime('now') WHERE id = ?", [id]);
+  __db.prepare("UPDATE downloads SET status = 'deleted', iso_path = NULL, updated_at = datetime('now') WHERE id = ?").run(id);
 }
 
 export async function purgeOldDeletedDownloads(): Promise<number> {
-  await ensureDb();
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const rows = _all("SELECT id FROM downloads WHERE status = 'deleted' AND updated_at < ?", [cutoff]);
+
+const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = __all("SELECT id FROM downloads WHERE status = 'deleted' AND updated_at < ?", cutoff);
   for (const row of rows) {
-    _run('DELETE FROM downloads WHERE id = ?', [row.id]);
+    __db.prepare('DELETE FROM downloads WHERE id = ?').run(row.id);
   }
   if (rows.length > 0) {
     console.log(`[purge] Purged ${rows.length} deleted downloads older than 30 days`);
@@ -946,7 +933,7 @@ export interface MatchCacheEntry {
 export function batchCheckMatchCache(isoPaths: string[]): Record<string, MatchCacheEntry | null> {
   const result: Record<string, MatchCacheEntry | null> = {};
   for (const p of isoPaths) {
-    const row = _get('SELECT * FROM iso_match_cache WHERE iso_path = ?', [p]);
+    const row = __get('SELECT * FROM iso_match_cache WHERE iso_path = ?', [p]);
     if (row) {
       result[p] = {
         isoPath: row.iso_path,
@@ -969,7 +956,7 @@ export function batchCheckMatchCache(isoPaths: string[]): Record<string, MatchCa
 export function saveMatchCache(entries: MatchCacheEntry[]): void {
   const now = new Date().toISOString();
   for (const e of entries) {
-    _run(`
+    __db.prepare(`
       INSERT INTO iso_match_cache (iso_path, query_title, media_id, media_title, media_slug, confidence, poster_url, logoless_poster_url, logo_url, checked_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(iso_path) DO UPDATE SET
@@ -982,11 +969,11 @@ export function saveMatchCache(entries: MatchCacheEntry[]): void {
         logoless_poster_url = excluded.logoless_poster_url,
         logo_url = excluded.logo_url,
         checked_at = excluded.checked_at
-    `, [
+    `).run(
       e.isoPath, e.queryTitle, e.mediaId, e.mediaTitle, e.mediaSlug ?? null,
       e.confidence ?? null, e.posterUrl ?? null, e.logolessPosterUrl ?? null,
       e.logoUrl ?? null, now,
-    ]);
+    );
   }
 }
 
@@ -1001,8 +988,8 @@ export interface PathMapping {
 }
 
 export async function getPathMappings(configId: string): Promise<PathMapping[]> {
-  await ensureDb();
-  const rows = _all('SELECT * FROM download_path_mappings WHERE config_id = ? ORDER BY created_at', [configId]);
+
+const rows = __all('SELECT * FROM download_path_mappings WHERE config_id = ? ORDER BY created_at', [configId]);
   return rows.map((r: DbRow) => ({
     id: r.id,
     configId: r.config_id,
@@ -1013,11 +1000,10 @@ export async function getPathMappings(configId: string): Promise<PathMapping[]> 
 }
 
 export async function addPathMapping(configId: string, sourcePath: string, destPath: string): Promise<PathMapping> {
-  await ensureDb();
-  const id = genId();
-  _run('INSERT INTO download_path_mappings (id, config_id, source_path, dest_path) VALUES (?, ?, ?, ?)',
-    [id, configId, sourcePath, destPath]);
-  const row = _get('SELECT * FROM download_path_mappings WHERE id = ?', [id]);
+
+const id = genId();
+  __db.prepare('INSERT INTO download_path_mappings (id, config_id, source_path, dest_path) VALUES (?, ?, ?, ?)').run([id, configId, sourcePath, destPath]);
+  const row = __get('SELECT * FROM download_path_mappings WHERE id = ?', [id]);
   if (!row) throw new Error('Failed to create path mapping');
   return {
     id: row.id,
@@ -1029,34 +1015,34 @@ export async function addPathMapping(configId: string, sourcePath: string, destP
 }
 
 export async function removePathMapping(id: string): Promise<void> {
-  await ensureDb();
-  _run('DELETE FROM download_path_mappings WHERE id = ?', [id]);
+
+__db.prepare('DELETE FROM download_path_mappings WHERE id = ?').run(id);
 }
 
 // ── Wishlist tracking ─────────────────────────────────────────────────────
 
 export async function recordWishlistSearch(userId: string, mediaItemId: string, downloadId: string | null): Promise<void> {
-  await ensureDb();
-  const existing = _get('SELECT id, attempts FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
+
+const existing = __get('SELECT id, attempts FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
 
   if (existing) {
-    _run(`
+    __db.prepare(`
       UPDATE wishlist_download_tracking SET
         last_searched_at = datetime('now'), last_download_id = ?,
         attempts = ?, updated_at = datetime('now')
       WHERE id = ?
-    `, [downloadId, (existing.attempts ?? 0) + 1, existing.id]);
+    `).run(downloadId, (existing.attempts ?? 0) + 1, existing.id);
   } else {
-    _run(`
+    __db.prepare(`
       INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, last_searched_at, last_download_id, attempts)
       VALUES (?, ?, ?, datetime('now'), ?, 1)
-    `, [genId(), userId, mediaItemId, downloadId]);
+    `).run(genId(), userId, mediaItemId, downloadId);
   }
 }
 
 export async function getWishlistTracking(userId: string): Promise<{ mediaItemId: string; attempts: number; lastSearchedAt: string | null }[]> {
-  await ensureDb();
-  const rows = _all('SELECT media_item_id, attempts, last_searched_at FROM wishlist_download_tracking WHERE skipped = 0', []);
+
+const rows = __all('SELECT media_item_id, attempts, last_searched_at FROM wishlist_download_tracking WHERE skipped = 0', []);
   return rows.map((r: DbRow) => ({
     mediaItemId: r.media_item_id,
     attempts: r.attempts,
@@ -1065,12 +1051,12 @@ export async function getWishlistTracking(userId: string): Promise<{ mediaItemId
 }
 
 export async function skipWishlistItem(userId: string, mediaItemId: string): Promise<void> {
-  await ensureDb();
-  const existing = _get('SELECT id FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
+
+const existing = __get('SELECT id FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
   if (existing) {
-    _run('UPDATE wishlist_download_tracking SET skipped = 1 WHERE id = ?', [existing.id]);
+    __db.prepare('UPDATE wishlist_download_tracking SET skipped = 1 WHERE id = ?').run(existing.id);
   } else {
-    _run('INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, skipped) VALUES (?, ?, ?, 1)', [genId(), userId, mediaItemId]);
+    __db.prepare('INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, skipped) VALUES (?, ?, ?, 1)').run([genId(), userId, mediaItemId]);
   }
 }
 
@@ -1105,11 +1091,11 @@ export async function postProcessDownload(
   fallbackSource?: string,
   fallbackDest?: string,
 ): Promise<PostProcessResult> {
-  await ensureDb();
-  const result: PostProcessResult = { success: false, isosFound: [], isosMoved: [], errors: [] };
+
+const result: PostProcessResult = { success: false, isosFound: [], isosMoved: [], errors: [] };
 
   // Check if auto-organizer is enabled — delegate if so
-  const cfg = _get('SELECT auto_organize_enabled, naming_template FROM download_configs WHERE id = ?', [configId]);
+  const cfg = __get('SELECT auto_organize_enabled, naming_template FROM download_configs WHERE id = ?', [configId]);
   if (cfg && cfg.auto_organize_enabled === 1) {
     const orgResult = await autoOrganizeDownload(downloadId, configId, fallbackSource, fallbackDest);
     result.success = orgResult.success;
@@ -1118,7 +1104,7 @@ export async function postProcessDownload(
     return result;
   }
 
-  const dl = _get('SELECT * FROM downloads WHERE id = ? AND status = ?', [downloadId, 'completed']);
+  const dl = __get('SELECT * FROM downloads WHERE id = ? AND status = ?', [downloadId, 'completed']);
   if (!dl) {
     result.errors.push('Download not found or not completed');
     return result;
@@ -1226,7 +1212,7 @@ export async function postProcessDownload(
 
   if (movedCount > 0) {
     const movedPaths = result.isosMoved.map(m => m.to).join(';');
-    _run('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?', [movedPaths, downloadId]);
+    __db.prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([movedPaths, downloadId]);
   }
 
   result.success = result.isosMoved.length > 0 && result.errors.length === 0;
@@ -1236,14 +1222,11 @@ export async function postProcessDownload(
 // ── Poll queue ────────────────────────────────────────────────────────────
 
 export async function pollAndUpdateDownloads(userId: string): Promise<Download[]> {
-  await ensureDb();
-  const config = await getConfig(userId);
+
+const config = await getConfig(userId);
   if (!config || !config.sabnzbdHost || !config.sabnzbdApiKey) return [];
 
-  const activeDownloads = _all(
-    "SELECT * FROM downloads WHERE status IN ('queued', 'downloading', 'processing')",
-    [],
-  );
+  const activeDownloads = __all("SELECT * FROM downloads WHERE status IN ('queued', 'downloading', 'processing')");
 
   if (activeDownloads.length === 0) return [];
 
@@ -1314,8 +1297,8 @@ export async function searchAndDownload(
   gameName: string,
   allowHypervisorOverride?: boolean,
 ): Promise<{ download: Download; nzbResult: NZBResult } | { error: string } | { hypervisorAvailable: true; hypervisorResults: NZBResult[]; gameName: string; error: string }> {
-  await ensureDb();
-  const config = await getConfig(userId);
+
+const config = await getConfig(userId);
   if (!config) return { error: 'Download configuration not found. Set up SABnzbd and NZBPlanet in Settings → Integrations.' };
   if (!config.nzbplanetApiKey || !config.sabnzbdHost || !config.sabnzbdApiKey) {
     return { error: 'SABnzbd or NZBPlanet not configured. Check Settings → Integrations.' };
@@ -1395,8 +1378,8 @@ export async function searchAndDownload(
 // ── Game and ISO scan database handlers ──
 
 export async function getScannedGamesFromDb(): Promise<any[]> {
-  await ensureDb();
-  const rows = _all('SELECT * FROM scanned_games', []);
+
+const rows = __all('SELECT * FROM scanned_games', []);
   return rows.map((r: DbRow) => ({
     id: r.id,
     title: r.title,
@@ -1422,12 +1405,11 @@ export async function getScannedGamesFromDb(): Promise<any[]> {
 }
 
 export async function saveScannedGamesToDb(games: any[]): Promise<void> {
-  await ensureDb();
 
   // Preserve `seeded` flag for game that were already in the DB.
   // The DELETE-then-INSERT pattern would lose it, so we snapshot first.
   const existingSeeded = new Map<string, number>();
-  const existingRows = _all('SELECT id, seeded FROM scanned_games');
+  const existingRows = __all('SELECT id, seeded FROM scanned_games', );
   for (const r of existingRows) {
     existingSeeded.set(r.id, r.seeded as number);
   }
@@ -1436,21 +1418,21 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   const newIds = [...new Set(games.map((g) => g.id))];
   if (newIds.length > 0) {
     const placeholders = newIds.map(() => '?').join(',');
-    _run(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`, newIds);
+    __db.prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
   } else {
-    _run('DELETE FROM scanned_games');
+    __db.prepare('DELETE FROM scanned_games').run();
   }
 
   // Upsert each game, restoring the seeded flag when the game already existed
   for (const g of games) {
     const seeded = existingSeeded.get(g.id) ?? 0;
-    _run(`
+    __db.prepare(`
       INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
         update_files, otix_media_id, otix_media_title, otix_media_slug,
         otix_confidence, otix_match_suggestion, seeded
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
+    `).run(
       g.id,
       g.title,
       g.exePath,
@@ -1466,7 +1448,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
       g.otixConfidence != null ? g.otixConfidence : null,
       g.otixMatchSuggestion ? JSON.stringify(g.otixMatchSuggestion) : null,
       seeded,
-    ]);
+    );
   }
 }
 
@@ -1475,16 +1457,13 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
  * Searches by exe_path and updates exe_path + install_dir.
  */
 export async function updateGamePathInDb(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void> {
-  await ensureDb();
-  _run(
-    'UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?',
-    [newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath],
-  );
+
+__db.prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
 }
 
 export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game' | 'iso' }[]> {
-  await ensureDb();
-  const rows = _all('SELECT * FROM game_scan_paths');
+
+const rows = __all('SELECT * FROM game_scan_paths', );
   return rows.map((r: DbRow) => ({
     path: r.path,
     type: r.type,
@@ -1492,10 +1471,10 @@ export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game'
 }
 
 export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void> {
-  await ensureDb();
-  _run('DELETE FROM game_scan_paths');
+
+__db.prepare('DELETE FROM game_scan_paths').run();
   for (const p of paths) {
-    _run('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)', [p.path, p.type]);
+    __db.prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
   }
 }
 
@@ -1513,9 +1492,7 @@ export interface UnseededGame {
 /** Return unseeded game from scanned_games, grouped by normalized title.
  *  For Steam game, extracts the numeric Steam App ID from the game's id. */
 export function getUnseededGames(): UnseededGame[] {
-  const rows = _all(
-    'SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0'
-  ) as Array<{ id: string; title: string; platform: string }>;
+  const rows = __all('SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0', ) as Array<{ id: string; title: string; platform: string }>;
 
   // Group by normalized title, preferring Steam entries (which have an app ID)
   const byTitle = new Map<string, UnseededGame>();
@@ -1542,7 +1519,7 @@ export function markGamesAsSeeded(games: UnseededGame[]): void {
   if (!games.length) return;
   const titles = games.map(g => g.title);
   const placeholders = titles.map(() => '?').join(',');
-  _run(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`, titles);
+  __db.prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
 }
 
 /** @deprecated Use getUnseededGames() instead. */
@@ -1554,12 +1531,12 @@ export function getUnseededTitles(): string[] {
 export function markTitlesAsSeeded(titles: string[]): void {
   if (!titles.length) return;
   const placeholders = titles.map(() => '?').join(',');
-  _run(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`, titles);
+  __db.prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
 }
 
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
-  await ensureDb();
-  const rows = _all('SELECT * FROM local_games_map');
+
+const rows = __all('SELECT * FROM local_games_map', );
   const map: Record<string, any> = {};
   for (const r of rows) {
     try {
@@ -1570,10 +1547,10 @@ export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
 }
 
 export async function saveLocalGamesMapEntryToDb(mediaId: string, game: any | null): Promise<void> {
-  await ensureDb();
-  if (game) {
-    _run('INSERT OR REPLACE INTO local_games_map (media_id, game_json) VALUES (?, ?)', [mediaId, JSON.stringify(game)]);
+
+if (game) {
+    __db.prepare('INSERT OR REPLACE INTO local_games_map (media_id, game_json) VALUES (?, ?)').run([mediaId, JSON.stringify(game)]);
   } else {
-    _run('DELETE FROM local_games_map WHERE media_id = ?', [mediaId]);
+    __db.prepare('DELETE FROM local_games_map WHERE media_id = ?').run(mediaId);
   }
 }

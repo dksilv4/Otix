@@ -131,7 +131,7 @@ const PLUGIN_ICONS: Record<string, string> = {
   default: '\u{1F4E6}',
 }
 
-function getPluginAPI(): PluginAPI | null {
+export function getPluginAPI(): PluginAPI | null {
   const desktopAPI = (window as Window).desktopAPI as
     | { plugin: PluginAPI }
     | undefined

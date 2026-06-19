@@ -13,7 +13,7 @@ import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
-import { ensureDb } from './db';
+import { initAllDatabases, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
@@ -24,7 +24,6 @@ import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
-import { ensurePluginDb, seedDefaultRepo } from './plugins/db';
 import { registerPluginIPC } from './ipc/plugins';
 
 let mainWindow: BrowserWindow | null = null;
@@ -377,21 +376,21 @@ app.on('ready', async () => {
     catch (err) { console.error('[Cache] persist failed', err); }
   });
 
-  // Init DB before any IPC handler or window — eliminates race where frontend calls
+  // Init all databases before any IPC handler or window — eliminates race where frontend calls
   // DB-dependent handlers before DB is ready.
-  await ensureDb().catch((err) => {
+  await initAllDatabases().catch((err) => {
     console.error('[main] DB init failed:', err);
     throw err;
   });
 
-  // ── Initialize plugin database ──
-  await ensurePluginDb().catch((err) => {
-    console.error('[main] Plugin DB init failed:', err);
-    throw err;
-  });
-
   // Seed the default plugin repo if none exist (first run)
-  seedDefaultRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json');
+  {
+    const pluginsRepo = new PluginsRepository();
+    const existingRepos = pluginsRepo.getRepos();
+    if (existingRepos.length === 0) {
+      pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
+    }
+  }
 
   // Rehydrate any installs that were running before Electron last closed
   rehydrateActiveInstalls();
@@ -440,7 +439,7 @@ app.on('ready', async () => {
     ? path.resolve(__dirname, '..', '..', 'extensions')
     : undefined;
   permissionManager = new PermissionManager();
-  pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'));
+  pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'), new PluginsRepository());
   pluginManager.setWebContents(mainWindow!.webContents);
   permissionManager.setWebContents(mainWindow!.webContents);
   registerPluginIPC(pluginManager, permissionManager, mainWindow!);

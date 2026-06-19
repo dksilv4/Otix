@@ -32,6 +32,7 @@
       "advanced": true
     }
   },
+  "slots": [{"location": "library:scan", "label": "Epic Games"}, {"location": "matching:epic-library", "label": "Epic Library"}],
   "entry": { "main": "main.js" },
   "icon": "gamecontroller.fill"
 }

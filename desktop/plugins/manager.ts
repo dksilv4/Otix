@@ -5,18 +5,7 @@ import { execSync } from 'child_process';
 import { Notification, WebContents, app } from 'electron';
 import Database from 'better-sqlite3';
 import { eventBus } from './event-bus';
-import {
-  ensurePluginDb,
-  getAllPlugins as dbGetAllPlugins,
-  getPlugin as dbGetPlugin,
-  insertPlugin,
-  updatePluginStatus,
-  deletePlugin,
-  getPluginConfig,
-  setPluginConfig,
-  updatePluginManifest,
-  updatePluginVersion,
-} from './db';
+import { PluginsRepository } from '../db';
 import { PermissionManager } from './permissions';
 import { loadPluginMain, loadPluginTest, loadPluginStatus, loadPluginData } from './loader';
 import { createApiProxy } from './api-proxy';
@@ -41,16 +30,16 @@ export class PluginManager {
   private plugins: Map<string, PluginRuntime> = new Map();
   private subscriptions: Map<string, (() => void)[]> = new Map();
   private destroyCallbacks: Map<string, (() => void)[]> = new Map();
-  private dbReady: Promise<void>;
+  private slotsRegistry: Map<string, {pluginId: string; label: string}[]> = new Map();
   private authToken: string | null = null;
   private apiBaseUrl = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000/api';
 
   constructor(
     private extensionsDir: string,
     private permissionManager: PermissionManager,
-    private userDataPath: string
+    private userDataPath: string,
+    private pluginsRepo: PluginsRepository,
   ) {
-    this.dbReady = ensurePluginDb();
   }
 
   setWebContents(wc: WebContents): void {
@@ -71,14 +60,9 @@ export class PluginManager {
   setApiBaseUrl(url: string): void { this.apiBaseUrl = url; }
   getApiBaseUrl(): string { return this.apiBaseUrl; }
 
-  private async ensureReady(): Promise<void> {
-    await this.dbReady;
-  }
-
   // ── Install / Uninstall ────────────────────────────────────────────
 
   async installFromGit(repoUrl: string, pluginPath?: string): Promise<PluginInfo> {
-    await this.ensureReady();
 
     const repoName = repoUrl.replace(/\.git$/, '').split('/').pop();
     if (!repoName) {
@@ -180,12 +164,22 @@ export class PluginManager {
       installedAt: now,
     };
 
-    insertPlugin(pluginInfo);
+    this.pluginsRepo.insert({
+      id: pluginInfo.id,
+      name: pluginInfo.name,
+      version: pluginInfo.version,
+      description: pluginInfo.description,
+      author: pluginInfo.author,
+      repository: pluginInfo.repository,
+      source_path: pluginInfo.sourcePath || null,
+      status: pluginInfo.status,
+      manifest_json: JSON.stringify(pluginInfo.manifest),
+      enabled_at: pluginInfo.enabledAt || null,
+    });
     return pluginInfo;
   }
 
   async uninstall(pluginId: string): Promise<void> {
-    await this.ensureReady();
 
     await this.disable(pluginId);
 
@@ -194,16 +188,17 @@ export class PluginManager {
       fs.rmSync(pluginDir, { recursive: true, force: true });
     }
 
-    deletePlugin(pluginId);
+    this.pluginsRepo.deleteAllPermissions(pluginId);
+    this.pluginsRepo.deleteAllConfig(pluginId);
+    this.pluginsRepo.delete(pluginId);
   }
 
   // ── Update ──────────────────────────────────────────────────────────
 
   async updatePlugin(pluginId: string): Promise<PluginInfo> {
-    await this.ensureReady();
-
-    const info = dbGetPlugin(pluginId);
-    if (!info) throw new Error(`Plugin not found: ${pluginId}`);
+    const row = this.pluginsRepo.getById(pluginId);
+    if (!row) throw new Error(`Plugin not found: ${pluginId}`);
+    const info = pluginRowToInfo(row);
 
     const wasEnabled = info.status === 'enabled';
 
@@ -254,7 +249,7 @@ export class PluginManager {
       }
 
       // Update version and manifest in DB
-      updatePluginVersion(pluginId, newVersion, newManifest);
+      this.pluginsRepo.updateManifest(pluginId, JSON.stringify(newManifest), newVersion);
 
       // Clean up temp
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -264,9 +259,9 @@ export class PluginManager {
         await this.enable(pluginId);
       }
 
-      const updated = dbGetPlugin(pluginId);
-      if (!updated) throw new Error('Plugin vanished after update');
-      return updated;
+      const updatedRow = this.pluginsRepo.getById(pluginId);
+      if (!updatedRow) throw new Error('Plugin vanished after update');
+      return pluginRowToInfo(updatedRow);
     } catch (err) {
       // Try to re-enable if update failed
       if (wasEnabled) {
@@ -279,15 +274,14 @@ export class PluginManager {
   // ── Enable / Disable ───────────────────────────────────────────────
 
   async enable(pluginId: string): Promise<void> {
-    await this.ensureReady();
-
-    const info = dbGetPlugin(pluginId);
-    if (!info) throw new Error(`Plugin not found: ${pluginId}`);
+    const row = this.pluginsRepo.getById(pluginId);
+    if (!row) throw new Error(`Plugin not found: ${pluginId}`);
+    const info = pluginRowToInfo(row);
 
     // Check compatibility at enable time too (app may have been updated since install)
     const compat = checkPluginCompatibility(info.version);
     if (!compat.ok) {
-      updatePluginStatus(pluginId, 'error', `Requires Otix v${compat.required} or higher`);
+      this.pluginsRepo.updateStatus(pluginId, 'error');
       throw new Error(`Plugin requires Otix v${compat.required} or higher (current: ${app.getVersion()})`);
     }
 
@@ -324,22 +318,27 @@ export class PluginManager {
       this.subscriptions.set(pluginId, pluginSubscriptions);
       this.destroyCallbacks.set(pluginId, pluginDestroyCallbacks);
 
-      updatePluginStatus(pluginId, 'enabled');
+      this.pluginsRepo.setEnabled(pluginId);
+
+      // Register slots
+      for (const slot of manifest.slots || []) {
+        const existing = this.slotsRegistry.get(slot.location) || [];
+        this.slotsRegistry.set(slot.location, [...existing, { pluginId, label: slot.label }]);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[PluginManager] Failed to enable plugin ${pluginId}: ${message}`);
-      updatePluginStatus(pluginId, 'error', message);
+      this.pluginsRepo.updateStatus(pluginId, 'error');
       throw err;
     }
   }
 
   async disable(pluginId: string): Promise<void> {
-    await this.ensureReady();
 
     const runtime = this.plugins.get(pluginId);
 
     if (!runtime) {
-      updatePluginStatus(pluginId, 'disabled');
+      this.pluginsRepo.setDisabled(pluginId);
       return;
     }
 
@@ -373,15 +372,23 @@ export class PluginManager {
       }
     } finally {
       this.plugins.delete(pluginId);
-      updatePluginStatus(pluginId, 'disabled');
+      this.pluginsRepo.setDisabled(pluginId);
+
+      // Remove all slot registrations for this plugin
+      for (const [location, registrations] of this.slotsRegistry.entries()) {
+        const filtered = registrations.filter(r => r.pluginId !== pluginId);
+        if (filtered.length === 0) {
+          this.slotsRegistry.delete(location);
+        } else {
+          this.slotsRegistry.set(location, filtered);
+        }
+      }
     }
   }
 
   // ── Discovery ──────────────────────────────────────────────────────
 
   async discoverPlugins(additionalDirs?: string[]): Promise<PluginInfo[]> {
-    await this.ensureReady();
-
     const discovered: PluginInfo[] = [];
     const allDirs = [this.extensionsDir, ...(additionalDirs || [])];
     const seenIds = new Set<string>();
@@ -428,10 +435,11 @@ export class PluginManager {
         if (seenIds.has(entry.name)) continue;
         seenIds.add(entry.name);
 
-        const existing = dbGetPlugin(entry.name);
-        if (existing) {
-          if (JSON.stringify(existing.manifest) !== JSON.stringify(manifest) || existing.version !== manifest.version) {
-            updatePluginVersion(entry.name, manifest.version, manifest);
+        const existingRow = this.pluginsRepo.getById(entry.name);
+        if (existingRow) {
+          const existingManifest = (() => { try { return JSON.parse(existingRow.manifest_json); } catch { return null; } })();
+          if (JSON.stringify(existingManifest) !== JSON.stringify(manifest) || existingRow.version !== manifest.version) {
+            this.pluginsRepo.updateManifest(entry.name, JSON.stringify(manifest), manifest.version);
           }
           continue;
         }
@@ -451,7 +459,18 @@ export class PluginManager {
           installedAt: now,
         };
 
-        insertPlugin(pluginInfo);
+        this.pluginsRepo.insert({
+          id: pluginInfo.id,
+          name: pluginInfo.name,
+          version: pluginInfo.version,
+          description: pluginInfo.description,
+          author: pluginInfo.author,
+          repository: pluginInfo.repository,
+          source_path: pluginInfo.sourcePath || null,
+          status: pluginInfo.status,
+          manifest_json: JSON.stringify(pluginInfo.manifest),
+          enabled_at: pluginInfo.enabledAt || null,
+        });
         discovered.push(pluginInfo);
       }
     }
@@ -462,20 +481,21 @@ export class PluginManager {
   // ── Queries ────────────────────────────────────────────────────────
 
   getAllPlugins(): PluginInfo[] {
-    return dbGetAllPlugins();
+    const rows = this.pluginsRepo.getAll();
+    return rows.map(pluginRowToInfo);
   }
 
   getPlugin(pluginId: string): PluginInfo | undefined {
-    const info = dbGetPlugin(pluginId);
-    return info || undefined;
+    const row = this.pluginsRepo.getById(pluginId);
+    return row ? pluginRowToInfo(row) : undefined;
   }
 
   // ── Plugin status ──────────────────────────────────────────────────
 
   async getPluginStatus(pluginId: string): Promise<Record<string, unknown> | null> {
-    await this.ensureReady();
-    const info = dbGetPlugin(pluginId);
-    if (!info) throw new Error(`Plugin not found: ${pluginId}`);
+    const row = this.pluginsRepo.getById(pluginId);
+    if (!row) throw new Error(`Plugin not found: ${pluginId}`);
+    const info = pluginRowToInfo(row);
 
     const manifest = info.manifest;
     const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
@@ -496,10 +516,9 @@ export class PluginManager {
   // ── Plugin data API ─────────────────────────────────────────────────
 
   async callPluginData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown> {
-    await this.ensureReady();
-
-    const info = dbGetPlugin(pluginId);
-    if (!info) throw new Error(`Plugin not found: ${pluginId}`);
+    const row = this.pluginsRepo.getById(pluginId);
+    if (!row) throw new Error(`Plugin not found: ${pluginId}`);
+    const info = pluginRowToInfo(row);
 
     const manifest = info.manifest;
     const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
@@ -521,13 +540,34 @@ export class PluginManager {
     }
   }
 
+  // ── Slot registry ──────────────────────────────────────────────────
+
+  getPluginsForSlot(location: string): {pluginId: string; label: string}[] {
+    return this.slotsRegistry.get(location) || [];
+  }
+
+  async getSlotData(location: string): Promise<{pluginId: string; label: string; data: any}[]> {
+    const plugins = this.getPluginsForSlot(location);
+    const results: {pluginId: string; label: string; data: any}[] = [];
+
+    for (const { pluginId, label } of plugins) {
+      try {
+        const data = await this.callPluginData(pluginId, 'slot.render', location);
+        results.push({ pluginId, label, data });
+      } catch {
+        // Skip plugins that error on slot.render
+      }
+    }
+
+    return results;
+  }
+
   // ── Connection testing ─────────────────────────────────────────────
 
   async testPluginConfig(pluginId: string, configDraft: Record<string, unknown>): Promise<{ success: boolean; message: string }> {
-    await this.ensureReady();
-
-    const info = dbGetPlugin(pluginId);
-    if (!info) throw new Error(`Plugin not found: ${pluginId}`);
+    const row = this.pluginsRepo.getById(pluginId);
+    if (!row) throw new Error(`Plugin not found: ${pluginId}`);
+    const info = pluginRowToInfo(row);
 
     const manifest = info.manifest;
     const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
@@ -571,9 +611,8 @@ export class PluginManager {
   // ── Lifecycle ──────────────────────────────────────────────────────
 
   async loadEnabledPlugins(): Promise<void> {
-    await this.ensureReady();
-
-    const allPlugins = dbGetAllPlugins();
+    const allRows = this.pluginsRepo.getAll();
+    const allPlugins = allRows.map(pluginRowToInfo);
     const enabled = allPlugins.filter(p => p.status === 'enabled');
 
     for (const plugin of enabled) {
@@ -618,7 +657,7 @@ export class PluginManager {
     // ── Config store ──────────────────────────────────────────────────
     const config: PluginConfigStore = {
       getAll: () => {
-        const raw = getPluginConfig(pluginId);
+        const raw = this.pluginsRepo.getConfig(pluginId);
         const result: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(raw)) {
           try {
@@ -630,7 +669,7 @@ export class PluginManager {
         return result;
       },
       get: <T>(key: string) => {
-        const raw = getPluginConfig(pluginId);
+        const raw = this.pluginsRepo.getConfig(pluginId);
         const value = raw[key];
         if (value === undefined) return undefined;
         try {
@@ -640,7 +679,7 @@ export class PluginManager {
         }
       },
       set: (key, value) => {
-        setPluginConfig(pluginId, key, JSON.stringify(value));
+        this.pluginsRepo.setConfig(pluginId, key, JSON.stringify(value));
       },
     };
 
@@ -786,6 +825,24 @@ export class PluginManager {
       onDestroy,
     };
   }
+}
+
+// ── Row-to-Info adapter ─────────────────────────────────────────────
+
+function pluginRowToInfo(row: import('../db').PluginRegistryRow): PluginInfo {
+  return {
+    id: row.id,
+    name: row.name,
+    version: row.version,
+    description: row.description,
+    author: row.author,
+    repository: row.repository,
+    sourcePath: row.source_path || undefined,
+    status: row.status as import('./types').PluginStatus,
+    manifest: JSON.parse(row.manifest_json) as PluginManifest,
+    installedAt: row.installed_at,
+    enabledAt: row.enabled_at || undefined,
+  };
 }
 
 // ── Compatibility check ──────────────────────────────────────────────

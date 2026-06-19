@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, CheckCircle2, AlertCircle, LogOut, RefreshCw, Gamepad2 } from 'lucide-react'
-import { useModal } from '@/lib/modals'
-import { EpicMatchModal } from './EpicMatchModal'
 import type { PluginAPI } from './PluginSettings'
 
 interface Props {
@@ -15,13 +13,14 @@ type AuthState =
   | { status: 'connected'; displayName: string; expiresAt?: string }
   | { status: 'error'; message: string }
 
+const API_BASE = (window as any).desktopAPI?.getApiBaseUrl?.() || 'http://127.0.0.1:8000/api'
+
 export function EpicPluginLogin({ pluginId, api }: Props) {
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' })
   const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ total?: number } | null>(null)
+  const [scanResult, setScanResult] = useState<{ total?: number; matched?: number } | null>(null)
   const [loggingIn, setLoggingIn] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
-  const { openModal } = useModal()
 
   const checkStatus = useCallback(async () => {
     try {
@@ -38,15 +37,80 @@ export function EpicPluginLogin({ pluginId, api }: Props) {
 
   useEffect(() => { checkStatus() }, [checkStatus])
 
-  function openMatchModal(games: any[]) {
-    const close = openModal(
-      <EpicMatchModal
-        games={games}
-        pluginId={pluginId}
-        api={api}
-        onClose={() => close()}
-      />,
-    )
+  async function matchAndSave(games: any[]) {
+    const desktopAPI = (window as any).desktopAPI
+    if (!desktopAPI?.saveScannedGames) return 0
+
+    // Build batch match request
+    const batchGames = games.map((g: any) => ({
+      title: g.title,
+      developer: g.developer || null,
+      external_ids: [{ source: 'epic', id: g.appName || g.catalogItemId }],
+      media_type: 'game',
+    }))
+
+    let matches: any[] = []
+    try {
+      const token = localStorage.getItem('otix-access-token')
+      const res = await fetch(`${API_BASE}/media/match/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        },
+        body: JSON.stringify({ games: batchGames }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        matches = data.matches || []
+      }
+    } catch (err) {
+      console.error('[EpicPlugin] batch match failed:', err)
+    }
+
+    // Save to scanned games DB
+    const toSave = []
+    for (let i = 0; i < games.length; i++) {
+      const g = games[i]
+      const match = matches[i]
+      const id = `epic_${g.namespace}_${g.catalogItemId}`
+      toSave.push({
+        id,
+        title: g.title,
+        exePath: g.exePath || g.installDir || '',
+        installDir: g.installDir || '',
+        platform: 'epic' as const,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.logoUrl || undefined,
+        sources: [{
+          source: 'epic',
+          appName: g.appName,
+          namespace: g.namespace,
+          catalogItemId: g.catalogItemId,
+          developer: g.developer,
+          contentType: g.contentType,
+          platforms: g.platforms,
+        }],
+      })
+    }
+    await desktopAPI.saveScannedGames(toSave)
+
+    // Accept suggestions for matched games
+    let matched = 0
+    for (let i = 0; i < games.length; i++) {
+      const match = matches[i]
+      if (match && match.confidence > 0 && match.media_item_id) {
+        const gameId = `epic_${games[i].namespace}_${games[i].catalogItemId}`
+        await desktopAPI.acceptSuggestion(gameId, {
+          id: match.media_item_id,
+          title: match.title,
+          slug: match.media_item_id || '',
+        })
+        matched++
+      }
+    }
+
+    return matched
   }
 
   const handleLogin = async () => {
@@ -57,9 +121,10 @@ export function EpicPluginLogin({ pluginId, api }: Props) {
         const cbRes = await api.callData(pluginId, 'auth.handleCallback', res.code) as any
         if (cbRes?.success) {
           setAuth({ status: 'connected', displayName: cbRes.displayName || 'Connected' })
-          if (cbRes.scanResult) {
+          if (cbRes.scanResult?.games) {
             setScanResult({ total: cbRes.scanResult.total })
-            openMatchModal(cbRes.scanResult.games)
+            const matched = await matchAndSave(cbRes.scanResult.games)
+            setScanResult({ total: cbRes.scanResult.total, matched })
           }
         } else {
           setAuth({ status: 'error', message: cbRes?.error || 'Authorization failed' })
@@ -74,6 +139,23 @@ export function EpicPluginLogin({ pluginId, api }: Props) {
     }
   }
 
+  const handleScan = async () => {
+    setScanning(true)
+    setScanResult(null)
+    try {
+      const res = await api.callData(pluginId, 'scan') as any
+      if (res?.success) {
+        setScanResult({ total: res.total })
+        const matched = await matchAndSave(res.games)
+        setScanResult({ total: res.total, matched })
+      }
+    } catch (err) {
+      setAuth({ status: 'error', message: err instanceof Error ? err.message : 'Scan failed' })
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
@@ -84,22 +166,6 @@ export function EpicPluginLogin({ pluginId, api }: Props) {
       // ignore
     } finally {
       setLoggingOut(false)
-    }
-  }
-
-  const handleScan = async () => {
-    setScanning(true)
-    setScanResult(null)
-    try {
-      const res = await api.callData(pluginId, 'scan') as any
-      if (res?.success) {
-        setScanResult({ total: res.total })
-        openMatchModal(res.games)
-      }
-    } catch (err) {
-      setAuth({ status: 'error', message: err instanceof Error ? err.message : 'Scan failed' })
-    } finally {
-      setScanning(false)
     }
   }
 
@@ -145,7 +211,17 @@ export function EpicPluginLogin({ pluginId, api }: Props) {
               </div>
               {scanResult && (
                 <p className="text-xs text-white/40 mt-0.5">
-                  {scanResult.total} items — <button onClick={handleScan} className="text-primary/80 hover:text-primary">re-scan</button>
+                  {scanResult.total} items &middot; {scanResult.matched != null ? `${scanResult.matched} matched` : 'synced'}
+                  {scanning ? '' : ' — '}
+                  {!scanning && <button onClick={handleScan} className="text-primary/80 hover:text-primary">re-scan</button>}
+                </p>
+              )}
+              {scanning && (
+                <p className="text-xs text-white/40 mt-0.5">
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    Scanning & matching...
+                  </span>
                 </p>
               )}
             </div>

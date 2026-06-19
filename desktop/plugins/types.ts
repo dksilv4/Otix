@@ -25,6 +25,11 @@ export interface PluginConfigField {
   advanced?: boolean;      // Hidden until connection test succeeds
 }
 
+export interface PluginSlot {
+  location: string;
+  label: string;
+}
+
 export interface PluginManifest {
   name: string;
   version: string;
@@ -35,6 +40,7 @@ export interface PluginManifest {
   icon?: string;
   permissions: PluginPermission[];
   config?: Record<string, PluginConfigField>;
+  slots?: PluginSlot[];
   entry: {
     main: string;          // relative path, runs in main process
     renderer?: string;     // relative path, runs in renderer (pre-built bundle)
