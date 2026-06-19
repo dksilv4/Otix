@@ -384,12 +384,10 @@ app.on('ready', async () => {
   });
 
   // Seed the default plugin repo if none exist (first run)
-  {
-    const pluginsRepo = new PluginsRepository();
-    const existingRepos = pluginsRepo.getRepos();
-    if (existingRepos.length === 0) {
-      pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
-    }
+  const pluginsRepo = new PluginsRepository();
+  const existingRepos = pluginsRepo.getRepos();
+  if (existingRepos.length === 0) {
+    pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
   }
 
   // Rehydrate any installs that were running before Electron last closed
@@ -439,8 +437,7 @@ app.on('ready', async () => {
     ? path.resolve(__dirname, '..', '..', 'extensions')
     : undefined;
   permissionManager = new PermissionManager();
-  pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'), new PluginsRepository());
-  pluginManager.setWebContents(mainWindow!.webContents);
+  pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
   permissionManager.setWebContents(mainWindow!.webContents);
   registerPluginIPC(pluginManager, permissionManager, mainWindow!);
 
