@@ -21,7 +21,7 @@ export interface LocalGame {
   otixPosterUrl?: string | null;
   otixTextlessPosterUrl?: string | null;
   otixLogoUrl?: string | null;
-  sources?: string[];
+  sources?: (string | Record<string, unknown>)[];
 }
 
 export interface MountResult {

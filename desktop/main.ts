@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, screen, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { GameDetector } from './game-detector';
+import { GameDetector } from './game/detector';
 import { registerDownloadsIPC } from './ipc/downloads';
 import { registerGamesIPC } from './ipc/games';
 import { registerScannerIPC } from './ipc/scanner';
@@ -14,18 +14,18 @@ import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { ensureDb } from './db';
-import { setNotifyTarget, getAllGames } from './game-storage-service';
+import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
-import { onFpsPermissionNeeded, ensurePresentMon } from './fps-capture';
+import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
 import { scheduledUpdateCheck, purgeOldDeletedDownloads } from './downloads';
-import { SaveDaemon } from './save-daemon';
+import { SaveDaemon } from './saves';
 import { registerSaveIPC } from './ipc/saves';
-import { populateKnownLocations } from './save-export';
-import { PermissionManager } from './plugin/permissions';
-import { PluginManager } from './plugin/plugin-manager';
-import { eventBus } from './plugin/event-bus';
-import { ensurePluginDb, seedDefaultRepo } from './plugin/plugin-db';
-import { registerPluginIPC } from './ipc/plugin';
+import { populateKnownLocations } from './saves/export';
+import { PermissionManager } from './plugins/permissions';
+import { PluginManager } from './plugins/manager';
+import { eventBus } from './plugins/event-bus';
+import { ensurePluginDb, seedDefaultRepo } from './plugins/db';
+import { registerPluginIPC } from './ipc/plugins';
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
@@ -436,6 +436,9 @@ app.on('ready', async () => {
 
   // ── Initialize plugin system ──
   const extensionsDir = path.join(app.getPath('userData'), 'extensions');
+  const devExtensionsDir = isDev
+    ? path.resolve(__dirname, '..', '..', 'extensions')
+    : undefined;
   permissionManager = new PermissionManager();
   pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'));
   pluginManager.setWebContents(mainWindow!.webContents);
@@ -443,7 +446,18 @@ app.on('ready', async () => {
   registerPluginIPC(pluginManager, permissionManager, mainWindow!);
 
   // Fire-and-forget: discover and load enabled plugins (don't block window load)
-  pluginManager.discoverPlugins().then(() => pluginManager!.loadEnabledPlugins());
+  const extraDirs = devExtensionsDir ? [devExtensionsDir] : undefined;
+  if (extraDirs) {
+    console.log('[plugins] Dev extensions dir:', devExtensionsDir);
+    console.log('[plugins] Exists:', require('fs').existsSync(devExtensionsDir));
+  }
+  pluginManager.discoverPlugins(extraDirs).then(() => {
+    const all = pluginManager!.getAllPlugins();
+    console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
+    return pluginManager!.loadEnabledPlugins();
+  }).catch(err => {
+    console.error('[plugins] Discovery failed:', err);
+  });
 
   // ── Load desktop settings and apply side effects ──
   const settings = loadDesktopSettings();

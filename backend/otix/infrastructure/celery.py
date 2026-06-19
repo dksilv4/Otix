@@ -77,6 +77,10 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         return "reactive-user"
     if name.startswith("karma."):
         return "reactive-user"
+    if name.startswith("epic."):
+        return "reactive-user"
+    if name.startswith("promotions."):
+        return "maintain"
     return "maintain"
 
 
@@ -239,6 +243,11 @@ _beat_schedule: dict = {
     "backfill-music-poster-url": {
         "task": "maintenance.backfill_music_poster_url",
         "schedule": crontab(minute="2,32"),
+    },
+    # Epic Games Store — weekly free game notifications (every 6h at :22 past)
+    "check-epic-free-games": {
+        "task": "promotions.epic.free_games",
+        "schedule": crontab(minute="22", hour="*/6"),
     },
 }
 

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
 import { ArrowRight, Search, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 const MEDIA_TYPE_REGEX = /^\/(movie|show|game|music)\b/
 
@@ -136,24 +135,15 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   }
 
   return (
-    <div className={cn('relative w-full', className)}>
+    <div className={`relative w-full ${className}`}>
       <div
-        className={cn(
-          'relative flex items-center gap-3 px-5 py-3',
-          'rounded-[2rem] backdrop-blur-xl ring-1 ring-white/[0.04] transition-all duration-300',
-          'bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)]',
-          'shadow-[var(--dk-shadow-glass)]',
-          'focus-within:scale-[1.01] focus-within:ring-primary/20',
-        )}
+        className={'relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl ring-1 ring-white/[0.04] transition-all duration-300 bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:ring-primary/20'}
       >
         <Search className="h-5 w-5 shrink-0 text-muted-foreground/50" />
 
         {displayType && (
           <span
-            className={cn(
-              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 animate-[fadeIn_200ms_ease-out]',
-              MEDIA_TYPE_CLASS[displayType],
-            )}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 animate-[fadeIn_200ms_ease-out] ${MEDIA_TYPE_CLASS[displayType]}`}
           >
             {MEDIA_TYPE_LABEL[displayType]}
             <button
@@ -174,11 +164,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
           onFocus={onFocus}
           placeholder={displayType ? `Search ${MEDIA_TYPE_LABEL[displayType].toLowerCase()}...` : placeholder}
           disabled={disabled}
-          className={cn(
-            'flex-1 min-w-0 h-12 text-base md:text-lg',
-            'bg-transparent border-0 outline-none shadow-none ring-0 focus:ring-0 focus:ring-offset-0',
-            'appearance-none placeholder:text-muted-foreground/40 text-foreground',
-          )}
+          className={'flex-1 min-w-0 h-12 text-base md:text-lg bg-transparent border-0 outline-none shadow-none ring-0 focus:ring-0 focus:ring-offset-0 appearance-none placeholder:text-muted-foreground/40 text-foreground'}
         />
         {(inputValue || showSubmitWhenEmpty) && (
           <button

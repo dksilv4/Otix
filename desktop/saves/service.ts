@@ -4,7 +4,7 @@
  * The save-daemon uses it for all persistence — no direct _run/_get/_all calls.
  */
 
-import { _run, _get, _all, ensureDb } from './db';
+import { _run, _get, _all, ensureDb } from '../db';
 
 export interface SaveProfileRow {
   id: string;

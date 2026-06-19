@@ -1,6 +1,6 @@
 import {Link, useParams} from '@tanstack/react-router'
 import {Helmet} from 'react-helmet-async'
-import {useAuth} from '@/old-features/auth'
+import {useAuth} from '@auth/hooks/use-auth'
 import {Building2} from 'lucide-react'
 
 import {MediaHero} from './media-hero'
@@ -100,18 +100,7 @@ export function MediaDetail() {
                 <div className="space-y-6" style={{boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.08), var(--dk-shadow-glass)'}}>
                     {!isAuthenticated && <SignInCTA/>}
 
-                    <MediaGeneralDetails/>
-
-                    {isMovie(detail) && <MovieSection/>}
-                    {isShow(detail) && <ShowSection/>}
-                    {isGame(detail) && <GameSection/>}
-                    {isMusic(detail) && <MusicSection/>}
-                    {detail.mediaType === 'music' && !detail.album && (
-                        <p className="text-center text-sm text-muted-foreground">
-                            Album details are still syncing for this release.
-                        </p>
-                    )}
-
+                    {/* ── Activity + Reviews — action buttons above overview ── */}
                     {/* Activity + Ratings — inside the main card, not a separate box */}
                     {isAuthenticated && (
                         <>
@@ -185,6 +174,19 @@ export function MediaDetail() {
                             <ReviewsListSection mediaType={displayType} mediaId={detail.id}/>
                         </DeferredSection>
                     </div>
+
+                    <MediaGeneralDetails/>
+
+                    {isMovie(detail) && <MovieSection/>}
+                    {isShow(detail) && <ShowSection/>}
+                    {isGame(detail) && <GameSection/>}
+                    {isMusic(detail) && <MusicSection/>}
+                    {detail.mediaType === 'music' && !detail.album && (
+                        <p className="text-center text-sm text-muted-foreground">
+                            Album details are still syncing for this release.
+                        </p>
+                    )}
+
                 </div>
 
 
@@ -250,9 +252,8 @@ export function MediaDetail() {
                     fallback={<SectionSkeleton height={260}/>}
                     rootMargin="400px 0px"
                 >
-                    <CastCrewList/>
+                    <CastCrewList credits={detail.credits}/>
                 </DeferredSection>
-
 
             </div>
         </div>

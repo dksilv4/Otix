@@ -2,7 +2,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from '@tanstack/react-router'
 import { Search, Film, Tv, Gamepad2, Music } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItemSummary } from '@media/queries/media-queries'
@@ -130,13 +129,7 @@ export function NavSearch() {
  return (
  <div
  ref={containerRef}
- className={cn(
-  'flex items-center relative transition-all duration-300 rounded-full',
-  expanded
-    ? 'w-64 px-2.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]'
-    : 'w-8 h-8 justify-center',
-  expanded && 'bg-[var(--dk-surface-glass)] bg-gradient-to-r from-transparent via-indigo-500/[0.04] to-transparent',
- )}
+ className={'flex items-center relative transition-all duration-300 rounded-full ' + (expanded ? 'w-64 px-2.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]' : 'w-8 h-8 justify-center') + (expanded ? ' bg-[var(--dk-surface-glass)] bg-gradient-to-r from-transparent via-indigo-500/[0.04] to-transparent' : '')}
  >
  {expanded ? (
  <>
@@ -190,13 +183,10 @@ export function NavSearch() {
  return (
  <Link
  key={item.id}
- // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
  to={`/media/${item.mediaType}/${item.id}` as string}
  onClick={() => collapse()}
- className={cn(
-  'flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-all duration-150 hover:bg-white/5',
-  idx === activeIndex && 'bg-white/[0.08] scale-[1.01]',
- )}
+ className={'flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-all duration-150 hover:bg-white/5' + (idx === activeIndex ? ' bg-white/[0.08] scale-[1.01]' : '')}
  role="option"
  aria-selected={idx === activeIndex}
  >
@@ -216,7 +206,7 @@ export function NavSearch() {
  {item.title}
  </h4>
  <div className="flex items-center gap-1.5 mt-1">
- <span className={cn('text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border', badgeClass)}>
+ <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${badgeClass}`}>
  {typeName}
  </span>
  {year && (

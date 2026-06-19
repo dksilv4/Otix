@@ -1,5 +1,4 @@
 import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
-import { cn } from '@/lib/utils'
 import type { SortValue, TypeValue } from '@search/types'
 
 export const SORT_OPTIONS: { value: SortValue; label: string }[] = [
@@ -39,7 +38,7 @@ export function SearchSortBar({
   className,
 }: SearchSortBarProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
+    <div className={`flex items-center justify-between ${className}`}>
       <div className="flex items-center gap-2">
         <DkDropdown
           value={type}

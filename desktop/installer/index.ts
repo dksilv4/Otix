@@ -5,7 +5,7 @@ import * as https from 'https';
 import * as path from 'path';
 import { tmpdir } from 'os';
 import { createWriteStream, existsSync, readdirSync } from 'fs';
-import { cleanGameTitle } from './game-parser';
+import { cleanGameTitle } from '../game/parser';
 
 function execPromise(cmd: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -692,7 +692,6 @@ export interface InstallResult {
   error?: string;
 }
 
-/** Read first 32KB of a PE file to detect installer type by known strings. */
 /** Read first 64KB of setup.exe to detect installer type. Also checks for InnoSetup .bin files. */
 export function detectInstallerType(setupPath: string): InstallerType {
   try {
@@ -737,7 +736,9 @@ export function detectInstallerType(setupPath: string): InstallerType {
   } catch {
     return 'unknown';
   }
-}export function getSilentArgs(type: InstallerType, targetDir: string): string[] {
+}
+
+export function getSilentArgs(type: InstallerType, targetDir: string): string[] {
   switch (type) {
     case 'innosetup-elamigos':
     case 'innosetup':

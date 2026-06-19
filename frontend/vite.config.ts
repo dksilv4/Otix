@@ -7,6 +7,10 @@ import path from 'node:path'
 export default defineConfig({
   base: '/',
   plugins: [react(), svgr()],
+  optimizeDeps: {
+    include: ['react', 'react-dom'],
+    exclude: ['**/settings/sections/profile*'],
+  },
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
@@ -20,7 +24,8 @@ export default defineConfig({
       '@search': path.resolve(__dirname, 'src/features/search'),
       '@settings': path.resolve(__dirname, 'src/features/settings'),
       '@launcher': path.resolve(__dirname, 'src/features/launcher'),
-      '@person': path.resolve(__dirname, 'src/old-features/person'),
+      '@library': path.resolve(__dirname, 'src/features/library'),
+      '@people': path.resolve(__dirname, 'src/features/people'),
       '@company': path.resolve(__dirname, 'src/old-features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
       '@dk-ui': path.resolve(__dirname, 'src/old-features/dk-ui'),

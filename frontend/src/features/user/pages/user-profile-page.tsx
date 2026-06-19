@@ -28,7 +28,6 @@ import { StreakDisplay } from '@/old-features/user/molecules/streak-display'
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/xp-progress-ring'
 import { UserProfileSkeleton } from '@user/components/organisms/user-profile-skeleton'
-import './user-profile-page.scss'
 
 // ── Page ──
 
@@ -67,13 +66,13 @@ export function UserProfilePage() {
   if (profileQuery.isError || !profile) {
     return (
       <div className="w-full">
-        <div className="dk-user-profile-page__error">
-          <div className="dk-user-profile-page__error-card">
-            <h1 className="dk-user-profile-page__error-title">User not found</h1>
-            <p className="dk-user-profile-page__error-text">
+        <div className="flex items-center justify-center min-h-[60vh] px-4">
+          <div className="text-center max-w-md">
+            <h1 className="text-2xl font-bold mb-2">User not found</h1>
+            <p className="text-muted-foreground mb-4">
               This profile doesn&apos;t exist or has been removed.
             </p>
-            <a href="/" className="dk-user-profile-page__error-link">
+            <a href="/" className="text-sm font-medium text-primary hover:underline">
               Go home
             </a>
           </div>
@@ -84,6 +83,16 @@ export function UserProfilePage() {
 
   const gradient = pickGradient(profile.username)
   const textShadow = tier.hasGlow ? '0 0 12px rgba(255,255,255,0.15)' : undefined
+  const heroShadow = [
+    '0 4px 24px rgba(0,0,0,0.3)',
+    '0 1px 4px rgba(0,0,0,0.2)',
+    '0 0 0 1px rgba(255,255,255,0.06)',
+  ].join(', ')
+  const heroShadowHover = [
+    '0 8px 40px rgba(0,0,0,0.4)',
+    '0 2px 8px rgba(0,0,0,0.25)',
+    '0 0 0 1px rgba(255,255,255,0.08)',
+  ].join(', ')
 
   return (
     <div className="w-full">
@@ -100,13 +109,19 @@ export function UserProfilePage() {
       </Helmet>
 
       {/* ── Hero ── */}
-      <div className="dk-user-profile-page__hero">
-        <div className="dk-user-profile-page__hero-backdrop">
+      <div
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mt-[4.5rem] mx-4 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
+        style={{
+          boxShadow: heroShadow,
+          ['--hero-shadow-hover' as string]: heroShadowHover,
+        }}
+      >
+        <div className="absolute inset-0">
           {profile.backgroundUrl ? (
             <img
               src={profile.backgroundUrl}
               alt=""
-              className="dk-user-profile-page__hero-backdrop-img"
+              className="w-full h-full object-cover"
             />
           ) : (
             <div
@@ -114,19 +129,43 @@ export function UserProfilePage() {
               style={{ background: gradient }}
             />
           )}
-          <div className="dk-user-profile-page__hero-backdrop-overlay" />
-          <div className="dk-user-profile-page__hero-backdrop-radial-1" />
-          <div className="dk-user-profile-page__hero-backdrop-radial-2" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.85) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at 70% 80%, rgba(255,255,255,0.04) 0%, transparent 50%)',
+            }}
+          />
           {!profile.backgroundUrl && (
-            <div className="dk-user-profile-page__hero-backdrop-dots" />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)',
+                backgroundSize: '24px 24px',
+              }}
+            />
           )}
         </div>
 
         {/* Content */}
-        <div className="dk-user-profile-page__hero-content">
-          <div className="dk-user-profile-page__hero-row">
+        <div className="relative z-10 px-6 pt-6 pb-10">
+          <div className="flex items-end gap-6 mb-4">
             {/* Avatar + XP ring */}
-            <div className="dk-user-profile-page__hero-avatar" style={{ animationDelay: '100ms' }}>
+            <div
+              className="shrink-0"
+              style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '100ms' }}
+            >
               <XPProgressRing
                 progress={gamification.xpProgress}
                 size={120}
@@ -143,10 +182,10 @@ export function UserProfilePage() {
             </div>
 
             {/* Name, meta, bio */}
-            <div className="dk-user-profile-page__hero-info">
+            <div className="min-w-0 flex-1">
               <h1
-                className="dk-user-profile-page__hero-name"
-                style={{ animationDelay: '100ms', textShadow }}
+                className="text-2xl font-bold text-white mb-1"
+                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '100ms', textShadow }}
               >
                 {profile.username}
                 {profile.isAdmin && (
@@ -157,7 +196,10 @@ export function UserProfilePage() {
                 </span>
               </h1>
 
-              <div className="dk-user-profile-page__hero-meta" style={{ animationDelay: '150ms' }}>
+              <div
+                className="flex flex-wrap items-center gap-x-2 text-sm text-white/60"
+                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '150ms' }}
+              >
                 {(() => {
                   const m = formatMemberSince(profile.createdAt)
                   return (
@@ -184,14 +226,20 @@ export function UserProfilePage() {
               </div>
 
               {profile.bio && (
-                <p className="dk-user-profile-page__hero-bio" style={{ animationDelay: '200ms' }}>
+                <p
+                  className="mt-3 text-sm max-w-xl text-white/70"
+                  style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '200ms' }}
+                >
                   {profile.bio}
                 </p>
               )}
 
               {/* Follow + Friend actions */}
               {currentUser && currentUser.username !== username && (
-                <div className="dk-user-profile-page__hero-actions" style={{ animationDelay: '250ms' }}>
+                <div
+                  className="flex flex-wrap items-center gap-2 mt-4"
+                  style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '250ms' }}
+                >
                   <FollowButton
                     username={username}
                     isFollowing={profile.isFollowing ?? false}
@@ -271,7 +319,10 @@ export function UserProfilePage() {
                 </div>
               )}
               {currentUser && currentUser.username === username && (
-                <div className="dk-user-profile-page__hero-owner-info" style={{ animationDelay: '250ms' }}>
+                <div
+                  className="mt-4 text-xs text-white/40"
+                  style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '250ms' }}
+                >
                   {profile.followerCount ?? 0} followers · {profile.followingCount ?? 0} following
                   {(profile.proposalCount ?? 0) > 0 && (
                     <span>
@@ -288,74 +339,84 @@ export function UserProfilePage() {
 
           {/* XP Bar */}
           <div
-            className="dk-user-profile-page__xp-bar"
+            className="relative rounded-xl"
             style={{
+              animation: 'profileFadeIn 0.4s ease-out both',
               animationDelay: '300ms',
               boxShadow: tier.hasGlow ? `0 0 20px ${tier.glow}, inset 0 0 12px ${tier.glow}` : undefined,
             }}
           >
-          <div className="dk-user-profile-page__xp-bar-track">
-            {/* Fill */}
-            <div
-              className="dk-user-profile-page__xp-bar-fill"
-              style={{
-                width: `${barProgress * 100}%`,
-                background: tier.barColor,
-              }}
-            />
-            {/* Shimmer effect (level 35+) */}
-            {tier.hasShimmer && (
+            <div className="relative h-[52px] rounded-xl overflow-hidden bg-white/[0.06]">
+              {/* Fill */}
               <div
-                className="dk-user-profile-page__xp-bar-shimmer-wrap"
-                style={{ width: `${barProgress * 100}%` }}
-              >
+                className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000 ease-out"
+                style={{
+                  width: `${barProgress * 100}%`,
+                  background: tier.barColor,
+                }}
+              />
+              {/* Shimmer effect (level 35+) */}
+              {tier.hasShimmer && (
                 <div
-                  className="dk-user-profile-page__xp-bar-shimmer"
-                  style={{ animation: 'xpShimmer 2s ease-in-out infinite' }}
-                />
-              </div>
-            )}
-            {/* Subtle top highlight across the whole bar */}
-            <div className="dk-user-profile-page__xp-bar-highlight" />
-
-            {/* Content overlay */}
-            <div className="dk-user-profile-page__xp-bar-content">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-widest"
-                  style={{ color: `${tier.color}b3` }}
+                  className="absolute inset-y-0 left-0 overflow-hidden"
+                  style={{ width: `${barProgress * 100}%` }}
                 >
-                  Level
-                </span>
-                <span
-                  className="text-sm font-extrabold tabular-nums leading-none"
-                  style={{ color: tier.color }}
-                >
-                  {gamification.level}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground/50 ml-0.5">
-                  · {profile.levelTitle ?? gamification.levelTitle}
-                </span>
-              </div>
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+                      animation: 'xpShimmer 2s ease-in-out infinite',
+                    }}
+                  />
+                </div>
+              )}
+              {/* Subtle top highlight across the whole bar */}
+              <div
+                className="absolute top-0 inset-x-0 h-[1px]"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}
+              />
 
-              <div className="flex items-center gap-1 tabular-nums">
-                <span className="text-xs font-semibold text-foreground/90">
-                  {gamification.xp.toLocaleString()}
-                </span>
-                <span className="text-muted-foreground/30">/</span>
-                <span className="text-xs text-muted-foreground/40">
-                  {(gamification.xpToNextLevel + (gamification.level - 1) * 300).toLocaleString()}
-                </span>
-                <span className="ml-1.5 text-[10px] font-medium text-muted-foreground/35 uppercase tracking-wider">
-                  XP
-                </span>
+              {/* Content overlay */}
+              <div className="absolute inset-0 flex items-center justify-between px-4">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ color: `${tier.color}b3` }}
+                  >
+                    Level
+                  </span>
+                  <span
+                    className="text-sm font-extrabold tabular-nums leading-none"
+                    style={{ color: tier.color }}
+                  >
+                    {gamification.level}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground/50 ml-0.5">
+                    · {profile.levelTitle ?? gamification.levelTitle}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 tabular-nums">
+                  <span className="text-xs font-semibold text-foreground/90">
+                    {gamification.xp.toLocaleString()}
+                  </span>
+                  <span className="text-muted-foreground/30">/</span>
+                  <span className="text-xs text-muted-foreground/40">
+                    {(gamification.xpToNextLevel + (gamification.level - 1) * 300).toLocaleString()}
+                  </span>
+                  <span className="ml-1.5 text-[10px] font-medium text-muted-foreground/35 uppercase tracking-wider">
+                    XP
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
             {/* XP Rank position */}
             {profile.xpRank != null && (
-              <div className="dk-user-profile-page__xp-bar-rank" style={{ animationDelay: '350ms' }}>
+              <div
+                className="mt-1 text-right text-[10px] font-medium text-white/30"
+                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
+              >
                 <span>#{profile.xpRank.toLocaleString()}</span>
                 {profile.xpPercentile != null && (
                   <span>· Top {profile.xpPercentile}%</span>
@@ -364,7 +425,10 @@ export function UserProfilePage() {
             )}
 
             {/* Streaks */}
-            <div className="dk-user-profile-page__xp-bar-streaks" style={{ animationDelay: '380ms' }}>
+            <div
+              className="mt-0.5 text-right"
+              style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '380ms' }}
+            >
               <StreakDisplay
                 loginStreak={profile.currentLoginStreak ?? 0}
                 longestLoginStreak={profile.longestLoginStreak ?? 0}
@@ -377,14 +441,17 @@ export function UserProfilePage() {
 
         {/* Platform links — floating below hero */}
         {(profile.steam || profile.plex || profile.tmdbUsername) && (
-          <div className="dk-user-profile-page__platforms" style={{ animationDelay: '350ms' }}>
-            <div className="dk-user-profile-page__platforms-inner">
+          <div
+            className="px-6 -mt-1 relative z-10"
+            style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
+          >
+            <div className="flex items-center gap-2">
               {profile.steam && (
                 <a
                   href={profile.steam.profileurl ?? '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="dk-user-profile-page__platform-link"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
                 >
                   <SteamIcon className="h-3.5 w-3.5" />
                   Steam
@@ -395,7 +462,7 @@ export function UserProfilePage() {
                   href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="dk-user-profile-page__platform-link dk-user-profile-page__platform-link--plex"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
                 >
                   <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
                   Plex
@@ -406,7 +473,7 @@ export function UserProfilePage() {
                   href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="dk-user-profile-page__platform-link dk-user-profile-page__platform-link--tmdb"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
                 >
                   <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
                   TMDb

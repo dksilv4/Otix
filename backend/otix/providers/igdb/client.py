@@ -294,26 +294,42 @@ class IGDBProvider(BaseProvider):
 
     # ── External game mapping ──────────────────────────────────────────
 
+    async def lookup_external_game_ids(self, category: int, external_ids: list[str]) -> dict[str, int]:
+        """Map external IDs to IGDB game IDs via the external_games endpoint.
+
+        IGDB external_game_source categories:
+            1 = Steam, 5 = GOG, 26 = Epic Games Store, etc.
+
+        Returns ``{external_id: igdb_game_id}``.
+        """
+        if not external_ids:
+            return {}
+
+        uid_list = ",".join(f'"{eid}"' for eid in external_ids)
+        body = f"fields uid,game; where external_game_source = {category} & uid = ({uid_list}); limit {len(external_ids)};"
+        response = await self._post("/external_games", content=body)
+        if response.status_code == 200:
+            result: dict[str, int] = {}
+            for row in response.json():
+                uid = row.get("uid")
+                game = row.get("game")
+                if isinstance(uid, str) and isinstance(game, int):
+                    result[uid] = game
+            return result
+        raise IGDBError(f"IGDB external_games query failed: {response.status_code}")
+
+    async def lookup_epic_app_ids(self, epic_ids: list[str]) -> dict[str, int]:
+        """Map Epic Games Store IDs to IGDB game IDs.
+
+        category 26 = Epic Games Store. Returns ``{epic_id: igdb_game_id}``.
+        """
+        return await self.lookup_external_game_ids(26, epic_ids)
+
     async def lookup_steam_app_ids(self, app_ids: list[int]) -> dict[int, int]:
         """Map Steam app IDs to IGDB game IDs via the external_games endpoint.
 
         category 1 = Steam. Returns ``{steam_app_id: igdb_game_id}``.
         """
-        if not app_ids:
-            return {}
-
-        uid_list = ",".join(f'"{aid}"' for aid in app_ids)
-        body = f"fields uid,game; where external_game_source = 1 & uid = ({uid_list}); limit {len(app_ids)};"
-        response = await self._post("/external_games", content=body)
-        if response.status_code == 200:
-            result: dict[int, int] = {}
-            for row in response.json():
-                uid = row.get("uid")
-                game = row.get("game")
-                if isinstance(uid, str) and isinstance(game, int):
-                    try:
-                        result[int(uid)] = game
-                    except ValueError:
-                        continue
-            return result
-        raise IGDBError(f"IGDB external_games query failed: {response.status_code}")
+        str_ids = [str(aid) for aid in app_ids]
+        mapping = await self.lookup_external_game_ids(1, str_ids)
+        return {int(k): v for k, v in mapping.items()}

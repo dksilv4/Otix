@@ -1,6 +1,5 @@
 import { useRef, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { useCardTilt } from '@discover/hooks/use-card-tilt'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 
@@ -43,12 +42,7 @@ export function HeroCard({
   return (
     <motion.div
       ref={cardRef}
-      className={cn(
-        'absolute rounded-xl cursor-pointer',
-        'shadow-[0_24px_60px_rgba(0,0,0,0.85)]',
-        isActive ? 'z-10' : '',
-        className,
-      )}
+      className={`absolute rounded-xl cursor-pointer shadow-[0_24px_60px_rgba(0,0,0,0.85)]${isActive ? ' z-10' : ''} ${className || ''}`}
       style={{
         ...style,
         ...(isActive ? {} : { filter: `brightness(0.6) blur(${layerDistance * 2}px)` }),

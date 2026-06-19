@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { execSync } from 'child_process';
-import { Notification, WebContents } from 'electron';
+import { Notification, WebContents, app } from 'electron';
 import Database from 'better-sqlite3';
 import { eventBus } from './event-bus';
 import {
@@ -16,9 +16,9 @@ import {
   setPluginConfig,
   updatePluginManifest,
   updatePluginVersion,
-} from './plugin-db';
+} from './db';
 import { PermissionManager } from './permissions';
-import { loadPluginMain, loadPluginTest, loadPluginStatus, loadPluginData } from './plugin-loader';
+import { loadPluginMain, loadPluginTest, loadPluginStatus, loadPluginData } from './loader';
 import { createApiProxy } from './api-proxy';
 import {
   PluginInfo,
@@ -141,6 +141,15 @@ export class PluginManager {
       fs.rmSync(cloneDir, { recursive: true, force: true });
       throw new Error(
         'Plugin has incomplete manifest.json (name, version, and entry.main are required)'
+      );
+    }
+
+    // Check compatibility with current app version
+    const compat = checkPluginCompatibility(manifest.version);
+    if (!compat.ok) {
+      fs.rmSync(cloneDir, { recursive: true, force: true });
+      throw new Error(
+        `Plugin requires Otix v${compat.required} or higher (current: ${app.getVersion()})`
       );
     }
 
@@ -275,11 +284,18 @@ export class PluginManager {
     const info = dbGetPlugin(pluginId);
     if (!info) throw new Error(`Plugin not found: ${pluginId}`);
 
+    // Check compatibility at enable time too (app may have been updated since install)
+    const compat = checkPluginCompatibility(info.version);
+    if (!compat.ok) {
+      updatePluginStatus(pluginId, 'error', `Requires Otix v${compat.required} or higher`);
+      throw new Error(`Plugin requires Otix v${compat.required} or higher (current: ${app.getVersion()})`);
+    }
+
     if (this.plugins.has(pluginId)) return;
 
     try {
       const manifest = info.manifest;
-      const pluginPath = path.join(this.extensionsDir, pluginId);
+      const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
 
       // Auto-grant all permissions declared in the manifest.
       // The user already consented by clicking Enable.
@@ -363,70 +379,81 @@ export class PluginManager {
 
   // ── Discovery ──────────────────────────────────────────────────────
 
-  async discoverPlugins(): Promise<PluginInfo[]> {
+  async discoverPlugins(additionalDirs?: string[]): Promise<PluginInfo[]> {
     await this.ensureReady();
 
     const discovered: PluginInfo[] = [];
+    const allDirs = [this.extensionsDir, ...(additionalDirs || [])];
+    const seenIds = new Set<string>();
 
-    if (!fs.existsSync(this.extensionsDir)) {
-      fs.mkdirSync(this.extensionsDir, { recursive: true });
-      return discovered;
-    }
-
-    const entries = fs.readdirSync(this.extensionsDir, {
-      withFileTypes: true,
-    });
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-
-      const pluginDir = path.join(this.extensionsDir, entry.name);
-      const manifestPath = path.join(pluginDir, 'manifest.json');
-
-      if (!fs.existsSync(manifestPath)) continue;
-
-      let manifest: PluginManifest;
-      try {
-        const raw = fs.readFileSync(manifestPath, 'utf-8');
-        manifest = JSON.parse(raw);
-      } catch {
-        console.warn(
-          `[PluginManager] Invalid manifest.json in ${entry.name}, skipping`
-        );
-        continue;
-      }
-
-      if (!manifest.name || !manifest.version || !manifest.entry?.main) {
-        console.warn(
-          `[PluginManager] Incomplete manifest.json in ${entry.name}, skipping`
-        );
-        continue;
-      }
-
-      const existing = dbGetPlugin(entry.name);
-      if (existing) {
-        // Refresh manifest from disk (supports config changes)
-        if (JSON.stringify(existing.manifest) !== JSON.stringify(manifest)) {
-          updatePluginManifest(entry.name, manifest);
+    for (const baseDir of allDirs) {
+      if (!fs.existsSync(baseDir)) {
+        if (baseDir === this.extensionsDir) {
+          fs.mkdirSync(this.extensionsDir, { recursive: true });
         }
         continue;
       }
 
-      const now = new Date().toISOString();
-      const pluginInfo: PluginInfo = {
-        id: entry.name,
-        name: manifest.name,
-        version: manifest.version,
-        description: manifest.description || '',
-        author: manifest.author || '',
-        repository: manifest.repository || '',
-        status: 'installed',
-        manifest,
-        installedAt: now,
-      };
+      const entries = fs.readdirSync(baseDir, {
+        withFileTypes: true,
+      });
 
-      insertPlugin(pluginInfo);
-      discovered.push(pluginInfo);
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+
+        const pluginDir = path.join(baseDir, entry.name);
+        const manifestPath = path.join(pluginDir, 'manifest.json');
+
+        if (!fs.existsSync(manifestPath)) continue;
+
+        let manifest: PluginManifest;
+        try {
+          const raw = fs.readFileSync(manifestPath, 'utf-8');
+          manifest = JSON.parse(raw);
+        } catch {
+          console.warn(
+            `[PluginManager] Invalid manifest.json in ${entry.name}, skipping`
+          );
+          continue;
+        }
+
+        if (!manifest.name || !manifest.version || !manifest.entry?.main) {
+          console.warn(
+            `[PluginManager] Incomplete manifest.json in ${entry.name}, skipping`
+          );
+          continue;
+        }
+
+        // Primary dir takes priority over additional dirs
+        if (seenIds.has(entry.name)) continue;
+        seenIds.add(entry.name);
+
+        const existing = dbGetPlugin(entry.name);
+        if (existing) {
+          if (JSON.stringify(existing.manifest) !== JSON.stringify(manifest) || existing.version !== manifest.version) {
+            updatePluginVersion(entry.name, manifest.version, manifest);
+          }
+          continue;
+        }
+
+        const isAdditional = baseDir !== this.extensionsDir;
+        const now = new Date().toISOString();
+        const pluginInfo: PluginInfo = {
+          id: entry.name,
+          name: manifest.name,
+          version: manifest.version,
+          description: manifest.description || '',
+          author: manifest.author || '',
+          repository: manifest.repository || '',
+          sourcePath: isAdditional ? pluginDir : undefined,
+          status: 'installed',
+          manifest,
+          installedAt: now,
+        };
+
+        insertPlugin(pluginInfo);
+        discovered.push(pluginInfo);
+      }
     }
 
     return discovered;
@@ -451,7 +478,7 @@ export class PluginManager {
     if (!info) throw new Error(`Plugin not found: ${pluginId}`);
 
     const manifest = info.manifest;
-    const pluginPath = path.join(this.extensionsDir, pluginId);
+    const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
 
     const statusFn = await loadPluginStatus(pluginPath, manifest);
     if (!statusFn) return null;
@@ -475,7 +502,7 @@ export class PluginManager {
     if (!info) throw new Error(`Plugin not found: ${pluginId}`);
 
     const manifest = info.manifest;
-    const pluginPath = path.join(this.extensionsDir, pluginId);
+    const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
 
     const dataFns = loadPluginData(pluginPath, manifest);
     const fn = dataFns[method];
@@ -503,7 +530,7 @@ export class PluginManager {
     if (!info) throw new Error(`Plugin not found: ${pluginId}`);
 
     const manifest = info.manifest;
-    const pluginPath = path.join(this.extensionsDir, pluginId);
+    const pluginPath = info.sourcePath || path.join(this.extensionsDir, pluginId);
 
     const testFn = await loadPluginTest(pluginPath, manifest);
     if (!testFn) {
@@ -759,4 +786,32 @@ export class PluginManager {
       onDestroy,
     };
   }
+}
+
+// ── Compatibility check ──────────────────────────────────────────────
+
+function checkPluginCompatibility(pluginVersion: string): { ok: boolean; required?: string } {
+  // Old-style SemVer (e.g. "1.0.0") — skip check, assume compatible
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(pluginVersion)) {
+    return { ok: true };
+  }
+
+  // Extract first 3 components as the target Otix version
+  const parts = pluginVersion.split('.');
+  const required = `${parts[0]}.${parts[1]}.${parts[2]}`;
+  const appVersion = app.getVersion();
+
+  // Manual version comparison (e.g. "0.3.0" <= "0.3.5" → true)
+  const parseVersion = (v: string): number[] => v.split('.').map(Number);
+  const appParts = parseVersion(appVersion);
+  const reqParts = parseVersion(required);
+  const maxLen = Math.max(appParts.length, reqParts.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const a = appParts[i] ?? 0;
+    const r = reqParts[i] ?? 0;
+    if (a > r) return { ok: true, required };
+    if (a < r) return { ok: false, required };
+  }
+  return { ok: true, required };
 }

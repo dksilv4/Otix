@@ -27,6 +27,11 @@ from otix.api.integrations.tmdb.rating_sync import router as tmdb_rating_sync_ro
 from otix.api.integrations.tmdb.watchlist_import import router as tmdb_watchlist_import_router
 from otix.api.integrations.youtube.sync import router as youtube_sync_router
 
+from otix.api.integrations.epic.library.push import router as epic_library_push_router
+from otix.api.integrations.epic.status import router as epic_status_router
+from otix.api.integrations.epic.disconnect import router as epic_disconnect_router
+from otix.api.integrations.epic.resolve_unmatched import router as epic_resolve_router
+
 router = APIRouter()
 
 router.include_router(plex_servers_router)
@@ -51,4 +56,11 @@ router.include_router(tmdb_rating_sync_router)
 router.include_router(tmdb_watchlist_import_router)
 
 router.include_router(youtube_sync_router)
+
+# Epic Games Store
+router.include_router(epic_library_push_router)
+router.include_router(epic_status_router)
+router.include_router(epic_disconnect_router)
+router.include_router(epic_resolve_router)
+
 router.include_router(saves_router)

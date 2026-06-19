@@ -1,6 +1,5 @@
 import { useState, useReducer } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/providers/auth'
 import type { PlexSession } from '../../types'
 import {
@@ -109,10 +108,7 @@ export function ActivityModulePlexCard({ s }: ActivityModulePlexCardProps) {
             <span className="text-[10px] text-muted-foreground/40 tabular-nums">{totalDuration}</span>
           )}
           {streamBadge && (
-            <span className={cn(
-              'text-[10px] px-1.5 font-medium py-px rounded-full',
-              'bg-amber-500/10 text-amber-400/70',
-            )}>
+            <span className='text-[10px] px-1.5 font-medium py-px rounded-full bg-amber-500/10 text-amber-400/70'>
               {streamBadge}
             </span>
           )}

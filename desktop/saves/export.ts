@@ -1,7 +1,7 @@
 /* ── Save export/import helpers ── */
 
-import { SaveDaemon } from './save-daemon';
-import { SAVE_LOCATIONS } from './save-locations';
+import { SaveDaemon } from './index';
+import { SAVE_LOCATIONS } from './locations';
 
 /**
  * Export a profile to a .otixsave directory (zippable by the user).

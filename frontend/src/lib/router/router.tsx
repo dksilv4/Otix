@@ -8,9 +8,11 @@ import { createDiscoverRoutes } from '@discover/discover.router'
 import { createSearchRoutes } from '@search/search.router'
 import { createMediaRoutes } from '@media/media.router'
 import { createLauncherRoutes } from '@launcher/launcher.router'
+import { createLibraryRoutes } from '@library/library.router'
 import { createSettingsRoutes } from '@settings/settings.router'
 import { createListRoutes } from '@/features/list/list.router'
 import { createUserRoutes } from '@user/user.router'
+import { createPeopleRoutes } from '@people/people.router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -23,9 +25,11 @@ const routeTree = rootRoute.addChildren([
   ...createSearchRoutes(rootRoute),
   ...createMediaRoutes(rootRoute),
   ...createLauncherRoutes(rootRoute),
+  ...createLibraryRoutes(rootRoute),
   ...createSettingsRoutes(rootRoute),
   ...createListRoutes(rootRoute),
   ...createUserRoutes(rootRoute),
+  ...createPeopleRoutes(rootRoute),
 ])
 
 export interface RouterContext {
