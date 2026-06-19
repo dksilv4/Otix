@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate, useLocation } from '@tanstack/react-router'
 import { Scan, Folder, Disc, Gamepad2, X, CheckCircle2, Loader2, FolderPlus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { SectionHeader } from '../components/section-header'
 import { getScanPaths, getIsoPaths, setScanPaths, setIsoPaths } from '@/old-features/game-scanner/storage'
 import { useLocalGames } from '@/old-features/game-scanner/game-queries'
@@ -357,15 +359,47 @@ function ScannersSection() {
 // ── Main export ───────────────────────────────────────────────────────────
 
 export function LibrarySection() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const activeSubTab = location.pathname.includes('/matching') ? 'matching' : 'library'
+
+  const SUB_TABS = [
+    { id: 'library', label: 'Library', path: '/settings/library' },
+    { id: 'matching', label: 'Matching', path: '/settings/library/matching' },
+  ]
+
   return (
     <div className="space-y-8">
+      {/* Sub-tab navigation */}
       <div>
-        <h2 className="text-lg font-semibold text-white tracking-tight">Library</h2>
-        <p className="text-sm mt-1 text-white/60">
-          Manage installed games and scan for new ones.
-        </p>
+        <div className="flex items-center gap-1 mb-1">
+          {SUB_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => navigate({ to: tab.path })}
+              className={cn(
+                'px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                activeSubTab === tab.id
+                  ? 'bg-white/10 text-white'
+                  : 'text-white/50 hover:text-white hover:bg-white/5',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* If activeSubTab is library, render scan content */}
+        {activeSubTab === 'library' && (
+          <>
+            <h2 className="text-lg font-semibold text-white tracking-tight">Library</h2>
+            <p className="text-sm mt-1 text-white/60">
+              Manage installed games and scan for new ones.
+            </p>
+          </>
+        )}
       </div>
-      <ScannersSection />
+
+      {activeSubTab === 'library' && <ScannersSection />}
     </div>
   )
 }
