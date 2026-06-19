@@ -7,7 +7,7 @@ import { app } from 'electron'
 import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
 import { PluginsRepository } from '../db/repositories/plugins'
-import { loadPluginTest } from './loader'
+
 import { fetchAllRegistries } from './marketplace'
 import type {
   PluginManifest,
@@ -16,7 +16,6 @@ import type {
   PluginPermission,
   PluginSettingsTab,
   SlotContribution,
-  ApiProxy,
 } from './types'
 import {
   PluginNotFoundError,
@@ -757,86 +756,17 @@ export class PluginManager {
     pluginId: string,
     configDraft: Record<string, unknown>,
   ): Promise<{ success: boolean; message: string }> {
-    const row = this.pluginsRepo.getById(pluginId)
-    if (!row) throw new PluginNotFoundError(pluginId)
-    const info = this.pluginRowToInfo(row)
-
-    const manifest = info.manifest
-    const pluginDir = this.getPluginDir(pluginId)
-
-    const testFn = await loadPluginTest(pluginDir, manifest)
-    if (!testFn) {
+    const runtime = this.runtimes.get(pluginId)
+    if (!runtime) {
       return {
         success: false,
-        message: 'This plugin does not support connection testing.',
+        message: 'Plugin is not running. Enable the plugin first to test configuration.',
       }
-    }
-
-    // Create a temporary context with the DRAFT config values (not saved)
-    const tempConfig = {
-      getAll: () => ({ ...configDraft }),
-      get: <T>(key: string) => configDraft[key] as T | undefined,
-      set: () => {}, // no-op — test doesn't save
-    }
-
-    // Create a minimal API proxy without permission checking for testing
-    const makeReq =
-      (method: string) =>
-      async (path: string, data?: unknown) => {
-        const url = `${this.apiBaseUrl}${path}`
-        const headers: Record<string, string> = {}
-        if (this.authToken) {
-          headers['Authorization'] = `Bearer ${this.authToken}`
-        }
-        if (data !== undefined) {
-          headers['Content-Type'] = 'application/json'
-        }
-        const res = await fetch(url, {
-          method,
-          headers,
-          body: data !== undefined ? JSON.stringify(data) : undefined,
-        })
-        return res.json()
-      }
-
-    const api: ApiProxy = {
-      get: makeReq('GET'),
-      post: makeReq('POST'),
-      put: makeReq('PUT'),
-      delete: makeReq('DELETE'),
-    }
-
-    // Create minimal context — no events, no DB persistence during test
-    const tempCtx = {
-      id: pluginId,
-      manifest,
-      config: tempConfig,
-      api,
-      events: {
-        on: () => () => {},
-        off: () => {},
-      },
-      fetch: async (url: string, init?: RequestInit) => {
-        return fetch(url, init)
-      },
-      db: {
-        run: () => {},
-        get: () => null,
-        all: () => [],
-      },
-      notifications: {
-        send: () => {},
-      },
-      logger: {
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-      },
-      onDestroy: () => {},
     }
 
     try {
-      return await testFn(tempCtx, configDraft)
+      const result = await runtime.callMethod('test', configDraft) as { success: boolean; message: string }
+      return result ?? { success: false, message: 'Plugin did not return a test result.' }
     } catch (err) {
       return {
         success: false,

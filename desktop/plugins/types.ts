@@ -154,6 +154,7 @@ export type MainToWorkerMessage =
   | { type: 'init'; config: Record<string, unknown> }
   | { type: 'rpc-result'; id: string; result: unknown }
   | { type: 'rpc-error'; id: string; error: string }
+  | { type: 'rpc'; id: string; method: string; args: unknown[] }
 
 export type WorkerToMainMessage =
   | { type: 'ready' }
