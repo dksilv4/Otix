@@ -300,6 +300,53 @@ class LocalGameMatchResponse(BaseModel):
     matches: list[LocalGameMatch]
 
 
+# ── Game matching (internal API / batch) ────────────────────────
+
+
+class ExternalIDRef(BaseModel):
+    """A reference to an external ID from a provider (IGDB, Steam, etc.)."""
+
+    source: str
+    id: str
+
+
+class GameMatchRequest(BaseModel):
+    """A single game to match, sent from the frontend or external caller."""
+
+    title: str
+    developer: str | None = None
+    publisher: str | None = None
+    platforms: list[str] | None = None
+    release_year: int | None = None
+    release_date: date | None = None
+    external_ids: list[ExternalIDRef] | None = None
+    media_type: str = "game"
+
+
+class GameMatchResult(BaseModel):
+    """The result of matching a single game request against the Otix catalog."""
+
+    media_item_id: str | None = None
+    title: str
+    poster_url: str | None = None
+    confidence: float
+    match_type: str
+    is_new: bool = False
+    store_ids: dict[str, str] | None = None
+
+
+class GameMatchBatchRequest(BaseModel):
+    """Batch request to match multiple games in one call."""
+
+    games: list[GameMatchRequest]
+
+
+class GameMatchBatchResponse(BaseModel):
+    """Batch response with a result for each requested game."""
+
+    matches: list[GameMatchResult]
+
+
 # ── Seed game titles from desktop scan ──────────────────────────
 
 

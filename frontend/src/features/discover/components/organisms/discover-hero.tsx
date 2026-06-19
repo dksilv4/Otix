@@ -3,7 +3,6 @@ import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
-import { cn } from '@/lib/utils'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
 import { HeroCard } from '@discover/components/molecules/hero-card'
@@ -161,10 +160,7 @@ export function DiscoverHero({ className }: { className?: string }) {
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'relative w-full flex flex-col items-center justify-center pb-12',
-        className,
-      )}
+      className={`relative w-full flex flex-col items-center justify-center pb-12 ${className || ''}`}
     >
       {/* ═══ Slide stack ═══ */}
       <div
@@ -177,13 +173,13 @@ export function DiscoverHero({ className }: { className?: string }) {
         {/* ── Loading skeleton ── */}
         {isLoading && (
           <div
-            className={cn(
-              'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-              'z-30 flex flex-col justify-end p-6',
-              'rounded-[2rem] bg-black/40 backdrop-blur-sm shadow-xl',
-              'w-[200px] sm:w-[270px] md:w-[330px]',
-              'h-[300px] sm:h-[405px] md:h-[495px]',
-            )}
+            className={
+              'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ' +
+              'z-30 flex flex-col justify-end p-6 ' +
+              'rounded-[2rem] bg-black/40 backdrop-blur-sm shadow-xl ' +
+              'w-[200px] sm:w-[270px] md:w-[330px] ' +
+              'h-[300px] sm:h-[405px] md:h-[495px]'
+            }
           >
             <Skeleton className="h-6 w-2/3 mb-2" />
             <Skeleton className="h-4 w-full mb-1" />
@@ -206,11 +202,7 @@ export function DiscoverHero({ className }: { className?: string }) {
               isActive={isActive}
               layerDistance={Math.abs(offset)}
               style={calculateCardTransform(offset, cardOffset, isActive)}
-              className={cn(
-                'w-[200px] h-[300px]',
-                'sm:w-[270px] sm:h-[405px]',
-                'md:w-[330px] md:h-[495px]',
-              )}
+              className={'w-[200px] h-[300px] sm:w-[270px] sm:h-[405px] md:w-[330px] md:h-[495px]'}
               onClick={() => handleCardClick(index)}
             >
               {/* Logo - always visible, scales up when active */}
@@ -258,12 +250,12 @@ export function DiscoverHero({ className }: { className?: string }) {
                     <motion.div
                       key={activeItem.id}
                       {...CONTENT_FADE}
-                      className={cn(
-                        'absolute inset-0 z-20',
-                        'flex flex-col p-4 sm:p-5 md:p-6',
-                        'bg-gradient-to-t from-black/90 via-black/30 to-transparent',
-                        'pointer-events-auto',
-                      )}
+                      className={
+                        'absolute inset-0 z-20 ' +
+                        'flex flex-col p-4 sm:p-5 md:p-6 ' +
+                        'bg-gradient-to-t from-black/90 via-black/30 to-transparent ' +
+                        'pointer-events-auto'
+                      }
                     >
                       {/* Bottom content: meta, overview, CTA */}
                       <div className="mt-auto">
@@ -272,12 +264,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                         {heroDetail.mediaType && (
                           <Badge
                             size="sm"
-                            className={cn(
-                              'text-white border-none',
-                              MEDIA_TYPE_COLOR[
-                                heroDetail.mediaType as keyof typeof MEDIA_TYPE_COLOR
-                              ],
-                            )}
+                            className={`text-white border-none ${MEDIA_TYPE_COLOR[heroDetail.mediaType as keyof typeof MEDIA_TYPE_COLOR] || ''}`}
                           >
                             {MEDIA_TYPE_LABEL[
                               heroDetail.mediaType as keyof typeof MEDIA_TYPE_LABEL
@@ -317,12 +304,12 @@ export function DiscoverHero({ className }: { className?: string }) {
                     <motion.div
                       key={`min-${activeItem.id}`}
                       {...CONTENT_FADE}
-                      className={cn(
-                        'absolute inset-0 z-20',
-                        'flex flex-col justify-end p-4 sm:p-5 md:p-6',
-                        'bg-gradient-to-t from-black/90 via-black/30 to-transparent',
-                        'pointer-events-auto',
-                      )}
+                      className={
+                        'absolute inset-0 z-20 ' +
+                        'flex flex-col justify-end p-4 sm:p-5 md:p-6 ' +
+                        'bg-gradient-to-t from-black/90 via-black/30 to-transparent ' +
+                        'pointer-events-auto'
+                      }
                     >
                       <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1 line-clamp-1">
                         {activeItem.title}
@@ -330,12 +317,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                       {activeItem.mediaType && (
                         <Badge
                           size="sm"
-                          className={cn(
-                            'text-white border-none w-fit',
-                            MEDIA_TYPE_COLOR[
-                              activeItem.mediaType as keyof typeof MEDIA_TYPE_COLOR
-                            ],
-                          )}
+                          className={`text-white border-none w-fit ${MEDIA_TYPE_COLOR[activeItem.mediaType as keyof typeof MEDIA_TYPE_COLOR] || ''}`}
                         >
                           {MEDIA_TYPE_LABEL[
                             activeItem.mediaType as keyof typeof MEDIA_TYPE_LABEL
@@ -353,23 +335,23 @@ export function DiscoverHero({ className }: { className?: string }) {
 
       {/* ═══ Bottom navigation bar ═══ */}
       <div
-        className={cn(
-          'relative z-10 mt-4',
-          'flex items-center gap-4 px-5 py-2.5',
-          'rounded-full bg-black/35 backdrop-blur-md',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.35)]',
-          'hover:bg-black/45 transition-all',
-        )}
+        className={
+          'relative z-10 mt-4 ' +
+          'flex items-center gap-4 px-5 py-2.5 ' +
+          'rounded-full bg-black/35 backdrop-blur-md ' +
+          'shadow-[0_8px_32px_rgba(0,0,0,0.35)] ' +
+          'hover:bg-black/45 transition-all'
+        }
       >
         {/* Left arrow */}
         <button
           type="button"
           onClick={tickBack}
-          className={cn(
-            'flex items-center justify-center w-7 h-7 rounded-full',
-            'text-white/70 hover:text-white hover:bg-white/10',
-            'transition-all',
-          )}
+          className={
+            'flex items-center justify-center w-7 h-7 rounded-full ' +
+            'text-white/70 hover:text-white hover:bg-white/10 ' +
+            'transition-all'
+          }
           aria-label="Previous slide"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -392,11 +374,11 @@ export function DiscoverHero({ className }: { className?: string }) {
         <button
           type="button"
           onClick={tick}
-          className={cn(
-            'flex items-center justify-center w-7 h-7 rounded-full',
-            'text-white/70 hover:text-white hover:bg-white/10',
-            'transition-all',
-          )}
+          className={
+            'flex items-center justify-center w-7 h-7 rounded-full ' +
+            'text-white/70 hover:text-white hover:bg-white/10 ' +
+            'transition-all'
+          }
           aria-label="Next slide"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -416,10 +398,10 @@ export function DiscoverHero({ className }: { className?: string }) {
           <Link
             to="/media/$mediaType/$mediaId"
             params={{ mediaType: (heroDetail?.mediaType || activeItem.mediaType) as string, mediaId: activeItem.id }}
-            className={cn(
-              'text-[11px] font-bold text-white/80 hover:text-white',
-              'flex items-center gap-1 transition-colors',
-            )}
+            className={
+              'text-[11px] font-bold text-white/80 hover:text-white ' +
+              'flex items-center gap-1 transition-colors'
+            }
           >
             View Details
             <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">

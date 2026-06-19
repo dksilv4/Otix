@@ -13,8 +13,9 @@ router = APIRouter()
 def _episode_interaction_out(ep_id: str, watched: bool, watched_at: str | None) -> EpisodeInteractionOut:
     return EpisodeInteractionOut(episode_id=ep_id, watched=watched, watched_at=watched_at)
 
-@router.get("/{media_id}/episode-interactions", response_model=EpisodeInteractionsOut)
+@router.get("/{media_type}/{media_id}/episode-interactions", response_model=EpisodeInteractionsOut)
 async def get_episode_interactions(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

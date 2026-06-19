@@ -170,10 +170,23 @@ async def flush_pending_external_ids(obj, session) -> int:
 
                 legacy = await session.scalar(select(ExternalID).where(*clauses))
                 if legacy is not None:
-                    legacy.entity_type = entity_type
-                    legacy.entity_id = entity_id
-                    if entity_type == "media_item":
-                        legacy.media_item_id = entity_id
+                    # Atomically INSERT the canonical row (ON CONFLICT DO NOTHING
+                    # survives concurrent sessions inserting the same tuple), then
+                    # delete the legacy stub.  This avoids the UPDATE conflict that
+                    # would occur if another row with the target (provider,
+                    # external_id, entity_type) already existed.
+                    await session.execute(
+                        pg_insert(ExternalID)
+                        .values(
+                            provider=provider,
+                            external_id=str_val,
+                            entity_type=entity_type,
+                            entity_id=entity_id,
+                            media_item_id=entity_id if entity_type == "media_item" else None,
+                        )
+                        .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                    )
+                    await session.delete(legacy)
                     count += 1
                 else:
                     # Guard against a cross-entity collision: another entity may

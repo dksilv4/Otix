@@ -15,8 +15,8 @@ import psList from 'ps-list'
 import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { GameDetector } from './game-detector'
-import type { LocalGame } from './scanner'
+import { GameDetector } from '../game/detector'
+import type { LocalGame } from '../game/scanner'
 
 // ── Helpers ─────────────────────────────────────────────────────────
 

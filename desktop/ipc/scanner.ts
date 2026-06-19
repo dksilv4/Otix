@@ -1,7 +1,7 @@
 import { dialog, ipcMain } from 'electron';
-import { scanPaths } from '../scanner';
-import { scanAllLaunchers } from '../launchers';
-import * as gameService from '../game-storage-service';
+import { scanPaths } from '../game/scanner';
+import { scanAllLaunchers } from '../game/launchers';
+import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
 import {
   batchCheckMatchCache,
@@ -10,7 +10,7 @@ import {
   markGamesAsSeeded,
   type MatchCacheEntry,
 } from '../downloads';
-import { GameDetector } from '../game-detector';
+import { GameDetector } from '../game/detector';
 import http from 'http';
 
 const BACKEND_BASE = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';

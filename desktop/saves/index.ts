@@ -7,7 +7,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import * as os from 'os';
-import * as SaveService from './save-service';
+import * as SaveService from './service';
 
 let _knownLocationsCache: KnownSaveLocation[] | null = null;
 

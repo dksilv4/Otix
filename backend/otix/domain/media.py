@@ -186,6 +186,7 @@ class Game(Base, HasExternalIDs):
     website: Mapped[str | None] = mapped_column(String(2000))
 
     steam_app_id = ExternalIDDescriptor("steam", cast_type=int, entity_id_attr="media_item_id")
+    epic_app_id = ExternalIDDescriptor("epic", cast_type=str, entity_id_attr="media_item_id")
 
     current_players: Mapped[int | None] = mapped_column(Integer)
     price_json: Mapped[dict | None] = mapped_column(JSONB)

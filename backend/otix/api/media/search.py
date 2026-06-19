@@ -21,6 +21,7 @@ from otix.api._utils import (
 from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key
 from otix.domain.user import User
 from otix.infrastructure.celery import app
+from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
 from otix.lib.media_rehydrate_progress import (
     channel_name,
@@ -32,6 +33,11 @@ from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     CompanyOut,
     CompanySearchListResponse,
+    ExternalIDRef,
+    GameMatchBatchRequest,
+    GameMatchBatchResponse,
+    GameMatchRequest,
+    GameMatchResult,
     GenreOut,
     ImportGameResponse,
     LocalGameMatch,
@@ -50,9 +56,11 @@ from otix.schemas.media import (
     SyncLocalGamesResponse,
     TrackSearchResult,
 )
+from otix.domain.media import MediaItem
 from otix.lib.levels import compute_level_info
 from otix.services.company_service import CompanyService
 from otix.services.external_id_service import ExternalIDService
+from otix.services.game_matcher import GameMatcher
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService, should_exclude_adult
 from otix.services.people_service import PeopleService
@@ -82,6 +90,7 @@ async def _call_embed_query(q: str):
 async def search_suggestions(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(8, ge=1, le=20),
+    media_type: str | None = Query(None, description="Filter by media type: movie, show, game, music"),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ) -> list[MediaItemSummary]:
@@ -90,6 +99,7 @@ async def search_suggestions(
     service = MediaService(db)
     items, _total, _has_more = await service.search_media(
         query_str=q,
+        media_type=media_type,
         page=1,
         page_size=limit,
         exclude_adult=exclude_adult,
@@ -107,6 +117,71 @@ async def search_suggestions(
         for summary in summaries:
             state = batch.get(summary.id, {})
             summary.user_interactions = UserInteractionState(**state)
+
+    # ── Third-party fallback: search IGDB / TMDB directly when sparse ──
+    if len(summaries) < 5 and _should_backfill(q) and media_type:
+        try:
+            redis = await _get_redis()
+            poll_hash = _poll_query_hash(q, media_type)
+            existing = await redis.keys(f"backfill:{poll_hash}:*")
+            if not existing:
+                # Skip third-party search if credentials not configured
+                if media_type == "game" and settings.igdb_client_id:
+                    from otix.providers.igdb.client import IGDBProvider
+
+                    provider = IGDBProvider(redis)
+                    raw = await provider.search_games(q, limit=12, fields="id,name,slug,cover.url")
+                    for g in raw:
+                        gid = str(g.get("id") or "")
+                        if not gid or any(s.id == gid for s in summaries):
+                            continue
+                        cover = g.get("cover")
+                        poster = None
+                        if cover and isinstance(cover, dict):
+                            url = cover.get("url")
+                            if url:
+                                poster = str(url).replace("t_thumb", "t_cover_big")
+                        name = g.get("name") or q
+                        slug = g.get("slug") or ""
+
+                        summaries.append(MediaItemSummary(
+                            id=gid,
+                            media_type="game",
+                            title=name,
+                            slug=slug,
+                            posterUrl=poster,
+                                popularity=0,
+                                avgRating=None,
+                                ratingCount=0,
+                                isAdult=False,
+                            ))
+                    # Also fire the backfill task so full catalog import happens
+                    app.send_task("search.backfill", args=[q, media_type], priority=5)
+                elif media_type in ("movie", "show"):
+                    from otix.providers.tmdb.client import TMDBProvider
+
+                    provider = TMDBProvider(redis)
+                    kind = "movie" if media_type == "movie" else "tv"
+                    data = await provider.search_multi(q, page=1)
+                    for item in data.get("results", [])[:8]:
+                        if item.get("media_type") == kind and item.get("id"):
+                            tid = f"tmdb-{item['id']}"
+                            if not any(s.id == tid for s in summaries):
+                                summaries.append(MediaItemSummary(
+                                    id=tid,
+                                    media_type=media_type,
+                                    title=item.get("title") or item.get("name", q),
+                                    slug=item.get("title", "").lower().replace(" ", "-") if item.get("title") else "",
+                                    posterUrl=f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}" if item.get("poster_path") else None,
+                                    popularity=item.get("popularity", 0),
+                                    avgRating=item.get("vote_average"),
+                                    ratingCount=item.get("vote_count", 0),
+                                    isAdult=item.get("adult", False),
+                                ))
+                    app.send_task("search.backfill", args=[q, media_type], priority=5)
+            summaries.sort(key=lambda s: s.popularity, reverse=True)
+        except Exception:
+            logger.warning("suggestions third-party search failed", query=q, media_type=media_type, exc_info=True)
 
     return summaries
 
@@ -752,6 +827,38 @@ async def search_grouped(
     )
 
 
+@media_router.post("/match", response_model=GameMatchResult)
+async def match_game(
+    body: GameMatchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> GameMatchResult:
+    """Match a single game against the Otix catalog via the full matching pipeline.
+
+    Stages: external ID lookup, IGDB cross-reference, IGDB title search,
+    PostgreSQL trigram fallback.  Returns confidence 0.0 / ``match_type``
+    ``"none"`` when no match is found.
+    """
+    redis = await _get_redis()
+    matcher = GameMatcher(db, redis)
+    return await matcher.match_single(body)
+
+
+@media_router.post("/match/batch", response_model=GameMatchBatchResponse)
+async def match_games_batch(
+    body: GameMatchBatchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> GameMatchBatchResponse:
+    """Match multiple games against the Otix catalog in a single batch call.
+
+    Each game runs through the same pipeline as ``POST /match``.  Results
+    are returned in the same order as the input.
+    """
+    redis = await _get_redis()
+    matcher = GameMatcher(db, redis)
+    matches = await matcher.match_batch(body.games)
+    return GameMatchBatchResponse(matches=matches)
+
+
 @media_router.post("/match-local-games")
 async def match_local_games(
     body: LocalGameMatchRequest,
@@ -761,30 +868,62 @@ async def match_local_games(
     """Fuzzy-match local PC/ISO game titles to Otix catalog entries.
 
     Accepts a list of game (title + optional platform and Steam App ID) and
-    returns the best-matching Otix media item per entry. Games with a Steam
-    App ID get a direct lookup; the rest fall through to trigram similarity.
+    returns the best-matching Otix media item per entry. Delegates to
+    ``GameMatcher`` for the full multi-stage pipeline (external ID lookup,
+    IGDB cross-reference, IGDB title search, trigram fallback).
+
+    Backward-compatible wrapper around the internal ``/match/batch`` pipeline.
     """
-    svc = MediaService(db)
     exclude_adult = should_exclude_adult(current_user)
+
+    # Convert legacy LocalGameMatchRequest to GameMatchRequest batch
+    requests: list[GameMatchRequest] = []
+    for g in body.games:
+        external_ids = None
+        if g.steam_app_id:
+            external_ids = [ExternalIDRef(source="steam", id=str(g.steam_app_id))]
+        platforms = [g.platform] if g.platform else None
+        requests.append(
+            GameMatchRequest(
+                title=g.title,
+                platforms=platforms,
+                external_ids=external_ids,
+            )
+        )
+
+    redis = await _get_redis()
+    matcher = GameMatcher(db, redis)
+    results = await matcher.match_batch(requests)
+
+    # Batch-fetch MediaItems for matched results so we can build summaries
+    matched_ids = [r.media_item_id for r in results if r.media_item_id is not None]
+    media_items: dict[str, MediaItem] = {}
+    if matched_ids:
+        rows = await db.execute(select(MediaItem).where(MediaItem.id.in_(matched_ids)))
+        media_items = {mi.id: mi for mi in rows.scalars().all()}
+
     matches: list[LocalGameMatch] = []
+    for result in results:
+        confidence = round(result.confidence, 4)
 
-    games_data = [{"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id} for g in body.games]
-    results = await svc.match_local_games(games_data)
-
-    for query_title, item, confidence in results:
-        summary: LocalGameMatch
-        if item is not None:
+        if result.media_item_id and result.media_item_id in media_items:
+            item = media_items[result.media_item_id]
             if exclude_adult and item.is_adult:
-                summary = LocalGameMatch(query_title=query_title, matched_media=None, confidence=0.0)
+                matches.append(
+                    LocalGameMatch(query_title=result.title, matched_media=None, confidence=0.0)
+                )
             else:
-                summary = LocalGameMatch(
-                    query_title=query_title,
-                    matched_media=MediaItemSummary.model_validate(item),
-                    confidence=round(confidence, 4),
+                matches.append(
+                    LocalGameMatch(
+                        query_title=result.title,
+                        matched_media=MediaItemSummary.model_validate(item),
+                        confidence=confidence,
+                    )
                 )
         else:
-            summary = LocalGameMatch(query_title=query_title, matched_media=None, confidence=round(confidence, 4))
-        matches.append(summary)
+            matches.append(
+                LocalGameMatch(query_title=result.title, matched_media=None, confidence=confidence)
+            )
 
     return LocalGameMatchResponse(matches=matches)
 

@@ -218,6 +218,13 @@ function _createTables(): void {
     // Column already exists — ignore
   }
 
+  // Migration: add otix catalog data columns for matched games
+  try { db.run('ALTER TABLE scanned_games ADD COLUMN otix_poster_url TEXT'); } catch { /* exists */ }
+  try { db.run('ALTER TABLE scanned_games ADD COLUMN otix_backdrop_url TEXT'); } catch { /* exists */ }
+  try { db.run('ALTER TABLE scanned_games ADD COLUMN otix_textless_poster_url TEXT'); } catch { /* exists */ }
+  try { db.run('ALTER TABLE scanned_games ADD COLUMN otix_logo_url TEXT'); } catch { /* exists */ }
+  try { db.run('ALTER TABLE scanned_games ADD COLUMN otix_icon_url TEXT'); } catch { /* exists */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS local_games_map (
       media_id TEXT PRIMARY KEY,
@@ -365,6 +372,10 @@ function _migrateDb(): void {
   // Migration: add last_played_at column to scanned_games
   try {
     db.run('ALTER TABLE scanned_games ADD COLUMN last_played_at TEXT');
+  } catch (_) { /* column exists */ }
+  // Migration: add sources column to scanned_games (JSON array of install sources)
+  try {
+    db.run("ALTER TABLE scanned_games ADD COLUMN sources TEXT DEFAULT '[]'");
   } catch (_) { /* column exists */ }
 }
 

@@ -11,7 +11,7 @@ vi.mock('fs/promises', async (importOriginal: () => Promise<typeof import('fs/pr
   }
 })
 
-import { pickBestExe } from './scanner'
+import { pickBestExe } from '../game/scanner'
 
 // Helper to configure mockStatFn to return a specific file size for a given path fragment
 function mockStat(pathContains: string, sizeMb: number) {

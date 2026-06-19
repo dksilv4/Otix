@@ -1,7 +1,6 @@
 import { lazy, useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useSearch, useNavigate, Outlet } from '@tanstack/react-router'
-import { cn } from '@/lib/utils'
 import { SearchInput } from '@search/components/molecules/chat-search-input'
 import { SearchResults } from '@search/components/organisms/search-results'
 import { SearchSortBar } from '@search/components/molecules/search-sort-bar'
@@ -31,7 +30,7 @@ export function SearchPage() {
       setSearchType(urlType)
       setSearchSort(urlSort)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [urlQ, urlType, urlSort])
 
   // Navigation helper
@@ -103,8 +102,8 @@ export function SearchPage() {
         {!hasSearch && <div className="flex-1" />}
 
         {/* Search input */}
-        <div className={cn('w-full px-4', hasSearch ? 'pt-6' : '')}>
-          <div className={cn('mx-auto', hasSearch ? 'max-w-[700px]' : 'w-full max-w-[600px]')}>
+        <div className={'w-full px-4' + (hasSearch ? ' pt-6' : '')}>
+          <div className={'mx-auto' + (hasSearch ? ' max-w-[700px]' : ' w-full max-w-[600px]')}>
             <SearchInput
               value={inputValue}
               onChange={handleInputChange}

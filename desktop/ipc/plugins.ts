@@ -1,10 +1,10 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { PluginManager } from '../plugin/plugin-manager';
-import { PermissionManager } from '../plugin/permissions';
-import { getPluginConfig, setPluginConfig, getPluginRepos, addPluginRepo, removePluginRepo } from '../plugin/plugin-db';
-import { eventBus } from '../plugin/event-bus';
-import type { PermissionResponse } from '../plugin/types';
-import { fetchAllRegistries } from '../plugin/marketplace';
+import { PluginManager } from '../plugins/manager';
+import { PermissionManager } from '../plugins/permissions';
+import { getPluginConfig, setPluginConfig, getPluginRepos, addPluginRepo, removePluginRepo } from '../plugins/db';
+import { eventBus } from '../plugins/event-bus';
+import type { PermissionResponse } from '../plugins/types';
+import { fetchAllRegistries } from '../plugins/marketplace';
 import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';

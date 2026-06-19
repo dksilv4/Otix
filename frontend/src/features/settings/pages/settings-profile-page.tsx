@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/providers/auth'
-import { ProfileSection } from '@/old-features/settings/organisms/settings-sections/profile'
+import { ProfileSection } from '../sections/profile'
 
 export function SettingsProfilePage() {
   const { user, isAuthenticated } = useAuth()

@@ -8,8 +8,8 @@
 
 import path from 'path';
 import fs from 'fs';
-import { _run, _get, _all, ensureDb, DbRow } from './db';
-import { autoOrganizeDownload } from './auto-organizer';
+import { _run, _get, _all, ensureDb, DbRow } from '../db';
+import { autoOrganizeDownload } from './organizer';
 
 function genId(): string {
   return 'dl_' + Math.random().toString(36).substring(2, 14);
@@ -1428,6 +1428,11 @@ export async function getScannedGamesFromDb(): Promise<any[]> {
     otixMediaTitle: r.otix_media_title || undefined,
     otixMediaSlug: r.otix_media_slug || undefined,
     otixConfidence: r.otix_confidence != null ? Number(r.otix_confidence) : undefined,
+    otixPosterUrl: r.otix_poster_url || undefined,
+    otixBackdropUrl: r.otix_backdrop_url || undefined,
+    otixTextlessPosterUrl: r.otix_textless_poster_url || undefined,
+    otixLogoUrl: r.otix_logo_url || undefined,
+    otixIconUrl: r.otix_icon_url || undefined,
     otixMatchSuggestion: r.otix_match_suggestion ? JSON.parse(r.otix_match_suggestion) : undefined,
     seeded: r.seeded === 1,
   }));

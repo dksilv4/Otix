@@ -2,5 +2,8 @@
   "dependencies": {
     "headroom-ai": "^0.22.4",
     "ps-list": "^7.2.0"
+  },
+  "devDependencies": {
+    "@squiddleton/epic": "^0.10.0"
   }
 }

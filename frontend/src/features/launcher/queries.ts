@@ -153,9 +153,11 @@ export const gameSuggestionsOptions = (query: string) =>
     queryFn: async (): Promise<CatalogGame[]> => {
       if (!query || query.length < 1) return []
       const { data } = await apiClient.get<MediaItemSummaryResponse[]>("/media/suggestions", {
-        params: { q: query, limit: 8 },
+        params: { q: query, limit: 8, media_type: 'game' },
       })
-      return (data ?? []).map(toCatalogGame)
+      return (data ?? [])
+        .filter((item) => item.mediaType === 'game')
+        .map(toCatalogGame)
     },
     enabled: query.length >= 1,
     staleTime: 1000 * 30,

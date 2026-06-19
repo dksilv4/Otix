@@ -131,6 +131,10 @@ class Settings(BaseSettings):
     # Proposals
     proposal_min_xp: int = Field(default=500, description="Minimum XP required to submit proposals")
 
+    # Epic Games
+    epic_free_games_check_enabled: bool = True
+    epic_free_games_interval_hours: int = 6
+
     # Rate limiting
     auth_login_rate_limit_max_attempts: int = 20
     auth_refresh_rate_limit_max_attempts: int = 30

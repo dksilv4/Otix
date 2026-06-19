@@ -1,5 +1,4 @@
 import type { HTMLAttributes, ReactNode } from "react"
-import { cn } from "@/lib/utils"
 
 interface NavPillProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode
@@ -9,11 +8,7 @@ interface NavPillProps extends HTMLAttributes<HTMLDivElement> {
 export function NavPill({ children, className, style: _style, ...props }: NavPillProps) {
   return (
     <div
-      className={cn(
-        "fixed z-[9999] flex items-center rounded-[2rem] gap-1.5",
-        "shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]",
-        className,
-      )}
+      className={"fixed z-[9999] flex items-center rounded-[2rem] gap-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] " + className}
       style={{
         transition: "all 300ms var(--dk-ease-out)",
         background: "oklch(from var(--dk-surface-raised) r g b / 0.25)",

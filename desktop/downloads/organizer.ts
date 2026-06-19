@@ -11,9 +11,9 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { cleanGameTitle, extractGroup, parseVersion, type ParsedRelease, type FileInfo } from './game-parser';
-import { executeOrganization, OrganizationPreviewItem } from './installer';
-import { _run, _get, _all, ensureDb } from './db';
+import { cleanGameTitle, extractGroup, parseVersion, type ParsedRelease, type FileInfo } from '../game/parser';
+import { executeOrganization, OrganizationPreviewItem } from '../installer';
+import { _run, _get, _all, ensureDb } from '../db';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

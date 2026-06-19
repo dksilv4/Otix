@@ -6,7 +6,7 @@ import {
   grantPermission,
   revokePermission,
   revokeAllPermissions,
-} from './plugin-db';
+} from './db';
 
 interface PendingRequest {
   pluginId: string;

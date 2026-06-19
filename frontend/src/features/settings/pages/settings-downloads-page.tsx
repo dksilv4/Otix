@@ -1,4 +1,4 @@
-import { DownloadsSection } from '@/old-features/settings/organisms/settings-sections/downloads-section'
+﻿import { DownloadsSection } from '../sections/downloads'
 
 export function SettingsDownloadsPage() {
   return <DownloadsSection />

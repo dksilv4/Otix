@@ -1,21 +1,14 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { ShieldAlert } from 'lucide-react'
-import { cn } from '@/lib/utils/utils'
-
-interface PermissionRequest {
-  requestId: string
-  pluginId: string
-  pluginName: string
-  permission: string
-  reason: string
-}
+import type { PermissionRequest } from '../hooks/usePluginPermissions'
 
 interface PluginPermissionModalProps {
-  request: PermissionRequest | null
+  request: PermissionRequest
   onAllowOnce: (requestId: string) => void
   onAllowAlways: (requestId: string) => void
   onDeny: (requestId: string) => void
+  onClose: () => void
+  isExiting?: boolean
 }
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
@@ -41,50 +34,39 @@ export function PluginPermissionModal({
   onAllowOnce,
   onAllowAlways,
   onDeny,
+  onClose,
+  isExiting,
 }: PluginPermissionModalProps) {
-  const [visible, setVisible] = useState(false)
   const [animateIn, setAnimateIn] = useState(false)
+  const visible = animateIn && !isExiting
 
   useEffect(() => {
-    if (request) {
-      setVisible(true)
-      // Trigger fade-in on next frame
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setAnimateIn(true)
-        })
+        setAnimateIn(true)
       })
-    } else {
-      setAnimateIn(false)
-      const timeout = setTimeout(() => setVisible(false), 200)
-      return () => clearTimeout(timeout)
-    }
-  }, [request])
+    })
+  }, [])
 
   useEffect(() => {
-    if (!request) return
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onDeny(request.requestId)
+        onClose()
       }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [request, onDeny])
+  }, [request, onDeny, onClose])
 
-  if (!visible) return null
-
-  return createPortal(
+  return (
     <div
-      className={cn(
-        'fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200',
-        animateIn ? 'opacity-100' : 'opacity-0',
-      )}
+      className={'fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200 ' + (visible ? 'opacity-100' : 'opacity-0')}
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={() => request && onDeny(request.requestId)}
+        className="absolute inset-0 bg-black/60"
+        onClick={() => { onDeny(request.requestId); onClose() }}
       />
 
       {/* Dialog */}
@@ -92,15 +74,9 @@ export function PluginPermissionModal({
         role="dialog"
         aria-modal="true"
         aria-label="Permission Request"
-        className={cn(
-          'relative w-full max-w-md',
-          'bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl',
-          'p-6 sm:p-8',
-          'transition-all duration-200',
-          animateIn ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4',
-        )}
+        className={'relative w-full max-w-md bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl p-6 sm:p-8 transition-all duration-200 ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}
         style={{
-          animation: animateIn ? 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
+          animation: visible ? 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
         }}
       >
         {/* Header */}
@@ -114,7 +90,7 @@ export function PluginPermissionModal({
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold text-white">Permission Request</h2>
             <p className="text-sm text-white/60 mt-1">
-              <span className="font-medium text-white/80">{request?.pluginName}</span> needs your permission
+              <span className="font-medium text-white/80">{request.pluginName}</span> needs your permission
             </p>
           </div>
         </div>
@@ -128,18 +104,18 @@ export function PluginPermissionModal({
               color: 'var(--primary)',
             }}
           >
-            {request?.permission}
+            {request.permission}
           </div>
         </div>
 
         {/* Description */}
         <div className="mb-6">
           <p className="text-sm text-white/70 leading-relaxed">
-            {request ? getPermissionDescription(request.permission) : ''}
+            {getPermissionDescription(request.permission)}
           </p>
-          {request?.reason && (
+          {request.reason && (
             <p className="text-xs text-white/40 mt-2 italic leading-relaxed">
-              "{request.reason}"
+              &ldquo;{request.reason}&rdquo;
             </p>
           )}
         </div>
@@ -148,45 +124,29 @@ export function PluginPermissionModal({
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             type="button"
-            onClick={() => request && onDeny(request.requestId)}
-            className={cn(
-              'flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap',
-              'h-10 rounded-xl px-4 text-sm font-medium',
-              'hover:bg-white/5 text-white/60 hover:text-white transition-colors',
-              'active:scale-[0.97]',
-            )}
+            onClick={() => { onDeny(request.requestId); onClose() }}
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-white/5 text-white/60 hover:text-white transition-colors active:scale-[0.97]"
           >
             Deny
           </button>
 
           <button
             type="button"
-            onClick={() => request && onAllowOnce(request.requestId)}
-            className={cn(
-              'flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap',
-              'h-10 rounded-xl px-4 text-sm font-medium',
-              'border border-white/10 hover:bg-white/5 text-white/80 hover:text-white transition-colors',
-              'active:scale-[0.97]',
-            )}
+            onClick={() => { onAllowOnce(request.requestId); onClose() }}
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-white/5 text-white/80 hover:text-white transition-colors active:scale-[0.97]"
           >
             Allow Once
           </button>
 
           <button
             type="button"
-            onClick={() => request && onAllowAlways(request.requestId)}
-            className={cn(
-              'flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap',
-              'h-10 rounded-xl px-4 text-sm font-medium',
-              'bg-primary text-primary-foreground hover:bg-primary/90 transition-colors',
-              'active:scale-[0.97]',
-            )}
+            onClick={() => { onAllowAlways(request.requestId); onClose() }}
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors active:scale-[0.97]"
           >
             Always Allow
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   )
 }

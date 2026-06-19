@@ -1,5 +1,5 @@
 import type { PluginPermission } from './types';
-import { getPluginRepos } from './plugin-db';
+import { getPluginRepos } from './db';
 
 export interface RegistryEntry {
   id: string;
