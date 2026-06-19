@@ -1,5 +1,6 @@
 import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle, Shuffle } from 'lucide-react'
 import type { ComponentType } from 'react'
+import type { PluginSettingsTab } from '@/features/_config/slots'
 
 export const DESKTOP_SECTIONS = new Set(['library', 'downloads', 'desktop', 'plugins', 'matching'])
 
@@ -22,3 +23,30 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true },
 ]
+
+export function getNavItems(pluginTabs?: PluginSettingsTab[]): NavItem[] {
+  const pluginItems: NavItem[] = (pluginTabs || []).map(tab => ({
+    id: tab.id,
+    label: tab.label,
+    icon: getIconByName(tab.icon),
+    desktop: true,
+  }))
+
+  const pluginsIdx = NAV_ITEMS.findIndex(item => item.id === 'plugins')
+  const result = [...NAV_ITEMS]
+  if (pluginsIdx >= 0) {
+    result.splice(pluginsIdx, 0, ...pluginItems)
+  }
+  return result
+}
+
+function getIconByName(name: string): ComponentType<{ className?: string }> {
+  const icons: Record<string, ComponentType<{ className?: string }>> = {
+    'gamepad-2': Gamepad2,
+    puzzle: Puzzle,
+    shuffle: Shuffle,
+    download: Download,
+    monitor: Monitor,
+  }
+  return icons[name] || Puzzle
+}

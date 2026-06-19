@@ -1,6 +1,8 @@
 import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
+import { PluginSettingsPage } from './components/PluginSettingsPage'
+import type { PluginSettingsTab } from '@/features/_config/slots'
 
 const SettingsLayout = lazy(() => import('./pages/settings-layout').then(m => ({ default: m.SettingsLayout })))
 const SettingsProfilePage = lazy(() => import('./pages/settings-profile-page').then(m => ({ default: m.SettingsProfilePage })))
@@ -14,9 +16,8 @@ const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
 const SettingsMatchingPage = lazy(() => import('./pages/settings-matching-page').then(m => ({ default: m.SettingsMatchingPage })))
-const SettingsEpicLibraryPage = lazy(() => import('./pages/settings-epic-library-page').then(m => ({ default: m.SettingsEpicLibraryPage })))
 
-export function createSettingsRoutes(rootRoute: AnyRoute) {
+export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/settings',
@@ -91,17 +92,19 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     component: SettingsDesktopPage,
   })
 
-  const settingsEpicLibraryRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/epic-library',
-    component: SettingsEpicLibraryPage,
-  })
-
   const settingsPluginsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/plugins',
     component: SettingsPluginsPage,
   })
+
+  const pluginRoutes = (pluginTabs || []).map(tab =>
+    createRoute({
+      getParentRoute: () => settingsRoute,
+      path: tab.path.replace('/settings/', ''),
+      component: () => <PluginSettingsPage tab={tab} />,
+    })
+  )
 
   return [
     settingsRoute,
@@ -117,6 +120,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute) {
     settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
-    settingsEpicLibraryRoute,
+    ...pluginRoutes,
   ]
 }
