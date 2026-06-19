@@ -5,11 +5,7 @@ import fs from 'fs'
 import Database from 'better-sqlite3'
 import type { PluginManifest, PluginPermission } from './types'
 import { createWorkerBridge, type BridgeDependencies } from './worker-bridge'
-
-// IsolatedEventBus type imported from the old event-bus.ts does not exist yet —
-// Task 3.4 rewrites event-bus.ts and exports IsolatedEventBus.
-// Until then, we type the constructor parameter as `any` to pass tsc.
-type IsolatedEventBus = any
+import { IsolatedEventBus } from './event-bus'
 
 export class PluginRuntime {
   public readonly pluginId: string

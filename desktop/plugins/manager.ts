@@ -281,7 +281,7 @@ export class PluginManager {
     // Check compatibility at enable time too (app may have been updated since install)
     const compat = checkPluginCompatibility(info.version);
     if (!compat.ok) {
-      this.pluginsRepo.updateStatus(pluginId, 'error');
+      this.pluginsRepo.updateStatus(pluginId, 'error', `Plugin requires Otix v${compat.required} or higher (current: ${app.getVersion()})`);
       throw new Error(`Plugin requires Otix v${compat.required} or higher (current: ${app.getVersion()})`);
     }
 
@@ -328,7 +328,7 @@ export class PluginManager {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[PluginManager] Failed to enable plugin ${pluginId}: ${message}`);
-      this.pluginsRepo.updateStatus(pluginId, 'error');
+      this.pluginsRepo.updateStatus(pluginId, 'error', message);
       throw err;
     }
   }
@@ -684,7 +684,7 @@ export class PluginManager {
     };
 
     // ── Event subscriber ─────────────────────────────────────────────
-    const handlerToListener = new Map<Function, Function>();
+    const handlerToUnsubscribe = new Map<Function, () => void>();
 
     const events: EventSubscriber = {
       on: (event, handler) => {
@@ -696,23 +696,16 @@ export class PluginManager {
         const listener = (payload: unknown) => {
           handler(payload as never);
         };
-        handlerToListener.set(
-          handler as Function,
-          listener as Function
-        );
-        (eventBus as any).on(event, listener);
-        const unsubscribe = () => {
-          (eventBus as any).off(event, listener);
-          handlerToListener.delete(handler as Function);
-        };
+        const unsubscribe = eventBus.on(event, listener, pluginId);
+        handlerToUnsubscribe.set(handler as Function, unsubscribe);
         subscriptions.push(unsubscribe);
         return unsubscribe;
       },
       off: (event, handler) => {
-        const listener = handlerToListener.get(handler as Function);
-        if (listener) {
-          (eventBus as any).off(event, listener);
-          handlerToListener.delete(handler as Function);
+        const unsubscribe = handlerToUnsubscribe.get(handler as Function);
+        if (unsubscribe) {
+          unsubscribe();
+          handlerToUnsubscribe.delete(handler as Function);
         }
       },
     };
