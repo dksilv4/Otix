@@ -13,7 +13,7 @@ import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
-import { initAllDatabases, PluginsRepository } from './db';
+import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
@@ -487,6 +487,9 @@ app.on('ready', async () => {
   app.on('before-quit', () => {
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
+    try { closeAllConnections() } catch (err) {
+      console.error('[main] Failed to close database connections:', err);
+    }
   });
 
   // ── Scheduled update check ──
@@ -507,6 +510,9 @@ app.on('ready', async () => {
 app.on('window-all-closed', () => {
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
+  try { closeAllConnections() } catch (err) {
+    console.error('[main] Failed to close database connections:', err);
+  }
   // Kill any running game install
   try {
     const { cancelCurrentInstall } = require('./installer');
