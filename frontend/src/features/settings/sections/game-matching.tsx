@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { Search, Loader2, Gamepad2 } from 'lucide-react'
 import type { LocalGame } from '@/old-features/game-scanner/types'
 import { useLocalGames } from '@/old-features/game-scanner/game-queries'
@@ -23,6 +23,13 @@ export function GameMatchingSection() {
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
   const claimMutation = useClaimGame()
+
+  // Refresh when plugin scan saves games
+  useEffect(() => {
+    const handler = () => refetch()
+    window.addEventListener('scanned-games-updated', handler)
+    return () => window.removeEventListener('scanned-games-updated', handler)
+  }, [refetch])
   const unclaimMutation = useUnclaimGame()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
@@ -98,15 +105,16 @@ export function GameMatchingSection() {
   // Unmatch a game
   const handleUnmatch = useCallback(async (game: LocalGame) => {
     const mediaId = game.data?.id || game.otixMediaId
-    if (!mediaId) return
+    if (!game.id) return
     try {
-      // Clear the match via IPC
       const api = (await import('@/lib/desktop/api')).getDesktopAPI()
       if (api) {
-        await api.saveLocalGamesMapEntry(mediaId, null as unknown as LocalGame)
+        await api.unmatchGame(game.id)
       }
-      // Unclaim on backend
-      unclaimMutation.mutate({ mediaType: 'game', mediaId })
+      // Unclaim on backend if we have the media ID
+      if (mediaId) {
+        unclaimMutation.mutate({ mediaType: 'game', mediaId })
+      }
       await refreshGames()
     } catch (err) {
       console.error('Unmatch failed:', err)

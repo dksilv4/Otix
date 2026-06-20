@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type ChangeEvent, type ReactNode } from 'react'
-import { X, Loader2, CheckCircle2, AlertCircle, Lock } from 'lucide-react'
+import { X, Loader2, CheckCircle2, AlertCircle, Lock, Gamepad2, LogOut, RefreshCw } from 'lucide-react'
 import { SlidePanel } from '@/lib/modals'
+import { batchMatchAndSave } from '@/features/plugins/utils/matching'
 
 interface PluginConfigField {
   type: string
@@ -190,6 +191,191 @@ function ConfigField({
   }
 }
 
+function PluginAuthSection({
+  pluginId,
+  api,
+}: {
+  pluginId: string
+  api: PluginAPI
+}) {
+  const [authState, setAuthState] = useState<{
+    loading: boolean; connected?: boolean; displayName?: string; message?: string
+  }>({ loading: true })
+  const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState<{ phase: string; current: number; total: number } | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const desktopAPI = (window as any).desktopAPI
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const s = await api.getStatus(pluginId) as any
+      if (s && !s.error) {
+        setAuthState({
+          loading: false,
+          connected: s.connected || s.authenticated || false,
+          displayName: s.displayName,
+          message: s.message,
+        })
+      } else {
+        setAuthState({ loading: false, connected: false, message: s?.error || s?.message })
+      }
+    } catch {
+      setAuthState({ loading: false, connected: false })
+    }
+  }, [api, pluginId])
+
+  useEffect(() => { checkStatus() }, [checkStatus])
+
+  const handleLogin = async () => {
+    setActionLoading('login')
+    try {
+      const urlResult = await api.callData(pluginId, 'auth.getLoginUrl') as any
+      if (!urlResult?.url) {
+        setAuthState(prev => ({ ...prev, message: 'Failed to get login URL' }))
+        return
+      }
+      const winResult = await desktopAPI?.plugin?.openOAuthWindow(urlResult.url, 'id/api/redirect')
+      if (!winResult?.success || !winResult?.code) {
+        if (!winResult?.success) setAuthState(prev => ({ ...prev, message: winResult?.error || 'Login cancelled' }))
+        return
+      }
+      const cbRes = await api.callData(pluginId, 'auth.handleCallback', winResult.code) as any
+      if (cbRes?.success) {
+        await checkStatus()
+        if (cbRes.scanResult?.games?.length) {
+          await batchMatchAndSave(cbRes.scanResult.games, desktopAPI)
+        }
+      } else {
+        setAuthState(prev => ({ ...prev, message: cbRes?.error || 'Authorization failed' }))
+      }
+    } catch (err) {
+      setAuthState(prev => ({ ...prev, message: err instanceof Error ? err.message : 'Login failed' }))
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleScan = async () => {
+    setScanning(true)
+    setScanProgress({ phase: 'scanning', current: 0, total: 0 })
+    try {
+      const scanPromise = api.callData(pluginId, 'scan')
+      const pollInterval = setInterval(async () => {
+        try {
+          const prog = await api.callData(pluginId, 'scan.status') as any
+          if (prog?.phase && prog.phase !== 'idle') {
+            setScanProgress({ phase: prog.phase, current: prog.current || 0, total: prog.total || 0 })
+          }
+        } catch { /* polling race */ }
+      }, 1000)
+
+      const result = await scanPromise as any
+      clearInterval(pollInterval)
+
+      if (result?.success && result.games?.length) {
+        const outcome = await batchMatchAndSave(result.games, desktopAPI)
+        setAuthState(prev => ({ ...prev, scanTotal: result.total, scanMatched: outcome.matched }))
+      }
+    } catch (err) {
+      console.error('[PluginConfig] scan failed:', err)
+    } finally {
+      setScanning(false)
+      setScanProgress(null)
+    }
+  }
+
+  const handleLogout = async () => {
+    setActionLoading('logout')
+    try {
+      await api.callData(pluginId, 'auth.logout')
+      setAuthState({ loading: false, connected: false })
+    } catch { /* ignore */ }
+    finally { setActionLoading(null) }
+  }
+
+  if (authState.loading) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 text-sm text-white/50">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Checking connection...
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+          <Gamepad2 className="h-4 w-4" style={{ color: 'var(--primary)' }} />
+        </div>
+
+        {!authState.connected ? (
+          <>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white">Epic Games</p>
+              <p className="text-xs text-white/40">{authState.message || 'Sign in to sync your game library'}</p>
+            </div>
+            <button
+              onClick={handleLogin}
+              disabled={actionLoading === 'login'}
+              className="inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium bg-primary/15 text-primary hover:bg-primary/25 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {actionLoading === 'login' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Gamepad2 className="h-3 w-3" />}
+              {actionLoading === 'login' ? 'Opening...' : 'Sign In'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-white">{authState.displayName || 'Connected'}</p>
+                <span className="inline-flex items-center gap-1 text-[0.625rem] text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5">
+                  <CheckCircle2 className="h-2.5 w-2.5" /> Connected
+                </span>
+              </div>
+              {(authState as any).scanTotal != null && (
+                <p className="text-xs text-white/40 mt-0.5">
+                  {(authState as any).scanTotal} items{(authState as any).scanMatched != null ? ` · ${(authState as any).scanMatched} matched` : ''}
+                </p>
+              )}
+              {scanProgress && scanProgress.phase !== 'done' && (
+                <div className="mt-1.5">
+                  <div className="flex items-center gap-2 text-xs text-white/40">
+                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    {scanProgress.phase === 'library' ? 'Fetching library...' :
+                     scanProgress.phase === 'enriching' ? `Enriching (${scanProgress.current}/${scanProgress.total})` :
+                     scanProgress.phase === 'local-scan' ? 'Scanning local installs...' :
+                     scanProgress.phase === 'merging' ? 'Merging results...' :
+                     'Scanning...'}
+                  </div>
+                  {scanProgress.total > 0 && (
+                    <div className="mt-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${Math.min(100, (scanProgress.current / scanProgress.total) * 100)}%` }} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button onClick={handleScan} disabled={scanning || !!actionLoading}
+                className="inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors disabled:opacity-50"
+                title="Scan library">
+                {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {scanning ? 'Scanning...' : 'Scan'}
+              </button>
+              <button onClick={handleLogout} disabled={actionLoading === 'logout'}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition-colors disabled:opacity-50"
+                title="Disconnect">
+                {actionLoading === 'logout' ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function PluginConfigPanel({
   plugin,
   api,
@@ -215,6 +401,15 @@ export function PluginConfigPanel({
       return acc
     },
     { basicFields: [] as [string, any][], advancedFields: [] as [string, any][] },
+  )
+
+  // Only show advanced section if there are user-facing advanced fields (not auto-managed)
+  const userAdvancedFields = advancedFields.filter(
+    ([_key, field]) => !(field as any).label?.includes('auto-managed'),
+  )
+  // Only show "Test Connection" if plugin has fields worth testing (API keys, hosts, etc.)
+  const hasTestableConfig = [...basicFields, ...userAdvancedFields].some(
+    ([_key, field]) => (field as any).type === 'secret' || (field as any).type === 'string',
   )
 
   // ── Self-managed state ──
@@ -298,6 +493,11 @@ export function PluginConfigPanel({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        {/* Auth / Connection section (only for plugins with slots — OAuth flow plugins) */}
+        {(plugin.manifest as any).slots?.length > 0 && (
+          <PluginAuthSection pluginId={plugin.id} api={api} />
+        )}
+
         {status && !status.error && (
           <div className="mb-6 p-4 rounded-xl bg-white/5 space-y-2">
             <h4 className="text-xs font-medium text-white/40 uppercase tracking-wide">Status</h4>
@@ -337,12 +537,12 @@ export function PluginConfigPanel({
           />
         ))}
 
-        {advancedFields.length > 0 && (
+        {userAdvancedFields.length > 0 && (
           <div className="pt-5">
             <h3 className="text-sm font-medium text-white/60 mb-4">Advanced Settings</h3>
             {connectionConfirmed ? (
               <div className="space-y-5">
-                {advancedFields.map(([key, field]) => (
+                {userAdvancedFields.map(([key, field]) => (
                   <ConfigField key={key} field={field} value={configValues[key]} onChange={(val) => handleFieldChange(key, val)} customRenderers={customRenderers} fieldPath={key} />
                 ))}
               </div>
@@ -355,7 +555,7 @@ export function PluginConfigPanel({
           </div>
         )}
 
-        {basicFields.length === 0 && advancedFields.length === 0 && (
+        {basicFields.length === 0 && userAdvancedFields.length === 0 && (
           <p className="text-sm text-white/40">No configurable settings for this plugin.</p>
         )}
 
@@ -379,18 +579,20 @@ export function PluginConfigPanel({
       <div className="px-6 py-4 flex items-center justify-between">
         <p className="text-xs text-white/30">{manifest.version ? `v${manifest.version}` : ''}</p>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleTest}
-            disabled={testing}
-            className="inline-flex items-center gap-2 h-10 rounded-xl px-4 text-sm font-medium border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-          >
-            {testing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4" />
-            )}
-            Test Connection
-          </button>
+          {hasTestableConfig && (
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className="inline-flex items-center gap-2 h-10 rounded-xl px-4 text-sm font-medium border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              {testing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              Test Connection
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}

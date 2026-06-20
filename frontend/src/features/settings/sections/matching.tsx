@@ -1,5 +1,7 @@
 import { Shuffle } from 'lucide-react'
 import { GameMatchingSection } from './game-matching'
+import { PluginSlot } from '../components/PluginSlot'
+import { getPluginAPI } from '../components/PluginSettings'
 
 export function MatchingSection() {
   return (
@@ -15,6 +17,8 @@ export function MatchingSection() {
           </p>
         </div>
       </div>
+
+      <PluginSlot location="matching:scan" pluginApi={getPluginAPI()!} />
 
       <GameMatchingSection />
     </div>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Loader2, Gamepad2, CheckCircle2, AlertCircle, LogOut, RefreshCw } from 'lucide-react'
 import type { PluginAPI } from './PluginSettings'
+import { batchMatchAndSave } from '@/features/plugins/utils/matching'
 
 interface SlotPluginData {
   type: string
@@ -19,6 +20,8 @@ interface Props {
   location: string
   pluginApi: PluginAPI
 }
+
+const API_BASE = (window as any).desktopAPI?.getApiBaseUrl?.() || 'http://127.0.0.1:8000/api'
 
 export function PluginSlot({ location, pluginApi }: Props) {
   const [slotData, setSlotData] = useState<SlotEntry[]>([])
@@ -58,6 +61,9 @@ export function PluginSlot({ location, pluginApi }: Props) {
 function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: PluginAPI }) {
   const [status, setStatus] = useState<any>(entry.data?.status || {})
   const [loading, setLoading] = useState(false)
+  const [scanProgress, setScanProgress] = useState<{ phase: string; current: number; total: number } | null>(null)
+  const desktopAPI = (window as any).desktopAPI
+  const autoScanned = useRef(false)
 
   // Refresh status
   const refreshStatus = async () => {
@@ -65,68 +71,126 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
       try {
         const res = await pluginApi.callData(entry.pluginId, entry.data.actions.status) as any
         if (res) setStatus(res)
-      } catch {}
+      } catch { /* plugin may not respond */ }
     }
   }
 
-  useEffect(() => { refreshStatus() }, [entry.pluginId])
+  const doScan = useCallback(async () => {
+    await handleAction('scan')
+  }, [entry.pluginId])
+
+  useEffect(() => {
+    refreshStatus()
+    // Retry after plugin worker is ready (delayed mount timing)
+    const t = setTimeout(refreshStatus, 2000)
+    return () => clearTimeout(t)
+  }, [entry.pluginId])
+
+  // Auto-scan on connect for matching slots (no login button = already authenticated)
+  useEffect(() => {
+    if (!autoScanned.current && status?.connected && !status?.total && entry.data?.actions?.scan && !entry.data?.actions?.login) {
+      autoScanned.current = true
+      doScan()
+    }
+  }, [status?.connected, status?.total, entry.data?.actions])
+
+  const loginFlow = async (): Promise<boolean> => {
+    // 1. Get auth URL from plugin
+    const getLoginUrlMethod = entry.data?.actions?.['login']
+    if (!getLoginUrlMethod) return false
+
+    const urlResult = await pluginApi.callData(entry.pluginId, getLoginUrlMethod) as any
+    if (!urlResult?.url) return false
+
+    // 2. Open OAuth window
+    const windowResult = await desktopAPI?.plugin?.openOAuthWindow(
+      urlResult.url,
+      'id/api/redirect',
+    )
+    if (!windowResult?.success || !windowResult?.code) return false
+
+    // 3. Handle callback with auth code
+    const handleCallbackMethod = entry.data?.actions?.['handleCallback'] || 'auth.handleCallback'
+    const cbRes = await pluginApi.callData(entry.pluginId, handleCallbackMethod, windowResult.code) as any
+    if (cbRes?.success) {
+      setStatus((prev: any) => ({ ...prev, connected: true, displayName: cbRes.displayName }))
+      return true
+    }
+    return false
+  }
 
   const handleAction = async (action: string) => {
-    if (!entry.data?.actions?.[action]) return
+    const actionMethod = entry.data?.actions?.[action]
+    if (!actionMethod) return
+
     setLoading(true)
     try {
-      const actionMethod = entry.data.actions[action]  // "scan", "auth.login", etc
-      const result = await pluginApi.callData(entry.pluginId, actionMethod)
+      // ── Login ──
+      if (action === 'login') {
+        await loginFlow()
+      }
 
-      // Handle login — opens BrowserWindow, returns code
-      if (action === 'login' && result?.code) {
-        const cbRes = await pluginApi.callData(entry.pluginId, 'auth.handleCallback', result.code)
-        if (cbRes?.success) {
-          setStatus((prev: any) => ({ ...prev, connected: true, displayName: cbRes.displayName }))
-          // Auto-scan after login
-          if (entry.data?.actions?.scan) {
-            const scanRes = await pluginApi.callData(entry.pluginId, entry.data.actions.scan)
-            if (scanRes?.success) {
-              setStatus((prev: any) => ({ ...prev, total: scanRes.total }))
+      // ── Scan ──
+      else if (action === 'scan') {
+        setScanProgress({ phase: 'scanning', current: 0, total: 0 })
+
+        // Start scan (async in plugin)
+        const scanPromise = pluginApi.callData(entry.pluginId, actionMethod)
+
+        // Poll progress while scanning
+        const pollInterval = setInterval(async () => {
+          try {
+            const prog = await pluginApi.callData(entry.pluginId, 'scan.status') as any
+            if (prog && prog.phase !== 'idle') {
+              setScanProgress({ phase: prog.phase, current: prog.current || 0, total: prog.total || 0 })
             }
-          }
+          } catch { /* polling may race */ }
+        }, 1000)
+
+        const result = await scanPromise as any
+        clearInterval(pollInterval)
+        setScanProgress(null)
+
+        if (result?.success && result.games?.length) {
+          // Map plugin game format to MatchableGame format
+          const mappedGames = result.games.map((g: any) => ({
+            id: g.appName || g.catalogItemId || g.title,
+            title: g.title || g.appName,
+            developer: g.developer || g.publisher || null,
+            publisher: g.publisher || g.developer || null,
+            appName: g.appName,
+            namespace: g.namespace,
+            catalogItemId: g.catalogItemId,
+            platform: 'epic',
+            exePath: g.installPath || null,
+            installDir: g.installPath || null,
+            posterUrl: g.posterUrl || null,
+            logoUrl: g.logoUrl || null,
+          }))
+          // Batch match + save via shared utility
+          const outcome = await batchMatchAndSave(mappedGames, desktopAPI, API_BASE)
+          setStatus((prev: any) => ({
+            ...prev,
+            total: result.total,
+            matched: outcome.matched,
+          }))
+          // Notify matching section to refresh
+          window.dispatchEvent(new CustomEvent('scanned-games-updated'))
+        } else if (result?.success) {
+          setStatus((prev: any) => ({ ...prev, total: result.total || 0, matched: 0 }))
         }
       }
 
-      // Handle scan
-      if (action === 'scan' && result?.success) {
-        setStatus((prev: any) => ({ ...prev, total: result.total }))
-        // Save to scanned games DB
-        const desktopAPI = (window as any).desktopAPI
-        if (desktopAPI?.saveScannedGames && result.games?.length) {
-          const toSave = result.games.map((g: any) => ({
-            id: 'epic_' + g.namespace + '_' + g.catalogItemId,
-            title: g.title, exePath: g.exePath || g.installDir || '',
-            installDir: g.installDir || '', platform: 'epic' as const,
-            posterUrl: g.posterUrl || undefined, iconUrl: g.logoUrl || undefined,
-            sources: [{ source: 'epic', appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, contentType: g.contentType }],
-          }))
-          await desktopAPI.saveScannedGames(toSave)
-          // Batch match
-          try {
-            const token = localStorage.getItem('otix-access-token')
-            const apiBase = (window as any).desktopAPI?.getApiBaseUrl?.() || 'http://127.0.0.1:8000/api'
-            const matchRes = await fetch(apiBase + '/media/match/batch', {
-              method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-              body: JSON.stringify({ games: result.games.map((g: any) => ({ title: g.title, developer: g.developer || null, external_ids: [{ source: 'epic', id: g.appName || g.catalogItemId }], media_type: 'game' })) }),
-            })
-            if (matchRes.ok) {
-              const matchData = await matchRes.json()
-              const matches = matchData.matches || []
-              for (let i = 0; i < Math.min(result.games.length, matches.length); i++) {
-                const m = matches[i]
-                if (m?.confidence > 0 && m?.media_item_id) {
-                  await desktopAPI.acceptSuggestion('epic_' + result.games[i].namespace + '_' + result.games[i].catalogItemId, { id: m.media_item_id, title: m.title, slug: m.media_item_id || '' })
-                }
-              }
-            }
-          } catch {}
-        }
+      // ── Logout ──
+      else if (action === 'logout') {
+        await pluginApi.callData(entry.pluginId, actionMethod)
+        setStatus({ connected: false })
+        setScanProgress(null)
+      }
+
+      // ── Generic action ──
+      else {
+        await pluginApi.callData(entry.pluginId, actionMethod)
       }
     } catch (err) {
       console.error('[PluginSlot] action failed:', action, err)
@@ -152,18 +216,40 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
             </span>
           </div>
           {connected && status?.total != null && (
-            <p className="text-xs text-white/40 mt-0.5">{status.total} items</p>
+            <p className="text-xs text-white/40 mt-0.5">
+              {status.total} items{status.matched != null ? ` · ${status.matched} matched` : ''}
+            </p>
           )}
           {connected && status?.displayName && (
             <p className="text-xs text-white/40 mt-0.5">{status.displayName}</p>
+          )}
+          {scanProgress && scanProgress.phase !== 'idle' && scanProgress.phase !== 'done' && (
+            <div className="mt-1.5">
+              <div className="flex items-center gap-2 text-xs text-white/40">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                {scanProgress.phase === 'library' ? 'Fetching library...' :
+                 scanProgress.phase === 'enriching' ? `Enriching (${scanProgress.current}/${scanProgress.total})` :
+                 scanProgress.phase === 'local-scan' ? 'Scanning local installs...' :
+                 scanProgress.phase === 'merging' ? 'Merging results...' :
+                 'Scanning...'}
+              </div>
+              {scanProgress.total > 0 && (
+                <div className="mt-1 h-0.5 rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.min(100, (scanProgress.current / scanProgress.total) * 100)}%` }}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           {connected ? (
             <>
-              <button onClick={() => handleAction('scan')} disabled={loading}
+              <button onClick={() => handleAction('scan')} disabled={loading || !!scanProgress}
                 className="inline-flex items-center gap-1.5 h-7 rounded-lg px-2.5 text-[0.625rem] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors disabled:opacity-50">
-                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                {loading && !scanProgress ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                 Scan
               </button>
               {entry.data?.actions?.logout && (

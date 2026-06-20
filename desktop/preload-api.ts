@@ -375,6 +375,7 @@ export interface IDesktopAPI {
   getGameById: (id: string) => Promise<LocalGame | null>;
   getGameCount: (filter: unknown) => Promise<number>;
   acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
+  unmatchGame: (gameId: string) => Promise<void>;
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;
 
@@ -493,6 +494,7 @@ export interface IDesktopAPI {
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
     removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
+    openOAuthWindow: (url: string, redirectPattern: string) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
 }
 

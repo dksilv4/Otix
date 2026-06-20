@@ -164,4 +164,72 @@ export function registerPluginIPC(
   ipcMain.handle('plugin:get-api-base-url', async () => {
     return pluginManager.getApiBaseUrl()
   })
+
+  // ── OAuth window ──
+  ipcMain.handle('plugin:open-oauth-window', async (event, url: string, redirectPattern: string) => {
+    validateSender(event)
+    assertString(url, 'url')
+    assertString(redirectPattern, 'redirectPattern')
+
+    return new Promise((resolve) => {
+      const win = new BrowserWindow({
+        width: 800,
+        height: 700,
+        title: 'Sign In',
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      })
+
+      let resolved = false
+
+      const handleRedirect = (navUrl: string) => {
+        if (resolved) return
+        if (navUrl.includes(redirectPattern)) {
+          try {
+            const u = new URL(navUrl)
+            const code = u.searchParams.get('authorizationCode') || u.searchParams.get('code')
+            if (code) {
+              // Code in URL — capture immediately
+              resolved = true
+              win.close()
+              resolve({ success: true, code, redirectUrl: navUrl })
+            }
+            // No code yet — page will render JSON body, let did-navigate handle it
+          } catch { /* parse error — let did-navigate try */ }
+        }
+      }
+
+      win.webContents.on('will-redirect', (_event: any, navUrl: string) => handleRedirect(navUrl))
+      win.webContents.on('will-navigate', (_event: any, navUrl: string) => handleRedirect(navUrl))
+
+      win.webContents.on('did-finish-load', async () => {
+        if (resolved) return
+        const currentUrl = win.webContents.getURL()
+        if (currentUrl.includes(redirectPattern)) {
+          try {
+            const content = await win.webContents.executeJavaScript('document.body.innerText')
+            const data = JSON.parse(content)
+            if (data.authorizationCode) {
+              resolved = true
+              win.close()
+              resolve({ success: true, code: data.authorizationCode })
+              return
+            }
+          } catch { /* page may not have JSON body yet */ }
+        }
+      })
+
+      win.on('closed', () => {
+        if (!resolved) {
+          resolved = true
+          resolve({ success: false, error: 'Login window closed' })
+        }
+      })
+
+      win.loadURL(url)
+    })
+  })
 }

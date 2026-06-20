@@ -256,6 +256,18 @@ interface SuggestionData {
   iconUrl?: string | null
 }
 
+export function unmatchGame(gameId: string): void {
+  db().prepare(`
+    UPDATE scanned_games SET
+      otix_media_id = NULL, otix_media_title = NULL, otix_media_slug = NULL,
+      otix_poster_url = NULL, otix_backdrop_url = NULL,
+      otix_textless_poster_url = NULL, otix_logo_url = NULL, otix_icon_url = NULL,
+      otix_match_suggestion = NULL, otix_confidence = NULL,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(gameId);
+}
+
 export function acceptSuggestion(
   gameId: string,
   suggestion?: SuggestionData,

@@ -66,13 +66,18 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
   if (rpcMsg.type === 'rpc' && rpcMsg.method) {
     try {
       // Plugin exports (status, test, slotRender, handleAction, data) all receive ctx as first arg
-      const method = pluginModule?.[rpcMsg.method]
+      let method = pluginModule?.[rpcMsg.method]
       if (typeof method === 'function') {
         const result = await method(ctx, ...(rpcMsg.args || []))
         parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result } as MainToWorkerMessage)
       } else if (rpcMsg.method === 'data' && typeof pluginModule?.data !== 'undefined') {
         // 'data' is a static object, not a function
         parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result: pluginModule.data } as MainToWorkerMessage)
+      } else if (pluginModule?.data && typeof pluginModule.data[rpcMsg.method] === 'function') {
+        // Fallback: method nested under .data (e.g. pluginModule.data['auth.login'])
+        method = pluginModule.data[rpcMsg.method]
+        const result = await method(ctx, ...(rpcMsg.args || []))
+        parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result } as MainToWorkerMessage)
       } else {
         parentPort!.postMessage({
           type: 'rpc-error', id: rpcMsg.id,
@@ -111,9 +116,16 @@ const ctx = {
     all: <T>(sql: string, params?: unknown[]) => rpc('db.all', sql, params) as Promise<T[]>,
   },
   notifications: {
-    send: (title: string, body: string) => rpc('notifications.send', title, body),
+    send: (titleOrOpts: string | { title: string; body: string; type?: string }, body?: string) => {
+      if (typeof titleOrOpts === 'object') {
+        return rpc('notifications.send', titleOrOpts.title, titleOrOpts.body)
+      }
+      return rpc('notifications.send', titleOrOpts, body)
+    },
   },
   logger: {
+    debug: (msg: string, data?: unknown) =>
+      sendMessage({ type: 'log', level: 'debug', msg: data ? `${msg} ${JSON.stringify(data)}` : msg }),
     info: (msg: string, data?: unknown) =>
       sendMessage({ type: 'log', level: 'info', msg: data ? `${msg} ${JSON.stringify(data)}` : msg }),
     warn: (msg: string, data?: unknown) =>

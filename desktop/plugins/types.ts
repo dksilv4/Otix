@@ -162,7 +162,7 @@ export type WorkerToMainMessage =
   | { type: 'rpc'; id: string; method: string; args: unknown[] }
   | { type: 'rpc-result'; id: string; result: unknown }
   | { type: 'rpc-error'; id: string; error: string }
-  | { type: 'log'; level: 'info' | 'warn' | 'error'; msg: string }
+  | { type: 'log'; level: 'debug' | 'info' | 'warn' | 'error'; msg: string }
   | { type: 'slot-render'; id: string; location: string }
   | { type: 'handle-action'; id: string; actionKey: string; payload: unknown }
 

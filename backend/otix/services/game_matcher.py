@@ -1,20 +1,24 @@
-"""Game matching service — multi-stage pipeline for matching games to the catalog.
+"""Game matching service — multi-phase pipeline returning ranked candidates.
 
-Matching pipeline stages:
+Matching pipeline:
 
-    1. External ID match (local database lookup)
-    2. IGDB cross-reference (via ``external_games`` API)
-    3. IGDB title search (scored heuristics)
-    4. PostgreSQL trigram similarity (fallback)
+    1. Direct external-ID resolution (external_ids table) — confidence 1.0
+    2. Otix catalog search (exact title → ILIKE → trigram) — 0.4–0.95
+    3. IGDB provider search (cross-ref → title search) — 0.7–0.9
+    4. Candidate assembly + auto-match decision
 
-Each stage only processes games that remain unmatched after the previous
-stage, ensuring the most reliable signals are used first.
+Phase 4 applies auto-match rules and returns either a single confirmed
+match (``auto_match``) or a ranked list of ``candidates`` for the user
+to pick from.  No game is imported into the catalog during matching —
+imports only happen via the confirmation endpoint.
+
 """
 
 from __future__ import annotations
 
 import asyncio
 import re
+import unicodedata
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -23,9 +27,14 @@ from redis.asyncio import Redis
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import ExternalID, MediaItem
+from otix.domain.media import ExternalID, MatchSkip, MediaItem
 from otix.providers.igdb.client import IGDBProvider
-from otix.schemas.media import GameMatchRequest, GameMatchResult
+from otix.schemas.media import (
+    GameMatchCandidate,
+    GameMatchRequest,
+    GameMatchResponse,
+    MatchType,
+)
 from otix.services.external_id_service import ExternalIDService
 
 if TYPE_CHECKING:
@@ -34,7 +43,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 # ── Platform name normalization ────────────────────────────────────────────
-# Maps IGDB / Epic platform display names to Otix platform slugs.
+# Maps IGDB / provider display names to Otix platform slugs.
 
 PLATFORM_NORMALIZATION: dict[str, str] = {
     "PC (Microsoft Windows)": "windows",
@@ -56,63 +65,87 @@ PLATFORM_NORMALIZATION: dict[str, str] = {
     "Stadia": "stadia",
 }
 
-# ── Title normalisation regexes (matches media_service.py) ──────────────────
-
-_RE_SCENE_GROUPS = re.compile(
-    r"[-.\s](?:RUNE|CODEX|FLT|PLAZA|HOODLUM|SKIDROW|TENOKE|DODI|"
-    r"ElAmigos|Razor1911|FAIRLIGHT|GOLDBERG|P2P|EMPRESS|FCKDRM|"
-    r"STEAMPUNKS|CPY|RELOADED|PROPHET|TiNYiSO|BAT|ALI213|3DM|GOG|FCK)",
-    re.IGNORECASE,
-)
-_RE_VERSION = re.compile(r"[\[\(]?\s*v?\d+(?:\.\d+)+(?:\w\d*)?\s*[\]\)]?")
-_RE_EDITION = re.compile(
-    r"(?:\b(?:goty|game of the year|definitive|enhanced|remastered|"
-    r"ultimate|complete|deluxe|collectors|special|legendary|"
-    r"anniversary|vr|directors? cut)\s*edition\b)",
-    re.IGNORECASE,
-)
-_RE_EDITION_WORDS = re.compile(
-    r"\b(?:goty|remastered|definitive|enhanced|complete|deluxe|"
-    r"legendary|anniversary|repack|multilingual)\b",
-    re.IGNORECASE,
-)
+# ── Simple title normalization (unicode-aware, no regex kitchen sink) ──────
 
 
 def _normalize_title(raw: str) -> str:
-    """Normalize a game title for fuzzy matching.
+    """Normalize a game title for comparison.
 
-    Strips scene-group tags, version numbers, edition suffixes,
-    dots, underscores, and collapses whitespace.
-
-    This exact logic is duplicated from
-    ``media_service._match_local_games_by_trigram`` to keep the
-    matcher self-contained.
+    - Decompose unicode (accents → base)
+    - Strip ™®© and similar symbols
+    - Collapse whitespace
     """
-    clean = raw
-    clean = _RE_SCENE_GROUPS.sub("", clean)
-    clean = _RE_VERSION.sub("", clean)
-    clean = _RE_EDITION.sub("", clean)
-    clean = _RE_EDITION_WORDS.sub("", clean)
-    clean = clean.replace(".", " ").replace("_", " ")
+    clean = unicodedata.normalize("NFKD", raw)
+    # Strip common special chars but keep letters, digits, spaces, hyphens, colons
+    clean = re.sub(r"[™®©]", "", clean)
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
+
+
+def _title_words(title: str) -> set[str]:
+    """Return lowercase, normalized title words for loose matching."""
+    norm = _normalize_title(title).lower()
+    return set(norm.split())
+
+
+# ── IGDB helpers ───────────────────────────────────────────────────────────
+
+
+def _igdb_cover_url(cover: object) -> str | None:
+    """Build an IGDB cover URL from a cover dict / image_id."""
+    if isinstance(cover, dict):
+        image_id = cover.get("image_id")
+    elif isinstance(cover, str):
+        image_id = cover
+    else:
+        return None
+    if not image_id:
+        return None
+    return f"https://images.igdb.com/igdb/image/upload/t_cover_big/{image_id}.jpg"
+
+
+def _igdb_platforms(raw: list[JSONValue]) -> list[str]:
+    """Extract normalized platform slugs from IGDB platforms list."""
+    out: list[str] = []
+    for p in raw:
+        if not isinstance(p, dict):
+            continue
+        name = p.get("name", "")
+        if isinstance(name, str) and name:
+            slug = PLATFORM_NORMALIZATION.get(name, name.lower())
+            if slug not in out:
+                out.append(slug)
+    return out
 
 
 # ── Service class ──────────────────────────────────────────────────────────
 
 
 class GameMatcher:
-    """Multi-stage game matching service.
+    """Multi-phase game matching service.
 
-    Stages are run sequentially; each stage only processes games that
-    remain unmatched after the previous one.  This ensures the most
-    reliable signals are used first:
+    Phases run sequentially; each phase only processes games that remain
+    unmatched after the previous phase.
 
-    1. **External ID** (local ``external_ids`` table)  — confidence 1.0
-    2. **IGDB cross-reference** (``/external_games`` API)  — 0.85 / 0.9
-    3. **IGDB title search** (scored heuristics)  — 0.7 / 0.8
-    4. **Trigram similarity** (PostgreSQL ``pg_trgm``)  — 0.3–0.6
+    1. **Direct** (external_ids table) — confidence 1.0
+    2. **Otix catalog** (exact → ILIKE → trigram) — 0.4–0.95
+    3. **IGDB provider** (cross-ref → title search) — 0.7–0.9
+    4. **Assemble** — merge, rank, auto-match decision
+
+    Auto-match rules:
+        - match_type "direct" → always auto-match
+        - confidence ≥ 0.95 → auto-match
+        - confidence ≥ 0.85 AND gap to 2nd ≥ 0.20 → auto-match
+        - otherwise → return candidates for user selection
     """
+
+    # IGDB search concurrency
+    IGDB_CHUNK_SIZE = 50
+    IGDB_SEARCH_LIMIT = 20
+    IGDB_SEARCH_FIELDS = (
+        "id,name,slug,cover.image_id,first_release_date,"
+        "platforms.name,involved_companies.company.name"
+    )
 
     def __init__(self, session: AsyncSession, redis: Redis) -> None:
         self._session = session
@@ -121,90 +154,89 @@ class GameMatcher:
 
     # ── Public API ─────────────────────────────────────────────────────────
 
-    async def match_single(self, request: GameMatchRequest) -> GameMatchResult:
-        """Match a single game through all four stages.
-
-        Returns a ``GameMatchResult``. If no stage finds a match,
-        ``confidence`` is 0.0 and ``match_type`` is ``"none"``.
-        """
-        results: list[GameMatchResult | None] = [None]
-        idxs = await self._stage1_external_ids([request], [0], results)
-        if idxs:
-            idxs = await self._stage2_igdb_crossref([request], idxs, results)
-        if idxs:
-            idxs = await self._stage3_igdb_search([request], idxs, results)
-        if idxs:
-            await self._stage4_trigram([request], idxs, results)
-        return results[0] or GameMatchResult(
-            title=request.title,
-            confidence=0.0,
-            match_type="none",
-        )
+    async def match_single(self, request: GameMatchRequest) -> GameMatchResponse:
+        """Match a single game through all four phases."""
+        results = await self.match_batch([request])
+        return results[0]
 
     async def match_batch(
         self,
         requests: list[GameMatchRequest],
-    ) -> list[GameMatchResult]:
-        """Match multiple games through all four stages.
+    ) -> list[GameMatchResponse]:
+        """Match multiple games through all four phases.
 
-        External-ID lookups are batched by provider for efficiency.
-        Unmatched games fall through each successive stage.
+        Returns one ``GameMatchResponse`` per input request, each
+        containing ranked ``candidates`` and an optional ``auto_match``.
         """
-        results: list[GameMatchResult | None] = [None] * len(requests)
-        idxs = list(range(len(requests)))
-        idxs = await self._stage1_external_ids(requests, idxs, results)
-        if idxs:
-            idxs = await self._stage2_igdb_crossref(requests, idxs, results)
-        if idxs:
-            idxs = await self._stage3_igdb_search(requests, idxs, results)
-        if idxs:
-            await self._stage4_trigram(requests, idxs, results)
-        return [
-            r
-            or GameMatchResult(
-                title=requests[i].title,
-                confidence=0.0,
-                match_type="none",
-            )
-            for i, r in enumerate(results)
-        ]
+        n = len(requests)
+        # Per-request candidate accumulator
+        all_candidates: list[list[GameMatchCandidate]] = [[] for _ in range(n)]
+        # Track which request indices still need processing
+        unmatched: list[int] = list(range(n))
 
-    # ── Stage 1: External-ID lookup (local database) ───────────────────────
+        # ── Phase 1: Direct external-ID resolution ─────────────────────────
+        unmatched = await self._phase1_direct(requests, unmatched, all_candidates)
 
-    async def _stage1_external_ids(
+        # ── Phase 2: Otix catalog search ────────────────────────────────────
+        if unmatched:
+            unmatched = await self._phase2_otix(requests, unmatched, all_candidates)
+
+        # ── Phase 3: IGDB provider search ───────────────────────────────────
+        if unmatched:
+            await self._phase3_igdb(requests, unmatched, all_candidates)
+
+        # ── Phase 4: Assemble, rank, auto-match ─────────────────────────────
+        return self._phase4_assemble(requests, all_candidates)
+
+    # ── Phase 1: Direct external-ID resolution ──────────────────────────────
+
+    async def _phase1_direct(
         self,
         requests: list[GameMatchRequest],
         indices: list[int],
-        results: list[GameMatchResult | None],
+        all_candidates: list[list[GameMatchCandidate]],
     ) -> list[int]:
-        """Match games by their known external IDs (Steam, Epic, GOG, etc.).
+        """Look up external IDs in local DB. Also check match_skips.
 
-        Groups external IDs by provider, then issues one
-        ``batch_find_entity_ids`` call per provider.  Matched games are
-        written into ``results`` with confidence 1.0.
+        For each game with external IDs, queries the external_ids table
+        and the match_skips table.  Matched games get a candidate with
+        confidence 1.0, match_type DIRECT.  Skipped games are excluded
+        from further processing.
         """
-        # Collect {source: {external_id: request_index}} for unmatched items
-        source_ids: dict[str, dict[str, int]] = {}
+        # Collect {source: {external_id: request_index}}
+        source_ids: dict[str, dict[str, list[int]]] = {}
         for idx in indices:
             req = requests[idx]
             if not req.external_ids:
                 continue
             for ref in req.external_ids:
-                source_ids.setdefault(ref.source, {})[ref.id] = idx
+                entry = source_ids.setdefault(ref.source, {})
+                entry.setdefault(ref.id, []).append(idx)
 
         if not source_ids:
             return list(indices)
 
-        # Batch-lookup each source
+        skip_ids: set[tuple[str, str]] = set()
+
         for source, id_map in source_ids.items():
             ext_ids = list(id_map.keys())
+
+            # Check match_skips in parallel with main lookup
+            skip_rows = await self._session.execute(
+                select(MatchSkip.external_id).where(
+                    MatchSkip.provider == source,
+                    MatchSkip.external_id.in_(ext_ids),
+                )
+            )
+            for row in skip_rows.scalars().all():
+                skip_ids.add((source, row))
+
             try:
                 entity_map = await self._eid_svc.batch_find_entity_ids(source, ext_ids)
             except Exception:
                 logger.exception("external ID batch lookup failed", source=source)
                 continue
 
-            # Fetch all matching MediaItems in one go
             entity_ids_to_fetch = list(
                 {eid for eid in entity_map.values() if eid is not None}
             )
@@ -213,257 +245,219 @@ class GameMatcher:
             for ext_id, entity_id in entity_map.items():
                 if not entity_id:
                     continue
-                req_idx = id_map.get(ext_id)
-                if req_idx is None or results[req_idx] is not None:
+                if (source, ext_id) in skip_ids:
                     continue
 
-                mi = media_items.get(entity_id)
-                results[req_idx] = GameMatchResult(
-                    media_item_id=entity_id,
-                    title=requests[req_idx].title,
-                    poster_url=mi.poster_url if mi else None,
-                    confidence=1.0,
-                    match_type="external_id",
-                )
+                for req_idx in id_map.get(ext_id, []):
+                    mi = media_items.get(entity_id)
+                    all_candidates[req_idx].append(
+                        GameMatchCandidate(
+                            media_item_id=entity_id,
+                            title=mi.title if mi else requests[req_idx].title,
+                            poster_url=mi.poster_url if mi else None,
+                            backdrop_url=mi.backdrop_url if mi else None,
+                            release_year=_release_year_from_date(
+                                mi.release_date if mi else None
+                            ),
+                            confidence=1.0,
+                            match_type=MatchType.DIRECT,
+                        )
+                    )
 
-        return [idx for idx in indices if results[idx] is None]
-
-    # ── Stage 2: IGDB cross-reference ──────────────────────────────────────
-
-    async def _stage2_igdb_crossref(
-        self,
-        requests: list[GameMatchRequest],
-        indices: list[int],
-        results: list[GameMatchResult | None],
-    ) -> list[int]:
-        """Cross-reference Steam / Epic IDs via IGDB's ``external_games`` API.
-
-        For each still-unmatched game that carries a Steam or Epic
-        external ID:
-
-        1. Ask IGDB for the matching ``igdb_game_id``.
-        2. If that IGDB game is *already* in our catalog → link with
-           confidence 0.9.
-        3. If not → auto-import via ``_sync_igdb_game`` and link with
-           confidence 0.85 (``is_new=True``).
-        """
-        provider = IGDBProvider(self._redis)
-
-        # Collect IDs by source (first ID per request wins)
-        steam_batch: dict[int, int] = {}
-        epic_batch: dict[str, int] = {}
-        for idx in indices:
-            req = requests[idx]
-            if not req.external_ids:
-                continue
-            for ref in req.external_ids:
-                if ref.source == "steam" and idx not in steam_batch.values():
-                    try:
-                        steam_batch[int(ref.id)] = idx
-                    except (ValueError, TypeError):
-                        pass
-                elif ref.source == "epic" and idx not in epic_batch.values():
-                    epic_batch[ref.id] = idx
-
-        # -- Steam cross-ref --
-        if steam_batch:
-            try:
-                steam_to_igdb = await provider.lookup_steam_app_ids(
-                    list(steam_batch.keys()),
-                )
-            except Exception:
-                logger.exception("IGDB Steam cross-ref failed")
-                steam_to_igdb = {}
-
-            for steam_id, igdb_id in steam_to_igdb.items():
-                req_idx = steam_batch.get(steam_id)
-                if req_idx is None or results[req_idx] is not None:
-                    continue
-                await self._link_or_import_igdb(
-                    requests[req_idx], igdb_id, results, req_idx,
-                )
-
-        # -- Epic cross-ref --
-        if epic_batch:
-            try:
-                epic_to_igdb = await provider.lookup_epic_app_ids(
-                    list(epic_batch.keys()),
-                )
-            except Exception:
-                logger.exception("IGDB Epic cross-ref failed")
-                epic_to_igdb = {}
-
-            for epic_id, igdb_id in epic_to_igdb.items():
-                req_idx = epic_batch.get(epic_id)
-                if req_idx is None or results[req_idx] is not None:
-                    continue
-                await self._link_or_import_igdb(
-                    requests[req_idx], igdb_id, results, req_idx,
-                )
-
-        return [idx for idx in indices if results[idx] is None]
-
-    async def _link_or_import_igdb(
-        self,
-        request: GameMatchRequest,
-        igdb_id: int,
-        results: list[GameMatchResult | None],
-        idx: int,
-    ) -> None:
-        """Link an existing IGDB game or auto-import it.
-
-        Called from ``_stage2_igdb_crossref`` once the IGDB game ID
-        is known.
-        """
-        existing_ext = await self._session.scalar(
-            select(ExternalID).where(
-                ExternalID.provider == "igdb",
-                ExternalID.external_id == str(igdb_id),
-            ),
-        )
-        if existing_ext:
-            entity_id = existing_ext.entity_id or existing_ext.media_item_id
-            if entity_id:
-                mi = await self._fetch_media_item(entity_id)
-                results[idx] = GameMatchResult(
-                    media_item_id=entity_id,
-                    title=request.title,
-                    poster_url=mi.poster_url if mi else None,
-                    confidence=0.9,
-                    match_type="igdb_crossref",
-                )
-        else:
-            new_id = await self._auto_import_igdb(igdb_id)
-            if new_id:
-                mi = await self._fetch_media_item(new_id)
-                results[idx] = GameMatchResult(
-                    media_item_id=new_id,
-                    title=request.title,
-                    poster_url=mi.poster_url if mi else None,
-                    confidence=0.85,
-                    match_type="igdb_crossref",
-                    is_new=True,
-                )
-
-    # ── Stage 3: IGDB title search ─────────────────────────────────────────
-
-    async def _stage3_igdb_search(
-        self,
-        requests: list[GameMatchRequest],
-        indices: list[int],
-        results: list[GameMatchResult | None],
-    ) -> list[int]:
-        """Search IGDB by title for remaining unmatched games.
-
-        Uses enhanced scoring: exact title (+100), slug (+90), contains
-        (+70), developer match (+20), platform overlap (+15), release
-        year within ±1 (+10).  Threshold is 60.
-
-        Requests are processed in chunks of 50 for controlled
-        concurrency.
-        """
-        provider = IGDBProvider(self._redis)
-
-        chunk_size = 50
-        chunks = [
-            indices[i : i + chunk_size]
-            for i in range(0, len(indices), chunk_size)
+        # Return indices that still have no direct match AND aren't skipped
+        return [
+            idx
+            for idx in indices
+            if not any(
+                c.match_type == MatchType.DIRECT for c in all_candidates[idx]
+            )
+            and not any(
+                (ref.source, ref.id) in skip_ids
+                for ref in (requests[idx].external_ids or [])
+            )
         ]
 
-        for chunk in chunks:
-            tasks = [
-                self._search_and_match_one(provider, requests[idx], idx, results)
-                for idx in chunk
-            ]
-            await asyncio.gather(*tasks)
+    # ── Phase 2: Otix catalog search ────────────────────────────────────────
 
-        return [idx for idx in indices if results[idx] is None]
-
-    async def _search_and_match_one(
-        self,
-        provider: IGDBProvider,
-        request: GameMatchRequest,
-        idx: int,
-        results: list[GameMatchResult | None],
-    ) -> None:
-        """Search IGDB for a single game and record the result if found."""
-        try:
-            candidates = await provider.search_games(request.title, limit=20)
-            if not candidates:
-                if ":" in request.title:
-                    short = request.title.split(":")[0].strip()
-                    candidates = await provider.search_games(short, limit=20)
-                if not candidates:
-                    return
-
-            candidate = self._pick_best_igdb_match(candidates, request)
-            if candidate is None:
-                return
-
-            igdb_id = candidate["id"]
-            is_exact = self._is_exact_title_match(candidate, request)
-
-            existing_ext = await self._session.scalar(
-                select(ExternalID).where(
-                    ExternalID.provider == "igdb",
-                    ExternalID.external_id == str(igdb_id),
-                ),
-            )
-            if existing_ext:
-                entity_id = existing_ext.entity_id or existing_ext.media_item_id
-                if entity_id:
-                    mi = await self._fetch_media_item(entity_id)
-                    results[idx] = GameMatchResult(
-                        media_item_id=entity_id,
-                        title=request.title,
-                        poster_url=mi.poster_url if mi else None,
-                        confidence=0.8 if is_exact else 0.7,
-                        match_type="igdb_search" if is_exact else "igdb_fuzzy",
-                    )
-            else:
-                new_id = await self._auto_import_igdb(igdb_id)
-                if new_id:
-                    mi = await self._fetch_media_item(new_id)
-                    results[idx] = GameMatchResult(
-                        media_item_id=new_id,
-                        title=request.title,
-                        poster_url=mi.poster_url if mi else None,
-                        confidence=0.8 if is_exact else 0.7,
-                        match_type="igdb_search" if is_exact else "igdb_fuzzy",
-                        is_new=True,
-                    )
-        except Exception:
-            logger.exception("IGDB search failed", title=request.title)
-
-    # ── Stage 4: Trigram similarity fallback ───────────────────────────────
-
-    async def _stage4_trigram(
+    async def _phase2_otix(
         self,
         requests: list[GameMatchRequest],
         indices: list[int],
-        results: list[GameMatchResult | None],
-    ) -> None:
-        """Fallback: match via PostgreSQL trigram similarity.
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> list[int]:
+        """Search Otix's own catalog in three sub-stages.
 
-        Uses the same ``unnest`` + ``similarity()`` pattern as
-        ``media_service._match_local_games_by_trigram``.  Confidence
-        is clamped to the range [0.3, 0.6].
+        2a. Exact title match (confidence 0.95)
+        2b. ILIKE pattern match (confidence 0.75–0.85)
+        2c. Trigram similarity (confidence 0.3–0.6)
+
+        Each sub-stage only processes indices unmatched by the previous.
         """
-        # Build clean-title index for the unmatched subset
-        title_to_idx = {requests[i].title: i for i in indices}
-        clean_to_raw: dict[str, str] = {}
+        unmatched = list(indices)
+
+        # 2a: Exact title match
+        if unmatched:
+            unmatched = await self._phase2a_exact(requests, unmatched, all_candidates)
+
+        # 2b: ILIKE pattern match
+        if unmatched:
+            unmatched = await self._phase2b_ilike(requests, unmatched, all_candidates)
+
+        # 2c: Trigram similarity
+        if unmatched:
+            unmatched = await self._phase2c_trigram(requests, unmatched, all_candidates)
+
+        return unmatched
+
+    async def _phase2a_exact(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> list[int]:
+        """Exact case-insensitive title match against media_items."""
+        titles = {requests[i].title.strip().lower(): i for i in indices}
+        if not titles:
+            return list(indices)
+
+        rows = await self._session.execute(
+            select(MediaItem).where(
+                MediaItem.media_type == "game",
+                MediaItem.title.in_(
+                    select(MediaItem.title).where(
+                        MediaItem.media_type == "game",
+                    )
+                ),
+            )
+        )
+        # More efficient: use func.lower
+        from sqlalchemy import func
+
+        rows = await self._session.execute(
+            select(MediaItem).where(
+                MediaItem.media_type == "game",
+                func.lower(MediaItem.title).in_([t for t in titles]),
+            )
+        )
+        media_map: dict[str, list[MediaItem]] = {}
+        for mi in rows.scalars().all():
+            key = mi.title.strip().lower()
+            if key in titles:
+                media_map.setdefault(key, []).append(mi)
+
+        matched: set[int] = set()
+        for title_lower, idx in titles.items():
+            items = media_map.get(title_lower, [])
+            for mi in items:
+                dev_match = _developer_overlap(requests[idx].developer, mi)
+                confidence = 0.95 + (0.02 if dev_match else 0.0)
+                all_candidates[idx].append(
+                    GameMatchCandidate(
+                        media_item_id=mi.id,
+                        title=mi.title,
+                        poster_url=mi.poster_url,
+                        backdrop_url=mi.backdrop_url,
+                        release_year=_release_year_from_date(mi.release_date),
+                        confidence=min(confidence, 1.0),
+                        match_type=MatchType.EXACT_TITLE,
+                    )
+                )
+                matched.add(idx)
+
+        return [i for i in indices if i not in matched]
+
+    async def _phase2b_ilike(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> list[int]:
+        """ILIKE pattern match — normalized title is substring of catalog title or vice versa."""
+        from sqlalchemy import or_
+
+        unmatched: list[int] = []
+        idx_to_norm: dict[int, str] = {}
+
+        for i in indices:
+            norm = _normalize_title(requests[i].title)
+            if not norm:
+                unmatched.append(i)
+                continue
+            idx_to_norm[i] = norm
+
+        if not idx_to_norm:
+            return unmatched
+
+        # Build OR clause: for each normalized title, check if it's ILIKE %title%
+        # or the catalog title is ILIKE %normalized%
+        conditions = []
+        for norm in idx_to_norm.values():
+            pattern = f"%{norm}%"
+            conditions.append(
+                or_(
+                    MediaItem.title.ilike(pattern),
+                    MediaItem.title.ilike(
+                        pattern
+                    ),  # same but catches reverse containment via the second check below
+                )
+            )
+
+        # Actually simpler: ILIKE containment both directions
+        # Build query for each normalized title individually for clarity
+        matched: set[int] = set()
+        for i, norm in idx_to_norm.items():
+            if i in matched:
+                continue
+            pattern = f"%{norm}%"
+            rows = await self._session.execute(
+                select(MediaItem).where(
+                    MediaItem.media_type == "game",
+                    or_(
+                        MediaItem.title.ilike(pattern),
+                        # Reverse: catalog title is contained in search
+                        # (handles "Cyberpunk 2077: Phantom Liberty" → "Cyberpunk 2077")
+                    ),
+                ).limit(5)
+            )
+            for mi in rows.scalars().all():
+                # Also check reverse containment
+                mi_lower = mi.title.lower()
+                if norm.lower() in mi_lower or mi_lower in norm.lower():
+                    dev_match = _developer_overlap(requests[i].developer, mi)
+                    confidence = 0.85 if dev_match else 0.75
+                    all_candidates[i].append(
+                        GameMatchCandidate(
+                            media_item_id=mi.id,
+                            title=mi.title,
+                            poster_url=mi.poster_url,
+                            backdrop_url=mi.backdrop_url,
+                            release_year=_release_year_from_date(mi.release_date),
+                            confidence=confidence,
+                            match_type=MatchType.ILIKE,
+                        )
+                    )
+                    matched.add(i)
+
+        return [i for i in indices if i not in matched]
+
+    async def _phase2c_trigram(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> list[int]:
+        """PostgreSQL trigram similarity fallback."""
+        title_to_idx: dict[str, int] = {}
         clean_list: list[str] = []
 
         for i in indices:
-            raw = requests[i].title
-            clean = _normalize_title(raw)
-            if not clean or clean in clean_to_raw:
-                continue
-            clean_to_raw[clean] = raw
-            clean_list.append(clean)
+            clean = _normalize_title(requests[i].title)
+            if clean and clean not in title_to_idx:
+                title_to_idx[clean] = i
+                clean_list.append(clean)
 
         if not clean_list:
-            return
+            return list(indices)
 
         sql = text("""
             SELECT DISTINCT ON (input.clean_title)
@@ -471,6 +465,8 @@ class GameMatcher:
                 mi.id,
                 mi.title,
                 mi.poster_url,
+                mi.backdrop_url,
+                mi.release_date,
                 similarity(mi.title, input.clean_title) AS sim
             FROM unnest(CAST(:titles AS text[])) AS input(clean_title)
             JOIN media_items mi ON mi.media_type = 'game'
@@ -482,85 +478,411 @@ class GameMatcher:
             rows = await self._session.execute(sql, {"titles": clean_list})
         except Exception:
             logger.exception("trigram match query failed")
-            return
+            return list(indices)
 
+        matched: set[int] = set()
         for row in rows.mappings():
             clean_title = row["clean_title"]
-            raw_title = clean_to_raw.get(clean_title)
-            if raw_title is None:
-                continue
-            req_idx = title_to_idx.get(raw_title)
-            if req_idx is None or results[req_idx] is not None:
+            idx = title_to_idx.get(clean_title)
+            if idx is None or idx in matched:
                 continue
 
             sim = float(row["sim"])
             confidence = min(0.6, max(0.3, sim))
-
-            results[req_idx] = GameMatchResult(
-                media_item_id=row["id"],
-                title=raw_title,
-                poster_url=row.get("poster_url"),
-                confidence=confidence,
-                match_type="trigram",
+            dev_match = _developer_overlap(
+                requests[idx].developer,
+                None,  # no MediaItem object, just use raw row
             )
 
-    # ── Auto-import helper ─────────────────────────────────────────────────
-
-    async def _auto_import_igdb(self, igdb_id: int) -> str | None:
-        """Import an IGDB game into the catalog.
-
-        Deduplicates concurrent imports via a Redis lock, calls
-        ``_sync_igdb_game``, then re-queries the ``ExternalID`` table.
-
-        Returns the new ``media_item_id``, or ``None`` on failure.
-        """
-        dedup_key = f"igdb:importing:{igdb_id}"
-        locked = await self._redis.setnx(dedup_key, "1")
-        if not locked:
-            # Another worker is importing this ID — poll briefly
-            for _ in range(10):
-                await asyncio.sleep(0.5)
-                ext = await self._session.scalar(
-                    select(ExternalID).where(
-                        ExternalID.provider == "igdb",
-                        ExternalID.external_id == str(igdb_id),
-                    ),
+            all_candidates[idx].append(
+                GameMatchCandidate(
+                    media_item_id=row["id"],
+                    title=row["title"],
+                    poster_url=row.get("poster_url"),
+                    backdrop_url=row.get("backdrop_url"),
+                    release_year=_release_year_from_date(row.get("release_date")),
+                    confidence=confidence,
+                    match_type=MatchType.TRIGRAM,
                 )
-                if ext:
-                    return ext.entity_id or ext.media_item_id
-            return None
+            )
+            matched.add(idx)
 
+        return [i for i in indices if i not in matched]
+
+    # ── Phase 3: IGDB provider search ───────────────────────────────────────
+
+    async def _phase3_igdb(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> None:
+        """Search IGDB for unmatched games. Two sub-stages:
+
+        3a. External ID cross-reference (Epic + Steam)
+        3b. IGDB title search
+        """
+        provider = IGDBProvider(self._redis)
+
+        unmatched = list(indices)
+
+        # 3a: Cross-reference by external IDs
+        if unmatched:
+            unmatched = await self._phase3a_igdb_crossref(
+                requests, unmatched, all_candidates, provider
+            )
+
+        # 3b: IGDB title search
+        if unmatched:
+            await self._phase3b_igdb_search(
+                requests, unmatched, all_candidates, provider
+            )
+
+    async def _phase3a_igdb_crossref(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+        provider: IGDBProvider,
+    ) -> list[int]:
+        """Cross-reference Epic and Steam IDs via IGDB's external_games API.
+
+        Returns indices that remain unmatched AFTER cross-reference.
+        """
+        # Collect IDs by category
+        epic_ids: list[tuple[str, int]] = []  # (epic_id, req_idx)
+        steam_ids: list[tuple[int, int]] = []  # (steam_id, req_idx)
+
+        for idx in indices:
+            req = requests[idx]
+            if not req.external_ids:
+                continue
+            for ref in req.external_ids:
+                if ref.source == "epic" and ref.id:
+                    epic_ids.append((ref.id, idx))
+                    break  # first Epic ID per request wins
+                elif ref.source == "steam" and ref.id:
+                    try:
+                        steam_ids.append((int(ref.id), idx))
+                        break
+                    except (ValueError, TypeError):
+                        pass
+
+        matched: set[int] = set()
+
+        # Epic cross-ref (category 26)
+        if epic_ids:
+            id_map: dict[str, int] = {eid: idx for eid, idx in epic_ids}
+            try:
+                epic_to_igdb = await provider.lookup_epic_ids(list(id_map.keys()))
+            except Exception:
+                logger.exception("IGDB Epic cross-ref failed")
+                epic_to_igdb = {}
+
+            for epic_id, igdb_id in epic_to_igdb.items():
+                req_idx = id_map.get(epic_id)
+                if req_idx is None or req_idx in matched:
+                    continue
+                await self._resolve_igdb_candidate(
+                    requests[req_idx], igdb_id, all_candidates, req_idx, provider
+                )
+                matched.add(req_idx)
+
+        # Steam cross-ref (category 1)
+        if steam_ids:
+            id_map: dict[int, int] = {sid: idx for sid, idx in steam_ids}
+            try:
+                steam_to_igdb = await provider.lookup_steam_app_ids(list(id_map.keys()))
+            except Exception:
+                logger.exception("IGDB Steam cross-ref failed")
+                steam_to_igdb = {}
+
+            for steam_id, igdb_id in steam_to_igdb.items():
+                req_idx = id_map.get(steam_id)
+                if req_idx is None or req_idx in matched:
+                    continue
+                await self._resolve_igdb_candidate(
+                    requests[req_idx], igdb_id, all_candidates, req_idx, provider
+                )
+                matched.add(req_idx)
+
+        return [i for i in indices if i not in matched]
+
+    async def _resolve_igdb_candidate(
+        self,
+        request: GameMatchRequest,
+        igdb_id: int,
+        all_candidates: list[list[GameMatchCandidate]],
+        idx: int,
+        provider: IGDBProvider,
+    ) -> None:
+        """Check if an IGDB game is already in Otix. If not, build a
+        needs_import candidate with the IGDB cover URL."""
+        igdb_id_str = str(igdb_id)
+
+        # Is this IGDB game already in our catalog?
+        existing_ext = await self._session.scalar(
+            select(ExternalID).where(
+                ExternalID.provider == "igdb",
+                ExternalID.external_id == igdb_id_str,
+            ),
+        )
+
+        if existing_ext:
+            entity_id = existing_ext.entity_id or existing_ext.media_item_id
+            if entity_id:
+                mi = await self._fetch_media_item(entity_id)
+                if mi:
+                    all_candidates[idx].append(
+                        GameMatchCandidate(
+                            media_item_id=entity_id,
+                            title=mi.title,
+                            poster_url=mi.poster_url,
+                            backdrop_url=mi.backdrop_url,
+                            release_year=_release_year_from_date(mi.release_date),
+                            confidence=0.90,
+                            match_type=MatchType.IGDB_CROSSREF,
+                        )
+                    )
+                    return
+
+        # Game not in catalog — fetch minimal IGDB data for a needs_import candidate
         try:
-            await self._redis.expire(dedup_key, 60)
-            from otix.tasks.sync.igdb import _sync_igdb_game
+            raw = await provider.get_game(igdb_id, self.IGDB_SEARCH_FIELDS)
+        except Exception:
+            logger.exception("IGDB get_game failed", igdb_id=igdb_id)
+            return
 
-            await _sync_igdb_game(igdb_id, force=False)
+        if not raw:
+            return
 
-            ext = await self._session.scalar(
+        title = raw.get("name") or request.title
+        poster = _igdb_cover_url(raw.get("cover"))
+        release_year = _parse_igdb_year(raw.get("first_release_date"))
+        platforms = _igdb_platforms(raw.get("platforms") or [])
+
+        all_candidates[idx].append(
+            GameMatchCandidate(
+                media_item_id=None,
+                title=title,
+                poster_url=poster,
+                release_year=release_year,
+                platforms=platforms,
+                confidence=0.85,
+                match_type=MatchType.IGDB_CROSSREF,
+                needs_import=True,
+                provider_id=igdb_id_str,
+                provider="igdb",
+            )
+        )
+
+    async def _phase3b_igdb_search(
+        self,
+        requests: list[GameMatchRequest],
+        indices: list[int],
+        all_candidates: list[list[GameMatchCandidate]],
+        provider: IGDBProvider,
+    ) -> None:
+        """Search IGDB by title for remaining unmatched games.
+
+        Uses the existing scored heuristics (_pick_best_igdb_match).
+        Processes in chunks for controlled concurrency.
+        """
+        chunk_size = self.IGDB_CHUNK_SIZE
+        chunks = [
+            indices[i : i + chunk_size]
+            for i in range(0, len(indices), chunk_size)
+        ]
+
+        for chunk in chunks:
+            tasks = [
+                self._search_igdb_one(provider, requests[idx], idx, all_candidates)
+                for idx in chunk
+            ]
+            await asyncio.gather(*tasks)
+
+    async def _search_igdb_one(
+        self,
+        provider: IGDBProvider,
+        request: GameMatchRequest,
+        idx: int,
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> None:
+        """Search IGDB for one game; add candidates if found."""
+        try:
+            candidates = await provider.search_games(
+                request.title,
+                limit=self.IGDB_SEARCH_LIMIT,
+                fields=self.IGDB_SEARCH_FIELDS,
+            )
+            if not candidates:
+                if ":" in request.title:
+                    short = request.title.split(":")[0].strip()
+                    candidates = await provider.search_games(
+                        short,
+                        limit=self.IGDB_SEARCH_LIMIT,
+                        fields=self.IGDB_SEARCH_FIELDS,
+                    )
+                if not candidates:
+                    return
+
+            best = self._pick_best_igdb_match(candidates, request)
+            if best is None:
+                return
+
+            igdb_id = best["id"]
+            igdb_id_str = str(igdb_id)
+            is_exact = self._is_exact_title_match(best, request)
+
+            # Check if already in catalog
+            existing_ext = await self._session.scalar(
                 select(ExternalID).where(
                     ExternalID.provider == "igdb",
-                    ExternalID.external_id == str(igdb_id),
+                    ExternalID.external_id == igdb_id_str,
                 ),
             )
-            if ext:
-                return ext.entity_id or ext.media_item_id
 
-            logger.warning(
-                "IGDB sync OK but ExternalID missing",
-                igdb_id=igdb_id,
-            )
-            return None
+            poster = _igdb_cover_url(best.get("cover"))
+            platforms = _igdb_platforms(best.get("platforms") or [])
+            release_year = _parse_igdb_year(best.get("first_release_date"))
+
+            title = best.get("name") or request.title
+
+            if existing_ext:
+                entity_id = existing_ext.entity_id or existing_ext.media_item_id
+                if entity_id:
+                    mi = await self._fetch_media_item(entity_id)
+                    all_candidates[idx].append(
+                        GameMatchCandidate(
+                            media_item_id=entity_id,
+                            title=mi.title if mi else title,
+                            poster_url=mi.poster_url if mi else poster,
+                            backdrop_url=mi.backdrop_url if mi else None,
+                            release_year=_release_year_from_date(
+                                mi.release_date if mi else None
+                            ) or release_year,
+                            platforms=platforms,
+                            confidence=0.80 if is_exact else 0.70,
+                            match_type=MatchType.IGDB_SEARCH
+                            if is_exact
+                            else MatchType.IGDB_FUZZY,
+                        )
+                    )
+            else:
+                # Not in catalog — needs import
+                all_candidates[idx].append(
+                    GameMatchCandidate(
+                        media_item_id=None,
+                        title=title,
+                        poster_url=poster,
+                        release_year=release_year,
+                        platforms=platforms,
+                        confidence=0.80 if is_exact else 0.70,
+                        match_type=MatchType.IGDB_SEARCH
+                        if is_exact
+                        else MatchType.IGDB_FUZZY,
+                        needs_import=True,
+                        provider_id=igdb_id_str,
+                        provider="igdb",
+                    )
+                )
         except Exception:
-            logger.exception("IGDB auto-import failed", igdb_id=igdb_id)
-            return None
-        finally:
-            await self._redis.delete(dedup_key)
+            logger.exception("IGDB search failed", title=request.title)
 
-    # ── Matching heuristics ────────────────────────────────────────────────
+    # ── Phase 4: Assemble, rank, auto-match ─────────────────────────────────
+
+    def _phase4_assemble(
+        self,
+        requests: list[GameMatchRequest],
+        all_candidates: list[list[GameMatchCandidate]],
+    ) -> list[GameMatchResponse]:
+        """Merge candidates, dedupe by media_item_id, rank by confidence,
+        and decide auto-match."""
+        results: list[GameMatchResponse] = []
+
+        for i, req in enumerate(requests):
+            raw = all_candidates[i]
+
+            if not raw:
+                results.append(
+                    GameMatchResponse(
+                        query_id=req.query_id,
+                        query_title=req.title,
+                        candidates=[],
+                        auto_match=None,
+                    )
+                )
+                continue
+
+            # Dedupe: keep highest-confidence entry per media_item_id
+            seen: dict[str, GameMatchCandidate] = {}
+            for c in raw:
+                key = c.media_item_id or f"__import_{c.provider}_{c.provider_id}"
+                if key in seen:
+                    if c.confidence > seen[key].confidence:
+                        seen[key] = c
+                else:
+                    seen[key] = c
+
+            candidates = sorted(
+                seen.values(), key=lambda c: c.confidence, reverse=True
+            )
+
+            auto_match = self._decide_auto_match(candidates)
+
+            results.append(
+                GameMatchResponse(
+                    query_id=req.query_id,
+                    query_title=req.title,
+                    candidates=candidates,
+                    auto_match=auto_match,
+                )
+            )
+
+        return results
+
+    @staticmethod
+    def _decide_auto_match(
+        candidates: list[GameMatchCandidate],
+    ) -> GameMatchCandidate | None:
+        """Apply auto-match rules.
+
+        - DIRECT match_type → always auto-match
+        - confidence ≥ 0.95 → auto-match
+        - confidence ≥ 0.85 AND gap to 2nd ≥ 0.20 → auto-match
+        - candidate with needs_import=True → never auto-match
+        """
+        if not candidates:
+            return None
+
+        best = candidates[0]
+
+        # Never auto-match a needs_import candidate
+        if best.needs_import:
+            return None
+
+        # Direct external_id match is always auto
+        if best.match_type == MatchType.DIRECT:
+            return best
+
+        # Very high confidence
+        if best.confidence >= 0.95:
+            return best
+
+        # High confidence with clear gap to 2nd place
+        if best.confidence >= 0.85:
+            if len(candidates) == 1:
+                return best
+            second = candidates[1]
+            if best.confidence - second.confidence >= 0.20:
+                return best
+
+        return None
+
+    # ── Matching heuristics (unchanged from original) ───────────────────────
 
     @staticmethod
     def _is_exact_title_match(candidate: dict, request: GameMatchRequest) -> bool:
-        """Return ``True`` when the candidate's name matches the request title exactly."""
         name = (candidate.get("name") or "").strip().lower()
         target = request.title.strip().lower()
         return name == target
@@ -570,19 +892,15 @@ class GameMatcher:
         candidates: list[dict],
         request: GameMatchRequest,
     ) -> dict | None:
-        """Score and select the best IGDB match for a game request.
+        """Score and select the best IGDB match.
 
-        Scoring rubric (threshold: **60**):
-
-        - Exact title match            +100
-        - Slug match                   +90
-        - Contains / is contained by   +70
-        - Developer matches            +20 (exact) / +10 (partial)
-        - Platform overlap             +15 per matching platform
-        - Release year within ±1       +10
-
-        Returns the highest-scoring candidate, or ``None`` if no
-        candidate reaches the threshold.
+        Scoring rubric (threshold: 60):
+            - Exact title match            +100
+            - Slug match                   +90
+            - Contains / is contained by   +70
+            - Developer matches            +20 (exact) / +10 (partial)
+            - Platform overlap             +15 per matching platform
+            - Release year within ±1       +10
         """
         THRESHOLD = 60
         target_lower = request.title.strip().lower()
@@ -600,7 +918,7 @@ class GameMatcher:
             name = (c.get("name") or "").strip()
             name_lower = name.lower()
 
-            # ── Title scoring ──────────────────────────────────────────────
+            # Title scoring
             if name_lower == target_lower:
                 score += 100
             else:
@@ -610,7 +928,7 @@ class GameMatcher:
                 elif target_lower in name_lower or name_lower in target_lower:
                     score += 70
 
-            # ── Developer / publisher match ────────────────────────────────
+            # Developer / publisher match
             if target_developer:
                 companies: list[JSONValue] = c.get("involved_companies") or []
                 for ic in companies:
@@ -627,7 +945,7 @@ class GameMatcher:
                         score += 10
                         break
 
-            # ── Platform overlap ───────────────────────────────────────────
+            # Platform overlap
             if target_platforms:
                 raw_platforms: list[JSONValue] = c.get("platforms") or []
                 candidate_platforms: set[str] = set()
@@ -640,7 +958,7 @@ class GameMatcher:
                 if overlap:
                     score += 15 * len(overlap)
 
-            # ── Release year proximity ─────────────────────────────────────
+            # Release year proximity
             if request.release_year is not None:
                 ts = c.get("first_release_date")
                 if isinstance(ts, (int, float)):
@@ -662,19 +980,49 @@ class GameMatcher:
     # ── DB helpers ─────────────────────────────────────────────────────────
 
     async def _fetch_media_item(self, entity_id: str) -> MediaItem | None:
-        """Fetch a single ``MediaItem`` by ID."""
         if not entity_id:
             return None
         return await self._session.get(MediaItem, entity_id)
 
     async def _fetch_media_items(self, entity_ids: list[str]) -> dict[str, MediaItem]:
-        """Batch-fetch ``MediaItem`` records by ID.
-
-        Returns ``{entity_id: MediaItem}`` — missing IDs are omitted.
-        """
         if not entity_ids:
             return {}
         rows = await self._session.execute(
             select(MediaItem).where(MediaItem.id.in_(entity_ids)),
         )
         return {mi.id: mi for mi in rows.scalars().all()}
+
+
+# ── Module-level helpers ────────────────────────────────────────────────────
+
+
+def _release_year_from_date(d: datetime | None) -> int | None:
+    """Extract year from a datetime or date object."""
+    if d is None:
+        return None
+    if hasattr(d, "year"):
+        return d.year
+    return None
+
+
+def _parse_igdb_year(ts: object) -> int | None:
+    """Parse release year from an IGDB timestamp."""
+    if isinstance(ts, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(ts)).year
+        except (ValueError, OSError):
+            pass
+    return None
+
+
+def _developer_overlap(
+    request_dev: str | None,
+    media_item: MediaItem | None,
+) -> bool:
+    """Check if the request developer loosely matches the catalog item."""
+    if not request_dev:
+        return False
+    # For simplicity: we don't have developer stored on MediaItem directly
+    # Catalog game developer is in involved_companies via Game relationships
+    # This is a lightweight check — more thorough matching happens in IGDB phase
+    return False
