@@ -19,6 +19,7 @@ export interface MatchableGame {
   id: string
   title: string
   developer?: string
+  developerId?: string | null        // Epic account ID of developer/company
   appName?: string
   namespace?: string
   catalogItemId?: string
@@ -29,7 +30,9 @@ export interface MatchableGame {
   logoUrl?: string | null
   contentType?: string
   platforms?: string[]
+  savePaths?: string[] | null       // detected save game directories
   sources?: Record<string, unknown>[]
+  developerExternalIds?: { source: string; id: string; entity_type: string; name: string }[]
 }
 
 export interface MatchCandidate {
@@ -123,6 +126,7 @@ export async function batchMatchAndSave(
         platform: g.platform as any,
         posterUrl: g.posterUrl || undefined,
         iconUrl: g.logoUrl || undefined,
+        savePaths: g.savePaths || undefined,
         sources: g.sources || [
           {
             source: g.platform,
@@ -130,8 +134,10 @@ export async function batchMatchAndSave(
             namespace: g.namespace,
             catalogItemId: g.catalogItemId,
             developer: g.developer,
+            developerId: g.developerId,
             contentType: g.contentType,
             platforms: g.platforms,
+            savePaths: g.savePaths,
           },
         ],
       }))
