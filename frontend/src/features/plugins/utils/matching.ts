@@ -109,6 +109,7 @@ export async function batchMatchAndSave(
     const { data } = await apiClient.post<{ matches: GameMatchResponse[] }>(
       '/media/match/batch',
       { games: batchGames },
+      { timeout: 120000 },  // 200+ games needs time for IGDB phase
     )
     matches = data.matches || []
   } catch (err) {
@@ -231,7 +232,7 @@ export async function confirmMatch(
       igdb_id: igdbId,
       rejected: false,
       rejected_permanently: false,
-    })
+    }, { timeout: 30000 })
     return data
   } catch (err) {
     console.error('[matching] confirmMatch failed:', err)
