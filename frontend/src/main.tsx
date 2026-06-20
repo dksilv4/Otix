@@ -17,6 +17,7 @@ import { SpotifyPlayerProvider } from '@/old-features/spotify/spotify-player-pro
 import { PlexAudioProvider } from '@/old-features/spotify/plex-audio-provider'
 import { PlayerProvider } from '@/old-features/spotify/use-player'
 import { DkToastProvider } from '@/old-features/dk-ui/molecules/toast'
+import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import './index.css'
 
@@ -68,7 +69,10 @@ createRoot(document.getElementById('root')!).render(
                       <PlexAudioProvider>
                         <PlayerProvider>
                           <PageMetaProvider>
-                            <RouterProvider router={router} context={{ queryClient }} />
+                        <ModalProvider>
+                          <RouterProvider router={router} context={{ queryClient }} />
+                          <ModalRoot />
+                        </ModalProvider>
                           </PageMetaProvider>
                         </PlayerProvider>
                       </PlexAudioProvider>

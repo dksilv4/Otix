@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, screen, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
-import { GameDetector } from './game-detector';
+import { GameDetector } from './game/detector';
 import { registerDownloadsIPC } from './ipc/downloads';
 import { registerGamesIPC } from './ipc/games';
 import { registerScannerIPC } from './ipc/scanner';
@@ -13,19 +13,18 @@ import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
-import { ensureDb } from './db';
-import { setNotifyTarget, getAllGames } from './game-storage-service';
+import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
+import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
-import { onFpsPermissionNeeded, ensurePresentMon } from './fps-capture';
+import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
 import { scheduledUpdateCheck, purgeOldDeletedDownloads } from './downloads';
-import { SaveDaemon } from './save-daemon';
+import { SaveDaemon } from './saves';
 import { registerSaveIPC } from './ipc/saves';
-import { populateKnownLocations } from './save-export';
-import { PermissionManager } from './plugin/permissions';
-import { PluginManager } from './plugin/plugin-manager';
-import { eventBus } from './plugin/event-bus';
-import { ensurePluginDb, seedDefaultRepo } from './plugin/plugin-db';
-import { registerPluginIPC } from './ipc/plugin';
+import { populateKnownLocations } from './saves/export';
+import { PermissionManager } from './plugins/permissions';
+import { PluginManager } from './plugins/manager';
+import { eventBus } from './plugins/event-bus';
+import { registerPluginIPC } from './ipc/plugins';
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
@@ -162,23 +161,46 @@ function createWindow() {
 
   // Handle close-to-tray
   mainWindow.on('close', (event) => {
+    console.log('[main] Window close event fired');
     saveWindowState(mainWindow!)
     const settings = getSettings()
     if (settings.closeToTray) {
+      console.log('[main] closeToTray enabled — hiding instead of closing');
       event.preventDefault()
       mainWindow?.hide()
       return
     }
   })
 
+  mainWindow.on('hide', () => console.log('[main] Window hidden'))
+  mainWindow.on('show', () => console.log('[main] Window shown'))
+  mainWindow.on('minimize', () => console.log('[main] Window minimized'))
+
+  // Crash diagnostics
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[main] RENDERER GONE:', details.reason, 'exitCode:', details.exitCode)
+  })
+  mainWindow.webContents.on('did-fail-load', (_event, code, desc, url, isMainFrame) => {
+    if (isMainFrame) console.error('[main] PAGE LOAD FAILED:', code, desc, url)
+  })
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[main] RENDERER UNRESPONSIVE')
+  })
+
   if (isDev) {
-    mainWindow.loadURL('http://127.0.0.1:5173/');
+    mainWindow.loadURL('http://127.0.0.1:5174/');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
   }
 
+  // Ensure window is visible
+  mainWindow.show();
+  mainWindow.focus();
+  console.log('[main] Window created — visible:', mainWindow.isVisible(), 'minimized:', mainWindow.isMinimized());
+
   mainWindow.on('closed', () => {
+    console.log('[main] Window closed');
     gameDetector?.stopAll();
     mainWindow = null;
   });
@@ -377,26 +399,26 @@ app.on('ready', async () => {
     catch (err) { console.error('[Cache] persist failed', err); }
   });
 
-  // Init DB before any IPC handler or window — eliminates race where frontend calls
-  // DB-dependent handlers before DB is ready.
-  await ensureDb().catch((err) => {
-    console.error('[main] DB init failed:', err);
-    throw err;
-  });
-
-  // ── Initialize plugin database ──
-  await ensurePluginDb().catch((err) => {
-    console.error('[main] Plugin DB init failed:', err);
-    throw err;
+  // Init all databases before any IPC handler or window.
+  // Failure is non-fatal — app opens with degraded DB functionality.
+  let dbReady = false;
+  await initAllDatabases().then(() => { dbReady = true }).catch((err) => {
+    console.error('[main] DB init failed (app will run with reduced functionality):', err.message);
   });
 
   // Seed the default plugin repo if none exist (first run)
-  seedDefaultRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json');
+  const pluginsRepo = new PluginsRepository();
+  if (dbReady) {
+    const existingRepos = pluginsRepo.getRepos();
+    if (existingRepos.length === 0) {
+      pluginsRepo.addRepo('https://raw.githubusercontent.com/dksilv4/otix-plugins/main/registry.json', 'Otix Default');
+    }
+  }
 
   // Rehydrate any installs that were running before Electron last closed
-  rehydrateActiveInstalls();
+  if (dbReady) { try { rehydrateActiveInstalls() } catch (err) { console.error('[main] rehydrateActiveInstalls failed:', err) } }
 
-  // Register modular IPC handlers
+  // Register modular IPC handlers (safe — registration doesn't touch DB)
   registerDownloadsIPC();
   registerGamesIPC();
   registerScannerIPC(gameDetector);
@@ -405,15 +427,17 @@ app.on('ready', async () => {
 
   // Seed detector with previously-scanned games so it can detect
   // games already running when the app loads.
-  try {
-    const existingGames = getAllGames({ installed: true });
-    if (existingGames.length > 0) {
-      gameDetector?.setLibrary(existingGames as LocalGame[]);
-      gameDetector?.startPeriodicScan();
-      console.log(`[main] Seeded detector with ${existingGames.length} installed game(s) from DB`);
+  if (dbReady) {
+    try {
+      const existingGames = getAllGames({ installed: true });
+      if (existingGames.length > 0) {
+        gameDetector?.setLibrary(existingGames as LocalGame[]);
+        gameDetector?.startPeriodicScan();
+        console.log(`[main] Seeded detector with ${existingGames.length} installed game(s) from DB`);
+      }
+    } catch (err) {
+      console.error('[main] Failed to seed detector from DB:', err);
     }
-  } catch (err) {
-    console.error('[main] Failed to seed detector from DB:', err);
   }
 
   // Pre-download innounp on startup (ready for ISO installs)
@@ -430,20 +454,38 @@ app.on('ready', async () => {
   registerSaveIPC(saveDaemon);
 
   // Populate known save locations from the built-in database (async, non-blocking)
-  populateKnownLocations(saveDaemon);
+  if (dbReady) { populateKnownLocations(saveDaemon) }
 
   createWindow();
 
   // ── Initialize plugin system ──
-  const extensionsDir = path.join(app.getPath('userData'), 'extensions');
-  permissionManager = new PermissionManager();
-  pluginManager = new PluginManager(extensionsDir, permissionManager, app.getPath('userData'));
-  pluginManager.setWebContents(mainWindow!.webContents);
-  permissionManager.setWebContents(mainWindow!.webContents);
-  registerPluginIPC(pluginManager, permissionManager, mainWindow!);
+  if (dbReady) {
+    const extensionsDir = isDev
+      ? path.resolve(__dirname, '..', '..', 'extensions', 'otix-plugins', 'plugins')
+      : path.join(app.getPath('userData'), 'extensions');
+    const devExtensionsDir = isDev
+      ? path.join(app.getPath('userData'), 'extensions')
+      : undefined;
+    permissionManager = new PermissionManager();
+    pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
+    permissionManager.setWebContents(mainWindow!.webContents);
+    registerPluginIPC(pluginManager, mainWindow!, permissionManager);
 
-  // Fire-and-forget: discover and load enabled plugins (don't block window load)
-  pluginManager.discoverPlugins().then(() => pluginManager!.loadEnabledPlugins());
+    // Fire-and-forget: discover and load enabled plugins (don't block window load)
+    if (devExtensionsDir) {
+      console.log('[plugins] UserData extensions dir:', devExtensionsDir);
+      console.log('[plugins] Exists:', require('fs').existsSync(devExtensionsDir));
+    }
+    pluginManager.discoverPlugins().then(() => {
+      const all = pluginManager!.getAllPlugins();
+      console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
+      return pluginManager!.loadEnabledPlugins();
+    }).catch(err => {
+      console.error('[plugins] Discovery failed:', err);
+    });
+  } else {
+    console.warn('[plugins] Skipping plugin init — database not available');
+  }
 
   // ── Load desktop settings and apply side effects ──
   const settings = loadDesktopSettings();
@@ -475,8 +517,12 @@ app.on('ready', async () => {
 
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {
+    console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
+    try { closeAllConnections() } catch (err) {
+      console.error('[main] Failed to close database connections:', err);
+    }
   });
 
   // ── Scheduled update check ──
@@ -495,8 +541,12 @@ app.on('ready', async () => {
 });
 
 app.on('window-all-closed', () => {
+  console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
+  try { closeAllConnections() } catch (err) {
+    console.error('[main] Failed to close database connections:', err);
+  }
   // Kill any running game install
   try {
     const { cancelCurrentInstall } = require('./installer');

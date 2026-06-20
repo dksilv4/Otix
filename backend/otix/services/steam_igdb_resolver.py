@@ -1,6 +1,4 @@
-# TODO: Review this file
-"""Resolve unmatched Steam game via IGDB cross-reference."""
-
+"""Resolve unmatched Steam games via the central GameMatcher pipeline."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,12 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.media import ExternalID, UserSteamGame
 from otix.infrastructure.redis import get_redis
-from otix.providers.igdb.client import IGDBProvider
-from otix.tasks.sync.igdb import _sync_igdb_game
+from otix.services.external_id_service import ExternalIDService
+from otix.schemas.media import ExternalIDRef
+from otix.services.game_matcher import GameMatcher, GameMatchRequest
 
 logger = structlog.get_logger()
-
-BATCH_SIZE = 250
 
 
 @dataclass
@@ -31,15 +28,11 @@ async def resolve_unmatched_steam_games(
     db: AsyncSession,
     user_id: str,
 ) -> ResolverResult:
-    """Resolve unmatched Steam game by looking them up in IGDB.
+    """Resolve unmatched Steam games via the central GameMatcher.
 
-    For each unmatched UserSteamGame:
-    1. Look up the Steam app ID in IGDB's external_games table
-    2. If the IGDB game already exists in the catalog → link it
-    3. If the IGDB game is not in the catalog → sync it from IGDB, then link
-    4. If IGDB has no match → leave unmatched
+    Delegates to the 4-stage matching pipeline (ExternalID, IGDB cross-ref,
+    IGDB title search, trigram). Auto-imports from IGDB when needed.
     """
-    # Fetch all unmatched game for this user
     unmatched = await db.execute(
         select(UserSteamGame).where(
             UserSteamGame.user_id == user_id,
@@ -47,104 +40,42 @@ async def resolve_unmatched_steam_games(
         )
     )
     unmatched_games = list(unmatched.scalars().all())
-
     if not unmatched_games:
         return ResolverResult(total=0)
 
     result = ResolverResult(total=len(unmatched_games))
-    unmatched_count = len(unmatched_games)  # game IGDB didn't know about at all
+    redis = await get_redis()
+    matcher = GameMatcher(db, redis)
+    eid_svc = ExternalIDService(db)
 
-    # Batch by BATCH_SIZE for the IGDB lookup
-    for i in range(0, len(unmatched_games), BATCH_SIZE):
-        batch = unmatched_games[i : i + BATCH_SIZE]
-        app_ids = [g.steam_app_id for g in batch]
-        app_to_game = {g.steam_app_id: g for g in batch}
-
-        try:
-            redis = await get_redis()
-            provider = IGDBProvider(redis)
-            steam_to_igdb = await provider.lookup_steam_app_ids(app_ids)
-        except Exception:
-            logger.exception("igdb steam lookup failed", user_id=user_id)
-            result.failed += len(batch)
-            unmatched_count -= len(batch)
-            continue
-
-        matched_igdb_ids = list(steam_to_igdb.values())
-        if not matched_igdb_ids:
-            # Games not found in IGDB — they just stay unmatched, not failures
-            continue
-
-        unmatched_count -= len(steam_to_igdb)
-
-        # Batch-query existing ExternalIDs for these IGDB IDs
-        existing = await db.execute(
-            select(ExternalID).where(
-                ExternalID.provider == "igdb",
-                ExternalID.external_id.in_([str(gid) for gid in matched_igdb_ids]),
-            )
+    # Build batch request
+    requests = [
+        GameMatchRequest(
+            title=game.title,
+            external_ids=[ExternalIDRef(source="steam", id=str(game.steam_app_id))],
         )
-        igdb_id_to_media: dict[int, str] = {}
-        for ext in existing.scalars().all():
-            try:
-                igdb_id_to_media[int(ext.external_id)] = ext.media_item_id
-            except ValueError:
-                pass
+        for game in unmatched_games
+    ]
 
-        # Link game that are already in the catalog
-        for steam_app_id, igdb_game_id in steam_to_igdb.items():
-            game = app_to_game.get(steam_app_id)
-            if game is None:
-                continue
+    matches = await matcher.match_batch(requests)
 
-            media_item_id = igdb_id_to_media.get(igdb_game_id)
-            if media_item_id is not None:
-                game.media_item_id = media_item_id
-                result.resolved += 1
-
-        # Sync game not yet in the catalog
-        for steam_app_id, igdb_game_id in steam_to_igdb.items():
-            game = app_to_game.get(steam_app_id)
-            if game is None:
-                continue
-
-            if igdb_game_id in igdb_id_to_media:
-                continue  # already handled above
-
-            try:
-                await _sync_igdb_game(igdb_game_id, force=False)
-            except Exception:
-                logger.exception(
-                    "igdb game sync failed",
-                    igdb_id=igdb_game_id,
-                    steam_app_id=steam_app_id,
-                )
-                result.failed += 1
-                continue
-
-            # Re-query ExternalID (committed by _sync_igdb_game in its own session)
-            ext = await db.scalar(
-                select(ExternalID).where(
-                    ExternalID.provider == "igdb",
-                    ExternalID.external_id == str(igdb_game_id),
-                )
-            )
-            if ext is not None:
-                game.media_item_id = ext.media_item_id
+    for game, match in zip(unmatched_games, matches):
+        if match.confidence > 0 and match.media_item_id:
+            game.media_item_id = match.media_item_id
+            # Ensure steam ExternalID is set for future Stage 1 hits
+            await eid_svc.upsert("steam", str(game.steam_app_id), "media_item", match.media_item_id)
+            if match.is_new:
                 result.synced += 1
             else:
-                result.failed += 1
-                logger.warning(
-                    "igdb game sync returned but no ExternalID found",
-                    igdb_id=igdb_game_id,
-                )
+                result.resolved += 1
+        else:
+            result.failed += 1
 
-        await db.flush()
-
+    await db.flush()
     await db.commit()
 
     logger.info(
-        "steam-igdb resolver complete",
+        "steam-igdb resolver complete via GameMatcher",
         user_id=user_id,
         resolved=result.resolved,
         synced=result.synced,

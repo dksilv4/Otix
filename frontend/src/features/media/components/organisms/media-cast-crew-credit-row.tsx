@@ -1,4 +1,4 @@
-import { PersonCard } from '@person/molecules/person-card'
+import { PeopleCard } from '@people/components/molecules/people-card'
 import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
 
 interface CreditItem {
@@ -21,7 +21,7 @@ export function CreditRow({ label, items }: { label: string; items: CreditItem[]
       <Carousel minItemWidth={128} gap={12} showArrows={false}>
         {items.map((c) => (
           c.person ? (
-            <PersonCard
+            <PeopleCard
               key={c.id}
               id={c.person.id}
               name={c.person.name}

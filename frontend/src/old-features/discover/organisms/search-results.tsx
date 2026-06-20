@@ -8,8 +8,8 @@ import { Link } from '@tanstack/react-router'
 import { UserRound, Music } from 'lucide-react'
 import { MediaGrid } from '@ui/molecules/media-grid'
 import { mediaQueries, type MediaListResponse, mediaKeys } from '@media'
-import { PersonCard } from '@person/molecules/person-card'
-import { personQueries } from '@person/person-queries'
+import { PeopleCard } from '@people/components/molecules/people-card'
+import { peopleQueries } from '@people/queries/people-queries'
 import { userQueries } from '@/old-features/user/user-queries'
 import { DiscoverMediaCard } from '../molecules/discover-media-card'
 import { Image } from '@ui/atoms/image'
@@ -75,7 +75,7 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
     isLoading: isPeopleLoading,
     isError: isPeopleError,
   } = useQuery({
-    ...personQueries.search(query, 10),
+    ...peopleQueries.search(query, 10),
     enabled: query.length > 0 && includePeople,
   })
 
@@ -239,7 +239,7 @@ export function SearchResults({ query, type, sortBy, pageSize = 24 }: { query: s
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                   >
-                    <PersonCard
+                    <PeopleCard
                       id={person.id}
                       name={person.name}
                       imageUrl={person.photoUrl}

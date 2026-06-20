@@ -1,5 +1,4 @@
 import { Film, Tv, Gamepad2, Music } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 const MEDIA_ICONS = {
   movie: Film,
@@ -25,11 +24,7 @@ export function MediaTypeBadge({ mediaType, className }: MediaTypeBadgeProps) {
   if (!Icon) return null
 
   return (
-    <span className={cn(
-      'flex h-6 w-6 items-center justify-center rounded-full',
-      MEDIA_COLORS[mediaType as keyof typeof MEDIA_COLORS] || 'bg-gray-500',
-      className,
-    )}>
+    <span className={`flex h-6 w-6 items-center justify-center rounded-full ${MEDIA_COLORS[mediaType as keyof typeof MEDIA_COLORS] || 'bg-gray-500'} ${className || ''}`}>
       <Icon className="h-3 w-3 text-white" />
     </span>
   )

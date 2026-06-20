@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState } from 'react'
 import { useParams, useSearch, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
@@ -6,61 +5,47 @@ import { Helmet } from 'react-helmet-async'
 import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
+<<<<<<<< HEAD:frontend/src/old-features/person/organisms/person-detail.tsx
 import { useAuth } from '@/old-features/auth'
 import { personQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '../person-queries'
 import type { PersonDetail as PersonDetailData } from '../person-queries'
 import { PersonTimeline } from './person-timeline'
 import { PersonTimelineFilters } from './person-timeline-filters'
+========
+import { useAuth } from '@auth/hooks/use-auth'
+import { peopleQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '@people/queries/people-queries'
+import type { PersonDetail } from '@people/types'
+import { formatDate, getCreditsStats } from '@people/utils'
+import { PeopleTimeline } from '@people/components/organisms/people-timeline'
+import { PeopleTimelineFilters } from '@people/components/organisms/people-timeline-filters'
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/people/pages/people-detail-page.tsx
 import { cn } from '@/lib/utils'
-import './person-detail.scss'
 
-function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-function getStats(credits: PersonDetailData['credits']) {
-  // Safety: filter out credits with deleted media items
-  const valid = credits.filter((c) => c.mediaItem != null)
-  const total = valid.length
-  const years = valid
-    .map((c) => c.mediaItem!.releaseDate)
-    .filter(Boolean)
-    .map((d) => new Date(d!).getFullYear())
-    .sort((a, b) => a - b)
-
-  const yearsActive = years.length > 0
-    ? `${years[0]} – ${years[years.length - 1]}`
-    : null
-
-  const byType: Record<string, number> = {}
-  for (const c of valid) {
-    const t = c.mediaItem!.mediaType || 'other'
-    byType[t] = (byType[t] || 0) + 1
-  }
-
-  return { total, yearsActive, byType }
-}
+// ── Sub-components ────────────────────────────────
 
 function StatBox({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="dk-person-detail__stat-box">
-      <div className="dk-person-detail__stat-value">{value}</div>
-      <div className="dk-person-detail__stat-label">{label}</div>
+    <div className="rounded-lg bg-muted/50 px-4 py-3 text-center">
+      <div className="text-xl font-bold">{value}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
     </div>
   )
 }
 
-function StarRating({ value, onChange, readonly }: { value: number | null; onChange?: (score: number) => void; readonly?: boolean }) {
+function StarRating({
+  value,
+  onChange,
+  readonly,
+}: {
+  value: number | null
+  onChange?: (score: number) => void
+  readonly?: boolean
+}) {
   const [hover, setHover] = useState(0)
   const active = hover || value || 0
 
   return (
-    <div className="dk-person-detail__star-rating" onMouseLeave={() => setHover(0)}>
+    <div className="flex items-center gap-0.5" onMouseLeave={() => setHover(0)}>
       {Array.from({ length: 5 }).map((_, i) => {
         const score = i + 1
         const filled = score <= active
@@ -70,9 +55,9 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
             type="button"
             disabled={readonly}
             className={cn(
-              'dk-person-detail__star-btn',
-              readonly && 'dk-person-detail__star-btn--readonly',
-              !readonly && 'dk-person-detail__star-btn--interactive',
+              'p-0.5 transition-[color,transform] duration-150',
+              readonly && 'cursor-default',
+              !readonly && 'cursor-pointer hover:scale-110',
             )}
             onClick={() => onChange?.(score)}
             onMouseEnter={() => !readonly && setHover(score)}
@@ -86,20 +71,22 @@ function StarRating({ value, onChange, readonly }: { value: number | null; onCha
           </button>
         )
       })}
-      {value != null && <span className="dk-person-detail__star-text">{value}/5</span>}
+      {value != null && <span className="ml-1.5 text-xs text-muted-foreground">{value}/5</span>}
     </div>
   )
 }
 
-export function PersonDetail() {
+// ── Page ──────────────────────────────────────────
+
+export function PeopleDetailPage() {
   const params = useParams({ from: '/person/$personId' })
   const search = useSearch({ from: '/person/$personId' })
   const navigate = useNavigate()
   const personId = params.personId || ''
   const { isAuthenticated } = useAuth()
 
-  const { data: person, isLoading, isError } = useQuery(personQueries.detail(personId))
-  const { data: relatedArtists } = useQuery(personQueries.related(personId))
+  const { data: person, isLoading, isError } = useQuery(peopleQueries.detail(personId))
+  const { data: relatedArtists } = useQuery(peopleQueries.related(personId))
   const follow = useFollowPerson(personId)
   const unfollow = useUnfollowPerson(personId)
   const rate = useRatePerson(personId)
@@ -108,7 +95,12 @@ export function PersonDetail() {
   const [bioExpanded, setBioExpanded] = useState(false)
 
   const updateSearch = (updates: Partial<typeof search>) => {
-    navigate({ to: '/person/$personId', params: { personId }, search: { ...search, ...updates }, replace: true })
+    navigate({
+      to: '/person/$personId',
+      params: { personId },
+      search: { ...search, ...updates },
+      replace: true,
+    })
   }
 
   const handleFollowToggle = () => {
@@ -120,38 +112,42 @@ export function PersonDetail() {
     }
   }
 
+  // ── Loading state ──
   if (isLoading) {
     return (
-      <div className="dk-person-detail__loading">
-        <div className="dk-person-detail__loading-inner">
-          <Skeleton className="h-40 w-40 rounded-full" />
-          <div className="dk-person-detail__loading-text">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-20 w-96" />
+      <div className="mx-auto max-w-4xl px-4 pt-24 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+          <Skeleton className="h-36 w-36 rounded-full sm:h-44 sm:w-44" />
+          <div className="space-y-3 text-center sm:text-left">
+            <Skeleton className="mx-auto h-8 w-48 sm:mx-0" />
+            <Skeleton className="mx-auto h-4 w-32 sm:mx-0" />
+            <Skeleton className="mx-auto h-20 w-96 sm:mx-0" />
           </div>
         </div>
       </div>
     )
   }
 
+  // ── Error state ──
   if (isError || !person) {
     return (
-      <div className="dk-person-detail__error">
-        <div className="dk-person-detail__error-content">
-          <h2 className="dk-person-detail__error-title">Person not found</h2>
-          <a href="/" className="dk-person-detail__error-link">Go back home</a>
+      <div className="flex min-h-[50vh] items-center justify-center px-4 pt-24">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold">Person not found</h2>
+          <a href="/" className="text-sm text-primary hover:underline">
+            Go back home
+          </a>
         </div>
       </div>
     )
   }
 
-  const stats = getStats(person.credits)
+  const stats = getCreditsStats(person.credits)
   const bioTruncation = 400
   const showBioExpand = (person.biography?.length ?? 0) > bioTruncation
 
   return (
-    <div className="dk-person-detail">
+    <div className="mx-auto max-w-4xl px-4 pt-24 pb-16 sm:px-6 lg:px-8 space-y-10">
       <Helmet>
         <title>{`${person.name} - Otix`}</title>
         <meta
@@ -175,21 +171,21 @@ export function PersonDetail() {
       </Helmet>
 
       {/* ── Header ── */}
-      <div className="dk-person-detail__header">
-        <div className="dk-person-detail__avatar">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+        <div className="h-36 w-36 shrink-0 overflow-hidden rounded-full ring-2 ring-border sm:h-44 sm:w-44">
           <Image
             src={person.photoUrl ?? undefined}
             alt={person.name}
-            className="dk-person-detail__avatar-img"
+            className="h-full w-full"
             fallback={person.name[0]}
           />
         </div>
 
-        <div className="dk-person-detail__info">
-          <div className="dk-person-detail__title-row">
-            <h1 className="dk-person-detail__name">{person.name}</h1>
+        <div className="min-w-0 text-center sm:text-left">
+          <div className="flex items-center justify-center gap-3 sm:justify-start">
+            <h1 className="text-2xl font-bold sm:text-3xl">{person.name}</h1>
             {person.avgRating != null && (
-              <span className="dk-person-detail__rating-badge">
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                 {person.avgRating}
               </span>
@@ -200,9 +196,11 @@ export function PersonDetail() {
                 onClick={handleFollowToggle}
                 disabled={follow.isPending || unfollow.isPending}
                 className={cn(
-                  'dk-person-detail__follow-btn',
-                  person.isFollowed && 'dk-person-detail__follow-btn--followed',
-                  !person.isFollowed && 'dk-person-detail__follow-btn--not-followed',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-[color,background-color,opacity] duration-150',
+                  'disabled:opacity-50',
+                  person.isFollowed
+                    ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90',
                 )}
               >
                 {person.isFollowed ? (
@@ -214,21 +212,19 @@ export function PersonDetail() {
               </button>
             )}
             {!isAuthenticated && person.followerCount > 0 && (
-              <span className="dk-person-detail__follower-badge">
+              <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm text-muted-foreground">
                 <UserRoundPlus className="h-4 w-4" />
                 <span>{person.followerCount} followers</span>
               </span>
             )}
             {isAuthenticated && person.followerCount > 0 && (
-              <span className="dk-person-detail__follower-text">
-                {person.followerCount} followers
-              </span>
+              <span className="text-sm text-muted-foreground">{person.followerCount} followers</span>
             )}
           </div>
 
           {/* Rating */}
           {isAuthenticated && (
-            <div className="dk-person-detail__rating-row">
+            <div className="mt-2 flex items-center gap-2">
               <StarRating
                 value={person.userRating ?? null}
                 onChange={(score) => rate.mutate(score)}
@@ -236,7 +232,7 @@ export function PersonDetail() {
               {(person.userRating ?? null) != null && (
                 <button
                   onClick={() => unrate.mutate()}
-                  className="dk-person-detail__clear-rating"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors duration-150"
                 >
                   Clear
                 </button>
@@ -244,14 +240,14 @@ export function PersonDetail() {
             </div>
           )}
 
-          <div className="dk-person-detail__meta">
+          <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground sm:justify-start">
             {person.birthday && <span>{formatDate(person.birthday)}</span>}
             {person.deathday && <span>– {formatDate(person.deathday)}</span>}
             {person.placeOfBirth && <span>{person.placeOfBirth}</span>}
           </div>
 
           {person.biography && (
-            <div className="dk-person-detail__bio">
+            <div className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               <p>
                 {showBioExpand && !bioExpanded
                   ? person.biography.slice(0, bioTruncation) + '…'
@@ -261,7 +257,7 @@ export function PersonDetail() {
                 <button
                   type="button"
                   onClick={() => setBioExpanded((prev) => !prev)}
-                  className="dk-person-detail__bio-toggle"
+                  className="mt-1 text-xs font-medium text-primary hover:underline"
                 >
                   {bioExpanded ? 'Show less' : 'Show more'}
                 </button>
@@ -272,7 +268,7 @@ export function PersonDetail() {
       </div>
 
       {/* ── Stats bar ── */}
-      <div className="dk-person-detail__stats">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
         <StatBox label="Total Credits" value={stats.total} />
         {person.avgRating != null && <StatBox label="Rating" value={`${person.avgRating}/5`} />}
         {stats.yearsActive && <StatBox label="Years Active" value={stats.yearsActive} />}
@@ -282,10 +278,10 @@ export function PersonDetail() {
         {stats.byType.music && <StatBox label="Music" value={stats.byType.music} />}
       </div>
 
-      {/* ── Timeline ── */}
+      {/* ── Credits ── */}
       <section>
-        <h2 className="dk-person-detail__section-heading dk-person-detail__section-heading--credits">Credits</h2>
-        <PersonTimelineFilters
+        <h2 className="mb-4 text-lg font-semibold">Credits</h2>
+        <PeopleTimelineFilters
           mediaTypeFilter={search.mediaType || 'all'}
           onMediaTypeChange={(value) => {
             updateSearch({ mediaType: value || 'all', role: 'all' })
@@ -295,8 +291,8 @@ export function PersonDetail() {
             updateSearch({ role: value || 'all', mediaType: 'all' })
           }}
         />
-        <div className="dk-person-detail__timeline">
-          <PersonTimeline
+        <div className="mt-6">
+          <PeopleTimeline
             credits={person.credits}
             mediaTypeFilter={search.mediaType || 'all'}
             roleFilter={search.role || 'all'}
@@ -307,27 +303,24 @@ export function PersonDetail() {
       {/* ── Related artists ── */}
       {relatedArtists && relatedArtists.length > 0 && (
         <section>
-          <h2 className="dk-person-detail__section-heading dk-person-detail__section-heading--related">Fans Also Like</h2>
-          <div className="dk-person-detail__related-list">
+          <h2 className="mb-3 text-lg font-semibold">Fans Also Like</h2>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {relatedArtists.map((artist) => (
-              <div
-                key={artist.spotify_artist_id || artist.name}
-                className="dk-person-detail__related-card"
-              >
-                <div className="dk-person-detail__related-image">
+              <div key={artist.spotify_artist_id || artist.name} className="w-36 shrink-0 text-center">
+                <div className="aspect-square w-full overflow-hidden rounded-full ring-1 ring-border">
                   {artist.image_url ? (
                     <img
                       src={artist.image_url}
                       alt={artist.name}
-                      className="dk-person-detail__related-img"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="dk-person-detail__related-fallback">
+                    <div className="flex h-full w-full items-center justify-center text-2xl font-bold bg-[var(--dk-surface-glass)] text-muted-foreground">
                       {artist.name[0]}
                     </div>
                   )}
                 </div>
-                <p className="dk-person-detail__related-name">{artist.name}</p>
+                <p className="mt-2 truncate text-xs font-medium">{artist.name}</p>
               </div>
             ))}
           </div>

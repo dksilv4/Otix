@@ -1,17 +1,25 @@
 import { useMemo } from "react"
 import { Helmet } from "react-helmet-async"
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router"
+import { motion, AnimatePresence } from "framer-motion"
 import { BookmarkIcon, Gamepad2Icon, LayoutDashboardIcon, ListIcon } from "lucide-react"
 import { useAuth } from "@/lib/providers/auth"
+<<<<<<<< HEAD:frontend/src/old-features/library/pages/library-layout.tsx
 import { TAB_LABELS } from "../library-queries"
 import { getPlatformTabs } from "../platforms"
 import { CORE_TABS } from "../constants"
 import { TabBar } from "../molecules/tab-bar"
+========
+import { TAB_LABELS } from "@/old-features/library/library-queries"
+import { getPlatformTabs } from "@/old-features/library/platforms"
+import { CORE_TABS } from "@/old-features/library/constants"
+import { TabBar } from "@/old-features/library/molecules/tab-bar"
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/library/pages/library-layout.tsx
 
 // Side-effect imports to register platform definitions
-import "../platforms/spotify"
-import "../platforms/steam"
-import "../platforms/plex"
+import "@/old-features/library/platforms/spotify"
+import "@/old-features/library/platforms/steam"
+import "@/old-features/library/platforms/plex"
 
 export function LibraryLayout() {
   const navigate = useNavigate()
@@ -52,7 +60,7 @@ export function LibraryLayout() {
         <meta name="description" content="Your saved, liked, watched items, and lists on Otix." />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <div className="flex flex-col pl-5 pt-20">
+      <div className="flex flex-col pl-5 pt-20 sm:pt-28">
         <h1 className="text-2xl font-bold text-foreground">Library</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your saved, liked, watched items, and lists.
@@ -65,7 +73,17 @@ export function LibraryLayout() {
         onTabClick={(id) => navigate({ to: `/library/${id}`, replace: true })}
       />
 
-      <Outlet />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.15, ease: "easeInOut" }}
+        >
+          <Outlet />
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

@@ -2,7 +2,6 @@ import {Link, useLocation} from "@tanstack/react-router"
 import {DkLogo} from "@dk-ui/atoms/logo"
 import {usePageMeta} from "@/lib/providers/page-context"
 import {useDesktopPlatform} from "@/lib/desktop/platform"
-import {cn} from "@/lib/utils"
 import {NavPill} from "../atoms/nav-pill"
 import {BackButton} from "../atoms/nav-back-button"
 import {MenuToggle} from "../atoms/nav-menu-toggle"
@@ -19,7 +18,7 @@ export function NavPillLeft() {
     const showBackButton = !isHomePage && canGoBack
 
     return (
-        <NavPill className={cn("left-3 px-2 py-1.5", titleBarOffset, navLogo && "pr-4")} data-menu-trigger>
+        <NavPill className={"left-3 px-2 py-1.5 " + titleBarOffset + (navLogo ? " pr-4" : '')} data-menu-trigger>
             {showBackButton && <BackButton/>}
             <MenuToggle/>
             {

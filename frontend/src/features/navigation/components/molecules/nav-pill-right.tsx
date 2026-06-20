@@ -1,5 +1,4 @@
 import { useDesktopPlatform } from "@/lib/desktop/platform"
-import { cn } from "@/lib/utils"
 import { UserMenu } from "@auth"
 import { ActivityModuleButton } from "@activity/components/atoms/nav-activity-button"
 import { NavPill } from "../atoms/nav-pill"
@@ -17,7 +16,7 @@ export function NavPillRight({ isPinned, isSidebarOpen, onToggleSidebar }: NavPi
   const titleBarOffset = isDesktop ? "top-12" : "top-4"
 
   return (
-    <NavPill className={cn("right-4 px-2 py-1.5", titleBarOffset)}>
+    <NavPill className={`right-4 px-2 py-1.5 ${titleBarOffset}`}>
       <NavSearch />
       <UserMenu bare />
       <ActivityModuleButton bare isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />

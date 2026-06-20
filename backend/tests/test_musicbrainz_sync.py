@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import otix.tasks.sync.musicbrainz as sync_tasks
 from otix.domain.media import Album, ExternalID, MediaItem
+from otix.services.external_id_service import ExternalIDService
 from otix.tasks.sync.musicbrainz import _sync_musicbrainz_album
 
 
@@ -60,6 +61,9 @@ async def test_sync_musicbrainz_album_with_stub_creates_new_media_item(monkeypat
                 def all(self):
                     return []
 
+                def scalar_one_or_none(self):
+                    return None
+
             return FakeResult()
 
         async def delete(self, item):
@@ -78,6 +82,15 @@ async def test_sync_musicbrainz_album_with_stub_creates_new_media_item(monkeypat
         async def commit(self):
             await self.flush()
             self.committed = True
+
+    # Mock ExternalIDService.upsert to simulate legacy stub promotion
+    async def fake_upsert(self_, provider, external_id, entity_type, entity_id):
+        ext_id.entity_type = entity_type
+        ext_id.entity_id = entity_id
+        ext_id.media_item_id = entity_id if entity_type == "media_item" else None
+        return ext_id
+
+    monkeypatch.setattr(ExternalIDService, "upsert", fake_upsert)
 
     # Setup the stub ExternalID (media_item_id and entity_id are None)
     ext_id = ExternalID(

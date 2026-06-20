@@ -21,7 +21,7 @@ export interface LocalGame {
   otixPosterUrl?: string | null;
   otixTextlessPosterUrl?: string | null;
   otixLogoUrl?: string | null;
-  sources?: string[];
+  sources?: (string | Record<string, unknown>)[];
 }
 
 export interface MountResult {
@@ -296,6 +296,14 @@ export type PermissionResponse =
   | { granted: true; duration: PermissionDuration }
   | { granted: false };
 
+export interface PluginSettingsTab {
+  id: string;
+  label: string;
+  icon: string;
+  path: string;
+  sections: { id: string; label: string; slot: string }[];
+}
+
 export interface DesktopSettings {
   launchOnStartup: boolean;
   minimizeToTray: boolean;
@@ -367,6 +375,7 @@ export interface IDesktopAPI {
   getGameById: (id: string) => Promise<LocalGame | null>;
   getGameCount: (filter: unknown) => Promise<number>;
   acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
+  unmatchGame: (gameId: string) => Promise<void>;
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;
 
@@ -478,10 +487,14 @@ export interface IDesktopAPI {
     testConfig: (pluginId: string, configDraft: Record<string, unknown>) => Promise<{ success: boolean; message: string }>;
     callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>;
     getStatus: (pluginId: string) => Promise<Record<string, unknown> | null>;
+    getSlotData: (location: string) => Promise<{pluginId: string; label: string; data: any}[]>;
+    getPageSlotData: (pageId: string) => Promise<Record<string, {pluginId: string; label: string; data: any}[]>>;
+    getPluginTabs: () => Promise<PluginSettingsTab[]>;
     fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
     removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
+    openOAuthWindow: (url: string, redirectPattern: string) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
 }
 

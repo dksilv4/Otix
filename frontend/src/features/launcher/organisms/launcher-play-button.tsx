@@ -23,7 +23,7 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
 
   const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
   const isIncompatible = g?.platform === 'iso' && osName !== 'Windows'
-  const mediaId = g?.data?.id
+  const mediaId = g?.otixMediaId || g?.data?.id
 
   const activeInstall = useMemo(() => {
     const activePath = g?.exePath?.toLowerCase()

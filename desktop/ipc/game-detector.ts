@@ -1,8 +1,8 @@
 import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
-import { GameDetector } from '../game-detector';
-import { LocalGame } from '../scanner';
+import { GameDetector } from '../game/detector';
+import type { LocalGame } from '../game/scanner';
 
 export function registerGameDetectorIPC(gameDetector: GameDetector | null): void {
   // Launch game — accepts full LocalGame for tracking

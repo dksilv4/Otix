@@ -9,7 +9,6 @@ import { usePlayer } from '@/old-features/spotify/use-player'
 import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { apiClient } from '@/lib/api/client'
-import { cn } from '@/lib/utils'
 import { usePalette, rgbCss, rgbaCss } from '../../hooks/use-palette'
 import { formatTime } from '@/lib/utils'
 
@@ -176,10 +175,7 @@ export function ActivityModulePlayer() {
                     <img
                       src={currentTrack.albumArt}
                       alt={currentTrack.albumName}
-                      className={cn(
-                        "w-full h-full object-cover rounded-2xl shadow-2xl",
-                        isPlaying && "shadow-purple-500/10",
-                      )}
+                      className={"w-full h-full object-cover rounded-2xl shadow-2xl" + (isPlaying ? " shadow-purple-500/10" : "")}
                     />
                   ) : (
                     <div className="w-full h-full rounded-2xl flex items-center justify-center bg-white/[0.04]">
@@ -188,12 +184,7 @@ export function ActivityModulePlayer() {
                   )}
                   <div className="absolute top-2.5 right-2.5">
                     <span
-                      className={cn(
-                        "inline-flex items-center justify-center rounded-full p-1.5",
-                        source === 'spotify'
-                          ? "bg-[#1DB954]/20 text-[#1DB954]"
-                          : "bg-amber-400/20 text-amber-400",
-                      )}
+                      className={"inline-flex items-center justify-center rounded-full p-1.5" + (source === 'spotify' ? " bg-[#1DB954]/20 text-[#1DB954]" : " bg-amber-400/20 text-amber-400")}
                     >
                       {source === 'spotify' ? (
                         <SpotifyIcon className="h-3.5 w-3.5" />
@@ -245,10 +236,7 @@ export function ActivityModulePlayer() {
                   </div>
                   {(progress > 0.01 || isDraggingProgress) && (
                     <div
-                      className={cn(
-                        "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3.5 w-3.5 rounded-full shadow-lg opacity-0 transition-opacity duration-fast ease group-hover:opacity-100",
-                        isDraggingProgress && "opacity-100",
-                      )}
+                      className={"absolute top-1/2 -translate-y-1/2 -translate-x-1/2 h-3.5 w-3.5 rounded-full shadow-lg opacity-0 transition-opacity duration-fast ease group-hover:opacity-100" + (isDraggingProgress ? " opacity-100" : "")}
                       style={{ left: `${progress * 100}%`, backgroundColor: accentColor }}
                     />
                   )}
@@ -260,10 +248,7 @@ export function ActivityModulePlayer() {
               </div>
 
               {/* Controls + Volume */}
-              <div className={cn(
-                "relative flex items-center justify-center gap-3 px-6 shrink-0 pb-6",
-                !(queueItems.length === 0 && prevItems.length === 0) && "pb-4",
-              )}>
+              <div className={"relative flex items-center justify-center gap-3 px-6 shrink-0 pb-6" + (!(queueItems.length === 0 && prevItems.length === 0) ? " pb-4" : "")}>
                 <button
                   type="button" onClick={skipPrevious}
                   className="h-10 w-10 inline-flex items-center justify-center rounded-full text-white/40 transition-colors duration-fast ease hover:text-white/80 hover:bg-white/[0.06]"

@@ -422,7 +422,7 @@ class MediaService:
         page_size: int = 24,
         query_embedding: list[float] | None = None,
         exclude_adult: bool = False,
-    ) -> tuple[list[MediaItem], int]:
+    ) -> tuple[list[MediaItem], int | None, bool]:
         tsquery = func.plainto_tsquery("english", query_str)
 
         # Three independent index-backed search branches combined via UNION.

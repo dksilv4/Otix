@@ -1,49 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2, Puzzle, ExternalLink, Trash2, CheckCircle2, XCircle, AlertCircle, Download, RefreshCw, Settings, X, Lock, Store, ChevronDown, ShieldCheck, Database, ArrowUpCircle } from 'lucide-react'
-import { cn } from '@/lib/utils/utils'
-import type { ChangeEvent } from 'react'
+import { useModal, SlidePanel } from '@/lib/modals'
+import { PluginConfigPanel } from './PluginConfigPanel'
+import type { PluginInfo, PluginManifest, PluginConfigField } from '@/features/settings/types/plugins'
 
-// ── Types ─────────────────────────────────────────────────────────────
-
-interface PluginManifest {
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  min_app_version: string
-  icon?: string
-  permissions: string[]
-  config?: Record<string, PluginConfigField>
-  entry: { main: string; renderer?: string }
-  services?: string[]
-}
-
-interface PluginConfigField {
-  type: string
-  label: string
-  description?: string
-  default?: unknown
-  values?: string[]
-  items?: Record<string, PluginConfigField>
-  required?: boolean
-  advanced?: boolean
-}
-
-interface PluginInfo {
-  id: string
-  name: string
-  version: string
-  description: string
-  author: string
-  repository: string
-  status: 'installed' | 'enabled' | 'disabled' | 'error'
-  error?: string
-  manifest: PluginManifest
-  installedAt: string
-  enabledAt?: string
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RegistryEntry {
   id: string
@@ -63,7 +25,7 @@ interface RegistryEntry {
   downloads?: number
 }
 
-interface PluginAPI {
+export interface PluginAPI {
   list(): Promise<PluginInfo[]>
   get(id: string): Promise<PluginInfo | null>
   install(repoUrl: string, pluginPath?: string): Promise<PluginInfo>
@@ -77,13 +39,14 @@ interface PluginAPI {
   testInstance(url: string, apiKey: string): Promise<{ success: boolean; message: string }>
   testConfig(pluginId: string, config: Record<string, unknown>): Promise<{ success: boolean; message: string }>
   getStatus(pluginId: string): Promise<Record<string, unknown> | null>
+  callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
   fetchMarketplace(registryUrl?: string): Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>
   getRepos(): Promise<{ url: string; label: string | null; added_at: string }[]>
   addRepo(url: string, label?: string): Promise<{ url: string; label: string | null; added_at: string }[]>
   removeRepo(url: string): Promise<{ url: string; label: string | null; added_at: string }[]>
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const PERMISSION_LABELS: Record<string, string> = {
   'api:proxy': 'API Proxy',
@@ -129,224 +92,235 @@ const PLUGIN_ICONS: Record<string, string> = {
   default: '\u{1F4E6}',
 }
 
-function getPluginAPI(): PluginAPI | null {
+export function getPluginAPI(): PluginAPI | null {
   const desktopAPI = (window as Window).desktopAPI as
     | { plugin: PluginAPI }
     | undefined
   return desktopAPI?.plugin ?? null
 }
 
-// ── Instance Test Button ────────────────────────────────────────────────
 
-function InstanceTestButton({ item, field, idx }: { item: Record<string, unknown>; field: any; idx: number }) {
-  const api = getPluginAPI()
-  const [testing, setTesting] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+// ── Marketplace Card ──────────────────────────────────────────────────────────
 
-  // Only show for list items that have radarr_url and radarr_api_key sub-fields
-  const hasUrl = field.items?.radarr_url
-  const hasApiKey = field.items?.radarr_api_key
-  if (!hasUrl || !hasApiKey) return null
-
-  async function handleTest() {
-    if (!api) return
-    setTesting(true)
-    setResult(null)
-    try {
-      const res = await api.testInstance(
-        String(item.radarr_url || 'http://localhost:7878'),
-        String(item.radarr_api_key || '')
-      )
-      setResult(res)
-    } catch (err) {
-      setResult({ success: false, message: err instanceof Error ? err.message : 'Test failed' })
-    } finally {
-      setTesting(false)
-    }
-  }
+function MarketplaceCard({
+  entry,
+  isInstalled,
+  installedVersion,
+  onClick,
+}: {
+  entry: RegistryEntry
+  isInstalled: boolean
+  installedVersion?: string
+  onClick: () => void
+}) {
+  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
+  const permCount = entry.permissions?.length || 0
+  const canUpdate = isInstalled && installedVersion && entry.version !== installedVersion
 
   return (
-    <div>
-      <button
-        onClick={(e) => { e.stopPropagation(); handleTest() }}
-        disabled={testing}
-        className="text-[0.625rem] text-white/30 hover:text-white/60 transition-colors px-2 py-0.5 rounded-md border border-white/10 hover:border-white/20 disabled:opacity-50"
-      >
-        {testing ? '...' : 'Test'}
-      </button>
-      {result && (
-        <div className={`mt-1 text-[0.625rem] ${result.success ? 'text-green-400' : 'text-red-400'}`}>
-          {result.message}
+    <button
+      onClick={onClick}
+      className="text-left rounded-2xl p-5 transition-all duration-200 hover:scale-[1.02] cursor-pointer w-full"
+      style={{
+        backgroundColor: 'var(--dk-surface-base)',
+        boxShadow: 'var(--dk-shadow-sm)',
+        border: '1px solid rgba(255,255,255,0.04)',
+      }}
+    >
+      {/* Icon + Installed badge */}
+      <div className="flex items-start justify-between mb-3">
+        <div
+          className="flex items-center justify-center w-12 h-12 rounded-2xl text-2xl"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}
+        >
+          {icon}
         </div>
-      )}
-    </div>
+        {isInstalled && (
+          <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 rounded-full px-2 py-0.5">
+            <CheckCircle2 className="h-3 w-3" /> Installed
+          </span>
+        )}
+        {canUpdate && (
+          <span className="inline-flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 ml-1">
+            <ArrowUpCircle className="h-3 w-3" /> v{entry.version} available
+          </span>
+        )}
+      </div>
+
+      <h3 className="font-semibold text-white text-sm mb-1">{entry.name}</h3>
+      <p className="text-xs text-white/40 mb-2">{entry.author}</p>
+      <p className="text-xs text-white/50 line-clamp-2 mb-3">{entry.description}</p>
+
+      <div className="flex items-center gap-2">
+        {entry.category && (
+          <span className="text-xs text-white/40 bg-white/5 rounded-md px-2 py-0.5">{entry.category}</span>
+        )}
+        <span className="text-xs text-white/30">{permCount} permissions</span>
+      </div>
+    </button>
   )
 }
 
-// ── Config Field Renderer ─────────────────────────────────────────────
+// ── Marketplace Detail Panel ──────────────────────────────────────────────────
 
-function ConfigField({
-  field,
-  value,
-  onChange,
+function MarketplaceDetailPanel({
+  entry,
+  isInstalled,
+  installedVersion,
+  installing,
+  updating,
+  onInstall,
+  onUpdate,
+  onClose,
+  isExiting,
 }: {
-  field: PluginConfigField
-  value: unknown
-  onChange: (value: unknown) => void
+  entry: RegistryEntry
+  isInstalled: boolean
+  installedVersion?: string
+  installing: boolean
+  updating: boolean
+  onInstall: () => void
+  onUpdate?: () => void
+  onClose: () => void
+  isExiting?: boolean
 }) {
-  const currentValue = value ?? field.default ?? ''
+  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
 
-  switch (field.type) {
-    case 'boolean':
-      return (
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={Boolean(currentValue)}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary/50"
-          />
-          <span className="text-sm text-white/80">{field.label}</span>
-        </label>
-      )
-
-    case 'number':
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">{field.label}</label>
-          <input
-            type="number"
-            value={currentValue as string | number}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              onChange(Number(e.target.value))
-            }
-            placeholder={field.description ?? ''}
-            className={cn(
-              'w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 border border-white/10',
-              'placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors',
-            )}
-          />
+  return (
+    <SlidePanel onClose={onClose} isExiting={isExiting}>
+      {/* Header */}
+      <div className="flex items-start gap-4 px-6 pt-6 pb-4">
+        <div
+          className="flex items-center justify-center w-14 h-14 rounded-2xl text-2xl shrink-0"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}
+        >
+          {icon}
         </div>
-      )
-
-    case 'secret':
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">{field.label}</label>
-          <input
-            type="password"
-            value={currentValue as string}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-            placeholder={field.description ?? 'Enter secret...'}
-            className={cn(
-              'w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 border border-white/10',
-              'placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors',
-            )}
-          />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-white">{entry.name}</h2>
+          <p className="text-sm text-white/50">{entry.author} &middot; v{entry.version}</p>
         </div>
-      )
+        <button
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors shrink-0"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
-    case 'enum':
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">{field.label}</label>
-          <select
-            value={currentValue as string}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => onChange(e.target.value)}
-            className={cn(
-              'w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 border border-white/10',
-              'focus:outline-none focus:border-primary/50 transition-colors appearance-none',
-            )}
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        {/* Description */}
+        <p className="text-sm text-white/70 leading-relaxed">{entry.long_description || entry.description}</p>
+
+        {/* Meta card */}
+        {(entry.category || (entry.tags && entry.tags.length > 0)) && (
+          <div
+            className="rounded-2xl p-4 space-y-3"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--dk-surface-glass) 50%, transparent)' }}
           >
-            {(field.values ?? []).map((v) => (
-              <option key={v} value={v} className="bg-[var(--dk-surface-base)] text-white">
-                {v}
-              </option>
-            ))}
-          </select>
-        </div>
-      )
-
-    case 'list':
-      const items = (Array.isArray(currentValue) ? currentValue : []) as Record<string, unknown>[]
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-2">{field.label}</label>
-          <div className="space-y-3">
-            {items.map((item, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/40">
-                    {item.name ? String(item.name) : `Instance ${idx + 1}`}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <InstanceTestButton
-                      item={item}
-                      field={field}
-                      idx={idx}
-                    />
-                    <button onClick={() => {
-                      const next = items.filter((_, i) => i !== idx)
-                      onChange(next)
-                    }} className="text-white/20 hover:text-red-400 transition-colors p-0.5">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-                {field.items && Object.entries(field.items).map(([subKey, subField]) => (
-                  <ConfigField
-                    key={subKey}
-                    field={subField}
-                    value={item[subKey]}
-                    onChange={(val) => {
-                      const next = items.map((it, i) => i === idx ? { ...it, [subKey]: val } : it)
-                      onChange(next)
-                    }}
-                  />
-                ))}
+            {entry.category && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/30 w-20 shrink-0">Category</span>
+                <span className="text-xs text-white/60 bg-white/5 rounded-lg px-2.5 py-1 capitalize">{entry.category}</span>
               </div>
-            ))}
-            <button onClick={() => {
-              const newItem: Record<string, unknown> = {}
-              if (field.items) {
-                for (const [k, f] of Object.entries(field.items)) {
-                  newItem[k] = f.default ?? ''
-                }
-              }
-              onChange([...items, newItem])
-            }} className="w-full h-9 rounded-xl text-xs text-white/40 hover:text-white/60 border border-dashed border-white/10 hover:border-white/20 transition-colors">
-              + Add {field.label}
+            )}
+            {entry.tags && entry.tags.length > 0 && (
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-white/30 w-20 shrink-0 mt-0.5">Tags</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {entry.tags.map((tag) => (
+                    <span key={tag} className="text-xs text-white/50 bg-white/5 rounded-md px-2 py-0.5">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Repository link */}
+        <div
+          className="rounded-2xl p-4 flex items-center justify-between"
+          style={{ backgroundColor: 'color-mix(in srgb, var(--dk-surface-glass) 50%, transparent)' }}
+        >
+          <span className="text-xs text-white/30">Repository</span>
+          <button
+            onClick={() => (window as Window).desktopAPI?.openExternal?.(entry.repository)}
+            className="text-xs text-primary/80 hover:text-primary flex items-center gap-1 truncate ml-4"
+          >
+            {entry.repository.replace(/^https?:\/\/[^\/]+\//, '').replace(/\/$/, '')}
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </button>
+        </div>
+
+        {/* Permissions */}
+        {entry.permissions.length > 0 && (
+          <div
+            className="rounded-2xl p-4"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--dk-surface-glass) 50%, transparent)' }}
+          >
+            <h4 className="text-sm font-medium text-white/60 mb-3">Permissions</h4>
+            <div className="space-y-2">
+              {entry.permissions.map((perm) => (
+                <div key={perm} className="flex items-center gap-2 text-xs">
+                  <ShieldCheck className="h-3.5 w-3.5 text-white/30 shrink-0" />
+                  <span className="text-white/60">{getPermissionLabel(perm)}</span>
+                  <span className="text-white/20 ml-auto font-mono">{perm}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4">
+        {isInstalled && installedVersion && entry.version !== installedVersion ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-amber-400">
+              <ArrowUpCircle className="h-4 w-4" /> Update available: v{installedVersion} &rarr; v{entry.version}
+            </div>
+            <button
+              onClick={onUpdate}
+              disabled={updating}
+              className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors disabled:opacity-50 active:scale-[0.97]"
+            >
+              {updating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Updating...</>
+              ) : (
+                <><RefreshCw className="h-4 w-4" /> Update Plugin</>
+              )}
             </button>
           </div>
-        </div>
-      )
-
-    case 'uuid':
-    case 'string':
-    default:
-      return (
-        <div>
-          <label className="block text-xs text-white/40 mb-1">{field.label}</label>
-          <input
-            type="text"
-            value={currentValue as string}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-            placeholder={field.description ?? ''}
-            className={cn(
-              'w-full h-9 rounded-lg px-3 text-sm text-white bg-white/5 border border-white/10',
-              'placeholder:text-white/20 focus:outline-none focus:border-primary/50 transition-colors',
+        ) : isInstalled ? (
+          <div className="flex items-center justify-center gap-2 text-sm text-green-400 py-2">
+            <CheckCircle2 className="h-4 w-4" /> Up to date (v{installedVersion})
+          </div>
+        ) : (
+          <button
+            onClick={onInstall}
+            disabled={installing}
+            className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.97]"
+          >
+            {installing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Installing...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" /> Install Plugin
+              </>
             )}
-          />
-          {field.description && (
-            <p className="text-xs text-white/30 mt-1">{field.description}</p>
-          )}
-        </div>
-      )
-  }
+          </button>
+        )}
+      </div>
+    </SlidePanel>
+  )
 }
 
-// ── Plugin Card ───────────────────────────────────────────────────────
-
+// ── Plugin Settings Page ──────────────────────────────────────────────────────
 function PluginCard({
   plugin,
   onToggle,
@@ -396,12 +370,7 @@ function PluginCard({
             >
               v{plugin.version}
             </span>
-            <span
-              className={cn(
-                'inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-medium',
-                statusCfg.class,
-              )}
-            >
+            <span className={'inline-flex items-center px-2 py-0.5 rounded-md text-[0.625rem] font-medium ' + statusCfg.class}>
               {statusCfg.label}
             </span>
           </div>
@@ -422,20 +391,20 @@ function PluginCard({
               ) : (
                 <ArrowUpCircle className="h-3.5 w-3.5" />
               )}
-              {updating ? 'Updating...' : `Update v${updateVersion}`}
+              {updating ? 'Updating...' : 'Update v' + updateVersion}
             </button>
           )}
           <button
             type="button"
             onClick={onToggle}
             disabled={toggling}
-            className={cn(
-              'inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium transition-all',
-              plugin.status === 'enabled'
-                ? 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-                : 'bg-primary/10 text-primary hover:bg-primary/20',
-              toggling && 'opacity-50 pointer-events-none',
-            )}
+            className={
+              'inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium transition-all' +
+              (plugin.status === 'enabled'
+                ? ' bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                : ' bg-primary/10 text-primary hover:bg-primary/20') +
+              (toggling ? ' opacity-50 pointer-events-none' : '')
+            }
           >
             {toggling ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -485,13 +454,13 @@ function PluginCard({
             }}
             disabled={uninstalling}
             onBlur={() => setConfirmingUninstall(false)}
-            className={cn(
-              'inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium transition-all',
-              confirmingUninstall
-                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                : 'text-white/40 hover:text-red-400 hover:bg-white/5',
-              uninstalling && 'opacity-50 pointer-events-none',
-            )}
+            className={
+              'inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-3 text-xs font-medium transition-all' +
+              (confirmingUninstall
+                ? ' bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                : ' text-white/40 hover:text-red-400 hover:bg-white/5') +
+              (uninstalling ? ' opacity-50 pointer-events-none' : '')
+            }
           >
             {uninstalling ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -555,424 +524,6 @@ function PluginCard({
   )
 }
 
-// ── Plugin Config Panel (slide-in from right) ─────────────────────────
-
-function PluginConfigPanel({
-  plugin,
-  configValues,
-  onFieldChange,
-  onSave,
-  onClose,
-  saving,
-  onTest,
-  testing,
-  testResult,
-  connectionConfirmed,
-  status,
-}: {
-  plugin: PluginInfo
-  configValues: Record<string, unknown>
-  onFieldChange: (key: string, value: unknown) => void
-  onSave: () => void
-  onClose: () => void
-  saving: boolean
-  onTest?: () => void
-  testing?: boolean
-  testResult?: { success: boolean; message: string } | null
-  connectionConfirmed?: boolean
-  status?: Record<string, unknown> | null
-}) {
-  const [animateIn, setAnimateIn] = useState(false)
-
-  useEffect(() => {
-    requestAnimationFrame(() => setAnimateIn(true))
-  }, [])
-
-  const manifest = plugin.manifest
-  const fields = manifest.config ? Object.entries(manifest.config) : []
-  const { basicFields, advancedFields } = fields.reduce(
-    (acc, [key, field]) => {
-      if ((field as any).advanced) {
-        acc.advancedFields.push([key, field])
-      } else {
-        acc.basicFields.push([key, field])
-      }
-      return acc
-    },
-    { basicFields: [] as [string, any][], advancedFields: [] as [string, any][] }
-  )
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
-        style={{ opacity: animateIn ? 1 : 0 }}
-        onClick={onClose}
-      />
-      {/* Panel */}
-      <div
-        className="relative w-full max-w-md h-full transition-transform duration-300 ease-out"
-        style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
-          backgroundColor: 'var(--dk-surface-base)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-          <h2 className="text-lg font-semibold text-white">{plugin.name}</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto px-6 py-5 space-y-5" style={{ height: 'calc(100% - 130px)' }}>
-          {status && !status.error && (
-            <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
-              <h4 className="text-xs font-medium text-white/40 uppercase tracking-wide">Status</h4>
-              {Object.entries(status).map(([key, value]) => {
-                if (key === 'recent_syncs' || key === 'last_sync') return null;
-                return (
-                  <div key={key} className="flex items-center justify-between text-sm">
-                    <span className="text-white/50 capitalize">{key.replace(/_/g, ' ')}</span>
-                    <span className="text-white/80 font-mono text-xs">
-                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    </span>
-                  </div>
-                );
-              })}
-              {status.last_sync && (
-                <div className="text-xs text-white/30 pt-1 border-t border-white/5">
-                  Last sync: {status.last_sync.title} ({status.last_sync.direction}) &mdash; {new Date(status.last_sync.synced_at).toLocaleString()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {status?.error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-500/5 border border-red-500/10 text-sm text-red-400">
-              {String(status.error)}
-            </div>
-          )}
-
-          {basicFields.map(([key, field]) => (
-            <ConfigField
-              key={key}
-              field={field}
-              value={configValues[key]}
-              onChange={(val) => onFieldChange(key, val)}
-            />
-          ))}
-          {advancedFields.length > 0 && (
-            <div className="mt-6 pt-5 border-t border-white/5">
-              <h3 className="text-sm font-medium text-white/60 mb-4">Advanced Settings</h3>
-              {connectionConfirmed ? (
-                <div className="space-y-5">
-                  {advancedFields.map(([key, field]) => (
-                    <ConfigField key={key} field={field} value={configValues[key]} onChange={(val) => onFieldChange(key, val)} />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/5">
-                  <Lock className="h-4 w-4 text-white/30" />
-                  <p className="text-sm text-white/30">Test your connection to unlock additional settings.</p>
-                </div>
-              )}
-            </div>
-          )}
-          {basicFields.length === 0 && advancedFields.length === 0 && (
-            <p className="text-sm text-white/40">No configurable settings for this plugin.</p>
-          )}
-        </div>
-
-        {/* Test Result Banner */}
-        {testResult && (
-          <div className={`mx-6 mb-4 p-3 rounded-xl text-sm flex items-start gap-2 ${
-            testResult.success
-              ? 'bg-green-500/10 border border-green-500/20 text-green-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}>
-            {testResult.success ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
-            ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            )}
-            <span>{testResult.message}</span>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 px-6 py-4 border-t border-white/5 flex items-center justify-between">
-          <p className="text-xs text-white/30">
-            {manifest.version ? `v${manifest.version}` : ''}
-          </p>
-          <div className="flex items-center gap-2">
-            {onTest && (
-              <button
-                onClick={onTest}
-                disabled={testing}
-                className="inline-flex items-center gap-2 h-10 rounded-xl px-4 text-sm font-medium border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
-              >
-                {testing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                Test Connection
-              </button>
-            )}
-            <button
-              onClick={onSave}
-              disabled={saving}
-              className="inline-flex items-center gap-2 h-10 rounded-xl px-6 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  , document.body)
-}
-
-// ── Marketplace Card ──────────────────────────────────────────────
-
-function MarketplaceCard({
-  entry,
-  isInstalled,
-  installedVersion,
-  onClick,
-}: {
-  entry: RegistryEntry
-  isInstalled: boolean
-  installedVersion?: string
-  onClick: () => void
-}) {
-  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
-  const permCount = entry.permissions?.length || 0
-  const canUpdate = isInstalled && installedVersion && entry.version !== installedVersion
-
-  return (
-    <button
-      onClick={onClick}
-      className="text-left rounded-2xl p-5 transition-all duration-200 hover:scale-[1.02] cursor-pointer w-full"
-      style={{
-        backgroundColor: 'var(--dk-surface-base)',
-        boxShadow: 'var(--dk-shadow-sm)',
-        border: '1px solid rgba(255,255,255,0.04)',
-      }}
-    >
-      {/* Icon + Installed badge */}
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className="flex items-center justify-center w-12 h-12 rounded-2xl text-2xl"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}
-        >
-          {icon}
-        </div>
-        {isInstalled && (
-          <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-500/10 rounded-full px-2 py-0.5">
-            <CheckCircle2 className="h-3 w-3" /> Installed
-          </span>
-        )}
-        {canUpdate && (
-          <span className="inline-flex items-center gap-1 text-xs text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 ml-1">
-            <ArrowUpCircle className="h-3 w-3" /> v{entry.version} available
-          </span>
-        )}
-      </div>
-
-      <h3 className="font-semibold text-white text-sm mb-1">{entry.name}</h3>
-      <p className="text-xs text-white/40 mb-2">{entry.author}</p>
-      <p className="text-xs text-white/50 line-clamp-2 mb-3">{entry.description}</p>
-
-      <div className="flex items-center gap-2">
-        {entry.category && (
-          <span className="text-xs text-white/40 bg-white/5 rounded-md px-2 py-0.5">{entry.category}</span>
-        )}
-        <span className="text-xs text-white/30">{permCount} permissions</span>
-      </div>
-    </button>
-  )
-}
-
-// ── Marketplace Detail Panel ──────────────────────────────────────
-
-function MarketplaceDetailPanel({
-  entry,
-  isInstalled,
-  installedVersion,
-  installing,
-  updating,
-  onInstall,
-  onUpdate,
-  onClose,
-}: {
-  entry: RegistryEntry
-  isInstalled: boolean
-  installedVersion?: string
-  installing: boolean
-  updating: boolean
-  onInstall: () => void
-  onUpdate?: () => void
-  onClose: () => void
-}) {
-  const [animateIn, setAnimateIn] = useState(false)
-  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
-
-  useEffect(() => {
-    requestAnimationFrame(() => setAnimateIn(true))
-  }, [])
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
-        style={{ opacity: animateIn ? 1 : 0 }}
-        onClick={onClose}
-      />
-      {/* Panel */}
-      <div
-        className="relative w-full max-w-md h-full transition-transform duration-300 ease-out overflow-y-auto"
-        style={{
-          transform: animateIn ? 'translateX(0)' : 'translateX(100%)',
-          backgroundColor: 'var(--dk-surface-base)',
-          borderLeft: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-        {/* Header */}
-        <div
-          className="sticky top-0 z-10 flex items-center justify-between px-6 py-5 border-b border-white/5"
-          style={{ backgroundColor: 'var(--dk-surface-base)' }}
-        >
-          <h2 className="text-lg font-semibold text-white">Plugin Details</h2>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="px-6 py-6 space-y-6">
-          {/* Icon + Name */}
-          <div className="flex items-center gap-4">
-            <div
-              className="flex items-center justify-center w-16 h-16 rounded-2xl text-3xl shrink-0"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}
-            >
-              {icon}
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">{entry.name}</h3>
-              <p className="text-sm text-white/50">
-                {entry.author} &middot; v{entry.version}
-              </p>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <p className="text-sm text-white/70 leading-relaxed">{entry.long_description || entry.description}</p>
-          </div>
-
-          {/* Meta info */}
-          <div className="space-y-3">
-            {entry.category && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/30 w-20 shrink-0">Category</span>
-                <span className="text-xs text-white/60 bg-white/5 rounded-lg px-2.5 py-1 capitalize">{entry.category}</span>
-              </div>
-            )}
-            {entry.tags && entry.tags.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-white/30 w-20 shrink-0">Tags</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {entry.tags.map((tag) => (
-                    <span key={tag} className="text-xs text-white/50 bg-white/5 rounded-md px-2 py-0.5">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white/30 w-20 shrink-0">Repository</span>
-              <button
-                onClick={() => (window as Window).desktopAPI?.openExternal?.(entry.repository)}
-                className="text-xs text-primary/80 hover:text-primary flex items-center gap-1 truncate"
-              >
-                {entry.repository.replace('https://github.com/', '')}
-                <ExternalLink className="h-3 w-3 shrink-0" />
-              </button>
-            </div>
-          </div>
-
-          {/* Permissions */}
-          <div>
-            <h4 className="text-sm font-medium text-white/60 mb-3">Permissions</h4>
-            <div className="space-y-2">
-              {entry.permissions.map((perm) => (
-                <div key={perm} className="flex items-center gap-2 text-xs">
-                  <ShieldCheck className="h-3.5 w-3.5 text-white/30 shrink-0" />
-                  <span className="text-white/60">{getPermissionLabel(perm)}</span>
-                  <span className="text-white/20 ml-auto font-mono">{perm}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer with Install / Update button */}
-        <div
-          className="sticky bottom-0 px-6 py-4 border-t border-white/5"
-          style={{ backgroundColor: 'var(--dk-surface-base)' }}
-        >
-          {isInstalled && installedVersion && entry.version !== installedVersion ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-amber-400">
-                <ArrowUpCircle className="h-4 w-4" /> Update available: v{installedVersion} &rarr; v{entry.version}
-              </div>
-              <button
-                onClick={onUpdate}
-                disabled={updating}
-                className="w-full h-11 rounded-xl text-sm font-medium bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {updating ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Updating...</>
-                ) : (
-                  <><RefreshCw className="h-4 w-4" /> Update Plugin</>
-                )}
-              </button>
-            </div>
-          ) : isInstalled ? (
-            <div className="flex items-center gap-2 text-sm text-green-400">
-              <CheckCircle2 className="h-4 w-4" /> Up to date (v{installedVersion})
-            </div>
-          ) : (
-            <button
-              onClick={onInstall}
-              disabled={installing}
-              className="w-full h-11 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {installing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Installing...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" /> Install Plugin
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  , document.body)
-}
-
-// ── Plugin Settings Page ──────────────────────────────────────────────
 
 export function PluginSettings() {
   const [plugins, setPlugins] = useState<PluginInfo[]>([])
@@ -986,12 +537,6 @@ export function PluginSettings() {
 
   // Config panel state
   const [configuringPlugin, setConfiguringPlugin] = useState<string | null>(null)
-  const [configDraft, setConfigDraft] = useState<Record<string, unknown>>({})
-  const [pluginStatus, setPluginStatus] = useState<Record<string, unknown> | null>(null)
-  const [savingConfig, setSavingConfig] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-  const [connectionConfirmed, setConnectionConfirmed] = useState(false)
 
   // Marketplace state
   const [marketplacePlugins, setMarketplacePlugins] = useState<RegistryEntry[]>([])
@@ -1011,7 +556,17 @@ export function PluginSettings() {
   const [newRepoLabel, setNewRepoLabel] = useState('')
   const [addingRepo, setAddingRepo] = useState(false)
 
+  // Gate: don't call plugin IPC until main process registers handlers.
+  const [ipcReady, setIpcReady] = useState(false)
+  useEffect(() => {
+    const api = (window as Window).desktopAPI as
+      | { onMainIpcReady?: () => Promise<void> }
+      | undefined
+    Promise.resolve(api?.onMainIpcReady?.()).finally(() => setIpcReady(true))
+  }, [])
+
   const api = getPluginAPI()
+  const { openModal } = useModal()
 
   const fetchPlugins = useCallback(async () => {
     if (!api) {
@@ -1030,7 +585,7 @@ export function PluginSettings() {
     }
   }, [api])
 
-  // ── Marketplace ──────────────────────────────────────────────────────
+  // ── Marketplace ─────────────────────────────────────────────────────────────
 
   async function loadMarketplace() {
     if (!api) return
@@ -1078,13 +633,16 @@ export function PluginSettings() {
     }
   }
 
-  // ── Repo management ───────────────────────────────────────────────────
+  // ── Repo management ─────────────────────────────────────────────────────────
 
   async function loadRepos() {
     if (!api) return
     try {
       setRepos(await api.getRepos())
-    } catch {}
+    } catch (err: any) {
+      console.error('Failed to load repos:', err)
+      setError(err?.message || 'Failed to load repos')
+    }
   }
 
   async function handleAddRepo() {
@@ -1108,18 +666,61 @@ export function PluginSettings() {
     try {
       setRepos(await api.removeRepo(url))
       loadMarketplace()
-    } catch {}
+    } catch (err: any) {
+      console.error('Failed to remove repo:', err)
+      setError(err?.message || 'Failed to remove repo')
+    }
   }
 
   useEffect(() => {
-    fetchPlugins()
-  }, [fetchPlugins])
+    if (ipcReady) fetchPlugins()
+  }, [fetchPlugins, ipcReady])
 
   useEffect(() => {
+    if (!ipcReady) return
     loadMarketplace()
     loadRepos()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [ipcReady])
+
+  // Detail panel — open via root modal system
+  useEffect(() => {
+    if (!selectedEntry) return
+
+    const close = openModal(
+      <MarketplaceDetailPanel
+        entry={selectedEntry}
+        isInstalled={plugins.some((p) => p.id === selectedEntry.id)}
+        installedVersion={plugins.find((p) => p.id === selectedEntry.id)?.version}
+        installing={installingMarketplaceId === selectedEntry.id}
+        updating={updating === selectedEntry.id}
+        onInstall={() => handleMarketplaceInstall(selectedEntry)}
+        onUpdate={() => handleUpdatePlugin(selectedEntry.id)}
+        onClose={() => setSelectedEntry(null)}
+      />,
+    )
+
+    return () => close()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEntry])
+
+  // Config panel — open via root modal system
+  useEffect(() => {
+    if (!configuringPlugin) return
+    const pluginData = plugins.find((p) => p.id === configuringPlugin)
+    if (!pluginData) return
+
+    const close = openModal(
+      <PluginConfigPanel
+        plugin={pluginData}
+        api={api}
+        onClose={() => setConfiguringPlugin(null)}
+      />,
+    )
+
+    return () => close()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configuringPlugin])
 
   const handleToggle = useCallback(
     async (plugin: PluginInfo) => {
@@ -1138,8 +739,9 @@ export function PluginSettings() {
             prev.map((p) => (p.id === id ? { ...p, status: 'enabled' as const } : p)),
           )
         }
-      } catch {
-        // Revert handled by next fetch or user notification
+      } catch (err: any) {
+        console.error(`Failed to toggle plugin ${id}:`, err)
+        setError(`Failed to toggle plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setToggling((prev) => ({ ...prev, [id]: false }))
       }
@@ -1155,8 +757,9 @@ export function PluginSettings() {
       try {
         await api.uninstall(id)
         setPlugins((prev) => prev.filter((p) => p.id !== id))
-      } catch {
-        // Error handled silently or surfaced elsewhere
+      } catch (err: any) {
+        console.error(`Failed to uninstall plugin ${id}:`, err)
+        setError(`Failed to uninstall plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setUninstalling((prev) => ({ ...prev, [id]: false }))
       }
@@ -1174,8 +777,9 @@ export function PluginSettings() {
         setPlugins((prev) =>
           prev.map((p) => (p.id === id ? { ...p, status: 'enabled' as const } : p)),
         )
-      } catch {
-        // Reload error — state will be updated on next fetch
+      } catch (err: any) {
+        console.error(`Failed to reload plugin ${id}:`, err)
+        setError(`Failed to reload plugin: ${err?.message || 'Unknown error'}`)
       } finally {
         setReloading((prev) => ({ ...prev, [id]: false }))
       }
@@ -1183,72 +787,10 @@ export function PluginSettings() {
     [api],
   )
 
-  const handleConfigFieldChange = useCallback((key: string, value: unknown) => {
-    setConfigDraft((prev) => ({ ...prev, [key]: value }))
-    setTestResult(null)
-  }, [])
-
-  const handleSaveConfig = useCallback(async () => {
-    if (!configuringPlugin || !api) return
-    setSavingConfig(true)
-    try {
-      for (const [key, value] of Object.entries(configDraft)) {
-        await api.setConfig(configuringPlugin, key, value)
-      }
-      setConfiguringPlugin(null)
-    } catch {
-      // Keep panel open on error — user can retry
-    } finally {
-      setSavingConfig(false)
-    }
-  }, [api, configuringPlugin, configDraft])
-
-  async function handleTestConfig() {
-    if (!configuringPlugin || !api) return
-    setTesting(true)
-    setTestResult(null)
-    try {
-      const result = await api.testConfig(configuringPlugin, configDraft)
-      setTestResult(result)
-      if (result.success) {
-        setConnectionConfirmed(true)
-      }
-    } catch (err) {
-      setTestResult({ success: false, message: err instanceof Error ? err.message : 'Test failed' })
-    } finally {
-      setTesting(false)
-    }
-  }
-
   const openConfig = useCallback((plugin: PluginInfo) => {
     if (!api) return
-    setPluginStatus(null)
-    // Load current config values with defaults from manifest
-    api.getConfig(plugin.id).then((cfg) => {
-      const defaults: Record<string, unknown> = {}
-      if (plugin.manifest.config) {
-        for (const [key, field] of Object.entries(plugin.manifest.config)) {
-          defaults[key] = cfg[key] ?? field.default
-        }
-      }
-      setConfigDraft(defaults)
-    }).catch(() => {
-      // Use defaults only
-      const defaults: Record<string, unknown> = {}
-      if (plugin.manifest.config) {
-        for (const [key, field] of Object.entries(plugin.manifest.config)) {
-          defaults[key] = field.default
-        }
-      }
-      setConfigDraft(defaults)
-    })
     setConfiguringPlugin(plugin.id)
-    api.getStatus(plugin.id).then(s => setPluginStatus(s)).catch(() => setPluginStatus(null))
   }, [api])
-
-  const configuringPluginData = configuringPlugin
-    ? plugins.find((p) => p.id === configuringPlugin) ?? null
-    : null
 
   // ── Browser mode fallback ──
 
@@ -1539,34 +1081,6 @@ export function PluginSettings() {
         </div>
       )}
 
-      {configuringPluginData && (
-        <PluginConfigPanel
-          plugin={configuringPluginData}
-          configValues={configDraft}
-          onFieldChange={handleConfigFieldChange}
-          onSave={handleSaveConfig}
-          onClose={() => { setConfiguringPlugin(null); setTestResult(null); setConnectionConfirmed(false); setPluginStatus(null) }}
-          saving={savingConfig}
-          onTest={handleTestConfig}
-          testing={testing}
-          testResult={testResult}
-          connectionConfirmed={connectionConfirmed}
-          status={pluginStatus}
-        />
-      )}
-
-      {selectedEntry && (
-        <MarketplaceDetailPanel
-          entry={selectedEntry}
-          isInstalled={plugins.some((p) => p.id === selectedEntry.id)}
-          installedVersion={plugins.find((p) => p.id === selectedEntry.id)?.version}
-          installing={installingMarketplaceId === selectedEntry.id}
-          updating={updating === selectedEntry.id}
-          onInstall={() => handleMarketplaceInstall(selectedEntry)}
-          onUpdate={() => handleUpdatePlugin(selectedEntry.id)}
-          onClose={() => setSelectedEntry(null)}
-        />
-      )}
     </div>
   )
 }

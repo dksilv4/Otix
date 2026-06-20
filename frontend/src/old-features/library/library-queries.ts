@@ -444,7 +444,7 @@ export function useClaimGame() {
 
   return useMutation({
     mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
-      const { data } = await apiClient.post<{ status: string }>(`/media/${mediaType}/${mediaId}/claim`)
+      const { data } = await apiClient.post<{ status: string }>(`/media/${mediaId}/claim`)
       return data
     },
     onSuccess: (_data, { mediaId }) => {
@@ -463,7 +463,7 @@ export function useUnclaimGame() {
 
   return useMutation({
     mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
-      await apiClient.delete(`/media/${mediaType}/${mediaId}/claim`)
+      await apiClient.delete(`/media/${mediaId}/claim`)
     },
     onSuccess: (_data, { mediaId }) => {
       queryClient.invalidateQueries({ queryKey: libraryKeys.tab("owned") })

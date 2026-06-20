@@ -1,4 +1,4 @@
-import { DesktopSection } from '@/old-features/settings/organisms/settings-sections/desktop'
+﻿import { DesktopSection } from '../sections/desktop'
 
 export function SettingsDesktopPage() {
   return <DesktopSection />

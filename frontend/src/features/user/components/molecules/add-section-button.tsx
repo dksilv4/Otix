@@ -28,11 +28,11 @@ export function AddSectionButton({ currentSections, username }: AddSectionButton
   if (missing.length === 0) return null
 
   return (
-    <div className="dk-user-profile-page__add-section">
+    <div className="relative">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="dk-user-profile-page__add-section-trigger"
+        className="w-full flex flex-col items-center py-8 rounded-2xl border border-dashed border-white/[0.06] hover:border-white/[0.15] hover:bg-white/[0.02] transition-all duration-200"
       >
         <Plus className="h-4 w-4 text-muted-foreground/30" />
         <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>
@@ -43,18 +43,27 @@ export function AddSectionButton({ currentSections, username }: AddSectionButton
       {open && (
         <>
           <div
-            className="dk-user-profile-page__add-section-overlay"
+            className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="dk-user-profile-page__add-section-dropdown">
-            <p className="dk-user-profile-page__add-section-label">Available Sections</p>
+          <div
+            className="absolute left-0 right-0 z-50 mt-2 rounded-2xl overflow-hidden"
+            style={{
+              background: 'var(--dk-surface-glass)',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider px-3 py-2 text-white/30">
+              Available Sections
+            </p>
             {missing.map((section) => {
               const Icon = section.icon
               return (
                 <button
                   key={section.id}
                   type="button"
-                  className="dk-user-profile-page__add-section-item"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.06]"
                   onClick={async () => {
                     const updated = [...currentSections, section.id]
                     await apiClient.put('/me/profile-sections', { sections: updated })

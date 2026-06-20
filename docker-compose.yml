@@ -119,6 +119,8 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "20"
       DB_MAX_OVERFLOW: "10"
+      IGDB_CLIENT_ID: n8speaecefcm2kla93y2n9t0i3uapj
+      IGDB_CLIENT_SECRET: z449idps5h4fksrdmh5j6tq5zj1d2b
     depends_on:
       db:
         condition: service_healthy

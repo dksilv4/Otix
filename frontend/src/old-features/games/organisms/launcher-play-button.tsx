@@ -3,6 +3,15 @@ import { useParams } from '@tanstack/react-router'
 import { osName } from '@/lib/utils'
 import { useLocalGame } from '@/old-features/game-scanner/game-queries'
 import { useInstallProgress } from '@/old-features/game-scanner/install-store'
+<<<<<<<< HEAD:frontend/src/features/launcher/organisms/launcher-play-button.tsx
+import { PlayGameButton } from '@/features/launcher/atoms/play-game-button'
+import { IncompatibleButton } from '@/features/launcher/atoms/incompatible-button'
+import { IsoInstallingProgress } from '@/features/launcher/atoms/iso-installing-progress'
+import { IsoInstallButton } from '@/features/launcher/atoms/iso-install-button'
+import { MatchedPlayButton } from '@/features/launcher/atoms/matched-play-button'
+import { MatchGameButton } from '@/features/launcher/atoms/match-game-button'
+import { RejectSuggestionButton } from '@/features/launcher/atoms/reject-suggestion-button'
+========
 import { PlayGameButton } from '@/old-features/games/atoms/play-game-button'
 import { IncompatibleButton } from '@/old-features/games/atoms/incompatible-button'
 import { IsoInstallingProgress } from '@/old-features/games/atoms/iso-installing-progress'
@@ -10,6 +19,7 @@ import { IsoInstallButton } from '@/old-features/games/atoms/iso-install-button'
 import { MatchedPlayButton } from '@/old-features/games/atoms/matched-play-button'
 import { MatchGameButton } from '@/old-features/games/atoms/match-game-button'
 import { RejectSuggestionButton } from '@/old-features/games/atoms/reject-suggestion-button'
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/old-features/games/organisms/launcher-play-button.tsx
 
 interface LauncherPlayButtonProps {
   onOpenInstaller: () => void

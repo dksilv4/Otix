@@ -1,6 +1,10 @@
+<<<<<<<< HEAD:frontend/src/old-features/person/organisms/person-timeline-filters.tsx
 // TODO: Review this file
 import './person-timeline-filters.scss'
 import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
+========
+import { DkDropdown } from '@ui/atoms/dropdown'
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/people/components/organisms/people-timeline-filters.tsx
 
 const MEDIA_TYPE_OPTIONS = [
   { value: 'all', label: 'All Types' },
@@ -20,21 +24,21 @@ const ROLE_OPTIONS = [
   { value: 'crew', label: 'Crew' },
 ]
 
-interface PersonTimelineFiltersProps {
+interface PeopleTimelineFiltersProps {
   mediaTypeFilter: string
   onMediaTypeChange: (value: string) => void
   roleFilter: string
   onRoleChange: (value: string) => void
 }
 
-export function PersonTimelineFilters({
+export function PeopleTimelineFilters({
   mediaTypeFilter,
   onMediaTypeChange,
   roleFilter,
   onRoleChange,
-}: PersonTimelineFiltersProps) {
+}: PeopleTimelineFiltersProps) {
   return (
-    <div className="dk-person-timeline-filters">
+    <div className="flex items-center gap-2">
       <DkDropdown
         variant="filter"
         label="Type"

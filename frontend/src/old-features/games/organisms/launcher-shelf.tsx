@@ -3,7 +3,11 @@
 import {useState} from 'react'
 import {cn} from '@/lib/utils'
 import {MediaCard} from '@/old-features/dk-ui/molecules/media-card'
+<<<<<<<< HEAD:frontend/src/features/launcher/organisms/launcher-shelf.tsx
+import {usePopularGames} from '@/features/launcher/queries'
+========
 import {usePopularGames} from '@/old-features/games/games-queries'
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/old-features/games/organisms/launcher-shelf.tsx
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
 
 type ShelfTab = 'my-games' | 'popular'
