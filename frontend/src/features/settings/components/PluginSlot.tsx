@@ -86,13 +86,16 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
     return () => clearTimeout(t)
   }, [entry.pluginId])
 
-  // Auto-scan on connect for matching slots (no login button = already authenticated)
+  // Auto-scan only if never scanned before (no persisted scan data).
+  // Plugin's own startup auto-scan handles app-launch scanning.
+  // This guards against redundant re-scans every time the page mounts.
   useEffect(() => {
-    if (!autoScanned.current && status?.connected && !status?.total && entry.data?.actions?.scan && !entry.data?.actions?.login) {
+    const hasExistingScan = (status?.last_scan_total || 0) > 0
+    if (!autoScanned.current && status?.connected && !hasExistingScan && entry.data?.actions?.scan && !entry.data?.actions?.login) {
       autoScanned.current = true
       doScan()
     }
-  }, [status?.connected, status?.total, entry.data?.actions])
+  }, [status?.connected, status?.last_scan_total, entry.data?.actions])
 
   const loginFlow = async (): Promise<boolean> => {
     // 1. Get auth URL from plugin
@@ -200,12 +203,13 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
           setStatus((prev: any) => ({
             ...prev,
             total: result.total,
+            last_scan_total: result.total,
             matched: outcome.matched,
           }))
           // Notify matching section to refresh
           window.dispatchEvent(new CustomEvent('scanned-games-updated'))
         } else if (result?.success) {
-          setStatus((prev: any) => ({ ...prev, total: result.total || 0, matched: 0 }))
+          setStatus((prev: any) => ({ ...prev, total: result.total || 0, last_scan_total: result.total || 0, matched: 0 }))
         }
       }
 
