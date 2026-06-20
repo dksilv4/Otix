@@ -9,10 +9,17 @@
 import path from 'path';
 import fs from 'fs';
 import { getConnection } from '../db';
-const __db = getConnection('downloads');
+import type Database from 'better-sqlite3';
+
+let __db: Database.Database | null = null;
+function db(): Database.Database {
+  if (!__db) __db = getConnection('downloads');
+  return __db;
+}
+
 type DbRow = Record<string, any>;
-const __get = (sql: string, ...params: any[]) => __db.prepare(sql).get(...params) as any;
-const __all = (sql: string, ...params: any[]) => __db.prepare(sql).all(...params) as any[];
+const __get = (sql: string, ...params: any[]) => db().prepare(sql).get(...params) as any;
+const __all = (sql: string, ...params: any[]) => db().prepare(sql).all(...params) as any[];
 import { autoOrganizeDownload } from './organizer';
 
 function genId(): string {
@@ -462,7 +469,7 @@ function trackRowToObj(row: DbRow): GameTrackEntry {
 }
 
 export async function ensureGameTracked(mediaItemId: string, title: string): Promise<void> {
-  __db.prepare('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)').run(mediaItemId, title);
+  db().prepare('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)').run(mediaItemId, title);
 }
 
 function extractUpdateTag(title: string): string {
@@ -484,10 +491,10 @@ const tag = extractUpdateTag(updateTitle);
     const tags: string[] = JSON.parse(row.downloaded_updates || '[]');
     if (!tags.includes(tag)) {
       tags.push(tag);
-      __db.prepare("UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?").run(JSON.stringify(tags), mediaTitle, mediaItemId);
+      db().prepare("UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?").run(JSON.stringify(tags), mediaTitle, mediaItemId);
     }
   } else {
-    __db.prepare('INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)').run(mediaItemId, mediaTitle, JSON.stringify([tag]));
+    db().prepare('INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)').run(mediaItemId, mediaTitle, JSON.stringify([tag]));
   }
 }
 
@@ -515,7 +522,7 @@ try {
       const tag = extractUpdateTag(u.title);
       return !downloaded.includes(tag);
     });
-    __db.prepare("UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?").run(mediaItemId);
+    db().prepare("UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?").run(mediaItemId);
     return { newUpdates };
   } catch (err: any) {
     return { newUpdates: [], error: err.message };
@@ -744,7 +751,7 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
   const existing = __get('SELECT id, user_id FROM download_configs LIMIT 1', []);
 
   if (existing) {
-    __db.prepare(`
+    db().prepare(`
       UPDATE download_configs SET
         user_id = ?,
         sabnzbd_host = ?, sabnzbd_port = ?, sabnzbd_api_key = ?,
@@ -771,7 +778,7 @@ export async function saveConfig(config: Omit<DownloadConfig, 'id'> & { id?: str
   }
 
   const id = config.id || genId();
-  __db.prepare(`
+  db().prepare(`
     INSERT INTO download_configs (id, user_id, sabnzbd_host, sabnzbd_port, sabnzbd_api_key,
       sabnzbd_use_ssl, nzbplanet_api_key, sabnzbd_complete_path, download_path,
       post_process_enabled, auto_search_wishlist, wishlist_interval_hours, preferred_repackers, allow_hypervisor,
@@ -839,7 +846,7 @@ export async function createDownload(
 ): Promise<Download> {
 
 const id = genId();
-  __db.prepare(`
+  db().prepare(`
     INSERT INTO downloads (id, user_id, media_item_id, media_item_title, sabnzbd_nzo_id, status,
       nzb_name, nzb_size, nzb_url)
     VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?)
@@ -863,17 +870,17 @@ const rows = __all('SELECT * FROM downloads ORDER BY created_at DESC', []);
 export async function updateDownloadStatus(id: string, status: string, errorMessage?: string, percentage?: number): Promise<void> {
 
 if (status === 'completed') {
-    __db.prepare('UPDATE downloads SET status = ?, percentage = 100, completed_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?').run([status, id]);
+    db().prepare('UPDATE downloads SET status = ?, percentage = 100, completed_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?').run([status, id]);
   } else if (errorMessage) {
-    __db.prepare('UPDATE downloads SET status = ?, error_message = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, errorMessage, percentage ?? 0, id]);
+    db().prepare('UPDATE downloads SET status = ?, error_message = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, errorMessage, percentage ?? 0, id]);
   } else {
-    __db.prepare('UPDATE downloads SET status = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, percentage ?? 0, id]);
+    db().prepare('UPDATE downloads SET status = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, percentage ?? 0, id]);
   }
 }
 
 export async function updateDownloadIsoPath(id: string, isoPath: string): Promise<void> {
 
-__db.prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([isoPath, id]);
+db().prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([isoPath, id]);
 }
 
 export async function deleteDownload(id: string): Promise<void> {
@@ -900,7 +907,7 @@ const dl = await getDownload(id);
   }
 
   // Soft-delete: mark as deleted so it shows in Deleted tab
-  __db.prepare("UPDATE downloads SET status = 'deleted', iso_path = NULL, updated_at = datetime('now') WHERE id = ?").run(id);
+  db().prepare("UPDATE downloads SET status = 'deleted', iso_path = NULL, updated_at = datetime('now') WHERE id = ?").run(id);
 }
 
 export async function purgeOldDeletedDownloads(): Promise<number> {
@@ -908,7 +915,7 @@ export async function purgeOldDeletedDownloads(): Promise<number> {
 const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const rows = __all("SELECT id FROM downloads WHERE status = 'deleted' AND updated_at < ?", cutoff);
   for (const row of rows) {
-    __db.prepare('DELETE FROM downloads WHERE id = ?').run(row.id);
+    db().prepare('DELETE FROM downloads WHERE id = ?').run(row.id);
   }
   if (rows.length > 0) {
     console.log(`[purge] Purged ${rows.length} deleted downloads older than 30 days`);
@@ -956,7 +963,7 @@ export function batchCheckMatchCache(isoPaths: string[]): Record<string, MatchCa
 export function saveMatchCache(entries: MatchCacheEntry[]): void {
   const now = new Date().toISOString();
   for (const e of entries) {
-    __db.prepare(`
+    db().prepare(`
       INSERT INTO iso_match_cache (iso_path, query_title, media_id, media_title, media_slug, confidence, poster_url, logoless_poster_url, logo_url, checked_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(iso_path) DO UPDATE SET
@@ -1002,7 +1009,7 @@ const rows = __all('SELECT * FROM download_path_mappings WHERE config_id = ? ORD
 export async function addPathMapping(configId: string, sourcePath: string, destPath: string): Promise<PathMapping> {
 
 const id = genId();
-  __db.prepare('INSERT INTO download_path_mappings (id, config_id, source_path, dest_path) VALUES (?, ?, ?, ?)').run([id, configId, sourcePath, destPath]);
+  db().prepare('INSERT INTO download_path_mappings (id, config_id, source_path, dest_path) VALUES (?, ?, ?, ?)').run([id, configId, sourcePath, destPath]);
   const row = __get('SELECT * FROM download_path_mappings WHERE id = ?', [id]);
   if (!row) throw new Error('Failed to create path mapping');
   return {
@@ -1016,7 +1023,7 @@ const id = genId();
 
 export async function removePathMapping(id: string): Promise<void> {
 
-__db.prepare('DELETE FROM download_path_mappings WHERE id = ?').run(id);
+db().prepare('DELETE FROM download_path_mappings WHERE id = ?').run(id);
 }
 
 // ── Wishlist tracking ─────────────────────────────────────────────────────
@@ -1026,14 +1033,14 @@ export async function recordWishlistSearch(userId: string, mediaItemId: string, 
 const existing = __get('SELECT id, attempts FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
 
   if (existing) {
-    __db.prepare(`
+    db().prepare(`
       UPDATE wishlist_download_tracking SET
         last_searched_at = datetime('now'), last_download_id = ?,
         attempts = ?, updated_at = datetime('now')
       WHERE id = ?
     `).run(downloadId, (existing.attempts ?? 0) + 1, existing.id);
   } else {
-    __db.prepare(`
+    db().prepare(`
       INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, last_searched_at, last_download_id, attempts)
       VALUES (?, ?, ?, datetime('now'), ?, 1)
     `).run(genId(), userId, mediaItemId, downloadId);
@@ -1054,9 +1061,9 @@ export async function skipWishlistItem(userId: string, mediaItemId: string): Pro
 
 const existing = __get('SELECT id FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
   if (existing) {
-    __db.prepare('UPDATE wishlist_download_tracking SET skipped = 1 WHERE id = ?').run(existing.id);
+    db().prepare('UPDATE wishlist_download_tracking SET skipped = 1 WHERE id = ?').run(existing.id);
   } else {
-    __db.prepare('INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, skipped) VALUES (?, ?, ?, 1)').run([genId(), userId, mediaItemId]);
+    db().prepare('INSERT INTO wishlist_download_tracking (id, user_id, media_item_id, skipped) VALUES (?, ?, ?, 1)').run([genId(), userId, mediaItemId]);
   }
 }
 
@@ -1212,7 +1219,7 @@ const result: PostProcessResult = { success: false, isosFound: [], isosMoved: []
 
   if (movedCount > 0) {
     const movedPaths = result.isosMoved.map(m => m.to).join(';');
-    __db.prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([movedPaths, downloadId]);
+    db().prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([movedPaths, downloadId]);
   }
 
   result.success = result.isosMoved.length > 0 && result.errors.length === 0;
@@ -1418,15 +1425,15 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
   const newIds = [...new Set(games.map((g) => g.id))];
   if (newIds.length > 0) {
     const placeholders = newIds.map(() => '?').join(',');
-    __db.prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
+    db().prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
   } else {
-    __db.prepare('DELETE FROM scanned_games').run();
+    db().prepare('DELETE FROM scanned_games').run();
   }
 
   // Upsert each game, restoring the seeded flag when the game already existed
   for (const g of games) {
     const seeded = existingSeeded.get(g.id) ?? 0;
-    __db.prepare(`
+    db().prepare(`
       INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
         update_files, otix_media_id, otix_media_title, otix_media_slug,
@@ -1458,7 +1465,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
  */
 export async function updateGamePathInDb(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void> {
 
-__db.prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
+db().prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
 }
 
 export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game' | 'iso' }[]> {
@@ -1472,9 +1479,9 @@ const rows = __all('SELECT * FROM game_scan_paths', );
 
 export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void> {
 
-__db.prepare('DELETE FROM game_scan_paths').run();
+db().prepare('DELETE FROM game_scan_paths').run();
   for (const p of paths) {
-    __db.prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
+    db().prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
   }
 }
 
@@ -1519,7 +1526,7 @@ export function markGamesAsSeeded(games: UnseededGame[]): void {
   if (!games.length) return;
   const titles = games.map(g => g.title);
   const placeholders = titles.map(() => '?').join(',');
-  __db.prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
+  db().prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
 }
 
 /** @deprecated Use getUnseededGames() instead. */
@@ -1531,7 +1538,7 @@ export function getUnseededTitles(): string[] {
 export function markTitlesAsSeeded(titles: string[]): void {
   if (!titles.length) return;
   const placeholders = titles.map(() => '?').join(',');
-  __db.prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
+  db().prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
 }
 
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
@@ -1549,8 +1556,8 @@ const rows = __all('SELECT * FROM local_games_map', );
 export async function saveLocalGamesMapEntryToDb(mediaId: string, game: any | null): Promise<void> {
 
 if (game) {
-    __db.prepare('INSERT OR REPLACE INTO local_games_map (media_id, game_json) VALUES (?, ?)').run([mediaId, JSON.stringify(game)]);
+    db().prepare('INSERT OR REPLACE INTO local_games_map (media_id, game_json) VALUES (?, ?)').run([mediaId, JSON.stringify(game)]);
   } else {
-    __db.prepare('DELETE FROM local_games_map WHERE media_id = ?').run(mediaId);
+    db().prepare('DELETE FROM local_games_map WHERE media_id = ?').run(mediaId);
   }
 }

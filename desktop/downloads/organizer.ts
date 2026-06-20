@@ -14,7 +14,13 @@ import * as path from 'path';
 import { cleanGameTitle, extractGroup, parseVersion, type ParsedRelease, type FileInfo } from '../game/parser';
 import { executeOrganization, OrganizationPreviewItem } from '../installer';
 import { getConnection } from '../db';
-const __db = getConnection('downloads');
+import type Database from 'better-sqlite3';
+
+let __db: Database.Database | null = null;
+function db(): Database.Database {
+  if (!__db) __db = getConnection('downloads');
+  return __db;
+}
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -450,7 +456,7 @@ export async function batchOrganizeDirectory(
   // Load template from config if not provided
   let template: string = namingTemplate ?? '';
   if (!template) {
-    const cfg = __db.prepare('SELECT naming_template FROM download_configs ORDER BY updated_at DESC LIMIT 1').get() as any;
+    const cfg = db().prepare('SELECT naming_template FROM download_configs ORDER BY updated_at DESC LIMIT 1').get() as any;
     template = cfg?.naming_template || NAMING_PRESETS.standard.template;
   }
 
@@ -531,18 +537,18 @@ export async function autoOrganizeDownload(
 ): Promise<AutoOrganizeResult> {
   const result: AutoOrganizeResult = { success: false, organized: [], errors: [] };
 
-  const dl = __db.prepare('SELECT * FROM downloads WHERE id = ? AND status = ?').get(downloadId, 'completed') as any;
+  const dl = db().prepare('SELECT * FROM downloads WHERE id = ? AND status = ?').get(downloadId, 'completed') as any;
   if (!dl) {
     result.errors.push('Download not found or not completed');
     return result;
   }
 
   // Get config for template settings
-  const config = __db.prepare('SELECT * FROM download_configs WHERE id = ?').get(configId) as any;
+  const config = db().prepare('SELECT * FROM download_configs WHERE id = ?').get(configId) as any;
   const namingTemplate: string = config?.naming_template || NAMING_PRESETS.standard.template;
 
   // Build path translation pairs (same logic as postProcessDownload)
-  const mappings = __db.prepare(
+  const mappings = db().prepare(
     'SELECT source_path, dest_path FROM download_path_mappings WHERE config_id = ?'
   ).all(configId) as { source_path: string; dest_path: string }[];
   const pairs: { source: string; dest: string }[] = mappings.map(m => ({
@@ -663,7 +669,7 @@ export async function autoOrganizeDownload(
   // Update DB with organized paths
   if (result.organized.length > 0) {
     const movedPaths = result.organized.map(m => m.to).join(';');
-    __db.prepare("UPDATE downloads SET iso_path = ?, updated_at = datetime('now') WHERE id = ?").run(movedPaths, downloadId);
+    db().prepare("UPDATE downloads SET iso_path = ?, updated_at = datetime('now') WHERE id = ?").run(movedPaths, downloadId);
   }
 
   result.success = result.errors.length === 0;
