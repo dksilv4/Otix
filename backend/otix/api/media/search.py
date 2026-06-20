@@ -1311,7 +1311,7 @@ async def search_providers(
             media_type="game",
             page_size=body.limit,
         )
-        otix_items, _ = otix_results
+        otix_items, _, _ = otix_results
         for item in otix_items:
             results.append(
                 ProviderSearchResult(
