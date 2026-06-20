@@ -65,9 +65,14 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
   const rpcMsg = msg as any
   if (rpcMsg.type === 'rpc' && rpcMsg.method) {
     try {
-      if (typeof pluginModule?.[rpcMsg.method] === 'function') {
-        const result = await pluginModule[rpcMsg.method](...rpcMsg.args)
+      // Plugin exports (status, test, slotRender, handleAction, data) all receive ctx as first arg
+      const method = pluginModule?.[rpcMsg.method]
+      if (typeof method === 'function') {
+        const result = await method(ctx, ...(rpcMsg.args || []))
         parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result } as MainToWorkerMessage)
+      } else if (rpcMsg.method === 'data' && typeof pluginModule?.data !== 'undefined') {
+        // 'data' is a static object, not a function
+        parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result: pluginModule.data } as MainToWorkerMessage)
       } else {
         parentPort!.postMessage({
           type: 'rpc-error', id: rpcMsg.id,
@@ -132,7 +137,12 @@ async function start(): Promise<void> {
   try {
     // Use require to load the plugin's main entry
     pluginModule = require(pluginPath)
-    const entry = pluginModule.default || pluginModule.plugin
+    // CommonJS `module.exports = function` → pluginModule IS the function
+    // ESM `export default function` → pluginModule.default is the function
+    // Named export `exports.plugin = function` → pluginModule.plugin is the function
+    const entry = typeof pluginModule === 'function'
+      ? pluginModule
+      : (pluginModule.default || pluginModule.plugin)
     if (typeof entry === 'function') {
       const cleanup = entry(ctx)
       if (typeof cleanup === 'function') {
