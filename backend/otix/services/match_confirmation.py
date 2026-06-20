@@ -102,15 +102,11 @@ class MatchConfirmationService:
         # ── Create external_id mappings ─────────────────────────────────────
         try:
             # Map the original provider ID → Otix media item
-            await self._eid_svc.upsert(
-                provider, external_id, "media_item", media_item_id
-            )
+            await self._eid_svc.upsert(provider, external_id, "media_item", media_item_id)
 
             # Also map IGDB → Otix if we have it
             if req.igdb_id is not None:
-                await self._eid_svc.upsert(
-                    "igdb", str(req.igdb_id), "media_item", media_item_id
-                )
+                await self._eid_svc.upsert("igdb", str(req.igdb_id), "media_item", media_item_id)
 
             # Fire-and-forget SGDB hydration for the newly matched game
             self._enqueue_sgdb_hydration(media_item_id)
@@ -186,9 +182,7 @@ class MatchConfirmationService:
         parts = query_id.split(":", 1)
         return parts[0].strip().lower(), parts[1].strip()
 
-    async def _handle_reject_permanent(
-        self, provider: str, external_id: str
-    ) -> ConfirmMatchResponse:
+    async def _handle_reject_permanent(self, provider: str, external_id: str) -> ConfirmMatchResponse:
         """Insert a permanent rejection record."""
         existing = await self._session.scalar(
             select(MatchSkip).where(
@@ -197,9 +191,7 @@ class MatchConfirmationService:
             )
         )
         if existing is None:
-            self._session.add(
-                MatchSkip(provider=provider, external_id=external_id)
-            )
+            self._session.add(MatchSkip(provider=provider, external_id=external_id))
             logger.info(
                 "match rejected permanently",
                 provider=provider,

@@ -306,7 +306,9 @@ class IGDBProvider(BaseProvider):
             return {}
 
         uid_list = ",".join(f'"{eid}"' for eid in external_ids)
-        body = f"fields uid,game; where external_game_source = {category} & uid = ({uid_list}); limit {len(external_ids)};"
+        body = (
+            f"fields uid,game; where external_game_source = {category} & uid = ({uid_list}); limit {len(external_ids)};"
+        )
         response = await self._post("/external_games", content=body)
         if response.status_code == 200:
             result: dict[str, int] = {}

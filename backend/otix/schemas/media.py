@@ -155,7 +155,9 @@ class PersonSearchResult(BaseModel):
 class StructuredSearchResponse(BaseModel):
     """Search results grouped by type, with tracks, people, and users."""
 
-    best_results: list[Union[MediaItemSummary, PersonSearchResult, UserSearchResult, TrackSearchResult]] = Field(default_factory=list)
+    best_results: list[Union[MediaItemSummary, PersonSearchResult, UserSearchResult, TrackSearchResult]] = Field(
+        default_factory=list
+    )
     movies: list[MediaItemSummary] = Field(default_factory=list)
     shows: list[MediaItemSummary] = Field(default_factory=list)
     games: list[MediaItemSummary] = Field(default_factory=list)
@@ -331,14 +333,14 @@ from enum import Enum
 class MatchType(str, Enum):
     """How a match candidate was found. Used for ranking and UI display."""
 
-    DIRECT = "direct"              # external_ids table hit
-    EXACT_TITLE = "exact_title"    # exact title match in Otix catalog
-    ILIKE = "ilike"                # ILIKE pattern match in Otix
-    TRIGRAM = "trigram"            # pg_trgm similarity fallback
+    DIRECT = "direct"  # external_ids table hit
+    EXACT_TITLE = "exact_title"  # exact title match in Otix catalog
+    ILIKE = "ilike"  # ILIKE pattern match in Otix
+    TRIGRAM = "trigram"  # pg_trgm similarity fallback
     IGDB_CROSSREF = "igdb_crossref"  # IGDB external_games API (category 26)
-    IGDB_SEARCH = "igdb_search"    # IGDB title search (exact)
-    IGDB_FUZZY = "igdb_fuzzy"     # IGDB title search (fuzzy)
-    NONE = "none"                 # no match found
+    IGDB_SEARCH = "igdb_search"  # IGDB title search (exact)
+    IGDB_FUZZY = "igdb_fuzzy"  # IGDB title search (fuzzy)
+    NONE = "none"  # no match found
 
 
 class ExternalIDRef(BaseModel):
@@ -376,7 +378,7 @@ class GameMatchCandidate(BaseModel):
     match_type: MatchType
     needs_import: bool = False
     provider_id: str | None = None  # IGDB game ID for import reference
-    provider: str | None = None     # "igdb", "steamgrid", etc.
+    provider: str | None = None  # "igdb", "steamgrid", etc.
 
 
 class GameMatchResponse(BaseModel):
@@ -384,7 +386,7 @@ class GameMatchResponse(BaseModel):
 
     query_id: str = ""
     query_title: str
-    candidates: list[GameMatchCandidate] = []    # ranked best first
+    candidates: list[GameMatchCandidate] = []  # ranked best first
     auto_match: GameMatchCandidate | None = None  # non-null when auto-matched
 
 
@@ -403,11 +405,11 @@ class GameMatchBatchResponse(BaseModel):
 class ConfirmMatchRequest(BaseModel):
     """User confirms a match candidate (or rejects all)."""
 
-    query_id: str                                # "epic:AppName"
-    media_item_id: str | None = None             # Otix media item to link
-    igdb_id: int | None = None                   # IGDB ID if game needs importing
-    rejected: bool = False                       # user explicitly rejected all
-    rejected_permanently: bool = False           # never suggest again
+    query_id: str  # "epic:AppName"
+    media_item_id: str | None = None  # Otix media item to link
+    igdb_id: int | None = None  # IGDB ID if game needs importing
+    rejected: bool = False  # user explicitly rejected all
+    rejected_permanently: bool = False  # never suggest again
 
 
 class ConfirmMatchResponse(BaseModel):
