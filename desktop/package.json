@@ -1,11 +1,11 @@
 {
   "name": "desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.3.0",
   "main": "dist/main.js",
   "scripts": {
     "postinstall": "patch-package && electron-rebuild -f -w better-sqlite3",
-    "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npm run dev\" \"tsc --watch\" \"electron-rebuild -f -w better-sqlite3 && wait-on http://127.0.0.1:5173 dist/ipc/scanner.js && cross-env NODE_ENV=development electron .\"",
+    "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"electron-rebuild -f -w better-sqlite3 && wait-on http://127.0.0.1:5174 dist/ipc/scanner.js && cross-env NODE_ENV=development electron .\"",
     "build": "tsc",
     "pretest": "npm rebuild better-sqlite3",
     "test": "vitest run --reporter=verbose",
