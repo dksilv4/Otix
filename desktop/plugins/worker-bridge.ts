@@ -34,6 +34,10 @@ export interface BridgeDependencies {
   setConfigValue: (key: string, value: unknown) => void
 }
 
+// Module-level event subscription tracker — subscriptions from all bridges
+const eventSubs = new Map<string, () => void>()
+let subIdCounter = 0
+
 export function createWorkerBridge(deps: BridgeDependencies) {
   const { pluginId, manifest, worker, eventBus, pluginDb } = deps
   let active = true
@@ -141,6 +145,11 @@ export function createWorkerBridge(deps: BridgeDependencies) {
 
   async function stop(): Promise<void> {
     active = false
+    // Clean up event subscriptions
+    for (const cleanup of eventSubs.values()) {
+      try { cleanup() } catch { /* ignore */ }
+    }
+    eventSubs.clear()
     // Run destroy callbacks
     for (const cb of destroyCallbacks) {
       try { cb() } catch { /* ignore cleanup errors */ }
@@ -178,7 +187,8 @@ async function executeMethod(
       return pluginDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
     case 'events.on': {
       const eventName = args[0] as string
-      return eventBus.on(eventName, (payload: unknown) => {
+      const subId = `ev_${++subIdCounter}`
+      const cleanup = eventBus.on(eventName, (payload: unknown) => {
         if (worker) {
           worker.postMessage({
             type: 'event',
@@ -187,9 +197,18 @@ async function executeMethod(
           } satisfies MainToWorkerMessage)
         }
       }, pluginId)
+      eventSubs.set(subId, cleanup)
+      return subId
     }
-    case 'events.off':
+    case 'events.off': {
+      const subId = args[0] as string
+      const cleanup = eventSubs.get(subId)
+      if (cleanup) {
+        cleanup()
+        eventSubs.delete(subId)
+      }
       return undefined
+    }
     case 'fetch': {
       const response = await fetch(args[0] as string, args[1] as RequestInit)
       return {
