@@ -1,8 +1,15 @@
 import { getConnection } from '../db';
-const __db = getConnection('downloads');
+import type Database from 'better-sqlite3';
+
+let __db: Database.Database | null = null;
+function db(): Database.Database {
+  if (!__db) __db = getConnection('downloads');
+  return __db;
+}
+
 type DbRow = Record<string, any>;
-const __get = (sql: string, ...params: any[]) => __db.prepare(sql).get(...params) as any;
-const __all = (sql: string, ...params: any[]) => __db.prepare(sql).all(...params) as any[];
+const __get = (sql: string, ...params: any[]) => db().prepare(sql).get(...params) as any;
+const __all = (sql: string, ...params: any[]) => db().prepare(sql).all(...params) as any[];
 import type { LocalGame } from '../preload-api';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -164,14 +171,14 @@ export function upsertGames(games: GameRow[]): void {
   const newIds = [...new Set(games.map((g) => g.id))];
   if (newIds.length > 0) {
     const placeholders = newIds.map(() => '?').join(',');
-    __db.prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
+    db().prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
   } else {
-    __db.prepare('DELETE FROM scanned_games').run();
+    db().prepare('DELETE FROM scanned_games').run();
   }
 
   for (const g of games) {
     const seeded = existingSeeded.get(g.id) ?? 0;
-    __db.prepare(
+    db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
         local_icon_url, icon_url, poster_url, sources, update_files,
@@ -204,7 +211,7 @@ export function hydrateGame(
   posterUrl: string | null,
   fullData: Record<string, unknown> | null,
 ): void {
-  __db.prepare(
+  db().prepare(
     `UPDATE scanned_games SET
       otix_media_title = ?,
       otix_icon_url = ?,
@@ -216,20 +223,20 @@ export function hydrateGame(
 }
 
 export function getMatchedGames(): { id: string; otix_media_id: string; title: string }[] {
-  return __db.prepare(
+  return db().prepare(
     'SELECT id, otix_media_id, title FROM scanned_games WHERE otix_media_id IS NOT NULL'
   ).all() as { id: string; otix_media_id: string; title: string }[];
 }
 
 export function updateGamePath(id: string, exePath: string, installDir?: string): void {
-  __db.prepare(
+  db().prepare(
     "UPDATE scanned_games SET exe_path = ?, install_dir = ?, updated_at = datetime('now') WHERE id = ?"
   ).run(exePath, installDir || exePath.replace(/\/[^/]*$/, ''), id);
   notifyGamesChanged();
 }
 
 export function updateLastPlayedAt(id: string, playedAt: string): void {
-  __db.prepare(
+  db().prepare(
     "UPDATE scanned_games SET last_played_at = ? WHERE id = ?"
   ).run(playedAt, id);
   notifyGamesChanged();
@@ -254,7 +261,7 @@ export function acceptSuggestion(
   suggestion?: SuggestionData,
 ): void {
   if (!suggestion) return;
-  __db.prepare(
+  db().prepare(
     `UPDATE scanned_games SET
       otix_media_id = ?, otix_media_title = ?, otix_media_slug = ?,
       otix_poster_url = ?, otix_backdrop_url = ?,
@@ -271,7 +278,7 @@ export function acceptSuggestion(
   // Clear any previous rejection for this suggestion
   const game = __get('SELECT title, platform FROM scanned_games WHERE id = ?', gameId);
   if (game) {
-    __db.prepare(
+    db().prepare(
       'DELETE FROM game_rejected_suggestions WHERE game_title = ? AND game_platform = ? AND suggestion_media_id = ?'
     ).run(game.title, game.platform, suggestion.id);
   }
@@ -281,12 +288,12 @@ export function rejectSuggestion(gameId: string, suggestionMediaId: string): voi
   const game = __get('SELECT title, platform FROM scanned_games WHERE id = ?', gameId);
   if (!game) return;
   // Store rejection so it never reappears
-  __db.prepare(
+  db().prepare(
     `INSERT OR IGNORE INTO game_rejected_suggestions (id, game_title, game_platform, suggestion_media_id)
      VALUES (?, ?, ?, ?)`
   ).run(`rej_${gameId}_${suggestionMediaId}`, game.title, game.platform, suggestionMediaId);
   // Clear suggestion from the game row
-  __db.prepare(
+  db().prepare(
     "UPDATE scanned_games SET otix_match_suggestion = NULL, updated_at = datetime('now') WHERE id = ?"
   ).run(gameId);
 }
@@ -296,7 +303,7 @@ export function isSuggestionRejected(
   gamePlatform: string,
   suggestionMediaId: string,
 ): boolean {
-  const row = __db.prepare(
+  const row = db().prepare(
     'SELECT id FROM game_rejected_suggestions WHERE game_title = ? AND game_platform = ? AND suggestion_media_id = ?'
   ).get(gameTitle, gamePlatform, suggestionMediaId);
   return !!row;
@@ -319,9 +326,9 @@ export function getScanPaths(): { path: string; type: 'game' | 'iso' }[] {
 }
 
 export function saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): void {
-  __db.prepare('DELETE FROM game_scan_paths').run();
+  db().prepare('DELETE FROM game_scan_paths').run();
   for (const p of paths) {
-    __db.prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run(p.path, p.type);
+    db().prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run(p.path, p.type);
   }
 }
 
