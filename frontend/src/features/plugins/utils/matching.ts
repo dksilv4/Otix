@@ -147,33 +147,43 @@ export async function batchMatchAndSave(
     }
   }
 
-  // Auto-accept suggestions for auto-matched games
+  // Persist matches — two layers:
+  //   1. Backend external_ids table (via POST /match/confirm) — canonical
+  //   2. Desktop scanned_games SQLite (via acceptSuggestion) — local cache
+  // Both must be written for Phase 1 lookups to work on next scan.
   let matched = 0
   let suggested = 0
   if (desktopAPI?.acceptSuggestion) {
     for (let i = 0; i < Math.min(games.length, matches.length); i++) {
       const match = matches[i]
       if (!match) continue
+      const queryId = (games[i].platform || 'unknown') + ':' + (games[i].appName || games[i].catalogItemId || games[i].id)
 
-      // If auto_match is set by the backend, accept it automatically
+      // ── Auto-match: high confidence, backend confirmed ──
       if (match.auto_match && match.auto_match.media_item_id && !match.auto_match.needs_import) {
+        const am = match.auto_match
         try {
+          // Persist to backend external_ids table (canonical)
+          await confirmMatch(queryId, am.media_item_id, am.provider_id ? parseInt(am.provider_id) : null)
+          // Persist to local scanned_games DB (UI cache)
           await desktopAPI.acceptSuggestion(games[i].id, {
-            id: match.auto_match.media_item_id,
-            title: match.auto_match.title,
-            slug: match.auto_match.media_item_id,
+            id: am.media_item_id,
+            title: am.title,
+            slug: am.media_item_id,
             mediaType: 'game',
-            posterUrl: match.auto_match.poster_url || null,
-            developer: match.auto_match.developer || null,
-            platforms: match.auto_match.platforms || [],
-            confidence: match.auto_match.confidence,
+            posterUrl: am.poster_url || null,
+            developer: am.developer || null,
+            platforms: am.platforms || [],
+            confidence: am.confidence,
           } as any)
           matched++
         } catch (err) {
-          console.error('[matching] acceptSuggestion (auto) failed for', games[i].id, err)
+          console.error('[matching] auto-match persist failed for', games[i].id, err)
         }
-      } else if (match.candidates.length > 0) {
-        // Store candidates as suggestions for user review
+      }
+
+      // ── Candidates: save as suggestions for user review ──
+      else if (match.candidates.length > 0) {
         suggested++
         const best = match.candidates[0]
         if (best.media_item_id && !best.needs_import) {
