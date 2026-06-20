@@ -106,6 +106,11 @@ const schemas: Record<string, z.ZodType> = {
     action: z.string(),
     cancelAction: z.string().optional(),
   }),
+  'deferred-section': z.object({}).passthrough(),
+  grid: z.object({
+    columns: z.number().int().min(1).max(6).default(3),
+    gap: z.string().default('12px'),
+  }),
 }
 
 const CONTAINER_WIDGETS = new Set([
