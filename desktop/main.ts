@@ -188,7 +188,7 @@ function createWindow() {
   })
 
   if (isDev) {
-    mainWindow.loadURL('http://127.0.0.1:5173/');
+    mainWindow.loadURL('http://127.0.0.1:5174/');
     mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
@@ -460,9 +460,11 @@ app.on('ready', async () => {
 
   // ── Initialize plugin system ──
   if (dbReady) {
-    const extensionsDir = path.join(app.getPath('userData'), 'extensions');
+    const extensionsDir = isDev
+      ? path.resolve(__dirname, '..', '..', 'extensions', 'otix-plugins', 'plugins')
+      : path.join(app.getPath('userData'), 'extensions');
     const devExtensionsDir = isDev
-      ? path.resolve(__dirname, '..', '..', 'extensions')
+      ? path.join(app.getPath('userData'), 'extensions')
       : undefined;
     permissionManager = new PermissionManager();
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
@@ -470,12 +472,11 @@ app.on('ready', async () => {
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
 
     // Fire-and-forget: discover and load enabled plugins (don't block window load)
-    const extraDirs = devExtensionsDir ? [devExtensionsDir] : undefined;
-    if (extraDirs) {
-      console.log('[plugins] Dev extensions dir:', devExtensionsDir);
+    if (devExtensionsDir) {
+      console.log('[plugins] UserData extensions dir:', devExtensionsDir);
       console.log('[plugins] Exists:', require('fs').existsSync(devExtensionsDir));
     }
-    pluginManager.discoverPlugins(extraDirs).then(() => {
+    pluginManager.discoverPlugins().then(() => {
       const all = pluginManager!.getAllPlugins();
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
       return pluginManager!.loadEnabledPlugins();

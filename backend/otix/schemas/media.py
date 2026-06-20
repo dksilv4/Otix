@@ -202,6 +202,29 @@ class ImportGameResponse(BaseModel):
     slug: str
 
 
+class ProviderSearchRequest(BaseModel):
+    """Unified search across Otix, IGDB, and SteamGrid."""
+
+    query: str
+    limit: int = Field(default=12, ge=1, le=50)
+
+
+class ProviderSearchResult(BaseModel):
+    """A single result from any provider."""
+
+    provider: str  # "otix" | "igdb" | "steamgrid"
+    id: str
+    title: str
+    poster_url: str | None = None
+    slug: str | None = None
+    confidence: float | None = None
+
+
+class ProviderSearchResponse(BaseModel):
+    items: list[ProviderSearchResult]
+    backfill_pending: bool = False
+
+
 class SteamGridSearchRequest(BaseModel):
     query: str
 
@@ -302,6 +325,21 @@ class LocalGameMatchResponse(BaseModel):
 
 # ── Game matching (internal API / batch) ────────────────────────
 
+from enum import Enum
+
+
+class MatchType(str, Enum):
+    """How a match candidate was found. Used for ranking and UI display."""
+
+    DIRECT = "direct"              # external_ids table hit
+    EXACT_TITLE = "exact_title"    # exact title match in Otix catalog
+    ILIKE = "ilike"                # ILIKE pattern match in Otix
+    TRIGRAM = "trigram"            # pg_trgm similarity fallback
+    IGDB_CROSSREF = "igdb_crossref"  # IGDB external_games API (category 26)
+    IGDB_SEARCH = "igdb_search"    # IGDB title search (exact)
+    IGDB_FUZZY = "igdb_fuzzy"     # IGDB title search (fuzzy)
+    NONE = "none"                 # no match found
+
 
 class ExternalIDRef(BaseModel):
     """A reference to an external ID from a provider (IGDB, Steam, etc.)."""
@@ -313,6 +351,7 @@ class ExternalIDRef(BaseModel):
 class GameMatchRequest(BaseModel):
     """A single game to match, sent from the frontend or external caller."""
 
+    query_id: str = ""  # caller-provided correlation ID (e.g. "epic:AppName")
     title: str
     developer: str | None = None
     publisher: str | None = None
@@ -323,16 +362,30 @@ class GameMatchRequest(BaseModel):
     media_type: str = "game"
 
 
-class GameMatchResult(BaseModel):
-    """The result of matching a single game request against the Otix catalog."""
+class GameMatchCandidate(BaseModel):
+    """A single match candidate for a game query."""
 
     media_item_id: str | None = None
     title: str
     poster_url: str | None = None
+    backdrop_url: str | None = None
+    release_year: int | None = None
+    platforms: list[str] | None = None
+    developer: str | None = None
     confidence: float
-    match_type: str
-    is_new: bool = False
-    store_ids: dict[str, str] | None = None
+    match_type: MatchType
+    needs_import: bool = False
+    provider_id: str | None = None  # IGDB game ID for import reference
+    provider: str | None = None     # "igdb", "steamgrid", etc.
+
+
+class GameMatchResponse(BaseModel):
+    """Per-game match response. Contains ranked candidates and optional auto-match."""
+
+    query_id: str = ""
+    query_title: str
+    candidates: list[GameMatchCandidate] = []    # ranked best first
+    auto_match: GameMatchCandidate | None = None  # non-null when auto-matched
 
 
 class GameMatchBatchRequest(BaseModel):
@@ -344,7 +397,28 @@ class GameMatchBatchRequest(BaseModel):
 class GameMatchBatchResponse(BaseModel):
     """Batch response with a result for each requested game."""
 
-    matches: list[GameMatchResult]
+    matches: list[GameMatchResponse]
+
+
+class ConfirmMatchRequest(BaseModel):
+    """User confirms a match candidate (or rejects all)."""
+
+    query_id: str                                # "epic:AppName"
+    media_item_id: str | None = None             # Otix media item to link
+    igdb_id: int | None = None                   # IGDB ID if game needs importing
+    rejected: bool = False                       # user explicitly rejected all
+    rejected_permanently: bool = False           # never suggest again
+
+
+class ConfirmMatchResponse(BaseModel):
+    success: bool
+    media_item_id: str | None = None
+    error: str | None = None
+
+
+# ── Backward-compat alias (old code expects GameMatchResult) ─────
+# Remove once all consumers updated to GameMatchResponse.
+GameMatchResult = GameMatchResponse
 
 
 # ── Seed game titles from desktop scan ──────────────────────────

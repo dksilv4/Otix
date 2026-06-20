@@ -12,7 +12,6 @@ from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, Propos
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
-from otix.domain.epic_integration import EpicFreeGameClaim, UserEpicGame
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.follow import Follow, FollowRequest, FollowRequestStatus
 from otix.domain.franchise import Franchise, FranchiseItem
@@ -26,6 +25,7 @@ from otix.domain.media import (
     Episode,
     ExternalID,
     Game,
+    MatchSkip,
     GameMode,
     GameSaveOfficialPath,
     GameSavePathSuggestion,
@@ -84,6 +84,7 @@ __all__ = [
     "ListItemRankHistory",
     "MediaListCollaborator",
     "MediaListLike",
+    "MatchSkip",
     "MediaAsset",
     "MediaCredit",
     "MediaEditProposal",

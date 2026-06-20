@@ -14,7 +14,6 @@ from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
     from otix.domain.company import UserCompanyFollow
-    from otix.domain.epic_integration import UserEpicGame
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.follow import Follow, FollowRequest
     from otix.domain.friend import FriendRequest
@@ -84,13 +83,6 @@ class User(Base, TimestampMixin):
     google_access_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     google_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
     google_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-    # ── Epic Games Store integration ───────────────────────────────────
-    epic_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
-    epic_display_name: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
-    epic_access_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
-    epic_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
-    epic_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     integration_visibility: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     total_xp: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
@@ -180,7 +172,6 @@ class User(Base, TimestampMixin):
     )
     person_follows: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="user")
     company_follows: Mapped[list[UserCompanyFollow]] = relationship("UserCompanyFollow", back_populates="user")
-    epic_games: Mapped[list[UserEpicGame]] = relationship("UserEpicGame", back_populates="user")
 
 
 class RefreshToken(Base):

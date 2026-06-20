@@ -321,3 +321,13 @@ class ExternalIDService:
             )
         )
         return result.rowcount > 0
+
+    async def delete_by_ext_id(self, provider: str, external_id: str) -> bool:
+        """Delete an external ID row by its natural key (provider, external_id)."""
+        result = await self._session.execute(
+            sa_delete(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+            )
+        )
+        return result.rowcount > 0

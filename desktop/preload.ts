@@ -95,6 +95,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   updateGamePath: (id: string, exePath: string, installDir?: string) =>
     ipcRenderer.invoke('scanner:update-game-path', id, exePath, installDir),
   acceptSuggestion: (gameId: string, suggestion: unknown) => ipcRenderer.invoke('scanner:accept-suggestion', gameId, suggestion),
+  unmatchGame: (gameId: string) => ipcRenderer.invoke('scanner:unmatch-game', gameId),
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => ipcRenderer.invoke('scanner:reject-suggestion', gameId, suggestionMediaId),
   onGamesDbChanged: (callback: () => void) => {
     const handler = () => callback();
@@ -266,6 +267,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     getRepos: () => ipcRenderer.invoke('plugin:get-repos'),
     addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
     removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
+    openOAuthWindow: (url: string, redirectPattern: string) => ipcRenderer.invoke('plugin:open-oauth-window', url, redirectPattern),
     getSlotData: (location: string) => ipcRenderer.invoke('plugin:get-slot-data', location),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),

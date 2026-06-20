@@ -33,11 +33,14 @@ from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import (
     CompanyOut,
     CompanySearchListResponse,
+    ConfirmMatchRequest,
+    ConfirmMatchResponse,
     ExternalIDRef,
     GameMatchBatchRequest,
     GameMatchBatchResponse,
+    GameMatchCandidate,
     GameMatchRequest,
-    GameMatchResult,
+    GameMatchResponse,
     GenreOut,
     ImportGameResponse,
     LocalGameMatch,
@@ -48,6 +51,9 @@ from otix.schemas.media import (
     PersonSearchResult,
     SeedFromTitlesRequest,
     SeedFromTitlesResponse,
+    ProviderSearchRequest,
+    ProviderSearchResponse,
+    ProviderSearchResult,
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
@@ -827,16 +833,15 @@ async def search_grouped(
     )
 
 
-@media_router.post("/match", response_model=GameMatchResult)
+@media_router.post("/match", response_model=GameMatchResponse)
 async def match_game(
     body: GameMatchRequest,
     db: AsyncSession = Depends(get_db),
-) -> GameMatchResult:
-    """Match a single game against the Otix catalog via the full matching pipeline.
+) -> GameMatchResponse:
+    """Match a single game against the Otix catalog.
 
-    Stages: external ID lookup, IGDB cross-reference, IGDB title search,
-    PostgreSQL trigram fallback.  Returns confidence 0.0 / ``match_type``
-    ``"none"`` when no match is found.
+    Returns ranked candidates and an optional auto_match.  No catalog
+    mutations occur — use ``POST /match/confirm`` to persist a match.
     """
     redis = await _get_redis()
     matcher = GameMatcher(db, redis)
@@ -848,15 +853,52 @@ async def match_games_batch(
     body: GameMatchBatchRequest,
     db: AsyncSession = Depends(get_db),
 ) -> GameMatchBatchResponse:
-    """Match multiple games against the Otix catalog in a single batch call.
+    """Match multiple games in a single batch call.
 
-    Each game runs through the same pipeline as ``POST /match``.  Results
-    are returned in the same order as the input.
+    Each game runs through the full pipeline and returns ranked
+    candidates plus an optional auto_match.
     """
     redis = await _get_redis()
     matcher = GameMatcher(db, redis)
     matches = await matcher.match_batch(body.games)
     return GameMatchBatchResponse(matches=matches)
+
+
+@media_router.post("/match/confirm", response_model=ConfirmMatchResponse)
+async def confirm_match(
+    body: ConfirmMatchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ConfirmMatchResponse:
+    """Confirm a match candidate or reject all suggestions.
+
+    - If ``igdb_id`` is set and ``media_item_id`` is null, the game is
+      imported from IGDB first, then linked.
+    - If ``rejected_permanently`` is true, future scans won't re-suggest
+      this game.
+    """
+    from otix.services.match_confirmation import MatchConfirmationService
+
+    svc = MatchConfirmationService(db)
+    result = await svc.confirm(body)
+    await db.commit()
+    return result
+
+
+@media_router.post("/match/unlink", response_model=ConfirmMatchResponse)
+async def unlink_match(
+    query_id: str = Query(..., description="Provider:ID, e.g. 'epic:AppName'"),
+    db: AsyncSession = Depends(get_db),
+) -> ConfirmMatchResponse:
+    """Remove an external ID mapping so a game can be re-matched.
+
+    Also clears any permanent rejection record for this game.
+    """
+    from otix.services.match_confirmation import MatchConfirmationService
+
+    svc = MatchConfirmationService(db)
+    result = await svc.unlink(query_id)
+    await db.commit()
+    return result
 
 
 @media_router.post("/match-local-games")
@@ -895,34 +937,46 @@ async def match_local_games(
     matcher = GameMatcher(db, redis)
     results = await matcher.match_batch(requests)
 
-    # Batch-fetch MediaItems for matched results so we can build summaries
-    matched_ids = [r.media_item_id for r in results if r.media_item_id is not None]
+    # Extract best match per result: auto_match first, then top candidate
+    # Build list of (query_title, media_item_id, confidence)
+    best_matches: list[tuple[str, str | None, float]] = []
+    for r in results:
+        best = r.auto_match or (r.candidates[0] if r.candidates else None)
+        if best and best.media_item_id:
+            best_matches.append((r.query_title, best.media_item_id, best.confidence))
+        elif best and best.needs_import:
+            best_matches.append((r.query_title, None, best.confidence))
+        else:
+            best_matches.append((r.query_title, None, 0.0))
+
+    # Batch-fetch MediaItems for matched results
+    matched_ids = list({mid for _, mid, _ in best_matches if mid is not None})
     media_items: dict[str, MediaItem] = {}
     if matched_ids:
         rows = await db.execute(select(MediaItem).where(MediaItem.id.in_(matched_ids)))
         media_items = {mi.id: mi for mi in rows.scalars().all()}
 
     matches: list[LocalGameMatch] = []
-    for result in results:
-        confidence = round(result.confidence, 4)
+    for query_title, media_id, confidence in best_matches:
+        confidence = round(confidence, 4)
 
-        if result.media_item_id and result.media_item_id in media_items:
-            item = media_items[result.media_item_id]
+        if media_id and media_id in media_items:
+            item = media_items[media_id]
             if exclude_adult and item.is_adult:
                 matches.append(
-                    LocalGameMatch(query_title=result.title, matched_media=None, confidence=0.0)
+                    LocalGameMatch(query_title=query_title, matched_media=None, confidence=0.0)
                 )
             else:
                 matches.append(
                     LocalGameMatch(
-                        query_title=result.title,
+                        query_title=query_title,
                         matched_media=MediaItemSummary.model_validate(item),
                         confidence=confidence,
                     )
                 )
         else:
             matches.append(
-                LocalGameMatch(query_title=result.title, matched_media=None, confidence=confidence)
+                LocalGameMatch(query_title=query_title, matched_media=None, confidence=confidence)
             )
 
     return LocalGameMatchResponse(matches=matches)
@@ -1222,6 +1276,140 @@ async def import_igdb_game(
         title=result["title"],
         slug=slug,
     )
+
+
+# ── Unified provider search ────────────────────────────────────────────
+
+
+@media_router.post("/search-providers", response_model=ProviderSearchResponse)
+async def search_providers(
+    body: ProviderSearchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ProviderSearchResponse:
+    """Search Otix catalog + IGDB + SteamGrid in one call.
+
+    Returns deduplicated results from all three providers.  Missing IGDB
+    games are imported asynchronously (Celery task).  SteamGrid results
+    include artwork URLs (grid, logo, hero, icon).
+    """
+    redis = await _get_redis()
+    results: list[ProviderSearchResult] = []
+    backfill_pending = False
+
+    # 1. Otix catalog
+    try:
+        media_service = MediaService(db)
+        otix_results = await media_service.search_media(
+            query_str=body.query,
+            media_type="game",
+            page_size=body.limit,
+        )
+        otix_items, _ = otix_results
+        for item in otix_items:
+            results.append(ProviderSearchResult(
+                provider="otix",
+                id=item.id,
+                title=item.title,
+                poster_url=item.poster_url,
+                slug=item.slug,
+            ))
+    except Exception:
+        logger.exception("provider_search_otix_failed", q=body.query)
+
+    # 2. IGDB (with auto-import for missing games)
+    igdb_ids_seen: set[str] = set()
+    if settings.igdb_client_id:
+        try:
+            from otix.providers.igdb.client import IGDBProvider
+
+            provider = IGDBProvider(redis)
+            igdb_raw = await provider.search_games(
+                body.query,
+                limit=body.limit,
+                fields="id,name,slug,cover.url",
+            )
+
+            igdb_ids = [str(r["id"]) for r in igdb_raw if isinstance(r.get("id"), (int, str))]
+            if igdb_ids:
+                ext_id_service = ExternalIDService(db)
+                existing = await ext_id_service.batch_find_entity_ids("igdb", igdb_ids)
+
+                imported_entity_ids = [eid for eid in existing.values() if eid]
+                imported_media: dict = {}
+                if imported_entity_ids:
+                    items = await media_service.get_media_items_by_ids(imported_entity_ids)
+                    for item in items:
+                        igdb_id = next(
+                            (gid for gid, eid in existing.items() if eid == item.id),
+                            None,
+                        )
+                        if igdb_id:
+                            imported_media[igdb_id] = item
+
+                missing_ids = [gid for gid in igdb_ids if gid not in existing]
+                if missing_ids:
+                    query_hash = _poll_query_hash(body.query, "game")
+                    dedup_key = f"provider_search:{query_hash}"
+                    already_triggered = await redis.get(dedup_key)
+                    if not already_triggered:
+                        for gid in missing_ids:
+                            app.send_task("sync.igdb.game", args=[int(gid)])
+                        await redis.set(dedup_key, "1", ex=120)
+                    backfill_pending = True
+
+            for g in igdb_raw:
+                gid = str(g.get("id") or "")
+                if not gid or gid in igdb_ids_seen:
+                    continue
+                igdb_ids_seen.add(gid)
+
+                name = g.get("name") or body.query
+                slug = g.get("slug") or ""
+                cover = g.get("cover")
+                poster = None
+                if cover and isinstance(cover, dict):
+                    url = cover.get("url")
+                    if url:
+                        poster = str(url).replace("t_thumb", "t_cover_big")
+
+                otix_id = existing.get(gid) or (imported_media.get(gid) and imported_media[gid].id)
+                result_id = otix_id or gid
+
+                results.append(ProviderSearchResult(
+                    provider="igdb",
+                    id=result_id,
+                    title=name,
+                    poster_url=poster,
+                    slug=slug,
+                ))
+        except Exception:
+            logger.exception("provider_search_igdb_failed", q=body.query)
+
+    # 3. SteamGridDB
+    if settings.steamgrid_api_key:
+        try:
+            from otix.providers.steamgrid.client import SteamGridDBProvider
+
+            sg_provider = SteamGridDBProvider(redis)
+            sg_results = await sg_provider.search_games(body.query)
+
+            for sg_game in sg_results[:body.limit]:
+                sgdb_id = sg_game.get("id")
+                if not sgdb_id:
+                    continue
+                name = sg_game.get("name") or body.query
+
+                results.append(ProviderSearchResult(
+                    provider="steamgrid",
+                    id=str(sgdb_id),
+                    title=name,
+                    poster_url=None,
+                    slug=None,
+                ))
+        except Exception:
+            logger.exception("provider_search_steamgrid_failed", q=body.query)
+
+    return ProviderSearchResponse(items=results, backfill_pending=backfill_pending)
 
 
 @media_router.post("/search-steamgrid", response_model=SteamGridSearchResponse)

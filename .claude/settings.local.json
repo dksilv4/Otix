@@ -79,7 +79,24 @@
       "PowerShell(python --version)",
       "Bash(rtk tsc *)",
       "Bash(cat desktop/package.json)",
-      "Bash(cat package.json)"
+      "Bash(cat package.json)",
+      "Bash(cross-env NODE_ENV=development npx electron .)",
+      "PowerShell($env:NODE_ENV = 'development'; cd \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\"; npx electron . 2>&1 | Select-Object -First 50)",
+      "PowerShell($env:NODE_ENV = 'development'; cd \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\"; npx electron . 2>&)",
+      "PowerShell($env:NODE_ENV = 'development'; cd \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\"; npx electron . 2>&1)",
+      "Bash(npm rebuild *)",
+      "PowerShell($env:NODE_ENV = 'development'; cd \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\"; $output = & npx electron . 2>&1; Write-Output \"=== ELECTRON EXIT CODE: $LASTEXITCODE ===\"; Write-Output $output)",
+      "PowerShell($env:NODE_ENV = 'development'; cd \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\"; $output = & \".\\\\node_modules\\\\.bin\\\\electron.cmd\" . 2>&1; Write-Output \"=== EXIT: $LASTEXITCODE ===\"; Write-Output $output)",
+      "PowerShell($env:NODE_ENV = 'development'; Start-Process -FilePath \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -WorkingDirectory \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\" -NoNewWindow -PassThru | ForEach-Object { Write-Output \"PID: $\\($_.Id\\)\"; Start-Sleep 8; if \\(-not $_.HasExited\\) { Write-Output \"Still running after 8s\" } else { Write-Output \"Exited after 8s with code $\\($_.ExitCode\\)\" } })",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue; foreach \\($c in $conns\\) { Write-Output \"Killing PID $\\($c.OwningProcess\\)\"; Stop-Process -Id $c.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 1; try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:5173/\" -TimeoutSec 2; Write-Output \"Port 5173 still alive: $\\($r.StatusCode\\)\" } catch { Write-Output \"Port 5173 closed\" })",
+      "PowerShell($env:NODE_ENV = 'development'; Start-Process -FilePath \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -WorkingDirectory \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\" -NoNewWindow -PassThru | ForEach-Object { Write-Output \"PID: $\\($_.Id\\)\"; Start-Sleep 15; if \\(-not $_.HasExited\\) { Write-Output \"Still running after 15s - window is staying open!\" } else { Write-Output \"Exited after 15s with code $\\($_.ExitCode\\)\" } })",
+      "PowerShell($env:NODE_ENV = 'development'; Start-Process -FilePath \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -WorkingDirectory \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\" -NoNewWindow -PassThru | ForEach-Object { Write-Output \"PID: $\\($_.Id\\)\"; Start-Sleep 20; if \\(-not $_.HasExited\\) { Write-Output \"STILL ALIVE after 20s!\" } else { Write-Output \"Exited after 20s with code $\\($_.ExitCode\\)\" } })",
+      "PowerShell($env:NODE_ENV = 'development'; Start-Process -FilePath \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\\\\node_modules\\\\.bin\\\\electron.cmd\" -ArgumentList \".\" -WorkingDirectory \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\desktop\" -NoNewWindow -PassThru | ForEach-Object { Write-Output \"PID: $\\($_.Id\\)\"; Start-Sleep 20; if \\(-not $_.HasExited\\) { Write-Output \"STILL ALIVE — window stays with about:blank!\" } else { Write-Output \"Exited after 20s with code $\\($_.ExitCode\\)\" } })",
+      "PowerShell(Get-WmiObject *)",
+      "PowerShell($conns = Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue; if \\($conns\\) { Write-Output \"Port 5173 in use by PID $\\($conns.OwningProcess\\)\"; Stop-Process -Id $conns.OwningProcess -Force -ErrorAction SilentlyContinue } else { Write-Output \"Port 5173 free\" })",
+      "Bash(taskkill //F //PID 48920)",
+      "Bash(cp \"C:/Users/diogo/AppData/Roaming/desktop/extensions/otix-epic-games/otix-epic-games/\"* \"C:/Users/diogo/AppData/Roaming/desktop/extensions/otix-epic-games/\")",
+      "Bash(rm -rf \"C:/Users/diogo/AppData/Roaming/desktop/extensions/otix-epic-games/otix-epic-games\")"
     ]
   }
 }

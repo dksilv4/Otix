@@ -132,6 +132,10 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     gameService.acceptSuggestion(gameId, suggestion ?? undefined);
     gameService.notifyGamesChanged();
   });
+  ipcMain.handle('scanner:unmatch-game', (_event, gameId: string) => {
+    gameService.unmatchGame(gameId);
+    gameService.notifyGamesChanged();
+  });
   ipcMain.handle('scanner:reject-suggestion', (_event, gameId: string, suggestionMediaId: string) => {
     gameService.rejectSuggestion(gameId, suggestionMediaId);
     gameService.notifyGamesChanged();
