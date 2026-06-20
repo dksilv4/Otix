@@ -360,7 +360,7 @@ class GameMatcher:
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
     ) -> list[int]:
-        """ILIKE pattern match — batched into one DB round trip.
+        """ILIKE pattern match -- batched into one DB round trip.
 
         Collects all normalized titles, issues a single query with OR'd
         ILIKE conditions, then distributes results back per-request.
