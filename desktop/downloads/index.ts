@@ -1437,8 +1437,8 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
       INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
         update_files, otix_media_id, otix_media_title, otix_media_slug,
-        otix_confidence, otix_match_suggestion, seeded
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        otix_confidence, otix_match_suggestion, sources, seeded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       g.id,
       g.title,
@@ -1454,6 +1454,7 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
       g.otixMediaSlug || null,
       g.otixConfidence != null ? g.otixConfidence : null,
       g.otixMatchSuggestion ? JSON.stringify(g.otixMatchSuggestion) : null,
+      g.sources ? JSON.stringify(g.sources) : '[]',
       seeded,
     );
   }
