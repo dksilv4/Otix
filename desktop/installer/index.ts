@@ -4,7 +4,13 @@ import * as fs from 'fs/promises';
 import * as https from 'https';
 import * as path from 'path';
 import { getConnection } from '../db';
-const __installDb = getConnection('downloads');
+import type Database from 'better-sqlite3';
+
+let __installDb: Database.Database | null = null;
+function installDb(): Database.Database {
+  if (!__installDb) __installDb = getConnection('downloads');
+  return __installDb;
+}
 import { tmpdir } from 'os';
 import { createWriteStream, existsSync, readdirSync } from 'fs';
 import { cleanGameTitle } from '../game/parser';
@@ -827,7 +833,7 @@ interface PersistedInstall {
 
 function _addPersistedInstall(entry: PersistedInstall): void {
   try {
-    __installDb.prepare(
+    installDb().prepare(
       `INSERT OR REPLACE INTO active_installs (install_id, pid, iso_path, target_dir, game_title, start_time)
        VALUES (?, ?, ?, ?, ?, ?)`
     ).run(entry.installId, entry.pid, entry.isoPath, entry.targetDir, entry.gameTitle, entry.startTime);
@@ -836,13 +842,13 @@ function _addPersistedInstall(entry: PersistedInstall): void {
 
 function _removePersistedInstall(installId: string): void {
   try {
-    __installDb.prepare('DELETE FROM active_installs WHERE install_id = ?').run(installId);
+    installDb().prepare('DELETE FROM active_installs WHERE install_id = ?').run(installId);
   } catch (e) { console.warn('[install-persist] remove error:', e); }
 }
 
 function _readPersistedInstalls(): PersistedInstall[] {
   try {
-    return (__installDb.prepare('SELECT * FROM active_installs').all() as any[]).map(r => ({
+    return (installDb().prepare('SELECT * FROM active_installs').all() as any[]).map(r => ({
       installId: r.install_id,
       pid: r.pid,
       isoPath: r.iso_path,
