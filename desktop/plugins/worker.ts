@@ -143,8 +143,9 @@ async function start(): Promise<void> {
     sendMessage({ type: 'ready' })
   } catch (error: any) {
     sendMessage({ type: 'log', level: 'error', msg: `Plugin start failed: ${error.message}` })
-    // Do NOT call process.exit() — it kills the parent process.
-    // Instead, just stop: the bridge will detect the port closed and mark the plugin as crashed.
+    // Send ready anyway — bridge would wait 30s timeout otherwise.
+    // Plugin marked as started but will return errors for any RPC calls (pluginModule is null).
+    sendMessage({ type: 'ready' })
   }
 }
 
