@@ -360,15 +360,19 @@ class GameMatcher:
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
     ) -> list[int]:
-        """ILIKE pattern match — normalized title is substring of catalog title or vice versa."""
+        """ILIKE pattern match � batched into one DB round trip.
+
+        Collects all normalized titles, issues a single query with OR'd
+        ILIKE conditions, then distributes results back per-request.
+        """
         from sqlalchemy import or_
 
-        unmatched: list[int] = []
         idx_to_norm: dict[int, str] = {}
+        unmatched: list[int] = []
 
         for i in indices:
             norm = _normalize_title(requests[i].title)
-            if not norm:
+            if not norm or len(norm) < 2:
                 unmatched.append(i)
                 continue
             idx_to_norm[i] = norm
@@ -376,43 +380,31 @@ class GameMatcher:
         if not idx_to_norm:
             return unmatched
 
-        # Build OR clause: for each normalized title, check if it's ILIKE %title%
-        # or the catalog title is ILIKE %normalized%
+        # Build one big OR query: title ILIKE %norm% for each normalized title
         conditions = []
         for norm in idx_to_norm.values():
             pattern = f"%{norm}%"
-            conditions.append(
-                or_(
-                    MediaItem.title.ilike(pattern),
-                    MediaItem.title.ilike(pattern),  # same but catches reverse containment via the second check below
-                )
-            )
+            conditions.append(MediaItem.title.ilike(pattern))
 
-        # Actually simpler: ILIKE containment both directions
-        # Build query for each normalized title individually for clarity
+        rows = await self._session.execute(
+            select(MediaItem).where(
+                MediaItem.media_type == "game",
+                or_(*conditions),
+            ).limit(500)  # safety limit
+        )
+        catalog_items = list(rows.scalars().all())
+
+        # Match each catalog item to the request(s) whose normalized title
+        # is contained in (or contains) the catalog title
         matched: set[int] = set()
-        for i, norm in idx_to_norm.items():
-            if i in matched:
-                continue
-            pattern = f"%{norm}%"
-            rows = await self._session.execute(
-                select(MediaItem)
-                .where(
-                    MediaItem.media_type == "game",
-                    or_(
-                        MediaItem.title.ilike(pattern),
-                        # Reverse: catalog title is contained in search
-                        # (handles "Cyberpunk 2077: Phantom Liberty" → "Cyberpunk 2077")
-                    ),
-                )
-                .limit(5)
-            )
-            for mi in rows.scalars().all():
-                # Also check reverse containment
-                mi_lower = mi.title.lower()
-                if norm.lower() in mi_lower or mi_lower in norm.lower():
-                    dev_match = _developer_overlap(requests[i].developer, mi)
-                    confidence = 0.85 if dev_match else 0.75
+        for mi in catalog_items:
+            mi_lower = mi.title.lower()
+            for i, norm in idx_to_norm.items():
+                if i in matched:
+                    continue
+                norm_lower = norm.lower()
+                if norm_lower in mi_lower or mi_lower in norm_lower:
+                    confidence = 0.85 if _developer_overlap(requests[i].developer, mi) else 0.75
                     all_candidates[i].append(
                         GameMatchCandidate(
                             media_item_id=mi.id,
@@ -425,6 +417,7 @@ class GameMatcher:
                         )
                     )
                     matched.add(i)
+                    break  # one match per catalog item per request
 
         return [i for i in indices if i not in matched]
 
