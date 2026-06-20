@@ -222,6 +222,9 @@ export interface DesktopAPI {
   saveLocalGamesMapEntry(mediaId: string, game: Record<string, unknown>): Promise<void>
   updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void>
 
+  // Plugin system (subset — full API has many more methods)
+  plugin?: Record<string, (...args: unknown[]) => Promise<unknown>>
+
   // AI model management (IPC handlers removed — methods absent at runtime.
   // intelligence.tsx guards with null checks. Restore handlers to re-enable.)
   aiGetStatus?: () => Promise<AiModelStatus>

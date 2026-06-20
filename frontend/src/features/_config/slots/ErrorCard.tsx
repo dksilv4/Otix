@@ -12,7 +12,7 @@ interface ErrorCardProps {
 
 export function ErrorCard({ pluginName, message, details, suspended, onReenable }: ErrorCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const isDev = process.env.NODE_ENV === 'development'
+  const isDev = import.meta.env.DEV
 
   return (
     <div

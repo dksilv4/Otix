@@ -179,15 +179,17 @@ function WidgetSwitch({ widget, pluginId, onAction, children }: {
     // ── Card ──────────────────────────────────────────────────────
     case 'card': {
       const elevation = SHADOW_TO_ELEVATION[p.shadow as string] || 'sm'
+      const title = p.title as string | undefined
+      const subtitle = p.subtitle as string | undefined
       return (
         <DkCard
           elevation={elevation as any}
           style={{ padding: PADDING_MAP[p.padding as string] || undefined }}
         >
-          {(p.title || p.subtitle) && (
+          {(title || subtitle) && (
             <div style={{ marginBottom: children ? 16 : 0 }}>
-              {p.title && <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{p.title as string}</h3>}
-              {p.subtitle && <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{p.subtitle as string}</p>}
+              {title && <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{title}</h3>}
+              {subtitle && <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{subtitle}</p>}
             </div>
           )}
           {children}
@@ -266,7 +268,7 @@ function WidgetSwitch({ widget, pluginId, onAction, children }: {
             <div style={{ fontWeight: 600, fontSize: 14 }}>{p.title as string}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{p.message as string}</div>
           </div>
-          {p.dismissible && (
+          {!!p.dismissible && (
             <button
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}
               onClick={() => p.action && onAction?.(pluginId, p.action as string, p)}
