@@ -161,14 +161,20 @@ function createWindow() {
 
   // Handle close-to-tray
   mainWindow.on('close', (event) => {
+    console.log('[main] Window close event fired');
     saveWindowState(mainWindow!)
     const settings = getSettings()
     if (settings.closeToTray) {
+      console.log('[main] closeToTray enabled — hiding instead of closing');
       event.preventDefault()
       mainWindow?.hide()
       return
     }
   })
+
+  mainWindow.on('hide', () => console.log('[main] Window hidden'))
+  mainWindow.on('show', () => console.log('[main] Window shown'))
+  mainWindow.on('minimize', () => console.log('[main] Window minimized'))
 
   if (isDev) {
     mainWindow.loadURL('http://127.0.0.1:5173/');
@@ -177,7 +183,13 @@ function createWindow() {
     mainWindow.loadURL(`file://${path.join(__dirname, '../dist/index.html')}`);
   }
 
+  // Ensure window is visible
+  mainWindow.show();
+  mainWindow.focus();
+  console.log('[main] Window created — visible:', mainWindow.isVisible(), 'minimized:', mainWindow.isMinimized());
+
   mainWindow.on('closed', () => {
+    console.log('[main] Window closed');
     gameDetector?.stopAll();
     mainWindow = null;
   });
