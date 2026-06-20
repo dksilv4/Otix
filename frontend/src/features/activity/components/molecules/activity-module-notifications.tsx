@@ -6,7 +6,6 @@ import { apiClient } from '@/lib/api/client'
 import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
 import { notificationQueries, useMarkRead, useMarkAllRead } from '@/old-features/notifications/notification-queries'
 import type { Notification } from '@/old-features/notifications/notification-queries'
-import { cn } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatTimeAgo } from '@/lib/utils'
 
@@ -85,10 +84,7 @@ export function ActivityModuleNotifications({ onClose }: { onClose: () => void }
         {notifications.slice(0, 10).map((n) => (
           <div
             key={n.id}
-            className={cn(
-              "flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors",
-              !n.isRead && "bg-white/[0.03]",
-            )}
+            className={"flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors" + (!n.isRead ? " bg-white/[0.03]" : "")}
           >
             <DkAvatar
               name={

@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { getMatchedGames, hydrateGame, notifyGamesChanged } from '../game-storage-service';
+import { getMatchedGames, hydrateGame, notifyGamesChanged } from '../game/storage';
 
 const API_BASE = 'http://127.0.0.1:8000/api';
 

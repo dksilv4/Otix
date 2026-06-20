@@ -2,7 +2,6 @@ import { useRef } from 'react'
 import { MediaCard } from '@ui/molecules/media-card'
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatYear, useMediaParams } from '@media'
-import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
 
 export function CollectionSection({ className }: { className?: string } = {}) {
@@ -54,12 +53,9 @@ export function CollectionSection({ className }: { className?: string } = {}) {
             const year = formatYear(movie.releaseDate)
 
             return (
-              <Link
+              <div
                 key={movie.id}
-                to="/media/$mediaType/$mediaId"
-                params={{ mediaType: 'movie', mediaId: movie.id }}
-                className="shrink-0 w-36 sm:w-40 lg:w-44 group"
-              >
+                className="shrink-0 w-36 sm:w-40 lg:w-44 group">
                 <div
                   className={`relative overflow-hidden rounded-xl transition-all duration-300 ${
                     isCurrent
@@ -84,7 +80,7 @@ export function CollectionSection({ className }: { className?: string } = {}) {
                     </span>
                   )}
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>

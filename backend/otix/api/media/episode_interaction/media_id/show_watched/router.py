@@ -10,8 +10,9 @@ from otix.services.episode_interaction_service import EpisodeInteractionService
 
 router = APIRouter()
 
-@router.put("/{media_id}/show-watched", response_model=BulkMarkResponse)
+@router.put("/{media_type}/{media_id}/show-watched", response_model=BulkMarkResponse)
 async def mark_show_watched(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -26,8 +27,9 @@ async def mark_show_watched(
     )
     return BulkMarkResponse(episodes_marked=count)
 
-@router.delete("/{media_id}/show-watched", response_model=BulkMarkResponse)
+@router.delete("/{media_type}/{media_id}/show-watched", response_model=BulkMarkResponse)
 async def unmark_show_watched(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

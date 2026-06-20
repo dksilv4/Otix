@@ -1,7 +1,6 @@
 /* ── LauncherShelf — self-contained shelf: My Games + Popular tabs ── */
 
 import {useState} from 'react'
-import {cn} from '@/lib/utils'
 import {MediaCard} from '@/old-features/dk-ui/molecules/media-card'
 import {usePopularGames} from '@/features/launcher/queries'
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
@@ -35,12 +34,9 @@ export function LauncherShelf({id}: LauncherShelfProps) {
                         <button
                             key={tab}
                             onClick={() => setShelfTab(tab)}
-                            className={cn(
-                                "text-[11px] font-semibold transition-all cursor-pointer pb-0.5",
-                                shelfTab === tab
+                            className={"text-[11px] font-semibold transition-all cursor-pointer pb-0.5 " + (shelfTab === tab
                                     ? "text-white border-b border-white"
-                                    : "text-white/35 hover:text-white/60"
-                            )}
+                                    : "text-white/35 hover:text-white/60")}
                         >
                             {TAB_LABELS[tab]}
                         </button>

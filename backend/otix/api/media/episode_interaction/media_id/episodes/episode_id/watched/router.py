@@ -13,8 +13,9 @@ router = APIRouter()
 def _episode_interaction_out(ep_id: str, watched: bool, watched_at: str | None) -> EpisodeInteractionOut:
     return EpisodeInteractionOut(episode_id=ep_id, watched=watched, watched_at=watched_at)
 
-@router.put("/{media_id}/episodes/{episode_id}/watched", response_model=EpisodeToggleResponse)
+@router.put("/{media_type}/{media_id}/episodes/{episode_id}/watched", response_model=EpisodeToggleResponse)
 async def mark_episode_watched(
+    media_type: str,
     media_id: str,
     episode_id: str,
     db: AsyncSession = Depends(get_db),
@@ -39,7 +40,7 @@ async def mark_episode_watched(
         show_progress=ShowProgressOut(**progress),
     )
 
-@router.delete("/{media_id}/episodes/{episode_id}/watched", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{media_type}/{media_id}/episodes/{episode_id}/watched", status_code=status.HTTP_204_NO_CONTENT)
 async def unmark_episode_watched(
     media_id: str,
     episode_id: str,

@@ -1,4 +1,4 @@
-import { NotificationsSection } from '@/old-features/settings/organisms/settings-sections/notifications'
+﻿import { NotificationsSection } from '../sections/notifications'
 
 export function SettingsNotificationsPage() {
   return <NotificationsSection />

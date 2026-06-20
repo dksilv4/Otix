@@ -24,8 +24,9 @@ interaction_router = APIRouter(prefix="/media", tags=["interaction"])
 VALID_TYPES = {"liked", "watchlisted", "watched", "played", "started", "listened"}
 
 
-@interaction_router.get("/{media_id}/interactions", response_model=UserInteractionState)
+@interaction_router.get("/{media_type}/{media_id}/interactions", response_model=UserInteractionState)
 async def get_user_interactions(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -36,10 +37,11 @@ async def get_user_interactions(
 
 
 @interaction_router.put(
-    "/{media_id}/interactions/{interaction_type}",
+    "/{media_type}/{media_id}/interactions/{interaction_type}",
     response_model=InteractionToggleResponse,
 )
 async def set_interaction(
+    media_type: str,
     media_id: str,
     interaction_type: str,
     body: InteractionCreate,
@@ -71,10 +73,11 @@ async def set_interaction(
 
 
 @interaction_router.delete(
-    "/{media_id}/interactions/{interaction_type}",
+    "/{media_type}/{media_id}/interactions/{interaction_type}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def remove_interaction(
+    media_type: str,
     media_id: str,
     interaction_type: str,
     db: AsyncSession = Depends(get_db),

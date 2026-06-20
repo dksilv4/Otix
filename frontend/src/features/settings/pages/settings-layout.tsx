@@ -14,7 +14,7 @@ export function SettingsLayout() {
   const desktop = isDesktop()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const activeSection = location.pathname.replace('/settings/', '') || 'profile'
+  const activeSection = location.pathname.replace('/settings/', '').split('/')[0] || 'profile'
   const filteredNav = NAV_ITEMS.filter(i => !DESKTOP_SECTIONS.has(i.id) || desktop)
 
   const navLinkClass = (isActive: boolean) =>

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
-import { cn } from '@/lib/utils'
 import { useFeature } from '@/features/_config'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { usePlexSessions } from '../../hooks/use-plex-sessions'
@@ -50,10 +49,7 @@ export function ActivityModulePlex() {
         type="button"
         data-plex-trigger
         onClick={() => setOpen(!open)}
-        className={cn(
-          'flex items-center p-1.5 relative cursor-pointer rounded-[2rem] backdrop-blur-[16px]',
-          count > 0 && 'shadow-[0_0_0_1px_rgba(229,160,13,0.4)]',
-        )}
+        className={'flex items-center p-1.5 relative cursor-pointer rounded-[2rem] backdrop-blur-[16px]' + (count > 0 ? ' shadow-[0_0_0_1px_rgba(229,160,13,0.4)]' : '')}
         style={{
           background: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
           WebkitBackdropFilter: 'blur(16px)',
@@ -63,7 +59,7 @@ export function ActivityModulePlex() {
         }}
         aria-label="Plex now playing"
       >
-        <PlexIcon className={cn('h-5 w-5', count > 0 ? 'text-[#e5a00d]' : 'text-muted-foreground')} />
+        <PlexIcon className={'h-5 w-5' + (count > 0 ? ' text-[#e5a00d]' : ' text-muted-foreground')} />
         {count > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold leading-none text-[10px] text-black bg-[#e5a00d]">
             {count > 9 ? '9+' : count}
@@ -79,10 +75,7 @@ export function ActivityModulePlex() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              'fixed right-4 z-[9999] w-80 max-h-[32rem] overflow-y-auto p-3 flex flex-col gap-2 rounded-[1.5rem]',
-              isDesktop ? 'top-[110px]' : 'top-18',
-            )}
+            className={'fixed right-4 z-[9999] w-80 max-h-[32rem] overflow-y-auto p-3 flex flex-col gap-2 rounded-[1.5rem]' + (isDesktop ? ' top-[110px]' : ' top-18')}
             style={{
               background: 'var(--dk-surface-overlay)',
               backdropFilter: 'blur(24px)',

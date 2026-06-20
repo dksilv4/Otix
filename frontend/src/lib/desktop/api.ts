@@ -222,18 +222,22 @@ export interface DesktopAPI {
   saveLocalGamesMapEntry(mediaId: string, game: Record<string, unknown>): Promise<void>
   updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void>
 
-  // AI model management
-  aiGetStatus: () => Promise<AiModelStatus>
-  aiGetDownloadProgress: () => Promise<number | null>
-  aiGetLoadingProgress: () => Promise<number | null>
-  aiDownloadModel: () => Promise<void>
-  aiDeleteModel: () => Promise<void>
-  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => Promise<string | null>
-  aiGetSystemPrompt: () => Promise<string>
-  aiSetSystemPrompt: (prompt: string) => Promise<void>
-  onAiDownloadProgress: (cb: (progress: number) => void) => () => void
-  onAiLoadingProgress: (cb: (progress: number) => void) => () => void
-  onAiStatusChanged: (cb: (status: AiModelStatus) => void) => () => void
+  // Plugin system (subset — full API has many more methods)
+  plugin?: Record<string, (...args: unknown[]) => Promise<unknown>>
+
+  // AI model management (IPC handlers removed — methods absent at runtime.
+  // intelligence.tsx guards with null checks. Restore handlers to re-enable.)
+  aiGetStatus?: () => Promise<AiModelStatus>
+  aiGetDownloadProgress?: () => Promise<number | null>
+  aiGetLoadingProgress?: () => Promise<number | null>
+  aiDownloadModel?: () => Promise<void>
+  aiDeleteModel?: () => Promise<void>
+  aiChat?: (messages: { role: 'user' | 'model'; content: string }[]) => Promise<string | null>
+  aiGetSystemPrompt?: () => Promise<string>
+  aiSetSystemPrompt?: (prompt: string) => Promise<void>
+  onAiDownloadProgress?: (cb: (progress: number) => void) => () => void
+  onAiLoadingProgress?: (cb: (progress: number) => void) => () => void
+  onAiStatusChanged?: (cb: (status: AiModelStatus) => void) => () => void
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

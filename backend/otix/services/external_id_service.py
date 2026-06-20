@@ -200,22 +200,45 @@ class ExternalIDService:
     ) -> ExternalID:
         """Idempotent create-or-update.
 
-        Uses a two-step SELECT-then-INSERT/UPDATE pattern because the
-        ``uq_external_id_provider_ext`` constraint includes the nullable
-        ``entity_type`` column.  PostgreSQL treats NULL as distinct in unique
-        constraints, so ON CONFLICT on the full tuple cannot match a legacy row
-        where entity_type IS NULL.  This approach finds *any* row by
-        (provider, external_id) regardless of entity_type, then sets it.
+        Order of lookups prevents unique-constraint violations on
+        ``uq_external_id_provider_ext`` during concurrent upserts:
 
-        A concurrent INSERT race is handled by a final INSERT with ON CONFLICT
-        as a safety net.
+        1. Exact match — (provider, external_id, entity_type) exists → update
+           entity_id only (no type change, safe under all concurrency).
+        2. NULL stub — row with (provider, external_id, NULL) exists → fill in
+           entity_type and entity_id.  Safe because step 1 would have found an
+           existing ``entity_type`` row, and PostgreSQL treats NULL as distinct
+           in unique constraints, so no other row with the target entity_type
+           can coexist with the NULL stub (if one existed, step 1 caught it).
+        3. INSERT with ON CONFLICT DO UPDATE — handles the fresh-row case and
+           races where another session inserted the exact tuple concurrently.
+        4. Last-resort re-read — catches the narrow race where a concurrent TX
+           inserted a row with a *different* entity_type (or NULL) between
+           steps 1-2 and step 3, so ON CONFLICT on the full tuple missed it.
         """
-        # ── 1. SELECT — match (provider, external_id) ignoring entity_type ──
+        # ── 1. Exact match (provider, external_id, entity_type) ───────────
         existing = await self._session.scalar(
             select(ExternalID)
             .where(
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
+                ExternalID.entity_type == entity_type,
+            )
+            .limit(1)
+        )
+        if existing is not None:
+            existing.entity_id = entity_id
+            if entity_type == "media_item":
+                existing.media_item_id = entity_id
+            return existing
+
+        # ── 2. NULL stub — legacy rows where entity_type was not set ──────
+        existing = await self._session.scalar(
+            select(ExternalID)
+            .where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+                ExternalID.entity_type.is_(None),
             )
             .limit(1)
         )
@@ -226,7 +249,7 @@ class ExternalIDService:
                 existing.media_item_id = entity_id
             return existing
 
-        # ── 2. INSERT — safe when no row exists; ON CONFLICT catches races ──
+        # ── 3. INSERT — safe when no row exists; ON CONFLICT catches races ─
         set_values = {"entity_type": entity_type, "entity_id": entity_id}
         insert_values = {
             "provider": provider,
@@ -252,15 +275,31 @@ class ExternalIDService:
         if row is not None:
             return row
 
-        # ── 3. Last-resort: race where another TX inserted with NULL etype ──
-        # The ON CONFLICT above won't match if a concurrent transaction
-        # inserted a row with a different entity_type (including NULL).  Try
-        # the SELECT one more time.
+        # ── 4. Last-resort: race where another TX inserted with a different
+        #    entity_type (or NULL) between steps 1-2 and step 3.  The ON
+        #    CONFLICT above won't match that tuple.  Re-read and update.
         existing = await self._session.scalar(
             select(ExternalID)
             .where(
                 ExternalID.provider == provider,
                 ExternalID.external_id == external_id,
+                ExternalID.entity_type == entity_type,
+            )
+            .limit(1)
+        )
+        if existing is not None:
+            existing.entity_id = entity_id
+            if entity_type == "media_item":
+                existing.media_item_id = entity_id
+            return existing
+
+        # Fallback: try NULL stub one more time (concurrent insert with NULL)
+        existing = await self._session.scalar(
+            select(ExternalID)
+            .where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
+                ExternalID.entity_type.is_(None),
             )
             .limit(1)
         )
@@ -279,6 +318,16 @@ class ExternalIDService:
                 ExternalID.entity_type == entity_type,
                 ExternalID.entity_id == entity_id,
                 ExternalID.provider == provider,
+            )
+        )
+        return result.rowcount > 0
+
+    async def delete_by_ext_id(self, provider: str, external_id: str) -> bool:
+        """Delete an external ID row by its natural key (provider, external_id)."""
+        result = await self._session.execute(
+            sa_delete(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id == external_id,
             )
         )
         return result.rowcount > 0

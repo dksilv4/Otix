@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Clock, Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { useDownloads } from '@/old-features/downloads/use-downloads'
 import { useAuth } from '@/lib/providers/auth'
-import { cn } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatBytes } from '@/lib/utils'
 
@@ -107,7 +106,7 @@ export function ActivityModuleDownloads() {
                   <div className="flex items-center gap-3">
                     <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-white/[0.06]">
                       <div
-                        className={cn("h-full rounded-full transition-all duration-700", progressBgClass)}
+                        className={"h-full rounded-full transition-all duration-700 " + progressBgClass}
                         style={{ width: `${pct}%` }}
                       />
                     </div>

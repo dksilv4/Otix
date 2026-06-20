@@ -1,103 +1,127 @@
 // TODO: Review this file
-import { useState, useRef, useEffect } from "react"
-import { ListIcon, PlusIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/providers/auth"
-import {
- useUserLists,
- useAddToList,
- useCreateList,
-} from "../list-queries"
-import { ListComposer } from "../organisms/list-composer"
-import "./add-to-list-button.scss"
+import { useState, useRef, useEffect } from 'react'
+import { ListIcon, PlusIcon, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@auth/hooks/use-auth'
+import { useUserLists, useAddToList, useCreateList } from '../list-queries'
+import { ListComposer } from '../organisms/list-composer'
 
 interface AddToListButtonProps {
- mediaItemId: string
- className?: string
+  mediaItemId: string
+  className?: string
 }
 
 export function AddToListButton({ mediaItemId, className }: AddToListButtonProps) {
- const { isAuthenticated } = useAuth()
- const { data: lists } = useUserLists()
- const addToList = useAddToList()
- const createList = useCreateList()
+  const { isAuthenticated } = useAuth()
+  const { data: lists } = useUserLists()
+  const addToList = useAddToList()
+  const createList = useCreateList()
 
- const [open, setOpen] = useState(false)
- const [composerOpen, setComposerOpen] = useState(false)
- const ref = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
 
- useEffect(() => {
- function handleClick(e: MouseEvent) {
- if (ref.current && !ref.current.contains(e.target as Node)) {
- setOpen(false)
- }
- }
- if (open) {
- document.addEventListener("mousedown", handleClick)
- return () => document.removeEventListener("mousedown", handleClick)
- }
- }, [open])
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+  }, [open])
 
- if (!isAuthenticated || !lists) return null
+  if (!isAuthenticated || !lists) return null
 
- return (
- <div ref={ref} className={cn("dk-list__add-to-list", className)}>
- <button
- onClick={() => setOpen(!open)}
- className="dk-list__add-to-list__trigger"
- >
- <ListIcon className="h-4 w-4" />
- Add to List
- </button>
+  return (
+    <div ref={ref} className={cn('relative', className)}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="dk-interaction__btn glass-inset flex flex-col items-center gap-1.5"
+      >
+        <ListIcon className="relative h-5 w-5 text-muted-foreground transition-all duration-200" />
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          List
+        </span>
+      </button>
 
- {open && (
- <div
- className="dk-list__add-to-list__dropdown"
- >
- {lists.length === 0 ? (
- <div className="dk-list__add-to-list__empty">
- No lists yet. Create one first.
- </div>
- ) : (
- lists.map((list) => (
- <button
- key={list.id}
- onClick={() => {
- addToList.mutate(
- { listId: list.id, mediaItemId },
- { onSuccess: () => setOpen(false) }
- )
- }}
- className="dk-list__add-to-list__option"
- >
- <span className="truncate flex-1">{list.name}</span>
- </button>
- ))
- )}
+      {open && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-56 rounded-xl bg-card border border-border/40 shadow-xl p-1.5 space-y-0.5">
+          {lists.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+              No lists yet. Create one first.
+            </div>
+          ) : (
+            lists.map((list) => {
+              const added = justAdded === list.id
+              return (
+                <button
+                  key={list.id}
+                  type="button"
+                  onClick={() => {
+                    setJustAdded(list.id)
+                    addToList.mutate(
+                      { listId: list.id, mediaItemId },
+                      {
+                        onSuccess: () => {
+                          setTimeout(() => { setJustAdded(null); setOpen(false) }, 600)
+                        },
+                        onError: () => setJustAdded(null),
+                      },
+                    )
+                  }}
+                  disabled={addToList.isPending}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                    'hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none',
+                    added ? 'text-emerald-400' : 'text-foreground/80',
+                  )}
+                >
+                  <div className={cn(
+                    'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors',
+                    added
+                      ? 'border-emerald-400 bg-emerald-400/10'
+                      : 'border-border/40',
+                  )}>
+                    {added ? <Check className="h-3 w-3" /> : null}
+                  </div>
+                  <span className="truncate flex-1">{list.name}</span>
+                  <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                    {list.itemCount ?? 0}
+                  </span>
+                </button>
+              )
+            })
+          )}
 
- <div className="dk-list__add-to-list__divider">
- <button
- onClick={() => {
- setOpen(false)
- setComposerOpen(true)
- }}
- className="dk-list__add-to-list__create"
- >
- <PlusIcon className="h-4 w-4" />
- New List
- </button>
- </div>
- </div>
- )}
+          <hr className="border-border/20 mx-2" />
 
- <ListComposer
- open={composerOpen}
- onClose={() => setComposerOpen(false)}
- onSave={(data) => {
- createList.mutate(data, { onSuccess: () => setComposerOpen(false) })
- }}
- isSaving={createList.isPending}
- />
- </div>
- )
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              setComposerOpen(true)
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+          >
+            <PlusIcon className="h-4 w-4" />
+            New List
+          </button>
+        </div>
+      )}
+
+      <ListComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onSave={(data) => {
+          createList.mutate(data, { onSuccess: () => setComposerOpen(false) })
+        }}
+        isSaving={createList.isPending}
+      />
+    </div>
+  )
 }

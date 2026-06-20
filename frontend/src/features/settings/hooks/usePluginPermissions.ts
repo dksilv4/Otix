@@ -10,10 +10,11 @@ export interface PermissionRequest {
 
 export interface UsePluginPermissionsReturn {
   currentRequest: PermissionRequest | null
-  handleAllowOnce: () => void
-  handleAllowAlways: () => void
-  handleDeny: () => void
   isModalOpen: boolean
+  handleAllowOnce: (requestId: string) => void
+  handleAllowAlways: (requestId: string) => void
+  handleDeny: (requestId: string) => void
+  handleClose: () => void
 }
 
 export function usePluginPermissions(): UsePluginPermissionsReturn {
@@ -25,52 +26,43 @@ export function usePluginPermissions(): UsePluginPermissionsReturn {
 
     const unsubscribe = api.onPermissionRequest((request) => {
       setCurrentRequest(request)
-      return () => {
-        // Cleanup function returned by the caller if needed
-      }
     })
 
-    return () => {
-      unsubscribe()
-    }
+    return () => { unsubscribe() }
   }, [])
 
   const clearRequest = useCallback(() => {
     setCurrentRequest(null)
   }, [])
 
-  const handleAllowOnce = useCallback(() => {
-    const req = currentRequest
-    if (!req) return
+  const handleAllowOnce = useCallback((requestId: string) => {
     const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(req.requestId, { granted: true, duration: 'once' })
-      .catch(() => {})
+    api?.respondToPermission(requestId, { granted: true, duration: 'once' }).catch(() => {})
     clearRequest()
-  }, [currentRequest, clearRequest])
+  }, [clearRequest])
 
-  const handleAllowAlways = useCallback(() => {
-    const req = currentRequest
-    if (!req) return
+  const handleAllowAlways = useCallback((requestId: string) => {
     const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(req.requestId, { granted: true, duration: 'always' })
-      .catch(() => {})
+    api?.respondToPermission(requestId, { granted: true, duration: 'always' }).catch(() => {})
     clearRequest()
-  }, [currentRequest, clearRequest])
+  }, [clearRequest])
 
-  const handleDeny = useCallback(() => {
-    const req = currentRequest
-    if (!req) return
+  const handleDeny = useCallback((requestId: string) => {
     const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(req.requestId, { granted: false })
-      .catch(() => {})
+    api?.respondToPermission(requestId, { granted: false }).catch(() => {})
     clearRequest()
-  }, [currentRequest, clearRequest])
+  }, [clearRequest])
+
+  const handleClose = useCallback(() => {
+    clearRequest()
+  }, [clearRequest])
 
   return {
     currentRequest,
     handleAllowOnce,
     handleAllowAlways,
     handleDeny,
+    handleClose,
     isModalOpen: currentRequest !== null,
   }
 }

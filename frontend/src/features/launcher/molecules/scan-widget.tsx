@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
@@ -60,7 +59,7 @@ export function LauncherScanWidget({ id }: { id?: string }) {
           disabled={scanning}
           className="px-3.5 py-1.5 bg-white hover:bg-white/90 text-black rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
         >
-          <Scan size={12} className={cn(scanning && 'animate-spin')}/>
+          <Scan size={12} className={scanning ? 'animate-spin' : ''}/>
           {scanning ? 'Scanning...' : 'Scan Now'}
         </button>
         <button

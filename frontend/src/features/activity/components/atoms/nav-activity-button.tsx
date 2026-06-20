@@ -4,7 +4,6 @@ import { useDownloads } from '@/old-features/downloads/use-downloads'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { useAuth } from '@/lib/providers/auth'
-import { cn } from '@/lib/utils'
 import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
 import { notificationQueries } from '@/old-features/notifications/notification-queries'
 import { usePlexSessions } from '../../hooks/use-plex-sessions'
@@ -24,10 +23,7 @@ function EqualizerBars({ isPlaying }: { isPlaying: boolean }) {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className={cn(
-            'rounded-full bg-primary w-[3px]',
-            isPlaying && 'animate-equalizer',
-          )}
+          className={'rounded-full bg-primary w-[3px]' + (isPlaying ? ' animate-equalizer' : '')}
           style={{
             height: isPlaying ? undefined : `${4 + i * 3}px`,
             animationDelay: isPlaying ? `${i * 0.15}s` : undefined,
@@ -86,15 +82,14 @@ export function ActivityModuleButton({
         type="button"
         data-now-playing-trigger
         onClick={handleClick}
-        className={cn(
-          'relative gap-1 transition-all flex items-center justify-center rounded-full',
-          'outline-none focus:outline-none focus-visible:outline-none',
-          !bare && 'flex items-center p-1.5',
-          !isPinned && 'cursor-pointer',
-          isSidebarOpen && 'bg-purple-500/[0.06]',
-          !hasLocalPlayback && hasPlex && 'bg-amber-600/[0.06]',
-          bare && 'w-8 h-8 hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]',
-        )}
+        className={
+          'relative gap-1 transition-all flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none' +
+          (!bare ? ' flex items-center p-1.5' : '') +
+          (!isPinned ? ' cursor-pointer' : '') +
+          (isSidebarOpen ? ' bg-purple-500/[0.06]' : '') +
+          (!hasLocalPlayback && hasPlex ? ' bg-amber-600/[0.06]' : '') +
+          (bare ? ' w-8 h-8 hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]' : '')
+        }
         style={!bare ? GLASS_STYLE : undefined}
         aria-label="Activity"
       >
@@ -115,10 +110,7 @@ export function ActivityModuleButton({
             <img
               src={currentTrack.albumArt}
               alt=""
-              className={cn(
-                'h-6 w-6 rounded-full object-cover',
-                isPlaying && 'animate-spin-slow',
-              )}
+              className={'h-6 w-6 rounded-full object-cover' + (isPlaying ? ' animate-spin-slow' : '')}
               style={{ animationDuration: '8s' }}
             />
           ) : (

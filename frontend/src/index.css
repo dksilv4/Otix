@@ -270,6 +270,18 @@
     animation: equalizer 0.9s ease-in-out infinite;
 }
 
+/* ── Profile page fade-in (opacity + translate) ── */
+@keyframes profileFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ── XP bar shimmer (level 35+) ── */
 @keyframes xpShimmer {
     0% {

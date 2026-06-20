@@ -77,6 +77,8 @@ def route_task(name: str, *args, **kwargs) -> str | None:
         return "reactive-user"
     if name.startswith("karma."):
         return "reactive-user"
+    if name.startswith("promotions."):
+        return "maintain"
     return "maintain"
 
 

@@ -22,7 +22,7 @@ export function FloatingGameSelector() {
     const {data: popularGames = []} = usePopularGames()
 
     const games: DisplayGame[] = useMemo(() => {
-        if (isDesktop) return localGames.map(toDisplayGame)
+        if (isDesktop) return localGames.map(toDisplayGame).filter((g) => g.isInstalled)
         return popularGames.slice(0, 20).map((g) => ({
             id: g.id,
             title: g.title,

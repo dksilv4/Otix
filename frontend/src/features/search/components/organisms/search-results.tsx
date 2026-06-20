@@ -13,8 +13,8 @@ import { apiClient } from '@/lib/api/client'
 import { mediaQueries } from '@media/queries/media-queries'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 import { useCuratedSections, type CuratedSectionConfig } from '@search/hooks/use-curated-sections'
-import { PersonCard } from '@/old-features/person/molecules/person-card'
-import { personQueries } from '@/old-features/person/person-queries'
+import { PeopleCard } from '@people/components/molecules/people-card'
+import { peopleQueries } from '@people/queries/people-queries'
 import { userQueries } from '@/old-features/user/user-queries'
 import { MediaCard } from '@dk-ui/molecules/media-card'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
@@ -136,7 +136,7 @@ function renderBestResultItem(item: any) {
 
   if (mediaType === 'person') {
     return (
-      <PersonCard
+      <PeopleCard
         id={item.id}
         name={item.name}
         imageUrl={item.photoUrl}
@@ -266,7 +266,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
     isLoading: isPeopleLoading,
     isError: isPeopleError,
   } = useQuery({
-    ...personQueries.search(query, 10),
+    ...peopleQueries.search(query, 10),
     enabled: query.length > 0 && isPeopleOnly,
   })
 
@@ -438,7 +438,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i * 0.03, 0.3), duration: 0.2 }}
                 >
-                  <PersonCard
+                  <PeopleCard
                     id={person.id}
                     name={person.name}
                     imageUrl={person.photoUrl}
@@ -618,7 +618,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
         </p>
         <MediaGrid>
           {people.map((person) => (
-            <PersonCard
+            <PeopleCard
               key={person.id}
               id={person.id}
               name={person.name}

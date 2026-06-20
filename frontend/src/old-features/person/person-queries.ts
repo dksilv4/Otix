@@ -1,74 +1,22 @@
-// TODO: Review this file
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+<<<<<<<< HEAD:frontend/src/old-features/person/person-queries.ts
+========
+import type { PersonDetail, PersonSummary, PersonListResponse, RelatedArtist } from '@people/types'
+>>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/people/queries/people-queries.ts
 
-export interface EpisodeInfo {
-  episodeNumber: number
-  name: string | null
-  airDate: string | null
+// ── Query key factory ─────────────────────────────
+
+export const peopleKeys = {
+  all: ['person'] as const,
+  search: (query: string, limit = 8) => ['person', 'search', query, limit] as const,
+  detail: (id: string) => ['person', id] as const,
+  related: (id: string) => ['person', id, 'related'] as const,
 }
 
-export interface SeasonInfo {
-  seasonNumber: number
-  name: string | null
-  firstAirDate: string | null
-  lastAirDate: string | null
-  episodes: EpisodeInfo[]
-}
+// ── Query options ─────────────────────────────────
 
-export interface PersonCredit {
-  id: string
-  mediaItem: {
-    id: string
-    mediaType: string
-    title: string
-    slug: string
-    posterUrl: string | null
-    releaseDate: string | null
-    seasons: SeasonInfo[] | null
-  } | null
-  role: string
-  characterName?: string
-  sortOrder: number
-}
-
-export interface PersonDetail {
-  id: string
-  name: string
-  photoUrl: string | null
-  biography: string | null
-  birthday: string | null
-  deathday: string | null
-  placeOfBirth: string | null
-  followerCount: number
-  isFollowed: boolean | null
-  avgRating: number | null
-  userRating: number | null
-  credits: PersonCredit[]
-}
-
-export interface PersonSummary {
-  id: string
-  name: string
-  photoUrl: string | null
-  birthday: string | null
-  placeOfBirth: string | null
-}
-
-export interface PersonListResponse {
-  items: PersonSummary[]
-  nextCursor: string | null
-  hasMore: boolean
-}
-
-export interface RelatedArtist {
-  id: string | null
-  spotify_artist_id?: string
-  name: string
-  image_url: string | null
-}
-
-export const personQueries = {
+export const peopleQueries = {
   search: (query: string, limit = 8) =>
     queryOptions({
       queryKey: ['person', 'search', query, limit],
@@ -102,6 +50,8 @@ export const personQueries = {
       staleTime: 1000 * 60 * 30,
     }),
 }
+
+// ── Mutations ─────────────────────────────────────
 
 export function useFollowPerson(personId: string) {
   const queryClient = useQueryClient()
