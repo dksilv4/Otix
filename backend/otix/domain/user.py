@@ -5,7 +5,21 @@ import enum
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, BigInteger, Boolean, CheckConstraint, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector
@@ -31,7 +45,14 @@ if TYPE_CHECKING:
     from otix.domain.workout import Workout
 
 
-DEFAULT_PROFILE_SECTIONS: list[str] = ["hof_movie", "hof_show", "hof_game", "hof_music", "library_breakdown", "mood_timeline"]
+DEFAULT_PROFILE_SECTIONS: list[str] = [
+    "hof_movie",
+    "hof_show",
+    "hof_game",
+    "hof_music",
+    "library_breakdown",
+    "mood_timeline",
+]
 
 
 class AuthActionType(enum.StrEnum):
@@ -62,12 +83,16 @@ class User(Base, TimestampMixin):
     plex_email: Mapped[str | None] = mapped_column(String(320), nullable=True, default=None)
     plex_thumb: Mapped[str | None] = mapped_column(String(2048), nullable=True, default=None)
     plex_auth_token: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
-    plex_watch_history_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    plex_watch_history_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     tmdb_session_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
     tmdb_account_id: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True, default=None)
     tmdb_username: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
     tmdb_avatar_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
-    tmdb_rating_sync_direction: Mapped[str] = mapped_column(String(16), default="disabled", server_default="disabled", nullable=False)
+    tmdb_rating_sync_direction: Mapped[str] = mapped_column(
+        String(16), default="disabled", server_default="disabled", nullable=False
+    )
     tmdb_rating_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     spotify_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, default=None)
     spotify_username: Mapped[str | None] = mapped_column(String(150), nullable=True, default=None)
@@ -86,14 +111,22 @@ class User(Base, TimestampMixin):
 
     integration_visibility: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     total_xp: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
-    daily_mood_checkins_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
+    daily_mood_checkins_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     avg_user_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     user_rating_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    profile_sections: Mapped[list] = mapped_column(JSON, default=lambda: DEFAULT_PROFILE_SECTIONS.copy(), nullable=False)
-    profile_card_sections: Mapped[list] = mapped_column(JSON, default=lambda: ["reviews", "stats", "top_rated", "recent_activity"], nullable=False)
+    profile_sections: Mapped[list] = mapped_column(
+        JSON, default=lambda: DEFAULT_PROFILE_SECTIONS.copy(), nullable=False
+    )
+    profile_card_sections: Mapped[list] = mapped_column(
+        JSON, default=lambda: ["reviews", "stats", "top_rated", "recent_activity"], nullable=False
+    )
     hall_of_fame_media_ids: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    preferred_media_types: Mapped[list] = mapped_column(JSONB, default=lambda: ["movie", "show", "game", "music"], nullable=False)
+    preferred_media_types: Mapped[list] = mapped_column(
+        JSONB, default=lambda: ["movie", "show", "game", "music"], nullable=False
+    )
     preferred_genres: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     preferred_languages: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     discover_emphases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
@@ -132,7 +165,9 @@ class User(Base, TimestampMixin):
     karma: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0", nullable=False)
 
     interactions: Mapped[list[UserMediaInteraction]] = relationship("UserMediaInteraction", back_populates="user")
-    episode_interactions: Mapped[list[UserEpisodeInteraction]] = relationship("UserEpisodeInteraction", back_populates="user")
+    episode_interactions: Mapped[list[UserEpisodeInteraction]] = relationship(
+        "UserEpisodeInteraction", back_populates="user"
+    )
     reviews: Mapped[list[Review]] = relationship("Review", back_populates="user")
     media_ratings: Mapped[list[MediaItemRating]] = relationship("MediaItemRating", back_populates="user")
     lists: Mapped[list[UserList]] = relationship("UserList", back_populates="user")
@@ -190,20 +225,14 @@ class RefreshToken(Base):
 class UserRating(Base, TimestampMixin):
     __tablename__ = "user_ratings"
 
-    rater_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
-    )
-    rated_user_id: Mapped[otix_fk] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
-    )
+    rater_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    rated_user_id: Mapped[otix_fk] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     rater: Mapped[User] = relationship("User", foreign_keys=[rater_id], back_populates="ratings_given")
     rated_user: Mapped[User] = relationship("User", foreign_keys=[rated_user_id], back_populates="ratings_received")
 
-    __table_args__ = (
-        CheckConstraint("score >= 1 AND score <= 10", name="ck_user_rating_score_range"),
-    )
+    __table_args__ = (CheckConstraint("score >= 1 AND score <= 10", name="ck_user_rating_score_range"),)
 
 
 class AuthActionToken(Base):
@@ -240,6 +269,4 @@ class UserSession(Base):
 
     user: Mapped[User] = relationship("User", backref="sessions")
 
-    __table_args__ = (
-        Index("ix_user_sessions_user_active", "user_id", "revoked_at"),
-    )
+    __table_args__ = (Index("ix_user_sessions_user_active", "user_id", "revoked_at"),)

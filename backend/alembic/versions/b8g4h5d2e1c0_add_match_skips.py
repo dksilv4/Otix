@@ -10,8 +10,8 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = 'b8g4h5d2e1c0'
-down_revision: str | None = 'a7f3e2d1c0b9'
+revision: str = "b8g4h5d2e1c0"
+down_revision: str | None = "a7f3e2d1c0b9"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -34,9 +34,7 @@ def upgrade() -> None:
             sa.ForeignKey("users.id", ondelete="SET NULL"),
             nullable=True,
         ),
-        sa.UniqueConstraint(
-            "provider", "external_id", name="uq_match_skip_provider_ext"
-        ),
+        sa.UniqueConstraint("provider", "external_id", name="uq_match_skip_provider_ext"),
         sa.Index("ix_match_skip_provider_ext", "provider", "external_id"),
     )
 

@@ -150,17 +150,19 @@ async def search_suggestions(
                         name = g.get("name") or q
                         slug = g.get("slug") or ""
 
-                        summaries.append(MediaItemSummary(
-                            id=gid,
-                            media_type="game",
-                            title=name,
-                            slug=slug,
-                            posterUrl=poster,
+                        summaries.append(
+                            MediaItemSummary(
+                                id=gid,
+                                media_type="game",
+                                title=name,
+                                slug=slug,
+                                posterUrl=poster,
                                 popularity=0,
                                 avgRating=None,
                                 ratingCount=0,
                                 isAdult=False,
-                            ))
+                            )
+                        )
                     # Also fire the backfill task so full catalog import happens
                     app.send_task("search.backfill", args=[q, media_type], priority=5)
                 elif media_type in ("movie", "show"):
@@ -173,17 +175,23 @@ async def search_suggestions(
                         if item.get("media_type") == kind and item.get("id"):
                             tid = f"tmdb-{item['id']}"
                             if not any(s.id == tid for s in summaries):
-                                summaries.append(MediaItemSummary(
-                                    id=tid,
-                                    media_type=media_type,
-                                    title=item.get("title") or item.get("name", q),
-                                    slug=item.get("title", "").lower().replace(" ", "-") if item.get("title") else "",
-                                    posterUrl=f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}" if item.get("poster_path") else None,
-                                    popularity=item.get("popularity", 0),
-                                    avgRating=item.get("vote_average"),
-                                    ratingCount=item.get("vote_count", 0),
-                                    isAdult=item.get("adult", False),
-                                ))
+                                summaries.append(
+                                    MediaItemSummary(
+                                        id=tid,
+                                        media_type=media_type,
+                                        title=item.get("title") or item.get("name", q),
+                                        slug=item.get("title", "").lower().replace(" ", "-")
+                                        if item.get("title")
+                                        else "",
+                                        posterUrl=f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}"
+                                        if item.get("poster_path")
+                                        else None,
+                                        popularity=item.get("popularity", 0),
+                                        avgRating=item.get("vote_average"),
+                                        ratingCount=item.get("vote_count", 0),
+                                        isAdult=item.get("adult", False),
+                                    )
+                                )
                     app.send_task("search.backfill", args=[q, media_type], priority=5)
             summaries.sort(key=lambda s: s.popularity, reverse=True)
         except Exception:
@@ -341,18 +349,18 @@ async def search_companies(
 ) -> CompanySearchListResponse:
     """Search companies by name using hybrid vector-keyword queries."""
     query_embedding = await _call_embed_query(q)
-    
+
     service = CompanyService(db)
     companies = await service.search_companies(
         query_str=q,
         limit=limit + 1,
         query_embedding=query_embedding,
     )
-    
+
     has_more = len(companies) > limit
     if has_more:
         companies = companies[:limit]
-        
+
     return CompanySearchListResponse(
         items=[CompanyOut.model_validate(c) for c in companies],
         has_more=has_more,
@@ -581,10 +589,11 @@ async def search_grouped(
 
     async def _search_tracks_() -> tuple[list[TrackSearchResult], int]:
         from otix.domain.media import Track
+
         async with async_session() as session:
             count_q = select(func.count(Track.id)).where(Track.title.ilike(f"%{q}%"))
             total = await session.scalar(count_q) or 0
-            
+
             svc = MediaService(session)
             tracks = await svc.search_tracks(query_str=q, limit=20)
 
@@ -630,16 +639,18 @@ async def search_grouped(
 
     async def _search_people_() -> tuple[list[PersonSearchResult], int]:
         from otix.domain.people import Person
+
         async with async_session() as session:
             count_q = select(func.count(Person.id)).where(Person.name.ilike(f"%{q}%"), Person.embedding.isnot(None))
             total = await session.scalar(count_q) or 0
-            
+
             svc = PeopleService(session)
             people = await svc.search_people(query_str=q, limit=10, query_embedding=query_embedding)
             return [PersonSearchResult.model_validate(p) for p in people], total
 
     async def _search_users_() -> tuple[list[UserSearchResult], int]:
         from otix.domain.user import User
+
         async with async_session() as session:
             count_q = select(func.count(User.id)).where(
                 User.username.ilike(f"%{q}%"),
@@ -647,16 +658,13 @@ async def search_grouped(
                 User.embedding.isnot(None),
             )
             total = await session.scalar(count_q) or 0
-            
+
             from otix.schemas.user import UserSearchResult as UserSearchResultSchema
 
-            fts_stmt = (
-                select(User.id)
-                .where(
-                    User.username.ilike(f"%{q}%"),
-                    User.is_active == True,
-                    User.embedding.isnot(None),
-                )
+            fts_stmt = select(User.id).where(
+                User.username.ilike(f"%{q}%"),
+                User.is_active == True,
+                User.embedding.isnot(None),
             )
             branches = [fts_stmt]
             if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
@@ -670,13 +678,10 @@ async def search_grouped(
 
             matched_ids = union(*branches).subquery()
 
-            stmt = (
-                select(User)
-                .where(
-                    User.id.in_(select(matched_ids)),
-                    User.is_active == True,
-                    User.embedding.isnot(None),
-                )
+            stmt = select(User).where(
+                User.id.in_(select(matched_ids)),
+                User.is_active == True,
+                User.embedding.isnot(None),
             )
 
             sim = func.similarity(User.username, q)
@@ -690,7 +695,7 @@ async def search_grouped(
 
             result = await session.scalars(stmt)
             users = list(result)
-            
+
             items = []
             for user in users:
                 gamification = compute_level_info(user.total_xp)
@@ -721,7 +726,13 @@ async def search_grouped(
             return [MediaItemSummary.model_validate(i) for i in items]
 
     # Run all searches concurrently
-    type_results, (tracks_list, tracks_count), (people_list, people_count), (users_list, users_count), best_media = await asyncio.gather(
+    (
+        type_results,
+        (tracks_list, tracks_count),
+        (people_list, people_count),
+        (users_list, users_count),
+        best_media,
+    ) = await asyncio.gather(
         asyncio.gather(*[_search_type(mt) for mt in ("movie", "show", "game", "music")]),
         _search_tracks_(),
         _search_people_(),
@@ -780,7 +791,7 @@ async def search_grouped(
             score += 0.3
         elif mtype == "user":
             score += 0.2
-        else: # track
+        else:  # track
             score += 0.1
 
         # Position penalty
@@ -963,9 +974,7 @@ async def match_local_games(
         if media_id and media_id in media_items:
             item = media_items[media_id]
             if exclude_adult and item.is_adult:
-                matches.append(
-                    LocalGameMatch(query_title=query_title, matched_media=None, confidence=0.0)
-                )
+                matches.append(LocalGameMatch(query_title=query_title, matched_media=None, confidence=0.0))
             else:
                 matches.append(
                     LocalGameMatch(
@@ -975,9 +984,7 @@ async def match_local_games(
                     )
                 )
         else:
-            matches.append(
-                LocalGameMatch(query_title=query_title, matched_media=None, confidence=confidence)
-            )
+            matches.append(LocalGameMatch(query_title=query_title, matched_media=None, confidence=confidence))
 
     return LocalGameMatchResponse(matches=matches)
 
@@ -1306,13 +1313,15 @@ async def search_providers(
         )
         otix_items, _ = otix_results
         for item in otix_items:
-            results.append(ProviderSearchResult(
-                provider="otix",
-                id=item.id,
-                title=item.title,
-                poster_url=item.poster_url,
-                slug=item.slug,
-            ))
+            results.append(
+                ProviderSearchResult(
+                    provider="otix",
+                    id=item.id,
+                    title=item.title,
+                    poster_url=item.poster_url,
+                    slug=item.slug,
+                )
+            )
     except Exception:
         logger.exception("provider_search_otix_failed", q=body.query)
 
@@ -1375,13 +1384,15 @@ async def search_providers(
                 otix_id = existing.get(gid) or (imported_media.get(gid) and imported_media[gid].id)
                 result_id = otix_id or gid
 
-                results.append(ProviderSearchResult(
-                    provider="igdb",
-                    id=result_id,
-                    title=name,
-                    poster_url=poster,
-                    slug=slug,
-                ))
+                results.append(
+                    ProviderSearchResult(
+                        provider="igdb",
+                        id=result_id,
+                        title=name,
+                        poster_url=poster,
+                        slug=slug,
+                    )
+                )
         except Exception:
             logger.exception("provider_search_igdb_failed", q=body.query)
 
@@ -1393,19 +1404,21 @@ async def search_providers(
             sg_provider = SteamGridDBProvider(redis)
             sg_results = await sg_provider.search_games(body.query)
 
-            for sg_game in sg_results[:body.limit]:
+            for sg_game in sg_results[: body.limit]:
                 sgdb_id = sg_game.get("id")
                 if not sgdb_id:
                     continue
                 name = sg_game.get("name") or body.query
 
-                results.append(ProviderSearchResult(
-                    provider="steamgrid",
-                    id=str(sgdb_id),
-                    title=name,
-                    poster_url=None,
-                    slug=None,
-                ))
+                results.append(
+                    ProviderSearchResult(
+                        provider="steamgrid",
+                        id=str(sgdb_id),
+                        title=name,
+                        poster_url=None,
+                        slug=None,
+                    )
+                )
         except Exception:
             logger.exception("provider_search_steamgrid_failed", q=body.query)
 

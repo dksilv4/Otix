@@ -142,10 +142,7 @@ class GameMatcher:
     # IGDB search concurrency
     IGDB_CHUNK_SIZE = 50
     IGDB_SEARCH_LIMIT = 20
-    IGDB_SEARCH_FIELDS = (
-        "id,name,slug,cover.image_id,first_release_date,"
-        "platforms.name,involved_companies.company.name"
-    )
+    IGDB_SEARCH_FIELDS = "id,name,slug,cover.image_id,first_release_date,platforms.name,involved_companies.company.name"
 
     def __init__(self, session: AsyncSession, redis: Redis) -> None:
         self._session = session
@@ -237,9 +234,7 @@ class GameMatcher:
                 logger.exception("external ID batch lookup failed", source=source)
                 continue
 
-            entity_ids_to_fetch = list(
-                {eid for eid in entity_map.values() if eid is not None}
-            )
+            entity_ids_to_fetch = list({eid for eid in entity_map.values() if eid is not None})
             media_items = await self._fetch_media_items(entity_ids_to_fetch)
 
             for ext_id, entity_id in entity_map.items():
@@ -256,9 +251,7 @@ class GameMatcher:
                             title=mi.title if mi else requests[req_idx].title,
                             poster_url=mi.poster_url if mi else None,
                             backdrop_url=mi.backdrop_url if mi else None,
-                            release_year=_release_year_from_date(
-                                mi.release_date if mi else None
-                            ),
+                            release_year=_release_year_from_date(mi.release_date if mi else None),
                             confidence=1.0,
                             match_type=MatchType.DIRECT,
                         )
@@ -268,13 +261,8 @@ class GameMatcher:
         return [
             idx
             for idx in indices
-            if not any(
-                c.match_type == MatchType.DIRECT for c in all_candidates[idx]
-            )
-            and not any(
-                (ref.source, ref.id) in skip_ids
-                for ref in (requests[idx].external_ids or [])
-            )
+            if not any(c.match_type == MatchType.DIRECT for c in all_candidates[idx])
+            and not any((ref.source, ref.id) in skip_ids for ref in (requests[idx].external_ids or []))
         ]
 
     # ── Phase 2: Otix catalog search ────────────────────────────────────────
@@ -396,9 +384,7 @@ class GameMatcher:
             conditions.append(
                 or_(
                     MediaItem.title.ilike(pattern),
-                    MediaItem.title.ilike(
-                        pattern
-                    ),  # same but catches reverse containment via the second check below
+                    MediaItem.title.ilike(pattern),  # same but catches reverse containment via the second check below
                 )
             )
 
@@ -410,14 +396,16 @@ class GameMatcher:
                 continue
             pattern = f"%{norm}%"
             rows = await self._session.execute(
-                select(MediaItem).where(
+                select(MediaItem)
+                .where(
                     MediaItem.media_type == "game",
                     or_(
                         MediaItem.title.ilike(pattern),
                         # Reverse: catalog title is contained in search
                         # (handles "Cyberpunk 2077: Phantom Liberty" → "Cyberpunk 2077")
                     ),
-                ).limit(5)
+                )
+                .limit(5)
             )
             for mi in rows.scalars().all():
                 # Also check reverse containment
@@ -528,15 +516,11 @@ class GameMatcher:
 
         # 3a: Cross-reference by external IDs
         if unmatched:
-            unmatched = await self._phase3a_igdb_crossref(
-                requests, unmatched, all_candidates, provider
-            )
+            unmatched = await self._phase3a_igdb_crossref(requests, unmatched, all_candidates, provider)
 
         # 3b: IGDB title search
         if unmatched:
-            await self._phase3b_igdb_search(
-                requests, unmatched, all_candidates, provider
-            )
+            await self._phase3b_igdb_search(requests, unmatched, all_candidates, provider)
 
     async def _phase3a_igdb_crossref(
         self,
@@ -583,9 +567,7 @@ class GameMatcher:
                 req_idx = id_map.get(epic_id)
                 if req_idx is None or req_idx in matched:
                     continue
-                await self._resolve_igdb_candidate(
-                    requests[req_idx], igdb_id, all_candidates, req_idx, provider
-                )
+                await self._resolve_igdb_candidate(requests[req_idx], igdb_id, all_candidates, req_idx, provider)
                 matched.add(req_idx)
 
         # Steam cross-ref (category 1)
@@ -601,9 +583,7 @@ class GameMatcher:
                 req_idx = id_map.get(steam_id)
                 if req_idx is None or req_idx in matched:
                     continue
-                await self._resolve_igdb_candidate(
-                    requests[req_idx], igdb_id, all_candidates, req_idx, provider
-                )
+                await self._resolve_igdb_candidate(requests[req_idx], igdb_id, all_candidates, req_idx, provider)
                 matched.add(req_idx)
 
         return [i for i in indices if i not in matched]
@@ -689,16 +669,10 @@ class GameMatcher:
         Processes in chunks for controlled concurrency.
         """
         chunk_size = self.IGDB_CHUNK_SIZE
-        chunks = [
-            indices[i : i + chunk_size]
-            for i in range(0, len(indices), chunk_size)
-        ]
+        chunks = [indices[i : i + chunk_size] for i in range(0, len(indices), chunk_size)]
 
         for chunk in chunks:
-            tasks = [
-                self._search_igdb_one(provider, requests[idx], idx, all_candidates)
-                for idx in chunk
-            ]
+            tasks = [self._search_igdb_one(provider, requests[idx], idx, all_candidates) for idx in chunk]
             await asyncio.gather(*tasks)
 
     async def _search_igdb_one(
@@ -758,14 +732,10 @@ class GameMatcher:
                             title=mi.title if mi else title,
                             poster_url=mi.poster_url if mi else poster,
                             backdrop_url=mi.backdrop_url if mi else None,
-                            release_year=_release_year_from_date(
-                                mi.release_date if mi else None
-                            ) or release_year,
+                            release_year=_release_year_from_date(mi.release_date if mi else None) or release_year,
                             platforms=platforms,
                             confidence=0.80 if is_exact else 0.70,
-                            match_type=MatchType.IGDB_SEARCH
-                            if is_exact
-                            else MatchType.IGDB_FUZZY,
+                            match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
                         )
                     )
             else:
@@ -778,9 +748,7 @@ class GameMatcher:
                         release_year=release_year,
                         platforms=platforms,
                         confidence=0.80 if is_exact else 0.70,
-                        match_type=MatchType.IGDB_SEARCH
-                        if is_exact
-                        else MatchType.IGDB_FUZZY,
+                        match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
                         needs_import=True,
                         provider_id=igdb_id_str,
                         provider="igdb",
@@ -824,9 +792,7 @@ class GameMatcher:
                 else:
                     seen[key] = c
 
-            candidates = sorted(
-                seen.values(), key=lambda c: c.confidence, reverse=True
-            )
+            candidates = sorted(seen.values(), key=lambda c: c.confidence, reverse=True)
 
             auto_match = self._decide_auto_match(candidates)
 
@@ -904,10 +870,7 @@ class GameMatcher:
         """
         THRESHOLD = 60
         target_lower = request.title.strip().lower()
-        target_platforms = {
-            PLATFORM_NORMALIZATION.get(p, p.lower())
-            for p in (request.platforms or [])
-        }
+        target_platforms = {PLATFORM_NORMALIZATION.get(p, p.lower()) for p in (request.platforms or [])}
         target_developer = (request.developer or "").lower().strip()
 
         best_score = 0
