@@ -176,6 +176,17 @@ function createWindow() {
   mainWindow.on('show', () => console.log('[main] Window shown'))
   mainWindow.on('minimize', () => console.log('[main] Window minimized'))
 
+  // Crash diagnostics
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[main] RENDERER GONE:', details.reason, 'exitCode:', details.exitCode)
+  })
+  mainWindow.webContents.on('did-fail-load', (_event, code, desc, url, isMainFrame) => {
+    if (isMainFrame) console.error('[main] PAGE LOAD FAILED:', code, desc, url)
+  })
+  mainWindow.webContents.on('unresponsive', () => {
+    console.error('[main] RENDERER UNRESPONSIVE')
+  })
+
   if (isDev) {
     mainWindow.loadURL('http://127.0.0.1:5173/');
     mainWindow.webContents.openDevTools();
@@ -505,6 +516,7 @@ app.on('ready', async () => {
 
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {
+    console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
     try { closeAllConnections() } catch (err) {
@@ -528,6 +540,7 @@ app.on('ready', async () => {
 });
 
 app.on('window-all-closed', () => {
+  console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
   try { closeAllConnections() } catch (err) {
