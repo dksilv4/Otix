@@ -5,6 +5,7 @@ import type { PluginManager } from '../plugins/manager';
 import {
   getGameMatch,
   upsertGameMatch,
+  upsertGames,
   ensureGameMatchesTable,
   hydrateGame,
 } from './storage';
@@ -210,7 +211,20 @@ export class GameScanOrchestrator extends EventEmitter {
         errors: [err.message],
       };
     }
-
+
+    // Save all scanned games to scanned_games table so library UI has them
+    if (scanned.length > 0) {
+      upsertGames(scanned.map(g => ({
+        id: g.platform + '_' + g.id,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: g.platform,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.posterUrl || undefined,
+        sources: [{ source: g.platform, id: g.id }],
+      })));
+    }
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
     for (const game of scanned) {
