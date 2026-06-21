@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Loader2, Gamepad2, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import { DkImage } from '@dk-ui/atoms/image'
+import { ProviderLogo } from '../components/atoms/provider-logo'
 
 export function SettingsScannedGamesPage() {
   const params = new URLSearchParams(window.location.search)
@@ -9,7 +10,7 @@ export function SettingsScannedGamesPage() {
   const [loading, setLoading] = useState(true)
   const api = window.desktopAPI
 
-  useEffect(() => {
+  const fetchGames = useCallback(() => {
     if (!api?.getScannedGamesFiltered) return
     setLoading(true)
     const filter = source ? { platform: [source] } : {}
@@ -17,6 +18,15 @@ export function SettingsScannedGamesPage() {
       setGames(data || [])
     }).finally(() => setLoading(false))
   }, [source, api])
+
+  useEffect(() => { fetchGames() }, [fetchGames])
+
+  // Re-fetch when games DB changes (new match data arrives)
+  useEffect(() => {
+    if (!api?.onGamesUpdated) return
+    const unsub = api.onGamesUpdated(() => fetchGames())
+    return () => unsub?.()
+  }, [api, fetchGames])
 
   const title = source ? `${source.toUpperCase()} Games` : 'All Scanned Games'
 
@@ -69,11 +79,11 @@ export function SettingsScannedGamesPage() {
                 {/* Dark overlay for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Platform badge top-left */}
+                {/* Platform logo top-left */}
                 <div className="absolute top-2 left-2 z-10">
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white/70 backdrop-blur-sm uppercase tracking-wider">
-                    {game.platform}
-                  </span>
+                  <div className="px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                    <ProviderLogo platform={game.platform} className="h-4 w-auto" />
+                  </div>
                 </div>
 
                 {/* Match status badge top-right */}
