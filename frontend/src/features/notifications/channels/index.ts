@@ -10,7 +10,9 @@ export class NotificationRouter {
   route(event: NotificationEvent): void {
     for (const channel of this.channels) {
       if (channel.canDeliver(event)) {
-        channel.deliver(event)
+        Promise.resolve(channel.deliver(event)).catch(() => {
+          // Channel delivery failed — channel logs internally
+        })
       }
     }
   }
