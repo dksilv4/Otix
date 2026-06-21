@@ -278,18 +278,13 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                 else:
                     session.add(item)
                     await session.flush()
-                    if ext_id is not None:
-                        ext_id.entity_type = "media_item"
-                        ext_id.entity_id = item.id
-                        ext_id.media_item_id = item.id
-                    else:
-                        eid_svc = ExternalIDService(session)
-                        ext_id = await eid_svc.upsert(
-                            "tmdb", tmdb_id_str,
-                            "media_item", item.id,
-                        )
-                        if raw.get("adult", False):
-                            ext_id.is_adult = True
+                    eid_svc = ExternalIDService(session)
+                    ext_id = await eid_svc.upsert(
+                        "tmdb", tmdb_id_str,
+                        "media_item", item.id,
+                    )
+                    if raw.get("adult", False):
+                        ext_id.is_adult = True
                     session.add(movie)
             else:
                 show = to_show(raw)
@@ -356,18 +351,13 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                 else:
                     session.add(item)
                     await session.flush()
-                    if ext_id is not None:
-                        ext_id.entity_type = "media_item"
-                        ext_id.entity_id = item.id
-                        ext_id.media_item_id = item.id
-                    else:
-                        eid_svc = ExternalIDService(session)
-                        ext_id = await eid_svc.upsert(
-                            "tmdb", tmdb_id_str,
-                            "media_item", item.id,
-                        )
-                        if raw.get("adult", False):
-                            ext_id.is_adult = True
+                    eid_svc = ExternalIDService(session)
+                    ext_id = await eid_svc.upsert(
+                        "tmdb", tmdb_id_str,
+                        "media_item", item.id,
+                    )
+                    if raw.get("adult", False):
+                        ext_id.is_adult = True
                     _seasons = list(show.seasons)
                     session.add(show)
                     await session.flush()

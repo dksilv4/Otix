@@ -1,24 +1,32 @@
 import { useCallback } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from '@tanstack/react-router'
-import { AuthHeader } from '@/features/auth'
-import { AuthCard } from '@/features/auth/molecules/auth-card'
-import { RegisterForm } from '@/features/auth'
-import { Logo } from '@ui/atoms/logo'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { AuthHeader } from '@auth/components/molecules/auth-header'
+import { RegisterForm } from '@auth/components/organisms/auth-register-form'
+import { Logo } from '@/old-features/dk-ui/atoms/logo'
+import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 
-export function AuthRegisterPage() {
+export function RegisterPage() {
   const navigate = useNavigate()
-  const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') || '/' : '/'
+  const redirect = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('redirect') || '/'
+    : '/'
 
   const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
 
   return (
-    <>
+    <div className="relative flex min-h-screen items-center justify-center p-4">
       <Helmet>
         <title>Create Account - Otix</title>
         <meta name="description" content="Create an account on Otix to track movies, shows, games, and music." />
         <meta name="robots" content="noindex" />
       </Helmet>
+
+      <AuthBackground />
+
+      <AuthBackButton />
 
       <AuthCard>
         <div className="mb-6 flex justify-center">
@@ -43,6 +51,6 @@ export function AuthRegisterPage() {
           </a>
         </p>
       </AuthCard>
-    </>
+    </div>
   )
 }

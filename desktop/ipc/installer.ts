@@ -15,8 +15,8 @@ import {
   findGameExe,
   type InstallProgress,
 } from '../installer';
-import { findUpdateFilesForIso } from '../scanner';
-import { batchOrganizeDirectory, smartOrganizePreview } from '../auto-organizer';
+import { findUpdateFilesForIso } from '../game/scanner';
+import { batchOrganizeDirectory, smartOrganizePreview } from '../downloads/organizer';
 import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
 
 export function registerInstallerIPC(): void {

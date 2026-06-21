@@ -1,6 +1,6 @@
 [project]
 name = "otix"
-version = "0.2.9"
+version = "0.2.11"
 description = "Otix media tracking and discovery platform"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -28,6 +28,7 @@ dependencies = [
     "qrcode>=8.0,<9.0",
     "fastembed>=0.4,<1.0",
     "pgvector>=0.3,<1.0",
+    "pywebpush>=1.14.0",
 ]
 
 [project.optional-dependencies]

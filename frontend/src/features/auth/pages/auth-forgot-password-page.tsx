@@ -2,12 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { Mail, Loader2, ArrowLeft, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { AuthHeader } from '../molecules/auth-header'
-import { AuthCard } from '../molecules/auth-card'
-import { Logo } from '@ui/atoms/logo'
-import { apiClient } from '@/lib/api-client'
-import { extractErrorMessage } from '../utils'
-import type { ForgotPasswordPageState } from '../types'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { AuthHeader } from '@auth/components/molecules/auth-header'
+import { Logo } from '@/old-features/dk-ui/atoms/logo'
+import { apiClient } from '@/lib/api/client'
+import { extractErrorMessage } from '@auth/utils'
+import type { ForgotPasswordPageState } from '@auth/types'
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
@@ -29,8 +30,8 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div id="forgot-password-page" className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="dk-auth-bg" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthBackground />
       <AuthCard>
         <div className="mb-6 flex justify-center">
           <Logo className="h-16" />
@@ -83,7 +84,11 @@ export function ForgotPasswordPage() {
                 required
                 autoFocus
                 className="flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50"
-                style={{ backgroundColor: 'var(--dk-surface-glass)', backdropFilter: 'blur(12px)', boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)' }}
+                style={{
+                  backgroundColor: 'var(--dk-surface-glass)',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
+                }}
               />
             </div>
 

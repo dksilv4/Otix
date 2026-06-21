@@ -98,6 +98,7 @@ class UserSearchResult(BaseModel):
     level: int = 1
     level_title: str = "Novice"
     is_admin: bool = False
+    media_type: str = "user"
 
     model_config = {"from_attributes": True}
 

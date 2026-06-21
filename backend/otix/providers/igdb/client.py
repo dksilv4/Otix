@@ -131,7 +131,7 @@ class IGDBProvider(BaseProvider):
             return []
         id_list = ",".join(str(i) for i in ids)
         body = f"fields {fields or '*'}; where id = ({id_list}); limit {len(ids)};"
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB game query failed: {response.status_code}")
@@ -143,7 +143,7 @@ class IGDBProvider(BaseProvider):
     async def get_popular_games(self, limit: int = 50, fields: str | None = None) -> list[dict[str, JSONValue]]:
         """Popular game ordered by rating (aggregated_rating)."""
         body = f"fields {fields or '*'}; sort aggregated_rating desc; where aggregated_rating != null & rating_count > 10; limit {limit};"
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB popular game query failed: {response.status_code}")
@@ -160,7 +160,7 @@ class IGDBProvider(BaseProvider):
             f"where first_release_date >= {ninety_days_ago} & first_release_date <= {now}; "
             f"limit {limit};"
         )
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB recent game query failed: {response.status_code}")
@@ -174,7 +174,7 @@ class IGDBProvider(BaseProvider):
             f"where first_release_date > {now} & hypes > 5; "
             f"limit {limit};"
         )
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB upcoming game query failed: {response.status_code}")
@@ -192,7 +192,7 @@ class IGDBProvider(BaseProvider):
     async def get_changed_game_ids(self, start_timestamp: int, limit: int = 100) -> list[dict[str, JSONValue]]:
         """Get game IDs changed since the given Unix timestamp."""
         body = f"fields id,updated_at; sort updated_at asc; where updated_at >= {start_timestamp}; limit {limit};"
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB change query failed: {response.status_code}")
@@ -213,7 +213,7 @@ class IGDBProvider(BaseProvider):
             conditions.append(f"first_release_date <= {end_date}")
         where = " & ".join(conditions)
         body = f"fields {fields or '*'}; sort first_release_date desc; where {where}; limit {limit}; offset {offset};"
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB offset query failed: {response.status_code}")
@@ -222,7 +222,7 @@ class IGDBProvider(BaseProvider):
         """Search game by name."""
         escaped = query.replace('"', '\\"')
         body = f'search "{escaped}"; fields {fields or "*"}; limit {limit};'
-        response = await self._post("/game", content=body)
+        response = await self._post("/games", content=body)
         if response.status_code == 200:
             return response.json()
         raise IGDBError(f"IGDB search query failed: {response.status_code}")
@@ -294,26 +294,54 @@ class IGDBProvider(BaseProvider):
 
     # ── External game mapping ──────────────────────────────────────────
 
+    async def lookup_external_game_ids(self, category: int, external_ids: list[str]) -> dict[str, int]:
+        """Map external IDs to IGDB game IDs via the external_games endpoint.
+
+        IGDB external_game_source categories:
+            1 = Steam, 5 = GOG, 26 = Epic Games Store, etc.
+
+        Returns ``{external_id: igdb_game_id}``.
+        """
+        if not external_ids:
+            return {}
+
+        uid_list = ",".join(f'"{eid}"' for eid in external_ids)
+        body = (
+            f"fields uid,game; where external_game_source = {category} & uid = ({uid_list}); limit {len(external_ids)};"
+        )
+        response = await self._post("/external_games", content=body)
+        if response.status_code == 200:
+            result: dict[str, int] = {}
+            for row in response.json():
+                uid = row.get("uid")
+                game = row.get("game")
+                if isinstance(uid, str) and isinstance(game, int):
+                    result[uid] = game
+            return result
+        raise IGDBError(f"IGDB external_games query failed: {response.status_code}")
+
     async def lookup_steam_app_ids(self, app_ids: list[int]) -> dict[int, int]:
         """Map Steam app IDs to IGDB game IDs via the external_games endpoint.
 
         category 1 = Steam. Returns ``{steam_app_id: igdb_game_id}``.
         """
-        if not app_ids:
-            return {}
+        str_ids = [str(aid) for aid in app_ids]
+        mapping = await self.lookup_external_game_ids(1, str_ids)
+        return {int(k): v for k, v in mapping.items()}
 
-        uid_list = ",".join(f'"{aid}"' for aid in app_ids)
-        body = f"fields uid,game; where external_game_source = 1 & uid = ({uid_list}); limit {len(app_ids)};"
-        response = await self._post("/external_games", content=body)
-        if response.status_code == 200:
-            result: dict[int, int] = {}
-            for row in response.json():
-                uid = row.get("uid")
-                game = row.get("game")
-                if isinstance(uid, str) and isinstance(game, int):
-                    try:
-                        result[int(uid)] = game
-                    except ValueError:
-                        continue
-            return result
-        raise IGDBError(f"IGDB external_games query failed: {response.status_code}")
+    async def lookup_epic_ids(self, epic_ids: list[str]) -> dict[str, int]:
+        """Map Epic Games Store IDs to IGDB game IDs.
+
+        category 26 = Epic Games Store.
+        Returns ``{epic_id: igdb_game_id}``.
+        """
+        return await self.lookup_external_game_ids(26, epic_ids)
+
+    async def lookup_gog_ids(self, gog_ids: list[int]) -> dict[int, int]:
+        """Map GOG game IDs to IGDB game IDs.
+
+        category 5 = GOG. Returns ``{gog_id: igdb_game_id}``.
+        """
+        str_ids = [str(gid) for gid in gog_ids]
+        mapping = await self.lookup_external_game_ids(5, str_ids)
+        return {int(k): v for k, v in mapping.items()}

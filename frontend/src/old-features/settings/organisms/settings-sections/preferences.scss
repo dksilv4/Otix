@@ -1,0 +1,35 @@
+@reference "../../../../_tailwind-ref.css";
+
+/* ── Preferences Section ────────────────────────────── */
+/* Component: PreferencesSection                         */
+/* Prefix:   dk-settings-preferences                    */
+
+.dk-settings-preferences__body {
+  @apply space-y-6;
+}
+
+.dk-settings-preferences__title {
+  @apply text-lg font-semibold;
+}
+
+.dk-settings-preferences__desc {
+  @apply mt-1 text-sm text-muted-foreground;
+}
+
+.dk-settings-preferences__card {
+  @apply rounded-2xl p-6;
+  background-color: var(--dk-surface-base);
+  box-shadow: var(--dk-shadow-sm);
+}
+
+.dk-settings-preferences__row {
+  @apply flex items-center justify-between;
+}
+
+.dk-settings-preferences__row-label {
+  @apply text-sm font-medium;
+}
+
+.dk-settings-preferences__row-desc {
+  @apply text-xs text-muted-foreground mt-0.5;
+}

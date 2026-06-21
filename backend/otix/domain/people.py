@@ -4,9 +4,10 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import Vector
 
 from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
 
@@ -45,6 +46,16 @@ class Person(Base, HasExternalIDs):
     spotify_related_crawled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_people_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",

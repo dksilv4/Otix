@@ -4,20 +4,21 @@ import { createRoot } from 'react-dom/client'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from '@tanstack/react-router'
 import { HelmetProvider } from 'react-helmet-async'
-import { queryClient, persistOptions } from '@/lib/query-client'
+import { queryClient, persistOptions } from '@/lib/query/client'
 import { router } from '@/lib/router'
-import { ShaderQualityProvider } from '@/lib/shader-quality'
-import { MotionPreferenceProvider } from '@/lib/motion-preference'
-import { ThemeProvider } from '@/lib/theme'
-import { LogoPreferenceProvider } from '@/lib/logo-preference'
+import { ShaderQualityProvider } from '@/lib/providers/shader-quality'
+import { MotionPreferenceProvider } from '@/lib/providers/motion-preference'
+import { ThemeProvider } from '@/lib/providers/theme'
+import { LogoPreferenceProvider } from '@/lib/providers/logo-preference'
 import { AuthProvider } from '@/features/auth'
-import { ExperimentsProvider } from '@/features/experiments/experiments-provider'
-import { PageMetaProvider } from '@/lib/page-context'
-import { SpotifyPlayerProvider } from '@/features/spotify/spotify-player-provider'
-import { PlexAudioProvider } from '@/features/spotify/plex-audio-provider'
-import { PlayerProvider } from '@/features/spotify/use-player'
-import { DkToastProvider } from '@/features/dk-ui/molecules/toast'
-import { getDesktopPlatform } from '@/lib/desktop-platform'
+import { FeatureProvider } from '@/features/_config'
+import { PageMetaProvider } from '@/lib/providers/page-context'
+import { SpotifyPlayerProvider } from '@/old-features/spotify/spotify-player-provider'
+import { PlexAudioProvider } from '@/old-features/spotify/plex-audio-provider'
+import { PlayerProvider } from '@/old-features/spotify/use-player'
+import { DkToastProvider } from '@/old-features/dk-ui/molecules/toast'
+import { ModalProvider, ModalRoot } from '@/lib/modals'
+import { getDesktopPlatform } from '@/lib/desktop/platform'
 import './index.css'
 
 // Set desktop platform attribute for CSS targeting
@@ -61,21 +62,24 @@ createRoot(document.getElementById('root')!).render(
           <MotionPreferenceProvider>
             <ThemeProvider>
               <LogoPreferenceProvider>
-              <AuthProvider>
-                <ExperimentsProvider>
+                <FeatureProvider>
+                <AuthProvider>
                   <DkToastProvider>
                     <SpotifyPlayerProvider>
                       <PlexAudioProvider>
                         <PlayerProvider>
                           <PageMetaProvider>
-                            <RouterProvider router={router} context={{ queryClient }} />
+                        <ModalProvider>
+                          <RouterProvider router={router} context={{ queryClient }} />
+                          <ModalRoot />
+                        </ModalProvider>
                           </PageMetaProvider>
                         </PlayerProvider>
                       </PlexAudioProvider>
                     </SpotifyPlayerProvider>
                   </DkToastProvider>
-                </ExperimentsProvider>
               </AuthProvider>
+              </FeatureProvider>
               </LogoPreferenceProvider>
             </ThemeProvider>
           </MotionPreferenceProvider>

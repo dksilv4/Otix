@@ -27,8 +27,9 @@ media_router = APIRouter()
 # ── Media assets ─────────────────────────────────────────────────
 
 
-@media_router.get("/{media_id}/assets", response_model=MediaAssetList)
+@media_router.get("/{media_type}/{media_id}/assets", response_model=MediaAssetList)
 async def list_media_assets(
+    media_type: str,
     media_id: str,
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(get_current_admin_user),

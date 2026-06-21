@@ -16,8 +16,19 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE user_media_interactions DROP CONSTRAINT ck_interaction_type")
-    op.execute("ALTER TABLE user_media_interactions ADD CONSTRAINT ck_interaction_type CHECK (interaction_type = ANY (ARRAY['rated', 'watched', 'liked', 'watchlisted', 'played', 'reviewed', 'started', 'listened', 'owned']))")
+    op.execute("ALTER TABLE user_media_interactions DROP CONSTRAINT IF EXISTS ck_interaction_type")
+    op.execute(
+        "DO $$ BEGIN "
+        "  ALTER TABLE user_media_interactions "
+        "  ADD CONSTRAINT ck_interaction_type CHECK ("
+        "  interaction_type = ANY (ARRAY["
+        "  'rated', 'watched', 'liked', 'watchlisted', "
+        "  'played', 'reviewed', 'started', 'listened', 'owned'"
+        "  ])); "
+        "EXCEPTION WHEN duplicate_object THEN "
+        "  NULL; "
+        "END $$"
+    )
 
 
 def downgrade() -> None:

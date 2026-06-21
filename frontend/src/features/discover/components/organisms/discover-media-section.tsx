@@ -1,0 +1,60 @@
+import { memo } from 'react'
+import { motion } from 'framer-motion'
+import { Link } from '@tanstack/react-router'
+import { ArrowRight } from 'lucide-react'
+import { useSectionFetch } from '@discover/hooks/use-section-fetch'
+import { MediaCarousel } from '../molecules/media-carousel'
+import { MediaSectionSkeleton } from '../molecules/media-section-skeleton'
+
+interface MediaSectionProps {
+  title: string
+  mediaType: string
+  listType: string
+  genre?: string
+  language?: string
+  isAnime?: boolean
+}
+
+export const MediaSection = memo(function MediaSection({
+  title,
+  mediaType,
+  listType,
+  genre,
+  language,
+  isAnime,
+}: MediaSectionProps) {
+  const { ref, items, showSkeleton, isEmpty } = useSectionFetch({
+    id: '',
+    title,
+    mediaType,
+    listType,
+    genre: genre ?? null,
+    language: language ?? null,
+    isAnime: isAnime ?? null,
+    isPersonalized: false,
+    reason: null,
+  })
+
+  if (isEmpty) return null
+
+  return (
+    <motion.section
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-100px' }}
+      transition={{ duration: 0.5 }}
+    >
+      {showSkeleton ? (
+        <MediaSectionSkeleton />
+      ) : (
+        <MediaCarousel
+          items={items}
+          title={title}
+          viewAllLink="/search"
+          viewAllSearch={{ q: '', type: mediaType, sort: '' }}
+        />
+      )}
+    </motion.section>
+  )
+})

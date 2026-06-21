@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import urllib.parse
 
@@ -65,6 +66,83 @@ async def build_tmdb_link_url_for_user(user_id: str | None, redirect_url: str) -
     auth_url = f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}"
 
     return auth_url, state
+
+
+async def build_tmdb_login_url() -> tuple[str, str]:
+    """Build the TMDb authorization URL for login and return (url, state)."""
+    state = secrets.token_urlsafe(32)
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{TMDB_API_BASE}/authentication/token/new",
+                params={"api_key": settings.tmdb_api_key},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPError as err:
+        logger.exception("tmdb request token creation failed")
+        raise HTTPException(status_code=502, detail="Unable to start TMDb login. Please try again.") from err
+
+    if not data.get("success"):
+        raise HTTPException(status_code=502, detail="TMDb returned an error. Please try again.")
+
+    request_token = data.get("request_token")
+    if not request_token:
+        raise HTTPException(status_code=502, detail="TMDb returned an invalid response. Please try again.")
+
+    redis = await get_redis()
+    payload = json.dumps({"request_token": request_token, "flow": "login"})
+    await redis.set(_state_key(state), payload, ex=REQUEST_TOKEN_TTL)
+    await redis.set(_rt_key(request_token), payload, ex=REQUEST_TOKEN_TTL)
+
+    callback_url = f"{settings.frontend_base_url}/auth/callback/tmdb-login"
+    redirect_to = urllib.parse.quote(f"{callback_url}?state={state}", safe="")
+    auth_url = f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}"
+
+    return auth_url, state
+
+
+async def find_or_create_tmdb_user(
+    session: AsyncSession,
+    session_id: str,
+    account_id: int,
+    username: str = "",
+) -> User:
+    """Find an existing user by tmdb_account_id or create a new one."""
+    user = await session.scalar(select(User).where(User.tmdb_account_id == account_id))
+    if user is not None:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+        return user
+
+    base_username = re.sub(r"[^a-zA-Z0-9_-]", "", username[:64]) if username else f"tmdb_{account_id}"
+    if not base_username:
+        base_username = f"tmdb_{account_id}"
+
+    username_final = base_username
+    suffix = 1
+    while True:
+        existing = await session.scalar(select(User).where(User.username == username_final))
+        if existing is None:
+            break
+        username_final = f"{base_username}_{suffix}"
+        suffix += 1
+
+    from otix.services.auth.auth_service import hash_password
+
+    user = User(
+        email=f"tmdb_{account_id}@user.otix",
+        username=username_final,
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        tmdb_session_id=session_id,
+        tmdb_account_id=account_id,
+        tmdb_username=username or None,
+        is_verified=True,
+    )
+    session.add(user)
+    await session.flush()
+    logger.info("tmdb user created", user_id=user.id, tmdb_account_id=account_id)
+    return user
 
 
 async def _consume_request_token(state: str, request_token: str | None = None) -> tuple[str, str | None]:

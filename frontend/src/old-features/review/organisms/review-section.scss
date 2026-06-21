@@ -1,0 +1,142 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Review Section ──────────────────────────────────── */
+
+.dk-review-section {
+  /* wrapper — no extra styles needed */
+}
+
+.dk-review-section__heading {
+  @apply text-lg font-semibold mb-3;
+}
+
+/* ── Card ────────────────────────────────────────────── */
+
+.dk-review-section__card {
+  @apply rounded-3xl;
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+  transition: background var(--dk-duration-fast) var(--dk-ease-out);
+
+  &--loading {
+    @apply p-8;
+  }
+
+  &--error {
+    @apply p-8 text-center;
+  }
+
+  &--rated,
+  &--unrated {
+    @apply relative overflow-hidden;
+  }
+}
+
+/* ── Glow overlay ────────────────────────────────────── */
+
+.dk-review-section__glow {
+  @apply absolute inset-0 opacity-40 pointer-events-none;
+
+  &--unrated {
+    @apply opacity-30;
+    background: radial-gradient(circle at 50% 50%, var(--color-primary), transparent 70%);
+  }
+
+  &--emerald { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-emerald-500) 15%, transparent), transparent 70%); }
+  &--sky     { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-sky-500) 15%, transparent), transparent 70%); }
+  &--amber   { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-amber-500) 15%, transparent), transparent 70%); }
+  &--red     { background: radial-gradient(circle at 30% 50%, color-mix(in oklch, var(--color-red-500) 15%, transparent), transparent 70%); }
+}
+
+/* ── Inner content wrappers ──────────────────────────── */
+
+.dk-review-section__content-wrap {
+  @apply relative p-6 sm:p-8;
+}
+
+.dk-review-section__layout {
+  @apply flex flex-col items-center gap-5 sm:flex-row sm:gap-8;
+}
+
+/* ── Score display ───────────────────────────────────── */
+
+.dk-review-section__score-block {
+  @apply flex flex-col items-center gap-2 shrink-0;
+
+  &--empty {
+    @apply opacity-30;
+  }
+}
+
+.dk-review-section__score-value {
+  @apply text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight;
+
+  &--emerald { @apply text-emerald-400; }
+  &--sky     { @apply text-sky-400; }
+  &--amber   { @apply text-amber-400; }
+  &--red     { @apply text-red-400; }
+
+  &--empty {
+    @apply text-muted-foreground;
+  }
+}
+
+.dk-review-section__score-label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-widest;
+}
+
+/* ── Content area (stars + review text) ───────────────── */
+
+.dk-review-section__content-area {
+  @apply flex flex-col items-center sm:items-start gap-3 min-w-0;
+}
+
+.dk-review-section__review-title {
+  @apply text-base font-semibold text-center sm:text-left;
+}
+
+.dk-review-section__review-content {
+  @apply text-sm text-muted-foreground text-center sm:text-left leading-relaxed line-clamp-3;
+}
+
+.dk-review-section__private-badge {
+  @apply text-[10px] font-medium text-muted-foreground bg-muted-foreground/10 px-2 py-0.5 rounded-full;
+}
+
+.dk-review-section__action {
+  @apply mt-1;
+}
+
+/* ── Loading state ───────────────────────────────────── */
+
+.dk-review-section__loading-inner {
+  @apply flex flex-col items-center gap-4;
+}
+
+.dk-review-section__skeleton {
+  @apply animate-pulse rounded-full;
+  background: var(--dk-surface-glass);
+
+  &--title  { @apply h-7 w-48; }
+  &--button { @apply h-10 w-28; }
+}
+
+/* ── Error state ─────────────────────────────────────── */
+
+.dk-review-section__error-text {
+  @apply text-sm text-muted-foreground mb-3;
+}
+
+/* ── Unrated prompt ──────────────────────────────────── */
+
+.dk-review-section__prompt-area {
+  @apply flex flex-col items-center gap-4;
+}
+
+.dk-review-section__prompt-stars {
+  @apply flex flex-col items-center gap-2;
+}
+
+.dk-review-section__prompt-text {
+  @apply text-sm text-muted-foreground;
+}

@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Self
+from typing import Self, Union
 
 from pydantic import BaseModel, Field, model_validator
 
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.interaction import UserInteractionState
+from otix.schemas.user import UserSearchResult
 
 # ── Nested relation schemas ──────────────────────────────────────
 
@@ -26,16 +27,6 @@ class GenreOut(BaseModel):
         if hasattr(data, "genre"):
             return data.genre
         return data
-
-
-class ExternalRatingOut(BaseModel):
-    id: str
-    provider: str
-    score: float
-    max_score: float
-    vote_count: int | None = None
-
-    model_config = {"from_attributes": True}
 
 
 class MediaCreditPersonOut(BaseModel):
@@ -64,7 +55,6 @@ class EpisodeOut(BaseModel):
     runtime: int | None = None
     air_date: date | None = None
     still_url: str | None = None
-    external_ratings: list[ExternalRatingOut] = []
 
     model_config = {"from_attributes": True}
 
@@ -98,6 +88,8 @@ class MediaItemSummary(BaseModel):
     popularity: float
     avg_rating: float | None = None
     rating_count: int = 0
+    overall_rating: float | None = None
+    overall_rating_source: str | None = None
     like_count: int = 0
     watchlist_count: int = 0
     watched_count: int = 0
@@ -137,6 +129,7 @@ class TrackSearchResult(BaseModel):
     album_poster_url: str | None = None
     album_artist_name: str | None = None
     album_slug: str
+    media_type: str = "track"
 
     model_config = {"from_attributes": True}
 
@@ -146,6 +139,40 @@ class MediaItemListResponse(PaginatedResponse):
     tracks: list[TrackSearchResult] = Field(default_factory=list)
     total: int | None = None
     backfill_pending: bool = False
+
+
+class PersonSearchResult(BaseModel):
+    """Minimal person schema for grouped search results."""
+
+    id: str
+    name: str
+    photo_url: str | None = None
+    media_type: str = "person"
+
+    model_config = {"from_attributes": True}
+
+
+class StructuredSearchResponse(BaseModel):
+    """Search results grouped by type, with tracks, people, and users."""
+
+    best_results: list[Union[MediaItemSummary, PersonSearchResult, UserSearchResult, TrackSearchResult]] = Field(
+        default_factory=list
+    )
+    movies: list[MediaItemSummary] = Field(default_factory=list)
+    shows: list[MediaItemSummary] = Field(default_factory=list)
+    games: list[MediaItemSummary] = Field(default_factory=list)
+    music: list[MediaItemSummary] = Field(default_factory=list)
+    tracks: list[TrackSearchResult] = Field(default_factory=list)
+    people: list[PersonSearchResult] = Field(default_factory=list)
+    users: list[UserSearchResult] = Field(default_factory=list)
+    total: int = 0
+    movies_count: int = 0
+    shows_count: int = 0
+    games_count: int = 0
+    music_count: int = 0
+    tracks_count: int = 0
+    people_count: int = 0
+    users_count: int = 0
 
 
 class ExternalGameResult(BaseModel):
@@ -175,6 +202,29 @@ class ImportGameResponse(BaseModel):
     media_id: str
     title: str
     slug: str
+
+
+class ProviderSearchRequest(BaseModel):
+    """Unified search across Otix, IGDB, and SteamGrid."""
+
+    query: str
+    limit: int = Field(default=12, ge=1, le=50)
+
+
+class ProviderSearchResult(BaseModel):
+    """A single result from any provider."""
+
+    provider: str  # "otix" | "igdb" | "steamgrid"
+    id: str
+    title: str
+    poster_url: str | None = None
+    slug: str | None = None
+    confidence: float | None = None
+
+
+class ProviderSearchResponse(BaseModel):
+    items: list[ProviderSearchResult]
+    backfill_pending: bool = False
 
 
 class SteamGridSearchRequest(BaseModel):
@@ -275,6 +325,130 @@ class LocalGameMatchResponse(BaseModel):
     matches: list[LocalGameMatch]
 
 
+# ── Game matching (internal API / batch) ────────────────────────
+
+from enum import Enum
+
+
+class MatchType(str, Enum):
+    """How a match candidate was found. Used for ranking and UI display."""
+
+    DIRECT = "direct"  # external_ids table hit
+    EXACT_TITLE = "exact_title"  # exact title match in Otix catalog
+    ILIKE = "ilike"  # ILIKE pattern match in Otix
+    TRIGRAM = "trigram"  # pg_trgm similarity fallback
+    IGDB_CROSSREF = "igdb_crossref"  # IGDB external_games API (category 26)
+    IGDB_SEARCH = "igdb_search"  # IGDB title search (exact)
+    IGDB_FUZZY = "igdb_fuzzy"  # IGDB title search (fuzzy)
+    NONE = "none"  # no match found
+
+
+class ExternalIDRef(BaseModel):
+    """A reference to an external ID from a provider (IGDB, Steam, etc.)."""
+
+    source: str
+    id: str
+
+
+class GameMatchRequest(BaseModel):
+    """A single game to match, sent from the frontend or external caller."""
+
+    query_id: str = ""  # caller-provided correlation ID (e.g. "epic:AppName")
+    title: str
+    developer: str | None = None
+    publisher: str | None = None
+    platforms: list[str] | None = None
+    release_year: int | None = None
+    release_date: date | None = None
+    external_ids: list[ExternalIDRef] | None = None
+    media_type: str = "game"
+
+
+class GameMatchCandidate(BaseModel):
+    """A single match candidate for a game query."""
+
+    media_item_id: str | None = None
+    title: str
+    poster_url: str | None = None
+    backdrop_url: str | None = None
+    release_year: int | None = None
+    platforms: list[str] | None = None
+    developer: str | None = None
+    confidence: float
+    match_type: MatchType
+    needs_import: bool = False
+    provider_id: str | None = None  # IGDB game ID for import reference
+    provider: str | None = None  # "igdb", "steamgrid", etc.
+
+
+class GameMatchResponse(BaseModel):
+    """Per-game match response. Contains ranked candidates and optional auto-match."""
+
+    query_id: str = ""
+    query_title: str
+    candidates: list[GameMatchCandidate] = []  # ranked best first
+    auto_match: GameMatchCandidate | None = None  # non-null when auto-matched
+
+
+class GameMatchBatchRequest(BaseModel):
+    """Batch request to match multiple games in one call."""
+
+    games: list[GameMatchRequest]
+
+
+class GameMatchBatchResponse(BaseModel):
+    """Batch response with a result for each requested game."""
+
+    matches: list[GameMatchResponse]
+
+
+class ConfirmMatchRequest(BaseModel):
+    """User confirms a match candidate (or rejects all)."""
+
+    query_id: str  # "epic:AppName"
+    media_item_id: str | None = None  # Otix media item to link
+    igdb_id: int | None = None  # IGDB ID if game needs importing
+    rejected: bool = False  # user explicitly rejected all
+    rejected_permanently: bool = False  # never suggest again
+
+
+class ConfirmMatchResponse(BaseModel):
+    success: bool
+    media_item_id: str | None = None
+    error: str | None = None
+
+
+# ── SSE stream events for batch match progress ────────────────────
+
+
+class StreamMatchEvent(BaseModel):
+    """Emitted per game during a batch match SSE stream."""
+
+    game_index: int
+    total_games: int
+    query_id: str
+    query_title: str
+    status: str  # "matched" | "unmatched" | "error"
+    candidates_count: int = 0
+    auto_match: bool = False
+    error: str | None = None
+
+
+class StreamCompleteEvent(BaseModel):
+    """Emitted when a batch match SSE stream completes."""
+
+    total_games: int
+    matched_count: int
+    unmatched_count: int
+    errored_count: int
+    duration_ms: int
+
+
+# ── Backward-compat alias (old code expects GameMatchResult) ─────
+# Remove once all consumers updated to GameMatchResponse.
+GameMatchResult = GameMatchResponse
+
+
 # ── Seed game titles from desktop scan ──────────────────────────
 
 
@@ -365,6 +539,12 @@ class CompanyOut(BaseModel):
     user_rating: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class CompanySearchListResponse(BaseModel):
+    items: list[CompanyOut]
+    total: int | None = None
+    has_more: bool
 
 
 class CompanyRatingBody(BaseModel):
@@ -520,6 +700,8 @@ class MediaItemDetail(BaseModel):
 
     avg_rating: float | None = None
     rating_count: int = 0
+    overall_rating: float | None = None
+    overall_rating_source: str | None = None
     like_count: int = 0
     watchlist_count: int = 0
     watched_count: int = 0
@@ -539,7 +721,6 @@ class MediaItemDetail(BaseModel):
     youtube_channel_title: str | None = None
 
     genres: list[GenreOut] = []
-    external_ratings: list[ExternalRatingOut] = []
     credits: list[MediaCreditOut] = []
     involved_companies: list[InvolvedCompanyOut] = []
     releases: list[MediaReleaseOut] = []

@@ -1,0 +1,95 @@
+@reference "../../../_tailwind-ref.css";
+
+/* ── Interaction Buttons ────────────────────────── */
+
+.dk-interaction { /* wrapper section — className passed through */ }
+
+/* ── Unauthenticated state ─────────────────────── */
+
+.dk-interaction__unauthed-card {
+  @apply rounded-3xl p-6 text-center;
+}
+
+.dk-interaction__unauthed-link {
+  @apply font-medium text-primary;
+
+  &:hover {
+    @apply underline;
+  }
+}
+
+.dk-interaction__unauthed-text {
+  @apply text-sm;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Button grid ────────────────────────────────── */
+
+.dk-interaction__btns {
+  @apply flex flex-wrap justify-center gap-2.5 sm:gap-3;
+}
+
+/* ── Single interaction button ──────────────────── */
+
+.dk-interaction__btn {
+  @apply relative flex h-16 w-20 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl px-3 py-3;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &--pending {
+    @apply pointer-events-none;
+  }
+}
+
+/* ── Active glow overlay ────────────────────────── */
+
+.dk-interaction__glow {
+  @apply pointer-events-none absolute inset-0 opacity-30;
+
+  &--red     { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-red-500) 15%, transparent), transparent 70%); }
+  &--sky     { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-sky-500) 15%, transparent), transparent 70%); }
+  &--emerald { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-emerald-500) 15%, transparent), transparent 70%); }
+  &--violet  { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-violet-500) 15%, transparent), transparent 70%); }
+  &--amber   { background: radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--color-amber-500) 15%, transparent), transparent 70%); }
+}
+
+/* ── Label under icon ───────────────────────────── */
+
+.dk-interaction__label {
+  @apply relative text-[11px] font-medium;
+  color: hsl(var(--muted-foreground));
+}
+
+/* ── Confirmation dialog actions ────────────────── */
+
+.dk-interaction__dialog-actions {
+  @apply flex justify-end gap-3 mt-6;
+}
+
+.dk-interaction__dialog-btn {
+  @apply px-4 py-2 rounded-xl text-sm font-medium;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &--cancel {
+    background-color: var(--dk-surface-glass);
+
+    &:hover {
+      background-color: var(--dk-surface-glass-hover);
+    }
+  }
+
+  &--positive {
+    @apply bg-emerald-600 text-white;
+
+    &:hover {
+      @apply bg-emerald-500;
+    }
+  }
+
+  &--negative {
+    @apply bg-red-600 text-white;
+
+    &:hover {
+      @apply bg-red-500;
+    }
+  }
+}
