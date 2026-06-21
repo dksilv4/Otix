@@ -67,6 +67,7 @@ export interface GameProgressEvent {
 export class GameScanOrchestrator extends EventEmitter {
   private apiBaseUrl = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
   private authToken = '';
+  private _isScanning = false;
 
   constructor(
     private pluginManager: PluginManager,
@@ -78,6 +79,9 @@ export class GameScanOrchestrator extends EventEmitter {
   setAuthToken(token: string): void { this.authToken = token; }
 
   async scanAll(): Promise<ScanSummary> {
+    if (this._isScanning) throw new Error('Scan already in progress');
+    this._isScanning = true;
+    try {
     ensureGameMatchesTable();
     this.queryIdToGames.clear();
 
@@ -161,14 +165,20 @@ export class GameScanOrchestrator extends EventEmitter {
       totalGames: allGames.length,
       matched: allGames.length - totalUnmatchedCount,
       unmatched: totalUnmatchedCount,
-      failed: 0,
+      failed: pluginResults.filter(p => (p.errors?.length || 0) > 0).length,
       startedAt,
       completedAt: Date.now(),
       pluginResults,
     };
+  } finally {
+    this._isScanning = false;
+  }
   }
 
   async scanPlugin(pluginId: string): Promise<PluginScanResult> {
+    if (this._isScanning) throw new Error('Scan already in progress');
+    this._isScanning = true;
+    try {
     ensureGameMatchesTable();
     this.queryIdToGames.clear();
 
@@ -228,6 +238,9 @@ export class GameScanOrchestrator extends EventEmitter {
       matched: matched.length,
       unmatched: needsMatch.length,
     };
+  } finally {
+    this._isScanning = false;
+  }
   }
 
   private async streamMatches(games: ScannedGame[], pluginId: string): Promise<void> {
@@ -269,7 +282,7 @@ export class GameScanOrchestrator extends EventEmitter {
       req.on('response', (res) => {
         res.on('data', (chunk: Buffer) => {
           buffer += chunk.toString();
-          this.processSseBuffer(buffer, pluginId);
+          buffer = this.processSseBuffer(buffer, pluginId);
         });
         res.on('end', () => {
           resolve();
@@ -286,7 +299,7 @@ export class GameScanOrchestrator extends EventEmitter {
     });
   }
 
-  private processSseBuffer(buffer: string, pluginId: string): void {
+  private processSseBuffer(buffer: string, pluginId: string): string {
     const parts = buffer.split('\n\n');
     // Keep last incomplete part in buffer (it doesn't have a trailing \n\n yet)
     const complete = parts.slice(0, -1);
@@ -349,6 +362,8 @@ export class GameScanOrchestrator extends EventEmitter {
         console.error('[GameScanOrchestrator] Failed to parse SSE event:', err);
       }
     }
+
+    return remaining;
   }
 
   // Internal: track games per queryId for persistence
