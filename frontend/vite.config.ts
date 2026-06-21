@@ -1,24 +1,32 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import svgr from 'vite-plugin-svgr'
 import path from 'node:path'
 
 export default defineConfig({
   base: '/',
-  plugins: [react()],
+  plugins: [react(), svgr()],
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@ui': path.resolve(__dirname, 'src/features/dk-ui'),
+      '@ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
       '@auth': path.resolve(__dirname, 'src/features/auth'),
+      '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@media': path.resolve(__dirname, 'src/features/media'),
       '@discover': path.resolve(__dirname, 'src/features/discover'),
+      '@launcher': path.resolve(__dirname, 'src/features/launcher'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
-      '@person': path.resolve(__dirname, 'src/features/person'),
+      '@search': path.resolve(__dirname, 'src/features/search'),
+      '@settings': path.resolve(__dirname, 'src/features/settings'),
+      '@person': path.resolve(__dirname, 'src/old-features/person'),
+      '@library': path.resolve(__dirname, 'src/features/library'),
+      '@list': path.resolve(__dirname, 'src/old-features/list'),
+      '@people': path.resolve(__dirname, 'src/features/people'),
       '@company': path.resolve(__dirname, 'src/features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
-      '@dk-ui': path.resolve(__dirname, 'src/features/dk-ui'),
+      '@dk-ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
       '@desktop': path.resolve(__dirname, '../desktop'),
     },
   },
