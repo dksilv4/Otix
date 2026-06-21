@@ -104,6 +104,10 @@ class MatchConfirmationService:
             # Map the original provider ID → Otix media item
             await self._eid_svc.upsert(provider, external_id, "media_item", media_item_id)
 
+            # Increment confirmed_count (user confirmed = +1 signal)
+            user_id = "desktop_user"  # Single-user desktop; multi-user would extract from request
+            await self._eid_svc.increment_confirmed(provider, external_id, user_id, "media_item")
+
             # Also map IGDB → Otix if we have it
             if req.igdb_id is not None:
                 await self._eid_svc.upsert("igdb", str(req.igdb_id), "media_item", media_item_id)

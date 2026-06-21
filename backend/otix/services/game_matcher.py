@@ -229,19 +229,30 @@ class GameMatcher:
                 skip_ids.add((source, row))
 
             try:
-                entity_map = await self._eid_svc.batch_find_entity_ids(source, ext_ids)
+                entity_map = await self._eid_svc.batch_find_with_metadata(source, ext_ids)
             except Exception:
                 logger.exception("external ID batch lookup failed", source=source)
                 continue
 
-            entity_ids_to_fetch = list({eid for eid in entity_map.values() if eid is not None})
+            entity_ids_to_fetch = list(
+                {meta["entity_id"] for meta in entity_map.values() if meta and meta.get("entity_id")}
+            )
             media_items = await self._fetch_media_items(entity_ids_to_fetch)
 
-            for ext_id, entity_id in entity_map.items():
-                if not entity_id:
+            for ext_id, meta in entity_map.items():
+                if not meta or not meta.get("entity_id"):
                     continue
                 if (source, ext_id) in skip_ids:
                     continue
+
+                entity_id = meta["entity_id"]
+                confirmed = meta.get("confirmed_count", 0) or 0
+                if confirmed >= 3:
+                    confidence = 1.0
+                elif confirmed >= 1:
+                    confidence = 0.98
+                else:
+                    confidence = 0.90
 
                 for req_idx in id_map.get(ext_id, []):
                     mi = media_items.get(entity_id)
@@ -252,7 +263,7 @@ class GameMatcher:
                             poster_url=mi.poster_url if mi else None,
                             backdrop_url=mi.backdrop_url if mi else None,
                             release_year=_release_year_from_date(mi.release_date if mi else None),
-                            confidence=1.0,
+                            confidence=confidence,
                             match_type=MatchType.DIRECT,
                         )
                     )
@@ -324,7 +335,7 @@ class GameMatcher:
         rows = await self._session.execute(
             select(MediaItem).where(
                 MediaItem.media_type == "game",
-                func.lower(MediaItem.title).in_([t for t in titles]),
+                func.lower(MediaItem.title).in_(list(titles)),
             )
         )
         media_map: dict[str, list[MediaItem]] = {}
@@ -387,10 +398,12 @@ class GameMatcher:
             conditions.append(MediaItem.title.ilike(pattern))
 
         rows = await self._session.execute(
-            select(MediaItem).where(
+            select(MediaItem)
+            .where(
                 MediaItem.media_type == "game",
                 or_(*conditions),
-            ).limit(500)  # safety limit
+            )
+            .limit(500)  # safety limit
         )
         catalog_items = list(rows.scalars().all())
 
@@ -470,7 +483,7 @@ class GameMatcher:
 
             sim = float(row["sim"])
             confidence = min(0.6, max(0.3, sim))
-            dev_match = _developer_overlap(
+            _developer_overlap(
                 requests[idx].developer,
                 None,  # no MediaItem object, just use raw row
             )
@@ -549,7 +562,7 @@ class GameMatcher:
 
         # Epic cross-ref (category 26)
         if epic_ids:
-            id_map: dict[str, int] = {eid: idx for eid, idx in epic_ids}
+            id_map: dict[str, int] = dict(epic_ids)
             try:
                 epic_to_igdb = await provider.lookup_epic_ids(list(id_map.keys()))
             except Exception:
@@ -565,7 +578,7 @@ class GameMatcher:
 
         # Steam cross-ref (category 1)
         if steam_ids:
-            id_map: dict[int, int] = {sid: idx for sid, idx in steam_ids}
+            id_map: dict[int, int] = dict(steam_ids)
             try:
                 steam_to_igdb = await provider.lookup_steam_app_ids(list(id_map.keys()))
             except Exception:
@@ -917,7 +930,7 @@ class GameMatcher:
             # Release year proximity
             if request.release_year is not None:
                 ts = c.get("first_release_date")
-                if isinstance(ts, (int, float)):
+                if isinstance(ts, int | float):
                     try:
                         release_year = datetime.fromtimestamp(float(ts)).year
                         if abs(release_year - request.release_year) <= 1:
@@ -963,7 +976,7 @@ def _release_year_from_date(d: datetime | None) -> int | None:
 
 def _parse_igdb_year(ts: object) -> int | None:
     """Parse release year from an IGDB timestamp."""
-    if isinstance(ts, (int, float)):
+    if isinstance(ts, int | float):
         try:
             return datetime.fromtimestamp(float(ts)).year
         except (ValueError, OSError):
