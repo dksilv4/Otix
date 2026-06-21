@@ -44,15 +44,32 @@ interface ScanProgress {
   }>
 }
 
-// ── MatchingScanSection ─────────────────────────────────────────────────
+// ── Module-level store — survives component remounts across page navigations ──
+let _storedProgress: Record<string, { total: number; matched: number; candidates: number; failed: number }> = {}
+let _storedResults: Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }> = {}
 
 export function MatchingScanSection() {
   const [plugins, setPlugins] = useState<ScanPlugin[]>([])
   const [statuses, setStatuses] = useState<Record<string, ScanStatus>>({})
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
-  const [matchResults, setMatchResults] = useState<Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }>>({})
-  const [matchProgress, setMatchProgress] = useState<Record<string, { total: number; matched: number; candidates: number; failed: number }>>({})
+  const [internalResults, setInternalResults] = useState(() => _storedResults)
+  const [internalProgress, setInternalProgress] = useState(() => _storedProgress)
+
+  // Sync state setter to module-level store so it survives remounts
+  const setMatchResults = useCallback((v: any) => {
+    const next = typeof v === 'function' ? v(_storedResults) : v
+    _storedResults = next
+    setInternalResults(next)
+  }, [])
+  const setMatchProgress = useCallback((v: any) => {
+    const next = typeof v === 'function' ? v(_storedProgress) : v
+    _storedProgress = next
+    setInternalProgress(next)
+  }, [])
+  const matchResults = internalResults
+  const matchProgress = internalProgress
+
   const api = window.desktopAPI
 
   // Load matching:scan slot plugins
@@ -62,27 +79,31 @@ export function MatchingScanSection() {
     })
   }, [api])
 
-  // Subscribe to per-game progress events — per-plugin tracking
+  // Subscribe to per-game progress events — accumulate progress
   useEffect(() => {
     if (!api?.onMatchingProgress) return
     const unsub = api.onMatchingProgress((event: ScanProgress) => {
       const pid = event.pluginId
       // Store match results for display
       if (event.match) {
-        setMatchResults(prev => ({
-          ...prev,
-          [event.queryTitle || event.queryId]: {
-            matchedTitle: event.match.title,
-            confidence: event.match.confidence,
-            posterUrl: event.match.poster_url,
-          },
+        setMatchResults(prev => ({...prev, 
+          [event.queryTitle || event.queryId]: { matchedTitle: event.match.title, confidence: event.match.confidence, posterUrl: event.match.poster_url },
         }))
       }
+      // Accumulate per-plugin progress
+      setMatchProgress(prev => {
+        const current = prev[pid] || { total: event.totalGames ?? 0, matched: 0, candidates: 0, failed: 0 }
+        return {...prev, [pid]: {
+          total: event.totalGames ?? current.total,
+          matched: current.matched + (event.status === "matched" ? 1 : 0),
+          candidates: current.candidates + ((event.status === "candidates" || event.status === "unmatched") ? 1 : 0),
+          failed: current.failed + ((event.status === "failed" || event.status === "error") ? 1 : 0),
+        }}
+      })
     })
     return () => unsub?.()
   }, [api])
-
-  // Subscribe to scan completion — set final counts per plugin
+    // Subscribe to scan completion — set final counts per plugin
   useEffect(() => {
     if (!api?.onMatchingComplete) return
     const unsub = api.onMatchingComplete((event: any) => {
