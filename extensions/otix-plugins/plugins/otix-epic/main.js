@@ -443,9 +443,9 @@ async function performScan(ctx) {
         if (e.sellerName) g.sellerName = e.sellerName;
         if (e.external_ids?.length) g.developerExternalIds = e.external_ids;
         const posterUrl = e.keyImages?.find((img) =>
-          img.type === 'DieselStoreFrontWide' || img.type === 'Thumbnail'
-          || img.type === 'OfferImageWide' || img.type === 'DieselGameBox'
-          || img.type === 'DieselGameBoxTall' || img.type === 'featuredMedia'
+          img.type === 'DieselGameBoxTall' || img.type === 'DieselGameBox'
+          || img.type === 'DieselStoreFrontWide' || img.type === 'Thumbnail'
+          || img.type === 'OfferImageWide' || img.type === 'featuredMedia'
         )?.url || e.keyImages?.[0]?.url;
         if (posterUrl) { g.posterUrl = posterUrl; debugStats.withPoster++; }
         const logoUrl = e.keyImages?.find((img) =>
