@@ -24,6 +24,7 @@ interface ScanStatus {
 interface ScanProgress {
   pluginId: string
   queryId: string
+  totalGames?: number
   status: string
   queryTitle?: string
   match?: {
@@ -72,9 +73,9 @@ export function MatchingScanSection() {
           },
         }))
       }
-      // Accumulate progress counts from per-game status
+      // Accumulate progress counts from per-game status, use totalGames from backend
       setMatchProgress(prev => ({
-        total: (prev?.total ?? 0) + 1,
+        total: event.totalGames ?? (prev?.total ?? 0) + 1,
         matched: (prev?.matched ?? 0) + (event.status === 'matched' ? 1 : 0),
         candidates: (prev?.candidates ?? 0) + ((event.status === 'candidates' || event.status === 'unmatched') ? 1 : 0),
         failed: (prev?.failed ?? 0) + ((event.status === 'failed' || event.status === 'error') ? 1 : 0),
@@ -197,6 +198,11 @@ export function MatchingScanSection() {
             <span className="text-white/70 font-medium">Matching games</span>
             <span className="text-white/40">
               {matchProgress.matched + matchProgress.candidates + matchProgress.failed}/{matchProgress.total}
+              {matchProgress.total > 0 && (
+                <span className="ml-1 text-white/30">
+                  ({Math.round(((matchProgress.matched + matchProgress.candidates + matchProgress.failed) / matchProgress.total) * 100)}%)
+                </span>
+              )}
             </span>
           </div>
           <div className="h-2 rounded-full bg-white/5 overflow-hidden flex">
