@@ -11,7 +11,7 @@ import { createSoundChannel } from '../channels/sound-channel'
 import { createWebChannel } from '../channels/web-channel'
 import { createToastChannel } from '../channels/toast-channel'
 import { createDesktopChannel } from '../channels/desktop-channel'
-import type { NotificationEvent, NotificationPreferences } from '../types'
+import type { NotificationEvent, NotificationType, NotificationPreferences } from '../types'
 
 interface NotificationsProviderProps {
   children: React.ReactNode
@@ -55,7 +55,18 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
 
   const handleMessage = useCallback(
     (event: SseEvent) => {
-      const n = event as unknown as NotificationEvent
+      // Convert snake_case SSE event to camelCase NotificationEvent
+      const raw = event as Record<string, unknown>
+      const n: NotificationEvent = {
+        id: (raw.id as string) || '',
+        type: (raw.type as NotificationType) || '',
+        title: (raw.title as string) || '',
+        body: (raw.body as string) ?? null,
+        metadata: (raw.metadataJson ?? raw.metadata ?? {}) as Record<string, unknown>,
+        isRead: (raw.isRead ?? raw.is_read ?? false) as boolean,
+        createdAt: (raw.createdAt ?? raw.created_at ?? '') as string,
+      }
+
       if (!n.id || !n.type) return
 
       if (prefs[n.type] === false) return

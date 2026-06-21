@@ -14,6 +14,8 @@ export function createWebChannel(prefs: NotificationPreferences): Channel {
     deliver: (event: NotificationEvent) => {
       const notification = new Notification(event.title, {
         body: event.body ?? undefined,
+        icon: '/icon-192.png',
+        badge: '/badge-72.png',
       })
       notification.onclick = () => {
         window.focus()

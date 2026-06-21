@@ -1,6 +1,7 @@
 # TODO: Review this file
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
@@ -31,18 +32,24 @@ class NotificationService:
         self.session.add(notification)
         await self.session.flush()
 
-        # Fire-and-forget push delivery
+        # Fire-and-forget push delivery — create new session for background task
         try:
+            from otix.infrastructure.database import async_session as async_session_factory
             from otix.services.push_service import PushService
-            from otix.services.vapid import vapid_private_key, get_vapid_public_key
-            push_service = PushService(self.session, vapid_private_key, get_vapid_public_key())
-            asyncio.create_task(push_service.send_notification(
-                user_id=notification.user_id,
-                title=notification.title,
-                body=notification.body,
-                type_=notification.type,
-                metadata=notification.metadata_json,
-            ))
+            from otix.services.vapid import get_vapid_public_key, vapid_private_key
+
+            async def _deliver():
+                async with async_session_factory() as session:
+                    push_service = PushService(session, vapid_private_key, get_vapid_public_key())
+                    await push_service.send_notification(
+                        user_id=notification.user_id,
+                        title=notification.title,
+                        body=notification.body,
+                        type_=notification.type,
+                        metadata=notification.metadata_json,
+                    )
+
+            asyncio.create_task(_deliver())
         except Exception:
             pass
 
