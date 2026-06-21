@@ -123,7 +123,7 @@ Migration Guide
 from __future__ import annotations
 
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -189,6 +189,42 @@ class ExternalIDService:
         for row in rows:
             if row.entity_id:
                 result.setdefault(row.entity_id, []).append((row.provider, row.external_id))
+        return result
+
+    async def increment_confirmed(
+        self,
+        provider: str,
+        external_id: str,
+        user_id: str,
+        entity_type: str | None = None,
+    ) -> ExternalID | None:
+        """Increment confirmed_count for a matched external ID, dedup by user."""
+        row = await self.get_by_provider_ext_id(provider, external_id, entity_type)
+        if row is None:
+            return None
+        if row.confirmed_by and user_id in row.confirmed_by:
+            return row  # already confirmed by this user
+        row.confirmed_count = (row.confirmed_count or 0) + 1
+        row.confirmed_by = (row.confirmed_by or []) + [user_id]
+        row.last_confirmed_at = func.now()
+        return row
+
+    async def batch_find_with_metadata(self, provider: str, external_ids: list[str]) -> dict[str, dict]:
+        """Bulk lookup returning full metadata: entity_id, confirmed_count, etc."""
+        rows = await self._session.scalars(
+            select(ExternalID).where(
+                ExternalID.provider == provider,
+                ExternalID.external_id.in_(external_ids),
+            )
+        )
+        result: dict[str, dict] = {}
+        for row in rows:
+            if row.entity_id:
+                result[row.external_id] = {
+                    "entity_id": row.entity_id,
+                    "confirmed_count": row.confirmed_count or 0,
+                    "confirmed_by": row.confirmed_by or [],
+                }
         return result
 
     async def upsert(
