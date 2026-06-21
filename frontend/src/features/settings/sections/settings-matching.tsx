@@ -29,6 +29,17 @@ interface ScanProgress {
   queryId: string
   status: string
   queryTitle?: string
+  match?: {
+    media_item_id: string
+    title: string
+    confidence: number
+    poster_url?: string
+  }
+  candidates?: Array<{
+    title: string
+    confidence: number
+    poster_url?: string
+  }>
 }
 
 // ── MatchingScanSection ─────────────────────────────────────────────────
@@ -39,6 +50,7 @@ export function MatchingScanSection() {
   const [progress, setProgress] = useState<Record<string, ScanProgress>>({})
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
+  const [matchResults, setMatchResults] = useState<Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }>>({})
   const api = window.desktopAPI
 
   // Load matching:scan slot plugins
@@ -53,6 +65,17 @@ export function MatchingScanSection() {
     if (!api?.onMatchingProgress) return
     const unsub = api.onMatchingProgress((event: ScanProgress) => {
       setProgress(prev => ({ ...prev, [event.queryId]: event }))
+      // Store match results for display
+      if (event.match) {
+        setMatchResults(prev => ({
+          ...prev,
+          [event.queryTitle || event.queryId]: {
+            matchedTitle: event.match!.title,
+            confidence: event.match!.confidence,
+            posterUrl: event.match!.poster_url,
+          },
+        }))
+      }
     })
     return () => unsub?.()
   }, [api])
@@ -69,6 +92,8 @@ export function MatchingScanSection() {
   const handleScan = useCallback(async (pluginId: string) => {
     setScanning(prev => ({ ...prev, [pluginId]: true }))
     setScanErrors(prev => ({ ...prev, [pluginId]: null }))
+    setMatchResults({})
+    setProgress({})
     try {
       await api?.scanPlugin?.(pluginId)
     } catch (err: any) {
@@ -161,6 +186,33 @@ export function MatchingScanSection() {
                 }`} />
                 <span className="text-foreground">{event.queryTitle || queryId}</span>
                 <span className="text-xs text-muted-foreground ml-auto">{event.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Match results summary — shown after scan completes */}
+      {Object.keys(matchResults).length > 0 && Object.entries(progress).length === 0 && (
+        <div className="mt-4">
+          <h4 className="font-medium text-foreground mb-2">Match Results</h4>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {Object.entries(matchResults).map(([gameTitle, result]) => (
+              <div key={gameTitle} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+                {result.posterUrl && (
+                  <img src={result.posterUrl} alt="" className="w-10 h-14 rounded object-cover shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{gameTitle}</p>
+                  <p className="text-xs text-muted-foreground truncate">→ {result.matchedTitle}</p>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  result.confidence >= 0.95 ? 'bg-green-500/20 text-green-400' :
+                  result.confidence >= 0.85 ? 'bg-blue-500/20 text-blue-400' :
+                  'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {(result.confidence * 100).toFixed(0)}%
+                </span>
               </div>
             ))}
           </div>
