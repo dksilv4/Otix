@@ -96,7 +96,7 @@ export function MatchingScanSection() {
       if (event.total != null) {
         setMatchProgress({ total: event.total, matched: event.matched || 0, candidates: event.candidates || 0, failed: event.failed || 0 })
       }
-      setTimeout(() => setMatchProgress(null), 5000)
+      setTimeout(() => { try { setMatchProgress(null) } catch {} }, 5000)
     })
     return () => unsub?.()
   }, [api])
@@ -105,7 +105,7 @@ export function MatchingScanSection() {
     setScanning(prev => ({ ...prev, [pluginId]: true }))
     setScanErrors(prev => ({ ...prev, [pluginId]: null }))
     setMatchResults({})
-    setProgress({})
+    setMatchProgress(null)
     try {
       await api?.scanPlugin?.(pluginId)
     } catch (err: any) {
