@@ -24,8 +24,13 @@ interface ScanStatus {
 interface ScanProgress {
   pluginId: string
   queryId: string
+  game_index?: number
+  total_games?: number
   status: string
   queryTitle?: string
+  matched_count?: number
+  candidates_count?: number
+  errored_count?: number
   match?: {
     media_item_id: string
     title: string
@@ -72,30 +77,27 @@ export function MatchingScanSection() {
           },
         }))
       }
-      // Update progress counts
-      setMatchProgress(prev => {
-        const base = prev || { total: 0, matched: 0, candidates: 0, failed: 0 }
-        if (!prev) base.total = 1 // first event — init
-        const statusCounts = {
-          total: base.total + (prev ? 0 : 0),
-          matched: base.matched + (event.status === 'matched' ? 1 : 0),
-          candidates: base.candidates + (event.status === 'candidates' ? 1 : 0),
-          failed: base.failed + (event.status === 'failed' ? 1 : 0),
-        }
-        // Infer total from the complete event's data
-        return statusCounts
-      })
+      // Update progress counts from SSE event data
+      setMatchProgress(prev => ({
+        total: event.total_games ?? prev?.total ?? 0,
+        matched: event.matched_count ?? prev?.matched ?? 0,
+        candidates: event.candidates_count ?? prev?.candidates ?? 0,
+        failed: event.errored_count ?? prev?.failed ?? 0,
+      }))
     })
     return () => unsub?.()
   }, [api])
 
-  // Subscribe to scan completion — use final counts, clear after delay
+  // Subscribe to scan completion — set final counts, clear after delay
   useEffect(() => {
     if (!api?.onMatchingComplete) return
     const unsub = api.onMatchingComplete((event: any) => {
-      if (event.total != null) {
-        setMatchProgress({ total: event.total, matched: event.matched || 0, candidates: event.candidates || 0, failed: event.failed || 0 })
-      }
+      setMatchProgress({
+        total: event.total_games ?? event.total ?? 0,
+        matched: event.matched_count ?? event.matched ?? 0,
+        candidates: event.unmatched_count ?? event.candidates ?? 0,
+        failed: event.errored_count ?? event.failed ?? 0,
+      })
       setTimeout(() => { try { setMatchProgress(null) } catch {} }, 5000)
     })
     return () => unsub?.()
