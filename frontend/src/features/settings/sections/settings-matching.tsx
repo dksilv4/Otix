@@ -16,10 +16,13 @@ interface ScanPlugin {
 
 interface ScanStatus {
   connected: boolean
+  display_name?: string
   displayName?: string
   label?: string
   lastScanAt?: number
   lastScanTotal?: number
+  last_scan_at?: number
+  last_scan_total?: number
 }
 
 interface ScanProgress {
@@ -151,15 +154,19 @@ export function MatchingScanSection() {
                 <h4 className="font-medium text-foreground">{plugin.label}</h4>
                 <p className="text-sm text-muted-foreground">
                   {status?.connected
-                    ? `Connected as ${status.displayName || status.display_name || status.label || status.connected}`
+                    ? `Connected as ${status.display_name || status.displayName || status.label || status.connected}`
                     : 'Not connected'}
                 </p>
-                {status?.lastScanAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Last scan: {new Date(status.lastScanAt).toLocaleDateString()}
-                    {status.lastScanTotal != null && ` — ${status.lastScanTotal} games`}
-                  </p>
-                )}
+                {(() => {
+                  const lastScanAt = status?.lastScanAt || status?.last_scan_at
+                  const lastScanTotal = status?.lastScanTotal ?? status?.last_scan_total
+                  return lastScanAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      Last scan: {new Date(Number(lastScanAt)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {lastScanTotal != null && ` — ${lastScanTotal} games`}
+                    </p>
+                  ) : null
+                })()}
                 {scanErrors[plugin.pluginId] && (
                   <p className="text-xs text-red-400 mt-1">{scanErrors[plugin.pluginId]}</p>
                 )}
