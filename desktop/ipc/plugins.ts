@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import type { PluginManager } from '../plugins/manager'
 import type { PermissionManager } from '../plugins/permissions'
+import type { GameScanOrchestrator } from '../game/orchestrator'
 import { eventBus } from '../plugins/event-bus'
 
 function validateSender(event: Electron.IpcMainInvokeEvent): void {
@@ -232,4 +233,23 @@ export function registerPluginIPC(
       win.loadURL(url)
     })
   })
+}
+
+// ── Orchestrator event forwarding ──
+
+export function wireOrchestratorEvents(
+  orchestrator: GameScanOrchestrator,
+  mainWindow: BrowserWindow,
+): void {
+  orchestrator.on('game:matching:progress', (event: any) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:matching:progress', event);
+    }
+  });
+
+  orchestrator.on('game:matching:complete', (event: any) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:matching:complete', event);
+    }
+  });
 }

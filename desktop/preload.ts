@@ -276,4 +276,18 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
   },
+
+  // ── Plugin game matching ──
+  scanAllPlugins: () => ipcRenderer.invoke('scanner:scan-all-plugins'),
+  scanPlugin: (pluginId: string) => ipcRenderer.invoke('scanner:scan-plugin', pluginId),
+  onMatchingProgress: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:matching:progress', handler);
+    return () => ipcRenderer.removeListener('game:matching:progress', handler);
+  },
+  onMatchingComplete: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:matching:complete', handler);
+    return () => ipcRenderer.removeListener('game:matching:complete', handler);
+  },
 });
