@@ -69,17 +69,6 @@ export function SettingsScannedGamesPage() {
                 {/* Dark overlay for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Logo overlay — top-center */}
-                {game.iconUrl && (
-                  <div className="absolute top-[12%] left-0 right-0 z-10 flex items-center justify-center px-6">
-                    <img
-                      src={game.iconUrl}
-                      alt=""
-                      className="max-h-[30%] max-w-[60%] object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
-                    />
-                  </div>
-                )}
-
                 {/* Platform badge top-left */}
                 <div className="absolute top-2 left-2 z-10">
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white/70 backdrop-blur-sm uppercase tracking-wider">
