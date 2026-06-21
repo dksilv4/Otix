@@ -424,12 +424,18 @@ async function performScan(ctx) {
     _setProgress(ctx, { phase: 'enriching', current: enrichedCount, total: games.length });
     ctx.logger.info('Catalog enriched: ' + enrichedCount + ' items');
 
+    // Debug enrichment stats
+    const debugStats = { total: games.length, withCatId: 0, withOfferId: 0, enriched: 0, withPoster: 0, enrichedHasImages: 0 };
+    for (const g of games) { if (g.catalogItemId) debugStats.withCatId++; if (g.offerId) debugStats.withOfferId++; }
+
     // Merge enrichment into games
     for (const g of games) {
       const catId = g.catalogItemId;
       const offerId = g.offerId;
       const e = enriched[catId] || (offerId && enriched[offerId]) || null;
       if (e) {
+        debugStats.enriched++;
+        if (e.keyImages?.length) debugStats.enrichedHasImages++;
         if (e.title) g.title = e.title;
         if (e.developer) g.developer = e.developer;
         if (e.publisher) g.publisher = e.publisher;
@@ -441,13 +447,23 @@ async function performScan(ctx) {
           || img.type === 'OfferImageWide' || img.type === 'DieselGameBox'
           || img.type === 'DieselGameBoxTall' || img.type === 'featuredMedia'
         )?.url || e.keyImages?.[0]?.url;
-        if (posterUrl) g.posterUrl = posterUrl;
+        if (posterUrl) { g.posterUrl = posterUrl; debugStats.withPoster++; }
         const logoUrl = e.keyImages?.find((img) =>
           img.type === 'DieselGameBoxLogo'
         )?.url;
         if (logoUrl) g.logoUrl = logoUrl;
       }
     }
+    ctx.logger.info('Enrich debug: ' + JSON.stringify(debugStats));
+    // Sample: show keyImage types from first 3 enriched items for debugging
+    const sampleTypes = new Set();
+    for (const g of games) {
+      const e = enriched[g.catalogItemId] || enriched[g.offerId];
+      if (e?.keyImages) for (const img of e.keyImages) {
+        if (sampleTypes.size < 8) sampleTypes.add(img.type || 'unknown');
+      }
+    }
+    ctx.logger.info('Enrich keyImage types: ' + JSON.stringify([...sampleTypes]));
   } catch (err) {
     ctx.logger.warn('Enrichment failed: ' + err.message);
   }
