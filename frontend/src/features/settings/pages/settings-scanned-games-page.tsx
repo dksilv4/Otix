@@ -84,7 +84,7 @@ export function SettingsScannedGamesPage() {
                 {/* Platform logo top-left */}
                 <div className="absolute top-2 left-2 z-10">
                   <div className="px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                    <ProviderLogo platform={game.platform} className="h-4 w-auto" />
+                    <ProviderLogo platform={game.platform} className="h-3.5" />
                   </div>
                 </div>
 
