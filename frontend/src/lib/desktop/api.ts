@@ -234,6 +234,12 @@ export interface DesktopAPI {
   // Plugin system (subset — full API has many more methods)
   plugin?: Record<string, (...args: unknown[]) => Promise<unknown>>
 
+  // Plugin game matching (exposed via desktop preload bridge)
+  scanAllPlugins?: () => Promise<unknown>
+  scanPlugin?: (pluginId: string) => Promise<unknown>
+  onMatchingProgress?: (callback: (event: Record<string, unknown>) => void) => () => void
+  onMatchingComplete?: (callback: (event: Record<string, unknown>) => void) => () => void
+
   // AI model management (IPC handlers removed — methods absent at runtime.
   // intelligence.tsx guards with null checks. Restore handlers to re-enable.)
   aiGetStatus?: () => Promise<AiModelStatus>
