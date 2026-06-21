@@ -49,6 +49,7 @@ export interface ScanSummary {
 export interface GameProgressEvent {
   pluginId: string
   queryId: string
+  totalGames?: number
   status: 'processing' | 'matched' | 'candidates' | 'failed'
   queryTitle?: string
   match?: {
@@ -384,6 +385,7 @@ export class GameScanOrchestrator extends EventEmitter {
           const event: GameProgressEvent = {
             pluginId,
             queryId: data.query_id,
+            totalGames: data.total_games,
             status: data.status,
             queryTitle: data.query_title,
             match: data.match,
