@@ -1,18 +1,19 @@
-import { createRouter, createRootRoute, createRouteMask } from "@tanstack/react-router"
+import { createRouter, createRootRoute } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 import { NotFoundPage } from "@/components/not-found"
 import { RootLayout } from "@/features/_config/components/layout/root-layout"
 
-import { createAuthRoutes } from '@auth/auth.router'
-import { createDiscoverRoutes } from '@discover/discover.router'
-import { createSearchRoutes } from '@search/search.router'
-import { createMediaRoutes } from '@media/media.router'
-import { createLauncherRoutes } from '@launcher/launcher.router'
-import { createLibraryRoutes } from '@library/library.router'
-import { createSettingsRoutes } from '@settings/settings.router'
-import { createListRoutes } from '@/features/list/list.router'
-import { createUserRoutes } from '@user/user.router'
-import { createPeopleRoutes } from '@people/people.router'
+import { createAuthRoutes } from '@auth/router'
+import { createDiscoverRoutes } from '@discover/router'
+import { createSearchRoutes } from '@search/router'
+import { createMediaRoutes } from '@media/router'
+import { createLauncherRoutes } from '@launcher/router'
+import { createLibraryRoutes } from '@library/router'
+import { createSettingsRoutes } from '@settings/router'
+import { createListRoutes } from '@/features/list/router'
+import { createUserRoutes } from '@user/router'
+import { createPeopleRoutes } from '@people/router'
+import { createNotificationRoutes } from '@/features/notifications/router'
 
 const rootRoute = createRootRoute({
   component: RootLayout,
@@ -30,6 +31,7 @@ const routeTree = rootRoute.addChildren([
   ...createListRoutes(rootRoute),
   ...createUserRoutes(rootRoute),
   ...createPeopleRoutes(rootRoute),
+  ...createNotificationRoutes(rootRoute),
 ])
 
 export interface RouterContext {
