@@ -1,0 +1,73 @@
+import { useCallback, useRef, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/lib/providers/auth'
+import { API_BASE_URL } from '@/lib/config'
+import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useSseStream } from '@/lib/hooks/use-sse-stream'
+import type { SseEvent } from '@/lib/api/sse-client'
+import { NotificationRouter } from '../channels'
+import { createBadgeChannel } from '../channels/badge-channel'
+import { createSoundChannel } from '../channels/sound-channel'
+import { createWebChannel } from '../channels/web-channel'
+import { createToastChannel } from '../channels/toast-channel'
+import type { NotificationEvent, NotificationPreferences } from '../types'
+
+interface NotificationsProviderProps {
+  children: React.ReactNode
+}
+
+function isInQuietHours(prefs: NotificationPreferences): boolean {
+  const start = prefs._quiet_start as string | undefined
+  const end = prefs._quiet_end as string | undefined
+  if (!start || !end) return false
+  const now = new Date()
+  const current = now.getHours() * 60 + now.getMinutes()
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  const startMin = sh * 60 + sm
+  const endMin = eh * 60 + em
+  if (startMin <= endMin) return current >= startMin && current < endMin
+  return current >= startMin || current < endMin
+}
+
+export function NotificationsProvider({ children }: NotificationsProviderProps) {
+  const { isAuthenticated, user } = useAuth()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const routerRef = useRef<NotificationRouter | null>(null)
+
+  const prefs = (user?.notificationPreferences ?? {}) as NotificationPreferences
+
+  useEffect(() => {
+    const router = new NotificationRouter()
+    router.registerChannel(createBadgeChannel(queryClient))
+    router.registerChannel(createSoundChannel(prefs))
+    router.registerChannel(createWebChannel(prefs))
+    router.registerChannel(createToastChannel(prefs, (opts) => {
+      toast(opts)
+    }))
+    routerRef.current = router
+  }, [prefs, queryClient, toast])
+
+  const handleMessage = useCallback(
+    (event: SseEvent) => {
+      const n = event as unknown as NotificationEvent
+      if (!n.id || !n.type) return
+
+      if (prefs[n.type] === false) return
+      if (isInQuietHours(prefs)) return
+
+      routerRef.current?.route(n)
+    },
+    [prefs],
+  )
+
+  useSseStream({
+    url: `${API_BASE_URL}/notifications/stream`,
+    onMessage: handleMessage,
+    enabled: isAuthenticated,
+    reconnectDelays: [3000, 10000, 30000],
+  })
+
+  return <>{children}</>
+}
