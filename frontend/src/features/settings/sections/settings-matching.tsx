@@ -172,9 +172,9 @@ export function MatchingScanSection() {
                   )}
                 </button>
                 <a
-                  href="/launcher"
+                  href={'/settings/matching/games?source=' + plugin.data?.platform || plugin.pluginId}
                   className="inline-flex items-center justify-center h-9 w-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-                  title="View game library"
+                  title="View scanned games"
                 >
                   <Library className="h-4 w-4" />
                 </a>

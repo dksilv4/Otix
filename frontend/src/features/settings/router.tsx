@@ -16,6 +16,7 @@ const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
 const SettingsMatchingPage = lazy(() => import('./pages/settings-matching-page').then(m => ({ default: m.SettingsMatchingPage })))
+const SettingsScannedGamesPage = lazy(() => import('./pages/settings-scanned-games-page').then(m => ({ default: m.SettingsScannedGamesPage })))
 
 export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
@@ -68,6 +69,13 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsMatchingPage,
   })
 
+  const settingsScannedGamesRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/matching/games',
+    validateSearch: (search: Record<string, unknown>) => ({ source: (search.source as string) || '' }),
+    component: SettingsScannedGamesPage,
+  })
+
   const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/library',
@@ -115,6 +123,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
     settingsMatchingRoute,
+    settingsScannedGamesRoute,
     settingsLibraryRoute,
     settingsLibraryMatchingRoute,
     settingsDownloadsRoute,
