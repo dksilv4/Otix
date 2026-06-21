@@ -393,6 +393,7 @@ async function performScan(ctx) {
       appName,
       namespace: item.namespace || null,
       catalogItemId: item.catalogItemId || null,
+      offerId: item.offerId || null,
       title,
       developer: item.developer || null,
       developerId: null,  // populated by catalog enrichment
@@ -426,8 +427,9 @@ async function performScan(ctx) {
     // Merge enrichment into games
     for (const g of games) {
       const catId = g.catalogItemId;
-      if (catId && enriched[catId]) {
-        const e = enriched[catId];
+      const offerId = g.offerId;
+      const e = enriched[catId] || (offerId && enriched[offerId]) || null;
+      if (e) {
         if (e.title) g.title = e.title;
         if (e.developer) g.developer = e.developer;
         if (e.publisher) g.publisher = e.publisher;
