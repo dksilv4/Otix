@@ -337,6 +337,12 @@ export function getScanPaths(): { path: string; type: 'game' | 'iso' }[] {
   }));
 }
 
+export function resetGameData(): void {
+  db().prepare('DELETE FROM scanned_games').run();
+  db().prepare('DELETE FROM game_matches').run();
+  notifyGamesChanged();
+}
+
 export function saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): void {
   db().prepare('DELETE FROM game_scan_paths').run();
   for (const p of paths) {
