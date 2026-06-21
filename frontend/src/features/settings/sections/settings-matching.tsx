@@ -24,23 +24,23 @@ interface ScanStatus {
 interface ScanProgress {
   pluginId: string
   queryId: string
-  game_index?: number
-  total_games?: number
+  gameIndex?: number
+  totalGames?: number
   status: string
   queryTitle?: string
-  matched_count?: number
-  candidates_count?: number
-  errored_count?: number
+  matchedCount?: number
+  candidatesCount?: number
+  erroredCount?: number
   match?: {
-    media_item_id: string
+    mediaItemId: string
     title: string
     confidence: number
-    poster_url?: string
+    posterUrl?: string
   }
   candidates?: Array<{
     title: string
     confidence: number
-    poster_url?: string
+    posterUrl?: string
   }>
 }
 
@@ -65,24 +65,47 @@ export function MatchingScanSection() {
   // Subscribe to per-game progress events — drive the progress bar
   useEffect(() => {
     if (!api?.onMatchingProgress) return
-    const unsub = api.onMatchingProgress((event: ScanProgress) => {
-      // Track match results for display
-      if (event.match) {
+    const unsub = api.onMatchingProgress((event: any) => {
+      // Map backend snake_case to frontend camelCase
+      const mapped: ScanProgress = {
+        pluginId: event.pluginId,
+        queryId: event.query_id || event.queryId,
+        gameIndex: event.game_index ?? event.gameIndex,
+        totalGames: event.total_games ?? event.totalGames,
+        status: event.status,
+        queryTitle: event.query_title || event.queryTitle,
+        matchedCount: event.matched_count ?? event.matchedCount,
+        candidatesCount: event.candidates_count ?? event.candidatesCount,
+        erroredCount: event.errored_count ?? event.erroredCount,
+        match: event.match ? {
+          mediaItemId: event.match.media_item_id || event.match.mediaItemId,
+          title: event.match.title,
+          confidence: event.match.confidence,
+          posterUrl: event.match.poster_url || event.match.posterUrl,
+        } : undefined,
+        candidates: event.candidates?.map((c: any) => ({
+          title: c.title,
+          confidence: c.confidence,
+          posterUrl: c.poster_url || c.posterUrl,
+        })),
+      }
+      // Store match results for display
+      if (mapped.match) {
         setMatchResults(prev => ({
           ...prev,
-          [event.queryTitle || event.queryId]: {
-            matchedTitle: event.match!.title,
-            confidence: event.match!.confidence,
-            posterUrl: event.match!.poster_url,
+          [mapped.queryTitle || mapped.queryId]: {
+            matchedTitle: mapped.match!.title,
+            confidence: mapped.match!.confidence,
+            posterUrl: mapped.match!.posterUrl,
           },
         }))
       }
       // Update progress counts from SSE event data
       setMatchProgress(prev => ({
-        total: event.total_games ?? prev?.total ?? 0,
-        matched: event.matched_count ?? prev?.matched ?? 0,
-        candidates: event.candidates_count ?? prev?.candidates ?? 0,
-        failed: event.errored_count ?? prev?.failed ?? 0,
+        total: mapped.totalGames ?? prev?.total ?? 0,
+        matched: mapped.matchedCount ?? prev?.matched ?? 0,
+        candidates: mapped.candidatesCount ?? prev?.candidates ?? 0,
+        failed: mapped.erroredCount ?? prev?.failed ?? 0,
       }))
     })
     return () => unsub?.()
@@ -93,10 +116,10 @@ export function MatchingScanSection() {
     if (!api?.onMatchingComplete) return
     const unsub = api.onMatchingComplete((event: any) => {
       setMatchProgress({
-        total: event.total_games ?? event.total ?? 0,
-        matched: event.matched_count ?? event.matched ?? 0,
-        candidates: event.unmatched_count ?? event.candidates ?? 0,
-        failed: event.errored_count ?? event.failed ?? 0,
+        total: event.total_games ?? event.totalGames ?? event.total ?? 0,
+        matched: event.matched_count ?? event.matchedCount ?? event.matched ?? 0,
+        candidates: event.unmatched_count ?? event.candidatesCount ?? event.candidates ?? 0,
+        failed: event.errored_count ?? event.erroredCount ?? event.failed ?? 0,
       })
       setTimeout(() => { try { setMatchProgress(null) } catch {} }, 5000)
     })
