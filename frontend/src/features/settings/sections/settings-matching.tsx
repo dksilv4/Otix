@@ -222,6 +222,83 @@ export function MatchingScanSection() {
           </div>
         </div>
       )}
+
+      {/* All scanned games list */}
+      <ScannedGamesList refreshTrigger={Object.keys(matchResults).length} />
+    </div>
+  )
+}
+
+function ScannedGamesList({ refreshTrigger }: { refreshTrigger: number }) {
+  const [games, setGames] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const api = window.desktopAPI
+
+  useEffect(() => {
+    if (!api?.getScannedGamesFiltered) return
+    setLoading(true)
+    api.getScannedGamesFiltered({}).then((data: any[]) => {
+      setGames(data || [])
+    }).finally(() => setLoading(false))
+  }, [refreshTrigger, api])
+
+  if (!api?.getScannedGamesFiltered) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-center">
+        <Gamepad2 className="h-8 w-8 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">Desktop app required to view scanned games.</p>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return <div className="py-4 text-center text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading games...</div>
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="mt-6 py-8 text-center border border-dashed rounded-lg">
+        <p className="text-sm text-muted-foreground">No scanned games yet. Scan a game library above.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6">
+      <h4 className="font-medium text-foreground mb-3">All Scanned Games ({games.length})</h4>
+      <div className="space-y-2 max-h-96 overflow-y-auto">
+        {games.map((game: any) => (
+          <div key={game.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
+            {(game.otixPosterUrl || game.posterUrl) && (
+              <img src={game.otixPosterUrl || game.posterUrl} alt="" className="w-10 h-14 rounded object-cover shrink-0" />
+            )}
+            {!(game.otixPosterUrl || game.posterUrl) && (
+              <div className="w-10 h-14 rounded bg-white/10 flex items-center justify-center shrink-0">
+                <Gamepad2 className="h-5 w-5 text-white/30" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{game.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {game.platform}
+                {game.otixMediaTitle && <> → {game.otixMediaTitle}</>}
+              </p>
+            </div>
+            {game.otixConfidence != null && (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                game.otixConfidence >= 0.95 ? 'bg-green-500/20 text-green-400' :
+                game.otixConfidence >= 0.85 ? 'bg-blue-500/20 text-blue-400' :
+                'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                {(game.otixConfidence * 100).toFixed(0)}%
+              </span>
+            )}
+            {game.otixMediaId && (
+              <span className="text-xs text-green-400/60 font-medium">matched</span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
