@@ -48,7 +48,7 @@ export function MatchingScanSection() {
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
   const [matchResults, setMatchResults] = useState<Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }>>({})
-  const [matchProgress, setMatchProgress] = useState<{ total: number; matched: number; candidates: number; failed: number } | null>(null)
+  const [matchProgress, setMatchProgress] = useState<Record<string, { total: number; matched: number; candidates: number; failed: number }>>({})
   const api = window.desktopAPI
 
   // Load matching:scan slot plugins
@@ -58,10 +58,11 @@ export function MatchingScanSection() {
     })
   }, [api])
 
-  // Subscribe to per-game progress events — drive the progress bar
+  // Subscribe to per-game progress events — per-plugin tracking
   useEffect(() => {
     if (!api?.onMatchingProgress) return
     const unsub = api.onMatchingProgress((event: ScanProgress) => {
+      const pid = event.pluginId
       // Store match results for display
       if (event.match) {
         setMatchResults(prev => ({
@@ -73,28 +74,24 @@ export function MatchingScanSection() {
           },
         }))
       }
-      // Accumulate progress counts from per-game status, use totalGames from backend
-      setMatchProgress(prev => ({
-        total: event.totalGames ?? (prev?.total ?? 0) + 1,
-        matched: (prev?.matched ?? 0) + (event.status === 'matched' ? 1 : 0),
-        candidates: (prev?.candidates ?? 0) + ((event.status === 'candidates' || event.status === 'unmatched') ? 1 : 0),
-        failed: (prev?.failed ?? 0) + ((event.status === 'failed' || event.status === 'error') ? 1 : 0),
-      }))
     })
     return () => unsub?.()
   }, [api])
 
-  // Subscribe to scan completion — set final counts, clear after delay
+  // Subscribe to scan completion — set final counts per plugin
   useEffect(() => {
     if (!api?.onMatchingComplete) return
     const unsub = api.onMatchingComplete((event: any) => {
-      setMatchProgress({
-        total: event.total_games ?? event.totalGames ?? event.total ?? 0,
-        matched: event.matched_count ?? event.matchedCount ?? event.matched ?? 0,
-        candidates: event.unmatched_count ?? event.candidatesCount ?? event.candidates ?? 0,
-        failed: event.errored_count ?? event.erroredCount ?? event.failed ?? 0,
-      })
-      setTimeout(() => { try { setMatchProgress(null) } catch {} }, 5000)
+      const pid = event.pluginId
+      setMatchProgress(prev => ({
+        ...prev,
+        [pid]: {
+          total: event.total_games ?? event.totalGames ?? event.total ?? 0,
+          matched: event.matched_count ?? event.matchedCount ?? event.matched ?? 0,
+          candidates: event.unmatched_count ?? event.candidatesCount ?? event.candidates ?? 0,
+          failed: event.errored_count ?? event.erroredCount ?? event.failed ?? 0,
+        },
+      }))
     })
     return () => unsub?.()
   }, [api])
@@ -103,7 +100,7 @@ export function MatchingScanSection() {
     setScanning(prev => ({ ...prev, [pluginId]: true }))
     setScanErrors(prev => ({ ...prev, [pluginId]: null }))
     setMatchResults({})
-    setMatchProgress(null)
+    setMatchProgress(prev => { const next = { ...prev }; delete next[pluginId]; return next })
     try {
       await api?.scanPlugin?.(pluginId)
     } catch (err: any) {
@@ -187,57 +184,30 @@ export function MatchingScanSection() {
                 </a>
               </div>
             </div>
+            {/* Per-plugin progress bar */}
+            {matchProgress[plugin.pluginId] && (
+              <div className="border-t border-white/5 mt-3 pt-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/50">{matchProgress[plugin.pluginId].matched + matchProgress[plugin.pluginId].candidates + matchProgress[plugin.pluginId].failed}/{matchProgress[plugin.pluginId].total} games</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden flex">
+                  <div className="h-full bg-green-500 transition-all" style={{ width: `${(matchProgress[plugin.pluginId].matched / Math.max(1, matchProgress[plugin.pluginId].total)) * 100}%` }} />
+                  <div className="h-full bg-yellow-500 transition-all" style={{ width: `${(matchProgress[plugin.pluginId].candidates / Math.max(1, matchProgress[plugin.pluginId].total)) * 100}%` }} />
+                  <div className="h-full bg-red-500 transition-all" style={{ width: `${(matchProgress[plugin.pluginId].failed / Math.max(1, matchProgress[plugin.pluginId].total)) * 100}%` }} />
+                </div>
+                <div className="flex gap-3 text-[0.625rem] text-white/40">
+                  <span><span className="text-green-500">●</span> {matchProgress[plugin.pluginId].matched} matched</span>
+                  <span><span className="text-yellow-500">●</span> {matchProgress[plugin.pluginId].candidates} candidates</span>
+                  <span><span className="text-red-500">●</span> {matchProgress[plugin.pluginId].failed} failed</span>
+                </div>
+              </div>
+            )}
           </div>
         )
       })}
 
-      {/* Matching progress bar */}
-      {matchProgress && (
-        <div className="rounded-xl overflow-hidden bg-white/[0.03] border border-white/[0.06] p-4 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/70 font-medium">Matching games</span>
-            <span className="text-white/40">
-              {matchProgress.matched + matchProgress.candidates + matchProgress.failed}/{matchProgress.total}
-              {matchProgress.total > 0 && (
-                <span className="ml-1 text-white/30">
-                  ({Math.round(((matchProgress.matched + matchProgress.candidates + matchProgress.failed) / matchProgress.total) * 100)}%)
-                </span>
-              )}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-white/5 overflow-hidden flex">
-            <div
-              className="h-full bg-green-500 transition-all duration-300 ease-out"
-              style={{ width: `${(matchProgress.matched / Math.max(1, matchProgress.total)) * 100}%` }}
-              title={`Matched: ${matchProgress.matched}`}
-            />
-            <div
-              className="h-full bg-yellow-500 transition-all duration-300 ease-out"
-              style={{ width: `${(matchProgress.candidates / Math.max(1, matchProgress.total)) * 100}%` }}
-              title={`Candidates: ${matchProgress.candidates}`}
-            />
-            <div
-              className="h-full bg-red-500 transition-all duration-300 ease-out"
-              style={{ width: `${(matchProgress.failed / Math.max(1, matchProgress.total)) * 100}%` }}
-              title={`Failed: ${matchProgress.failed}`}
-            />
-          </div>
-          <div className="flex gap-4 text-xs text-white/40">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500" /> {matchProgress.matched} matched
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-yellow-500" /> {matchProgress.candidates} candidates
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500" /> {matchProgress.failed} failed
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Match results summary — shown after scan completes */}
-      {Object.keys(matchResults).length > 0 && !matchProgress && (
+      {Object.keys(matchResults).length > 0 && Object.keys(matchProgress).length === 0 && (
         <div className="mt-4">
           <h4 className="font-medium text-foreground mb-2">Match Results</h4>
           <div className="space-y-2 max-h-80 overflow-y-auto">
