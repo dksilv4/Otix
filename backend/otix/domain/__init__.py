@@ -47,6 +47,7 @@ from otix.domain.media_rating import MediaItemRating
 from otix.domain.mood import UserMoodCheckIn
 from otix.domain.notification import Notification
 from otix.domain.people import MediaCredit, Person, UserPersonFollow
+from otix.domain.push_subscription import PushSubscription
 from otix.domain.review import Review
 from otix.domain.review_vote import ReviewVote
 from otix.domain.search_log import SearchLog
@@ -104,6 +105,7 @@ __all__ = [
     "Person",
     "Platform",
     "ProviderState",
+    "PushSubscription",
     "RefreshToken",
     "Review",
     "ReviewVote",

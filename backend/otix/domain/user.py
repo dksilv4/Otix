@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from otix.domain.mood import UserMoodCheckIn
     from otix.domain.notification import Notification
     from otix.domain.people import UserPersonFollow
+    from otix.domain.push_subscription import PushSubscription
     from otix.domain.review import Review
     from otix.domain.review_vote import ReviewVote
     from otix.domain.user_badge import UserBadge
@@ -180,6 +181,7 @@ class User(Base, TimestampMixin):
         "FriendRequest", foreign_keys="FriendRequest.receiver_id", back_populates="receiver"
     )
     notifications: Mapped[list[Notification]] = relationship("Notification", back_populates="user")
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(back_populates="user", cascade="all, delete-orphan")
     mood_checkins: Mapped[list[UserMoodCheckIn]] = relationship("UserMoodCheckIn", back_populates="user")
     ratings_given: Mapped[list[UserRating]] = relationship(
         "UserRating", foreign_keys="UserRating.rater_id", back_populates="rater"

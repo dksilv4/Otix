@@ -30,6 +30,22 @@ class NotificationService:
         )
         self.session.add(notification)
         await self.session.flush()
+
+        # Fire-and-forget push delivery
+        try:
+            from otix.services.push_service import PushService
+            from otix.services.vapid import vapid_private_key, get_vapid_public_key
+            push_service = PushService(self.session, vapid_private_key, get_vapid_public_key())
+            asyncio.create_task(push_service.send_notification(
+                user_id=notification.user_id,
+                title=notification.title,
+                body=notification.body,
+                type_=notification.type,
+                metadata=notification.metadata_json,
+            ))
+        except Exception:
+            pass
+
         return notification
 
     async def get_for_user(
