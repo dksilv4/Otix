@@ -8,6 +8,7 @@ import {
   upsertGames,
   ensureGameMatchesTable,
   hydrateGame,
+  notifyGamesChanged,
 } from './storage';
 import { scanAllLaunchers as scanHardcodedLaunchers } from './launchers';
 
@@ -377,6 +378,7 @@ export class GameScanOrchestrator extends EventEmitter {
                 data.match.poster_url || null,
                 data.match,
               );
+              notifyGamesChanged();
             }
           }
         } else if (eventType === 'complete') {
