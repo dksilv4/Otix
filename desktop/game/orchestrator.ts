@@ -380,7 +380,7 @@ export class GameScanOrchestrator extends EventEmitter {
 
       try {
         if (eventType === 'game-progress') {
-          const data = JSON.parse(dataStr);
+          const data = JSON.parse(dataStr) as any;
           const event: GameProgressEvent = {
             pluginId,
             queryId: data.query_id,
@@ -422,7 +422,7 @@ export class GameScanOrchestrator extends EventEmitter {
             }
           }
         } else if (eventType === 'complete') {
-          this.emit('game:matching:complete', { pluginId, ...JSON.parse(dataStr) });
+          this.emit('game:matching:complete', { pluginId, ...JSON.parse(dataStr) as Record<string, unknown> });
         }
       } catch (err) {
         console.error('[GameScanOrchestrator] Failed to parse SSE event:', err);

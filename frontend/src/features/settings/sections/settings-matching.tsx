@@ -24,23 +24,18 @@ interface ScanStatus {
 interface ScanProgress {
   pluginId: string
   queryId: string
-  gameIndex?: number
-  totalGames?: number
   status: string
   queryTitle?: string
-  matchedCount?: number
-  candidatesCount?: number
-  erroredCount?: number
   match?: {
-    mediaItemId: string
+    media_item_id: string
     title: string
     confidence: number
-    posterUrl?: string
+    poster_url?: string
   }
   candidates?: Array<{
     title: string
     confidence: number
-    posterUrl?: string
+    poster_url?: string
   }>
 }
 
@@ -65,56 +60,25 @@ export function MatchingScanSection() {
   // Subscribe to per-game progress events — drive the progress bar
   useEffect(() => {
     if (!api?.onMatchingProgress) return
-    const unsub = api.onMatchingProgress((event: any) => {
-      // Map backend snake_case to frontend camelCase
-      const mapped: ScanProgress = {
-        pluginId: event.pluginId,
-        queryId: event.query_id || event.queryId,
-        gameIndex: event.game_index ?? event.gameIndex,
-        totalGames: event.total_games ?? event.totalGames,
-        status: event.status,
-        queryTitle: event.query_title || event.queryTitle,
-        matchedCount: event.matched_count ?? event.matchedCount,
-        candidatesCount: event.candidates_count ?? event.candidatesCount,
-        erroredCount: event.errored_count ?? event.erroredCount,
-        match: event.match ? {
-          mediaItemId: event.match.media_item_id || event.match.mediaItemId,
-          title: event.match.title,
-          confidence: event.match.confidence,
-          posterUrl: event.match.poster_url || event.match.posterUrl,
-        } : undefined,
-        candidates: event.candidates?.map((c: any) => ({
-          title: c.title,
-          confidence: c.confidence,
-          posterUrl: c.poster_url || c.posterUrl,
-        })),
-      }
+    const unsub = api.onMatchingProgress((event: ScanProgress) => {
       // Store match results for display
-      if (mapped.match) {
+      if (event.match) {
         setMatchResults(prev => ({
           ...prev,
-          [mapped.queryTitle || mapped.queryId]: {
-            matchedTitle: mapped.match!.title,
-            confidence: mapped.match!.confidence,
-            posterUrl: mapped.match!.posterUrl,
+          [event.queryTitle || event.queryId]: {
+            matchedTitle: event.match.title,
+            confidence: event.match.confidence,
+            posterUrl: event.match.poster_url,
           },
         }))
       }
-      // Update progress counts from SSE event data
-      setMatchProgress(prev => {
-        const gameIndex = mapped.gameIndex ?? 0
-        const totalGames = mapped.totalGames ?? prev?.total ?? 0
-        // Use gameIndex+1 for processed count, accumulate status counts
-        const m = prev?.matched ?? 0
-        const c = prev?.candidates ?? 0
-        const f = prev?.failed ?? 0
-        return {
-          total: totalGames,
-          matched: m + (mapped.status === 'matched' ? 1 : 0),
-          candidates: c + ((mapped.status === 'candidates' || mapped.status === 'unmatched') ? 1 : 0),
-          failed: f + (mapped.status === 'failed' || mapped.status === 'error' ? 1 : 0),
-        }
-      })
+      // Accumulate progress counts from per-game status
+      setMatchProgress(prev => ({
+        total: (prev?.total ?? 0) + 1,
+        matched: (prev?.matched ?? 0) + (event.status === 'matched' ? 1 : 0),
+        candidates: (prev?.candidates ?? 0) + ((event.status === 'candidates' || event.status === 'unmatched') ? 1 : 0),
+        failed: (prev?.failed ?? 0) + ((event.status === 'failed' || event.status === 'error') ? 1 : 0),
+      }))
     })
     return () => unsub?.()
   }, [api])
