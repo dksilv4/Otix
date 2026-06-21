@@ -16,6 +16,7 @@ interface ScanPlugin {
 
 interface ScanStatus {
   connected: boolean
+  displayName?: string
   label?: string
   lastScanAt?: number
   lastScanTotal?: number
@@ -150,7 +151,7 @@ export function MatchingScanSection() {
                 <h4 className="font-medium text-foreground">{plugin.label}</h4>
                 <p className="text-sm text-muted-foreground">
                   {status?.connected
-                    ? `Connected as ${status.label || status.connected}`
+                    ? `Connected as ${status.displayName || status.display_name || status.label || status.connected}`
                     : 'Not connected'}
                 </p>
                 {status?.lastScanAt && (
