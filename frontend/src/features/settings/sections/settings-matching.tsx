@@ -1,8 +1,5 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Shuffle, Loader2, RefreshCw, Gamepad2 } from 'lucide-react'
-import { GameMatchingSection } from './settings-game-matching'
-import { PluginSlot } from '../components/organisms/settings-plugin-slot'
-import { getPluginAPI } from '../components/organisms/settings-plugin-settings'
 
 // ── MatchingScanSection types ────────────────────────────────────────────
 
@@ -51,7 +48,13 @@ export function MatchingScanSection() {
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
   const [matchResults, setMatchResults] = useState<Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }>>({})
+  const progressEndRef = useRef<HTMLDivElement>(null)
   const api = window.desktopAPI
+
+  // Auto-scroll progress to bottom when new entries appear
+  useEffect(() => {
+    progressEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [progress])
 
   // Load matching:scan slot plugins
   useEffect(() => {
@@ -188,6 +191,7 @@ export function MatchingScanSection() {
                 <span className="text-xs text-muted-foreground ml-auto">{event.status}</span>
               </div>
             ))}
+            <div ref={progressEndRef} />
           </div>
         </div>
       )}
@@ -240,8 +244,6 @@ export function MatchingSection() {
       </div>
 
       <MatchingScanSection />
-
-      <GameMatchingSection />
     </div>
   )
 }
