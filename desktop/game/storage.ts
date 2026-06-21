@@ -210,6 +210,7 @@ export function hydrateGame(
   iconUrl: string | null,
   posterUrl: string | null,
   fullData: Record<string, unknown> | null,
+  confidence?: number | null,
 ): void {
   db().prepare(
     `UPDATE scanned_games SET
@@ -217,9 +218,10 @@ export function hydrateGame(
       otix_icon_url = ?,
       otix_poster_url = ?,
       otix_data = ?,
+      otix_confidence = ?,
       updated_at = datetime('now')
     WHERE id = ?`
-  ).run(title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, id);
+  ).run(title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, confidence ?? null, id);
 }
 
 export function getMatchedGames(): { id: string; otix_media_id: string; title: string }[] {

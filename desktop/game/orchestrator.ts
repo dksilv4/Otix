@@ -416,7 +416,9 @@ export class GameScanOrchestrator extends EventEmitter {
                 data.match.icon_url || null,
                 data.match.poster_url || null,
                 data.match,
-              );
+              ),
+              data.match.confidence,
+            );
               notifyGamesChanged();
             }
           }
