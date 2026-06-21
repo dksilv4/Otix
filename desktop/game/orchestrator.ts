@@ -212,19 +212,19 @@ export class GameScanOrchestrator extends EventEmitter {
         errors: [err.message],
       };
     }
-
-    // Save all scanned games to scanned_games table so library UI has them
-    if (scanned.length > 0) {
-      upsertGames(scanned.map(g => ({
-        id: g.platform + '_' + g.id,
-        title: g.title,
-        exePath: g.exePath || '',
-        installDir: g.installPath || '',
-        platform: g.platform as any,
-        posterUrl: g.posterUrl || undefined,
-        iconUrl: g.posterUrl || undefined,
-        sources: [{ source: g.platform, id: g.id }],
-      })));
+
+    // Save all scanned games to scanned_games table so library UI has them
+    if (scanned.length > 0) {
+      upsertGames(scanned.map(g => ({
+        id: g.platform + '_' + g.id,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: g.platform as any,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.posterUrl || undefined,
+        sources: [{ source: g.platform, id: g.id }],
+      })));
     }
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
@@ -241,6 +241,29 @@ export class GameScanOrchestrator extends EventEmitter {
       if (!found) {
         needsMatch.push(game);
       }
+    }
+
+    // Hydrate already-matched games from local cache (no SSE call needed)
+    for (const game of matched) {
+      const scannedGameId = game.platform + '_' + game.id;
+      for (const eid of game.externalIds) {
+        const match = getGameMatch(eid.source, eid.id);
+        if (match && match.otixMediaId) {
+          hydrateGame(
+            scannedGameId,
+            match.otixTitle || game.title,
+            null,
+            match.otixPosterUrl || null,
+            { media_item_id: match.otixMediaId, title: match.otixTitle, poster_url: match.otixPosterUrl, confidence: match.otixConfidence },
+          );
+          break;
+        }
+      }
+    }
+
+    // Notify frontend that cached matches now have Otix images
+    if (matched.length > 0) {
+      notifyGamesChanged();
     }
 
     if (needsMatch.length > 0) {
