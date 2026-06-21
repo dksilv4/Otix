@@ -1,17 +1,26 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/client'
+import type { NotificationListResponse } from '../types'
 import { useAuth } from '@/lib/providers/auth'
-import { notificationQueries } from '../queries'
 
 export function useNotifications() {
   const { isAuthenticated } = useAuth()
   const observerRef = useRef<IntersectionObserver | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect()
+    }
+  }, [])
+
   const query = useInfiniteQuery({
     queryKey: ['notifications', 'list'],
     queryFn: async ({ pageParam }) => {
       const params = pageParam as string | undefined
-      const result = await notificationQueries.list(params).queryFn()
+      const result = await apiClient.get<NotificationListResponse>('/notifications', {
+        params: { limit: 20, ...(params ? { cursor: params } : {}) },
+      }).then(({ data }) => data)
       return result
     },
     initialPageParam: undefined as string | undefined,
