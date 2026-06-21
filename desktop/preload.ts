@@ -50,6 +50,10 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('deep-link', handler);
     return () => ipcRenderer.removeListener('deep-link', handler);
   },
+
+  // ── Notifications ──
+  showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) =>
+    ipcRenderer.invoke('notifications:show', opts),
   scanPaths: (paths: string[], isoPaths: string[]) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
   launchGame: (game: LocalGame) => ipcRenderer.invoke('launcher:launch-game', game),
@@ -95,6 +99,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   updateGamePath: (id: string, exePath: string, installDir?: string) =>
     ipcRenderer.invoke('scanner:update-game-path', id, exePath, installDir),
   acceptSuggestion: (gameId: string, suggestion: unknown) => ipcRenderer.invoke('scanner:accept-suggestion', gameId, suggestion),
+  unmatchGame: (gameId: string) => ipcRenderer.invoke('scanner:unmatch-game', gameId),
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => ipcRenderer.invoke('scanner:reject-suggestion', gameId, suggestionMediaId),
   onGamesDbChanged: (callback: () => void) => {
     const handler = () => callback();
@@ -234,28 +239,55 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     return () => ipcRenderer.removeListener('installer:install-progress', handler);
   },
 
-  // ── AI Addon ──
-  aiGetStatus: () => ipcRenderer.invoke('ai:get-status'),
-  aiGetDownloadProgress: () => ipcRenderer.invoke('ai:get-download-progress'),
-  aiGetLoadingProgress: () => ipcRenderer.invoke('ai:get-loading-progress'),
-  aiDownloadModel: () => ipcRenderer.invoke('ai:download-model'),
-  aiDeleteModel: () => ipcRenderer.invoke('ai:delete-model'),
-  aiChat: (messages: { role: 'user' | 'model'; content: string }[]) => ipcRenderer.invoke('ai:chat', messages),
-  aiGetSystemPrompt: () => ipcRenderer.invoke('ai:get-system-prompt'),
-  aiSetSystemPrompt: (prompt: string) => ipcRenderer.invoke('ai:set-system-prompt', prompt),
-  onAiDownloadProgress: (callback: (p: number) => void) => {
-    const handler = (_event: any, p: number) => callback(p);
-    ipcRenderer.on('ai:download-progress', handler);
-    return () => ipcRenderer.removeListener('ai:download-progress', handler);
+  // ── Plugin system ──
+  plugin: {
+    list: () => ipcRenderer.invoke('plugin:list'),
+    get: (id: string) => ipcRenderer.invoke('plugin:get', id),
+    install: (repoUrl: string, pluginPath?: string) => ipcRenderer.invoke('plugin:install', repoUrl, pluginPath),
+    uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id),
+    update: (id: string) => ipcRenderer.invoke('plugin:update', id),
+    enable: (id: string) => ipcRenderer.invoke('plugin:enable', id),
+    disable: (id: string) => ipcRenderer.invoke('plugin:disable', id),
+    reload: (id: string) => ipcRenderer.invoke('plugin:reload', id),
+    discover: () => ipcRenderer.invoke('plugin:discover'),
+    getConfig: (pluginId: string) => ipcRenderer.invoke('plugin:get-config', pluginId),
+    setConfig: (pluginId: string, key: string, value: unknown) => ipcRenderer.invoke('plugin:set-config', pluginId, key, value),
+    respondToPermission: (requestId: string, response: any) => ipcRenderer.invoke('plugin:respond-permission', requestId, response),
+    emitEvent: (eventName: string, payload: unknown) => ipcRenderer.invoke('plugin:emit-event', eventName, payload),
+    onPermissionRequest: (callback: (request: any) => void) => {
+      const handler = (_event: any, request: any) => callback(request);
+      ipcRenderer.on('plugin:permission-request', handler);
+      return () => ipcRenderer.removeListener('plugin:permission-request', handler);
+    },
+    setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token),
+    getApiBaseUrl: () => ipcRenderer.invoke('plugin:get-api-base-url'),
+    setApiBaseUrl: (url: string) => ipcRenderer.invoke('plugin:set-api-base-url', url),
+    testInstance: (url: string, apiKey: string) => ipcRenderer.invoke('plugin:test-instance', url, apiKey),
+    testConfig: (pluginId: string, configDraft: Record<string, unknown>) => ipcRenderer.invoke('plugin:test-config', pluginId, configDraft),
+    callData: (pluginId: string, method: string, ...args: unknown[]) =>
+      ipcRenderer.invoke('plugin:call-data', pluginId, method, ...args),
+    getStatus: (pluginId: string) => ipcRenderer.invoke('plugin:get-status', pluginId),
+    fetchMarketplace: (registryUrl?: string) => ipcRenderer.invoke('plugin:fetch-marketplace', registryUrl),
+    getRepos: () => ipcRenderer.invoke('plugin:get-repos'),
+    addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
+    removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
+    openOAuthWindow: (url: string, redirectPattern: string) => ipcRenderer.invoke('plugin:open-oauth-window', url, redirectPattern),
+    getSlotData: (location: string) => ipcRenderer.invoke('plugin:get-slot-data', location),
+    getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
+    getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
   },
-  onAiLoadingProgress: (callback: (p: number) => void) => {
-    const handler = (_event: any, p: number) => callback(p);
-    ipcRenderer.on('ai:loading-progress', handler);
-    return () => ipcRenderer.removeListener('ai:loading-progress', handler);
+
+  // ── Plugin game matching ──
+  scanAllPlugins: () => ipcRenderer.invoke('scanner:scan-all-plugins'),
+  scanPlugin: (pluginId: string) => ipcRenderer.invoke('scanner:scan-plugin', pluginId),
+  onMatchingProgress: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:matching:progress', handler);
+    return () => ipcRenderer.removeListener('game:matching:progress', handler);
   },
-  onAiStatusChanged: (callback: (s: any) => void) => {
-    const handler = (_event: any, s: any) => callback(s);
-    ipcRenderer.on('ai:status-changed', handler);
-    return () => ipcRenderer.removeListener('ai:status-changed', handler);
+  onMatchingComplete: (callback: (event: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('game:matching:complete', handler);
+    return () => ipcRenderer.removeListener('game:matching:complete', handler);
   },
 });

@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Check, Loader2, XCircle } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
-import { apiClient } from '@/lib/api-client'
-import { extractErrorMessage } from '../utils'
-import { AuthCard } from '../molecules/auth-card'
+import { apiClient } from '@/lib/api/client'
+import { AuthBackground } from '@auth/components/atoms/auth-background'
+import { AuthCard } from '@auth/components/molecules/auth-card'
+import { extractErrorMessage } from '@auth/utils'
 
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface ServiceCfg {
   name: string
@@ -31,6 +32,50 @@ const SERVICES: Record<string, ServiceCfg> = {
     buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
     successNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
     errorNav: { to: '/settings', search: { section: 'integrations' }, replace: true },
+  },
+  'spotify-login': {
+    name: 'Spotify', endpoint: '/auth/spotify/callback', loadingColor: '#1DB954',
+    validateParams: (p) =>
+      p.get('error') ? 'Spotify authorization was denied.' :
+      !p.get('code') || !p.get('state') ? 'Spotify did not return the expected authorization details.' : null,
+    buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
+    onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    successNav: { to: '/', replace: true },
+    errorNav: { to: '/auth/login', replace: true },
+  },
+  'plex-login': {
+    name: 'Plex', endpoint: '/auth/plex/callback', loadingColor: '#BA5D2E',
+    buildBody: (p) => ({ state: p.get('state'), pinId: p.get('pinId') || undefined }),
+    onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    successNav: { to: '/', replace: true },
+    errorNav: { to: '/auth/login', replace: true },
+  },
+  'tmdb-login': {
+    name: 'TMDb', endpoint: '/auth/tmdb/callback', loadingColor: '#01b4e4',
+    validateParams: (p) => {
+      if (p.get('tmdb_link') === 'error') return p.get('message') || 'Failed to sign in with TMDb.'
+      if (p.get('approved') === 'false') return 'TMDb authorization was cancelled.'
+      return null
+    },
+    buildBody: (p) => {
+      if (p.get('tmdb_link') === 'success') return null
+      const state = p.get('state')
+      const requestToken = p.get('request_token')
+      return state && requestToken ? { state, request_token: requestToken } : null
+    },
+    onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    successNav: { to: '/', replace: true },
+    errorNav: { to: '/auth/login', replace: true },
+  },
+  'google-login': {
+    name: 'Google', endpoint: '/auth/google/callback', loadingColor: '#4285F4',
+    validateParams: (p) =>
+      p.get('error') ? 'Google authorization was denied.' :
+      !p.get('code') || !p.get('state') ? 'Google did not return the expected authorization details.' : null,
+    buildBody: (p) => ({ code: p.get('code'), state: p.get('state') }),
+    onSuccess: (data) => { localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken as string) },
+    successNav: { to: '/', replace: true },
+    errorNav: { to: '/auth/login', replace: true },
   },
   plex: {
     name: 'Plex', endpoint: '/auth/oauth/plex/callback',
@@ -137,8 +182,8 @@ export function CallbackPage() {
   const cfg = service ? SERVICES[service] : null
   if (!cfg) {
     return (
-      <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
-        <div className="dk-auth-bg" />
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <AuthBackground />
         <Helmet><title>Invalid - Otix</title></Helmet>
         <AuthCard>
           <p className="text-sm text-muted-foreground">Invalid callback URL.</p>
@@ -151,8 +196,8 @@ export function CallbackPage() {
   const desc = error ? error : done ? (cfg.successMsg ?? `Your ${cfg.name} account has been linked successfully.`) : (cfg.loadingMsg ?? `Verifying with ${cfg.name}...`)
 
   return (
-    <div id="callback-page" className="relative flex min-h-screen items-center justify-center p-4">
-      <div className="dk-auth-bg" />
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <AuthBackground />
       <Helmet><title>{error ? 'Link Failed' : title} - Otix</title></Helmet>
       <AuthCard>
         <div className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${done ? 'bg-green-500/10' : error ? 'bg-red-500/10' : 'bg-white/5'}`}>

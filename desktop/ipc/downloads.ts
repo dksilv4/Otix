@@ -8,7 +8,7 @@ import {
   getPathMappings, addPathMapping, removePathMapping,
   getTrackedGames, scheduledUpdateCheck,
 } from '../downloads';
-import { previewNamingTemplate, validateNamingTemplate } from '../auto-organizer';
+import { previewNamingTemplate, validateNamingTemplate } from '../downloads/organizer';
 
 export function registerDownloadsIPC(): void {
   ipcMain.handle('downloads:get-config', (_, userId: string) => {

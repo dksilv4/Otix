@@ -103,6 +103,41 @@ class EmbeddingService:
 
         return " ".join(parts)
 
+    def build_user_embedding_text(self, user) -> str:
+        """Build the text to embed for a user.
+
+        Combines username and bio.
+        """
+        parts = [f"Username: {user.username}"]
+        if user.bio:
+            parts.append(f"Bio: {user.bio}")
+        return ". ".join(parts)
+
+    def build_person_embedding_text(self, person) -> str:
+        """Build the text to embed for a person (actor, director, artist).
+
+        Combines name, biography, and genres.
+        """
+        parts = [f"Name: {person.name}"]
+        if person.biography:
+            parts.append(f"Biography: {person.biography}")
+        
+        if hasattr(person, "spotify_genres") and person.spotify_genres:
+            genres = [str(g) for g in person.spotify_genres if g]
+            if genres:
+                parts.append(f"Genres: {', '.join(genres)}")
+        return ". ".join(parts)
+
+    def build_company_embedding_text(self, company) -> str:
+        """Build the text to embed for a company.
+
+        Combines name and origin country.
+        """
+        parts = [f"Name: {company.name}"]
+        if company.origin_country:
+            parts.append(f"Country of Origin: {company.origin_country}")
+        return ". ".join(parts)
+
 
 def _apply_instruction(text: str, purpose: str) -> str:
     """Apply model-specific instruction prefix for asymmetric embedding.

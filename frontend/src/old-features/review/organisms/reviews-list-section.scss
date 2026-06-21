@@ -1,0 +1,73 @@
+@reference "../../../_tailwind-ref.css";
+
+.dk-review {
+  /* outer section — className prop provides outer spacing via cn() */
+}
+
+.dk-review__heading {
+  @apply text-lg font-semibold mb-3;
+}
+
+.dk-review__count {
+  @apply text-sm font-normal text-muted-foreground;
+}
+
+.dk-review__placeholder {
+  @apply rounded-2xl p-8 text-center;
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+}
+
+.dk-review__placeholder-text {
+  @apply text-sm text-muted-foreground;
+}
+
+.dk-review__placeholder-text--error {
+  @apply mb-3;
+}
+
+.dk-review__list {
+  @apply space-y-3;
+}
+
+/* ---------- skeleton loader ---------- */
+
+.dk-review__skeleton {
+  @apply rounded-2xl p-5 space-y-3;
+  background: var(--dk-surface-ghost);
+  box-shadow: var(--dk-shadow-xs);
+}
+
+.dk-review__skeleton-row {
+  @apply flex items-center gap-3;
+}
+
+.dk-review__skeleton-avatar {
+  @apply h-9 w-9 rounded-full animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-review__skeleton-meta {
+  @apply space-y-1.5;
+}
+
+.dk-review__skeleton-line {
+  @apply rounded-full animate-pulse;
+  background-color: var(--dk-surface-glass);
+}
+
+.dk-review__skeleton-line--name {
+  @apply h-3.5 w-24;
+}
+
+.dk-review__skeleton-line--date {
+  @apply h-3 w-16;
+}
+
+.dk-review__skeleton-line--full {
+  @apply h-4 w-full;
+}
+
+.dk-review__skeleton-line--short {
+  @apply h-4 w-2/3;
+}

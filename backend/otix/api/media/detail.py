@@ -23,6 +23,7 @@ from otix.services.admin_edit_service import AdminEditService
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
 from otix.services.plex_sync_service import get_user_plex_item
+from otix.services.rating_algorithm_service import compute_overall_rating
 from otix.services.steam_library_service import get_steam_playtime
 
 logger = structlog.get_logger()
@@ -161,6 +162,12 @@ async def get_media_item(
     item.credits = [c for c in item.credits if c.person is not None]
 
     result = MediaItemDetail.model_validate(item)
+
+    # Compute the blended overall rating if not yet cached on the model
+    if result.overall_rating is None:
+        overall_rating, overall_source = await compute_overall_rating(db, media_id)
+        result.overall_rating = overall_rating
+        result.overall_rating_source = overall_source
 
     # Filter watch providers from already-loaded data.
     # model_validate populated all countries — replace with this country only.

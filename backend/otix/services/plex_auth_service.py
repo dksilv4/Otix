@@ -35,8 +35,8 @@ def _plex_headers() -> dict[str, str]:
     }
 
 
-def _build_auth_url(code: str, state: str) -> str:
-    callback = f"{settings.frontend_base_url}/auth/plex/connect/callback"
+def _build_auth_url(code: str, state: str, callback: str | None = None) -> str:
+    callback = callback or f"{settings.frontend_base_url}/auth/plex/connect/callback"
     forward_url = f"{callback}?{urllib.parse.urlencode({'state': state})}"
     params = {
         "clientID": settings.plex_client_identifier,
@@ -82,6 +82,85 @@ async def build_plex_link_url(user_id: str | None = None) -> tuple[str, str, str
         payload["user_id"] = user_id
     await redis.set(_state_key(state), json.dumps(payload), ex=PIN_TTL)
     return _build_auth_url(code, state), state, pin_id
+
+
+async def build_plex_login_url() -> tuple[str, str, str]:
+    """Create a Plex PIN for login and return (auth_url, state, pin_id)."""
+    state = secrets.token_urlsafe(32)
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{PLEX_TV_BASE}/api/v2/pins",
+                params={"strong": "true"},
+                headers=_plex_headers(),
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.HTTPError as err:
+        logger.exception("plex pin creation failed")
+        raise HTTPException(status_code=502, detail="Unable to start Plex login. Please try again.") from err
+
+    pin_id = str(data.get("id") or "")
+    code = str(data.get("code") or "")
+    if not pin_id or not code:
+        logger.warning("plex pin response missing id or code", response=data)
+        raise HTTPException(status_code=502, detail="Plex returned an invalid response. Please try again.")
+
+    redis = await get_redis()
+    await redis.set(_state_key(state), json.dumps({"pin_id": pin_id, "flow": "login"}), ex=PIN_TTL)
+
+    login_callback = f"{settings.frontend_base_url}/auth/callback/plex-login"
+    auth_url = _build_auth_url(code, state, callback=login_callback)
+    return auth_url, state, pin_id
+
+
+async def find_or_create_plex_user(
+    session: AsyncSession,
+    plex_id: str,
+    username: str = "",
+    email: str = "",
+    thumb: str | None = None,
+    auth_token: str | None = None,
+) -> User:
+    """Find an existing user by plex_id or create a new one."""
+    user = await session.scalar(select(User).where(User.plex_id == plex_id))
+    if user is not None:
+        if not user.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is deactivated")
+        return user
+
+    base_username = re.sub(r"[^a-zA-Z0-9_-]", "", (username or email or f"plex_{plex_id[:8]}")[:64])
+    if not base_username:
+        base_username = f"plex_{plex_id[:8]}"
+
+    username_final = base_username
+    suffix = 1
+    while True:
+        existing = await session.scalar(select(User).where(User.username == username_final))
+        if existing is None:
+            break
+        username_final = f"{base_username}_{suffix}"
+        suffix += 1
+
+    from otix.services.auth.auth_service import hash_password
+
+    user_email = email or f"plex_{plex_id}@user.otix"
+    user = User(
+        email=user_email,
+        username=username_final,
+        hashed_password=hash_password(secrets.token_urlsafe(32)),
+        plex_id=plex_id,
+        plex_username=username or None,
+        plex_email=email or None,
+        plex_thumb=thumb,
+        plex_auth_token=auth_token,
+        is_verified=True,
+        avatar_url=thumb,
+    )
+    session.add(user)
+    await session.flush()
+    logger.info("plex user created", user_id=user.id, plex_id=plex_id)
+    return user
 
 
 async def _consume_state(state: str, pin_id: str | None = None) -> tuple[str, str | None]:

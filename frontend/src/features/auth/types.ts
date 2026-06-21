@@ -1,5 +1,3 @@
-// ── API / data types ──
-
 export interface User {
   id: string
   email: string
@@ -59,7 +57,7 @@ export interface AuthState {
   isLoading: boolean
   isAuthenticated: boolean
   twoFactorChallenge: TwoFactorChallenge | null
-  login: (identity: string, password: string) => Promise<void>
+  login: (identity: string, password: string) => Promise<LoginResponse>
   verifyTwoFactor: (code: string) => Promise<void>
   cancelTwoFactor: () => void
   register: (email: string, username: string, password: string, dateOfBirth: string) => Promise<void>
@@ -73,7 +71,7 @@ export type ForgotPasswordPageState = 'idle' | 'sending' | 'sent' | 'error'
 export type ResetPasswordPageState = 'idle' | 'submitting' | 'success' | 'error'
 export type VerifyEmailPageState = 'verifying' | 'success' | 'error' | 'sending'
 
-export type CallbackService = 'google' | 'plex' | 'spotify' | 'tmdb' | 'steam' | 'steam-connect'
+export type CallbackService = 'google' | 'google-login' | 'plex' | 'plex-login' | 'spotify' | 'spotify-login' | 'tmdb' | 'tmdb-login' | 'steam' | 'steam-connect'
 
 export interface StandardServiceConfig {
   endpoint: string

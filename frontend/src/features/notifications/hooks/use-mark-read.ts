@@ -1,0 +1,54 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/client'
+import type { NotificationListResponse, UnreadCount } from '../types'
+
+export function useMarkRead() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (notificationId: string) => {
+      await apiClient.post(`/notifications/${notificationId}/read`)
+    },
+    onMutate: async (notificationId) => {
+      const listKeys = qc
+        .getQueryCache()
+        .findAll({ queryKey: ['notifications', 'list'] })
+        .map((q) => q.queryKey)
+
+      const snapshots = listKeys.map((key) => ({
+        key,
+        data: qc.getQueryData<NotificationListResponse>(key),
+      }))
+
+      for (const { key, data } of snapshots) {
+        if (!data) continue
+        qc.setQueryData<NotificationListResponse>(key, {
+          ...data,
+          items: data.items.map((n) =>
+            n.id === notificationId ? { ...n, isRead: true } : n,
+          ),
+        })
+      }
+
+      const countKey = ['notifications', 'unread-count']
+      const prevCount = qc.getQueryData<UnreadCount>(countKey)
+      if (prevCount && prevCount.count > 0) {
+        qc.setQueryData<UnreadCount>(countKey, { count: prevCount.count - 1 })
+      }
+
+      return { snapshots, prevCount }
+    },
+    onError: (_err, _vars, context) => {
+      if (!context) return
+      for (const { key, data } of context.snapshots) {
+        if (data) qc.setQueryData(key, data)
+      }
+      if (context.prevCount) {
+        qc.setQueryData(['notifications', 'unread-count'], context.prevCount)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
+}

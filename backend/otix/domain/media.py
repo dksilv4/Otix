@@ -19,7 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
@@ -62,6 +62,8 @@ class MediaItem(Base, TimestampMixin):
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0)
+    overall_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    overall_rating_source: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     like_count: Mapped[int] = mapped_column(Integer, default=0)
     watchlist_count: Mapped[int] = mapped_column(Integer, default=0)
     watched_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -74,6 +76,12 @@ class MediaItem(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),
         CheckConstraint("completeness_score >= 0 AND completeness_score <= 1", name="ck_completeness_score"),
+        Index(
+            "ix_media_items_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
     # Type-specific backrefs
@@ -203,7 +211,6 @@ class Game(Base, HasExternalIDs):
         """Reconstruct store IDs from ExternalID entries for non-steam store providers."""
         store_providers = {
             "steam",
-            "epic",
             "gog",
             "origin",
             "uplay",
@@ -318,6 +325,9 @@ class ExternalID(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
+    confirmed_count: Mapped[int] = mapped_column(Integer, default=0)
+    confirmed_by: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
+    last_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     media_item: Mapped[MediaItem | None] = relationship(
         "MediaItem",
@@ -330,6 +340,30 @@ class ExternalID(Base):
         UniqueConstraint("provider", "external_id", "entity_type", name="uq_external_id_provider_ext"),
         Index("ix_external_ids_stubs", "provider", "media_item_id", "is_adult", "created_at"),
         Index("ix_external_id_entity", "entity_type", "entity_id"),
+    )
+
+
+class MatchSkip(Base):
+    """Track rejected match suggestions so they aren't re-suggested on re-scan.
+
+    When a user permanently rejects all match candidates for a game,
+    a row is inserted here. Phase 1 of the matching pipeline checks
+    this table and skips known-rejected external IDs.
+    """
+
+    __tablename__ = "match_skips"
+
+    id: Mapped[otix_pk]
+    provider: Mapped[str] = mapped_column(String(30), nullable=False)  # "epic", "steam", etc.
+    external_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    skipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    user_id: Mapped[otix_fk | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )  # None = global skip across all users
+
+    __table_args__ = (
+        UniqueConstraint("provider", "external_id", name="uq_match_skip_provider_ext"),
+        Index("ix_match_skip_provider_ext", "provider", "external_id"),
     )
 
 
