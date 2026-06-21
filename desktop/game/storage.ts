@@ -370,3 +370,89 @@ export function disposeService(): void {
   _disposeHooks = [];
   _notifyTarget = null;
 }
+
+// ── Game Matches (persistent, never cleaned on rescan) ──────────────
+
+export interface GameMatch {
+  source: string
+  sourceGameId: string
+  otixMediaId: string
+  otixTitle?: string
+  otixPosterUrl?: string
+  otixBackdropUrl?: string
+  otixIconUrl?: string
+  otixConfidence?: number
+  matchType: 'auto' | 'manual'
+  matchedAt?: string
+}
+
+export function ensureGameMatchesTable(): void {
+  db().exec(`
+    CREATE TABLE IF NOT EXISTS game_matches (
+      source TEXT NOT NULL,
+      source_game_id TEXT NOT NULL,
+      otix_media_id TEXT NOT NULL,
+      otix_title TEXT,
+      otix_poster_url TEXT,
+      otix_backdrop_url TEXT,
+      otix_icon_url TEXT,
+      otix_confidence REAL,
+      match_type TEXT NOT NULL DEFAULT 'auto',
+      matched_at DATETIME NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (source, source_game_id)
+    )
+  `);
+}
+
+export function upsertGameMatch(match: GameMatch): void {
+  db().prepare(`
+    INSERT OR REPLACE INTO game_matches
+      (source, source_game_id, otix_media_id, otix_title, otix_poster_url,
+       otix_backdrop_url, otix_icon_url, otix_confidence, match_type, matched_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+  `).run(
+    match.source, match.sourceGameId, match.otixMediaId,
+    match.otixTitle || null, match.otixPosterUrl || null,
+    match.otixBackdropUrl || null, match.otixIconUrl || null,
+    match.otixConfidence ?? null, match.matchType,
+  );
+}
+
+export function getGameMatch(source: string, sourceGameId: string): GameMatch | null {
+  const row = db().prepare(
+    'SELECT * FROM game_matches WHERE source = ? AND source_game_id = ?'
+  ).get(source, sourceGameId) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    source: row.source as string,
+    sourceGameId: row.source_game_id as string,
+    otixMediaId: row.otix_media_id as string,
+    otixTitle: (row.otix_title as string) || undefined,
+    otixPosterUrl: (row.otix_poster_url as string) || undefined,
+    otixBackdropUrl: (row.otix_backdrop_url as string) || undefined,
+    otixIconUrl: (row.otix_icon_url as string) || undefined,
+    otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
+    matchType: row.match_type as 'auto' | 'manual',
+    matchedAt: row.matched_at as string,
+  };
+}
+
+export function getAllGameMatches(): GameMatch[] {
+  const rows = db().prepare('SELECT * FROM game_matches ORDER BY matched_at DESC').all() as Record<string, unknown>[];
+  return rows.map(row => ({
+    source: row.source as string,
+    sourceGameId: row.source_game_id as string,
+    otixMediaId: row.otix_media_id as string,
+    otixTitle: (row.otix_title as string) || undefined,
+    otixPosterUrl: (row.otix_poster_url as string) || undefined,
+    otixBackdropUrl: (row.otix_backdrop_url as string) || undefined,
+    otixIconUrl: (row.otix_icon_url as string) || undefined,
+    otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
+    matchType: row.match_type as 'auto' | 'manual',
+    matchedAt: row.matched_at as string,
+  }));
+}
+
+export function deleteGameMatch(source: string, sourceGameId: string): void {
+  db().prepare('DELETE FROM game_matches WHERE source = ? AND source_game_id = ?').run(source, sourceGameId);
+}
