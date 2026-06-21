@@ -44,28 +44,36 @@ interface ScanProgress {
   }>
 }
 
-// ── Module-level store — survives component remounts across page navigations ──
-let _storedProgress: Record<string, { total: number; matched: number; candidates: number; failed: number }> = {}
-let _storedResults: Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }> = {}
+// ── Persisted store (localStorage) — survives full page reloads and SPA nav ──
+const STORAGE_KEY = 'otix:matching-progress'
+const RESULTS_KEY = 'otix:matching-results'
+function loadProgress() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') } catch { return {} } }
+function saveProgress(v: any) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)) } catch {} }
+function loadResults() { try { return JSON.parse(localStorage.getItem(RESULTS_KEY) || '{}') } catch { return {} } }
+function saveResults(v: any) { try { localStorage.setItem(RESULTS_KEY, JSON.stringify(v)) } catch {} }
 
 export function MatchingScanSection() {
   const [plugins, setPlugins] = useState<ScanPlugin[]>([])
   const [statuses, setStatuses] = useState<Record<string, ScanStatus>>({})
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
-  const [internalResults, setInternalResults] = useState(() => _storedResults)
-  const [internalProgress, setInternalProgress] = useState(() => _storedProgress)
+  const [internalResults, setInternalResults] = useState(loadResults)
+  const [internalProgress, setInternalProgress] = useState(loadProgress)
 
-  // Sync state setter to module-level store so it survives remounts
+  // Sync to localStorage for persistence across routes/reloads
   const setMatchResults = useCallback((v: any) => {
-    const next = typeof v === 'function' ? v(_storedResults) : v
-    _storedResults = next
-    setInternalResults(next)
+    setInternalResults((prev: any) => {
+      const next = typeof v === 'function' ? v(prev) : v
+      saveResults(next)
+      return next
+    })
   }, [])
   const setMatchProgress = useCallback((v: any) => {
-    const next = typeof v === 'function' ? v(_storedProgress) : v
-    _storedProgress = next
-    setInternalProgress(next)
+    setInternalProgress((prev: any) => {
+      const next = typeof v === 'function' ? v(prev) : v
+      saveProgress(next)
+      return next
+    })
   }, [])
   const matchResults = internalResults
   const matchProgress = internalProgress
