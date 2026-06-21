@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api._utils import (
     get_current_admin_user,
+    get_current_user,
     get_db,
     get_optional_user,
     resolve_country_code,
@@ -874,6 +875,7 @@ async def match_games_batch(
 async def match_games_stream(
     body: GameMatchBatchRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> StreamingResponse:
     """SSE stream of per-game match progress for the desktop orchestrator.
 
@@ -901,6 +903,7 @@ async def match_games_stream(
 async def confirm_match(
     body: ConfirmMatchRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ConfirmMatchResponse:
     """Confirm a match candidate or reject all suggestions.
 
