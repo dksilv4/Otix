@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { Loader2, Gamepad2, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 import { DkImage } from '@dk-ui/atoms/image'
 import { ProviderLogo } from '../components/atoms/provider-logo'
+import { ScannedGameModal } from '../components/organisms/settings-scanned-game-modal'
 
 export function SettingsScannedGamesPage() {
   const params = new URLSearchParams(window.location.search)
   const source = params.get('source') || ''
   const [games, setGames] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedGame, setSelectedGame] = useState<any | null>(null)
   const api = window.desktopAPI
 
   const fetchGames = useCallback(() => {
@@ -63,7 +65,7 @@ export function SettingsScannedGamesPage() {
             const isMatched = !!game.otixMediaId
             const confidence = game.otixConfidence
             return (
-              <div key={game.id} className="group relative aspect-[2/3] overflow-hidden rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <div key={game.id} onClick={() => setSelectedGame(game)} className="group relative aspect-[2/3] overflow-hidden rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
                 {/* Poster */}
                 {posterUrl ? (
                   <DkImage
@@ -124,6 +126,9 @@ export function SettingsScannedGamesPage() {
             )
           })}
         </div>
+      )}
+      {selectedGame && (
+        <ScannedGameModal game={selectedGame} onClose={() => setSelectedGame(null)} />
       )}
     </div>
   )
