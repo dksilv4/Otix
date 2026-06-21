@@ -38,6 +38,7 @@ export function MatchingScanSection() {
   const [statuses, setStatuses] = useState<Record<string, ScanStatus>>({})
   const [progress, setProgress] = useState<Record<string, ScanProgress>>({})
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
+  const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
   const api = window.desktopAPI
 
   // Load matching:scan slot plugins
@@ -67,8 +68,11 @@ export function MatchingScanSection() {
 
   const handleScan = useCallback(async (pluginId: string) => {
     setScanning(prev => ({ ...prev, [pluginId]: true }))
+    setScanErrors(prev => ({ ...prev, [pluginId]: null }))
     try {
       await api?.scanPlugin?.(pluginId)
+    } catch (err: any) {
+      setScanErrors(prev => ({ ...prev, [pluginId]: err?.message || 'Scan failed' }))
     } finally {
       setScanning(prev => ({ ...prev, [pluginId]: false }))
     }
@@ -122,6 +126,9 @@ export function MatchingScanSection() {
                     Last scan: {new Date(status.lastScanAt).toLocaleDateString()}
                     {status.lastScanTotal != null && ` — ${status.lastScanTotal} games`}
                   </p>
+                )}
+                {scanErrors[plugin.pluginId] && (
+                  <p className="text-xs text-red-400 mt-1">{scanErrors[plugin.pluginId]}</p>
                 )}
               </div>
               <button
@@ -180,7 +187,7 @@ export function MatchingSection() {
         </div>
       </div>
 
-      <PluginSlot location="matching:scan" pluginApi={getPluginAPI()!} />
+      <MatchingScanSection />
 
       <GameMatchingSection />
     </div>
