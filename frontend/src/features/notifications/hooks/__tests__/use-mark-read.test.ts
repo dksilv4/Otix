@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { createWrapper } from '@/test-utils'
+import { apiClient } from '@/lib/api/client'
 import { useMarkRead } from '../use-mark-read'
 
 vi.mock('@/lib/api/client', () => ({
@@ -10,9 +11,15 @@ vi.mock('@/lib/api/client', () => ({
 }))
 
 describe('useMarkRead', () => {
-  it('returns a mutation function', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('calls apiClient.post with the correct notification read endpoint', async () => {
     const { result } = renderHook(() => useMarkRead(), { wrapper: createWrapper() })
-    expect(result.current.mutate).toBeDefined()
-    expect(result.current.mutateAsync).toBeDefined()
+    result.current.mutate('test-notif-id')
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith('/notifications/test-notif-id/read')
+    })
   })
 })
