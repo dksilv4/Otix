@@ -1,3 +1,11 @@
+/**
+ * @deprecated Use matching:scan plugin slot instead.
+ * These hardcoded scanners remain for backward compatibility.
+ * Plugin-based scanners registered via matching:scan slot replace them.
+ * The GameScanOrchestrator (orchestrator.ts) still calls scanAllLaunchers
+ * and merges results alongside plugin scans.
+ */
+
 import * as fs from 'fs/promises';
 import { Dirent } from 'fs';
 import * as path from 'path';
