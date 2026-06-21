@@ -1,6 +1,6 @@
 // Epic Games Scanner plugin for Otix
 // Uses Epic's internal launcher API (launcherAppClient2) for OAuth + library scan.
-// No backend Epic endpoints. Matching via /media/match/batch.
+// No backend Epic endpoints. Matching handled by host GameScanOrchestrator via /media/match/stream.
 
 const https = require('https');
 const http = require('http');
