@@ -232,6 +232,8 @@ class GameMatcher:
                             status=status,
                             candidates_count=len(response.candidates),
                             auto_match=response.auto_match is not None,
+                            match=response.auto_match,
+                            candidates=response.candidates if response.candidates else None,
                         ).model_dump_json()
                     }\n\n"
                 )
