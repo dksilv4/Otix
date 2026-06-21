@@ -431,6 +431,8 @@ class StreamMatchEvent(BaseModel):
     status: str  # "matched" | "unmatched" | "error"
     candidates_count: int = 0
     auto_match: bool = False
+    match: GameMatchCandidate | None = None
+    candidates: list[GameMatchCandidate] | None = None
     error: str | None = None
 
 
