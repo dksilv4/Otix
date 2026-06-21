@@ -319,6 +319,14 @@ export class GameScanOrchestrator extends EventEmitter {
       let buffer = '';
 
       req.on('response', (res) => {
+        if (res.statusCode !== 200) {
+          let body = '';
+          res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          res.on('end', () => {
+            reject(new Error(`Backend returned ${res.statusCode}: ${body.slice(0, 200)}`));
+          });
+          return;
+        }
         res.on('data', (chunk: Buffer) => {
           buffer += chunk.toString();
           buffer = this.processSseBuffer(buffer, pluginId);
@@ -331,6 +339,11 @@ export class GameScanOrchestrator extends EventEmitter {
       req.on('error', (err) => {
         console.error('[GameScanOrchestrator] SSE stream error:', err.message);
         reject(err);
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('SSE stream request timed out'));
       });
 
       req.write(body);
