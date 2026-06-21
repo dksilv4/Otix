@@ -167,6 +167,11 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     return saveMatchCache(entries);
   });
 
+  // Reset all scanned game data and match records
+  ipcMain.handle('scanner:reset-game-data', () => {
+    gameService.resetGameData();
+  });
+
   // Pick an executable via native file dialog
   ipcMain.handle('scanner:pick-executable', async (_event, defaultPath?: string) => {
     const result = await dialog.showOpenDialog({

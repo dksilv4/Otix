@@ -91,6 +91,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   saveScannedGames: (games: unknown[]) => ipcRenderer.invoke('scanner:save-scanned-game', games),
   pickExecutable: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-executable', defaultPath),
   getScanPaths: () => ipcRenderer.invoke('scanner:get-scan-paths'),
+  resetGameData: () => ipcRenderer.invoke('scanner:reset-game-data'),
   saveScanPaths: (paths: unknown[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
   getLocalGamesMap: () => ipcRenderer.invoke('scanner:get-local-game-map'),
   saveLocalGamesMapEntry: (mediaId: string, game: unknown) => ipcRenderer.invoke('scanner:save-local-game-map-entry', mediaId, game),

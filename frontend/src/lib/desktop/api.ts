@@ -133,6 +133,7 @@ export interface DesktopAPI {
   scanPaths(scanPaths: string[], isoPaths: string[]): Promise<LocalGame[]>
   getScanPaths(): Promise<{ path: string; type: 'game' | 'iso' }[]>
   saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void>
+  resetGameData(): Promise<void>
   getScannedGames(): Promise<LocalGame[]>
   saveScannedGames(games: LocalGame[]): Promise<void>
   getLocalGamesMap(): Promise<Record<string, LocalGame>>
