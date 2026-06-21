@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 import unicodedata
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -34,6 +36,8 @@ from otix.schemas.media import (
     GameMatchRequest,
     GameMatchResponse,
     MatchType,
+    StreamCompleteEvent,
+    StreamMatchEvent,
 )
 from otix.services.external_id_service import ExternalIDService
 
@@ -184,6 +188,83 @@ class GameMatcher:
 
         # ── Phase 4: Assemble, rank, auto-match ─────────────────────────────
         return self._phase4_assemble(requests, all_candidates)
+
+    # ── SSE batch stream ────────────────────────────────────────────────────
+
+    async def match_batch_stream(
+        self,
+        requests: list[GameMatchRequest],
+    ) -> AsyncGenerator[str, None]:
+        """Async generator yielding SSE-formatted per-game match progress.
+
+        Yields an ``event: game-progress`` frame for each game as it is
+        processed, followed by a final ``event: complete`` frame with
+        aggregate statistics.
+
+        The caller (typically a FastAPI endpoint) wraps this generator in a
+        ``StreamingResponse(..., media_type="text/event-stream")``.
+        """
+        start = time.monotonic()
+        n = len(requests)
+        matched_count = 0
+        unmatched_count = 0
+        errored_count = 0
+
+        for i, req in enumerate(requests):
+            try:
+                response = await self.match_single(req)
+                has_match = response.auto_match is not None or bool(response.candidates)
+                status = "matched" if has_match else "unmatched"
+
+                if has_match:
+                    matched_count += 1
+                else:
+                    unmatched_count += 1
+
+                yield (
+                    f"event: game-progress\n"
+                    f"data: {
+                        StreamMatchEvent(
+                            game_index=i,
+                            total_games=n,
+                            query_id=req.query_id,
+                            query_title=req.title,
+                            status=status,
+                            candidates_count=len(response.candidates),
+                            auto_match=response.auto_match is not None,
+                        ).model_dump_json()
+                    }\n\n"
+                )
+            except Exception as exc:
+                errored_count += 1
+                logger.exception("match_batch_stream error", title=req.title)
+                yield (
+                    f"event: game-progress\n"
+                    f"data: {
+                        StreamMatchEvent(
+                            game_index=i,
+                            total_games=n,
+                            query_id=req.query_id,
+                            query_title=req.title,
+                            status='error',
+                            error=str(exc),
+                        ).model_dump_json()
+                    }\n\n"
+                )
+
+        duration_ms = int((time.monotonic() - start) * 1000)
+        yield (
+            f"event: complete\n"
+            f"data: {
+                StreamCompleteEvent(
+                    total_games=n,
+                    matched_count=matched_count,
+                    unmatched_count=unmatched_count,
+                    errored_count=errored_count,
+                    duration_ms=duration_ms,
+                ).model_dump_json()
+            }\n\n"
+        )
 
     # ── Phase 1: Direct external-ID resolution ──────────────────────────────
 

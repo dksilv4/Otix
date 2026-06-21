@@ -418,6 +418,32 @@ class ConfirmMatchResponse(BaseModel):
     error: str | None = None
 
 
+# ── SSE stream events for batch match progress ────────────────────
+
+
+class StreamMatchEvent(BaseModel):
+    """Emitted per game during a batch match SSE stream."""
+
+    game_index: int
+    total_games: int
+    query_id: str
+    query_title: str
+    status: str  # "matched" | "unmatched" | "error"
+    candidates_count: int = 0
+    auto_match: bool = False
+    error: str | None = None
+
+
+class StreamCompleteEvent(BaseModel):
+    """Emitted when a batch match SSE stream completes."""
+
+    total_games: int
+    matched_count: int
+    unmatched_count: int
+    errored_count: int
+    duration_ms: int
+
+
 # ── Backward-compat alias (old code expects GameMatchResult) ─────
 # Remove once all consumers updated to GameMatchResponse.
 GameMatchResult = GameMatchResponse

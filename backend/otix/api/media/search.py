@@ -9,6 +9,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,10 +20,12 @@ from otix.api._utils import (
     resolve_country_code,
 )
 from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key
+from otix.domain.media import MediaItem
 from otix.domain.user import User
 from otix.infrastructure.celery import app
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import async_session
+from otix.lib.levels import compute_level_info
 from otix.lib.media_rehydrate_progress import (
     channel_name,
     get_latest_progress,
@@ -38,7 +41,6 @@ from otix.schemas.media import (
     ExternalIDRef,
     GameMatchBatchRequest,
     GameMatchBatchResponse,
-    GameMatchCandidate,
     GameMatchRequest,
     GameMatchResponse,
     GenreOut,
@@ -49,11 +51,11 @@ from otix.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
     PersonSearchResult,
-    SeedFromTitlesRequest,
-    SeedFromTitlesResponse,
     ProviderSearchRequest,
     ProviderSearchResponse,
     ProviderSearchResult,
+    SeedFromTitlesRequest,
+    SeedFromTitlesResponse,
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
@@ -62,8 +64,6 @@ from otix.schemas.media import (
     SyncLocalGamesResponse,
     TrackSearchResult,
 )
-from otix.domain.media import MediaItem
-from otix.lib.levels import compute_level_info
 from otix.services.company_service import CompanyService
 from otix.services.external_id_service import ExternalIDService
 from otix.services.game_matcher import GameMatcher
@@ -349,7 +349,6 @@ async def search_companies(
 ) -> CompanySearchListResponse:
     """Search companies by name using hybrid vector-keyword queries."""
     query_embedding = await _call_embed_query(q)
-    
 
     service = CompanyService(db)
     companies = await service.search_companies(
@@ -588,6 +587,7 @@ async def search_grouped(
 
     async def _search_tracks_() -> tuple[list[TrackSearchResult], int]:
         from otix.domain.media import Track
+
         async with async_session() as session:
             count_q = select(func.count(Track.id)).where(Track.title.ilike(f"%{q}%"))
             total = await session.scalar(count_q) or 0
@@ -636,6 +636,7 @@ async def search_grouped(
 
     async def _search_people_() -> tuple[list[PersonSearchResult], int]:
         from otix.domain.people import Person
+
         async with async_session() as session:
             count_q = select(func.count(Person.id)).where(Person.name.ilike(f"%{q}%"), Person.embedding.isnot(None))
             total = await session.scalar(count_q) or 0
@@ -689,7 +690,6 @@ async def search_grouped(
 
             result = await session.scalars(stmt)
             users = list(result)
-            
 
             items = []
             for user in users:
@@ -870,6 +870,33 @@ async def match_games_batch(
     return GameMatchBatchResponse(matches=matches)
 
 
+@media_router.post("/match/stream")
+async def match_games_stream(
+    body: GameMatchBatchRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """SSE stream of per-game match progress for the desktop orchestrator.
+
+    Returns a ``text/event-stream`` response.  Each game emits an
+    ``event: game-progress`` frame with its match status.  A final
+    ``event: complete`` frame carries aggregate statistics.
+
+    Compatible with any SSE client — no special library needed beyond
+    standard ``EventSource`` or a plain ``fetch`` with streaming.
+    """
+    redis = await _get_redis()
+    matcher = GameMatcher(db, redis)
+    return StreamingResponse(
+        matcher.match_batch_stream(body.games),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @media_router.post("/match/confirm", response_model=ConfirmMatchResponse)
 async def confirm_match(
     body: ConfirmMatchRequest,
@@ -905,6 +932,8 @@ async def unlink_match(
     result = await svc.unlink(query_id)
     await db.commit()
     return result
+
+
 @media_router.post("/match-local-games")
 async def match_local_games(
     body: LocalGameMatchRequest,
