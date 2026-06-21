@@ -155,6 +155,15 @@ export interface DesktopAPI {
   // Disk
   getDiskSpace(): Promise<DiskInfo[]>
 
+  // Notifications
+  showNotification?: (opts: {
+    title: string
+    body?: string
+    icon?: string
+    type: string
+    metadata?: Record<string, unknown>
+  }) => Promise<void>
+
   // Sessions & playtime
   getRecentSessions(): Promise<RecentSession[]>
   getPlaytimeForGame(gameId: string): Promise<PlaytimeInfo | null>

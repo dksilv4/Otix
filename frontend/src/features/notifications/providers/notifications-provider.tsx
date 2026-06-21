@@ -10,6 +10,7 @@ import { createBadgeChannel } from '../channels/badge-channel'
 import { createSoundChannel } from '../channels/sound-channel'
 import { createWebChannel } from '../channels/web-channel'
 import { createToastChannel } from '../channels/toast-channel'
+import { createDesktopChannel } from '../channels/desktop-channel'
 import type { NotificationEvent, NotificationPreferences } from '../types'
 
 interface NotificationsProviderProps {
@@ -44,8 +45,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     router.registerChannel(createSoundChannel(prefs))
     router.registerChannel(createWebChannel(prefs))
     router.registerChannel(createToastChannel(prefs, (opts) => {
-      toast(opts)
+      toast({ title: opts.title, description: opts.description, variant: 'default' })
     }))
+
+    const desktopChannel = createDesktopChannel(prefs)
+    if (desktopChannel) router.registerChannel(desktopChannel)
     routerRef.current = router
   }, [prefs, queryClient, toast])
 

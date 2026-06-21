@@ -25,6 +25,7 @@ import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
 import { registerPluginIPC } from './ipc/plugins';
+import { registerNotificationIPC } from './ipc/notifications';
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
@@ -502,6 +503,9 @@ app.on('ready', async () => {
 
     // Register desktop settings IPC (needs window + tray references)
     registerDesktopSettingsIPC(mainWindow, tray)
+
+    // Register notification IPC
+    registerNotificationIPC(mainWindow)
 
     // Handle startMinimized: hide window immediately
     if (settings.startMinimized && tray) {

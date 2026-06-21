@@ -340,6 +340,9 @@ export interface IDesktopAPI {
   getAlwaysOnTop: () => Promise<boolean>;
   onMaximizedChanged: (callback: (maximized: boolean) => void) => () => void;
 
+  // ── Notifications ──
+  showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) => Promise<void>;
+
   // ── General ──
   openPath: (filePath: string) => Promise<string>;
   ping: () => Promise<string>;

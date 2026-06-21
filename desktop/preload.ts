@@ -50,6 +50,10 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('deep-link', handler);
     return () => ipcRenderer.removeListener('deep-link', handler);
   },
+
+  // ── Notifications ──
+  showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) =>
+    ipcRenderer.invoke('notifications:show', opts),
   scanPaths: (paths: string[], isoPaths: string[]) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
   launchGame: (game: LocalGame) => ipcRenderer.invoke('launcher:launch-game', game),
