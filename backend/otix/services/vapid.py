@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from pywebpush import _VapidUtil  # noqa: PLC2701 — private but stable for key generation
+from pywebpush import Vapid01
 
 
 def _ensure_vapid_keys() -> tuple[str, str]:
@@ -23,10 +23,10 @@ def _ensure_vapid_keys() -> tuple[str, str]:
         saved = json.loads(key_file.read_text())
         return saved["private_key"], saved["public_key"]
 
-    # Auto-generate on first boot
-    keys = _VapidUtil.generate_vapid_keys()
-    private = keys["private_key"]
-    public = keys["public_key"]
+    # Auto-generate on first boot using public API
+    v = Vapid01.generate_keys()
+    private = v.private_pem().decode()
+    public = v.public_pem().decode()
     key_file.write_text(json.dumps({"private_key": private, "public_key": public}))
 
     return private, public
