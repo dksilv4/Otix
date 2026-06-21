@@ -219,7 +219,7 @@ export class GameScanOrchestrator extends EventEmitter {
         title: g.title,
         exePath: g.exePath || '',
         installDir: g.installPath || '',
-        platform: g.platform,
+        platform: g.platform as any,
         posterUrl: g.posterUrl || undefined,
         iconUrl: g.posterUrl || undefined,
         sources: [{ source: g.platform, id: g.id }],
