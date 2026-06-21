@@ -438,7 +438,9 @@ async function performScan(ctx) {
         if (e.external_ids?.length) g.developerExternalIds = e.external_ids;
         const posterUrl = e.keyImages?.find((img) =>
           img.type === 'DieselStoreFrontWide' || img.type === 'Thumbnail'
-        )?.url;
+          || img.type === 'OfferImageWide' || img.type === 'DieselGameBox'
+          || img.type === 'DieselGameBoxTall' || img.type === 'featuredMedia'
+        )?.url || e.keyImages?.[0]?.url;
         if (posterUrl) g.posterUrl = posterUrl;
         const logoUrl = e.keyImages?.find((img) =>
           img.type === 'DieselGameBoxLogo'

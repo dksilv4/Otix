@@ -213,6 +213,9 @@ export class GameScanOrchestrator extends EventEmitter {
       };
     }
 
+    // Debug: log how many games have native posterUrl from the plugin
+    console.log(`[GameScanOrchestrator] Plugin ${pluginId} returned ${scanned.length} games, ${scanned.filter(g => g.posterUrl).length} with posterUrl`);
+
     // Save all scanned games to scanned_games table so library UI has them
     if (scanned.length > 0) {
       upsertGames(scanned.map(g => ({

@@ -44,17 +44,11 @@ interface ScanProgress {
 export function MatchingScanSection() {
   const [plugins, setPlugins] = useState<ScanPlugin[]>([])
   const [statuses, setStatuses] = useState<Record<string, ScanStatus>>({})
-  const [progress, setProgress] = useState<Record<string, ScanProgress>>({})
   const [scanning, setScanning] = useState<Record<string, boolean>>({})
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
   const [matchResults, setMatchResults] = useState<Record<string, { matchedTitle: string; confidence: number; posterUrl?: string }>>({})
-  const progressEndRef = useRef<HTMLDivElement>(null)
+  const [matchProgress, setMatchProgress] = useState<{ total: number; matched: number; candidates: number; failed: number } | null>(null)
   const api = window.desktopAPI
-
-  // Auto-scroll progress to bottom when new entries appear
-  useEffect(() => {
-    progressEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [progress])
 
   // Load matching:scan slot plugins
   useEffect(() => {
@@ -63,12 +57,11 @@ export function MatchingScanSection() {
     })
   }, [api])
 
-  // Subscribe to per-game progress events
+  // Subscribe to per-game progress events — drive the progress bar
   useEffect(() => {
     if (!api?.onMatchingProgress) return
     const unsub = api.onMatchingProgress((event: ScanProgress) => {
-      setProgress(prev => ({ ...prev, [event.queryId]: event }))
-      // Store match results for display
+      // Track match results for display
       if (event.match) {
         setMatchResults(prev => ({
           ...prev,
@@ -79,15 +72,31 @@ export function MatchingScanSection() {
           },
         }))
       }
+      // Update progress counts
+      setMatchProgress(prev => {
+        const base = prev || { total: 0, matched: 0, candidates: 0, failed: 0 }
+        if (!prev) base.total = 1 // first event — init
+        const statusCounts = {
+          total: base.total + (prev ? 0 : 0),
+          matched: base.matched + (event.status === 'matched' ? 1 : 0),
+          candidates: base.candidates + (event.status === 'candidates' ? 1 : 0),
+          failed: base.failed + (event.status === 'failed' ? 1 : 0),
+        }
+        // Infer total from the complete event's data
+        return statusCounts
+      })
     })
     return () => unsub?.()
   }, [api])
 
-  // Subscribe to scan completion — clear progress indicators
+  // Subscribe to scan completion — use final counts, clear after delay
   useEffect(() => {
     if (!api?.onMatchingComplete) return
-    const unsub = api.onMatchingComplete(() => {
-      setProgress({})
+    const unsub = api.onMatchingComplete((event: any) => {
+      if (event.total != null) {
+        setMatchProgress({ total: event.total, matched: event.matched || 0, candidates: event.candidates || 0, failed: event.failed || 0 })
+      }
+      setTimeout(() => setMatchProgress(null), 5000)
     })
     return () => unsub?.()
   }, [api])
@@ -184,29 +193,48 @@ export function MatchingScanSection() {
         )
       })}
 
-      {/* In-progress match events */}
-      {Object.entries(progress).length > 0 && (
-        <div className="mt-4">
-          <h4 className="font-medium text-foreground mb-2">Match Progress</h4>
-          <div className="space-y-1 max-h-40 overflow-y-auto text-sm">
-            {Object.entries(progress).map(([queryId, event]) => (
-              <div key={queryId} className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  event.status === 'matched' ? 'bg-green-500' :
-                  event.status === 'candidates' ? 'bg-yellow-500' :
-                  event.status === 'failed' ? 'bg-red-500' : 'bg-blue-500 animate-pulse'
-                }`} />
-                <span className="text-foreground">{event.queryTitle || queryId}</span>
-                <span className="text-xs text-muted-foreground ml-auto">{event.status}</span>
-              </div>
-            ))}
-            <div ref={progressEndRef} />
+      {/* Matching progress bar */}
+      {matchProgress && (
+        <div className="rounded-xl overflow-hidden bg-white/[0.03] border border-white/[0.06] p-4 space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-white/70 font-medium">Matching games</span>
+            <span className="text-white/40">
+              {matchProgress.matched + matchProgress.candidates + matchProgress.failed}/{matchProgress.total}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-white/5 overflow-hidden flex">
+            <div
+              className="h-full bg-green-500 transition-all duration-300 ease-out"
+              style={{ width: `${(matchProgress.matched / Math.max(1, matchProgress.total)) * 100}%` }}
+              title={`Matched: ${matchProgress.matched}`}
+            />
+            <div
+              className="h-full bg-yellow-500 transition-all duration-300 ease-out"
+              style={{ width: `${(matchProgress.candidates / Math.max(1, matchProgress.total)) * 100}%` }}
+              title={`Candidates: ${matchProgress.candidates}`}
+            />
+            <div
+              className="h-full bg-red-500 transition-all duration-300 ease-out"
+              style={{ width: `${(matchProgress.failed / Math.max(1, matchProgress.total)) * 100}%` }}
+              title={`Failed: ${matchProgress.failed}`}
+            />
+          </div>
+          <div className="flex gap-4 text-xs text-white/40">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-green-500" /> {matchProgress.matched} matched
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-yellow-500" /> {matchProgress.candidates} candidates
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500" /> {matchProgress.failed} failed
+            </span>
           </div>
         </div>
       )}
 
       {/* Match results summary — shown after scan completes */}
-      {Object.keys(matchResults).length > 0 && Object.entries(progress).length === 0 && (
+      {Object.keys(matchResults).length > 0 && !matchProgress && (
         <div className="mt-4">
           <h4 className="font-medium text-foreground mb-2">Match Results</h4>
           <div className="space-y-2 max-h-80 overflow-y-auto">
