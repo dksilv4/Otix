@@ -6,6 +6,7 @@ import {
   getGameMatch,
   upsertGameMatch,
   ensureGameMatchesTable,
+  hydrateGame,
 } from './storage';
 import { scanAllLaunchers as scanHardcodedLaunchers } from './launchers';
 
@@ -337,7 +338,7 @@ export class GameScanOrchestrator extends EventEmitter {
           };
           this.emit('game:matching:progress', event);
 
-          // If matched, persist to game_matches
+          // If matched, persist to game_matches and hydrate scanned_games
           if (data.status === 'matched' && data.match?.media_item_id) {
             const parts = data.query_id.split(':');
             const source = parts[0] || 'unknown';
@@ -353,6 +354,15 @@ export class GameScanOrchestrator extends EventEmitter {
                 otixConfidence: data.match.confidence,
                 matchType: 'auto',
               });
+              // Also hydrate scanned_games so library UI shows Otix covers
+              const scannedGameId = `${source}_${sourceGameId}`;
+              hydrateGame(
+                scannedGameId,
+                data.match.title,
+                data.match.icon_url || null,
+                data.match.poster_url || null,
+                data.match,
+              );
             }
           }
         } else if (eventType === 'complete') {
