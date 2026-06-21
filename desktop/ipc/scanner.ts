@@ -3,6 +3,7 @@ import { scanPaths } from '../game/scanner';
 import { scanAllLaunchers } from '../game/launchers';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
+import type { GameScanOrchestrator } from '../game/orchestrator';
 import {
   batchCheckMatchCache,
   saveMatchCache,
@@ -14,6 +15,12 @@ import { GameDetector } from '../game/detector';
 import http from 'http';
 
 const BACKEND_BASE = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
+
+let _orchestrator: GameScanOrchestrator | null = null;
+
+export function setScanOrchestrator(o: GameScanOrchestrator): void {
+  _orchestrator = o;
+}
 
 /**
  * Fire-and-forget: send UNSEEDED game titles to backend for IGDB seeding.
@@ -169,5 +176,22 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
       properties: ['openFile'],
     });
     return result.canceled ? null : result.filePaths[0];
+  });
+}
+
+// ── Plugin scan IPC handlers ──
+
+export function registerPluginScanIPC(): void {
+  if (!_orchestrator) {
+    console.warn('[registerPluginScanIPC] Orchestrator not set — skipping');
+    return;
+  }
+
+  ipcMain.handle('scanner:scan-all-plugins', async () => {
+    return await _orchestrator!.scanAll();
+  });
+
+  ipcMain.handle('scanner:scan-plugin', async (_event, pluginId: string) => {
+    return await _orchestrator!.scanPlugin(pluginId);
   });
 }

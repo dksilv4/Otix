@@ -499,6 +499,12 @@ export interface IDesktopAPI {
     removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
     openOAuthWindow: (url: string, redirectPattern: string) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
+
+  // ── Plugin game matching ──
+  scanAllPlugins: () => Promise<unknown>;
+  scanPlugin: (pluginId: string) => Promise<unknown>;
+  onMatchingProgress: (callback: (event: any) => void) => () => void;
+  onMatchingComplete: (callback: (event: any) => void) => () => void;
 }
 
 declare global {

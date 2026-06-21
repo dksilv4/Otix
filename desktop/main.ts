@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC } from './ipc/downloads';
 import { registerGamesIPC } from './ipc/games';
-import { registerScannerIPC } from './ipc/scanner';
+import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
@@ -24,7 +24,8 @@ import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
-import { registerPluginIPC } from './ipc/plugins';
+import { registerPluginIPC, wireOrchestratorEvents } from './ipc/plugins';
+import { GameScanOrchestrator } from './game/orchestrator';
 import { registerNotificationIPC } from './ipc/notifications';
 
 let mainWindow: BrowserWindow | null = null;
@@ -471,6 +472,19 @@ app.on('ready', async () => {
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
+
+    // ── Initialize GameScanOrchestrator ──
+    const orchestrator = new GameScanOrchestrator(pluginManager);
+    orchestrator.setApiBaseUrl(pluginManager.getApiBaseUrl());
+    // Wire auth token changes
+    const origSetAuth = pluginManager.setAuthToken.bind(pluginManager);
+    pluginManager.setAuthToken = (token: string) => {
+      origSetAuth(token);
+      orchestrator.setAuthToken(token);
+    };
+    setScanOrchestrator(orchestrator);
+    registerPluginScanIPC();
+    wireOrchestratorEvents(orchestrator, mainWindow!);
 
     // Fire-and-forget: discover and load enabled plugins (don't block window load)
     if (devExtensionsDir) {
