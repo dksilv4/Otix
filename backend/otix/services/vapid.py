@@ -24,7 +24,8 @@ def _ensure_vapid_keys() -> tuple[str, str]:
         return saved["private_key"], saved["public_key"]
 
     # Auto-generate on first boot using public API
-    v = Vapid01.generate_keys()
+    v = Vapid01()
+    v.generate_keys()
     private = v.private_pem().decode()
     public = v.public_pem().decode()
     key_file.write_text(json.dumps({"private_key": private, "public_key": public}))
