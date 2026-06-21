@@ -101,12 +101,20 @@ export function MatchingScanSection() {
         }))
       }
       // Update progress counts from SSE event data
-      setMatchProgress(prev => ({
-        total: mapped.totalGames ?? prev?.total ?? 0,
-        matched: mapped.matchedCount ?? prev?.matched ?? 0,
-        candidates: mapped.candidatesCount ?? prev?.candidates ?? 0,
-        failed: mapped.erroredCount ?? prev?.failed ?? 0,
-      }))
+      setMatchProgress(prev => {
+        const gameIndex = mapped.gameIndex ?? 0
+        const totalGames = mapped.totalGames ?? prev?.total ?? 0
+        // Use gameIndex+1 for processed count, accumulate status counts
+        const m = prev?.matched ?? 0
+        const c = prev?.candidates ?? 0
+        const f = prev?.failed ?? 0
+        return {
+          total: totalGames,
+          matched: m + (mapped.status === 'matched' ? 1 : 0),
+          candidates: c + ((mapped.status === 'candidates' || mapped.status === 'unmatched') ? 1 : 0),
+          failed: f + (mapped.status === 'failed' || mapped.status === 'error' ? 1 : 0),
+        }
+      })
     })
     return () => unsub?.()
   }, [api])
