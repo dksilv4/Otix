@@ -1,8 +1,8 @@
 import { useDesktopPlatform } from "@/lib/desktop/platform"
 import { UserMenu } from "@auth"
-import { ActivityModuleButton } from "@activity/components/atoms/nav-activity-button"
-import { NavPill } from "../atoms/nav-pill"
-import { NavSearch } from "./nav-search"
+import { ActivityModuleButton } from "@activity/components/atoms/activity-nav-button"
+import { NavPill } from "../atoms/navigation-pill"
+import { NavSearch } from "./navigation-search"
 
 interface NavPillRightProps {
   isPinned: boolean

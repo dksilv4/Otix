@@ -1,9 +1,9 @@
 import type { ReactNode } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { NavigationProvider } from "@navigation/providers/navigation-provider"
-import { NavPillLeft } from "../molecules/nav-pill-left"
-import { NavPillRight } from "../molecules/nav-pill-right"
-import { MenuDropdown } from "./nav-sidebar"
+import { NavPillLeft } from "../molecules/navigation-pill-left"
+import { NavPillRight } from "../molecules/navigation-pill-right"
+import { MenuDropdown } from "./navigation-sidebar"
 
 interface NavShellProps {
   children: ReactNode
