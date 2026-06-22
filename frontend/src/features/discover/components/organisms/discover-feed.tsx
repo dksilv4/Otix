@@ -1,15 +1,19 @@
 import { DiscoverHero } from './discover-hero'
-import { DiscoverTrailerHero } from './discover-trailer-hero'
 import { MediaSection } from './discover-media-section'
-import { TrendingTrailersSection } from './trending-trailers-section'
 
-/** Feed layout composing the hero carousel with personalized media sections. */
+/**
+ * Feed layout composing the hero carousel with personalized media sections.
+ *
+ * NOTE: Trending Trailers section is disabled because YouTube blocks iframe embeds
+ * on localhost/self-hosted domains with a sign-in wall. The sections were built
+ * (DiscoverTrailerHero, TrendingTrailersSection + TrailerVideoModal) and the backend
+ * endpoint /discover/trailers/trending works — they just can't play without a
+ * production domain that YouTube trusts. Re-enable when deploying to production.
+ */
 export function DiscoverFeed() {
   return (
     <div className="space-y-16">
       <DiscoverHero />
-      <DiscoverTrailerHero />
-      <TrendingTrailersSection />
       <MediaSection
         title="Popular Movies"
         mediaType="movie"

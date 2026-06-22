@@ -5,8 +5,8 @@ import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MEDIA_TYPE_LABEL, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
-import { HeroCard } from '@discover/components/molecules/hero-card'
-import { HeroIndicator } from '@discover/components/molecules/hero-indicator'
+import { HeroCard } from '@discover/components/molecules/discover-hero-card'
+import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
 
 const CONTENT_FADE = {
   initial: { opacity: 0, y: 16 },
