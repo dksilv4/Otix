@@ -6,9 +6,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { type ReactNode, useState, type ChangeEvent } from 'react'
-import { ErrorBoundary } from './ErrorBoundary'
-import { ErrorCard } from './ErrorCard'
-import { validateWidget } from './WidgetCatalog'
+import { ErrorBoundary } from './error-boundary'
+import { ErrorCard } from './error-card'
+import { validateWidget } from './widget-catalog'
 import type { SlotContribution, SlotWidget } from './types'
 import { DkButton } from '@/old-features/dk-ui/atoms/button'
 import { DkCard } from '@/old-features/dk-ui/molecules/card'
