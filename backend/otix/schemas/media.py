@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Self, Union
+from enum import StrEnum
+from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -134,6 +135,32 @@ class TrackSearchResult(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TrendingTrailerItem(BaseModel):
+    """A media item that has a trending YouTube trailer."""
+
+    id: str
+    media_type: str
+    title: str
+    slug: str
+    poster_url: str | None = None
+    textless_poster_url: str | None = None
+    backdrop_url: str | None = None
+    logo_url: str | None = None
+    release_date: date | None = None
+    popularity: float
+    avg_rating: float | None = None
+    rating_count: int = 0
+    overview: str | None = None
+    trailer_youtube_id: str = ""
+    trailer_url: str = ""
+
+    model_config = {"from_attributes": True}
+
+
+class TrendingTrailerResponse(PaginatedResponse):
+    items: list[TrendingTrailerItem]
+
+
 class MediaItemListResponse(PaginatedResponse):
     items: list[MediaItemSummary]
     tracks: list[TrackSearchResult] = Field(default_factory=list)
@@ -155,7 +182,7 @@ class PersonSearchResult(BaseModel):
 class StructuredSearchResponse(BaseModel):
     """Search results grouped by type, with tracks, people, and users."""
 
-    best_results: list[Union[MediaItemSummary, PersonSearchResult, UserSearchResult, TrackSearchResult]] = Field(
+    best_results: list[MediaItemSummary | PersonSearchResult | UserSearchResult | TrackSearchResult] = Field(
         default_factory=list
     )
     movies: list[MediaItemSummary] = Field(default_factory=list)
@@ -327,10 +354,8 @@ class LocalGameMatchResponse(BaseModel):
 
 # ── Game matching (internal API / batch) ────────────────────────
 
-from enum import Enum
 
-
-class MatchType(str, Enum):
+class MatchType(StrEnum):
     """How a match candidate was found. Used for ranking and UI display."""
 
     DIRECT = "direct"  # external_ids table hit
@@ -362,6 +387,7 @@ class GameMatchRequest(BaseModel):
     release_date: date | None = None
     external_ids: list[ExternalIDRef] | None = None
     media_type: str = "game"
+    poster_url: str | None = None  # source store poster (Epic, GOG, etc.)
 
 
 class GameMatchCandidate(BaseModel):
@@ -433,6 +459,7 @@ class StreamMatchEvent(BaseModel):
     auto_match: bool = False
     match: GameMatchCandidate | None = None
     candidates: list[GameMatchCandidate] | None = None
+    proposal_status: str | None = None  # "approved" | "pending" — set when auto-matched
     error: str | None = None
 
 
