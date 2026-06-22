@@ -6,7 +6,7 @@ import { DkInput } from '@/old-features/dk-ui/atoms/input'
 import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { cn } from '@/lib/utils'
 import { Check, Shield, ShieldAlert, Loader2, Monitor } from 'lucide-react'
-import { SectionHeader } from '../components/section-header'
+import { SectionHeader } from '../components/molecules/settings-section-header'
 
 interface SessionInfo {
   sessionKey: string

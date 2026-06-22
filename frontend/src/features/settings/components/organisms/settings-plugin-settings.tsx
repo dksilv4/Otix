@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2, Puzzle, ExternalLink, Trash2, CheckCircle2, XCircle, AlertCircle, Download, RefreshCw, Settings, X, Lock, Store, ChevronDown, ShieldCheck, Database, ArrowUpCircle } from 'lucide-react'
 import { useModal, SlidePanel } from '@/lib/modals'
-import { PluginConfigPanel } from './PluginConfigPanel'
+import { PluginConfigPanel } from './settings-plugin-config-panel'
 import type { PluginInfo, PluginManifest, PluginConfigField } from '@/features/settings/types/plugins'
 
 // ── Types ─────────────────────────────────────────────────────────────────────

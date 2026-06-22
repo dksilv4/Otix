@@ -3,10 +3,12 @@ import { useState } from 'react'
 import { SlotRenderer, useSlotData, type PluginSettingsTab } from '@/features/_config/slots'
 
 interface PluginSettingsPageProps {
-  tab: PluginSettingsTab
+  tab?: PluginSettingsTab
 }
 
 export function PluginSettingsPage({ tab }: PluginSettingsPageProps) {
+  if (!tab) return <div className="p-6 text-center text-muted-foreground text-sm">No plugin settings available</div>
+
   const [activeSection, setActiveSection] = useState(tab.sections[0]?.id)
   const section = tab.sections.find(s => s.id === activeSection)
   const { data, isLoading } = useSlotData(`settings/${tab.id}`)

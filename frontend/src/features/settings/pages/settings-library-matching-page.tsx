@@ -1,4 +1,4 @@
-import { GameMatchingSection } from '../sections/game-matching'
+import { GameMatchingSection } from '../sections/settings-game-matching'
 
 export function SettingsLibraryMatchingPage() {
   return <GameMatchingSection />

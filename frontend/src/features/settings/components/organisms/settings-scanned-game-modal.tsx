@@ -11,7 +11,7 @@ export function ScannedGameModal({ game, onClose }: ScannedGameModalProps) {
   const confidence = game.otixConfidence
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
       <div className="w-full max-w-2xl rounded-xl bg-zinc-900 border border-white/10 overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/5">
