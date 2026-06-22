@@ -11,5 +11,5 @@ discover_router = APIRouter(prefix="/discover", tags=["discover"])
 
 discover_router.include_router(hero_router)
 discover_router.include_router(sections_router)
-discover_router.include_router(media_list_router)
 discover_router.include_router(trailers_router)
+discover_router.include_router(media_list_router)
