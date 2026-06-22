@@ -252,4 +252,10 @@ export function wireOrchestratorEvents(
       mainWindow.webContents.send('game:matching:complete', event);
     }
   });
+
+  orchestrator.on('game:matching:cancelled', () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:matching:cancelled');
+    }
+  });
 }

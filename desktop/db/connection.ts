@@ -22,6 +22,7 @@ export function getConnection(name: string): Database.Database {
   const dbPath = getDbPath(name)
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
   connections.set(name, db)
   return db
 }

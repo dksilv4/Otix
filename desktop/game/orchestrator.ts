@@ -6,8 +6,10 @@ import {
   getGameMatch,
   upsertGameMatch,
   upsertGames,
+  upsertGamesForPlatform,
   ensureGameMatchesTable,
   hydrateGame,
+  saveMatchSuggestion,
   notifyGamesChanged,
 } from './storage';
 import { scanAllLaunchers as scanHardcodedLaunchers } from './launchers';
@@ -24,6 +26,8 @@ export interface ScannedGame {
   exePath?: string
   posterUrl?: string
   logoUrl?: string
+  dlcOf?: string | null
+  rawMetadata?: Record<string, unknown>
 }
 
 export interface PluginScanResult {
@@ -72,6 +76,10 @@ export class GameScanOrchestrator extends EventEmitter {
   private apiBaseUrl = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
   private authToken = '';
   private _isScanning = false;
+  private _scanStartedAt: number | null = null;
+  private _activeRequest: http.ClientRequest | null = null;
+
+  get isScanning(): boolean { return this._isScanning; }
 
   constructor(
     private pluginManager: PluginManager,
@@ -83,7 +91,19 @@ export class GameScanOrchestrator extends EventEmitter {
   setAuthToken(token: string): void { this.authToken = token; }
 
   async scanAll(): Promise<ScanSummary> {
-    if (this._isScanning) throw new Error('Scan already in progress');
+    if (this._isScanning) {
+      console.warn('[GameScanOrchestrator] scanAll called while scan in progress — ignoring');
+      return {
+        pluginsScanned: 0,
+        totalGames: 0,
+        matched: 0,
+        unmatched: 0,
+        failed: 0,
+        startedAt: this._scanStartedAt || Date.now(),
+        completedAt: Date.now(),
+        pluginResults: [],
+      };
+    }
     this._isScanning = true;
     try {
     ensureGameMatchesTable();
@@ -108,6 +128,19 @@ export class GameScanOrchestrator extends EventEmitter {
           exePath: g.exePath,
           posterUrl: g.posterUrl,
         });
+      }
+      // Persist hardcoded launcher results per platform (platform-scoped, no cross-wipe)
+      if (r.games.length > 0) {
+        const platform = r.games[0].platform || 'pc';
+        upsertGamesForPlatform(r.games.map(g => ({
+          id: platform + '_' + g.id,
+          title: g.title,
+          exePath: g.exePath || '',
+          installDir: g.installDir || '',
+          platform: platform as any,
+          posterUrl: g.posterUrl || undefined,
+          sources: [{ source: platform, id: g.id }],
+        })), platform);
       }
     }
 
@@ -158,10 +191,39 @@ export class GameScanOrchestrator extends EventEmitter {
         unmatched: needsMatch.length,
       });
 
+      // 3b. Persist scanned games so hydrateGame has rows to update
+      if (scanned.length > 0) {
+        const scanPlatform = scanned[0].platform;
+        upsertGamesForPlatform(scanned.map(g => ({
+          id: g.platform + '_' + g.id,
+          title: g.title,
+          exePath: g.exePath || '',
+          installDir: g.installPath || '',
+          platform: g.platform as any,
+          posterUrl: g.posterUrl || undefined,
+          iconUrl: g.logoUrl || g.posterUrl || undefined,
+          sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
+        })), scanPlatform);
+      }
+
       // 4. Send unmatched to backend SSE
       if (needsMatch.length > 0) {
         await this.streamMatches(needsMatch, plugin.pluginId);
       }
+    }
+
+    // Final cleanup: remove games no longer present in ANY launcher
+    if (allGames.length > 0) {
+      upsertGames(allGames.map(g => ({
+        id: g.platform + '_' + g.id,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: g.platform as any,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.logoUrl || g.posterUrl || undefined,
+        sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
+      })));
     }
 
     return {
@@ -176,12 +238,32 @@ export class GameScanOrchestrator extends EventEmitter {
     };
   } finally {
     this._isScanning = false;
+    this._scanStartedAt = null;
+    this._activeRequest = null;
   }
   }
 
   async scanPlugin(pluginId: string): Promise<PluginScanResult> {
-    if (this._isScanning) throw new Error('Scan already in progress');
+    if (this._isScanning) {
+      // If scan was started more than 10 minutes ago, force reset
+      if (this._scanStartedAt && Date.now() - this._scanStartedAt > 600_000) {
+        console.warn('[GameScanOrchestrator] Force-resetting stuck scan lock');
+        this._isScanning = false;
+        this._activeRequest?.destroy();
+        this._activeRequest = null;
+      } else {
+        console.warn('[GameScanOrchestrator] scanPlugin called while scan in progress — ignoring, progress events still flowing');
+        return {
+          pluginId,
+          pluginLabel: pluginId,
+          totalGames: 0,
+          matched: 0,
+          unmatched: 0,
+        };
+      }
+    }
     this._isScanning = true;
+    this._scanStartedAt = Date.now();
     try {
     ensureGameMatchesTable();
     this.queryIdToGames.clear();
@@ -217,9 +299,11 @@ export class GameScanOrchestrator extends EventEmitter {
     // Debug: log how many games have native posterUrl from the plugin
     console.log(`[GameScanOrchestrator] Plugin ${pluginId} returned ${scanned.length} games, ${scanned.filter(g => g.posterUrl).length} with posterUrl`);
 
-    // Save all scanned games to scanned_games table so library UI has them
+    // Save all scanned games to scanned_games table so library UI has them.
+    // Use platform-scoped upsert so we don't wipe games from other plugins.
     if (scanned.length > 0) {
-      upsertGames(scanned.map(g => ({
+      const scanPlatform = scanned[0].platform;
+      upsertGamesForPlatform(scanned.map(g => ({
         id: g.platform + '_' + g.id,
         title: g.title,
         exePath: g.exePath || '',
@@ -227,8 +311,8 @@ export class GameScanOrchestrator extends EventEmitter {
         platform: g.platform as any,
         posterUrl: g.posterUrl || undefined,
         iconUrl: g.logoUrl || g.posterUrl || undefined,
-        sources: [{ source: g.platform, id: g.id }],
-      })));
+        sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
+      })), scanPlatform);
     }
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
@@ -259,6 +343,8 @@ export class GameScanOrchestrator extends EventEmitter {
             null,
             match.otixPosterUrl || null,
             { media_item_id: match.otixMediaId, title: match.otixTitle, poster_url: match.otixPosterUrl, confidence: match.otixConfidence },
+            match.otixConfidence,
+            match.otixMediaId,
           );
           break;
         }
@@ -283,7 +369,18 @@ export class GameScanOrchestrator extends EventEmitter {
     };
   } finally {
     this._isScanning = false;
+    this._activeRequest = null;
   }
+  }
+
+  cancelScan(): void {
+    if (!this._isScanning) return;
+    console.warn('[GameScanOrchestrator] Cancelling active scan');
+    this._activeRequest?.destroy();
+    this._activeRequest = null;
+    this._isScanning = false;
+    this._scanStartedAt = null;
+    this.emit('game:matching:cancelled', {});
   }
 
   private async streamMatches(games: ScannedGame[], pluginId: string): Promise<void> {
@@ -293,6 +390,7 @@ export class GameScanOrchestrator extends EventEmitter {
       developer: g.developer || null,
       publisher: g.publisher || null,
       release_year: g.releaseYear || null,
+      poster_url: g.posterUrl || null,
       external_ids: g.externalIds.length > 0 ? g.externalIds : [{ source: g.platform, id: g.id }],
       media_type: 'game',
     }));
@@ -320,6 +418,8 @@ export class GameScanOrchestrator extends EventEmitter {
         timeout: 120_000,
       });
 
+      this._activeRequest = req;
+
       let buffer = '';
 
       req.on('response', (res) => {
@@ -327,6 +427,7 @@ export class GameScanOrchestrator extends EventEmitter {
           let body = '';
           res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
           res.on('end', () => {
+            this._activeRequest = null;
             reject(new Error(`Backend returned ${res.statusCode}: ${body.slice(0, 200)}`));
           });
           return;
@@ -336,16 +437,21 @@ export class GameScanOrchestrator extends EventEmitter {
           buffer = this.processSseBuffer(buffer, pluginId);
         });
         res.on('end', () => {
+          this._activeRequest = null;
           resolve();
         });
       });
 
       req.on('error', (err) => {
+        // Ignore errors from cancelled requests (req.destroy() triggers an error)
+        if (this._activeRequest === null) return;
         console.error('[GameScanOrchestrator] SSE stream error:', err.message);
+        this._activeRequest = null;
         reject(err);
       });
 
       req.on('timeout', () => {
+        this._activeRequest = null;
         req.destroy();
         reject(new Error('SSE stream request timed out'));
       });
@@ -394,11 +500,13 @@ export class GameScanOrchestrator extends EventEmitter {
           };
           this.emit('game:matching:progress', event);
 
-          // If matched, persist to game_matches and hydrate scanned_games
+          const parts = data.query_id.split(':');
+          const source = parts[0] || 'unknown';
+          const sourceGameId = parts.slice(1).join(':') || data.query_id;
+          const scannedGameId = `${source}_${sourceGameId}`;
+
           if (data.status === 'matched' && data.match?.media_item_id) {
-            const parts = data.query_id.split(':');
-            const source = parts[0] || 'unknown';
-            const sourceGameId = parts.slice(1).join(':') || data.query_id;
+            // ── Auto-match: persist to game_matches + hydrate scanned_games ──
             for (const game of this.getGamesForQueryId(data.query_id)) {
               upsertGameMatch({
                 source,
@@ -409,20 +517,46 @@ export class GameScanOrchestrator extends EventEmitter {
                 otixBackdropUrl: data.match.backdrop_url,
                 otixConfidence: data.match.confidence,
                 matchType: 'auto',
+                status: 'pending',
               });
-              // Also hydrate scanned_games so library UI shows Otix covers
-              const scannedGameId = `${source}_${sourceGameId}`;
               hydrateGame(
                 scannedGameId,
                 data.match.title,
                 data.match.icon_url || null,
                 data.match.poster_url || null,
                 data.match,
-              data.match.confidence,
-            );
+                data.match.confidence,
+                data.match.media_item_id,
+              );
+              // Backend handles match proposal inline during matching
               notifyGamesChanged();
             }
+          } else if (data.status === 'matched' && data.candidates?.length > 0) {
+            // ── Candidates only (no auto_match): save as matchSuggestion ──
+            const best = data.candidates[0];
+            const suggestion = {
+              id: best.media_item_id || `${best.provider || 'igdb'}_${best.provider_id || scannedGameId}`,
+              title: best.title,
+              posterUrl: best.poster_url || null,
+              backdropUrl: best.backdrop_url || null,
+              developer: best.developer || null,
+              platforms: best.platforms || [],
+              confidence: best.confidence,
+              _candidates: data.candidates,
+            };
+            saveMatchSuggestion(scannedGameId, suggestion);
+            // Also hydrate with best poster for immediate visual feedback
+            hydrateGame(
+              scannedGameId,
+              best.title,
+              null,
+              best.poster_url || null,
+              { candidates: data.candidates, best_candidate: best },
+              best.confidence,
+            );
+            notifyGamesChanged();
           }
+          // unmatched → no persistence, frontend shows "unmatched" label
         } else if (eventType === 'complete') {
           this.emit('game:matching:complete', { pluginId, ...JSON.parse(dataStr) as Record<string, unknown> });
         }
@@ -432,6 +566,43 @@ export class GameScanOrchestrator extends EventEmitter {
     }
 
     return remaining;
+  }
+
+  // Fire-and-forget: submit match proposal to backend for admin review
+  private proposeOnBackend(
+    source: string, sourceGameId: string, mediaItemId: string,
+    sourceTitle: string, otixTitle: string, confidence: number,
+    matchType: string, developer?: string, releaseYear?: number,
+    posterUrl?: string,
+  ): void {
+    const url = new URL('/api/media/match/propose', this.apiBaseUrl);
+    const body = JSON.stringify({
+      query_id: `${source}:${sourceGameId}`,
+      media_item_id: mediaItemId,
+      source_title: sourceTitle,
+      developer: developer || null,
+      release_year: releaseYear || null,
+      poster_url: posterUrl || null,
+      otix_title: otixTitle,
+      otix_confidence: confidence,
+      match_type: matchType,
+    });
+
+    const req = http.request(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': this.authToken ? `Bearer ${this.authToken}` : '',
+      },
+      timeout: 15_000,
+    });
+
+    req.on('error', (err) => {
+      console.warn('[GameScanOrchestrator] proposeOnBackend failed (non-fatal):', err.message);
+    });
+
+    req.write(body);
+    req.end();
   }
 
   // Internal: track games per queryId for persistence
