@@ -1,16 +1,16 @@
 // TODO: Review this file
 import { useState, useMemo } from 'react'
-import type { AlbumDetail, TrackOut } from '../media-queries'
-import { useRateTrack } from '../media-queries'
+import type { AlbumDetail, TrackOut } from '../../../queries/media-queries'
+import { useRateTrack } from '../../../queries/media-queries'
 import { cn } from '@/lib/utils'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
-import { usePlayer } from '@/features/spotify/use-player'
-import type { PlexTrackInfo } from '@/features/spotify/plex-audio-provider'
+import { usePlayer } from '@/old-features/spotify/use-player'
+import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
 import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
-import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/features/library/library-queries'
-import { useToast } from '@/features/dk-ui/molecules/toast'
+import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
+import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 interface MusicSectionProps {
  album: AlbumDetail

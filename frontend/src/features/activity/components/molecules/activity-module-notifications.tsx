@@ -7,7 +7,7 @@ import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
 import { notificationQueries } from '@/features/notifications/queries'
 import { useMarkRead } from '@/features/notifications/hooks/use-mark-read'
 import { useMarkAllRead } from '@/features/notifications/hooks/use-mark-all-read'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 import type { Notification } from '@/features/notifications/types'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatTimeAgo } from '@/lib/utils'
