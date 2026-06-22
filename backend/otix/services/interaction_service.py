@@ -38,7 +38,7 @@ class InteractionService:
                 UserMediaInteraction.user_id == user_id,
                 UserMediaInteraction.media_item_id == media_item_id,
                 UserMediaInteraction.interaction_type == "listened",
-                UserMediaInteraction.extra_data["source"].as_string() == "youtube_liked_videos",
+                UserMediaInteraction.extra_data["source"].astext == "youtube_liked_videos",
             )
             .limit(1)
         )
@@ -210,6 +210,7 @@ class InteractionService:
         interaction_type: str,
         cursor: str | None = None,
         limit: int = 50,
+        source: str | None = None,
     ) -> tuple[list[MediaItem], bool, str | None]:
         query = (
             select(MediaItem, UserMediaInteraction.created_at)
@@ -231,6 +232,9 @@ class InteractionService:
                 MediaItem.id,
             )
         )
+
+        if source:
+            query = query.where(UserMediaInteraction.extra_data["source"].astext == source)
 
         if cursor:
             parts = cursor.split("__", 1)

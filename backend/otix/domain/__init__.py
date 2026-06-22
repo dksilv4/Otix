@@ -9,6 +9,7 @@ RULES:
 """
 
 from otix.domain.admin_edit import MediaEditProposal, MediaImageOverride, ProposalVote
+from otix.domain.proposal import Proposal
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection, CollectionItem
 from otix.domain.company import Company, InvolvedCompany
@@ -57,6 +58,7 @@ from otix.domain.user_badge import UserBadge
 from otix.domain.user_streak import UserStreak
 from otix.domain.watch_provider import MediaWatchProvider, WatchProvider
 from otix.domain.workout import Exercise, Workout, WorkoutExercise
+from otix.domain.youtube_liked_video import UserYoutubeLikedVideo
 
 __all__ = [
     "Album",
@@ -90,6 +92,7 @@ __all__ = [
     "MediaCredit",
     "MediaEditProposal",
     "MediaImageOverride",
+    "Proposal",
     "ProposalVote",
     "MediaGameMode",
     "MediaGenre",
@@ -133,4 +136,5 @@ __all__ = [
     "WatchProvider",
     "Workout",
     "WorkoutExercise",
+    "UserYoutubeLikedVideo",
 ]
