@@ -1,4 +1,7 @@
-import { ensureDb, _run, _get, _all } from '../db';
+import { getConnection } from '../db/connection';
+import { createMigrationService } from '../db/migration-service';
+import pluginsMigration001 from '../db/migrations/plugins/001_initial';
+import { PluginsRepository } from '../db/repositories/plugins';
 import {
   PluginInfo,
   PluginManifest,
@@ -8,157 +11,86 @@ import {
   PermissionDuration,
 } from './types';
 
+const repo = new PluginsRepository();
+
 export async function ensurePluginDb(): Promise<void> {
-  await ensureDb();
-
-  _run(`
-    CREATE TABLE IF NOT EXISTS plugin_registry (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      version TEXT NOT NULL,
-      description TEXT NOT NULL,
-      author TEXT NOT NULL,
-      repository TEXT,
-      source_path TEXT,
-      status TEXT NOT NULL DEFAULT 'installed',
-      manifest_json TEXT NOT NULL,
-      installed_at TEXT NOT NULL DEFAULT (datetime('now')),
-      enabled_at TEXT,
-      error TEXT
-    )
-  `);
-
-  // Migration for existing DBs that lack the source_path column
-  try { _run('ALTER TABLE plugin_registry ADD COLUMN source_path TEXT'); } catch (_) {}
-
-  _run(`
-    CREATE TABLE IF NOT EXISTS plugin_permissions (
-      id TEXT PRIMARY KEY,
-      plugin_id TEXT NOT NULL,
-      permission TEXT NOT NULL,
-      granted_at TEXT NOT NULL DEFAULT (datetime('now')),
-      duration TEXT NOT NULL DEFAULT 'always',
-      UNIQUE(plugin_id, permission)
-    )
-  `);
-
-  _run(`
-    CREATE TABLE IF NOT EXISTS plugin_repos (
-      url TEXT PRIMARY KEY,
-      label TEXT,
-      added_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `);
-
-  _run(`
-    CREATE TABLE IF NOT EXISTS plugin_config (
-      id TEXT PRIMARY KEY,
-      plugin_id TEXT NOT NULL,
-      key TEXT NOT NULL,
-      value TEXT,
-      UNIQUE(plugin_id, key)
-    )
-  `);
+  getConnection('plugins');
+  const svc = createMigrationService('plugins');
+  svc.runMigrations([pluginsMigration001]);
 }
 
 export function getAllPlugins(): PluginInfo[] {
-  const rows = _all('SELECT * FROM plugin_registry ORDER BY name ASC');
-  return rows.map(rowToPluginInfo);
+  return repo.getAll().map(rowToPluginInfo);
 }
 
 export function getPlugin(id: string): PluginInfo | null {
-  const row = _get('SELECT * FROM plugin_registry WHERE id = ?', [id]);
+  const row = repo.getById(id);
   return row ? rowToPluginInfo(row) : null;
 }
 
 export function insertPlugin(info: PluginInfo): void {
-  _run(
-    `INSERT OR REPLACE INTO plugin_registry
-     (id, name, version, description, author, repository, source_path, status, manifest_json, installed_at, enabled_at, error)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      info.id,
-      info.name,
-      info.version,
-      info.description,
-      info.author,
-      info.repository,
-      info.sourcePath || null,
-      info.status,
-      JSON.stringify(info.manifest),
-      info.installedAt,
-      info.enabledAt || null,
-      info.error || null,
-    ]
-  );
+  repo.insert({
+    id: info.id,
+    name: info.name,
+    version: info.version,
+    description: info.description,
+    author: info.author,
+    repository: info.repository || '',
+    source_path: info.sourcePath || null,
+    status: info.status,
+    manifest_json: JSON.stringify(info.manifest),
+    enabled_at: info.enabledAt || null,
+  });
 }
 
 export function updatePluginStatus(id: string, status: PluginStatus, error?: string): void {
   if (status === 'enabled') {
-    _run(
-      "UPDATE plugin_registry SET status = ?, enabled_at = datetime('now'), error = ? WHERE id = ?",
-      [status, error || null, id]
-    );
+    repo.setEnabled(id);
   } else {
-    _run(
-      'UPDATE plugin_registry SET status = ?, error = ? WHERE id = ?',
-      [status, error || null, id]
-    );
+    repo.updateStatus(id, status, error);
   }
 }
 
 export function updatePluginManifest(id: string, manifest: PluginManifest): void {
-  _run('UPDATE plugin_registry SET manifest_json = ? WHERE id = ?', [
-    JSON.stringify(manifest),
-    id,
-  ]);
+  const existing = repo.getById(id);
+  if (!existing) return;
+  repo.updateManifest(id, JSON.stringify(manifest), existing.version);
 }
 
 export function updatePluginVersion(id: string, version: string, manifest: PluginManifest): void {
-  _run('UPDATE plugin_registry SET version = ?, manifest_json = ? WHERE id = ?', [
-    version, JSON.stringify(manifest), id
-  ]);
+  repo.updateManifest(id, JSON.stringify(manifest), version);
 }
 
 export function deletePlugin(id: string): void {
-  _run('DELETE FROM plugin_permissions WHERE plugin_id = ?', [id]);
-  _run('DELETE FROM plugin_config WHERE plugin_id = ?', [id]);
-  _run('DELETE FROM plugin_registry WHERE id = ?', [id]);
+  repo.deleteAllPermissions(id);
+  repo.deleteAllConfig(id);
+  repo.delete(id);
 }
 
 export function getPluginRepos(): { url: string; label: string | null; added_at: string }[] {
-  const rows = _all('SELECT url, label, added_at FROM plugin_repos ORDER BY added_at');
-  return rows.map(row => ({
-    url: row.url as string,
-    label: (row.label as string) || null,
-    added_at: row.added_at as string,
-  }));
+  return repo.getRepos();
 }
 
 export function addPluginRepo(url: string, label?: string): void {
-  _run('INSERT OR REPLACE INTO plugin_repos (url, label) VALUES (?, ?)', [url, label || null]);
+  repo.addRepo(url, label);
 }
 
 export function removePluginRepo(url: string): void {
-  _run('DELETE FROM plugin_repos WHERE url = ?', [url]);
+  repo.removeRepo(url);
 }
 
 export function seedDefaultRepo(defaultUrl: string): void {
-  const existing = _all('SELECT url FROM plugin_repos');
+  const existing = repo.getRepos();
   if (existing.length === 0) {
-    _run('INSERT INTO plugin_repos (url, label) VALUES (?, ?)', [defaultUrl, 'Otix Default']);
+    repo.addRepo(defaultUrl, 'Otix Default');
   }
 }
 
 export function getGrantedPermissions(pluginId: string): PermissionGrant[] {
-  const rows = _all(
-    'SELECT * FROM plugin_permissions WHERE plugin_id = ?',
-    [pluginId]
-  );
-  return rows.map(row => ({
-    pluginId: row.plugin_id as string,
+  return repo.getPermissions(pluginId).map(row => ({
+    pluginId,
     permission: row.permission as PluginPermission,
-    grantedAt: row.granted_at as string,
+    grantedAt: row.granted_at,
     duration: (row.duration as PermissionDuration) || 'always',
   }));
 }
@@ -168,63 +100,42 @@ export function grantPermission(
   permission: PluginPermission,
   duration: PermissionDuration = 'always'
 ): void {
-  const id = `${pluginId}:${permission}`;
-  _run(
-    `INSERT OR REPLACE INTO plugin_permissions (id, plugin_id, permission, granted_at, duration)
-     VALUES (?, ?, ?, datetime('now'), ?)`,
-    [id, pluginId, permission, duration]
-  );
+  repo.grantPermission(pluginId, permission, duration);
 }
 
 export function revokePermission(pluginId: string, permission: PluginPermission): void {
-  _run(
-    'DELETE FROM plugin_permissions WHERE plugin_id = ? AND permission = ?',
-    [pluginId, permission]
-  );
+  repo.revokePermission(pluginId, permission);
 }
 
 export function revokeAllPermissions(pluginId: string): void {
-  _run('DELETE FROM plugin_permissions WHERE plugin_id = ?', [pluginId]);
+  repo.deleteAllPermissions(pluginId);
 }
 
 export function getPluginConfig(pluginId: string): Record<string, string> {
-  const rows = _all(
-    'SELECT key, value FROM plugin_config WHERE plugin_id = ?',
-    [pluginId]
-  );
-  const config: Record<string, string> = {};
-  for (const row of rows) {
-    config[row.key as string] = row.value as string;
-  }
-  return config;
+  return repo.getConfig(pluginId);
 }
 
 export function setPluginConfig(pluginId: string, key: string, value: string): void {
-  const id = `${pluginId}:${key}`;
-  _run(
-    `INSERT OR REPLACE INTO plugin_config (id, plugin_id, key, value)
-     VALUES (?, ?, ?, ?)`,
-    [id, pluginId, key, value]
-  );
+  repo.setConfig(pluginId, key, value);
 }
 
 export function clearPluginConfig(pluginId: string): void {
-  _run('DELETE FROM plugin_config WHERE plugin_id = ?', [pluginId]);
+  repo.deleteAllConfig(pluginId);
 }
 
-function rowToPluginInfo(row: Record<string, unknown>): PluginInfo {
+function rowToPluginInfo(row: import('../db/repositories/plugins').PluginRegistryRow): PluginInfo {
   return {
-    id: row.id as string,
-    name: row.name as string,
-    version: row.version as string,
-    description: row.description as string,
-    author: row.author as string,
-    repository: (row.repository as string) || '',
-    sourcePath: (row.source_path as string) || undefined,
+    id: row.id,
+    name: row.name,
+    version: row.version,
+    description: row.description,
+    author: row.author,
+    repository: row.repository || '',
+    sourcePath: row.source_path || undefined,
     status: row.status as PluginStatus,
-    error: (row.error as string) || undefined,
-    manifest: JSON.parse(row.manifest_json as string) as PluginManifest,
-    installedAt: row.installed_at as string,
-    enabledAt: (row.enabled_at as string) || undefined,
+    error: undefined,
+    manifest: JSON.parse(row.manifest_json) as PluginManifest,
+    installedAt: row.installed_at,
+    enabledAt: row.enabled_at || undefined,
   };
 }
