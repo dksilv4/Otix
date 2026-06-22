@@ -53,7 +53,7 @@ def _state_key(state: str) -> str:
 
 
 def _build_callback_url() -> str:
-    return f"{settings.frontend_base_url}/auth/google/connect/callback"
+    return f"{settings.frontend_base_url}/auth/callback/google"
 
 
 async def build_google_link_url(user_id: str | None = None) -> tuple[str, str]:
@@ -104,12 +104,12 @@ async def build_google_login_url() -> tuple[str, str]:
     return url, state
 
 
-async def exchange_code_for_tokens(code: str) -> dict:
+async def exchange_code_for_tokens(code: str, redirect_uri: str | None = None) -> dict:
     """Exchange an authorization code for access/refresh tokens.
 
     Returns dict with: access_token, refresh_token, expires_in, id_token
     """
-    callback = _build_callback_url()
+    callback = redirect_uri or _build_callback_url()
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(

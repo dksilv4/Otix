@@ -30,6 +30,7 @@ async def get_library_tab(
     request: Request,
     cursor: str | None = Query(None, description="Pagination cursor"),
     limit: int = Query(50, ge=1, le=100),
+    source: str | None = Query(None, description="Filter by interaction source (e.g. youtube_liked_videos)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MediaItemListResponse:
@@ -53,6 +54,7 @@ async def get_library_tab(
             interaction_type=interaction_type,
             cursor=cursor,
             limit=limit,
+            source=source,
         )
     except Exception:
         await db.rollback()

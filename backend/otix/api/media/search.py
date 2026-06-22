@@ -851,7 +851,7 @@ async def match_game(
     mutations occur — use ``POST /match/confirm`` to persist a match.
     """
     redis = await _get_redis()
-    matcher = GameMatcher(db, redis)
+    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     return await matcher.match_single(body)
 
 
@@ -866,7 +866,7 @@ async def match_games_batch(
     candidates plus an optional auto_match.
     """
     redis = await _get_redis()
-    matcher = GameMatcher(db, redis)
+    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     matches = await matcher.match_batch(body.games)
     return GameMatchBatchResponse(matches=matches)
 
@@ -887,7 +887,8 @@ async def match_games_stream(
     standard ``EventSource`` or a plain ``fetch`` with streaming.
     """
     redis = await _get_redis()
-    matcher = GameMatcher(db, redis)
+    from otix.providers.steamgrid.client import SteamGridDBProvider
+    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     return StreamingResponse(
         matcher.match_batch_stream(body.games),
         media_type="text/event-stream",
@@ -970,7 +971,7 @@ async def match_local_games(
         )
 
     redis = await _get_redis()
-    matcher = GameMatcher(db, redis)
+    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     results = await matcher.match_batch(requests)
 
     # Extract best match per result: auto_match first, then top candidate

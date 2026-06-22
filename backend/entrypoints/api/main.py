@@ -45,7 +45,9 @@ async def lifespan(app: FastAPI) -> Any:
         logger.info("migrations applied")
     except Exception:
         setup_logging()
-        logger.exception("lifespan migration failed — check your database connection and run 'alembic upgrade head' manually")
+        logger.exception(
+            "lifespan migration failed — check your database connection and run 'alembic upgrade head' manually"
+        )
 
     await get_redis()
 
@@ -53,6 +55,7 @@ async def lifespan(app: FastAPI) -> Any:
     async def pre_warm_embedding():
         try:
             from otix.api.media._utils import _embed_query
+
             logger.info("pre-warming embedding service...")
             await _embed_query("warmup")
             logger.info("embedding service warmed up successfully")
@@ -96,6 +99,7 @@ def create_app() -> FastAPI:
         browser when the real issue is a server-side crash.
         """
         import structlog
+
         logger = structlog.get_logger()
         logger.exception("unhandled exception", exc_info=exc)
         origin = request.headers.get("origin")
