@@ -1,7 +1,7 @@
-export { SlotRenderer } from './SlotRenderer'
-export { ErrorBoundary } from './ErrorBoundary'
-export { ErrorCard } from './ErrorCard'
-export { validateWidget, isContainerWidget, getWidgetDisplayName } from './WidgetCatalog'
+export { SlotRenderer } from './slot-renderer'
+export { ErrorBoundary } from './error-boundary'
+export { ErrorCard } from './error-card'
+export { validateWidget, isContainerWidget, getWidgetDisplayName } from './widget-catalog'
 export { useSlotData } from './useSlotData'
 export { usePluginTabs } from './usePluginTabs'
 export type {

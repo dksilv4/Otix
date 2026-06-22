@@ -20,7 +20,7 @@ const ModalContext = createContext<ModalContextValue>({
   closeAll: () => {},
 })
 
-const EXIT_DURATION = 200
+const EXIT_DURATION = 0
 let nextId = 0
 
 export function ModalProvider({ children }: { children: ReactNode }) {

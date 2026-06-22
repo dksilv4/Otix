@@ -69,10 +69,10 @@ createRoot(document.getElementById('root')!).render(
                       <PlexAudioProvider>
                         <PlayerProvider>
                           <PageMetaProvider>
-                        <ModalProvider>
-                          <RouterProvider router={router} context={{ queryClient }} />
-                          <ModalRoot />
-                        </ModalProvider>
+                            <ModalProvider>
+                              <RouterProvider router={router} context={{ queryClient }} />
+                              <ModalRoot />
+                            </ModalProvider>
                           </PageMetaProvider>
                         </PlayerProvider>
                       </PlexAudioProvider>
