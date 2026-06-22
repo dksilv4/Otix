@@ -1,9 +1,9 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { interactionKeys } from './interaction-keys'
-import { mediaKeys } from '@/features/media/media-keys'
-import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@/features/media/media-queries'
+import { mediaKeys } from '@media/queries/media-keys'
+import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@media/queries/media-queries'
 
 export interface UserInteractionState {
   liked: boolean

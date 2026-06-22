@@ -2,12 +2,12 @@
 import './scanners-section.scss'
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Disc, Monitor, Gamepad2, Folder, Check, X } from "lucide-react"
-import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/features/game-scanner/storage"
-import { useLocalGames, useRejectSuggestion } from "@/features/game-scanner/game-queries"
-import { useMatchLocalGames } from "@/features/game-scanner/queries"
-import { useClaimGame } from "@/features/library/library-queries"
-import { apiClient } from "@/lib/api-client"
-import type { LocalGame } from "@/features/game-scanner/types"
+import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/old-features/game-scanner/storage"
+import { useLocalGames, useRejectSuggestion } from "@/old-features/game-scanner/game-queries"
+import { useMatchLocalGames } from "@/old-features/game-scanner/queries"
+import { useClaimGame } from "@/old-features/library/library-queries"
+import { apiClient } from "@/lib/api/client"
+import type { LocalGame } from "@/old-features/game-scanner/types"
 
 export function ScannersSection() {
   const { data: serverGames = [] } = useLocalGames();
@@ -66,7 +66,7 @@ export function ScannersSection() {
     setIsoPaths(updated)
   }, [isoPaths])
 
-  // ── Match / unmatch ─────────────────────────────────────────────────
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Match / unmatch ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
   const matchMutation = useMatchLocalGames()
   const claimMutation = useClaimGame()
@@ -153,7 +153,7 @@ export function ScannersSection() {
     setScannedGames(updated)
   }, [scannedGames])
 
-  // ── Manual match search ────────────────────────────────────────────
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Manual match search ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 
   const handleOpenMatchSearch = useCallback((game: LocalGame) => {
     setMatchingGameId(game.id)
@@ -370,7 +370,7 @@ export function ScannersSection() {
                   className="dk-settings-scanners__path-remove"
                   title="Remove directory"
                 >
-                  ✕
+                  ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢
                 </button>
               </div>
             ))}
@@ -415,7 +415,7 @@ export function ScannersSection() {
                   className="dk-settings-scanners__path-remove"
                   title="Remove directory"
                 >
-                  ✕
+                  ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢
                 </button>
               </div>
             ))}
@@ -429,7 +429,7 @@ export function ScannersSection() {
           <p className="dk-settings-scanners__scan-banner-title">Ready to Scan</p>
           <p className="dk-settings-scanners__scan-banner-desc">
             {gameCount} games currently in library
-            {lastScan && ` · Last scan: ${lastScan}`}
+            {lastScan && ` Ãƒâ€šÃ‚Â· Last scan: ${lastScan}`}
           </p>
         </div>
         <button
@@ -441,7 +441,7 @@ export function ScannersSection() {
         </button>
       </div>
 
-      {/* ── Library overview ── */}
+      {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Library overview ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
       {scannedGames.length > 0 && (
         <div className="dk-settings-scanners__library">
           {/* Summary bar */}
@@ -452,7 +452,7 @@ export function ScannersSection() {
               <span className="dk-settings-scanners__summary-stat--auto">{autoMatched.length} auto</span>
               <span className="dk-settings-scanners__summary-stat--suggestions">{suggestedGames.length} suggestions</span>
               <span className="dk-settings-scanners__summary-stat--unmatched">{unmatchedGames.length} unmatched</span>
-              <span className="dk-settings-scanners__summary-stat--total">·</span>
+              <span className="dk-settings-scanners__summary-stat--total">Ãƒâ€šÃ‚Â·</span>
               <span className="dk-settings-scanners__summary-stat--total">{scannedGames.length} total</span>
             </div>
             <div className="dk-settings-scanners__summary-actions">
@@ -493,12 +493,12 @@ export function ScannersSection() {
             ))}
           </div>
 
-          {/* ── Suggestions (most actionable) ── */}
+          {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Suggestions (most actionable) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
           {suggestedGames.length > 0 && (
             <div className="dk-settings-scanners__suggestions">
               <h4 className="dk-settings-scanners__suggestions-header">
                 <span className="dk-settings-scanners__toggle-dot dk-settings-scanners__toggle-dot--blue" />
-                Suggestions — review and accept or reject
+                Suggestions ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â review and accept or reject
               </h4>
               <div className="dk-settings-scanners__suggestions-list">
                 {suggestedGames.map((game) => {
@@ -532,7 +532,7 @@ export function ScannersSection() {
                           <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                         </div>
                         <div className="dk-settings-scanners__suggestion-match-row">
-                          <span className="dk-settings-scanners__suggestion-match-arrow">→</span>
+                          <span className="dk-settings-scanners__suggestion-match-arrow">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</span>
                           <span className="dk-settings-scanners__suggestion-match-title">{suggestion?.title || "?"}</span>
                           <span className="dk-settings-scanners__suggestion-confidence">
                             {Math.round((game.data?.confidence ?? 0) * 100)}%
@@ -575,7 +575,7 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Verified matched game ── */}
+          {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Verified matched game ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
           {verifiedMatched.length > 0 && (
             <div className="dk-settings-scanners__section">
               <div className="dk-settings-scanners__toggle dk-settings-scanners__toggle--verified">
@@ -601,7 +601,7 @@ export function ScannersSection() {
                         <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                       </div>
                       <div className="dk-settings-scanners__game-match-row">
-                        <span className="dk-settings-scanners__game-match-arrow">→</span>
+                        <span className="dk-settings-scanners__game-match-arrow">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</span>
                         <span className="dk-settings-scanners__game-match-title">{game.data?.title || "?"}</span>
                         {game.data?.confidence != null && (
                           <span className="dk-settings-scanners__game-confidence">{Math.round(game.data?.confidence * 100)}%</span>
@@ -615,15 +615,15 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Auto-matched game ── */}
+          {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Auto-matched game ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
           {autoMatched.length > 0 && (
             <div className="dk-settings-scanners__section">
               <button
                 onClick={() => setShowAutoBreakdown(!showAutoBreakdown)}
                 className="dk-settings-scanners__toggle dk-settings-scanners__toggle--auto"
               >
-                <span className={`dk-settings-scanners__toggle-arrow ${showAutoBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>▸</span>
-                Auto-Matched ({autoMatched.length}) — review and verify
+                <span className={`dk-settings-scanners__toggle-arrow ${showAutoBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¸</span>
+                Auto-Matched ({autoMatched.length}) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â review and verify
               </button>
               {showAutoBreakdown && (
                 <div className="dk-settings-scanners__section-content">
@@ -645,7 +645,7 @@ export function ScannersSection() {
                           <PlatformIcon platform={game.platform} className="w-2.5 h-2.5 text-muted-foreground/30 flex-shrink-0" />
                         </div>
                         <div className="dk-settings-scanners__game-match-row">
-                          <span className="dk-settings-scanners__game-match-arrow">→</span>
+                          <span className="dk-settings-scanners__game-match-arrow">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</span>
                           <span className="dk-settings-scanners__game-match-title">{game.data?.title || "?"}</span>
                           {game.data?.confidence != null && (
                             <span className="dk-settings-scanners__game-confidence">{Math.round(game.data?.confidence * 100)}%</span>
@@ -681,14 +681,14 @@ export function ScannersSection() {
             </div>
           )}
 
-          {/* ── Unmatched game ── */}
+          {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Unmatched game ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
           {unmatchedGames.length > 0 && (
             <div className="dk-settings-scanners__section">
               <button
                 onClick={() => setShowUnmatchedBreakdown(!showUnmatchedBreakdown)}
                 className="dk-settings-scanners__toggle dk-settings-scanners__toggle--unmatched"
               >
-                <span className={`dk-settings-scanners__toggle-arrow ${showUnmatchedBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>▸</span>
+                <span className={`dk-settings-scanners__toggle-arrow ${showUnmatchedBreakdown ? "dk-settings-scanners__toggle-arrow--open" : ""}`}>ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¸</span>
                 Unmatched ({unmatchedGames.length})
               </button>
               {showUnmatchedBreakdown && (

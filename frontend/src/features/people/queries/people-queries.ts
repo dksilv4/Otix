@@ -1,9 +1,6 @@
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-<<<<<<<< HEAD:frontend/src/old-features/person/person-queries.ts
-========
 import type { PersonDetail, PersonSummary, PersonListResponse, RelatedArtist } from '@people/types'
->>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/people/queries/people-queries.ts
 
 // ── Query key factory ─────────────────────────────
 

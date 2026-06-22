@@ -4,22 +4,16 @@ import { Outlet, useLocation, useNavigate } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { BookmarkIcon, Gamepad2Icon, LayoutDashboardIcon, ListIcon } from "lucide-react"
 import { useAuth } from "@/lib/providers/auth"
-<<<<<<<< HEAD:frontend/src/old-features/library/pages/library-layout.tsx
-import { TAB_LABELS } from "../library-queries"
-import { getPlatformTabs } from "../platforms"
-import { CORE_TABS } from "../constants"
-import { TabBar } from "../molecules/tab-bar"
-========
 import { TAB_LABELS } from "@/old-features/library/library-queries"
 import { getPlatformTabs } from "@/old-features/library/platforms"
 import { CORE_TABS } from "@/old-features/library/constants"
 import { TabBar } from "@/old-features/library/molecules/tab-bar"
->>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/library/pages/library-layout.tsx
 
 // Side-effect imports to register platform definitions
 import "@/old-features/library/platforms/spotify"
 import "@/old-features/library/platforms/steam"
 import "@/old-features/library/platforms/plex"
+import "@/old-features/library/platforms/youtube"
 
 export function LibraryLayout() {
   const navigate = useNavigate()

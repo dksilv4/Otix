@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
-import { useUserLists } from "@/features/list/list-queries"
-import { ListCard } from "@/features/list/molecules/list-card"
+import { useUserLists } from "@/old-features/list/list-queries"
+import { ListCard } from "@/old-features/list/molecules/list-card"
 
 export function ListsPreviewSection() {
   const navigate = useNavigate()

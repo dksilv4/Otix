@@ -3,24 +3,24 @@ import './integrations.scss'
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
-import { apiClient } from '@/lib/api-client'
+import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/sse-client'
-import { DkButton } from '@/features/dk-ui/atoms/button'
-import { DkDropdown } from '@/features/dk-ui/atoms/dropdown'
-import { DkSwitch } from '@/features/dk-ui/atoms/switch'
-import { SteamIcon } from '@/features/dk-ui/atoms/steam-icon'
-import { PlexIcon } from '@/features/dk-ui/atoms/plex-icon'
-import { SpotifyIcon } from '@/features/dk-ui/atoms/spotify-icon'
-import { GoogleIcon } from '@/features/dk-ui/atoms/google-icon'
-import { TmdbIcon } from '@/features/dk-ui/atoms/tmdb-icon'
+import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
+import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
+import { SteamIcon } from '@/old-features/dk-ui/atoms/steam-icon'
+import { PlexIcon } from '@/old-features/dk-ui/atoms/plex-icon'
+import { SpotifyIcon } from '@/old-features/dk-ui/atoms/spotify-icon'
+import { GoogleIcon } from '@/old-features/dk-ui/atoms/google-icon'
+import { TmdbIcon } from '@/old-features/dk-ui/atoms/tmdb-icon'
 import { cn } from '@/lib/utils'
-import { isDesktop } from '@/lib/desktop-api'
+import { isDesktop } from '@/lib/desktop'
 import { openExternal } from '@/lib/open-external'
 import { useDownloadConfig, useConnectionTest } from '@/features/downloads/use-downloads'
 import { useExperiment } from '@/features/experiments/experiments-provider'
 import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, Server, Search, CheckCircle2, XCircle, ListMusic, Film, Tv, Music } from 'lucide-react'
-import { usePlexLibraries, streamPlexLibrarySync } from '@/features/library/library-queries'
-import type { PlexLibraryInfo } from '@/features/library/library-queries'
+import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
+import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
 
 type SteamProfile = {
   personaname: string | null
@@ -132,7 +132,7 @@ const BRAND_BG: Record<string, string> = {
   nzbplanet: 'bg-[#7c3aed]/10',
 }
 
-// ── Integration card (iOS-style expandable) ──
+// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Integration card (iOS-style expandable) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
 function IntegrationCard({
   name,
@@ -219,7 +219,7 @@ function IntegrationCard({
   )
 }
 
-// ── Integration profile row ──
+// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Integration profile row ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
 function IntegrationProfile({
   avatarUrl,
@@ -258,7 +258,7 @@ function IntegrationProfile({
   )
 }
 
-// ── Integration action row ──
+// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Integration action row ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
 function IntegrationAction({
   label,
@@ -311,7 +311,7 @@ function IntegrationAction({
   )
 }
 
-// ── Integration stats row ──
+// ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Integration stats row ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
 
 function IntegrationStats({ items }: { items: { label: string; value: string | number }[] }) {
   return (
@@ -346,7 +346,7 @@ export function IntegrationsSection() {
   const [plexLibraryProgress, setPlexLibraryProgress] = useState<Record<string, PlexLibraryProgress>>({})
   const [syncingLibraryIds, setSyncingLibraryIds] = useState<Set<string>>(new Set())
   const abortRef = useRef<AbortController | null>(null)
-  // Smooth progress animation — drives displayed count toward real server count at observed rate
+  // Smooth progress animation ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â drives displayed count toward real server count at observed rate
   const animStateRef = useRef<Record<string, {
     displayed: number
     real: number
@@ -356,7 +356,7 @@ export function IntegrationsSection() {
   }>>({})
   const [, setAnimTick] = useState(0)
 
-  // Smooth progress animation loop — moves displayed toward real at observed rate
+  // Smooth progress animation loop ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â moves displayed toward real at observed rate
   useEffect(() => {
     let rafId: number
     function tick() {
@@ -439,7 +439,7 @@ export function IntegrationsSection() {
   const isTmdbConnected = tmdbConnected
   const { data: plexLibraries, isLoading: plexLibrariesLoading, refetch: refetchLibraries } = usePlexLibraries({ enabled: isPlexConnected })
 
-  // ── SABnzbd + NZBPlanet ──
+  // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ SABnzbd + NZBPlanet ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
   const { testingSabnzbd, testingNzbplanet, testSabnzbd, testNzbplanet } = useConnectionTest()
   const [sabnzbdForm, setSabnzbdForm] = useState({ host: '', port: 8080, apiKey: '', useSsl: false })
@@ -555,7 +555,7 @@ export function IntegrationsSection() {
     })
   }, [isAuthenticated, authLoading])
 
-  // Re-fetch integrations when the window regains focus — this catches
+  // Re-fetch integrations when the window regains focus ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â this catches
   // the case where an OAuth flow completed in the system browser and the
   // user has returned to the Electron app.
   useEffect(() => {
@@ -757,7 +757,7 @@ export function IntegrationsSection() {
         },
       )
 
-      // Stream ended without a terminal event — nothing to do
+      // Stream ended without a terminal event ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â nothing to do
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setYoutubeError(extractIntegrationMessage(err))
@@ -854,7 +854,7 @@ export function IntegrationsSection() {
           signal: abortController.signal,
         },
         (_event: SseEvent) => {
-          // Progress events — not displayed inline for this sync
+          // Progress events ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not displayed inline for this sync
         },
       )
 
@@ -881,8 +881,8 @@ export function IntegrationsSection() {
 
   const tmdbSyncDirections = [
     { value: 'disabled', label: 'Off' },
-    { value: 'import', label: 'TMDb → Otix' },
-    { value: 'export', label: 'Otix → TMDb' },
+    { value: 'import', label: 'TMDb ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Otix' },
+    { value: 'export', label: 'Otix ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ TMDb' },
     { value: 'bidirectional', label: 'Both ways' },
   ]
 
@@ -1527,11 +1527,11 @@ export function IntegrationsSection() {
                               </div>
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 mt-0.5">
                                 <span className="font-medium text-muted-foreground/80">{lib.serverName}</span>
-                                <span className="text-muted-foreground/30">·</span>
+                                <span className="text-muted-foreground/30">ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·</span>
                                 <span>{lib.itemCount} items</span>
                                 {lib.lastSyncedAt && (
                                   <>
-                                    <span className="text-muted-foreground/30">·</span>
+                                    <span className="text-muted-foreground/30">ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·</span>
                                     <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000)) || 'today'}</span>
                                   </>
                                 )}
@@ -1673,7 +1673,7 @@ export function IntegrationsSection() {
         </div>
       )}
 
-      {/* ── SABnzbd / NZBPlanet config cards — admin + experiment gated ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ SABnzbd / NZBPlanet config cards ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â admin + experiment gated ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       {showDownloads && (<>
       <div className="dk-settings-integrations__downloads">
         {integrationDefs.filter(i => i.id === 'sabnzbd' || i.id === 'nzbplanet').map((i) => {
@@ -1741,7 +1741,7 @@ export function IntegrationsSection() {
                             onChange={e => setSabnzbdCompletePath(e.target.value)}
                             placeholder="e.g. /mnt/user/downloads/completed"
                             className="dk-settings-integrations__input" />
-                          <p className="dk-settings-integrations__input-hint">SABnzbd → Config → Folders → Completed Download Folder</p>
+                          <p className="dk-settings-integrations__input-hint">SABnzbd ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Config ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Folders ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Completed Download Folder</p>
                         </div>
                         <div>
                           <label className="dk-settings-integrations__label">ISO Library Path</label>
@@ -1842,7 +1842,7 @@ export function IntegrationsSection() {
         })}
       </div>
 
-      {/* ── Path mapping + auto-search ── */}
+      {/* ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Path mapping + auto-search ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ */}
       <div className="dk-settings-integrations__section">
         <h3 className="dk-settings-integrations__section-title">Path Mapping</h3>
         <p className="dk-settings-integrations__section-desc -mt-1">SABnzbd downloads to one folder. Otix moves completed ISOs to your game library.</p>
@@ -1852,7 +1852,7 @@ export function IntegrationsSection() {
             onChange={e => setSabnzbdCompletePath(e.target.value)}
             placeholder="e.g. /mnt/user/downloads/completed"
             className="dk-settings-integrations__input" />
-          <p className="dk-settings-integrations__input-hint">SABnzbd → Config → Folders → Completed Download Folder</p>
+          <p className="dk-settings-integrations__input-hint">SABnzbd ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Config ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Folders ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Completed Download Folder</p>
         </div>
         <div>
           <label className="dk-settings-integrations__label">ISO Library Path</label>

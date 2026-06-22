@@ -16,11 +16,11 @@ const SUBPAGES = [
       'Stats, metrics, enrichment pipeline, user registrations, and time-series charts.',
   },
   {
-    to: '/admin/proposals',
+    to: '/settings/proposals',
     icon: Pencil,
     label: 'Proposals',
     description:
-      'Community edit proposals review queue with approve, reject, and undo workflows.',
+      'Review and manage game match proposals and community edit proposals.',
   },
   {
     to: '/admin/experiments',

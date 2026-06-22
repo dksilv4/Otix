@@ -1,13 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop-api';
-import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/game-scanner/game-queries';
+import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop';
+import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/old-features/game-scanner/game-queries';
 import { useGameDetail, useGameGenres, usePopularGames } from '@/features/games/games-queries';
 
 import type { GamesTab, CatalogGame, ShelfRow } from '../types';
-import type { LocalGame } from '@/features/game-scanner/types';
+import type { LocalGame } from '@/old-features/game-scanner/types';
 
-// ── Shelves ──────────────────────────────────────────────────────────
+// â”€â”€ Shelves â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function buildGameShelves(
   matchedGames: LocalGame[],
@@ -21,7 +21,7 @@ function buildGameShelves(
     rows.push({
       id: "matched",
       label: "Installed Games",
-      icon: "✓",
+      icon: "âœ“",
       games: matchedGames.slice(0, 12),
     })
   }
@@ -31,7 +31,7 @@ function buildGameShelves(
     rows.push({
       id: "suggested",
       label: "Suggested Matches",
-      icon: "🔗",
+      icon: "ðŸ”—",
       games: suggested.slice(0, 8),
     })
   }
@@ -41,7 +41,7 @@ function buildGameShelves(
     rows.push({
       id: "unmatched",
       label: "Unmatched Games",
-      icon: "🔍",
+      icon: "ðŸ”",
       games: unmatched.slice(0, 8),
     })
   }
@@ -50,7 +50,7 @@ function buildGameShelves(
     rows.push({
       id: "popular",
       label: "Popular on Otix",
-      icon: "🔥",
+      icon: "ðŸ”¥",
       games: [],
       catalogGames: popularGames.slice(0, 12),
     })
@@ -59,7 +59,7 @@ function buildGameShelves(
   return rows
 }
 
-// ── UI State ────────────────────────────────────────────────────────
+// â”€â”€ UI State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Active tab, search, side panel, selected game, scanning flag. */
 export function useGameUIState() {
@@ -85,7 +85,7 @@ export function useGameUIState() {
   };
 }
 
-// ── Queries (DB-filtered, server-side) ──────────────────────────────
+// â”€â”€ Queries (DB-filtered, server-side) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Derive GamesFilter from UI state so filtering happens in SQLite. */
 function filterFromTab(tab: GamesTab, search: string): GamesFilter {
@@ -127,7 +127,7 @@ export function useGameQueries(localGameId: string | null, activeTab: GamesTab, 
   };
 }
 
-// ── Shelves ─────────────────────────────────────────────────────────
+// â”€â”€ Shelves â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Build game shelf data from matched/unmatched/popular games. */
 export function useGameShelves(
@@ -145,7 +145,7 @@ export function useGameShelves(
   return { shelves };
 }
 
-// ── Actions ─────────────────────────────────────────────────────────
+// â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Game actions: play, open folder, rescan, accept/reject suggestions. */
 export function useGameActions(setScanning: (v: boolean) => void) {

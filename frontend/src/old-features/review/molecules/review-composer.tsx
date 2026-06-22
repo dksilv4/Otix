@@ -1,9 +1,9 @@
 // TODO: Review this file
 import { useState } from "react"
 import { AlertTriangle, Lock } from "lucide-react"
-import { DkButton } from "@/features/dk-ui/atoms/button"
-import { DkInput } from "@/features/dk-ui/atoms/input"
-import { DkCheckbox } from "@/features/dk-ui/atoms/checkbox"
+import { DkButton } from "@/old-features/dk-ui/atoms/button"
+import { DkInput } from "@/old-features/dk-ui/atoms/input"
+import { DkCheckbox } from "@/old-features/dk-ui/atoms/checkbox"
 import { StarInput } from "./star-input"
 import { useUpsertReview, useDeleteReview, type ReviewOut } from "../review-queries"
 import "./review-composer.scss"
@@ -92,7 +92,7 @@ function ReviewComposer({ mediaId, existingReview, existingRating, onClose, onSa
 
  return (
    <div className="dk-review-composer">
-     {/* Star rating — always free to change */}
+     {/* Star rating â€” always free to change */}
      <div className="dk-review-composer__rating">
        <StarInput value={score || null} onChange={setScore} size="lg" />
        <p className="dk-review-composer__rating-caption">
@@ -154,7 +154,7 @@ function ReviewComposer({ mediaId, existingReview, existingRating, onClose, onSa
        </span>
      </label>
 
-     {/* Cooldown lock notice — only for review text */}
+     {/* Cooldown lock notice â€” only for review text */}
      {reviewLocked && (
        <div className="dk-review-composer__notice dk-review-composer__notice--lock">
          <Lock className="w-4 h-4 shrink-0" />

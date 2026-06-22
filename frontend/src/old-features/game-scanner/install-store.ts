@@ -6,12 +6,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import type { InstallProgress, InstallResult, InstallPhase } from './types'
-import type { InstallProgressEvent } from '@/lib/desktop-api'
+import type { InstallProgressEvent } from '@/lib/desktop'
 import { hasDesktopAPI } from './storage'
 
 const LS_KEY = 'otix_game_installs'
 
-// ── Types ──
+// â”€â”€ Types â”€â”€
 
 export interface InstallStoreEntry {
   active: boolean
@@ -26,7 +26,7 @@ export interface InstallStoreEntry {
 
 type Listener = () => void
 
-// ── Module-level state (persists across component lifecycles) ──
+// â”€â”€ Module-level state (persists across component lifecycles) â”€â”€
 
 const _installs = new Map<string, InstallStoreEntry>()
 const _listeners = new Set<Listener>()
@@ -73,7 +73,7 @@ function removeInstall(isoPath: string): void {
   emit()
 }
 
-// ── IPC listener (dispatches progress to correct install by isoPath) ──
+// â”€â”€ IPC listener (dispatches progress to correct install by isoPath) â”€â”€
 
 function ensureIpcListening(): void {
   if (_ipcUnsub) return
@@ -81,7 +81,7 @@ function ensureIpcListening(): void {
   if (!window.desktopAPI?.onInstallProgress) return
   _ipcUnsub = window.desktopAPI.onInstallProgress((event: InstallProgressEvent) => {
     const path = event.isoPath
-    if (!path) return // no routing info — ignore
+    if (!path) return // no routing info â€” ignore
     const existing = _installs.get(path)
     if (existing) {
       _installs.set(path, {
@@ -96,7 +96,7 @@ function ensureIpcListening(): void {
   })
 }
 
-// ── Hydrate from localStorage + backend on init ──
+// â”€â”€ Hydrate from localStorage + backend on init â”€â”€
 
 function hydrateFromStorage(): void {
   if (_hydrated) return
@@ -148,14 +148,14 @@ async function syncWithBackend(): Promise<void> {
   } catch { /* ignore */ }
 }
 
-// Init — runs once at module load
+// Init â€” runs once at module load
 hydrateFromStorage()
 // Defer backend sync so components get instant localStorage render first
 if (typeof window !== 'undefined') {
   setTimeout(() => { syncWithBackend().catch(() => {}) }, 0)
 }
 
-// ── Public API ──
+// â”€â”€ Public API â”€â”€
 
 export function subscribeInstall(listener: Listener): () => void {
   _listeners.add(listener)
@@ -256,7 +256,7 @@ export function resetAllInstalls(): void {
   emit()
 }
 
-// ── React hook ──
+// â”€â”€ React hook â”€â”€
 
 export function useInstallProgress(): {
   installs: InstallStoreEntry[]

@@ -2,11 +2,7 @@
 
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import { useMatchLocalGames, useSyncLocalGames } from '@/old-features/game-scanner/queries'
-<<<<<<<< HEAD:frontend/src/features/launcher/atoms/match-game-button.tsx
-import type { LocalGame } from '@/features/launcher/types'
-========
 import type { LocalGame } from '@/old-features/games/types'
->>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/old-features/games/atoms/match-game-button.tsx
 
 interface Props {
   game: LocalGame
