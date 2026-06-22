@@ -466,6 +466,23 @@ async function performScan(ctx) {
     ctx.logger.warn('Enrichment failed: ' + err.message);
   }
 
+  // Phase 5: Detect DLCs — items sharing namespace with a different-appName "main" game
+  // Build namespace → primary appName map (first game per namespace = main game)
+  const nsPrimary = {};
+  for (const g of games) {
+    if (g.namespace && !nsPrimary[g.namespace]) {
+      nsPrimary[g.namespace] = g.appName;
+    }
+  }
+  let dlcCount = 0;
+  for (const g of games) {
+    if (g.namespace && nsPrimary[g.namespace] && g.appName !== nsPrimary[g.namespace]) {
+      g.dlcOf = nsPrimary[g.namespace];
+      dlcCount++;
+    }
+  }
+  if (dlcCount > 0) ctx.logger.info('DLCs detected: ' + dlcCount);
+
   _setProgress(ctx, { phase: 'done', current: games.length, total: games.length });
   ctx.logger.info('Scan complete: ' + games.length + ' games, ' + games.filter((g) => g.isInstalled).length + ' installed' + (skipped > 0 ? ', ' + skipped + ' skipped (UE/Quixel/MetaHuman)' : ''));
 
@@ -581,6 +598,7 @@ const dataMethods = {
       exePath: g.launchExe || null,
       posterUrl: g.posterUrl || null,
       logoUrl: g.logoUrl || null,
+      dlcOf: g.dlcOf || null,
       rawMetadata: {
         namespace: g.namespace,
         catalogItemId: g.catalogItemId,
@@ -588,6 +606,7 @@ const dataMethods = {
         version: g.version,
         isInstalled: g.isInstalled,
         savePaths: g.savePaths,
+        dlcOf: g.dlcOf || null,
       },
     }));
 
@@ -596,6 +615,82 @@ const dataMethods = {
 
   'scan.status': async () => {
     return { ..._scanProgress };
+  },
+
+  'activity.poll': async (ctx) => {
+    const activities = [];
+    const now = Date.now();
+
+    // Report active scan progress if running
+    if (_scanProgress.phase !== 'idle' && _scanProgress.phase !== 'done' && _scanProgress.phase !== 'error') {
+      activities.push({
+        id: 'epic-scan-active',
+        type: 'scan',
+        title: 'Scanning Epic Games library',
+        subtitle: `${_scanProgress.current || 0}/${_scanProgress.total || 0} games · ${_scanProgress.phase}`,
+        progress: _scanProgress.total ? Math.round((_scanProgress.current || 0) / _scanProgress.total * 100) : undefined,
+        status: 'active',
+        timestamp: _scanProgress.startedAt || now,
+      });
+      return { activities, label: 'Epic Games' };
+    }
+
+    // Report last scan result if within 5 minutes
+    let lastScan = null;
+    try {
+      const raw = await ctx.config.get('_last_scan');
+      if (raw) lastScan = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch { /* ignore */ }
+
+    if (lastScan && lastScan.last_scan_at && (now - lastScan.last_scan_at) < 300_000) {
+      activities.push({
+        id: 'epic-scan-complete',
+        type: 'scan',
+        title: 'Epic Games scan complete',
+        subtitle: `${lastScan.last_scan_total || 0} games · ${lastScan.last_scan_installed || 0} installed`,
+        status: 'completed',
+        timestamp: lastScan.last_scan_at,
+        action: {
+          label: 'View',
+          method: 'activity.viewResults',
+        },
+      });
+    }
+
+    // Report auth status
+    const rt = await _getRt(ctx);
+    if (!rt) {
+      activities.push({
+        id: 'epic-auth-needed',
+        type: 'warning',
+        title: 'Epic Games not connected',
+        subtitle: 'Sign in to scan your library',
+        status: 'pending',
+        timestamp: now,
+        action: {
+          label: 'Connect',
+          method: 'activity.connect',
+        },
+      });
+    }
+
+    return { activities: activities.length > 0 ? activities : [], label: 'Epic Games' };
+  },
+
+  'activity.connect': async (ctx) => {
+    const url = getAuthUrl();
+    // Open auth URL in default browser
+    const { shell } = require('electron');
+    if (shell?.openExternal) {
+      await shell.openExternal(url);
+    }
+    return { success: true };
+  },
+
+  'activity.viewResults': async (ctx) => {
+    // Trigger navigation to matching page — emit event for frontend
+    ctx.notifications.send({ title: 'Epic Games', body: 'Scan complete. Review your matches.' });
+    return { success: true };
   },
 };
 
@@ -659,6 +754,9 @@ module.exports = {
   'auth.logout': dataMethods['auth.logout'],
   'scan': dataMethods['scan'],
   'scan.status': dataMethods['scan.status'],
+  'activity.poll': dataMethods['activity.poll'],
+  'activity.connect': dataMethods['activity.connect'],
+  'activity.viewResults': dataMethods['activity.viewResults'],
   slotRender: async (ctx, location) => ({
     type: 'scan',
     platform: 'epic',
