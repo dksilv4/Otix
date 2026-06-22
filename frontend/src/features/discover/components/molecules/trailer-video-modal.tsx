@@ -36,7 +36,7 @@ export function TrailerVideoModal({ youtubeId, title, onClose }: TrailerVideoMod
         onClick={onClose}
       >
         <motion.div
-          className="relative w-full max-w-4xl mx-4 aspect-video bg-black rounded-xl overflow-hidden shadow-2xl"
+          className="relative w-full max-w-4xl mx-4 rounded-xl overflow-hidden shadow-2xl"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -47,20 +47,23 @@ export function TrailerVideoModal({ youtubeId, title, onClose }: TrailerVideoMod
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3 right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+            className="absolute top-3 right-3 z-10 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white/80 hover:text-white transition-colors"
             aria-label="Close video"
           >
             <X className="h-4 w-4" />
           </button>
 
-          {/* YouTube iframe */}
-          <iframe
-            src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1`}
-            title={title}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          {/* YouTube embed */}
+          <div className="aspect-video bg-black">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`}
+              title={title}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
         </motion.div>
       </motion.div>
     </AnimatePresence>,
