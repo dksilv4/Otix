@@ -16,6 +16,7 @@ from sqlalchemy.orm import joinedload
 from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.people import MediaCredit, Person
 from otix.domain.user import User
+from otix.domain.youtube_liked_video import UserYoutubeLikedVideo
 from otix.lib.youtube_title_parser import parse_music_title
 from otix.providers.youtube.client import YouTubeClient
 from otix.services.google_auth_service import get_user_google_access_token
@@ -127,12 +128,17 @@ async def sync_youtube_watch_history(
             if cat != MUSIC_CATEGORY:
                 non_music_categories.add(cat)
                 continue
+            thumbs = snippet.get("thumbnails", {}) or {}
             music_videos.append(
                 {
                     "video_id": vid,
                     "title": snippet.get("title", ""),
                     "channel_id": snippet.get("channelId", ""),
                     "channel_title": snippet.get("channelTitle", ""),
+                    "description": snippet.get("description", ""),
+                    "thumbnail_url": thumbs.get("high", {}).get("url")
+                        or thumbs.get("medium", {}).get("url")
+                        or thumbs.get("default", {}).get("url"),
                     "published_at": snippet.get("publishedAt", ""),
                 }
             )
@@ -150,34 +156,65 @@ async def sync_youtube_watch_history(
         # ── 3. Parse titles and match to Otix albums ──────────────────
         matched = 0
         channel_links = 0
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         for mv in music_videos:
             parsed = parse_music_title(mv["title"], mv["channel_title"])
-            if parsed.confidence < 0.3:
-                logger.info("youtube low confidence parse", title=mv["title"], confidence=parsed.confidence)
-                continue
+            album = None
+            matched_title = None
+            matched_artist = None
+            if parsed.confidence >= 0.3:
+                album = await _match_album(session, parsed)
+                if album:
+                    matched_title = parsed.song_title
+                    matched_artist = parsed.artist
+                    extra = {
+                        "source": "youtube_liked_videos",
+                        "video_id": mv["video_id"],
+                        "video_title": mv["title"],
+                        "channel_title": mv["channel_title"],
+                        "published_at": mv["published_at"],
+                    }
+                    await interaction_service.set_interaction(
+                        user.id, album.media_item_id, "listened", extra
+                    )
+                    matched += 1
 
-            album = await _match_album(session, parsed)
-            if album is None:
-                continue
+                    if mv["channel_id"]:
+                        linked = await _link_channel_to_person(
+                            session, mv["channel_id"], mv["channel_title"]
+                        )
+                        if linked:
+                            channel_links += 1
 
-            extra = {
-                "source": "youtube_liked_videos",
-                "video_id": mv["video_id"],
-                "video_title": mv["title"],
-                "channel_title": mv["channel_title"],
-                "published_at": mv["published_at"],
-            }
-            await interaction_service.set_interaction(
-                user.id, album.media_item_id, "listened", extra
+            # Store ALL music videos (matched + unmatched) in raw table
+            stmt = pg_insert(UserYoutubeLikedVideo.__table__).values(
+                user_id=user.id,
+                video_id=mv["video_id"],
+                title=mv["title"],
+                channel_id=mv["channel_id"],
+                channel_title=mv["channel_title"],
+                description=mv.get("description", ""),
+                thumbnail_url=mv.get("thumbnail_url"),
+                published_at=mv.get("published_at", ""),
+                matched_media_item_id=album.media_item_id if album else None,
+                matched_title=matched_title,
+                matched_artist=matched_artist,
             )
-            matched += 1
-
-            if mv["channel_id"]:
-                linked = await _link_channel_to_person(
-                    session, mv["channel_id"], mv["channel_title"]
+            await session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=["user_id", "video_id"],
+                    set_={
+                        "title": stmt.excluded.title,
+                        "channel_title": stmt.excluded.channel_title,
+                        "description": stmt.excluded.description,
+                        "thumbnail_url": stmt.excluded.thumbnail_url,
+                        "matched_media_item_id": stmt.excluded.matched_media_item_id,
+                        "matched_title": stmt.excluded.matched_title,
+                        "matched_artist": stmt.excluded.matched_artist,
+                    },
                 )
-                if linked:
-                    channel_links += 1
+            )
 
         await _emit("matching_complete", matched=matched, total_music=len(music_videos))
 
