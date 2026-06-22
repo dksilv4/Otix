@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { FileCode } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
-import { LauncherPlaytimeStats } from '@/features/launcher/atoms/launcher-playtime-stats'
-import { LauncherRatingStats } from '@/features/launcher/atoms/launcher-rating-stats'
-import { LauncherCloudSyncStat } from '@/features/launcher/atoms/launcher-cloud-sync-stat'
-import { LauncherFpsStats } from '@/features/launcher/molecules/launcher-fps-stats'
+import { LauncherPlaytimeStats } from '@/features/launcher/components/atoms/launcher-playtime-stats'
+import { LauncherRatingStats } from '@/features/launcher/components/atoms/launcher-rating-stats'
+import { LauncherCloudSyncStat } from '@/features/launcher/components/atoms/launcher-cloud-sync-stat'
+import { LauncherFpsStats } from '@/features/launcher/components/molecules/launcher-fps-stats'
 
 export function LauncherGameStats() {
   const { user } = useAuth()

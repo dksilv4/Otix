@@ -1,7 +1,7 @@
-/* ── MatchGameButton — opens match modal for unmatched game ── */
+/* â”€â”€ MatchGameButton â€” opens match modal for unmatched game â”€â”€ */
 
 import { useState } from 'react'
-import { MatchGameModal } from '@/features/launcher/molecules/match-game-modal'
+import { MatchGameModal } from '@/features/launcher/components/molecules/launcher-match-game-modal'
 import type { LocalGame } from '@/features/launcher/types'
 
 interface Props {

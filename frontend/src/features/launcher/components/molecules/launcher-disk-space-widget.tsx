@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
-import { DriveRow } from '@/features/launcher/atoms/drive-row'
+import { DriveRow } from '@/features/launcher/components/atoms/launcher-drive-row'
 
 interface DiskInfo {
   drive: string

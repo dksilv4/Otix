@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { osName } from "@/lib/utils"
-import GameThumb from "@/features/launcher/atoms/game-thumb"
+import GameThumb from "@/features/launcher/components/atoms/launcher-game-thumb"
 import type {DisplayGame} from "@/features/launcher/types"
 
 interface GameThumbListProps {
@@ -43,7 +43,7 @@ const GameThumbList = ({ games, activeGameId, onSelect }: GameThumbListProps) =>
                                 : "border-transparent opacity-50 hover:opacity-100 hover:border-white/20"
                             )
                         }
-                        title={`${game.title}${game.isInstalled ? ' ● Installed' : ''}`}
+                        title={`${game.title}${game.isInstalled ? ' â— Installed' : ''}`}
                     >
                         <GameThumb icon={game.iconUrl || game.posterUrl || undefined} alt={game.title} />
                         {game.isInstalled && (

@@ -1,9 +1,9 @@
 import { Helmet } from 'react-helmet-async'
 import { Outlet } from '@tanstack/react-router'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
-import { FloatingGameSelector } from '@/features/launcher/molecules/floating-game-selector'
-import { WebPreviewBanner } from '@/features/launcher/molecules/web-preview-banner'
-import { FpsPermissionDialog } from '@/features/launcher/molecules/fps-permission-dialog'
+import { FloatingGameSelector } from '@/features/launcher/components/molecules/launcher-floating-game-selector'
+import { WebPreviewBanner } from '@/features/launcher/components/molecules/launcher-web-preview-banner'
+import { FpsPermissionDialog } from '@/features/launcher/components/molecules/launcher-fps-permission-dialog'
 import { useHydrateLocalGames } from '@/features/launcher/hooks/use-launcher-hydrate'
 
 export function LauncherHomePage() {
