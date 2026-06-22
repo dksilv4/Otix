@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false },
   { id: 'library', label: 'Library', icon: Gamepad2, desktop: true },
   { id: 'matching', label: 'Matching', icon: Shuffle, desktop: true },
+  { id: 'proposals', label: 'Proposals', icon: Shield, desktop: true },
   { id: 'downloads', label: 'Downloads', icon: Download, desktop: true },
   { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true },
   { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true },
