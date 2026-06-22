@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # ── Run DB migrations, then start the ASGI server ──────────────────────
 # Called as the container CMD.  Ensures the database schema is up-to-date
 # before the first request can arrive, without relying on the lifespan
@@ -6,7 +6,7 @@
 #
 # The alembic.ini is expected next to this script (i.e. in the backend/
 # directory which is WORKDIR /app in the Docker image).
-set -euo pipefail
+set -euo pipefail 2>/dev/null || set -eu
 
 echo ">>> Running database migrations..."
 alembic upgrade head
