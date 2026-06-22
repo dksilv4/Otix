@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { heroImage } from '@/features/launcher/utils'
-import { LauncherGameStats } from '@/features/launcher/molecules/launcher-game-stats'
-import { LauncherGameCompanies } from '@/features/launcher/molecules/launcher-game-companies'
-import { LauncherGameDetailInfo } from '@/features/launcher/molecules/launcher-game-detail-info'
-import { LauncherGameButtons } from '@/features/launcher/organisms/launcher-game-buttons'
+import { LauncherGameStats } from '@/features/launcher/components/molecules/launcher-game-stats'
+import { LauncherGameCompanies } from '@/features/launcher/components/molecules/launcher-game-companies'
+import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
+import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
 
 function useRandomParallax() {
   const [offset, setOffset] = useState({ x: 0, y: 0 })

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-import { LauncherPlayButton } from '@/features/launcher/organisms/launcher-play-button'
-import { OpenFolderButton } from '@/features/launcher/atoms/open-folder-button'
-import { PickExeButton } from '@/features/launcher/atoms/pick-exe-button'
-import { GameDetailButton } from '@/features/launcher/atoms/game-detail-button'
+import { LauncherPlayButton } from '@/features/launcher/components/organisms/launcher-play-button'
+import { OpenFolderButton } from '@/features/launcher/components/atoms/launcher-open-folder-button'
+import { PickExeButton } from '@/features/launcher/components/atoms/launcher-pick-exe-button'
+import { GameDetailButton } from '@/features/launcher/components/atoms/launcher-game-detail-button'
 import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-installer-modal'
 
 export function LauncherGameButtons() {

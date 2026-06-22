@@ -4,7 +4,7 @@ import type { AnyRoute } from '@tanstack/react-router'
 
 const LauncherHomePage = lazy(() => import('./pages/launcher-home-page').then(m => ({ default: m.LauncherHomePage })))
 const LauncherGamePage = lazy(() => import('./pages/launcher-game-page').then(m => ({ default: m.LauncherGamePage })))
-const LauncherSlidePicker = lazy(() => import('./molecules/launcher-slide-picker').then(m => ({ default: m.LauncherSlidePicker })))
+const LauncherSlidePicker = lazy(() => import('./components/molecules/launcher-slide-picker').then(m => ({ default: m.LauncherSlidePicker })))
 
 export function createLauncherRoutes(rootRoute: AnyRoute) {
   const launcherLayoutRoute = createRoute({

@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
-import { DiskSpaceWidget } from '@/features/launcher/molecules/disk-space-widget'
-import { LauncherScanWidget } from '@/features/launcher/molecules/scan-widget'
+import { DiskSpaceWidget } from '@/features/launcher/components/molecules/launcher-disk-space-widget'
+import { LauncherScanWidget } from '@/features/launcher/components/molecules/launcher-scan-widget'
 
 export function LauncherFooter({ id }: { id?: string }) {
   const [hydrating, setHydrating] = useState(false)

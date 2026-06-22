@@ -6,7 +6,7 @@ import {useLocalGames} from '@/old-features/game-scanner/game-queries'
 import {usePopularGames} from '@/features/launcher/queries'
 import {hasDesktopAPI} from '@/lib/desktop/api'
 import {toDisplayGame} from '@/features/launcher/utils'
-import GameThumbList from '@/features/launcher/molecules/game-thumb-list'
+import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
 
 export function FloatingGameSelector() {

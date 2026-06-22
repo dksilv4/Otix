@@ -3,13 +3,13 @@ import { useParams } from '@tanstack/react-router'
 import { osName } from '@/lib/utils'
 import { useLocalGame } from '@/old-features/game-scanner/game-queries'
 import { useInstallProgress } from '@/old-features/game-scanner/install-store'
-import { PlayGameButton } from '@/features/launcher/atoms/play-game-button'
-import { IncompatibleButton } from '@/features/launcher/atoms/incompatible-button'
-import { IsoInstallingProgress } from '@/features/launcher/atoms/iso-installing-progress'
-import { IsoInstallButton } from '@/features/launcher/atoms/iso-install-button'
-import { MatchedPlayButton } from '@/features/launcher/atoms/matched-play-button'
-import { MatchGameButton } from '@/features/launcher/atoms/match-game-button'
-import { RejectSuggestionButton } from '@/features/launcher/atoms/reject-suggestion-button'
+import { PlayGameButton } from '@/features/launcher/components/atoms/launcher-play-game-button'
+import { IncompatibleButton } from '@/features/launcher/components/atoms/launcher-incompatible-button'
+import { IsoInstallingProgress } from '@/features/launcher/components/atoms/launcher-iso-installing-progress'
+import { IsoInstallButton } from '@/features/launcher/components/atoms/launcher-iso-install-button'
+import { MatchedPlayButton } from '@/features/launcher/components/atoms/launcher-matched-play-button'
+import { MatchGameButton } from '@/features/launcher/components/atoms/launcher-match-game-button'
+import { RejectSuggestionButton } from '@/features/launcher/components/atoms/launcher-reject-suggestion-button'
 
 interface LauncherPlayButtonProps {
   onOpenInstaller: () => void
@@ -33,17 +33,17 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
 
   if (!g) return null
 
-  // ── Play (installed) ──
+  // â”€â”€ Play (installed) â”€â”€
   if (isInstalled) {
     return <PlayGameButton game={g} />
   }
 
-  // ── Incompatible (ISO on non-Windows) ──
+  // â”€â”€ Incompatible (ISO on non-Windows) â”€â”€
   if (isIncompatible) {
     return <IncompatibleButton />
   }
 
-  // ── ISO installing ──
+  // â”€â”€ ISO installing â”€â”€
   if (g.platform === 'iso' && activeInstall) {
     return (
       <IsoInstallingProgress
@@ -54,17 +54,17 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
     )
   }
 
-  // ── ISO ready to install ──
+  // â”€â”€ ISO ready to install â”€â”€
   if (g.platform === 'iso') {
     return <IsoInstallButton onClick={onOpenInstaller} />
   }
 
-  // ── Default: matched game ──
+  // â”€â”€ Default: matched game â”€â”€
   if (mediaId) {
     return <MatchedPlayButton mediaId={mediaId} />
   }
 
-  // ── Unmatched: match game + reject suggestion ──
+  // â”€â”€ Unmatched: match game + reject suggestion â”€â”€
   return (
     <div className="flex gap-1.5">
       <MatchGameButton game={g} />

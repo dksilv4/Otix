@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
-import { LauncherGameHero } from '@/features/launcher/organisms/launcher-game-hero'
-import { LauncherEmptyState } from '@/features/launcher/molecules/launcher-empty-state'
-import { LauncherShelf } from '@/features/launcher/organisms/launcher-shelf'
-import { LauncherFooter } from '@/features/launcher/organisms/launcher-footer'
+import { LauncherGameHero } from '@/features/launcher/components/organisms/launcher-game-hero'
+import { LauncherEmptyState } from '@/features/launcher/components/molecules/launcher-empty-state'
+import { LauncherShelf } from '@/features/launcher/components/organisms/launcher-shelf'
+import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
 import { usePopularGames } from '@/features/launcher/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 
