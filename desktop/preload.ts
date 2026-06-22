@@ -281,6 +281,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Plugin game matching ──
   scanAllPlugins: () => ipcRenderer.invoke('scanner:scan-all-plugins'),
   scanPlugin: (pluginId: string) => ipcRenderer.invoke('scanner:scan-plugin', pluginId),
+  cancelScan: () => ipcRenderer.invoke('scanner:cancel-scan'),
   onMatchingProgress: (callback: (event: any) => void) => {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('game:matching:progress', handler);
@@ -290,5 +291,10 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     const handler = (_event: any, data: any) => callback(data);
     ipcRenderer.on('game:matching:complete', handler);
     return () => ipcRenderer.removeListener('game:matching:complete', handler);
+  },
+  onMatchingCancelled: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('game:matching:cancelled', handler);
+    return () => ipcRenderer.removeListener('game:matching:cancelled', handler);
   },
 });

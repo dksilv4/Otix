@@ -380,6 +380,7 @@ export interface IDesktopAPI {
   acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
   unmatchGame: (gameId: string) => Promise<void>;
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
+  resetGameData: () => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;
 
   // Game detection
@@ -503,8 +504,10 @@ export interface IDesktopAPI {
   // ── Plugin game matching ──
   scanAllPlugins: () => Promise<unknown>;
   scanPlugin: (pluginId: string) => Promise<unknown>;
+  cancelScan: () => Promise<void>;
   onMatchingProgress: (callback: (event: any) => void) => () => void;
   onMatchingComplete: (callback: (event: any) => void) => () => void;
+  onMatchingCancelled: (callback: () => void) => () => void;
 }
 
 declare global {

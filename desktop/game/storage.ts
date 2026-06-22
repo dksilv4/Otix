@@ -28,9 +28,11 @@ export interface GameRow {
   posterUrl?: string;
   sources?: (string | Record<string, unknown>)[];
   data?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; backdropUrl?: string; logoUrl?: string; textlessPosterUrl?: string };
-  matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string };
+  matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
+  otixMatchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
   updateFiles?: { name: string; path: string }[];
   lastPlayedAt?: string;
+  otixMediaId?: string;
   otixMediaSlug?: string;
   otixConfidence?: number;
   otixPosterUrl?: string;
@@ -95,6 +97,8 @@ function rowToGame(row: DbRow): GameRow {
         })()
       : undefined,
     matchSuggestion,
+    otixMatchSuggestion: matchSuggestion,  // alias for backward compat
+    otixMediaId: (row.otix_media_id as string) || undefined,
     otixMediaSlug: (row.otix_media_slug as string) || undefined,
     otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
     otixPosterUrl: (row.otix_poster_url as string) || undefined,
@@ -204,6 +208,64 @@ export function upsertGames(games: GameRow[]): void {
   }
 }
 
+export function upsertGamesForPlatform(games: GameRow[], platform: string): void {
+  const existingSeeded = new Map<string, number>();
+  const existingRows = __all('SELECT id, seeded FROM scanned_games WHERE platform = ?', platform);
+  for (const r of existingRows) {
+    existingSeeded.set(r.id as string, r.seeded as number);
+  }
+
+  // Delete stale entries only for THIS platform (don't wipe other platforms)
+  const newIds = [...new Set(games.map((g) => g.id))];
+  if (newIds.length > 0) {
+    const placeholders = newIds.map(() => '?').join(',');
+    db().prepare(
+      `DELETE FROM scanned_games WHERE platform = ? AND id NOT IN (${placeholders})`
+    ).run(platform, ...newIds);
+  } else {
+    db().prepare('DELETE FROM scanned_games WHERE platform = ?').run(platform);
+  }
+
+  for (const g of games) {
+    const seeded = existingSeeded.get(g.id) ?? 0;
+    db().prepare(
+      `INSERT OR REPLACE INTO scanned_games (
+        id, title, exe_path, local_exe_path, install_dir, platform,
+        local_icon_url, icon_url, poster_url, sources, update_files,
+        otix_media_id, otix_media_title, otix_match_suggestion, seeded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      g.id,
+      g.title,
+      g.exePath,
+      g.localExePath || null,
+      g.installDir,
+      g.platform,
+      g.localIconUrl || null,
+      g.iconUrl || null,
+      g.posterUrl || null,
+      g.sources ? JSON.stringify(g.sources) : null,
+      g.updateFiles ? JSON.stringify(g.updateFiles) : null,
+      g.data?.id || null,
+      g.data?.title || null,
+      g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : null,
+      seeded,
+    );
+  }
+}
+
+export function saveMatchSuggestion(
+  gameId: string,
+  suggestion: Record<string, unknown>,
+): void {
+  db().prepare(
+    `UPDATE scanned_games SET
+      otix_match_suggestion = ?,
+      updated_at = datetime('now')
+    WHERE id = ?`
+  ).run(JSON.stringify(suggestion), gameId);
+}
+
 export function hydrateGame(
   id: string,
   title: string,
@@ -211,9 +273,11 @@ export function hydrateGame(
   posterUrl: string | null,
   fullData: Record<string, unknown> | null,
   confidence?: number | null,
+  mediaId?: string | null,
 ): void {
   db().prepare(
     `UPDATE scanned_games SET
+      otix_media_id = COALESCE(?, otix_media_id),
       otix_media_title = ?,
       otix_icon_url = ?,
       otix_poster_url = ?,
@@ -221,7 +285,7 @@ export function hydrateGame(
       otix_confidence = ?,
       updated_at = datetime('now')
     WHERE id = ?`
-  ).run(title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, confidence ?? null, id);
+  ).run(mediaId ?? null, title, iconUrl, posterUrl, fullData ? JSON.stringify(fullData) : null, confidence ?? null, id);
 }
 
 export function getMatchedGames(): { id: string; otix_media_id: string; title: string }[] {
@@ -391,6 +455,7 @@ export interface GameMatch {
   otixIconUrl?: string
   otixConfidence?: number
   matchType: 'auto' | 'manual'
+  status?: 'pending' | 'approved' | 'rejected'
   matchedAt?: string
 }
 
@@ -406,23 +471,27 @@ export function ensureGameMatchesTable(): void {
       otix_icon_url TEXT,
       otix_confidence REAL,
       match_type TEXT NOT NULL DEFAULT 'auto',
+      status TEXT NOT NULL DEFAULT 'approved',
       matched_at DATETIME NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (source, source_game_id)
     )
   `);
+  // Migrate: add status column if table existed before this column was added
+  try { db().exec(`ALTER TABLE game_matches ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'`); } catch { /* already exists */ }
 }
 
 export function upsertGameMatch(match: GameMatch): void {
   db().prepare(`
     INSERT OR REPLACE INTO game_matches
       (source, source_game_id, otix_media_id, otix_title, otix_poster_url,
-       otix_backdrop_url, otix_icon_url, otix_confidence, match_type, matched_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       otix_backdrop_url, otix_icon_url, otix_confidence, match_type, status, matched_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
   `).run(
     match.source, match.sourceGameId, match.otixMediaId,
     match.otixTitle || null, match.otixPosterUrl || null,
     match.otixBackdropUrl || null, match.otixIconUrl || null,
     match.otixConfidence ?? null, match.matchType,
+    match.status || 'pending',
   );
 }
 
@@ -441,6 +510,7 @@ export function getGameMatch(source: string, sourceGameId: string): GameMatch | 
     otixIconUrl: (row.otix_icon_url as string) || undefined,
     otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
     matchType: row.match_type as 'auto' | 'manual',
+    status: ((row.status as string) || 'approved') as GameMatch['status'],
     matchedAt: row.matched_at as string,
   };
 }
@@ -457,6 +527,7 @@ export function getAllGameMatches(): GameMatch[] {
     otixIconUrl: (row.otix_icon_url as string) || undefined,
     otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
     matchType: row.match_type as 'auto' | 'manual',
+    status: ((row.status as string) || 'approved') as GameMatch['status'],
     matchedAt: row.matched_at as string,
   }));
 }

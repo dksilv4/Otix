@@ -193,10 +193,24 @@ export function registerPluginScanIPC(): void {
   }
 
   ipcMain.handle('scanner:scan-all-plugins', async () => {
-    return await _orchestrator!.scanAll();
+    try {
+      return await _orchestrator!.scanAll();
+    } catch (err: any) {
+      console.error('[scanner:scan-all-plugins]', err.message);
+      throw err;
+    }
   });
 
   ipcMain.handle('scanner:scan-plugin', async (_event, pluginId: string) => {
-    return await _orchestrator!.scanPlugin(pluginId);
+    try {
+      return await _orchestrator!.scanPlugin(pluginId);
+    } catch (err: any) {
+      console.error('[scanner:scan-plugin]', err.message);
+      throw err;
+    }
+  });
+
+  ipcMain.handle('scanner:cancel-scan', async () => {
+    _orchestrator!.cancelScan();
   });
 }
