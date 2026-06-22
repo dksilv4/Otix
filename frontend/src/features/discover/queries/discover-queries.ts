@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
 import { IS_DEV } from '@/lib/config'
 import type { MediaItemSummary } from '@media/queries/media-queries'
-import type { PersonalizedSection } from '../types'
+import type { PersonalizedSection, TrendingTrailerItem } from '../types'
 
 const gcTime = IS_DEV ? 0 : 1000 * 60 * 60 * 24
 
@@ -59,6 +59,19 @@ export const discoverQueries = {
         return data.sections
       },
       staleTime: 1000 * 60 * 60,
+      gcTime,
+    }),
+
+  trailers: () =>
+    queryOptions({
+      queryKey: discoverKeys.trailers(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<{ items: TrendingTrailerItem[] }>(
+          '/discover/trailers/trending',
+        )
+        return data.items
+      },
+      staleTime: 1000 * 60 * 30,
       gcTime,
     }),
 }
