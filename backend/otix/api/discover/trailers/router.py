@@ -22,13 +22,44 @@ router = APIRouter()
 _TRAILERS_TTL = 1800  # 30 min
 
 
-def _extract_youtube_id(url: str) -> str:
-    """Extract YouTube video ID from a watch URL or return as-is if already an ID."""
+def _extract_youtube_id(url: str | None) -> str:
+    """Extract YouTube video ID from a URL.
+
+    Handles:
+    - None / empty / non-YouTube URLs  →  ""
+    - youtu.be/XXXXX                   →  "XXXXX"
+    - youtube.com/watch?v=XXXXX       →  "XXXXX"
+    - youtube.com/embed/XXXXX         →  "XXXXX"
+    - Already a bare ID               →  the ID itself
+    """
+    if not url or not url.strip():
+        return ""
+
     parsed = urlparse(url)
-    if parsed.hostname in ("youtu.be",):
+    hostname = (parsed.hostname or "").lower()
+
+    # youtu.be shortlinks
+    if hostname == "youtu.be":
         return parsed.path.lstrip("/")
-    qs = parse_qs(parsed.query)
-    return qs.get("v", [url])[0]
+
+    # youtube.com/embed/XXXXX
+    if hostname in ("www.youtube.com", "youtube.com", "m.youtube.com"):
+        if parsed.path.startswith("/embed/"):
+            return parsed.path.removeprefix("/embed/").split("?")[0].split("/")[0]
+        # Standard watch URL: ?v=XXXXX
+        qs = parse_qs(parsed.query)
+        v = qs.get("v")
+        if v:
+            return v[0]
+        # youtube.com URL but no recognizable video ID
+        return ""
+
+    # Non-YouTube URL — likely not a video URL at all
+    if hostname and hostname not in ("localhost", "127.0.0.1"):
+        return ""
+
+    # Bare string — assume it's already an ID
+    return url
 
 
 @router.get("/trailers/trending", response_model=TrendingTrailerResponse)

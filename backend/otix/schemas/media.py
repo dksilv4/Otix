@@ -825,3 +825,27 @@ class InstalledGameSummary(BaseModel):
 class InstalledGamesResponse(BaseModel):
     games: list[InstalledGameSummary]
     total: int = 0
+
+
+class YoutubeLikedVideoOut(BaseModel):
+    """A raw YouTube liked video, matched or unmatched to catalog."""
+
+    video_id: str
+    title: str
+    channel_title: str
+    channel_id: str
+    thumbnail_url: str | None = None
+    published_at: str = ""
+    # Matched catalog item
+    matched_media_item_id: str | None = None
+    matched_title: str | None = None
+    matched_artist: str | None = None
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class YoutubeLibraryResponse(BaseModel):
+    items: list[YoutubeLikedVideoOut]
+    next_cursor: str | None = None
+    has_more: bool = False

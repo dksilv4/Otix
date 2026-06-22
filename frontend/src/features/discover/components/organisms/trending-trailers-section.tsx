@@ -15,8 +15,21 @@ function TrailerCard({
   item: TrendingTrailerItem
   onPlay: () => void
 }) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onPlay()
+    }
+  }
+
   return (
-    <div className="relative group cursor-pointer" onClick={onPlay}>
+    <div
+      className="relative group cursor-pointer"
+      role="button"
+      tabIndex={0}
+      onClick={onPlay}
+      onKeyDown={handleKeyDown}
+    >
       <MediaCard
         id={item.id}
         mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}

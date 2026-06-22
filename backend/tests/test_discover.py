@@ -90,3 +90,60 @@ async def test_discover_rejects_invalid_list_type(app):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/discover/movie/invalid")
         assert resp.status_code == 400
+
+
+# ── trending trailers ──────────────────────────────────────────────────────────
+
+
+@pytest.mark.anyio
+async def test_trending_trailers_returns_ok(app):
+    """GET /discover/trailers/trending returns 200 with expected paginated shape."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/discover/trailers/trending")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "has_more" in data
+        assert "next_cursor" in data
+        assert "total" in data
+        assert isinstance(data["items"], list)
+        assert data["has_more"] is False
+        assert data["next_cursor"] is None
+        assert data["total"] == 0
+
+
+@pytest.mark.anyio
+async def test_trending_trailers_accepts_limit(app):
+    """GET /discover/trailers/trending?limit=X still returns 200."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/discover/trailers/trending", params={"limit": 5})
+        assert resp.status_code == 200
+
+
+# ── _extract_youtube_id ────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://youtu.be/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s", "dQw4w9WgXcQ"),
+        ("dQw4w9WgXcQ", "dQw4w9WgXcQ"),  # already an ID
+        # New edge cases
+        (None, ""),                         # None input
+        ("", ""),                           # empty string
+        ("   ", ""),                        # whitespace-only → falsy
+        ("https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"),  # embed URL
+        ("https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1", "dQw4w9WgXcQ"),  # embed with params
+        ("https://vimeo.com/123456789", ""),  # non-YouTube URL
+        ("https://example.com/video.mp4", ""),  # unknown domain
+        ("https://youtube.com/shorts/abc123", ""),  # shorts path (no ?v=)
+    ],
+)
+def test_extract_youtube_id(url, expected):
+    from otix.api.discover.trailers.router import _extract_youtube_id
+
+    assert _extract_youtube_id(url) == expected
