@@ -50,27 +50,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const lastActivatedRef = useRef<PlayerSource>('none')
 
   const source: PlayerSource = useMemo(() => {
-    // When the user explicitly activated Plex, check it first — Spotify SDK
-    // may still report a "playing" state from a previous session.
     if (lastActivatedRef.current === 'plex') {
       if (plex.currentTrack) return 'plex'
       if (spotify.isReady && spotify.isPlaying && spotify.currentTrack) return 'spotify'
     }
     if (spotify.isReady && spotify.isPlaying && spotify.currentTrack) return 'spotify'
     if (plex.isPlaying && plex.currentTrack) return 'plex'
-    // Only fall back to a non-playing source if it was the last one explicitly activated
     if (lastActivatedRef.current === 'spotify' && spotify.isReady && spotify.currentTrack) return 'spotify'
     if (lastActivatedRef.current === 'plex' && plex.currentTrack) return 'plex'
     return 'none'
   }, [spotify.isPlaying, spotify.currentTrack, spotify.isReady, plex.isPlaying, plex.currentTrack])
 
   const currentTrack: PlayerTrackInfo | null = useMemo(() => {
-    if (source === 'spotify' && spotify.currentTrack) {
-      return mapSpotifyTrack(spotify.currentTrack)
-    }
-    if (source === 'plex' && plex.currentTrack) {
-      return mapPlexTrack(plex.currentTrack)
-    }
+    if (source === 'spotify' && spotify.currentTrack) return mapSpotifyTrack(spotify.currentTrack)
+    if (source === 'plex' && plex.currentTrack) return mapPlexTrack(plex.currentTrack)
     return null
   }, [source, spotify.currentTrack, plex.currentTrack])
 
@@ -133,61 +126,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     duration: source === 'spotify' ? spotify.duration : source === 'plex' ? plex.duration : 0,
     volume: source === 'spotify' ? spotify.volume : source === 'plex' ? plex.volume : 0.5,
     error: source === 'spotify' ? spotify.error : source === 'plex' ? plex.error : null,
-    togglePlay,
-    skipNext,
-    skipPrevious,
-    seek,
-    setVolume,
-    stop,
+    togglePlay, skipNext, skipPrevious, seek, setVolume, stop,
     dismissError: spotify.dismissError,
-    playSpotify,
-    playSpotifyQueue,
-    addToQueue: spotify.addToQueue,
-    setSpotifyQueueMetadata: spotify.setQueueMetadata,
-    playPlexTrack,
-    playPlexAlbum,
-    skipPlexToIndex: plex.skipToIndex,
-    spotifyNextTracks: spotify.nextTracks,
-    spotifyPreviousTracks: spotify.previousTracks,
-    spotifyIsReady: spotify.isReady,
-    spotifyAvailableDevices: spotify.availableDevices,
-    spotifySelectDevice: spotify.selectDevice,
-    plexQueue: plex.queue,
-    plexPreviousTracks: plex.previousTracks,
+    playSpotify, playSpotifyQueue, addToQueue: spotify.addToQueue, setSpotifyQueueMetadata: spotify.setQueueMetadata,
+    playPlexTrack, playPlexAlbum, skipPlexToIndex: plex.skipToIndex,
+    spotifyNextTracks: spotify.nextTracks, spotifyPreviousTracks: spotify.previousTracks,
+    spotifyIsReady: spotify.isReady, spotifyAvailableDevices: spotify.availableDevices, spotifySelectDevice: spotify.selectDevice,
+    plexQueue: plex.queue, plexPreviousTracks: plex.previousTracks,
   }
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
 }
 
 const defaultContextValue: PlayerContextValue = {
-  source: 'none',
-  isPlaying: false,
-  currentTrack: null,
-  position: 0,
-  duration: 0,
-  volume: 0.5,
-  error: null,
-  togglePlay: async () => {},
-  skipNext: async () => {},
-  skipPrevious: async () => {},
-  seek: async () => {},
-  setVolume: () => {},
-  stop: () => {},
-  dismissError: () => {},
-  playSpotify: async () => {},
-  playSpotifyQueue: async () => {},
-  addToQueue: async () => {},
-  setSpotifyQueueMetadata: () => {},
-  playPlexTrack: async () => {},
-  playPlexAlbum: async () => {},
-  skipPlexToIndex: () => {},
-  spotifyNextTracks: [],
-  spotifyPreviousTracks: [],
-  spotifyIsReady: false,
-  spotifyAvailableDevices: [],
-  spotifySelectDevice: async () => {},
-  plexQueue: [],
-  plexPreviousTracks: [],
+  source: 'none', isPlaying: false, currentTrack: null, position: 0, duration: 0, volume: 0.5, error: null,
+  togglePlay: async () => {}, skipNext: async () => {}, skipPrevious: async () => {}, seek: async () => {}, setVolume: () => {}, stop: () => {}, dismissError: () => {},
+  playSpotify: async () => {}, playSpotifyQueue: async () => {}, addToQueue: async () => {}, setSpotifyQueueMetadata: () => {},
+  playPlexTrack: async () => {}, playPlexAlbum: async () => {}, skipPlexToIndex: () => {},
+  spotifyNextTracks: [], spotifyPreviousTracks: [], spotifyIsReady: false, spotifyAvailableDevices: [], spotifySelectDevice: async () => {},
+  plexQueue: [], plexPreviousTracks: [],
 }
 
 export function usePlayer(): PlayerContextValue {

@@ -12,6 +12,7 @@ import { ActivityModuleInstalls } from '../molecules/activity-module-installs'
 import { ActivityModuleDownloads } from '../molecules/activity-module-downloads'
 import { ActivityModulePlexSection } from '../molecules/activity-module-plex-section'
 import { ActivityModuleNotifications } from '../molecules/activity-module-notifications'
+import { ActivityModulePlugins } from '../molecules/activity-module-plugins'
 import { ActivityModuleSection, staggerVariants } from '../molecules/activity-module-section'
 
 const PANEL_WIDTH = 300
@@ -87,6 +88,7 @@ export function ActivityModule({ open, onClose }: ActivityModuleProps) {
             <ActivityModuleInstalls />
             <Desktop><ActivityModuleDownloads /></Desktop>
             <Feature name="integration:plex"><ActivityModulePlexSection /></Feature>
+            <ActivityModulePlugins />
             <ActivityModuleNotifications onClose={onClose} />
             <ActivityModuleSection>
               <div className="flex items-center justify-center py-3">

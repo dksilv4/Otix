@@ -1,6 +1,6 @@
 import type { Variants } from 'framer-motion'
 import { motion } from 'framer-motion'
-import { GLASS_STYLE } from '../organisms/activity-panel-constants'
+import { GLASS_STYLE } from '../../constants/activity-panel-constants'
 
 /** Glass-morphism wrapper container for individual activity panel sections. */
 export function ActivityModuleSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
