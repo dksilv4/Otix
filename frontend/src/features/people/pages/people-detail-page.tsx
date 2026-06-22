@@ -5,20 +5,12 @@ import { Helmet } from 'react-helmet-async'
 import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
-<<<<<<<< HEAD:frontend/src/old-features/person/organisms/person-detail.tsx
-import { useAuth } from '@/old-features/auth'
-import { personQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '../person-queries'
-import type { PersonDetail as PersonDetailData } from '../person-queries'
-import { PersonTimeline } from './person-timeline'
-import { PersonTimelineFilters } from './person-timeline-filters'
-========
 import { useAuth } from '@auth/hooks/use-auth'
 import { peopleQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '@people/queries/people-queries'
 import type { PersonDetail } from '@people/types'
 import { formatDate, getCreditsStats } from '@people/utils'
 import { PeopleTimeline } from '@people/components/organisms/people-timeline'
 import { PeopleTimelineFilters } from '@people/components/organisms/people-timeline-filters'
->>>>>>>> d607927de356d7641bc4391ed7e97bc43aae7dc2:frontend/src/features/people/pages/people-detail-page.tsx
 import { cn } from '@/lib/utils'
 
 // ── Sub-components ────────────────────────────────

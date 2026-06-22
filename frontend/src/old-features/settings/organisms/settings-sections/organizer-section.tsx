@@ -2,11 +2,11 @@
 import './organizer-section.scss'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
-import { DkButton } from '@/features/dk-ui/atoms/button'
-import { DkSwitch } from '@/features/dk-ui/atoms/switch'
+import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { cn } from '@/lib/utils'
-import { isDesktop } from '@/lib/desktop-api'
+import { isDesktop } from '@/lib/desktop'
 import { CheckCircle2 } from 'lucide-react'
 
 const NAMING_PRESETS = [
@@ -15,16 +15,16 @@ const NAMING_PRESETS = [
 ]
 
 const TOKEN_DOCS = [
-  '{Title}        — Clean game title (e.g. "Stellar Blade")',
-  '{CleanTitle}   — cleanGameTitle() fallback',
-  '{Year}        — Release year (e.g. "2024")',
-  '{Edition}     — Edition tag (e.g. "GOTY Edition")',
-  '{Platform}    — Platform hint (e.g. "PC", "Multi")',
-  '{ReleaseGroup}— Scene release group (e.g. "ElAmigos")',
-  '{Version}     — Version number (e.g. "1.03")',
-  '{OriginalName}— Raw download folder name',
-  '{MediaType}   — "ISO", "PC", or "Update"',
-  '{ext}         — File extension (auto-filled)',
+  '{Title}        Ã¢â‚¬â€ Clean game title (e.g. "Stellar Blade")',
+  '{CleanTitle}   Ã¢â‚¬â€ cleanGameTitle() fallback',
+  '{Year}        Ã¢â‚¬â€ Release year (e.g. "2024")',
+  '{Edition}     Ã¢â‚¬â€ Edition tag (e.g. "GOTY Edition")',
+  '{Platform}    Ã¢â‚¬â€ Platform hint (e.g. "PC", "Multi")',
+  '{ReleaseGroup}Ã¢â‚¬â€ Scene release group (e.g. "ElAmigos")',
+  '{Version}     Ã¢â‚¬â€ Version number (e.g. "1.03")',
+  '{OriginalName}Ã¢â‚¬â€ Raw download folder name',
+  '{MediaType}   Ã¢â‚¬â€ "ISO", "PC", or "Update"',
+  '{ext}         Ã¢â‚¬â€ File extension (auto-filled)',
 ]
 
 export function OrganizerSection() {

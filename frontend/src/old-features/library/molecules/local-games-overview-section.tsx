@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router"
-import { isDesktop } from "@/lib/desktop-api"
-import { useLocalGames } from "@/features/game-scanner/game-queries"
-import { GameCard } from "@/features/game-scanner/molecules/game-card"
+import { isDesktop } from "@/lib/desktop"
+import { useLocalGames } from "@/old-features/game-scanner/game-queries"
+import { GameCard } from "@/old-features/game-scanner/molecules/game-card"
 
 export function LocalGamesOverviewSection() {
   const navigate = useNavigate()
