@@ -32,3 +32,21 @@ export interface RecordedMoodContext {
   mood: string
   feeling: string
 }
+
+export interface TrendingTrailerItem {
+  id: string
+  mediaType: string
+  title: string
+  slug: string
+  posterUrl: string | null
+  textlessPosterUrl: string | null
+  backdropUrl: string | null
+  logoUrl: string | null
+  releaseDate: string | null
+  popularity: number
+  avgRating: number | null
+  ratingCount: number
+  overview: string | null
+  trailerYoutubeId: string
+  trailerUrl: string
+}
