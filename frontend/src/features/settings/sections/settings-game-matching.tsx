@@ -5,8 +5,10 @@ import { useLocalGames } from '@/old-features/game-scanner/game-queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/old-features/game-scanner/queries'
 import { useClaimGame, useUnclaimGame } from '@/old-features/library/library-queries'
 import { acceptSuggestionOnServer, rejectSuggestionOnServer, fetchGames } from '@/old-features/game-scanner/storage'
-import { GameRow } from '../components/game-row'
-import { MatchDetailPanel } from '../components/match-detail-panel'
+import { GameRow } from '../components/molecules/settings-game-row'
+import { MatchDetailPanel } from '../components/organisms/settings-match-detail-panel'
+import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
+import { useModal } from '@/lib/modals'
 import { isDesktop } from '@/lib/desktop/api'
 
 type FilterTab = 'all' | 'matched' | 'unmatched' | 'suggested'
@@ -32,11 +34,24 @@ export function GameMatchingSection() {
   }, [refetch])
   const unclaimMutation = useUnclaimGame()
 
+  const { openModal } = useModal()
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [filterTab, setFilterTab] = useState<FilterTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [accepting, setAccepting] = useState(false)
   const [rejecting, setRejecting] = useState(false)
+
+  const handleGameClick = useCallback((game: LocalGame) => {
+    setSelectedGameId(game.id)
+    // Open candidate review modal for games with suggestions or matches
+    const close = openModal(
+      <CandidateReviewModal
+        game={game}
+        onClose={() => close()}
+        onMatchResolved={() => refetch()}
+      />
+    )
+  }, [openModal, refetch])
 
   const filteredGames = useMemo(() => {
     let games = allGames
@@ -224,14 +239,14 @@ export function GameMatchingSection() {
                 key={g.id}
                 game={g}
                 selected={selectedGame?.id === g.id}
-                onClick={(game) => setSelectedGameId(game.id)}
+                onClick={handleGameClick}
               />
             ))
           )}
         </div>
 
         {/* Detail panel - right */}
-        <div className="flex-1 rounded-2xl p-5 bg-white/5 backdrop-blur-xl overflow-y-auto max-h-[600px]">
+        <div className="flex-1 rounded-2xl p-5 bg-white/5 overflow-y-auto max-h-[600px]">
           <MatchDetailPanel
             game={selectedGame}
             onAccept={handleAccept}
