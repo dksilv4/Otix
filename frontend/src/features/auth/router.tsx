@@ -3,7 +3,7 @@ import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 
 const AuthPage = lazy(() => import('@auth/pages/auth-page').then(m => ({ default: m.AuthPage })))
-const RegisterPage = lazy(() => import('@auth/pages/register-page').then(m => ({ default: m.RegisterPage })))
+const RegisterPage = lazy(() => import('@auth/pages/auth-register-page').then(m => ({ default: m.RegisterPage })))
 const CallbackPage = lazy(() => import('@auth/pages/auth-callback-page').then(m => ({ default: m.CallbackPage })))
 const TwoFactorPage = lazy(() => import('@auth/pages/auth-two-factor-page').then(m => ({ default: m.TwoFactorPage })))
 const VerifyEmailPage = lazy(() => import('@auth/pages/auth-verify-email-page').then(m => ({ default: m.VerifyEmailPage })))

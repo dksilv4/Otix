@@ -26,7 +26,7 @@ import { FollowButton } from '@/old-features/user/molecules/follow-button'
 import { StreakDisplay } from '@/old-features/user/molecules/streak-display'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
-import { XPProgressRing } from '@user/components/atoms/xp-progress-ring'
+import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
 import { UserProfileSkeleton } from '@user/components/organisms/user-profile-skeleton'
 
 // ── Page ──

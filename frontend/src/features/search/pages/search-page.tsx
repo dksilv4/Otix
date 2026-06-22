@@ -1,7 +1,7 @@
 import { lazy, useState, useEffect, useRef } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useSearch, useNavigate, Outlet } from '@tanstack/react-router'
-import { SearchInput } from '@search/components/molecules/chat-search-input'
+import { SearchInput } from '@search/components/molecules/search-chat-input'
 import { SearchResults } from '@search/components/organisms/search-results'
 import { SearchSortBar } from '@search/components/molecules/search-sort-bar'
 import type { SortValue, TypeValue } from '@search/types'

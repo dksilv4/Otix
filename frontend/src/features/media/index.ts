@@ -1,4 +1,4 @@
-export { createMediaRoutes } from './media.router'
+export { createMediaRoutes } from './router'
 export { MediaDetailPage } from './pages/media-detail-page'
 export { mediaQueries } from './queries/media-queries'
 export type { MediaItemSummary, MediaItemDetail, MediaListResponse, MediaWatchProvider, GameDetail, MovieDetail, AlbumDetail, TrackOut, EpisodeOut, SeasonOut } from './queries/media-queries'
