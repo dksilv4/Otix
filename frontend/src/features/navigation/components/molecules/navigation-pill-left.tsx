@@ -2,9 +2,9 @@ import {Link, useLocation} from "@tanstack/react-router"
 import {DkLogo} from "@dk-ui/atoms/logo"
 import {usePageMeta} from "@/lib/providers/page-context"
 import {useDesktopPlatform} from "@/lib/desktop/platform"
-import {NavPill} from "../atoms/nav-pill"
-import {BackButton} from "../atoms/nav-back-button"
-import {MenuToggle} from "../atoms/nav-menu-toggle"
+import {NavPill} from "../atoms/navigation-pill"
+import {BackButton} from "../atoms/navigation-back-button"
+import {MenuToggle} from "../atoms/navigation-menu-toggle"
 
 /** Left-side floating navigation pill with back button, menu toggle, and optional logo. */
 export function NavPillLeft() {

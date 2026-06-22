@@ -3,7 +3,7 @@ import { useLocation } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { Compass, Search, Gamepad2, Settings, List } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
-import { NavLink } from "@navigation/components/atoms/nav-link"
+import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
 
 /** Animated floating dropdown menu for app navigation, positioned based on screen and route. */
