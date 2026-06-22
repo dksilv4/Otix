@@ -1,4 +1,4 @@
-import { MatchingSection } from '../sections/matching'
+import { MatchingSection } from '../sections/settings-matching'
 
 export function SettingsMatchingPage() {
   return <MatchingSection />

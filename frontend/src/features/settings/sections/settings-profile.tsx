@@ -11,8 +11,8 @@ import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 import { cn } from '@/lib/utils'
 import { CropModal } from '@/old-features/settings/molecules/crop-modal'
 import { User, Pencil, Shield, Link2, Image } from 'lucide-react'
-import { SectionHeader } from '../components/section-header'
-import { SettingsSaveBar } from '../components/settings-save-bar'
+import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 
 const BIO_MAX_LENGTH = 250
 

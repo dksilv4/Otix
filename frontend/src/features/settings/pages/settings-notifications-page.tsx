@@ -1,4 +1,4 @@
-﻿import { NotificationsSection } from '../sections/notifications'
+﻿import { NotificationsSection } from '../sections/settings-notifications'
 
 export function SettingsNotificationsPage() {
   return <NotificationsSection />

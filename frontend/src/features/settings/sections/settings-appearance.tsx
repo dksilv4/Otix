@@ -6,7 +6,7 @@ import type { ThemeSetting } from '@/lib/providers/theme'
 import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'
-import { SectionHeader } from '../components/section-header'
+import { SectionHeader } from '../components/molecules/settings-section-header'
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
