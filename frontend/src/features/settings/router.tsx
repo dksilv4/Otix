@@ -17,6 +17,7 @@ const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').t
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
 const SettingsMatchingPage = lazy(() => import('./pages/settings-matching-page').then(m => ({ default: m.SettingsMatchingPage })))
 const SettingsScannedGamesPage = lazy(() => import('./pages/settings-scanned-games-page').then(m => ({ default: m.SettingsScannedGamesPage })))
+const ProposalsPage = lazy(() => import('@/features/proposals/pages/proposals-page').then(m => ({ default: m.ProposalsPage })))
 
 export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSettingsTab[]) {
   const settingsRoute = createRoute({
@@ -76,6 +77,19 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsScannedGamesPage,
   })
 
+  const settingsProposalsRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/proposals',
+    component: ProposalsPage,
+  })
+
+  // Redirect old paths to the new /settings/proposals
+  const settingsAdminProposalsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/admin/proposals',
+    beforeLoad: () => { throw redirect({ to: '/settings/proposals' }) },
+  })
+
   const settingsLibraryRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/library',
@@ -124,6 +138,8 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsIntegrationsRoute,
     settingsMatchingRoute,
     settingsScannedGamesRoute,
+    settingsAdminProposalsRedirect,
+    settingsProposalsRoute,
     settingsLibraryRoute,
     settingsLibraryMatchingRoute,
     settingsDownloadsRoute,
