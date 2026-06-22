@@ -1,11 +1,15 @@
 import { DiscoverHero } from './discover-hero'
-import { MediaSection } from './media-section'
+import { DiscoverTrailerHero } from './discover-trailer-hero'
+import { MediaSection } from './discover-media-section'
+import { TrendingTrailersSection } from './trending-trailers-section'
 
 /** Feed layout composing the hero carousel with personalized media sections. */
 export function DiscoverFeed() {
   return (
     <div className="space-y-16">
       <DiscoverHero />
+      <DiscoverTrailerHero />
+      <TrendingTrailersSection />
       <MediaSection
         title="Popular Movies"
         mediaType="movie"
