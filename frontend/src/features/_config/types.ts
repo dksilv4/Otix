@@ -56,6 +56,11 @@ export type FeatureName =
   | 'title-bar'
   | 'user'
   | 'workout'
+  | 'context-menu:game'
+  | 'context-menu:movie'
+  | 'context-menu:tv'
+  | 'context-menu:music'
+  | 'context-menu:generic'
 
 export type FeatureOverrides = Partial<Record<FeatureName, boolean>>
 
