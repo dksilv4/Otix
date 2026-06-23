@@ -155,7 +155,7 @@ const ctx = {
   },
   host: {
     emit: (event: string, data: unknown) => {
-      rpc('host.emit', event, data)
+      rpc('host.emit', event, data).catch(() => {})
     },
   },
   onDestroy: (cb: () => void) => {
