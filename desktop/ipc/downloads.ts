@@ -155,14 +155,15 @@ export function registerDownloadsIPC(): void {
     return _callPlugin('downloads', 'search-and-download', { query: gameName, allowHypervisor });
   });
 
-  // ── Download CRUD (direct DB access) ───────────────────────────────────
+  // ── Download CRUD (routed to downloads plugin for history) ────────────
 
   ipcMain.handle('downloads:get-download', (_, id: string) => {
     return getDownload(id);
   });
 
-  ipcMain.handle('downloads:get-user-downloads', (_, userId: string) => {
-    return getUserDownloads(userId);
+  ipcMain.handle('downloads:get-user-downloads', async () => {
+    if (!_callPlugin) throw new Error('Plugin system not initialized');
+    return _callPlugin('downloads', 'get-downloads');
   });
 
   ipcMain.handle('downloads:delete', (_, id: string) => {

@@ -192,6 +192,10 @@ export interface PluginContext {
   events: EventSubscriber
   fetch: PluginFetch
   db: PluginDatabase
+  downloadsDb: {
+    all<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[]
+    get<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | null
+  }
   notifications: PluginNotifications
   logger: PluginLogger
   api: ApiProxy

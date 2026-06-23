@@ -6,6 +6,7 @@ import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
 import * as fs from 'fs/promises'
 import { app } from 'electron'
+import { getConnection } from '../db'
 
 const GATED_METHODS: Record<string, PluginPermission> = {
   'events.on': 'events:subscribe',
@@ -26,6 +27,8 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'app.getFileIcon': 'worker:filesystem',
   'plugins.call': 'events:subscribe' as PluginPermission,
   'plugins.discover': 'events:subscribe' as PluginPermission,
+  'downloadsDb.all': 'storage:local' as PluginPermission,
+  'downloadsDb.get': 'storage:local' as PluginPermission,
 }
 
 export interface BridgeDependencies {
@@ -223,6 +226,14 @@ async function executeMethod(
       return pluginDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
     case 'db.all':
       return pluginDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
+    case 'downloadsDb.all': {
+      const dlDb = getConnection('downloads')
+      return dlDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
+    }
+    case 'downloadsDb.get': {
+      const dlDb = getConnection('downloads')
+      return dlDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
+    }
     case 'events.on': {
       const eventName = args[0] as string
       const subId = `ev_${++subIdCounter}`
