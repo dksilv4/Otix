@@ -1,9 +1,10 @@
 /**
- * Downloads module — SABnzbd + NZBPlanet integration for Electron.
+ * Downloads module — shared DB access for download tracking and config.
  *
- * - SQLite (sql.js WASM) for local download/config/wishlist tracking.
- * - HTTP calls to SABnzbd (local network) and NZBPlanet API.
- * - Exported functions are called from main.ts IPC handlers.
+ * Plugin-specific operations (SABnzbd, NZBPlanet, search/download orchestration)
+ * have been moved to the plugin system under extensions/otix-plugins/plugins/.
+ *
+ * This file retains only shared database CRUD functions.
  */
 
 import path from 'path';
@@ -20,681 +21,9 @@ function db(): Database.Database {
 type DbRow = Record<string, any>;
 const __get = (sql: string, ...params: any[]) => db().prepare(sql).get(...params) as any;
 const __all = (sql: string, ...params: any[]) => db().prepare(sql).all(...params) as any[];
-import { autoOrganizeDownload } from './organizer';
 
 function genId(): string {
   return 'dl_' + Math.random().toString(36).substring(2, 14);
-}
-
-// ── NZB search result cache (1 hour TTL) ─────────────────────────────────
-
-interface CacheEntry {
-  results: NZBResult[];
-  fetchedAt: number;
-}
-const searchCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-function getCachedSearch(query: string): NZBResult[] | null {
-  const key = query.toLowerCase().trim();
-  const entry = searchCache.get(key);
-  if (entry && Date.now() - entry.fetchedAt < CACHE_TTL_MS) {
-    console.log('[NZBPlanet cache] Hit for:', query);
-    return entry.results;
-  }
-  return null;
-}
-
-function setCachedSearch(query: string, results: NZBResult[]): void {
-  const key = query.toLowerCase().trim();
-  searchCache.set(key, { results, fetchedAt: Date.now() });
-  console.log('[NZBPlanet cache] Cached', results.length, 'results for:', query);
-}
-
-// ── NZBPlanet API client ──────────────────────────────────────────────────
-
-export interface NZBResult {
-  guid: string;
-  title: string;
-  size: number;
-  pubDate: string;
-  category: string;
-  nzbUrl: string;
-  detailsUrl: string;
-}
-
-function parseXmlItems(xml: string): NZBResult[] {
-  const results: NZBResult[] = [];
-  // Match <item>...</item> blocks (non-greedy, dotAll)
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-  let match;
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const block = match[1];
-    const tag = (name: string) => {
-      const m = block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`, 'i'));
-      return m ? m[1].trim() : '';
-    };
-    const sizeStr = tag('size');
-    results.push({
-      guid: tag('guid'),
-      title: tag('title').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1'),
-      size: parseInt(sizeStr, 10) || 0,
-      pubDate: tag('pubDate') || new Date().toISOString(),
-      category: tag('category'),
-      nzbUrl: tag('link'),
-      detailsUrl: tag('link'),
-    });
-  }
-  results.sort((a, b) => b.size - a.size);
-  return results;
-}
-
-export async function searchNzbPlanet(
-  query: string,
-  apiKey: string,
-  categoryIds: string = '1000,2000',
-  limit: number = 20,
-): Promise<NZBResult[]> {
-  // Check cache first
-  const cached = getCachedSearch(query);
-  if (cached) return cached;
-
-  const url = `https://api.nzbplanet.net/api?t=search&apikey=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(query)}&cat=${encodeURIComponent(categoryIds)}&o=json&num=${limit}`;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Otix/1.0' },
-    });
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(`NZBPlanet returned ${response.status}: ${body.substring(0, 300)}`);
-    }
-
-    const text = await response.text();
-    console.log('[NZBPlanet search] Response length:', text.length, 'preview:', text.substring(0, 400));
-
-    // Try JSON first
-    if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-      const data = JSON.parse(text);
-      const items = data?.channel?.item;
-      if (!items) return [];
-      const itemList = Array.isArray(items) ? items : [items];
-      const results: NZBResult[] = itemList.map((item: any) => ({
-        guid: item.guid ?? '',
-        title: item.title ?? '',
-        size: parseInt(item.size ?? '0', 10),
-        pubDate: item.pubDate ?? new Date().toISOString(),
-        category: item.category ?? '',
-        nzbUrl: item.link ?? '',
-        detailsUrl: item.link ?? '',
-      }));
-      results.sort((a, b) => b.size - a.size);
-      setCachedSearch(query, results);
-      return results;
-    }
-
-    // Fallback: parse XML/RSS
-    if (text.includes('<?xml') || text.includes('<rss') || text.includes('<channel')) {
-      const items = parseXmlItems(text);
-      console.log('[NZBPlanet search] XML parsed, items found:', items.length);
-      if (items.length > 0) {
-        console.log('[NZBPlanet search] First item:', { title: items[0].title, size: items[0].size, category: items[0].category });
-      }
-      setCachedSearch(query, items);
-      return items;
-    }
-
-    console.error('[NZBPlanet search] Unknown response format:', text.substring(0, 300));
-    return [];
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-export async function testNzbPlanetConnection(apiKey: string): Promise<boolean> {
-  try {
-    const url = new URL('https://api.nzbplanet.net/api');
-    url.searchParams.set('t', 'search');
-    url.searchParams.set('apikey', apiKey);
-    url.searchParams.set('q', 'test');
-    url.searchParams.set('cat', '1000');
-    url.searchParams.set('o', 'json');
-    url.searchParams.set('num', '1');
-
-    console.log('[NZBPlanet test] Requesting:', url.toString().replace(apiKey, '***'));
-
-    const response = await fetch(url.toString(), {
-      signal: AbortSignal.timeout(15000),
-      headers: { 'User-Agent': 'Otix/1.0' },
-    });
-
-    console.log('[NZBPlanet test] Status:', response.status);
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.error('[NZBPlanet test] Error body:', body.substring(0, 500));
-      return false;
-    }
-
-    const text = await response.text();
-    console.log('[NZBPlanet test] Response preview:', text.substring(0, 200));
-
-    // Try JSON first, fall back to XML — both prove the API key works
-    if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
-      const data = JSON.parse(text);
-      console.log('[NZBPlanet test] JSON parsed. Has channel:', !!data?.channel, 'items:', data?.channel?.item?.length ?? 0);
-    } else if (text.includes('<?xml') || text.includes('<rss') || text.includes('<channel')) {
-      console.log('[NZBPlanet test] XML response detected — API key works');
-    } else {
-      console.log('[NZBPlanet test] Unknown response format, first 200 chars:', text.substring(0, 200));
-    }
-
-    return true;
-  } catch (err: any) {
-    console.error('[NZBPlanet test] Exception:', err.message, err.cause || '');
-    return false;
-  }
-}
-
-// ── NZB result ranking ────────────────────────────────────────────────────
-
-const DEMO_PATTERNS = ['demo', 'trial', 'beta', 'alpha'];
-const UPDATE_PATTERNS = ['update', 'patch', 'dlc', 'addon', 'add-on', 'hotfix'];
-const CRACK_ONLY_PATTERNS = ['crack by', 'crack-only', 'crack only', 'crackfix', 'standalone crack'];
-const SCENE_TAGS = ['iso', 'repack', 'codex', 'crack', 'gog', 'elamigos', 'dodi', 'fitgirl', 'skidrow', 'flt'];
-const HYPERVISOR_TAGS = ['hv', 'hypervisor', 'vm', 'vmware', 'virtualbox', 'qemu', 'vmic'];
-
-function isFullGame(result: NZBResult): boolean {
-  const title = result.title.toLowerCase();
-  return !DEMO_PATTERNS.some(p => title.includes(p));
-}
-
-function isNotUpdate(result: NZBResult): boolean {
-  const title = result.title.toLowerCase();
-  return !UPDATE_PATTERNS.some(p => title.includes(p));
-}
-
-function hasSceneTags(result: NZBResult): boolean {
-  const title = result.title.toLowerCase();
-  return SCENE_TAGS.some(tag => title.includes(tag));
-}
-
-function hasPreferredRepacker(result: NZBResult, repackers: string[]): boolean {
-  if (repackers.length === 0) return false;
-  const title = result.title.toLowerCase();
-  return repackers.some(r => title.includes(r.toLowerCase()));
-}
-
-function hasHypervisorTags(result: NZBResult): boolean {
-  const title = result.title.toLowerCase();
-  // Check for standalone hv (word boundary) to avoid false match on "have"
-  return HYPERVISOR_TAGS.some(tag => {
-    if (tag === 'hv') {
-      return title.includes(' hv ') || title.startsWith('hv ') || title.endsWith(' hv') || title === 'hv';
-    }
-    return title.includes(tag);
-  });
-}
-
-function isNotCrackOnly(result: NZBResult): boolean {
-  const title = result.title.toLowerCase();
-  return !CRACK_ONLY_PATTERNS.some(p => title.includes(p));
-}
-
-// ── Update matching ───────────────────────────────────────────────────────
-
-/** Words stripped from scene release titles when extracting core game name. */
-const _CORE_SKIP_WORDS = new Set([
-  'repack', 'codex', 'crack', 'gog', 'elamigos', 'dodi', 'fitgirl',
-  'skidrow', 'flt', 'update', 'patch', 'hotfix', 'dlc', 'addon', 'iso',
-  'program', 'game', 'install', 'setup', 'files', 'data', 'content',
-]);
-
-/** Does this result title look like a crack update/patch (not DLC)? */
-function isUpdateResult(title: string): boolean {
-  const t = title.toLowerCase();
-  return ['update', 'patch', 'hotfix'].some(p => t.includes(p));
-}
-
-/**
- * Strip noise from a release title to get a comparable game signature.
- * (Exported for use by auto-organizer)
- *
- * Handles both scene format (Game.Name.REPACK-GROUP) and Elamigos
- * format (Game Name V##### Group Password=404).
- *
- * "Clair Obscur Expedition 33 V61339 ElAmigos"        → "clairobscurexpedition"
- * "Clair Obscur Expedition 33 Update 62964-63936 ..." → "clairobscurexpedition"
- * "Stellar.Blade.REPACK-DELUSION"                     → "stellarblade"
- * "Stellar.Blade.Update.v1.01-Voices38"              → "stellarblade"
- */
-export function gameSignature(title: string): string {
-  const lower = title.toLowerCase()
-    .replace(/\s*password=.*$/i, '')            // strip Password=... suffix
-    .replace(/-[a-z0-9_.]+$/, '')               // strip scene group (Game-GROUP)
-    .replace(/\b(update|patch|hotfix|demo|dlc|addon|repack)\b/gi, '')  // strip keywords
-    .replace(/\bv?\d+(\.\d+)*\b/gi, '');        // strip version numbers
-  return lower.split(/[.\s]+/)
-    .filter(w => w && !_CORE_SKIP_WORDS.has(w))
-    .map(w => w.replace(/[^a-z0-9]/g, ''))
-    .filter(Boolean)
-    .join('');
-}
-
-/** Extract release group from title.
- *
- *  Handles both dash-separated (scene) and space-separated (Elamigos) groups:
- *    "Clair.Obscur.Expedition.33-Elamigos"  →  "elamigos"
- *    "Clair Obscur Expedition 33 V61339 ElAmigos"  →  "elamigos"
- *    "Password=NibNit999" also checked as fallback group marker.
- *  (Exported for auto-organizer)
- */
-export function extractGroup(title: string): string | null {
-  const lower = title.toLowerCase().trim();
-  // Cache Password= value in case it encodes the group
-  const pwMatch = lower.match(/password=([a-z0-9_.]+)/);
-  const cleaned = lower.replace(/\s*password=.*$/i, '').trim();
-
-  // Dash-group: Game-GROUP
-  const dashMatch = cleaned.match(/-([a-z0-9_.]+)$/);
-  if (dashMatch) return dashMatch[1];
-
-  // Space-group: last word is a known group tag
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  const last = words[words.length - 1];
-  if (last && _CORE_SKIP_WORDS.has(last)) return last;
-  // Last word looks like a scene group (2-10 alpha chars, not purely digits)
-  if (last && /^[a-z]{2,10}$/.test(last) && !/^\d+$/.test(last)) return last;
-
-  // Fallback: password value can encode the release group
-  if (pwMatch) {
-    const pv = pwMatch[1];
-    if (pv.length >= 2 && pv.length <= 15) return pv;
-  }
-  return null;
-}
-
-/** Parse version from Elamigos-style title: "V61339" → 61339, "Update 56180" → 56180
- *  (Exported for auto-organizer) */
-export function parseVersion(title: string): number | null {
-  const lower = title.toLowerCase();
-  // Base: "Game Name V61339 Group"
-  const baseMatch = lower.match(/\bv(\d{3,})\b/);
-  if (baseMatch) return parseInt(baseMatch[1], 10);
-  // Update: "Update 56180 - 56442" → start version
-  const updateMatch = lower.match(/\bupdate\s+(\d{3,})/);
-  if (updateMatch) return parseInt(updateMatch[1], 10);
-  return null;
-}
-
-/** Parse TO version from an update range: "Update 61339 - 62964" → 62964 */
-function parseToVersion(title: string): number | null {
-  const match = title.toLowerCase().match(/\bupdate\s+\d+\s*-\s*(\d{3,})/);
-  return match ? parseInt(match[1], 10) : null;
-}
-
-/** Deduplicate update NZBs: keep only the fattest update per FROM version.
- *
- *  "61339-61582"  +  "61339-61711"  +  "61339-62964"  →  "61339-62964" (fattest)
- */
-function deduplicateUpdates(updates: NZBResult[]): NZBResult[] {
-  const best = new Map<number, NZBResult>();
-  for (const u of updates) {
-    const from = parseVersion(u.title);
-    if (from === null) {
-      // Keep updates without parseable version too
-      if (!best.has(-1)) best.set(-1, u);
-    } else {
-      const existing = best.get(from);
-      if (!existing) { best.set(from, u); continue; }
-      const existingTo = parseToVersion(existing.title) ?? 0;
-      const newTo = parseToVersion(u.title) ?? 0;
-      if (newTo > existingTo) best.set(from, u);
-    }
-  }
-  return Array.from(best.values());
-}
-
-/** Find update/patch results that belong to the same game as baseTitle.
- *
- *  Uses normalized game signature for cross-format matching (scene & Elamigos).
- *  Prefers same release group (e.g. -Elamigos) to avoid incompatible updates.
- *  When both base and update have parseable versions, only matches if the
- *  update's start version is >= the base version (avoids legacy updates).
- *  Deduplicates overlapping update ranges, keeping only the fattest per FROM.
- */
-export function findMatchingUpdates(baseTitle: string, allResults: NZBResult[]): NZBResult[] {
-  const baseSig = gameSignature(baseTitle);
-  const baseGroup = extractGroup(baseTitle);
-  const baseVer = parseVersion(baseTitle);
-
-  // All results that are updates for the same game
-  let matches = allResults.filter(r => {
-    if (r.title.toLowerCase() === baseTitle.toLowerCase()) return false;
-    if (!isUpdateResult(r.title)) return false;
-    if (gameSignature(r.title) !== baseSig) return false;
-    // When we know base version, skip updates for older base releases
-    if (baseVer !== null) {
-      const updateVer = parseVersion(r.title);
-      if (updateVer !== null && updateVer < baseVer) return false;
-    }
-    return true;
-  });
-
-  // Prioritize same release group but keep cross-group updates too
-  if (baseGroup && matches.length > 0) {
-    const sameGroup = matches.filter(r => extractGroup(r.title) === baseGroup);
-    const otherGroup = matches.filter(r => extractGroup(r.title) !== baseGroup);
-    // Same-group first, then cross-group/unlabeled
-    matches = sameGroup.length > 0 ? [...sameGroup, ...otherGroup] : matches;
-  }
-
-  // Deduplicate: keep only fattest update per FROM version
-  return deduplicateUpdates(matches);
-}
-
-export function filterQualityResults(results: NZBResult[]): NZBResult[] {
-  // Try hard filter: exclude demos, updates, crack-only
-  const filtered = results.filter(r => isFullGame(r) && isNotUpdate(r) && isNotCrackOnly(r));
-  // Fallback: if hard filter kills everything, return all results so user
-  // still gets a release. Filter may be too broad or NZBPlanet may not
-  // return the valid release in the top N results.
-  return filtered.length > 0 ? filtered : results;
-}
-
-/** Compare NZB results by version descending. Versioned entries rank above non-versioned. */
-function compareByVersion(a: NZBResult, b: NZBResult): number {
-  const verA = parseVersion(a.title);
-  const verB = parseVersion(b.title);
-  if (verA !== null && verB !== null) return verB - verA;  // higher wins
-  if (verA !== null) return -1;  // only A versioned → A first
-  if (verB !== null) return 1;   // only B versioned → B first
-  return 0;                      // neither versioned → preserve order
-}
-
-export function autoPickBest(results: NZBResult[], preferredRepackers?: string | null, allowHypervisor?: boolean): NZBResult | null {
-  let quality = filterQualityResults(results);
-  if (quality.length === 0) return null;
-
-  // Filter out hypervisor-tagged results unless explicitly allowed
-  if (!allowHypervisor) {
-    quality = quality.filter(r => !hasHypervisorTags(r));
-    if (quality.length === 0) return null;
-  }
-
-  const repackerList = preferredRepackers
-    ? preferredRepackers.split(',').map(r => r.trim()).filter(Boolean)
-    : [];
-
-  if (repackerList.length > 0) {
-    const preferred = quality.filter(r => hasPreferredRepacker(r, repackerList));
-    const others = quality.filter(r => !hasPreferredRepacker(r, repackerList));
-    // Within preferred: scene first, then non-scene
-    // Within each tier: prefer upgraded version
-    const prefScene = preferred.filter(r => hasSceneTags(r)).sort(compareByVersion);
-    const prefNonScene = preferred.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-    const otherScene = others.filter(r => hasSceneTags(r)).sort(compareByVersion);
-    const otherNonScene = others.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-    const ranked = [...prefScene, ...prefNonScene, ...otherScene, ...otherNonScene];
-    return ranked[0];
-  }
-
-  const scene = quality.filter(r => hasSceneTags(r)).sort(compareByVersion);
-  const nonScene = quality.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-  const ranked = [...scene, ...nonScene];
-  return ranked[0];
-}
-
-// ── Game update tracking ──────────────────────────────────────────────────
-
-export interface GameTrackEntry {
-  mediaItemId: string;
-  mediaItemTitle: string;
-  downloadedUpdateTags: string[];
-  lastUpdateCheck: string | null;
-}
-
-function trackRowToObj(row: DbRow): GameTrackEntry {
-  return {
-    mediaItemId: row.media_item_id,
-    mediaItemTitle: row.media_item_title,
-    downloadedUpdateTags: JSON.parse(row.downloaded_updates || '[]'),
-    lastUpdateCheck: row.last_update_check || null,
-  };
-}
-
-export async function ensureGameTracked(mediaItemId: string, title: string): Promise<void> {
-  db().prepare('INSERT OR IGNORE INTO game_update_tracking (media_item_id, media_item_title) VALUES (?, ?)').run(mediaItemId, title);
-}
-
-function extractUpdateTag(title: string): string {
-  const lower = title.toLowerCase();
-  const rangeMatch = lower.match(/update\s+(\d{3,})\s*-\s*(\d{3,})/);
-  if (rangeMatch) return rangeMatch[1] + '-' + rangeMatch[2];
-  const verMatch = lower.match(/(?:update|patch)[.\s]*v?(\d+(?:\.\d+)*)/i);
-  if (verMatch) return verMatch[1];
-  return title.substring(0, 40);
-}
-
-export async function recordUpdateDownload(
-  mediaItemId: string, mediaTitle: string, updateTitle: string,
-): Promise<void> {
-
-const tag = extractUpdateTag(updateTitle);
-  const row = __get('SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', mediaItemId);
-  if (row) {
-    const tags: string[] = JSON.parse(row.downloaded_updates || '[]');
-    if (!tags.includes(tag)) {
-      tags.push(tag);
-      db().prepare("UPDATE game_update_tracking SET downloaded_updates = ?, media_item_title = ?, updated_at = datetime('now') WHERE media_item_id = ?").run(JSON.stringify(tags), mediaTitle, mediaItemId);
-    }
-  } else {
-    db().prepare('INSERT INTO game_update_tracking (media_item_id, media_item_title, downloaded_updates) VALUES (?, ?, ?)').run(mediaItemId, mediaTitle, JSON.stringify([tag]));
-  }
-}
-
-export async function getTrackedGames(): Promise<GameTrackEntry[]> {
-
-return __all('SELECT * FROM game_update_tracking ORDER BY media_item_title', ).map(trackRowToObj);
-}
-
-export async function checkGameForUpdates(
-  mediaItemId: string, title: string, apiKey: string,
-): Promise<{ newUpdates: NZBResult[]; error?: string }> {
-
-try {
-    const results = await searchNzbPlanet(title, apiKey);
-    const gameResults = results.filter(r => {
-      const cat = r.category.toLowerCase();
-      return !cat || cat.startsWith('games') || cat.startsWith('console');
-    });
-    const base = autoPickBest(gameResults);
-    if (!base) return { newUpdates: [], error: 'No base release to anchor update matching' };
-    const allUpdates = findMatchingUpdates(base.title, gameResults);
-    const row = __get('SELECT downloaded_updates FROM game_update_tracking WHERE media_item_id = ?', mediaItemId);
-    const downloaded: string[] = row ? JSON.parse(row.downloaded_updates || '[]') : [];
-    const newUpdates = allUpdates.filter(u => {
-      const tag = extractUpdateTag(u.title);
-      return !downloaded.includes(tag);
-    });
-    db().prepare("UPDATE game_update_tracking SET last_update_check = datetime('now'), updated_at = datetime('now') WHERE media_item_id = ?").run(mediaItemId);
-    return { newUpdates };
-  } catch (err: any) {
-    return { newUpdates: [], error: err.message };
-  }
-}
-
-export async function scheduledUpdateCheck(): Promise<{ game: string; queued: number }[]> {
-
-const config = await getConfig();
-  if (!config || !config.nzbplanetApiKey || !config.sabnzbdHost || !config.sabnzbdApiKey) {
-    console.log('[update-check] Skipping - SABnzbd or NZBPlanet not configured');
-    return [];
-  }
-  const games = await getTrackedGames();
-  if (games.length === 0) {
-    console.log('[update-check] No tracked game');
-    return [];
-  }
-  console.log('[update-check] Checking', games.length, 'tracked game for updates');
-  const results: { game: string; queued: number }[] = [];
-  for (const game of games) {
-    try {
-      const { newUpdates, error } = await checkGameForUpdates(
-        game.mediaItemId, game.mediaItemTitle, config.nzbplanetApiKey,
-      );
-      if (error) { console.log('[update-check]', game.mediaItemTitle, 'error:', error); continue; }
-      if (newUpdates.length === 0) { console.log('[update-check]', game.mediaItemTitle, '- no new updates'); continue; }
-      let queued = 0;
-      for (const update of newUpdates) {
-        const nzoId = await addNzbToSabnzbd(
-          config.sabnzbdHost, config.sabnzbdPort ?? 8080,
-          config.sabnzbdApiKey, config.sabnzbdUseSsl,
-          update.nzbUrl, update.title,
-        );
-        if (nzoId) {
-          await createDownload(config.userId || 'desktop', game.mediaItemId,
-            game.mediaItemTitle + ' (Update)', update, nzoId);
-          await recordUpdateDownload(game.mediaItemId, game.mediaItemTitle, update.title);
-          queued++;
-        }
-      }
-      results.push({ game: game.mediaItemTitle, queued });
-    } catch (err: any) {
-      console.error('[update-check] Error checking', game.mediaItemTitle, ':', err.message);
-    }
-  }
-  console.log('[update-check] Done -', results.reduce((s, r) => s + r.queued, 0), 'updates queued');
-  return results;
-}
-
-// ── SABnzbd API client ────────────────────────────────────────────────────
-
-export interface SabQueueItem {
-  nzoId: string;
-  name: string;
-  size: number;
-  sizeLeft: number;
-  status: string;
-  percentage: number;
-}
-
-export interface SabHistoryItem {
-  nzoId: string;
-  name: string;
-  size: number;
-  status: string;
-  storagePath: string;
-  completedAt: string;
-}
-
-function sabnzbdUrl(host: string, port: number, useSsl: boolean, mode: string, extraParams: Record<string, string> = {}): string {
-  const scheme = useSsl ? 'https' : 'http';
-  const url = new URL(`${scheme}://${host}:${port}/api`);
-  url.searchParams.set('output', 'json');
-  url.searchParams.set('mode', mode);
-  for (const [k, v] of Object.entries(extraParams)) {
-    url.searchParams.set(k, v);
-  }
-  return url.toString();
-}
-
-export async function testSabnzbdConnection(
-  host: string, port: number, apiKey: string, useSsl: boolean,
-): Promise<boolean> {
-  try {
-    const url = sabnzbdUrl(host, port, useSsl, 'version', { apikey: apiKey });
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    const data = await response.json() as any;
-    return !!(data?.version);
-  } catch {
-    return false;
-  }
-}
-
-export async function addNzbToSabnzbd(
-  host: string, port: number, apiKey: string, useSsl: boolean,
-  nzbUrl: string, name: string, category: string = 'games',
-): Promise<string | null> {
-  const url = sabnzbdUrl(host, port, useSsl, 'addurl', {
-    apikey: apiKey,
-    name: nzbUrl,
-    nzbname: name,
-    cat: category,
-  });
-
-  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
-  const data = await response.json() as any;
-
-  if (data?.status && data?.nzo_ids?.length > 0) return data.nzo_ids[0] as string;
-  if (data?.nzo_ids?.[0]) return data.nzo_ids[0] as string;
-  return null;
-}
-
-export async function getSabnzbdQueue(
-  host: string, port: number, apiKey: string, useSsl: boolean,
-): Promise<SabQueueItem[]> {
-  const url = sabnzbdUrl(host, port, useSsl, 'queue', { apikey: apiKey });
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    const data = await response.json() as any;
-    const slots = data?.queue?.slots ?? [];
-    return slots.map((s: any) => ({
-      nzoId: s.nzo_id ?? '',
-      name: s.filename ?? '',
-      size: parseInt(s.size ?? '0', 10),
-      sizeLeft: parseInt(s.sizeleft ?? '0', 10),
-      status: s.status ?? '',
-      percentage: parseFloat(s.percentage ?? '0'),
-    }));
-  } catch {
-    return [];
-  }
-}
-
-export async function getSabnzbdHistory(
-  host: string, port: number, apiKey: string, useSsl: boolean,
-  limit: number = 50,
-): Promise<SabHistoryItem[]> {
-  const url = sabnzbdUrl(host, port, useSsl, 'history', { apikey: apiKey, limit: String(limit) });
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    const data = await response.json() as any;
-    const slots = data?.history?.slots ?? [];
-    return slots.map((s: any) => ({
-      nzoId: s.nzo_id ?? '',
-      name: s.name ?? '',
-      size: parseInt(s.size ?? '0', 10),
-      status: s.status ?? '',
-      storagePath: s.storage ?? '',
-      completedAt: s.completed ? new Date(s.completed * 1000).toISOString() : '',
-    }));
-  } catch {
-    return [];
-  }
-}
-
-export async function deleteSabnzbdJob(
-  host: string, port: number, apiKey: string, useSsl: boolean,
-  nzoId: string,
-): Promise<boolean> {
-  const url = sabnzbdUrl(host, port, useSsl, 'queue', {
-    apikey: apiKey,
-    name: 'delete',
-    value: nzoId,
-  });
-  try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    const data = await response.json() as any;
-    return data?.status === true;
-  } catch {
-    return false;
-  }
 }
 
 // ── Download config CRUD ──────────────────────────────────────────────────
@@ -740,8 +69,7 @@ function configRowToObj(row: DbRow): DownloadConfig {
 }
 
 export async function getConfig(_userId?: string): Promise<DownloadConfig | null> {
-
-// Desktop app: single user, return first config regardless of user_id
+  // Desktop app: single user, return first config regardless of user_id
   const row = __get('SELECT * FROM download_configs ORDER BY updated_at DESC LIMIT 1', []);
   return row ? configRowToObj(row) : null;
 }
@@ -841,35 +169,33 @@ export async function createDownload(
   userId: string,
   mediaItemId: string | null,
   mediaItemTitle: string | null,
-  nzbResult: NZBResult,
+  nzbTitle: string,
+  nzbSize: number,
+  nzbUrl: string,
   sabnzbdNzoId: string | null,
 ): Promise<Download> {
-
-const id = genId();
+  const id = genId();
   db().prepare(`
     INSERT INTO downloads (id, user_id, media_item_id, media_item_title, sabnzbd_nzo_id, status,
       nzb_name, nzb_size, nzb_url)
     VALUES (?, ?, ?, ?, ?, 'queued', ?, ?, ?)
-  `).run(id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbResult.title, nzbResult.size, nzbResult.nzbUrl);
+  `).run(id, userId, mediaItemId, mediaItemTitle, sabnzbdNzoId, nzbTitle, nzbSize, nzbUrl);
 
   return (await getDownload(id))!;
 }
 
 export async function getDownload(id: string): Promise<Download | null> {
-
-const row = __get('SELECT * FROM downloads WHERE id = ?', [id]);
+  const row = __get('SELECT * FROM downloads WHERE id = ?', [id]);
   return row ? downloadRowToObj(row) : null;
 }
 
 export async function getUserDownloads(_userId?: string): Promise<Download[]> {
-
-const rows = __all('SELECT * FROM downloads ORDER BY created_at DESC', []);
+  const rows = __all('SELECT * FROM downloads ORDER BY created_at DESC', []);
   return rows.map(downloadRowToObj);
 }
 
 export async function updateDownloadStatus(id: string, status: string, errorMessage?: string, percentage?: number): Promise<void> {
-
-if (status === 'completed') {
+  if (status === 'completed') {
     db().prepare('UPDATE downloads SET status = ?, percentage = 100, completed_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?').run([status, id]);
   } else if (errorMessage) {
     db().prepare('UPDATE downloads SET status = ?, error_message = ?, percentage = ?, updated_at = datetime(\'now\') WHERE id = ?').run([status, errorMessage, percentage ?? 0, id]);
@@ -879,13 +205,11 @@ if (status === 'completed') {
 }
 
 export async function updateDownloadIsoPath(id: string, isoPath: string): Promise<void> {
-
-db().prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([isoPath, id]);
+  db().prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([isoPath, id]);
 }
 
 export async function deleteDownload(id: string): Promise<void> {
-
-const dl = await getDownload(id);
+  const dl = await getDownload(id);
   if (!dl) return;
 
   // Delete ISO files from disk
@@ -911,8 +235,7 @@ const dl = await getDownload(id);
 }
 
 export async function purgeOldDeletedDownloads(): Promise<number> {
-
-const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const rows = __all("SELECT id FROM downloads WHERE status = 'deleted' AND updated_at < ?", cutoff);
   for (const row of rows) {
     db().prepare('DELETE FROM downloads WHERE id = ?').run(row.id);
@@ -995,8 +318,7 @@ export interface PathMapping {
 }
 
 export async function getPathMappings(configId: string): Promise<PathMapping[]> {
-
-const rows = __all('SELECT * FROM download_path_mappings WHERE config_id = ? ORDER BY created_at', [configId]);
+  const rows = __all('SELECT * FROM download_path_mappings WHERE config_id = ? ORDER BY created_at', [configId]);
   return rows.map((r: DbRow) => ({
     id: r.id,
     configId: r.config_id,
@@ -1007,8 +329,7 @@ const rows = __all('SELECT * FROM download_path_mappings WHERE config_id = ? ORD
 }
 
 export async function addPathMapping(configId: string, sourcePath: string, destPath: string): Promise<PathMapping> {
-
-const id = genId();
+  const id = genId();
   db().prepare('INSERT INTO download_path_mappings (id, config_id, source_path, dest_path) VALUES (?, ?, ?, ?)').run([id, configId, sourcePath, destPath]);
   const row = __get('SELECT * FROM download_path_mappings WHERE id = ?', [id]);
   if (!row) throw new Error('Failed to create path mapping');
@@ -1022,15 +343,13 @@ const id = genId();
 }
 
 export async function removePathMapping(id: string): Promise<void> {
-
-db().prepare('DELETE FROM download_path_mappings WHERE id = ?').run(id);
+  db().prepare('DELETE FROM download_path_mappings WHERE id = ?').run(id);
 }
 
 // ── Wishlist tracking ─────────────────────────────────────────────────────
 
 export async function recordWishlistSearch(userId: string, mediaItemId: string, downloadId: string | null): Promise<void> {
-
-const existing = __get('SELECT id, attempts FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
+  const existing = __get('SELECT id, attempts FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
 
   if (existing) {
     db().prepare(`
@@ -1048,8 +367,7 @@ const existing = __get('SELECT id, attempts FROM wishlist_download_tracking WHER
 }
 
 export async function getWishlistTracking(userId: string): Promise<{ mediaItemId: string; attempts: number; lastSearchedAt: string | null }[]> {
-
-const rows = __all('SELECT media_item_id, attempts, last_searched_at FROM wishlist_download_tracking WHERE skipped = 0', []);
+  const rows = __all('SELECT media_item_id, attempts, last_searched_at FROM wishlist_download_tracking WHERE skipped = 0', []);
   return rows.map((r: DbRow) => ({
     mediaItemId: r.media_item_id,
     attempts: r.attempts,
@@ -1058,8 +376,7 @@ const rows = __all('SELECT media_item_id, attempts, last_searched_at FROM wishli
 }
 
 export async function skipWishlistItem(userId: string, mediaItemId: string): Promise<void> {
-
-const existing = __get('SELECT id FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
+  const existing = __get('SELECT id FROM wishlist_download_tracking WHERE media_item_id = ?', [mediaItemId]);
   if (existing) {
     db().prepare('UPDATE wishlist_download_tracking SET skipped = 1 WHERE id = ?').run(existing.id);
   } else {
@@ -1067,326 +384,10 @@ const existing = __get('SELECT id FROM wishlist_download_tracking WHERE media_it
   }
 }
 
-// ── Post-processing ───────────────────────────────────────────────────────
-
-function findIsoFiles(dirPath: string): string[] {
-  const results: string[] = [];
-  try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      if (entry.isDirectory()) {
-        results.push(...findIsoFiles(fullPath));
-      } else if (entry.name.toLowerCase().endsWith('.iso')) {
-        results.push(fullPath);
-      }
-    }
-  } catch (_) {}
-  return results;
-}
-
-export interface PostProcessResult {
-  success: boolean;
-  isosFound: string[];
-  isosMoved: { from: string; to: string }[];
-  errors: string[];
-}
-
-export async function postProcessDownload(
-  downloadId: string,
-  configId: string,
-  fallbackSource?: string,
-  fallbackDest?: string,
-): Promise<PostProcessResult> {
-
-const result: PostProcessResult = { success: false, isosFound: [], isosMoved: [], errors: [] };
-
-  // Check if auto-organizer is enabled — delegate if so
-  const cfg = __get('SELECT auto_organize_enabled, naming_template FROM download_configs WHERE id = ?', [configId]);
-  if (cfg && cfg.auto_organize_enabled === 1) {
-    const orgResult = await autoOrganizeDownload(downloadId, configId, fallbackSource, fallbackDest);
-    result.success = orgResult.success;
-    result.isosMoved = orgResult.organized.map(o => ({ from: o.from, to: o.to }));
-    result.errors = orgResult.errors;
-    return result;
-  }
-
-  const dl = __get('SELECT * FROM downloads WHERE id = ? AND status = ?', [downloadId, 'completed']);
-  if (!dl) {
-    result.errors.push('Download not found or not completed');
-    return result;
-  }
-
-  // Get all path mappings
-  const mappings = await getPathMappings(configId);
-  console.log('[postProcess] Path mappings from DB:', mappings.length, mappings.map(m => `${m.sourcePath} -> ${m.destPath}`));
-  console.log('[postProcess] Fallbacks:', { fallbackSource, fallbackDest });
-
-  // Fall back to legacy single-path config
-  const pairs: { source: string; dest: string }[] = mappings.map(m => ({ source: m.sourcePath, dest: m.destPath }));
-  if (pairs.length === 0 && fallbackSource && fallbackDest) {
-    pairs.push({ source: fallbackSource, dest: fallbackDest });
-  }
-
-  console.log('[postProcess] Effective pairs:', pairs);
-
-  if (pairs.length === 0) {
-    result.errors.push('No path mappings configured. Add a mapping in SABnzbd settings.');
-    console.log('[postProcess] No pairs, aborting');
-    return result;
-  }
-
-  const nzbName: string = dl.nzb_name ?? '';
-  const baseName = path.basename(nzbName, path.extname(nzbName));
-
-  function translatePath(originalPath: string, pair: { source: string; dest: string }): string | null {
-    const normPath = originalPath.replace(/[/\\]/g, path.sep);
-    const normSource = pair.source.replace(/[/\\]/g, path.sep);
-    const normDest = pair.dest.replace(/[/\\]/g, path.sep);
-
-    if (normPath.startsWith(normSource)) {
-      return normDest + normPath.substring(normSource.length);
-    }
-    return null;
-  }
-
-  // Find ISOs — try each pair's translation
-  for (const pair of pairs) {
-    // Build candidate paths using the source prefix (Unraid paths)
-    const sourceCandidates = [
-      path.join(pair.source, baseName),
-      path.join(pair.source, `_UNPACK_${baseName}`),
-      path.join(pair.source, nzbName),
-    ];
-    if (dl.iso_path) sourceCandidates.unshift(dl.iso_path);
-
-    // Translate source paths to Windows-accessible paths
-    for (const candidate of sourceCandidates) {
-      const translated = translatePath(candidate, pair);
-      if (translated) {
-        console.log('[postProcess] Translated:', candidate, '->', translated, 'exists:', fs.existsSync(translated));
-        result.isosFound.push(...findIsoFiles(translated));
-      } else {
-        // No translation match — try directly if accessible
-        console.log('[postProcess] Direct check:', candidate, 'exists:', fs.existsSync(candidate));
-        result.isosFound.push(...findIsoFiles(candidate));
-      }
-    }
-  }
-
-  console.log('[postProcess] ISOs found:', result.isosFound);
-
-  if (result.isosFound.length === 0) {
-    result.errors.push('No ISO files found in any configured source path. Check path mappings and network share access.');
-    console.log('[postProcess] No ISOs found, aborting');
-    return result;
-  }
-
-  // Move ISOs to library path (use fallbackDest as the final library destination)
-  const libraryDest = fallbackDest || pairs[0]?.dest;
-  let movedCount = 0;
-
-  for (const isoPath of result.isosFound) {
-    let moved = false;
-    const isoName = path.basename(isoPath);
-
-    // Try the library destination first
-    if (libraryDest) {
-      try { fs.mkdirSync(libraryDest, { recursive: true }); } catch (_) {}
-      const destPath = path.join(libraryDest, isoName);
-      let finalDest = destPath;
-      let counter = 1;
-      while (fs.existsSync(finalDest)) {
-        const ext = path.extname(destPath);
-        const nameNoExt = path.basename(destPath, ext);
-        finalDest = path.join(libraryDest, `${nameNoExt}_${counter}${ext}`);
-        counter++;
-      }
-
-      try {
-        fs.renameSync(isoPath, finalDest);
-        result.isosMoved.push({ from: isoPath, to: finalDest });
-        movedCount++;
-        moved = true;
-      } catch (err: any) {
-        result.errors.push(`Failed to move ${isoName} → ${libraryDest}: ${err.message}`);
-      }
-    }
-    if (!moved) {
-      result.errors.push(`No matching mapping for: ${isoPath}`);
-    }
-  }
-
-  if (movedCount > 0) {
-    const movedPaths = result.isosMoved.map(m => m.to).join(';');
-    db().prepare('UPDATE downloads SET iso_path = ?, updated_at = datetime(\'now\') WHERE id = ?').run([movedPaths, downloadId]);
-  }
-
-  result.success = result.isosMoved.length > 0 && result.errors.length === 0;
-  return result;
-}
-
-// ── Poll queue ────────────────────────────────────────────────────────────
-
-export async function pollAndUpdateDownloads(userId: string): Promise<Download[]> {
-
-const config = await getConfig(userId);
-  if (!config || !config.sabnzbdHost || !config.sabnzbdApiKey) return [];
-
-  const activeDownloads = __all("SELECT * FROM downloads WHERE status IN ('queued', 'downloading', 'processing')");
-
-  if (activeDownloads.length === 0) return [];
-
-  const queueItems = await getSabnzbdQueue(
-    config.sabnzbdHost, config.sabnzbdPort ?? 8080,
-    config.sabnzbdApiKey, config.sabnzbdUseSsl,
-  );
-
-  const historyItems = await getSabnzbdHistory(
-    config.sabnzbdHost, config.sabnzbdPort ?? 8080,
-    config.sabnzbdApiKey, config.sabnzbdUseSsl,
-  );
-
-  const queueMap = new Map(queueItems.map(q => [q.nzoId, q]));
-  const historyMap = new Map(historyItems.map(h => [h.nzoId, h]));
-
-  // Post-download queue statuses (unpacking, verifying, etc.)
-  const PROCESSING_STATUSES = new Set(['Verifying', 'Unpacking', 'Repairing', 'Moving', 'PP', 'Running']);
-
-  for (const dl of activeDownloads) {
-    const nzoId: string | null = dl.sabnzbd_nzo_id;
-    if (!nzoId) continue;
-
-    const historyItem = historyMap.get(nzoId);
-    const queueItem = queueMap.get(nzoId);
-
-    if (historyItem) {
-      if (historyItem.status === 'Completed') {
-        await updateDownloadStatus(dl.id, 'completed');
-        // Track the completed game for future update checks
-        if (dl.mediaItemId && dl.mediaItemTitle) {
-          await ensureGameTracked(dl.mediaItemId, dl.mediaItemTitle);
-        }
-        if (historyItem.storagePath) {
-          await updateDownloadIsoPath(dl.id, historyItem.storagePath);
-        }
-        // Auto post-process if enabled
-        if (config.postProcessEnabled) {
-          await postProcessDownload(dl.id, config.id, config.sabnzbdCompletePath ?? undefined, config.downloadPath ?? undefined);
-        }
-      } else if (historyItem.status === 'Failed') {
-        await updateDownloadStatus(dl.id, 'failed', `SABnzbd: ${historyItem.status}`);
-      } else {
-        // Post-download processing (unpacking, moving, etc.) — not failed
-        await updateDownloadStatus(dl.id, 'processing', undefined, 100);
-      }
-    } else if (queueItem) {
-      let newStatus: string;
-      if (queueItem.status === 'Downloading') {
-        newStatus = 'downloading';
-      } else if (PROCESSING_STATUSES.has(queueItem.status)) {
-        newStatus = 'processing';
-      } else {
-        newStatus = 'queued';
-      }
-      await updateDownloadStatus(dl.id, newStatus, undefined, queueItem.percentage);
-    }
-  }
-
-  return getUserDownloads(userId);
-}
-
-// ── Full workflow ─────────────────────────────────────────────────────────
-
-export async function searchAndDownload(
-  userId: string,
-  mediaItemId: string | null,
-  gameName: string,
-  allowHypervisorOverride?: boolean,
-): Promise<{ download: Download; nzbResult: NZBResult } | { error: string } | { hypervisorAvailable: true; hypervisorResults: NZBResult[]; gameName: string; error: string }> {
-
-const config = await getConfig(userId);
-  if (!config) return { error: 'Download configuration not found. Set up SABnzbd and NZBPlanet in Settings → Integrations.' };
-  if (!config.nzbplanetApiKey || !config.sabnzbdHost || !config.sabnzbdApiKey) {
-    return { error: 'SABnzbd or NZBPlanet not configured. Check Settings → Integrations.' };
-  }
-
-  const results = await searchNzbPlanet(gameName, config.nzbplanetApiKey);
-  if (results.length === 0) {
-    return { error: `No NZBs found for "${gameName}" on NZBPlanet.` };
-  }
-
-  // Filter to game-category results only (NZBPlanet can return Audio, XXX, etc.)
-  const gameResults = results.filter(r => {
-    const cat = r.category.toLowerCase();
-    return !cat || cat.startsWith('games') || cat.startsWith('console');
-  });
-
-  const allowHv = allowHypervisorOverride ?? config.allowHypervisor ?? false;
-  const best = autoPickBest(gameResults.length > 0 ? gameResults : results, config.preferredRepackers, allowHv);
-  if (!best) {
-    // Check if hypervisor-tagged quality results exist but were filtered out
-    if (!allowHv) {
-      const pool = gameResults.length > 0 ? gameResults : results;
-      const qualityPool = filterQualityResults(pool);
-      const hvResults = qualityPool.filter(r => hasHypervisorTags(r));
-      if (hvResults.length > 0) {
-        return {
-          hypervisorAvailable: true,
-          hypervisorResults: hvResults,
-          gameName,
-          error: `Only hypervisor-tagged releases found for "${gameName}".`,
-        };
-      }
-    }
-    return { error: `No quality releases found for "${gameName}". All results excluded (demos/updates).` };
-  }
-
-  const nzoId = await addNzbToSabnzbd(
-    config.sabnzbdHost, config.sabnzbdPort ?? 8080,
-    config.sabnzbdApiKey, config.sabnzbdUseSsl,
-    best.nzbUrl, best.title,
-  );
-
-  if (!nzoId) {
-    return { error: 'Failed to add NZB to SABnzbd. Check your SABnzbd configuration.' };
-  }
-
-  const download = await createDownload(userId, mediaItemId, gameName, best, nzoId);
-
-  // Track the base game for future update checks
-  if (mediaItemId) {
-    await ensureGameTracked(mediaItemId, gameName);
-  }
-
-  // ── Queue matching updates (update/patch/hotfix for the same game) ──
-  const updates = findMatchingUpdates(best.title, gameResults);
-  for (const update of updates) {
-    const updateNzoId = await addNzbToSabnzbd(
-      config.sabnzbdHost, config.sabnzbdPort ?? 8080,
-      config.sabnzbdApiKey, config.sabnzbdUseSsl,
-      update.nzbUrl, update.title,
-    );
-    if (updateNzoId) {
-      await createDownload(userId, mediaItemId, `${gameName} (Update)`, update, updateNzoId);
-      if (mediaItemId) {
-        await recordUpdateDownload(mediaItemId, gameName, update.title);
-      }
-    }
-  }
-
-  if (mediaItemId) {
-    await recordWishlistSearch(userId, mediaItemId, download.id);
-  }
-
-  return { download, nzbResult: best };
-}
-
 // ── Game and ISO scan database handlers ──
 
 export async function getScannedGamesFromDb(): Promise<any[]> {
-
-const rows = __all('SELECT * FROM scanned_games', []);
+  const rows = __all('SELECT * FROM scanned_games', []);
   return rows.map((r: DbRow) => ({
     id: r.id,
     title: r.title,
@@ -1412,16 +413,15 @@ const rows = __all('SELECT * FROM scanned_games', []);
 }
 
 export async function saveScannedGamesToDb(games: any[]): Promise<void> {
-
-  // Preserve `seeded` flag for game that were already in the DB.
+  // Preserve `seeded` flag for games that were already in the DB.
   // The DELETE-then-INSERT pattern would lose it, so we snapshot first.
   const existingSeeded = new Map<string, number>();
-  const existingRows = __all('SELECT id, seeded FROM scanned_games', );
+  const existingRows = __all('SELECT id, seeded FROM scanned_games');
   for (const r of existingRows) {
     existingSeeded.set(r.id, r.seeded as number);
   }
 
-  // Delete game that are no longer present in this scan batch
+  // Delete games that are no longer present in this scan batch
   const newIds = [...new Set(games.map((g) => g.id))];
   if (newIds.length > 0) {
     const placeholders = newIds.map(() => '?').join(',');
@@ -1465,13 +465,11 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
  * Searches by exe_path and updates exe_path + install_dir.
  */
 export async function updateGamePathInDb(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void> {
-
-db().prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
+  db().prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
 }
 
 export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game' | 'iso' }[]> {
-
-const rows = __all('SELECT * FROM game_scan_paths', );
+  const rows = __all('SELECT * FROM game_scan_paths');
   return rows.map((r: DbRow) => ({
     path: r.path,
     type: r.type,
@@ -1479,17 +477,13 @@ const rows = __all('SELECT * FROM game_scan_paths', );
 }
 
 export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void> {
-
-db().prepare('DELETE FROM game_scan_paths').run();
+  db().prepare('DELETE FROM game_scan_paths').run();
   for (const p of paths) {
     db().prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
   }
 }
 
-// ── Seed tracking — local DB is the source of truth for which titles have
-//    already been sent to the backend for IGDB seeding. The desktop IPC layer
-//    is the ONLY caller of seed-from-titles; frontend components must NOT call
-//    it independently (avoids HTTP/1.1 connection pool exhaustion). ─────────
+// ── Seed tracking ─────────────────────────────────────────────────────────
 
 export interface UnseededGame {
   title: string;
@@ -1497,10 +491,10 @@ export interface UnseededGame {
   steam_app_id: number | null;
 }
 
-/** Return unseeded game from scanned_games, grouped by normalized title.
- *  For Steam game, extracts the numeric Steam App ID from the game's id. */
+/** Return unseeded games from scanned_games, grouped by normalized title.
+ *  For Steam games, extracts the numeric Steam App ID from the game's id. */
 export function getUnseededGames(): UnseededGame[] {
-  const rows = __all('SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0', ) as Array<{ id: string; title: string; platform: string }>;
+  const rows = __all('SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0') as Array<{ id: string; title: string; platform: string }>;
 
   // Group by normalized title, preferring Steam entries (which have an app ID)
   const byTitle = new Map<string, UnseededGame>();
@@ -1522,7 +516,7 @@ export function getUnseededGames(): UnseededGame[] {
   return Array.from(byTitle.values());
 }
 
-/** Mark the given game as seeded in scanned_games (matches by title). */
+/** Mark the given games as seeded in scanned_games (matches by title). */
 export function markGamesAsSeeded(games: UnseededGame[]): void {
   if (!games.length) return;
   const titles = games.map(g => g.title);
@@ -1543,8 +537,7 @@ export function markTitlesAsSeeded(titles: string[]): void {
 }
 
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
-
-const rows = __all('SELECT * FROM local_games_map', );
+  const rows = __all('SELECT * FROM local_games_map');
   const map: Record<string, any> = {};
   for (const r of rows) {
     try {
@@ -1555,10 +548,21 @@ const rows = __all('SELECT * FROM local_games_map', );
 }
 
 export async function saveLocalGamesMapEntryToDb(mediaId: string, game: any | null): Promise<void> {
-
-if (game) {
+  if (game) {
     db().prepare('INSERT OR REPLACE INTO local_games_map (media_id, game_json) VALUES (?, ?)').run([mediaId, JSON.stringify(game)]);
   } else {
     db().prepare('DELETE FROM local_games_map WHERE media_id = ?').run(mediaId);
   }
+}
+
+// ── Config migration ──────────────────────────────────────────────────────
+
+/**
+ * Check whether a legacy monolithic config exists in the DB.
+ * The actual migration to plugin-level configs is manual for now.
+ */
+export async function migrateLegacyConfigToPlugins(): Promise<{ migrated: boolean; errors: string[] }> {
+  const row = __get('SELECT * FROM download_configs ORDER BY updated_at DESC LIMIT 1');
+  if (!row) return { migrated: false, errors: ['No legacy config found'] };
+  return { migrated: true, errors: [] };
 }
