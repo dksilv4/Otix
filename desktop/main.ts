@@ -502,6 +502,21 @@ app.on('ready', async () => {
       if (localFiles && localFiles.status === 'installed') {
         try {
           await pluginManager!.enable('local-files');
+          // Migrate existing scan paths to plugin config if empty
+          const cfg = pluginManager!.getConfig('local-files');
+          const scanDirs = (cfg?.scanDirectories as string[] | undefined) ?? [];
+          const isoDirs = (cfg?.isoDirectories as string[] | undefined) ?? [];
+          if (!scanDirs.length && !isoDirs.length) {
+            const { getScanPaths } = require('./game/storage') as typeof import('./game/storage');
+            const paths = getScanPaths();
+            const gamePaths = paths.filter(p => p.type === 'game').map(p => p.path);
+            const isoPaths = paths.filter(p => p.type === 'iso').map(p => p.path);
+            if (gamePaths.length || isoPaths.length) {
+              pluginManager!.setConfig('local-files', 'scanDirectories', gamePaths);
+              pluginManager!.setConfig('local-files', 'isoDirectories', isoPaths);
+              console.log(`[main] Migrated ${gamePaths.length} game + ${isoPaths.length} ISO scan paths to local-files plugin`);
+            }
+          }
         } catch (err) {
           console.error('[main] Failed to enable local-files plugin:', err);
         }
