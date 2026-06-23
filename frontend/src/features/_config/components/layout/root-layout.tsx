@@ -3,6 +3,7 @@ import { Outlet } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "@/old-features/title-bar/organisms/title-bar"
 import { XPToastContainer } from "@/old-features/dk-ui/atoms/xp-toast"
+import { ContextMenuProvider, ContextMenuPortal } from "@/features/_config/context-menu"
 import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
@@ -61,18 +62,21 @@ export function RootLayout() {
     <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
       <TitleBar />
 
-      <PanelProvider>
-        <NotificationsProvider>
-          <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
-            <main className="">
-              <Outlet />
-            </main>
-          </NavShell>
+      <ContextMenuProvider>
+        <PanelProvider>
+          <NotificationsProvider>
+            <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
+              <main className="">
+                <Outlet />
+              </main>
+            </NavShell>
 
-          <XPToastContainer />
-          <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
-        </NotificationsProvider>
-      </PanelProvider>
+            <XPToastContainer />
+            <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
+          </NotificationsProvider>
+        </PanelProvider>
+        <ContextMenuPortal />
+      </ContextMenuProvider>
     </div>
   )
 }
