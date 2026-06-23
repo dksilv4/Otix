@@ -171,6 +171,7 @@ export type MainToWorkerMessage =
   | { type: 'rpc-error'; id: string; error: string }
   | { type: 'rpc'; id: string; method: string; args: unknown[] }
   | { type: 'event'; event: string; payload: unknown }
+  | { type: 'plugin-call'; id: string; method: string; args: any }
 
 export type WorkerToMainMessage =
   | { type: 'ready' }
@@ -180,6 +181,8 @@ export type WorkerToMainMessage =
   | { type: 'log'; level: 'debug' | 'info' | 'warn' | 'error'; msg: string }
   | { type: 'slot-render'; id: string; location: string }
   | { type: 'handle-action'; id: string; actionKey: string; payload: unknown }
+  | { type: 'plugin-call-result'; id: string; result: any }
+  | { type: 'plugin-call-error'; id: string; error: string }
 
 // ── Plugin Context (as seen inside worker) ──
 export interface PluginContext {
@@ -196,6 +199,11 @@ export interface PluginContext {
   app: PluginApp
   host: PluginHost
   onDestroy: (cb: () => void) => void
+
+  // ── Inter-plugin communication ──
+  call: (targetId: string, method: string, args?: Record<string, any>) => Promise<any>
+  handle: (method: string, handler: (args: any) => Promise<any>) => () => void
+  discover: (serviceType: string) => Promise<ServiceInfo[]>
 }
 
 export interface PluginConfigStore {

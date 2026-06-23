@@ -6,6 +6,7 @@ import { promisify } from 'util'
 import { app } from 'electron'
 import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
+import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
 
 import { fetchAllRegistries } from './marketplace'
@@ -47,6 +48,7 @@ export class PluginManager {
   private apiBaseUrl = 'http://127.0.0.1:8000/api'
   private authToken = ''
   private slotRegistry: SlotRegistry = new SlotRegistry()
+  public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
 
   constructor(
     extensionsDir: string,
@@ -179,10 +181,24 @@ export class PluginManager {
         configStore,
         this.apiBaseUrl,
         this.authToken,
+        // Inter-plugin call routing
+        async (targetId, method, args) => {
+          const targetRuntime = this.runtimes.get(targetId)
+          if (!targetRuntime) throw new Error(`Plugin not running: ${targetId}`)
+          return targetRuntime.callMethod(method, [args])
+        },
+        this.serviceRegistry,
       )
 
       await runtime.start()
       this.runtimes.set(pluginId, runtime)
+
+      // Register manifest services in service registry
+      const manifestServices = info.manifest.services || []
+      for (const svc of manifestServices) {
+        const svcDecl = typeof svc === 'string' ? { type: svc } : svc
+        this.serviceRegistry.register(pluginId, svcDecl.type, ['*'], svcDecl.protocol)
+      }
 
       // Register manifest slots
       for (const slot of info.manifest.slots || []) {
@@ -214,7 +230,8 @@ export class PluginManager {
         this.runtimes.delete(pluginId)
       }
 
-      // Unregister all slots for this plugin
+      // Unregister services and slots for this plugin
+      this.serviceRegistry.unregister(pluginId)
       this.slotRegistry.unregisterAll(pluginId)
 
       this.pluginsRepo.setDisabled(pluginId)
@@ -655,6 +672,10 @@ export class PluginManager {
         `Plugin data call ${pluginId}.${method} failed: ${err.message}`,
       )
     }
+  }
+
+  getRuntime(pluginId: string): PluginRuntime | null {
+    return this.runtimes.get(pluginId) || null
   }
 
   // ── Plugin status ───────────────────────────────────────────────

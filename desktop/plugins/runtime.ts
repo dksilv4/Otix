@@ -29,6 +29,8 @@ export class PluginRuntime {
     },
     private apiBaseUrl: string,
     private authToken: string,
+    private callPlugin: (targetId: string, method: string, args: any) => Promise<any>,
+    private serviceRegistry: import('./service-registry').ServiceRegistry,
   ) {
     this.pluginId = pluginId
     this.manifest = manifest
@@ -76,6 +78,8 @@ export class PluginRuntime {
       getConfig: () => this.configStore.getAll(),
       getConfigValue: (key: string) => this.configStore.get(key),
       setConfigValue: (key: string, value: unknown) => this.configStore.set(key, value),
+      callPlugin: this.callPlugin,
+      serviceRegistry: this.serviceRegistry,
     }
 
     this.bridge = createWorkerBridge(bridgeDeps)
