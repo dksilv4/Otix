@@ -1,6 +1,9 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
+import { ContextMenuTrigger } from '@/features/_config/context-menu'
 import type { MediaItemSummary } from '@media/queries/media-queries'
+import type { ContextMenuItemDef } from '@/features/_config/context-menu'
 
 interface DiscoverMediaCardProps {
   item: MediaItemSummary
@@ -15,22 +18,45 @@ export const DiscoverMediaCard = memo(function DiscoverMediaCard({
   subtitle,
   className,
 }: DiscoverMediaCardProps) {
+  const navigate = useNavigate()
+
+  const menuItems: ContextMenuItemDef[] = [
+    {
+      id: 'view-details',
+      label: 'View Details',
+      onClick: useCallback(() => {
+        navigate({ to: '/media/$mediaType/$mediaId', params: { mediaType: item.mediaType, mediaId: item.id } })
+      }, [navigate, item.mediaType, item.id]),
+    },
+    {
+      id: 'add-to-library',
+      label: 'Add to Library',
+      subItems: [
+        { id: 'watched', label: 'Mark as Watched', onClick: () => {} },
+        { id: 'owned', label: 'Mark as Owned', onClick: () => {} },
+        { id: 'wishlist', label: 'Add to Wishlist', onClick: () => {} },
+      ],
+    },
+  ]
+
   return (
-    <MediaCard
-      id={item.id}
-      mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}
-      title={item.title}
-      posterUrl={item.posterUrl}
-      textlessPosterUrl={item.textlessPosterUrl}
-      logoUrl={item.logoUrl}
-      releaseDate={item.releaseDate}
-      avgRating={item.avgRating}
-      ratingCount={item.ratingCount}
-      showTypeBadge={showTypeBadge}
-      isAdult={item.isAdult}
-      subtitle={subtitle}
-      artistName={item.albumArtistName}
-      className={className}
-    />
+    <ContextMenuTrigger items={menuItems} mediaType={item.mediaType as any} data={{ itemId: item.id }}>
+      <MediaCard
+        id={item.id}
+        mediaType={item.mediaType as 'movie' | 'show' | 'game' | 'music'}
+        title={item.title}
+        posterUrl={item.posterUrl}
+        textlessPosterUrl={item.textlessPosterUrl}
+        logoUrl={item.logoUrl}
+        releaseDate={item.releaseDate}
+        avgRating={item.avgRating}
+        ratingCount={item.ratingCount}
+        showTypeBadge={showTypeBadge}
+        isAdult={item.isAdult}
+        subtitle={subtitle}
+        artistName={item.albumArtistName}
+        className={className}
+      />
+    </ContextMenuTrigger>
   )
 })
