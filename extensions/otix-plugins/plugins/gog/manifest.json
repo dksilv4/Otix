@@ -1,5 +1,5 @@
 {
-  "name": "GOG Galaxy Scanner",
+  "name": "GOG Galaxy Provider",
   "version": "0.1.0",
   "description": "Scan and match your GOG Galaxy library with Otix media items. Login via OAuth, scan your library, and automatically match against the Otix database.",
   "author": "Otix",

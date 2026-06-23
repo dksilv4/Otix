@@ -1,5 +1,5 @@
 {
-  "name": "Local Files Scanner",
+  "name": "Local Files Provider",
   "version": "1.0.0",
   "description": "Scan local directories for Steam, PC, and ISO games",
   "author": "Otix",

@@ -78,6 +78,7 @@ export interface PluginManifest {
     renderer?: string
   }
   services?: (string | PluginService)[]
+  depends_on?: string[]
 }
 
 // ── Runtime ──
