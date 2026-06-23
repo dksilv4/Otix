@@ -63,4 +63,11 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'title-bar': {label: 'Desktop title bar', enabled: true, dependsOn: ['dk-ui']},
     'user': {label: 'User profiles', enabled: true, dependsOn: ['auth', 'dk-ui']},
     'workout': {label: 'Workout tracking', enabled: true, dependsOn: ['auth', 'dk-ui']},
+
+    // CONTEXT MENU
+    'context-menu:game': {label: 'Game context menu', enabled: true, dependsOn: ['dk-ui']},
+    'context-menu:movie': {label: 'Movie context menu', enabled: true, dependsOn: ['dk-ui']},
+    'context-menu:tv': {label: 'TV context menu', enabled: true, dependsOn: ['dk-ui']},
+    'context-menu:music': {label: 'Music context menu', enabled: true, dependsOn: ['dk-ui']},
+    'context-menu:generic': {label: 'Generic context menu', enabled: true, dependsOn: ['dk-ui']},
 }
