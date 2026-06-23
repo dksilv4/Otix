@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { queryClient } from '@/lib/query/client'
 import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
@@ -145,21 +145,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user)
   }, [])
 
+  const contextValue = useMemo(() => ({
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    twoFactorChallenge,
+    login,
+    verifyTwoFactor,
+    cancelTwoFactor,
+    register,
+    logout,
+    refreshUser,
+  }), [user, isLoading, twoFactorChallenge, login, verifyTwoFactor, cancelTwoFactor, register, logout, refreshUser])
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        twoFactorChallenge,
-        login,
-        verifyTwoFactor,
-        cancelTwoFactor,
-        register,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )

@@ -630,7 +630,16 @@ export function PluginSettings() {
     const api = (window as Window).desktopAPI as
       | { onMainIpcReady?: () => Promise<void> }
       | undefined
-    Promise.resolve(api?.onMainIpcReady?.()).finally(() => setIpcReady(true))
+    // If the main process never sends `main:ipc-ready`, don't hang forever
+    let cancelled = false
+    const timeout = setTimeout(() => {
+      if (!cancelled) setIpcReady(true)
+    }, 3000)
+    Promise.resolve(api?.onMainIpcReady?.()).finally(() => {
+      clearTimeout(timeout)
+      if (!cancelled) setIpcReady(true)
+    })
+    return () => { cancelled = true }
   }, [])
 
   const api = getPluginAPI()

@@ -69,10 +69,15 @@ export function MatchingScanSection() {
   const [scanning, setScanningRaw] = useState<Record<string, boolean>>(loadScanning)
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({})
 
+  // Use a ref for scanning so callbacks don't need it as a dependency
+  const scanningRef = useRef(scanning)
+  scanningRef.current = scanning
+
   const setScanning = useCallback((v: any) => {
     setScanningRaw((prev: any) => {
       const next = typeof v === 'function' ? v(prev) : v
       saveScanning(next)
+      scanningRef.current = next
       return next
     })
   }, [])
@@ -189,7 +194,7 @@ export function MatchingScanSection() {
 
   const handleScan = useCallback(async (pluginId: string) => {
     // If already scanning, don't reset progress — events are already flowing
-    if (scanning[pluginId]) return
+    if (scanningRef.current[pluginId]) return
     setScanning(prev => ({ ...prev, [pluginId]: true }))
     setScanErrors(prev => ({ ...prev, [pluginId]: null }))
     setMatchResults({})
@@ -205,10 +210,11 @@ export function MatchingScanSection() {
       }
     } catch (err: any) {
       setScanErrors(prev => ({ ...prev, [pluginId]: err?.message || 'Scan failed' }))
-    } finally {
-      setScanning(prev => ({ ...prev, [pluginId]: false }))
     }
-  }, [api, scanning])
+    // Only set scanning=false here if we didn't return early (i.e., scan finished or errored).
+    // If we returned early, the events/status check will clear scanning.
+    setScanning(prev => ({ ...prev, [pluginId]: false }))
+  }, [api])
 
   const handleCancelScan = useCallback(async () => {
     await api?.cancelScan?.()
