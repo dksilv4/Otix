@@ -241,7 +241,7 @@ module.exports = {
               }
             }
           }
-        } catch (e) { ctx.logger.error(`Error scanning ${dir}: ${e.message}`); }
+        } catch (e) { ctx.logger.error(`Error scanning ${dir}: ${e?.message ?? e}`); }
         idx++;
       }
 
@@ -253,7 +253,7 @@ module.exports = {
             const fn = path.basename(iso, '.iso');
             allGames.push({ id: generateId(iso), title: cleanGameTitle(fn), exePath: iso, installDir: path.dirname(iso), platform: 'iso', updateFiles: await findUpdateFilesForIso(ctx, iso) });
           }
-        } catch (e) { ctx.logger.error(`Error scanning ISO path ${dir}: ${e.message}`); }
+        } catch (e) { ctx.logger.error(`Error scanning ISO path ${dir}: ${e?.message ?? e}`); }
         idx++;
       }
 
