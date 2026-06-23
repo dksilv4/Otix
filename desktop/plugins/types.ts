@@ -13,6 +13,7 @@ export type PluginPermission =
   | 'notifications'
   | 'worker:compute'
   | 'api:proxy'
+  | 'worker:filesystem'   // NEW — filesystem read access via RPC bridge
 
 // ── Manifest ──
 export interface PluginConfigField {
@@ -145,6 +146,7 @@ export interface OtixEvents {
   'plugin:enabled': { pluginId: string }
   'plugin:disabled': { pluginId: string }
   'plugin:slot-suspended': { pluginId: string; location: string }
+  'scan:progress': { currentDir: string; progress: number; pluginId?: string }   // NEW
 }
 
 export type OtixEventName = keyof OtixEvents
@@ -177,6 +179,9 @@ export interface PluginContext {
   notifications: PluginNotifications
   logger: PluginLogger
   api: ApiProxy
+  filesystem: PluginFilesystem
+  app: PluginApp
+  host: PluginHost
   onDestroy: (cb: () => void) => void
 }
 
@@ -201,6 +206,35 @@ export interface PluginDatabase {
 
 export interface PluginNotifications {
   send(title: string, body: string): void
+}
+
+export interface FsEntry {
+  name: string
+  isDirectory: boolean
+  isFile: boolean
+  isSymbolicLink: boolean
+}
+
+export interface FsStat {
+  size: number
+  mtimeMs: number
+  isDirectory: boolean
+  isFile: boolean
+}
+
+export interface PluginFilesystem {
+  readdir(path: string, options?: { withFileTypes?: boolean }): Promise<FsEntry[]>
+  readFile(path: string, encoding?: string): Promise<string>
+  stat(path: string): Promise<FsStat>
+  access(path: string): Promise<boolean>
+}
+
+export interface PluginApp {
+  getFileIcon(path: string, size?: 'small' | 'large'): Promise<string | null>
+}
+
+export interface PluginHost {
+  emit(event: string, data: unknown): void
 }
 
 export interface PluginLogger {

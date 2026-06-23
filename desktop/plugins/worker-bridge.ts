@@ -4,6 +4,8 @@ import type { PluginPermission, MainToWorkerMessage, WorkerToMainMessage, Plugin
 import type { IsolatedEventBus } from './event-bus'
 import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
+import * as fs from 'fs/promises'
+import { app } from 'electron'
 
 const GATED_METHODS: Record<string, PluginPermission> = {
   'events.on': 'events:subscribe',
@@ -17,6 +19,11 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'db.get': 'storage:local',
   'db.all': 'storage:local',
   'notifications.send': 'notifications',
+  'filesystem.readdir': 'worker:filesystem',
+  'filesystem.readFile': 'worker:filesystem',
+  'filesystem.stat': 'worker:filesystem',
+  'filesystem.access': 'worker:filesystem',
+  'app.getFileIcon': 'worker:filesystem',
 }
 
 export interface BridgeDependencies {
@@ -240,6 +247,44 @@ async function executeMethod(
     case 'notifications.send':
       // Notification dispatch handled by main process
       return undefined
+    case 'filesystem.readdir': {
+      const [dirPath, options] = args as [string, { withFileTypes?: boolean } | undefined]
+      const entries = await fs.readdir(dirPath, { withFileTypes: true })
+      return entries.map(e => ({
+        name: e.name,
+        isDirectory: e.isDirectory(),
+        isFile: e.isFile(),
+        isSymbolicLink: e.isSymbolicLink(),
+      }))
+    }
+    case 'filesystem.readFile': {
+      const [filePath, encoding] = args as [string, string | undefined]
+      return await fs.readFile(filePath, (encoding || 'utf-8') as BufferEncoding)
+    }
+    case 'filesystem.stat': {
+      const [filePath] = args as [string]
+      const s = await fs.stat(filePath)
+      return { size: s.size, mtimeMs: s.mtimeMs, isDirectory: s.isDirectory(), isFile: s.isFile() }
+    }
+    case 'filesystem.access': {
+      const [filePath] = args as [string]
+      try { await fs.access(filePath); return true }
+      catch { return false }
+    }
+    case 'app.getFileIcon': {
+      const [filePath, size] = args as [string, 'small' | 'large' | undefined]
+      try {
+        const icon = await app.getFileIcon(filePath, { size: size || 'large' })
+        return icon.toDataURL()
+      } catch {
+        return null
+      }
+    }
+    case 'host.emit': {
+      const [event, data] = args as [string, unknown]
+      ;(deps.eventBus.emit as (event: string, payload: unknown) => boolean)(event, data)
+      return undefined
+    }
     case 'onDestroy':
       // The actual onDestroy pattern: PluginRuntime in main process
       // tracks destroy callbacks from RPC calls (e.g. events.on unsubscribe).
