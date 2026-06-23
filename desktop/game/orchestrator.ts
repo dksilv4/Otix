@@ -12,7 +12,7 @@ import {
   saveMatchSuggestion,
   notifyGamesChanged,
 } from './storage';
-import { scanAllLaunchers as scanHardcodedLaunchers } from './launchers';
+
 
 export interface ScannedGame {
   id: string
@@ -116,33 +116,6 @@ export class GameScanOrchestrator extends EventEmitter {
 
     // 1. Collect all matching:scan plugins
     const plugins = this.pluginManager.getPluginsForSlot('matching:scan');
-    const hardcodedResults = await scanHardcodedLaunchers();
-    for (const r of hardcodedResults) {
-      for (const g of r.games) {
-        allGames.push({
-          id: g.id,
-          title: g.title,
-          platform: g.platform || 'pc',
-          externalIds: [],
-          installPath: g.installDir,
-          exePath: g.exePath,
-          posterUrl: g.posterUrl,
-        });
-      }
-      // Persist hardcoded launcher results per platform (platform-scoped, no cross-wipe)
-      if (r.games.length > 0) {
-        const platform = r.games[0].platform || 'pc';
-        upsertGamesForPlatform(r.games.map(g => ({
-          id: platform + '_' + g.id,
-          title: g.title,
-          exePath: g.exePath || '',
-          installDir: g.installDir || '',
-          platform: platform as any,
-          posterUrl: g.posterUrl || undefined,
-          sources: [{ source: platform, id: g.id }],
-        })), platform);
-      }
-    }
 
     // 2. Scan each plugin
     for (const plugin of plugins) {
@@ -227,7 +200,7 @@ export class GameScanOrchestrator extends EventEmitter {
     }
 
     return {
-      pluginsScanned: plugins.length + (hardcodedResults.length > 0 ? 1 : 0),
+      pluginsScanned: plugins.length,
       totalGames: allGames.length,
       matched: allGames.length - totalUnmatchedCount,
       unmatched: totalUnmatchedCount,
@@ -531,6 +504,11 @@ export class GameScanOrchestrator extends EventEmitter {
               // Backend handles match proposal inline during matching
               notifyGamesChanged();
             }
+
+            // Claim matched game if source plugin has mark_as_owned enabled
+            if (data.match.media_item_id) {
+              this.tryClaimForPlugin(pluginId, data.match.media_item_id);
+            }
           } else if (data.status === 'matched' && data.candidates?.length > 0) {
             // ── Candidates only (no auto_match): save as matchSuggestion ──
             const best = data.candidates[0];
@@ -603,6 +581,68 @@ export class GameScanOrchestrator extends EventEmitter {
 
     req.write(body);
     req.end();
+  }
+
+  /**
+   * Claim a matched game on the backend if the source plugin has mark_as_owned enabled.
+   * Fire-and-forget — non-fatal if it fails.
+   */
+  private tryClaimForPlugin(pluginId: string, mediaItemId: string): void {
+    // Only real plugins have config; skip synthetic labels like 'pc-directory'
+    try {
+      const config = this.pluginManager.getConfig(pluginId);
+      if (!config?.mark_as_owned) return;
+    } catch {
+      // Not a real plugin or config not available — skip silently
+      return;
+    }
+
+    // Also skip if no auth token (can't claim without auth)
+    if (!this.authToken) return;
+
+    const url = new URL(`/api/media/${mediaItemId}/claim`, this.apiBaseUrl);
+    const req = http.request(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.authToken}`,
+      },
+      timeout: 10_000,
+    });
+    req.on('error', (err) => {
+      console.warn(`[GameScanOrchestrator] Claim failed for ${mediaItemId}:`, err.message);
+    });
+    req.end();
+  }
+
+  /**
+   * Match directory-scanned (PC) games through the same SSE pipeline as plugin games.
+   * Fire-and-forget — games are persisted as they stream back.
+   */
+  async matchLocalGames(games: ScannedGame[], label = 'pc-directory'): Promise<void> {
+    if (this._isScanning) {
+      console.warn('[GameScanOrchestrator] matchLocalGames skipped — scan in progress');
+      return;
+    }
+    if (!games.length) return;
+
+    // Split: already-matched vs needs match
+    const needsMatch: ScannedGame[] = [];
+    for (const game of games) {
+      let found = false;
+      for (const eid of game.externalIds) {
+        const existing = getGameMatch(eid.source, eid.id);
+        if (existing) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) needsMatch.push(game);
+    }
+
+    if (needsMatch.length === 0) return;
+
+    console.log(`[GameScanOrchestrator] matchLocalGames: ${needsMatch.length}/${games.length} need matching`);
+    await this.streamMatches(needsMatch, label);
   }
 
   // Internal: track games per queryId for persistence

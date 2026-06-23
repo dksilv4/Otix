@@ -3,7 +3,8 @@ import { scanPaths } from '../game/scanner';
 import { scanAllLaunchers } from '../game/launchers';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
-import type { GameScanOrchestrator } from '../game/orchestrator';
+import type { GameScanOrchestrator, ScannedGame } from '../game/orchestrator';
+import type { PluginManager } from '../plugins/manager';
 import {
   batchCheckMatchCache,
   saveMatchCache,
@@ -17,9 +18,14 @@ import http from 'http';
 const BACKEND_BASE = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
 
 let _orchestrator: GameScanOrchestrator | null = null;
+let _pluginManager: PluginManager | null = null;
 
 export function setScanOrchestrator(o: GameScanOrchestrator): void {
   _orchestrator = o;
+}
+
+export function setPluginManager(pm: PluginManager): void {
+  _pluginManager = pm;
 }
 
 /**
@@ -77,6 +83,17 @@ function seedTitlesOnBackend(): void {
 export function registerScannerIPC(gameDetector: GameDetector | null): void {
   // Scan game in paths
   ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
+    // ── Plugin path: save paths to local-files plugin config ──
+    try {
+      if (_pluginManager) {
+        _pluginManager.setConfig('local-files', 'scanDirectories', paths);
+        _pluginManager.setConfig('local-files', 'isoDirectories', isoPaths);
+      }
+    } catch (err) {
+      console.warn('[scanner:scan-paths] Could not save to plugin config:', err);
+    }
+
+    // ── Still persist to gameService for backward compat ──
     const games = await scanPaths(paths, isoPaths, (progressData) => {
       event.sender.send('scanner:progress', progressData);
     });
@@ -87,6 +104,23 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     gameService.upsertGames(games);
     gameService.notifyGamesChanged();
     seedTitlesOnBackend();
+
+    // Match directory games through the same pipeline as plugin games
+    if (_orchestrator && games.length > 0) {
+      const scanned: ScannedGame[] = games.map((g) => ({
+        id: g.id.replace('pc_', ''),
+        title: g.title,
+        platform: 'pc',
+        externalIds: [{ source: 'pc', id: g.id.replace('pc_', '') }],
+        exePath: g.exePath,
+        installPath: g.installDir,
+        posterUrl: g.posterUrl,
+      }));
+      _orchestrator.matchLocalGames(scanned, 'pc-directory').catch((err) =>
+        console.error('[scanner] Directory match failed:', err)
+      );
+    }
+
     return games;
   });
 
