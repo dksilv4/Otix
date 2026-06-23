@@ -40,6 +40,7 @@ export interface PluginManifest {
   settings?: { tabs?: PluginSettingsTab[] }
   entry: { main: string; renderer?: string }
   services?: string[]
+  depends_on?: string[]
 }
 
 export interface PluginConfigField {

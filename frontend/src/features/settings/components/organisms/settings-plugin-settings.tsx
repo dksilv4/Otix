@@ -94,6 +94,24 @@ const PLUGIN_ICONS: Record<string, string> = {
   default: '\u{1F4E6}',
 }
 
+// Derive plugin function category from its permissions
+const CATEGORY_MAP: [string, string[], string][] = [
+  ['Scanner', ['worker:filesystem', 'worker:compute'], 'text-cyan-400 bg-cyan-500/10'],
+  ['Integration', ['api:proxy', 'network:external'], 'text-blue-400 bg-blue-500/10'],
+  ['Media', ['ui:media.actions'], 'text-purple-400 bg-purple-500/10'],
+  ['UI', ['ui:settings', 'ui:nav.item', 'ui:dashboard.widget', 'ui:list.actions'], 'text-amber-400 bg-amber-500/10'],
+  ['Notification', ['notifications'], 'text-pink-400 bg-pink-500/10'],
+  ['Storage', ['storage:local'], 'text-emerald-400 bg-emerald-500/10'],
+]
+
+function getPluginCategory(plugin: PluginInfo): { label: string; class: string } | null {
+  const perms = plugin.manifest.permissions
+  for (const [label, keys, cls] of CATEGORY_MAP) {
+    if (keys.some(k => perms.includes(k))) return { label, class: cls }
+  }
+  return null
+}
+
 export function getPluginAPI(): PluginAPI | null {
   const desktopAPI = (window as Window).desktopAPI as
     | { plugin: PluginAPI }
@@ -169,68 +187,122 @@ function PluginCard({
   const isEnabled = plugin.status === 'enabled'
   const hasError = plugin.status === 'error'
 
+  const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
+
   return (
     <div
       className={cn(
-        'relative flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200',
+        'relative rounded-xl border transition-all duration-200',
         hasError
           ? 'border-red-500/20'
-          : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]',
+          : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10',
       )}
     >
       {hasError && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-red-400 rounded-l-xl" />}
 
-      {/* Status dot */}
-      <div
-        className={cn(
-          'h-2 w-2 rounded-full shrink-0',
-          hasError ? 'bg-red-400' : isEnabled ? 'bg-green-500' : 'bg-white/20',
-        )}
-      />
+      <div className="p-4 space-y-3">
+        {/* Top: icon row + toggle */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">
+              {pluginIcon}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white truncate max-w-[160px]">{plugin.name}</h3>
+                <div
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full shrink-0',
+                    hasError ? 'bg-red-400' : isEnabled ? 'bg-green-500' : 'bg-white/20',
+                  )}
+                />
+              </div>
+              <p className="text-[11px] text-white/40 mt-0.5">v{plugin.version} &middot; {plugin.author}</p>
+            </div>
+          </div>
+          <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
+        </div>
 
-      {/* Toggle */}
-      <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
-
-      {/* Name */}
-      <span className="text-sm text-white truncate flex-1 min-w-0">{plugin.name}</span>
-
-      {/* Update badge */}
-      {onUpdate && updateVersion && (
-        <button
-          type="button"
-          onClick={onUpdate}
-          disabled={updating}
-          className="shrink-0 flex h-6 items-center gap-1 rounded-lg px-1.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
-        >
-          {updating ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
-          v{updateVersion}
-        </button>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-0.5 shrink-0">
-        {isEnabled && (
-          <>
-            <IconButton onClick={onReload} loading={reloading} icon={RefreshCw} tooltip="Reload" hoverColor="white" />
-            {hasConfig && <IconButton onClick={onConfigure} icon={Settings} tooltip="Configure" hoverColor="white" />}
-          </>
+        {/* Description */}
+        {plugin.description && (
+          <p className="text-xs text-white/50 leading-relaxed line-clamp-2">{plugin.description}</p>
         )}
-        {confirmingUninstall ? (
-          <button
-            type="button"
-            onClick={onUninstall}
-            disabled={uninstalling}
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50"
-            title="Confirm remove"
-          >
-            {uninstalling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-          </button>
-        ) : (
-          <IconButton onClick={() => setConfirmingUninstall(true)} icon={Trash2} tooltip="Uninstall" hoverColor="red" />
+
+        {/* Function category */}
+        {getPluginCategory(plugin) && (
+          <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium', getPluginCategory(plugin)!.class)}>
+            {getPluginCategory(plugin)!.label}
+          </span>
         )}
-        {confirmingUninstall && (
-          <IconButton onClick={() => setConfirmingUninstall(false)} icon={X} tooltip="Cancel" hoverColor="white" />
+
+        {/* Provides / Depends on */}
+        {plugin.manifest.services && plugin.manifest.services.length > 0 && (
+          <p className="text-[10px] text-white/30">
+            Provides: {plugin.manifest.services.join(', ')}
+          </p>
         )}
+        {(plugin.manifest as any).depends_on?.length > 0 && (
+          <p className="text-[10px] text-amber-400/60">
+            Depends on: {(plugin.manifest as any).depends_on.join(', ')}
+          </p>
+        )}
+
+        {/* Permissions */}
+        {plugin.manifest.permissions.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {plugin.manifest.permissions.map((perm) => (
+              <span
+                key={perm}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/[0.03] text-white/35"
+              >
+                {getPermissionLabel(perm)}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom action row */}
+        <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+          <div className="flex items-center gap-0.5">
+            {isEnabled && (
+              <>
+                <IconButton onClick={onReload} loading={reloading} icon={RefreshCw} tooltip="Reload" />
+                {hasConfig && <IconButton onClick={onConfigure} icon={Settings} tooltip="Configure" />}
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            {onUpdate && updateVersion && (
+              <button
+                type="button"
+                onClick={onUpdate}
+                disabled={updating}
+                className="flex h-7 items-center gap-1 rounded-lg px-2 text-[10px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
+              >
+                {updating ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
+                v{updateVersion}
+              </button>
+            )}
+
+            {confirmingUninstall ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onUninstall}
+                  disabled={uninstalling}
+                  className="flex h-7 items-center gap-1 rounded-lg px-2 text-[10px] font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50"
+                >
+                  {uninstalling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Trash2 className="h-2.5 w-2.5" />}
+                  Remove
+                </button>
+                <IconButton onClick={() => setConfirmingUninstall(false)} icon={X} tooltip="Cancel" />
+              </div>
+            ) : (
+              <IconButton onClick={() => setConfirmingUninstall(true)} icon={Trash2} tooltip="Uninstall" hoverColor="red" />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -425,6 +497,94 @@ function MarketplaceDetailPanel({
   )
 }
 
+// ── Category section (groups installed plugins by status) ────────────────────
+
+function PluginCategorySection({
+  label,
+  count,
+  color,
+  query,
+  plugins,
+  statusFilter,
+  marketplacePlugins,
+  handleToggle,
+  handleUninstall,
+  handleReload,
+  openConfig,
+  handleUpdatePlugin,
+  toggling,
+  uninstalling,
+  reloading,
+  updating,
+}: {
+  label: string
+  count: number
+  color: 'red' | 'green' | 'gray'
+  query: string
+  plugins: PluginInfo[]
+  statusFilter: string | string[]
+  marketplacePlugins: RegistryEntry[]
+  handleToggle: (plugin: PluginInfo) => void
+  handleUninstall: (plugin: PluginInfo) => void
+  handleReload: (plugin: PluginInfo) => void
+  openConfig: (plugin: PluginInfo) => void
+  handleUpdatePlugin: (pluginId: string) => Promise<void>
+  toggling: Record<string, boolean>
+  uninstalling: Record<string, boolean>
+  reloading: Record<string, boolean>
+  updating: string | null
+}) {
+  const filter = Array.isArray(statusFilter)
+    ? (p: PluginInfo) => statusFilter.includes(p.status)
+    : (p: PluginInfo) => p.status === statusFilter
+
+  const filtered = plugins.filter(filter)
+  if (filtered.length === 0) return null
+
+  const headerClass =
+    color === 'red'
+      ? 'text-red-400'
+      : color === 'green'
+        ? 'text-green-400'
+        : 'text-white/40'
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h4 className={cn('text-xs font-semibold uppercase tracking-wider', headerClass)}>
+          {label}
+        </h4>
+        <span className="text-xs text-white/30">{count}</span>
+      </div>
+
+      {query && filtered.length === 0 ? null : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {filtered.map((plugin) => {
+            const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
+            const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
+            return (
+              <PluginCard
+                key={plugin.id}
+                plugin={plugin}
+                onToggle={() => handleToggle(plugin)}
+                onUninstall={() => handleUninstall(plugin)}
+                onReload={() => handleReload(plugin)}
+                onConfigure={plugin.status === 'enabled' && plugin.manifest.config && Object.keys(plugin.manifest.config).length > 0 ? () => openConfig(plugin) : undefined}
+                onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
+                toggling={toggling[plugin.id] ?? false}
+                uninstalling={uninstalling[plugin.id] ?? false}
+                reloading={reloading[plugin.id] ?? false}
+                updating={updating === plugin.id}
+                updateVersion={hasUpdate ? marketplaceEntry.version : undefined}
+              />
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Plugin Settings Page ──────────────────────────────────────────────────────
 
 export function PluginSettings() {
@@ -458,8 +618,11 @@ export function PluginSettings() {
   const [newRepoLabel, setNewRepoLabel] = useState('')
   const [addingRepo, setAddingRepo] = useState(false)
 
-  // Search
+  // Search + marketplace category filter
   const [searchQuery, setSearchQuery] = useState('')
+  const [marketplaceCategory, setMarketplaceCategory] = useState<string | null>(null)
+  // Reset category filter when searching
+  useEffect(() => { if (searchQuery) setMarketplaceCategory(null) }, [searchQuery])
 
   // Gate: don't call plugin IPC until main process registers handlers.
   const [ipcReady, setIpcReady] = useState(false)
@@ -708,14 +871,11 @@ export function PluginSettings() {
       )
     : plugins
 
-  const filteredMarketplace = query
-    ? marketplacePlugins.filter(
-        (e) =>
-          e.name.toLowerCase().includes(query) ||
-          e.description.toLowerCase().includes(query) ||
-          e.author.toLowerCase().includes(query),
-      )
-    : marketplacePlugins
+  const filteredMarketplace = marketplacePlugins.filter((e) => {
+    if (query && !e.name.toLowerCase().includes(query) && !e.description.toLowerCase().includes(query) && !e.author.toLowerCase().includes(query)) return false
+    if (marketplaceCategory && e.category !== marketplaceCategory) return false
+    return true
+  })
 
   // ── Browser mode fallback ──
 
@@ -951,6 +1111,37 @@ export function PluginSettings() {
           </div>
         )}
 
+        {/* Category filter chips */}
+        {!marketplaceLoading && !marketplaceError && marketplacePlugins.length > 0 && !query && (
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setMarketplaceCategory(null)}
+              className={cn(
+                'inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors',
+                !marketplaceCategory
+                  ? 'bg-white/10 text-white'
+                  : 'bg-white/[0.04] text-white/40 hover:text-white hover:bg-white/[0.08]',
+              )}
+            >
+              All
+            </button>
+            {[...new Set(marketplacePlugins.map(e => e.category).filter(Boolean))].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setMarketplaceCategory(marketplaceCategory === cat ? null : cat)}
+                className={cn(
+                  'inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium capitalize transition-colors',
+                  marketplaceCategory === cat
+                    ? 'bg-white/10 text-white'
+                    : 'bg-white/[0.04] text-white/40 hover:text-white hover:bg-white/[0.08]',
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Marketplace grid */}
         {!marketplaceLoading && !marketplaceError && query && filteredMarketplace.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -988,61 +1179,97 @@ export function PluginSettings() {
       {/* ── Divider ── */}
       <div className="border-t border-white/[0.06]" />
 
-      {/* ── Installed Plugins ── */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-white">
-          Installed ({filteredPlugins.length})
-          {query && plugins.length !== filteredPlugins.length && (
-            <span className="text-white/30 font-normal text-xs ml-1">filtered</span>
+      {/* ── Installed Plugins (categorized) ── */}
+      {filteredPlugins.length === 0 && !query && (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-2xl mb-3"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)' }}
+          >
+            <Puzzle className="h-7 w-7" />
+          </div>
+          <h3 className="text-sm font-semibold text-white mb-1">No plugins installed</h3>
+          <p className="text-xs text-white/40 max-w-sm leading-relaxed">
+            Browse the marketplace above or add a repository to install plugins.
+          </p>
+        </div>
+      )}
+
+      {filteredPlugins.length === 0 && query && (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <p className="text-sm text-white/40">No installed plugins match &quot;{searchQuery}&quot;</p>
+        </div>
+      )}
+
+      {filteredPlugins.length > 0 && (
+        <div className="space-y-6">
+          {/* ── Error plugins ── */}
+          {filteredPlugins.filter(p => p.status === 'error').length > 0 && (
+            <PluginCategorySection
+              label="Errors"
+              count={filteredPlugins.filter(p => p.status === 'error').length}
+              color="red"
+              query={query}
+              plugins={filteredPlugins}
+              statusFilter="error"
+              marketplacePlugins={marketplacePlugins}
+              handleToggle={handleToggle}
+              handleUninstall={handleUninstall}
+              handleReload={handleReload}
+              openConfig={openConfig}
+              handleUpdatePlugin={handleUpdatePlugin}
+              toggling={toggling}
+              uninstalling={uninstalling}
+              reloading={reloading}
+              updating={updating}
+            />
           )}
-        </h3>
 
-        {filteredPlugins.length === 0 && !query && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div
-              className="flex h-14 w-14 items-center justify-center rounded-2xl mb-3"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)' }}
-            >
-              <Puzzle className="h-7 w-7" />
-            </div>
-            <h3 className="text-sm font-semibold text-white mb-1">No plugins installed</h3>
-            <p className="text-xs text-white/40 max-w-sm leading-relaxed">
-              Browse the marketplace above or add a repository to install plugins.
-            </p>
-          </div>
-        )}
+          {/* ── Active plugins ── */}
+          {filteredPlugins.filter(p => p.status === 'enabled').length > 0 && (
+            <PluginCategorySection
+              label="Active"
+              count={filteredPlugins.filter(p => p.status === 'enabled').length}
+              color="green"
+              query={query}
+              plugins={filteredPlugins}
+              statusFilter="enabled"
+              marketplacePlugins={marketplacePlugins}
+              handleToggle={handleToggle}
+              handleUninstall={handleUninstall}
+              handleReload={handleReload}
+              openConfig={openConfig}
+              handleUpdatePlugin={handleUpdatePlugin}
+              toggling={toggling}
+              uninstalling={uninstalling}
+              reloading={reloading}
+              updating={updating}
+            />
+          )}
 
-        {filteredPlugins.length === 0 && query && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm text-white/40">No installed plugins match &quot;{searchQuery}&quot;</p>
-          </div>
-        )}
-
-        {filteredPlugins.length > 0 && (
-          <div className="space-y-2">
-            {filteredPlugins.map((plugin) => {
-              const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
-              const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
-              return (
-                <PluginCard
-                  key={plugin.id}
-                  plugin={plugin}
-                  onToggle={() => handleToggle(plugin)}
-                  onUninstall={() => handleUninstall(plugin)}
-                  onReload={() => handleReload(plugin)}
-                  onConfigure={plugin.status === 'enabled' && plugin.manifest.config && Object.keys(plugin.manifest.config).length > 0 ? () => openConfig(plugin) : undefined}
-                  onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
-                  toggling={toggling[plugin.id] ?? false}
-                  uninstalling={uninstalling[plugin.id] ?? false}
-                  reloading={reloading[plugin.id] ?? false}
-                  updating={updating === plugin.id}
-                  updateVersion={hasUpdate ? marketplaceEntry.version : undefined}
-                />
-              )
-            })}
-          </div>
-        )}
-      </div>
+          {/* ── Inactive plugins ── */}
+          {filteredPlugins.filter(p => p.status === 'disabled' || p.status === 'installed').length > 0 && (
+            <PluginCategorySection
+              label="Inactive"
+              count={filteredPlugins.filter(p => p.status === 'disabled' || p.status === 'installed').length}
+              color="gray"
+              query={query}
+              plugins={filteredPlugins}
+              statusFilter={['disabled', 'installed']}
+              marketplacePlugins={marketplacePlugins}
+              handleToggle={handleToggle}
+              handleUninstall={handleUninstall}
+              handleReload={handleReload}
+              openConfig={openConfig}
+              handleUpdatePlugin={handleUpdatePlugin}
+              toggling={toggling}
+              uninstalling={uninstalling}
+              reloading={reloading}
+              updating={updating}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }
