@@ -5,7 +5,7 @@ import { execSync } from 'child_process';
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC } from './ipc/downloads';
 import { registerGamesIPC } from './ipc/games';
-import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC } from './ipc/scanner';
+import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
@@ -483,6 +483,7 @@ app.on('ready', async () => {
       orchestrator.setAuthToken(token);
     };
     setScanOrchestrator(orchestrator);
+    setPluginManager(pluginManager);
     registerPluginScanIPC();
     wireOrchestratorEvents(orchestrator, mainWindow!);
 
