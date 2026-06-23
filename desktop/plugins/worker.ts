@@ -148,6 +148,10 @@ const ctx = {
     get: <T>(sql: string, params?: unknown[]) => rpc('db.get', sql, params) as Promise<T | null>,
     all: <T>(sql: string, params?: unknown[]) => rpc('db.all', sql, params) as Promise<T[]>,
   },
+  downloadsDb: {
+    all: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.all', sql, params) as Promise<T[]>,
+    get: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.get', sql, params) as Promise<T | null>,
+  },
   notifications: {
     send: (titleOrOpts: string | { title: string; body: string; type?: string }, body?: string) => {
       if (typeof titleOrOpts === 'object') {
