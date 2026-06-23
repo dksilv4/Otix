@@ -6,8 +6,8 @@ export interface LocalGame {
   installDir: string;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'ea' | 'riot' | 'xbox' | 'itch';
   localIconUrl?: string; // base64 data URL from .exe icon
-  iconUrl?: string; // SGDB grid (cover/poster) URL
-  posterUrl?: string; // SGDB grid (cover/poster) URL
+  iconUrl?: string; // Icon URL from plugin enrichment
+  posterUrl?: string; // Poster URL from plugin enrichment
   updateFiles?: { name: string; path: string }[];
   otixMediaId?: string;
   otixMediaTitle?: string;

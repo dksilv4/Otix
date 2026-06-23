@@ -17,7 +17,6 @@ import {cn} from '@/lib/utils'
 import {useAuth} from '@/lib/providers/auth'
 import {useToast} from '@/old-features/dk-ui/molecules/toast'
 import {useQueryClient} from '@tanstack/react-query'
-import {API_BASE_URL} from '@/lib/config'
 import {useSseStream} from '@/lib/hooks/use-sse-stream'
 import type {SseEvent} from '@/lib/api/sse-client'
 import type {ReactNode} from 'react'
@@ -62,7 +61,7 @@ function useNotificationToasts() {
     }, [queryClient, toast, user?.notificationPreferences])
 
     useSseStream({
-        url: `${API_BASE_URL}/notifications/stream`,
+        url: '/api/notifications/stream',
         onMessage: handleMessage,
         enabled: isAuthenticated,
         reconnectDelays: RECONNECT_DELAYS,

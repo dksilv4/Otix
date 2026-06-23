@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, type ChangeEvent, type ReactNode } from 'react'
-import { X, Loader2, CheckCircle2, AlertCircle, Lock, Gamepad2, LogOut, RefreshCw } from 'lucide-react'
+import { X, Loader2, CheckCircle2, AlertCircle, Lock, Gamepad2, LogOut, RefreshCw, Puzzle } from 'lucide-react'
 import { SlidePanel } from '@/lib/modals'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
+import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
 
 interface PluginConfigField {
   type: string
@@ -84,15 +85,18 @@ function ConfigField({
   switch (field.type) {
     case 'boolean':
       return (
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm text-white/80">{field.label}</span>
+            {field.description && (
+              <p className="text-xs text-white/40 mt-0.5">{field.description}</p>
+            )}
+          </div>
+          <DkSwitch
             checked={Boolean(currentValue)}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary/50"
+            onCheckedChange={onChange}
           />
-          <span className="text-sm text-white/80">{field.label}</span>
-        </label>
+        </div>
       )
 
     case 'number':
@@ -484,10 +488,18 @@ export function PluginConfigPanel({
   return (
     <SlidePanel onClose={onClose} isExiting={isExiting}>
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5">
-        <h2 className="text-lg font-semibold text-white">{plugin.name}</h2>
-        <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-          <X className="h-5 w-5" />
+      <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Puzzle className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-white">{plugin.name}</h2>
+            <p className="text-[11px] text-white/40">Plugin configuration</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors">
+          <X className="h-4 w-4" />
         </button>
       </div>
 
@@ -576,19 +588,19 @@ export function PluginConfigPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 flex items-center justify-between">
+      <div className="px-6 py-4 flex items-center justify-between border-t border-white/[0.06]">
         <p className="text-xs text-white/30">{manifest.version ? `v${manifest.version}` : ''}</p>
         <div className="flex items-center gap-2">
           {hasTestableConfig && (
             <button
               onClick={handleTest}
               disabled={testing}
-              className="inline-flex items-center gap-2 h-10 rounded-xl px-4 text-sm font-medium border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 h-9 rounded-lg px-4 text-xs font-medium border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
             >
               {testing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-3.5 w-3.5" />
               )}
               Test Connection
             </button>
@@ -596,7 +608,7 @@ export function PluginConfigPanel({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 h-10 rounded-xl px-6 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 h-9 rounded-lg px-5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Save'}
           </button>

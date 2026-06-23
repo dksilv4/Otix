@@ -1,7 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
-import { API_BASE_URL } from '@/lib/config'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
 import type { SseEvent } from '@/lib/api/sse-client'
@@ -78,7 +77,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   )
 
   useSseStream({
-    url: `${API_BASE_URL}/notifications/stream`,
+    url: '/api/notifications/stream',
     onMessage: handleMessage,
     enabled: isAuthenticated,
     reconnectDelays: [3000, 10000, 30000],
