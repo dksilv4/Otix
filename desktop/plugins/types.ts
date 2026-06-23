@@ -27,6 +27,19 @@ export interface PluginConfigField {
   advanced?: boolean
 }
 
+// ── Services ──
+export interface PluginService {
+  type: string        // 'downloader' | 'search-provider' | 'arr' | 'downloads-orchestrator'
+  protocol?: string   // 'usenet' | 'torrent' | 'any'
+}
+
+export interface ServiceInfo {
+  pluginId: string
+  type: string
+  protocol?: string
+  methods: string[]
+}
+
 export interface PluginSlot {
   location: string
   label: string
@@ -64,7 +77,7 @@ export interface PluginManifest {
     main: string
     renderer?: string
   }
-  services?: string[]
+  services?: (string | PluginService)[]
 }
 
 // ── Runtime ──
