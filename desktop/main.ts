@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { GameDetector } from './game/detector';
-import { registerDownloadsIPC } from './ipc/downloads';
+import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerGamesIPC } from './ipc/games';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
@@ -17,7 +17,7 @@ import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
-import { scheduledUpdateCheck, purgeOldDeletedDownloads } from './downloads';
+import { purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './saves';
 import { registerSaveIPC } from './ipc/saves';
 import { populateKnownLocations } from './saves/export';
@@ -470,6 +470,7 @@ app.on('ready', async () => {
       : undefined;
     permissionManager = new PermissionManager();
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
+    setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
 
@@ -571,14 +572,15 @@ app.on('ready', async () => {
 
   // ── Scheduled update check ──
   // First check 5 minutes after startup, then every 12 hours
+  // Delegated to the downloads plugin; these calls serve as a fallback
   setTimeout(() => {
-    scheduledUpdateCheck().catch((err) =>
+    pluginManager?.callPluginData('downloads', 'poll-queue').catch((err: any) =>
       console.error('[main] Initial update check failed:', err)
     );
   }, 5 * 60 * 1000);
 
   setInterval(() => {
-    scheduledUpdateCheck().catch((err) =>
+    pluginManager?.callPluginData('downloads', 'poll-queue').catch((err: any) =>
       console.error('[main] Periodic update check failed:', err)
     );
   }, 12 * 60 * 60 * 1000);
