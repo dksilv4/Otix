@@ -139,6 +139,25 @@ const ctx = {
     put: <T>(path: string, data?: unknown) => rpc('api.put', path, data) as Promise<T>,
     delete: <T>(path: string) => rpc('api.delete', path) as Promise<T>,
   },
+  filesystem: {
+    readdir: (path: string, options?: { withFileTypes?: boolean }) =>
+      rpc('filesystem.readdir', path, options) as Promise<import('./types').FsEntry[]>,
+    readFile: (path: string, encoding?: string) =>
+      rpc('filesystem.readFile', path, encoding) as Promise<string>,
+    stat: (path: string) =>
+      rpc('filesystem.stat', path) as Promise<import('./types').FsStat>,
+    access: (path: string) =>
+      rpc('filesystem.access', path) as Promise<boolean>,
+  },
+  app: {
+    getFileIcon: (path: string, size?: 'small' | 'large') =>
+      rpc('app.getFileIcon', path, size) as Promise<string | null>,
+  },
+  host: {
+    emit: (event: string, data: unknown) => {
+      rpc('host.emit', event, data)
+    },
+  },
   onDestroy: (cb: () => void) => {
     rpc('onDestroy', null).catch(() => {})
   },
