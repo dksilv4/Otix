@@ -313,7 +313,12 @@ async function executeMethod(
     }
     case 'host.emit': {
       const [event, data] = args as [string, unknown]
-      ;(deps.eventBus.emit as (event: string, payload: unknown) => boolean)(event, data)
+      // Only allow documented plugin-emitted events
+      const ALLOWED_EVENTS = new Set(['scan:progress'])
+      if (!ALLOWED_EVENTS.has(event)) {
+        throw new Error(`Event "${event}" is not in the allowed list for host.emit`)
+      }
+      deps.eventBus.emit(event as any, data)
       return undefined
     }
     case 'plugins.call': {
