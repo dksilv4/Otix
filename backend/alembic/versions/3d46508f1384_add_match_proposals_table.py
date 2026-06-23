@@ -8,6 +8,7 @@ Create Date: 2026-06-22 03:10:23.932116
 from collections.abc import Sequence
 
 from alembic import op
+from sqlalchemy import inspect
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -15,6 +16,11 @@ revision: str = '3d46508f1384'
 down_revision: str | None = 'd1e2f3a4b5c6'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+def table_exists(table: str) -> bool:
+    bind = op.get_bind()
+    return table in inspect(bind).get_table_names()
 
 
 def upgrade() -> None:
@@ -39,19 +45,19 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint('source', 'source_game_id', name='uq_match_proposal_source_game'),
     )
-    op.drop_index(op.f('ix_user_epic_games_media_item'), table_name='user_epic_games')
-    op.drop_index(op.f('ix_user_epic_games_media_item_id'), table_name='user_epic_games')
-    op.drop_index(op.f('ix_user_epic_games_user_app'), table_name='user_epic_games')
-    op.drop_table('user_epic_games')
-    op.drop_index(op.f('ix_epic_free_game_claims_promotion_id'), table_name='epic_free_game_claims')
-    op.drop_index(op.f('ix_epic_free_game_promo_app'), table_name='epic_free_game_claims')
-    op.drop_table('epic_free_game_claims')
-    op.drop_constraint(op.f('users_epic_id_key'), 'users', type_='unique')
-    op.drop_column('users', 'epic_token_expires_at')
-    op.drop_column('users', 'epic_display_name')
-    op.drop_column('users', 'epic_refresh_token')
-    op.drop_column('users', 'epic_access_token')
-    op.drop_column('users', 'epic_id')
+    if table_exists('user_epic_games'):
+        op.drop_index(op.f('ix_user_epic_games_media_item'), table_name='user_epic_games')
+        op.drop_index(op.f('ix_user_epic_games_media_item_id'), table_name='user_epic_games')
+        op.drop_index(op.f('ix_user_epic_games_user_app'), table_name='user_epic_games')
+        op.drop_table('user_epic_games')
+    if table_exists('epic_free_game_claims'):
+        op.drop_index(op.f('ix_epic_free_game_claims_promotion_id'), table_name='epic_free_game_claims')
+        op.drop_index(op.f('ix_epic_free_game_promo_app'), table_name='epic_free_game_claims')
+        op.drop_table('epic_free_game_claims')
+    # Use raw SQL with IF EXISTS so PostgreSQL doesn't abort the transaction
+    op.execute('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_epic_id_key')
+    for col in ('epic_id', 'epic_access_token', 'epic_refresh_token', 'epic_display_name', 'epic_token_expires_at'):
+        op.execute(f'ALTER TABLE users DROP COLUMN IF EXISTS {col}')
     # ### end Alembic commands ###
 
 

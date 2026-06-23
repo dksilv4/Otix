@@ -126,7 +126,7 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-    command: bash entrypoints/start-api.sh
+    command: bash -c "pip install pywebpush && bash entrypoints/start-api.sh"
     deploy:
       resources:
         limits:
