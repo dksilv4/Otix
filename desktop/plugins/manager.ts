@@ -36,6 +36,8 @@ const PAGE_SLOT_MAP: Record<string, string[]> = {
     'media/show/detail/actions',
     'media/game/detail/actions',
   ],
+  'activity': ['activity:panel'],
+  'library/downloads': ['library:downloads'],
 }
 
 export class PluginManager {

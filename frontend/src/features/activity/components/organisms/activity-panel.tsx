@@ -3,13 +3,11 @@ import { LayoutGrid } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import { isDesktop } from '@/lib/desktop/api'
-import { Desktop } from '@/lib/desktop'
 import { usePanelContext } from '@activity/providers/panel-context'
 import { Feature } from '@/features/_config'
 import { ActivityModuleGame } from '../molecules/activity-module-game'
 import { ActivityModulePlayer } from '../molecules/activity-module-player'
 import { ActivityModuleInstalls } from '../molecules/activity-module-installs'
-import { ActivityModuleDownloads } from '../molecules/activity-module-downloads'
 import { ActivityModulePlexSection } from '../molecules/activity-module-plex-section'
 import { ActivityModuleNotifications } from '../molecules/activity-module-notifications'
 import { ActivityModulePlugins } from '../molecules/activity-module-plugins'
@@ -86,7 +84,6 @@ export function ActivityModule({ open, onClose }: ActivityModuleProps) {
             <ActivityModuleGame />
             <ActivityModulePlayer />
             <ActivityModuleInstalls />
-            <Desktop><ActivityModuleDownloads /></Desktop>
             <Feature name="integration:plex"><ActivityModulePlexSection /></Feature>
             <ActivityModulePlugins />
             <ActivityModuleNotifications onClose={onClose} />
