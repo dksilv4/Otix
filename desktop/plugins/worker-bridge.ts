@@ -24,6 +24,8 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'filesystem.stat': 'worker:filesystem',
   'filesystem.access': 'worker:filesystem',
   'app.getFileIcon': 'worker:filesystem',
+  'plugins.call': 'events:subscribe' as PluginPermission,
+  'plugins.discover': 'events:subscribe' as PluginPermission,
 }
 
 export interface BridgeDependencies {
@@ -39,6 +41,10 @@ export interface BridgeDependencies {
   getConfig: () => Record<string, unknown>
   getConfigValue: (key: string) => unknown
   setConfigValue: (key: string, value: unknown) => void
+
+  // ── Inter-plugin communication ──
+  callPlugin: (targetId: string, method: string, args: any) => Promise<any>
+  serviceRegistry: import('./service-registry').ServiceRegistry
 }
 
 // Module-level event subscription tracker — subscriptions from all bridges
@@ -94,6 +100,31 @@ export function createWorkerBridge(deps: BridgeDependencies) {
           type: 'rpc-error', id: msg.id, error: error.message,
         } satisfies MainToWorkerMessage)
       }
+    }
+
+    // Route plugin-call results back to the caller worker
+    if (msg.type === 'plugin-call-result') {
+      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (result: any) => void> | undefined
+      if (pending) {
+        const resolve = pending.get(msg.id)
+        if (resolve) {
+          pending.delete(msg.id)
+          resolve(msg.result)
+        }
+      }
+      return
+    }
+
+    if (msg.type === 'plugin-call-error') {
+      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (err: any) => void> | undefined
+      if (pending) {
+        const reject = pending.get(msg.id)
+        if (reject) {
+          pending.delete(msg.id)
+          reject(msg.error)
+        }
+      }
+      return
     }
 
     if (msg.type === 'slot-render') {
@@ -284,6 +315,14 @@ async function executeMethod(
       const [event, data] = args as [string, unknown]
       ;(deps.eventBus.emit as (event: string, payload: unknown) => boolean)(event, data)
       return undefined
+    }
+    case 'plugins.call': {
+      const [targetId, method, callArgs] = args as [string, string, Record<string, any>]
+      return deps.callPlugin(targetId, method, callArgs)
+    }
+    case 'plugins.discover': {
+      const serviceType = args[0] as string
+      return deps.serviceRegistry.discover(serviceType) || []
     }
     case 'onDestroy':
       // The actual onDestroy pattern: PluginRuntime in main process

@@ -60,11 +60,44 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
     return
   }
 
+  // Handle incoming plugin calls from main process (direct inter-plugin routing)
+  if (msg.type === 'plugin-call') {
+    const handlers = (globalThis as any).__pluginHandlers as Map<string, (args: any) => Promise<any>>
+    const handler = handlers?.get((msg as any).method)
+    if (!handler) {
+      parentPort!.postMessage({
+        type: 'plugin-call-error', id: (msg as any).id,
+        error: `No handler for: ${(msg as any).method}`,
+      } satisfies WorkerToMainMessage)
+      return
+    }
+    try {
+      const result = await handler((msg as any).args)
+      parentPort!.postMessage({
+        type: 'plugin-call-result', id: (msg as any).id, result,
+      } satisfies WorkerToMainMessage)
+    } catch (err: any) {
+      parentPort!.postMessage({
+        type: 'plugin-call-error', id: (msg as any).id, error: err.message,
+      } satisfies WorkerToMainMessage)
+    }
+    return
+  }
+
   // Handle main-to-worker method calls (invoked via PluginRuntime.callMethod)
   // These come from the bridge as { type: 'rpc', id, method, args }
   const rpcMsg = msg as any
   if (rpcMsg.type === 'rpc' && rpcMsg.method) {
     try {
+      // First check handlers registered via ctx.handle()
+      const handlers = (globalThis as any).__pluginHandlers as Map<string, (args: any) => Promise<any>> | undefined
+      const handler = handlers?.get(rpcMsg.method)
+      if (handler) {
+        const result = await handler(rpcMsg.args?.[0])
+        parentPort!.postMessage({ type: 'rpc-result', id: rpcMsg.id, result } as MainToWorkerMessage)
+        return
+      }
+
       // Plugin exports (status, test, slotRender, handleAction, data) all receive ctx as first arg
       let method = pluginModule?.[rpcMsg.method]
       if (typeof method === 'function') {
@@ -158,6 +191,21 @@ const ctx = {
       rpc('host.emit', event, data).catch(() => {})
     },
   },
+
+  // ── Inter-plugin communication ──
+  call: (targetId: string, method: string, args?: Record<string, any>) =>
+    rpc('plugins.call', targetId, method, args) as Promise<any>,
+
+  handle: (method: string, handler: (args: any) => Promise<any>) => {
+    const g = globalThis as any
+    if (!g.__pluginHandlers) g.__pluginHandlers = new Map<string, (args: any) => Promise<any>>()
+    g.__pluginHandlers.set(method, handler)
+    return () => g.__pluginHandlers.delete(method)
+  },
+
+  discover: (serviceType: string) =>
+    rpc('plugins.discover', serviceType) as Promise<import('./types').ServiceInfo[]>,
+
   onDestroy: (cb: () => void) => {
     rpc('onDestroy', null).catch(() => {})
   },
