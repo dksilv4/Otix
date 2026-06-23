@@ -1,5 +1,7 @@
 import {useState, memo} from "react"
-import {Check, X, Star} from "lucide-react"
+import {Check, X, Star, Play, Trash2, FolderOpen, Wrench} from "lucide-react"
+import {ContextMenuTrigger} from "@/features/_config/context-menu"
+import type {ContextMenuItemDef} from "@/features/_config/context-menu"
 import type {LocalGame} from "@/old-features/game-scanner/types"
 import type {CatalogGame} from "../types"
 
@@ -53,7 +55,15 @@ export const ShelfCard = memo(function ShelfCard({
         const posterUrl = game.data?.posterUrl || game.posterUrl
         const title = game.data?.title || game.title
 
-        return (
+        const localMenuItems: ContextMenuItemDef[] = [
+      {id: 'play', label: 'Play', icon: Play, onClick: () => {}},
+      {id: 'open-folder', label: 'Open Folder', icon: FolderOpen, onClick: () => {}},
+      ...(isMatched ? [] : [{id: 'fix-match', label: 'Fix Match', icon: Wrench, onClick: () => {}}] as ContextMenuItemDef[]),
+      {id: 'unown', label: 'Remove from Library', icon: Trash2, destructive: true, onClick: () => {}},
+    ]
+
+    return (
+      <ContextMenuTrigger items={localMenuItems} className="inline-flex" data={{gameId: game.id, isLocal: true}}>
             <button
                 type="button"
                 onClick={() => !hasSuggestion && onClick(game.id)}
@@ -128,6 +138,7 @@ export const ShelfCard = memo(function ShelfCard({
                     </div>
                 )}
             </button>
+            </ContextMenuTrigger>
         )
     }
 
@@ -137,7 +148,17 @@ export const ShelfCard = memo(function ShelfCard({
         const posterUrl = catalogGame.posterUrl
         const rating = catalogGame.avgRating
 
+        const catalogMenuItems: ContextMenuItemDef[] = [
+            {id: 'view-details', label: 'View Details', onClick: () => { window.location.href = `/media/game/${catalogGame.id}` }},
+            {id: 'add-to-library', label: 'Add to Library',
+                subItems: [
+                    {id: 'owned', label: 'Mark as Owned', onClick: () => {}},
+                    {id: 'wishlist', label: 'Add to Wishlist', onClick: () => {}},
+                ]},
+        ]
+
         return (
+            <ContextMenuTrigger items={catalogMenuItems} className="inline-flex" data={{gameId: catalogGame.id, isLocal: false}}>
             <button
                 type="button"
                 // Navigate to media detail
@@ -175,6 +196,7 @@ export const ShelfCard = memo(function ShelfCard({
 
                 <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[inset_0_0_20px_var(--color-accent)]"/>
             </button>
+            </ContextMenuTrigger>
         )
     }
 
