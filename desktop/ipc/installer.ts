@@ -15,7 +15,7 @@ import {
   findGameExe,
   type InstallProgress,
 } from '../installer';
-import { findUpdateFilesForIso } from '../game/scanner';
+import { findUpdateFilesForIso } from '../game/scan-utils';
 import { batchOrganizeDirectory, smartOrganizePreview } from '../downloads/organizer';
 import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
 

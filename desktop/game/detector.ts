@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
-import type { LocalGame } from './scanner';
+import type { LocalGame } from '../preload-api';
 import { updateLastPlayedAt } from './storage';
 import { startFpsCapture, stopFpsCapture, isPresentMonAvailable, getLiveFps, isCapturing } from './fps';
 import type { FpsStats, LiveFpsSnapshot } from './fps';

@@ -1,6 +1,4 @@
 import { dialog, ipcMain } from 'electron';
-import { scanPaths } from '../game/scanner';
-import { scanAllLaunchers } from '../game/launchers';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
 import type { GameScanOrchestrator, ScannedGame } from '../game/orchestrator';
@@ -83,7 +81,7 @@ function seedTitlesOnBackend(): void {
 export function registerScannerIPC(gameDetector: GameDetector | null): void {
   // Scan game in paths
   ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
-    // ── Plugin path: save paths to local-files plugin config ──
+    // ── Save paths to local-files plugin config ──
     try {
       if (_pluginManager) {
         _pluginManager.setConfig('local-files', 'scanDirectories', paths);
@@ -93,30 +91,39 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
       console.warn('[scanner:scan-paths] Could not save to plugin config:', err);
     }
 
-    // ── Still persist to gameService for backward compat ──
-    const games = await scanPaths(paths, isoPaths, (progressData) => {
-      event.sender.send('scanner:progress', progressData);
-    });
+    // ── Scan via plugin if available ──
+    let games: any[] = [];
+    try {
+      if (_pluginManager) {
+        const result = await _pluginManager.callPluginData('local-files', 'scan');
+        games = (result as { games?: any[] })?.games || (result as any[]) || [];
+      }
+    } catch (err: any) {
+      console.warn('[scanner:scan-paths] Plugin scan failed:', err.message);
+    }
+
     // Feed scanned game into detector for external process matching
-    gameDetector?.setLibrary(games);
+    gameDetector?.setLibrary(games as LocalGame[]);
     gameDetector?.startPeriodicScan();
     // Persist to local DB (source of truth), then seed unseeded titles
-    gameService.upsertGames(games);
-    gameService.notifyGamesChanged();
-    seedTitlesOnBackend();
+    if (games.length > 0) {
+      gameService.upsertGames(games);
+      gameService.notifyGamesChanged();
+      seedTitlesOnBackend();
+    }
 
     // Match directory games through the same pipeline as plugin games
     if (_orchestrator && games.length > 0) {
-      const scanned: ScannedGame[] = games.map((g) => ({
-        id: g.id.replace('pc_', ''),
+      const scanned: ScannedGame[] = games.map((g: any) => ({
+        id: typeof g.id === 'string' ? g.id.replace('pc_', '') : g.id,
         title: g.title,
         platform: 'pc',
-        externalIds: [{ source: 'pc', id: g.id.replace('pc_', '') }],
+        externalIds: [{ source: 'pc', id: typeof g.id === 'string' ? g.id.replace('pc_', '') : g.id }],
         exePath: g.exePath,
         installPath: g.installDir,
         posterUrl: g.posterUrl,
       }));
-      _orchestrator.matchLocalGames(scanned, 'pc-directory').catch((err) =>
+      _orchestrator.matchLocalGames(scanned, 'pc-directory').catch((err: any) =>
         console.error('[scanner] Directory match failed:', err)
       );
     }
@@ -124,22 +131,13 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     return games;
   });
 
-  // Scan installed launcher libraries
+  // Scan installed launcher libraries (now handled by matching:scan plugins)
   ipcMain.handle('scanner:scan-launchers', async () => {
-    const results = await scanAllLaunchers();
-    const allGames: gameService.GameRow[] = [];
-    for (const result of results) {
-      allGames.push(...result.games);
+    if (_orchestrator) {
+      const summary = await _orchestrator.scanAll();
+      return summary.pluginResults;
     }
-    gameDetector?.setLibrary(allGames as LocalGame[]);
-    gameDetector?.startPeriodicScan();
-    // Persist to local DB and seed any newly discovered titles
-    if (allGames.length > 0) {
-      gameService.upsertGames(allGames);
-      gameService.notifyGamesChanged();
-      seedTitlesOnBackend();
-    }
-    return results;
+    return [];
   });
 
   // Database storage for scans (via game-storage-service)
