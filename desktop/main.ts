@@ -496,6 +496,16 @@ app.on('ready', async () => {
       const all = pluginManager!.getAllPlugins();
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
       return pluginManager!.loadEnabledPlugins();
+    }).then(async () => {
+      // Auto-enable built-in plugins
+      const localFiles = pluginManager!.getPlugin('local-files');
+      if (localFiles && localFiles.status === 'installed') {
+        try {
+          await pluginManager!.enable('local-files');
+        } catch (err) {
+          console.error('[main] Failed to enable local-files plugin:', err);
+        }
+      }
     }).catch(err => {
       console.error('[plugins] Discovery failed:', err);
     });
