@@ -2,9 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/providers/auth'
 import { DkButton } from '@/old-features/dk-ui/atoms/button'
 import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
-import { useDownloadConfig, useConnectionTest, useDownloads } from '@/old-features/downloads/use-downloads'
-import { Loader2, ChevronDown, Server, Search, CheckCircle2, XCircle, Plus, Trash2, Clock, ArchiveX } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useDownloadConfig, useDownloads } from '@/old-features/downloads/use-downloads'
+import { Loader2, CheckCircle2, XCircle, Plus, Trash2, Clock, ArchiveX } from 'lucide-react'
 import { isDesktop } from '@/lib/desktop/api'
 
 const NAMING_PRESETS = [

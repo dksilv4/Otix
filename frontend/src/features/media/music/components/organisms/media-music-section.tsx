@@ -1,7 +1,8 @@
-// TODO: Review this file
 import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { AlbumDetail, TrackOut } from '../../../queries/media-queries'
-import { useRateTrack } from '../../../queries/media-queries'
+import { mediaQueries } from '../../../queries/media-queries'
+import { useMediaParams } from '../../../hooks/use-media-params'
 import { cn } from '@/lib/utils'
 import { Disc3, ExternalLink, Music2, Play } from 'lucide-react'
 import { usePlayer } from '@/old-features/spotify/use-player'
@@ -9,15 +10,9 @@ import type { PlexTrackInfo } from '@/old-features/spotify/plex-audio-provider'
 import { AudioFeatureRow } from './media-music-audio-feature-row'
 import { MetaItem } from './media-music-meta-item'
 import { TrackRow } from './media-music-track-row'
-import { useSaveSpotifyTrack, usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { usePlexAlbumTracks, type PlexAlbumTrack } from '@/old-features/library/library-queries'
 
 interface MusicSectionProps {
- album: AlbumDetail
- mediaItemId: string
- title: string
- posterUrl: string | null
- artistName: string | null
  className?: string
 }
 
@@ -64,10 +59,21 @@ function renderAlbumAudioFeatures(features: Record<string, unknown> | null | und
  )
 }
 
-export function MusicSection({ album, mediaItemId, title, posterUrl, artistName, className }: MusicSectionProps) {
- const tracks = album.tracks ?? EMPTY_TRACKS
- const { playSpotifyQueue, currentTrack, spotifyIsReady, togglePlay, playPlexAlbum, playPlexTrack, source, error } = usePlayer()
- const { data: plexData } = usePlexAlbumTracks(mediaItemId)
+export function MusicSection({ className }: MusicSectionProps = {}) {
+	const { mediaId } = useMediaParams()
+
+	const { data } = useQuery(mediaQueries.detail('music', mediaId))
+	const album = data?.album as AlbumDetail | undefined
+	if (!album) return null
+
+	const mediaItemId = mediaId
+	const { title, posterUrl } = data ?? {}
+	// Artist name from first music-relevant credit, or fallback to empty
+	const artistName = data?.credits?.find(c => ['artist', 'musician', 'composer', 'main'].includes(c.role))?.person?.name ?? null
+
+	const tracks = album.tracks ?? EMPTY_TRACKS
+	const { playSpotifyQueue, spotifyIsReady, playPlexAlbum, error } = usePlayer()
+	const { data: plexData } = usePlexAlbumTracks(mediaItemId)
  const plexTracks = plexData?.tracks
 
  // Merge Plex-only tracks into the display list so the player queue doesn't
@@ -129,53 +135,6 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  plexToken: plexToken ?? null,
  })
 
- const saveSpotifyTrack = useSaveSpotifyTrack()
- const rateTrack = useRateTrack()
- const { toast } = useToast()
- const [likedSpotifyIds, setLikedSpotifyIds] = useState<Set<string>>(new Set())
- const [savingSpotifyId, setSavingSpotifyId] = useState<string | null>(null)
- const [ratingTrackId, setRatingTrackId] = useState<string | null>(null)
- const [ratingsByTrack, setRatingsByTrack] = useState<
- Record<string, { myRating?: number | null; avgRating?: number | null; ratingCount: number }>
- >({})
-
- const handleSaveSpotify = (spotifyId: string) => {
- setSavingSpotifyId(spotifyId)
- saveSpotifyTrack.mutate(spotifyId, {
- onSuccess: () => {
- setLikedSpotifyIds((current) => new Set(current).add(spotifyId))
- toast({ title: 'Added to Spotify liked songs', variant: 'success' })
- },
- onError: () => {
- toast({
- title: 'Could not save to Spotify',
- description: 'Check your Spotify connection and try again.',
- variant: 'error',
- })
- },
- onSettled: () => setSavingSpotifyId(null),
- })
- }
-
- const handleRateTrack = (trackId: string, score: number) => {
- setRatingTrackId(trackId)
- rateTrack.mutate({ trackId, score }, {
- onSuccess: (result) => {
- setRatingsByTrack((current) => ({
- ...current,
- [trackId]: {
- myRating: result.score,
- avgRating: result.avgRating,
- ratingCount: result.ratingCount,
- },
- }))
- },
- onError: () => {
- toast({ title: 'Could not save track rating', variant: 'error' })
- },
- onSettled: () => setRatingTrackId(null),
- })
- }
 
  return (
  <section className={cn('space-y-8', className)}>
@@ -366,7 +325,6 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  </thead>
  <tbody>
  {(() => {
- // Build a lookup from (disc, track) to PlexAlbumTrack
  const plexByTrack = new Map<string, PlexAlbumTrack>()
  if (plexTracks) {
  for (const pt of plexTracks) {
@@ -374,61 +332,28 @@ export function MusicSection({ album, mediaItemId, title, posterUrl, artistName,
  }
  }
 
- return allTracks.map((t, i) => {
- const subsequentUris = allTracks
- .slice(i)
- .filter((tr) => tr.spotifyId)
- .map((tr) => `spotify:track:${tr.spotifyId}` as string)
-
+ return allTracks.map((t) => {
  const plexMatch = plexByTrack.get(`${t.discNumber}:${t.trackNumber}`)
- const plexRatingKey = plexMatch?.ratingKey
- const isPlexPlaying = !!plexRatingKey && currentTrack?.id === plexRatingKey && source === 'plex'
 
  return (
  <TrackRow
  key={t.id}
  track={t}
  showDisc={multiDisc}
- isReady={spotifyIsReady}
- isPlaying={currentTrack?.id === t.spotifyId && source === 'spotify'}
- spotifyLiked={Boolean(t.spotifyId && likedSpotifyIds.has(t.spotifyId))}
- savingSpotify={savingSpotifyId === t.spotifyId}
- rating={ratingsByTrack[t.id] ?? {
- myRating: null,
- avgRating: t.avgRating ?? null,
- ratingCount: t.ratingCount ?? 0,
- }}
- ratingPending={ratingTrackId === t.id}
- onPlay={(uris) => playSpotifyQueue(uris.length > 1 ? uris : subsequentUris)}
- onToggle={togglePlay}
- onSaveSpotify={handleSaveSpotify}
- onRate={handleRateTrack}
- plexRatingKey={plexRatingKey}
- isPlexPlaying={isPlexPlaying}
  playbackPlatform={playbackPlatform}
- onPlexPlay={
- plexRatingKey
- ? () => {
- if (!plexReady) {
- console.warn("Plex connection info not available — try re-syncing Plex in Settings")
- return
+ allTracks={allTracks}
+ albumTitle={title || ""}
+ albumArt={posterUrl}
+ artistName={artistName}
+ plexConnection={
+ plexMatch
+ ? {
+ ratingKey: plexMatch.ratingKey,
+ baseUrl: plexBaseUrl ?? null,
+ token: plexToken ?? null,
+ artist: plexMatch.artist || "",
  }
- const allPlexInfos: PlexTrackInfo[] = allTracks
- .map((tt) => {
- const pm = plexByTrack.get(`${tt.discNumber}:${tt.trackNumber}`)
- if (!pm) return null
- return plexTrackInfo(pm.ratingKey, tt.title, pm.artist || artistName || "", tt.durationMs || 0)
- })
- .filter(Boolean) as PlexTrackInfo[]
-
- if (allPlexInfos.length > 0) {
- const startIdx = allPlexInfos.findIndex(p => p.ratingKey === plexRatingKey)
- playPlexAlbum(allPlexInfos, startIdx >= 0 ? startIdx : 0)
- } else {
- playPlexTrack(plexTrackInfo(plexRatingKey, t.title, artistName || "", t.durationMs || 0))
- }
- }
- : undefined
+ : null
  }
  />
  )

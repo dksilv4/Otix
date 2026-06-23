@@ -14,25 +14,24 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const toggle = useCallback(() => {
-    setOpen(prev => {
-      const next = !prev
-      setUserMenuOpen(next)
-      return next
-    })
-  }, [setUserMenuOpen])
+    setOpen(prev => !prev)
+  }, [])
+
+  useEffect(() => {
+    setUserMenuOpen(open)
+  }, [open, setUserMenuOpen])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') { setOpen(false); setUserMenuOpen(false) }
-  }, [setUserMenuOpen])
+    if (e.key === 'Escape') { setOpen(false) }
+  }, [])
 
   const handleClickOutside = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement
     if (target.closest('[data-user-menu-trigger]')) return
     if (containerRef.current && !containerRef.current.contains(target)) {
       setOpen(false)
-      setUserMenuOpen(false)
     }
-  }, [setUserMenuOpen])
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -115,7 +114,7 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
             <Link
               to="/u/$username"
               params={{ username: user?.username || '' }}
-              onClick={() => { setOpen(false); setUserMenuOpen(false) }}
+              onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               <DkAvatar src={avatarUrl} name={user?.username || ''} size="md" />
@@ -135,7 +134,7 @@ export const UserMenu = ({ bare }: { bare?: boolean }) => {
             <button
               type="button"
               onClick={() => {
-                setOpen(false); setUserMenuOpen(false)
+                setOpen(false)
                 logout()
               }}
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"

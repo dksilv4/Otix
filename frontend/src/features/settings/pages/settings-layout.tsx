@@ -26,7 +26,7 @@ export function SettingsLayout() {
     )
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] w-full">
+    <div className="relative h-screen w-full overflow-hidden">
       <Helmet>
         <title>Settings - Otix</title>
       </Helmet>
@@ -52,7 +52,31 @@ export function SettingsLayout() {
           </div>
 
           <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
-            {filteredNav.map((item) => {
+            {/* General — always visible */}
+            {filteredNav.filter(i => i.group === 'general').map((item) => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.id}
+                  to={`/settings/${item.id}`}
+                  onClick={() => setMobileOpen(false)}
+                  className={navLinkClass(activeSection === item.id)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              )
+            })}
+
+            {/* Desktop — separated */}
+            {filteredNav.filter(i => i.group === 'desktop').length > 0 && (
+              <div className="mt-4 mb-1 pt-3 border-t border-white/5">
+                <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                  Desktop
+                </span>
+              </div>
+            )}
+            {filteredNav.filter(i => i.group === 'desktop').map((item) => {
               const Icon = item.icon
               return (
                 <Link
@@ -88,16 +112,39 @@ export function SettingsLayout() {
       )}
 
       {/* ===== Desktop layout ===== */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 px-4 sm:px-6 pt-6 sm:pt-8 pb-6 sm:pb-8 max-w-7xl mx-auto min-h-full">
+      <div className="flex flex-col sm:flex-row gap-6 px-6 h-full">
         {/* Sidebar */}
         <aside className="hidden sm:flex flex-col w-56 shrink-0 h-full">
           <div
-            className="glass-card flex flex-col h-full p-5"
+            className="glass-card flex flex-col h-full pt-8 pb-5 px-5"
             style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}
           >
             <h1 className="text-lg font-bold mb-5">Settings</h1>
             <nav className="flex flex-col gap-1 flex-1">
-              {filteredNav.map((item) => {
+              {/* General — always visible */}
+              {filteredNav.filter(i => i.group === 'general').map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.id}
+                    to={`/settings/${item.id}`}
+                    className={navLinkClass(activeSection === item.id)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {item.label}
+                  </Link>
+                )
+              })}
+
+              {/* Desktop — separated */}
+              {filteredNav.filter(i => i.group === 'desktop').length > 0 && (
+                <div className="mt-3 mb-1 pt-3 border-t border-white/5">
+                  <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                    Desktop
+                  </span>
+                </div>
+              )}
+              {filteredNav.filter(i => i.group === 'desktop').map((item) => {
                 const Icon = item.icon
                 return (
                   <Link
@@ -132,7 +179,7 @@ export function SettingsLayout() {
         </aside>
 
         {/* Mobile nav trigger + Content */}
-        <div className="flex flex-col gap-3 flex-1 min-w-0">
+        <div className="flex flex-col gap-3 flex-1 min-w-0 min-h-0">
           <button
             onClick={() => setMobileOpen(true)}
             className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start"
@@ -141,11 +188,8 @@ export function SettingsLayout() {
             {NAV_ITEMS.find(i => i.id === activeSection)?.label || 'Settings'}
           </button>
 
-          <main className="flex-1 min-w-0">
-            <div
-              className="glass-card p-6 sm:p-8 h-full"
-              style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}
-            >
+          <main className="flex-1 min-w-0 overflow-y-auto">
+            <div className="min-h-full p-6 sm:p-8">
               <Outlet />
             </div>
           </main>

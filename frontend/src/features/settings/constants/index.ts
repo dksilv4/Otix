@@ -2,6 +2,8 @@ import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
+export type NavGroup = 'general' | 'desktop'
+
 export const DESKTOP_SECTIONS = new Set(['library', 'downloads', 'desktop', 'plugins', 'matching'])
 
 export interface NavItem {
@@ -9,20 +11,21 @@ export interface NavItem {
   label: string
   icon: ComponentType<{ className?: string }>
   desktop: boolean
+  group: NavGroup
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { id: 'profile', label: 'Profile', icon: User, desktop: false },
-  { id: 'account', label: 'Security', icon: Shield, desktop: false },
-  { id: 'appearance', label: 'Appearance', icon: Palette, desktop: false },
-  { id: 'notifications', label: 'Notifications', icon: Bell, desktop: false },
-  { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false },
-  { id: 'library', label: 'Library', icon: Gamepad2, desktop: true },
-  { id: 'matching', label: 'Matching', icon: Shuffle, desktop: true },
-  { id: 'proposals', label: 'Proposals', icon: Shield, desktop: true },
-  { id: 'downloads', label: 'Downloads', icon: Download, desktop: true },
-  { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true },
-  { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true },
+  { id: 'profile', label: 'Profile', icon: User, desktop: false, group: 'general' },
+  { id: 'account', label: 'Security', icon: Shield, desktop: false, group: 'general' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, desktop: false, group: 'general' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, desktop: false, group: 'general' },
+  { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false, group: 'general' },
+  { id: 'library', label: 'Library', icon: Gamepad2, desktop: true, group: 'desktop' },
+  { id: 'matching', label: 'Matching', icon: Shuffle, desktop: true, group: 'desktop' },
+  { id: 'proposals', label: 'Proposals', icon: Shield, desktop: true, group: 'desktop' },
+  { id: 'downloads', label: 'Downloads', icon: Download, desktop: true, group: 'desktop' },
+  { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true, group: 'desktop' },
+  { id: 'plugins', label: 'Plugins', icon: Puzzle, desktop: true, group: 'desktop' },
 ]
 
 export function getNavItems(pluginTabs?: PluginSettingsTab[]): NavItem[] {
@@ -31,6 +34,7 @@ export function getNavItems(pluginTabs?: PluginSettingsTab[]): NavItem[] {
     label: tab.label,
     icon: getIconByName(tab.icon),
     desktop: true,
+    group: 'desktop' as NavGroup,
   }))
 
   const pluginsIdx = NAV_ITEMS.findIndex(item => item.id === 'plugins')
