@@ -12,6 +12,7 @@ import {ShowSection} from '@media/show/components/organisms/media-show-section'
 import {GameSection} from '@media/game/components/organisms/media-game-section'
 import {GameTabBar} from '@media/game/components/molecules/media-game-tab-bar'
 import {BlueprintVault, type ParsedBlueprint} from '@media/game/components/organisms/media-game-blueprint-vault'
+import {BlueprintDetail} from '@media/game/components/organisms/media-game-blueprint-detail'
 import {MusicSection} from '@media/music/components/organisms/media-music-section'
 import {ArtistAlbumsSection} from '@media/music/components/organisms/media-artist-albums-section'
 import {MoreLikeThisSection} from './media-more-like-this-section'
@@ -53,11 +54,26 @@ export function MediaDetail() {
     const {isDesktop} = useDesktopPlatform()
     const [activeGameTab, setActiveGameTab] = useState('info')
     const [pluginTabs, setPluginTabs] = useState<Array<{tabId: string; pluginId: string}>>([])
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [detailBlueprint, setDetailBlueprint] = useState<ParsedBlueprint | null>(null)
     const pluginIdForTab = useCallback((tabId: string) => {
       return pluginTabs.find((t) => t.tabId === tabId)?.pluginId || ''
     }, [pluginTabs])
+
+    const handleDeleteBlueprint = useCallback(async (id: string) => {
+      const pluginId = pluginIdForTab(activeGameTab)
+      if (!pluginId) return
+      const api = (window as unknown as Record<string, unknown>).desktopAPI as Record<string, unknown> | undefined
+      if (!api?.plugin || typeof api.plugin !== 'object') return
+      const plugin = api.plugin as Record<string, unknown>
+      if (typeof plugin.callData !== 'function') return
+      try {
+        await (plugin.callData as (...args: unknown[]) => Promise<Record<string, unknown>>)(
+          pluginId, 'deleteBlueprint', { id },
+        )
+      } catch {
+        /* ignore */
+      }
+    }, [pluginIdForTab, activeGameTab])
 
     const {data, isError} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
@@ -204,6 +220,14 @@ export function MediaDetail() {
                           <BlueprintVault
                             pluginId={pluginIdForTab(activeGameTab)}
                             onViewDetail={(bp) => setDetailBlueprint(bp)}
+                          />
+                        )}
+                        {detailBlueprint && (
+                          <BlueprintDetail
+                            blueprint={detailBlueprint}
+                            onClose={() => setDetailBlueprint(null)}
+                            onCopy={(raw) => navigator.clipboard.writeText(raw)}
+                            onDelete={(id) => { handleDeleteBlueprint(id); setDetailBlueprint(null) }}
                           />
                         )}
                       </div>
