@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useState, useCallback} from 'react'
 import {Link, useParams} from '@tanstack/react-router'
 import {Helmet} from 'react-helmet-async'
 import {useAuth} from '@auth/hooks/use-auth'
@@ -11,6 +11,7 @@ import {MovieSection} from '@media/movie/components/organisms/media-movie-sectio
 import {ShowSection} from '@media/show/components/organisms/media-show-section'
 import {GameSection} from '@media/game/components/organisms/media-game-section'
 import {GameTabBar} from '@media/game/components/molecules/media-game-tab-bar'
+import {BlueprintVault, type ParsedBlueprint} from '@media/game/components/organisms/media-game-blueprint-vault'
 import {MusicSection} from '@media/music/components/organisms/media-music-section'
 import {ArtistAlbumsSection} from '@media/music/components/organisms/media-artist-albums-section'
 import {MoreLikeThisSection} from './media-more-like-this-section'
@@ -51,6 +52,12 @@ export function MediaDetail() {
     const {isAuthenticated} = useAuth()
     const {isDesktop} = useDesktopPlatform()
     const [activeGameTab, setActiveGameTab] = useState('info')
+    const [pluginTabs, setPluginTabs] = useState<Array<{tabId: string; pluginId: string}>>([])
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [detailBlueprint, setDetailBlueprint] = useState<ParsedBlueprint | null>(null)
+    const pluginIdForTab = useCallback((tabId: string) => {
+      return pluginTabs.find((t) => t.tabId === tabId)?.pluginId || ''
+    }, [pluginTabs])
 
     const {data, isError} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
@@ -189,13 +196,15 @@ export function MediaDetail() {
                           gameExternalId={gameExternalId || ''}
                           activeTab={activeGameTab}
                           onTabChange={setActiveGameTab}
+                          onTabsLoaded={setPluginTabs}
                         />
                         {activeGameTab === 'info' && <GameSection/>}
-                        {/* Plugin tabs render their content here — populated in Task 6+ */}
+                        {/* Plugin tabs render their content here */}
                         {activeGameTab !== 'info' && (
-                          <div className="text-sm text-muted-foreground py-8 text-center">
-                            Plugin content for tab: {activeGameTab}
-                          </div>
+                          <BlueprintVault
+                            pluginId={pluginIdForTab(activeGameTab)}
+                            onViewDetail={(bp) => setDetailBlueprint(bp)}
+                          />
                         )}
                       </div>
                     )}

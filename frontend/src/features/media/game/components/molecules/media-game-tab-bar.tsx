@@ -10,9 +10,10 @@ interface Props {
   gameExternalId: string
   activeTab: string
   onTabChange: (tabId: string) => void
+  onTabsLoaded?: (tabs: Array<{tabId: string; pluginId: string}>) => void
 }
 
-export function GameTabBar({ gameExternalId, activeTab, onTabChange }: Props) {
+export function GameTabBar({ gameExternalId, activeTab, onTabChange, onTabsLoaded }: Props) {
   const [pluginTabs, setPluginTabs] = useState<GameTab[]>([])
   const [loading, setLoading] = useState(true)
   const desktopAPI = (window as any).desktopAPI
@@ -42,6 +43,7 @@ export function GameTabBar({ gameExternalId, activeTab, onTabChange }: Props) {
             }
           }
           setPluginTabs(tabs)
+          onTabsLoaded?.(tabs.map(({ tabId, pluginId }) => ({ tabId, pluginId })))
         }
       } catch {
         // No plugins for this slot
