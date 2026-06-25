@@ -12,6 +12,7 @@ import {ShowSection} from '@media/show/components/organisms/media-show-section'
 import {GameSection} from '@media/game/components/organisms/media-game-section'
 import {GameTabBar} from '@media/game/components/molecules/media-game-tab-bar'
 import {BlueprintVault, type ParsedBlueprint} from '@media/game/components/organisms/media-game-blueprint-vault'
+import {BlueprintCommunity} from '@media/game/components/organisms/media-game-blueprint-community'
 import {BlueprintDetail} from '@media/game/components/organisms/media-game-blueprint-detail'
 import {MusicSection} from '@media/music/components/organisms/media-music-section'
 import {ArtistAlbumsSection} from '@media/music/components/organisms/media-artist-albums-section'
@@ -55,6 +56,7 @@ export function MediaDetail() {
     const [activeGameTab, setActiveGameTab] = useState('info')
     const [pluginTabs, setPluginTabs] = useState<Array<{tabId: string; pluginId: string}>>([])
     const [detailBlueprint, setDetailBlueprint] = useState<ParsedBlueprint | null>(null)
+    const [blueprintSubTab, setBlueprintSubTab] = useState<'vault' | 'community'>('vault')
     const pluginIdForTab = useCallback((tabId: string) => {
       return pluginTabs.find((t) => t.tabId === tabId)?.pluginId || ''
     }, [pluginTabs])
@@ -217,10 +219,42 @@ export function MediaDetail() {
                         {activeGameTab === 'info' && <GameSection/>}
                         {/* Plugin tabs render their content here */}
                         {activeGameTab !== 'info' && (
-                          <BlueprintVault
-                            pluginId={pluginIdForTab(activeGameTab)}
-                            onViewDetail={(bp) => setDetailBlueprint(bp)}
-                          />
+                          <>
+                            {/* Sub-tabs: Vault | Community */}
+                            <div className="flex items-center gap-1 border-b border-white/10 pb-1 mb-6">
+                              <button
+                                onClick={() => setBlueprintSubTab('vault')}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                                  blueprintSubTab === 'vault'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                Vault
+                              </button>
+                              <button
+                                onClick={() => setBlueprintSubTab('community')}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                                  blueprintSubTab === 'community'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                Community
+                              </button>
+                            </div>
+                            {blueprintSubTab === 'vault' ? (
+                              <BlueprintVault
+                                pluginId={pluginIdForTab(activeGameTab)}
+                                onViewDetail={(bp) => setDetailBlueprint(bp)}
+                              />
+                            ) : (
+                              <BlueprintCommunity
+                                pluginId={pluginIdForTab(activeGameTab)}
+                                onViewDetail={(bp) => setDetailBlueprint(bp)}
+                              />
+                            )}
+                          </>
                         )}
                         {detailBlueprint && (
                           <BlueprintDetail
