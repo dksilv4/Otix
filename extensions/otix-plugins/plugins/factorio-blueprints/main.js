@@ -239,6 +239,85 @@ module.exports = {
       return { success: true, rawString: row.raw_string }
     })
 
+    // ── Community handlers ──
+
+    function communityGuard() {
+      if (!ctx.config.get('community_enabled')) {
+        return { success: false, error: 'Community sharing disabled' }
+      }
+      return null
+    }
+
+    ctx.handle('community.list', async (args) => {
+      const guard = communityGuard()
+      if (guard) return guard
+
+      const { q, sort = 'recent', page = 1, page_size = 24 } = args || {}
+      try {
+        const params = new URLSearchParams({ sort, page: String(page), page_size: String(page_size) })
+        if (q) params.set('q', q)
+        const res = await ctx.api.get(`/api/blueprints/?${params.toString()}`)
+        return { success: true, ...res }
+      } catch (err) {
+        ctx.logger.error('community.list failed:', err)
+        return { success: false, error: 'Community unavailable' }
+      }
+    })
+
+    ctx.handle('community.upload', async (args) => {
+      const guard = communityGuard()
+      if (guard) return guard
+
+      const { blueprintId, title, description, tags } = args
+      if (!blueprintId) return { success: false, error: 'blueprintId required' }
+
+      const row = ctx.db.get('SELECT raw_string, parsed_data FROM blueprints WHERE id = ?', [blueprintId])
+      if (!row) return { success: false, error: 'Blueprint not found in vault' }
+
+      try {
+        const parsed = JSON.parse(row.parsed_data)
+        const res = await ctx.api.post('/api/blueprints/', {
+          title: title || parsed.label,
+          description: description || parsed.description,
+          blueprint_string: row.raw_string,
+          parsed_data: parsed,
+          tags: tags || [],
+        })
+        return { success: true, communityBlueprint: res }
+      } catch (err) {
+        ctx.logger.error('community.upload failed:', err)
+        return { success: false, error: 'Upload failed' }
+      }
+    })
+
+    ctx.handle('community.detail', async (args) => {
+      const guard = communityGuard()
+      if (guard) return guard
+
+      const { id } = args
+      if (!id) return { success: false, error: 'id required' }
+      try {
+        const res = await ctx.api.get(`/api/blueprints/${id}/`)
+        return { success: true, blueprint: res }
+      } catch (err) {
+        return { success: false, error: 'Failed to load community blueprint' }
+      }
+    })
+
+    ctx.handle('community.like', async (args) => {
+      const guard = communityGuard()
+      if (guard) return guard
+
+      const { id } = args
+      if (!id) return { success: false, error: 'id required' }
+      try {
+        const res = await ctx.api.post(`/api/blueprints/${id}/like/`)
+        return { success: true, liked: res.liked }
+      } catch {
+        return { success: false, error: 'Failed to toggle like' }
+      }
+    })
+
     ctx.onDestroy(() => {
       ctx.logger.info('Factorio Blueprints unloaded')
     })
