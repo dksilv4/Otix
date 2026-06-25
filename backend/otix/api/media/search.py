@@ -851,6 +851,7 @@ async def match_game(
     mutations occur — use ``POST /match/confirm`` to persist a match.
     """
     redis = await _get_redis()
+    from otix.providers.steamgrid.client import SteamGridDBProvider
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     return await matcher.match_single(body)
 
@@ -866,6 +867,7 @@ async def match_games_batch(
     candidates plus an optional auto_match.
     """
     redis = await _get_redis()
+    from otix.providers.steamgrid.client import SteamGridDBProvider
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     matches = await matcher.match_batch(body.games)
     return GameMatchBatchResponse(matches=matches)
