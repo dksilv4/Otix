@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Search, Plus, Upload, Loader2, AlertCircle } from 'lucide-react'
-import { BlueprintCard } from '../../molecules/media-game-blueprint-card'
+import { BlueprintCard } from '../molecules/media-game-blueprint-card'
 
 export interface ParsedBlueprint {
   type: string
@@ -34,7 +34,6 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
   const [importString, setImportString] = useState('')
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
-  const [importPreview, setImportPreview] = useState<ParsedBlueprint | null>(null)
   const [refreshCounter, setRefreshCounter] = useState(0)
 
   const desktopAPI = (window as Record<string, unknown>).desktopAPI as Record<string, unknown> | undefined
@@ -90,7 +89,6 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
       if (res?.success) {
         setShowImport(false)
         setImportString('')
-        setImportPreview(null)
         setRefreshCounter((c) => c + 1)
       } else if (res?.error === 'duplicate') {
         setImportError('This blueprint is already in your vault')
@@ -214,7 +212,7 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
             </p>
             <textarea
               value={importString}
-              onChange={(e) => { setImportString(e.target.value); setImportPreview(null); setImportError(null) }}
+              onChange={(e) => { setImportString(e.target.value); setImportError(null) }}
               placeholder="0eNqdk21vg..."
               rows={4}
               className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 font-mono resize-none"
@@ -222,14 +220,9 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
             {importError && (
               <p className="text-xs text-red-400">{importError}</p>
             )}
-            {importPreview && (
-              <div className="p-3 rounded-lg bg-white/5">
-                <p className="text-xs text-muted-foreground">Preview ready — will parse on import</p>
-              </div>
-            )}
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => { setShowImport(false); setImportString(''); setImportError(null); setImportPreview(null) }}
+                onClick={() => { setShowImport(false); setImportString(''); setImportError(null) }}
                 className="px-4 py-2 text-xs rounded-lg hover:bg-white/10 text-muted-foreground transition-all"
               >
                 Cancel
