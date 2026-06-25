@@ -2,6 +2,7 @@
 // Factorio Blueprint vault and community sharing plugin for Otix
 
 const zlib = require('zlib')
+const crypto = require('crypto')
 
 /**
  * Decode a Factorio blueprint string.
