@@ -117,17 +117,125 @@ module.exports = {
   plugin: function(ctx) {
     ctx.logger.info('Factorio Blueprints loaded')
 
+    // Create SQLite schema on init
+    ctx.db.run(`
+      CREATE TABLE IF NOT EXISTS blueprints (
+        id          TEXT PRIMARY KEY,
+        label       TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        raw_string  TEXT NOT NULL,
+        parsed_data TEXT NOT NULL,
+        tags        TEXT DEFAULT '[]',
+        created_at  TEXT DEFAULT (datetime('now')),
+        updated_at  TEXT DEFAULT (datetime('now'))
+      )
+    `)
+
     ctx.handle('importBlueprint', async (args) => {
-      const { rawString } = args
+      const { rawString, label, description, tags } = args
       if (!rawString) {
         return { success: false, error: 'rawString required' }
       }
       try {
         const parsed = decodeBlueprint(rawString)
-        return { success: true, blueprint: parsed }
+
+        // Check for duplicate (compare hash of raw string)
+        const existing = ctx.db.get(
+          'SELECT id FROM blueprints WHERE raw_string = ?',
+          [rawString]
+        )
+        if (existing) {
+          return { success: false, error: 'duplicate', blueprintId: existing.id }
+        }
+
+        const id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)
+        const tagsJson = JSON.stringify(tags || [])
+        const parsedJson = JSON.stringify(parsed)
+
+        ctx.db.run(
+          `INSERT INTO blueprints (id, label, description, raw_string, parsed_data, tags) VALUES (?, ?, ?, ?, ?, ?)`,
+          [id, label || parsed.label, description || parsed.description, rawString, parsedJson, tagsJson]
+        )
+
+        return { success: true, blueprint: { ...parsed, id, tags: tags || [] } }
       } catch (err) {
         return { success: false, error: err.message }
       }
+    })
+
+    ctx.handle('getBlueprints', async (args) => {
+      const { search, sort_by, page = 1, page_size = 50 } = args || {}
+
+      let where = ''
+      let params = []
+      if (search) {
+        where = 'WHERE label LIKE ? OR description LIKE ?'
+        params = [`%${search}%`, `%${search}%`]
+      }
+
+      let orderBy = 'created_at DESC'
+      if (sort_by === 'name') orderBy = 'label ASC'
+      if (sort_by === 'entity_count') orderBy = "json_extract(parsed_data, '$.entityCount') DESC"
+
+      const offset = (page - 1) * page_size
+
+      const rows = ctx.db.all(
+        `SELECT id, label, description, parsed_data, tags, created_at FROM blueprints ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+        [...params, page_size, offset]
+      )
+
+      const total = ctx.db.get(
+        `SELECT COUNT(*) as count FROM blueprints ${where}`, params
+      )
+
+      return {
+        success: true,
+        blueprints: rows.map(r => ({
+          ...r,
+          parsed_data: JSON.parse(r.parsed_data),
+          tags: JSON.parse(r.tags),
+        })),
+        total: total?.count || 0,
+        page,
+        page_size,
+      }
+    })
+
+    ctx.handle('deleteBlueprint', async (args) => {
+      const { id } = args
+      if (!id) return { success: false, error: 'id required' }
+
+      ctx.db.run('DELETE FROM blueprints WHERE id = ?', [id])
+      return { success: true }
+    })
+
+    ctx.handle('updateBlueprint', async (args) => {
+      const { id, label, description, tags } = args
+      if (!id) return { success: false, error: 'id required' }
+
+      const sets = []
+      const params = []
+      if (label !== undefined) { sets.push('label = ?'); params.push(label) }
+      if (description !== undefined) { sets.push('description = ?'); params.push(description) }
+      if (tags !== undefined) { sets.push('tags = ?'); params.push(JSON.stringify(tags)) }
+
+      if (sets.length === 0) return { success: false, error: 'no fields to update' }
+
+      sets.push("updated_at = datetime('now')")
+      params.push(id)
+
+      ctx.db.run(`UPDATE blueprints SET ${sets.join(', ')} WHERE id = ?`, params)
+      return { success: true }
+    })
+
+    ctx.handle('exportBlueprint', async (args) => {
+      const { id } = args
+      if (!id) return { success: false, error: 'id required' }
+
+      const row = ctx.db.get('SELECT raw_string FROM blueprints WHERE id = ?', [id])
+      if (!row) return { success: false, error: 'not found' }
+
+      return { success: true, rawString: row.raw_string }
     })
 
     ctx.onDestroy(() => {
