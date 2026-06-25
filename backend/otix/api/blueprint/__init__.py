@@ -86,12 +86,13 @@ async def list_blueprints(
 
     logger.info("blueprints listed", count=len(items), total=total, ip=ip)
     result = []
+    bp_ids = [bp.id for bp in items]
+    likes_batch = await service.get_likes_batch(bp_ids)
+    has_liked_batch = await service.get_has_liked_batch(bp_ids, current_user_id) if current_user_id else {}
     for bp in items:
         author_name = bp.user.username if bp.user else ""
-        likes_count = await service.get_likes_count(bp.id)
-        has_liked = False
-        if current_user_id:
-            has_liked = await service.get_has_liked(bp.id, current_user_id)
+        likes_count = likes_batch.get(bp.id, 0)
+        has_liked = has_liked_batch.get(bp.id, False)
         result.append(
             BlueprintListOut(
                 id=bp.id,
@@ -267,6 +268,7 @@ async def increment_download(
     blueprint_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> dict:
     """Increment download counter for a blueprint."""
     ip = _client_ip(request)
