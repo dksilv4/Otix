@@ -132,6 +132,33 @@ class BlueprintService:
         )
         return like is not None
 
+    async def get_likes_batch(self, blueprint_ids: list[str]) -> dict[str, int]:
+        """Batch fetch likes count for multiple blueprints."""
+        if not blueprint_ids:
+            return {}
+        rows = await self.session.execute(
+            select(
+                BlueprintLike.blueprint_id,
+                func.count(BlueprintLike.id).label("c"),
+            ).where(
+                BlueprintLike.blueprint_id.in_(blueprint_ids),
+            ).group_by(BlueprintLike.blueprint_id)
+        )
+        return {row[0]: row[1] for row in rows}
+
+    async def get_has_liked_batch(self, blueprint_ids: list[str], user_id: str) -> dict[str, bool]:
+        """Batch fetch which blueprints a user has liked."""
+        if not blueprint_ids:
+            return {}
+        rows = await self.session.execute(
+            select(BlueprintLike.blueprint_id).where(
+                BlueprintLike.blueprint_id.in_(blueprint_ids),
+                BlueprintLike.user_id == user_id,
+            )
+        )
+        liked_ids = {row[0] for row in rows}
+        return {bp_id: bp_id in liked_ids for bp_id in blueprint_ids}
+
     async def like_toggle(self, blueprint_id: str, user_id: str) -> tuple[bool, int]:
         """Toggle like for a blueprint. Returns (is_liked, like_count)."""
         existing = await self.session.scalar(
