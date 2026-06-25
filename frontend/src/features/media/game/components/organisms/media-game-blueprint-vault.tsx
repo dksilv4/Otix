@@ -103,23 +103,22 @@ export function BlueprintVault({ pluginId, onViewDetail }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    const api = desktopAPI as Record<string, unknown> | undefined
-    if (!api?.plugin || typeof api.plugin !== 'object') return
-    const plugin = api.plugin as Record<string, unknown>
-    if (typeof plugin.callData !== 'function') return
-
+    if (!window.confirm('Delete this blueprint? This cannot be undone.')) return
+    if (!desktopAPI?.plugin?.callData) return
     try {
-      const res = await (plugin.callData as (...args: unknown[]) => Promise<Record<string, unknown>>)(
+      const res = await (desktopAPI.plugin.callData as (...args: unknown[]) => Promise<Record<string, unknown>>)(
         pluginId, 'deleteBlueprint', { id },
       )
       if (res?.success) setRefreshCounter((c) => c + 1)
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }
 
   const handleCopy = (rawString: string) => {
-    navigator.clipboard.writeText(rawString)
+    try {
+      navigator.clipboard.writeText(rawString)
+    } catch {
+      // Clipboard unavailable
+    }
   }
 
   return (

@@ -131,11 +131,16 @@ module.exports = {
         updated_at  TEXT DEFAULT (datetime('now'))
       )
     `)
+    ctx.db.run('CREATE INDEX IF NOT EXISTS idx_blueprints_label ON blueprints(label)')
+    ctx.db.run('CREATE INDEX IF NOT EXISTS idx_blueprints_created ON blueprints(created_at)')
 
     ctx.handle('importBlueprint', async (args) => {
       const { rawString, label, description, tags } = args
       if (!rawString) {
         return { success: false, error: 'rawString required' }
+      }
+      if (rawString.length > 1_000_000) {
+        return { success: false, error: 'Blueprint string too large (max 1MB)' }
       }
       try {
         const parsed = decodeBlueprint(rawString)

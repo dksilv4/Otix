@@ -63,7 +63,7 @@ async def list_blueprints(
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
     search: str | None = Query(None, description="Search term for title/description"),
-    sort: str = Query("created_at", regex="^(created_at|downloads)$"),
+    sort: str = Query("created_at", pattern="^(created_at|downloads)$"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[BlueprintListOut]:
