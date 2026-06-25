@@ -25,6 +25,9 @@ function decodeBlueprint(raw) {
   let buffer
   try {
     buffer = Buffer.from(encoded, 'base64')
+    if (buffer.length === 0) {
+      throw new Error('Empty after base64 decode')
+    }
   } catch {
     throw new Error('Invalid blueprint string: base64 decode failed')
   }
