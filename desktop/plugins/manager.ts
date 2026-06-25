@@ -35,9 +35,11 @@ const PAGE_SLOT_MAP: Record<string, string[]> = {
     'media/movie/detail/actions',
     'media/show/detail/actions',
     'media/game/detail/actions',
+    'media/game/detail/tabs',
   ],
   'activity': ['activity:panel'],
   'library/downloads': ['library:downloads'],
+  'settings/downloads': ['settings/downloads/main'],
 }
 
 export class PluginManager {
@@ -461,7 +463,7 @@ export class PluginManager {
     return this.slotRegistry.getPluginsForSlot(location)
   }
 
-  async getSlotData(location: string): Promise<SlotContribution[]> {
+  async getSlotData(location: string, context?: Record<string, unknown>): Promise<SlotContribution[]> {
     const plugins = this.slotRegistry.getPluginsForSlot(location)
     const results: SlotContribution[] = []
 
@@ -471,7 +473,7 @@ export class PluginManager {
 
       try {
         const data = await Promise.race([
-          runtime.callMethod('slotRender', location),
+          runtime.callMethod('slotRender', location, context),
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error('Slot render timeout')),
