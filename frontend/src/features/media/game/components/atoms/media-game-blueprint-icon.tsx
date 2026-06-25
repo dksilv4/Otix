@@ -5,7 +5,7 @@ interface Props {
   size?: 'sm' | 'md' | 'lg'
 }
 
-const SIZE_MAP = { sm: 6, md: 8, lg: 12 }
+const SIZE_MAP = { sm: { outer: 'w-6 h-6', cell: 'w-3 h-3', icon: 'h-3 w-3' }, md: { outer: 'w-8 h-8', cell: 'w-4 h-4', icon: 'h-4 w-4' }, lg: { outer: 'w-12 h-12', cell: 'w-6 h-6', icon: 'h-6 w-6' } }
 const FONT_MAP = { sm: 'text-[8px]', md: 'text-[10px]', lg: 'text-xs' }
 
 // Simple deterministic color from entity name
@@ -32,13 +32,13 @@ function iconInitial(name: string): string {
 }
 
 export function BlueprintIcon({ icons, size = 'md' }: Props) {
-  const dim = SIZE_MAP[size]
+  const dims = SIZE_MAP[size]
   const font = FONT_MAP[size]
 
   if (!icons?.length) {
     return (
-      <div className={`flex items-center justify-center w-${dim} h-${dim} rounded-lg bg-white/5 text-muted-foreground`}>
-        <Package className={`h-${dim/2} w-${dim/2}`} />
+      <div className={`flex items-center justify-center ${dims.outer} rounded-lg bg-white/5 text-muted-foreground`}>
+        <Package className={dims.icon} />
       </div>
     )
   }
@@ -51,7 +51,7 @@ export function BlueprintIcon({ icons, size = 'md' }: Props) {
       {display.map((name, i) => (
         <div
           key={i}
-          className={`flex items-center justify-center w-${dim/2} h-${dim/2} rounded ${colorFromName(name)} ${font} font-bold`}
+          className={`flex items-center justify-center ${dims.cell} rounded ${colorFromName(name)} ${font} font-bold`}
           title={name}
         >
           {iconInitial(name)}
