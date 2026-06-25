@@ -242,7 +242,7 @@ module.exports = {
     // ── Community handlers ──
 
     function communityGuard() {
-      if (!ctx.config.get('community_enabled')) {
+      if (!ctx.config?.get('community_enabled')) {
         return { success: false, error: 'Community sharing disabled' }
       }
       return null
@@ -252,12 +252,16 @@ module.exports = {
       const guard = communityGuard()
       if (guard) return guard
 
+      const sortMap = { recent: 'created_at', popular: 'downloads', trending: 'downloads' }
       const { q, sort = 'recent', page = 1, page_size = 24 } = args || {}
       try {
-        const params = new URLSearchParams({ sort, page: String(page), page_size: String(page_size) })
+        const mappedSort = sortMap[sort] || 'created_at'
+        const offset = (page - 1) * page_size
+        const params = new URLSearchParams({ sort: mappedSort, offset: String(offset), limit: String(page_size) })
         if (q) params.set('q', q)
         const res = await ctx.api.get(`/api/blueprints/?${params.toString()}`)
-        return { success: true, ...res }
+        const normalized = Array.isArray(res) ? { results: res, count: res.length } : res
+        return { success: true, ...normalized }
       } catch (err) {
         ctx.logger.error('community.list failed:', err)
         return { success: false, error: 'Community unavailable' }
@@ -312,7 +316,7 @@ module.exports = {
       if (!id) return { success: false, error: 'id required' }
       try {
         const res = await ctx.api.post(`/api/blueprints/${id}/like/`)
-        return { success: true, liked: res.liked }
+        return { success: true, liked: res.is_liked, like_count: res.like_count }
       } catch {
         return { success: false, error: 'Failed to toggle like' }
       }
