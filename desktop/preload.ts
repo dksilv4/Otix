@@ -273,7 +273,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     addRepo: (url: string, label?: string) => ipcRenderer.invoke('plugin:add-repo', url, label),
     removeRepo: (url: string) => ipcRenderer.invoke('plugin:remove-repo', url),
     openOAuthWindow: (url: string, redirectPattern: string) => ipcRenderer.invoke('plugin:open-oauth-window', url, redirectPattern),
-    getSlotData: (location: string) => ipcRenderer.invoke('plugin:get-slot-data', location),
+    getSlotData: (location: string, context?: Record<string, unknown>) => ipcRenderer.invoke('plugin:get-slot-data', location, context),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
   },

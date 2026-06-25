@@ -52,8 +52,8 @@ export function registerPluginIPC(
   })
 
   // ── Slot endpoints ──
-  ipcMain.handle('plugin:get-slot-data', async (_event, location: string) => {
-    return await pluginManager.getSlotData(location)
+  ipcMain.handle('plugin:get-slot-data', async (_event, location: string, context?: Record<string, unknown>) => {
+    return await pluginManager.getSlotData(location, context)
   })
 
   ipcMain.handle('plugin:get-page-slot-data', async (_event, pageId: string) => {
