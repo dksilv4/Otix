@@ -1,3 +1,4 @@
+import {useState} from 'react'
 import {Link, useParams} from '@tanstack/react-router'
 import {Helmet} from 'react-helmet-async'
 import {useAuth} from '@auth/hooks/use-auth'
@@ -9,6 +10,7 @@ import {SignInCTA} from './media-signin-cta'
 import {MovieSection} from '@media/movie/components/organisms/media-movie-section'
 import {ShowSection} from '@media/show/components/organisms/media-show-section'
 import {GameSection} from '@media/game/components/organisms/media-game-section'
+import {GameTabBar} from '@media/game/components/molecules/media-game-tab-bar'
 import {MusicSection} from '@media/music/components/organisms/media-music-section'
 import {ArtistAlbumsSection} from '@media/music/components/organisms/media-artist-albums-section'
 import {MoreLikeThisSection} from './media-more-like-this-section'
@@ -48,6 +50,7 @@ export function MediaDetail() {
 
     const {isAuthenticated} = useAuth()
     const {isDesktop} = useDesktopPlatform()
+    const [activeGameTab, setActiveGameTab] = useState('info')
 
     const {data, isError} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
@@ -62,6 +65,7 @@ export function MediaDetail() {
     const year = formatYear(detail.releaseDate)
     const titleWithYear = year ? `${detail.title} (${year})` : detail.title
     const displayType = detail.mediaType as 'movie' | 'show' | 'game' | 'music'
+    const gameExternalId = isGame(detail) ? String(detail.game?.steamAppId || detail.id) : null
 
 
     return (
@@ -179,7 +183,22 @@ export function MediaDetail() {
 
                     {isMovie(detail) && <MovieSection/>}
                     {isShow(detail) && <ShowSection/>}
-                    {isGame(detail) && <GameSection/>}
+                    {isGame(detail) && (
+                      <div className="space-y-6">
+                        <GameTabBar
+                          gameExternalId={gameExternalId || ''}
+                          activeTab={activeGameTab}
+                          onTabChange={setActiveGameTab}
+                        />
+                        {activeGameTab === 'info' && <GameSection/>}
+                        {/* Plugin tabs render their content here — populated in Task 6+ */}
+                        {activeGameTab !== 'info' && (
+                          <div className="text-sm text-muted-foreground py-8 text-center">
+                            Plugin content for tab: {activeGameTab}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {isMusic(detail) && <MusicSection/>}
                     {detail.mediaType === 'music' && !detail.album && (
                         <p className="text-center text-sm text-muted-foreground">
