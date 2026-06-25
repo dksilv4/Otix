@@ -21,6 +21,7 @@ from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.karma_transaction import KarmaTransaction
 from otix.domain.list import ListItemRankHistory, MediaListCollaborator, MediaListLike, UserList, UserListItem
+from otix.domain.blueprint import Blueprint, BlueprintLike
 from otix.domain.media import (
     Album,
     Episode,
@@ -63,6 +64,8 @@ from otix.domain.youtube_liked_video import UserYoutubeLikedVideo
 __all__ = [
     "Album",
     "AuthActionToken",
+    "Blueprint",
+    "BlueprintLike",
     "Collection",
     "CollectionItem",
     "Company",

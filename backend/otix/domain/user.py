@@ -27,6 +27,7 @@ from pgvector.sqlalchemy import Vector
 from otix.domain.base import Base, TimestampMixin, otix_fk, otix_pk
 
 if TYPE_CHECKING:
+    from otix.domain.blueprint import Blueprint
     from otix.domain.company import UserCompanyFollow
     from otix.domain.episode_interaction import UserEpisodeInteraction
     from otix.domain.follow import Follow, FollowRequest
@@ -181,7 +182,9 @@ class User(Base, TimestampMixin):
         "FriendRequest", foreign_keys="FriendRequest.receiver_id", back_populates="receiver"
     )
     notifications: Mapped[list[Notification]] = relationship("Notification", back_populates="user")
-    push_subscriptions: Mapped[list[PushSubscription]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     mood_checkins: Mapped[list[UserMoodCheckIn]] = relationship("UserMoodCheckIn", back_populates="user")
     ratings_given: Mapped[list[UserRating]] = relationship(
         "UserRating", foreign_keys="UserRating.rater_id", back_populates="rater"
@@ -209,6 +212,7 @@ class User(Base, TimestampMixin):
     )
     person_follows: Mapped[list[UserPersonFollow]] = relationship("UserPersonFollow", back_populates="user")
     company_follows: Mapped[list[UserCompanyFollow]] = relationship("UserCompanyFollow", back_populates="user")
+    blueprints: Mapped[list[Blueprint]] = relationship("Blueprint", back_populates="user")
 
 
 class RefreshToken(Base):
