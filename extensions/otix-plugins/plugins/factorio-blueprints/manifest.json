@@ -1,0 +1,19 @@
+{
+  "name": "Factorio Blueprints",
+  "version": "1.0.0",
+  "description": "Personal vault + community blueprint sharing for Factorio",
+  "author": "Otix",
+  "repository": "builtin",
+  "min_app_version": "0.5.0",
+  "permissions": ["storage:local", "api:proxy", "network:external"],
+  "config": {
+    "community_enabled": {
+      "type": "boolean",
+      "label": "Enable Community Sharing",
+      "default": true
+    }
+  },
+  "entry": { "main": "main.js" },
+  "slots": [{ "location": "media/game/detail/tabs", "label": "Blueprints" }],
+  "services": [{ "type": "game-feature", "protocol": "blueprint" }]
+}
