@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from otix.api.admin import admin_router
 from otix.api.auth import auth_router
+from otix.api.blueprint import blueprint_router
 from otix.api.company import company_router
 from otix.api.discover import discover_router
 from otix.api.integrations import router as integrations_router
@@ -32,6 +33,7 @@ from otix.api.workout import exercise_router, workout_router
 api_router = APIRouter()
 api_router.include_router(admin_router)
 api_router.include_router(auth_router)
+api_router.include_router(blueprint_router)
 api_router.include_router(integrations_router)
 api_router.include_router(company_router)
 api_router.include_router(discover_router)
