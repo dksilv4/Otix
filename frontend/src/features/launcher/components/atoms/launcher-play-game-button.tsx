@@ -4,7 +4,6 @@ import { Play } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import type { LocalGame } from '@/features/launcher/types'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 interface Props {
   game: LocalGame
@@ -22,10 +21,6 @@ export function PlayGameButton({ game }: Props) {
       toast({ title: 'Launch Simulated', variant: 'info' })
     }
   }
-
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('PlayButton')
-  if (ThemedComponent) return <ThemedComponent game={game} />
 
   return (
     <button

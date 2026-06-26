@@ -8,7 +8,6 @@ import {hasDesktopAPI} from '@/lib/desktop/api'
 import {toDisplayGame} from '@/features/launcher/utils'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function FloatingGameSelector() {
     const {toggle: toggleNav} = useNavigation()
@@ -51,10 +50,6 @@ export function FloatingGameSelector() {
     const goToLibrary = useCallback(() => {
         navigate({to: '/library'})
     }, [navigate])
-
-    const { component } = useLauncherTheme()
-    const ThemedComponent = component('FloatingSelector')
-    if (ThemedComponent) return <ThemedComponent />
 
     return (
         <aside

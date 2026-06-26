@@ -4,7 +4,6 @@ import {useState} from 'react'
 import {MediaCard} from '@/old-features/dk-ui/molecules/media-card'
 import {usePopularGames} from '@/features/launcher/queries'
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 type ShelfTab = 'my-games' | 'popular'
 
@@ -21,10 +20,6 @@ export function LauncherShelf({id}: LauncherShelfProps) {
     const {data: localGames = []} = useLocalGames()
     const {data: popularGames = []} = usePopularGames()
     const [shelfTab, setShelfTab] = useState<ShelfTab>('my-games')
-
-    const { component } = useLauncherTheme()
-    const ThemedShelf = component('Shelf')
-    if (ThemedShelf) return <ThemedShelf id={id} />
 
     return (
         <div id={id}>
