@@ -60,34 +60,65 @@ function applyAccentColor(color: string) {
 
 function ThemePreview({ id }: { id: string }) {
   const cfg = THEME_PREVIEWS[id] ?? THEME_PREVIEWS.default
+  const heroH = cfg.heroHeight === 'compact' ? '22%' : cfg.heroHeight === 'half' ? '30%' : '38%'
+  const shelfH = cfg.heroHeight === 'compact' ? '62%' : cfg.heroHeight === 'half' ? '55%' : '48%'
+  const showNav = cfg.navTop
+
   return (
-    <div className="w-full h-full flex flex-col gap-[2px] p-[3px]" style={{ backgroundColor: cfg.bg }}>
+    <div className="w-full h-full flex flex-col gap-[1px] p-[3px] relative" style={{ backgroundColor: cfg.bg }}>
+      {/* Top nav bar (retro) */}
+      {showNav && (
+        <div className="flex justify-center items-center gap-1 mb-[1px]" style={{ height: '10%' }}>
+          <div className="rounded-full" style={{ width: '14%', height: '3px', backgroundColor: cfg.accent, opacity: 0.5 }} />
+          <div className="rounded-full" style={{ width: '14%', height: '3px', backgroundColor: cfg.accent, opacity: 0.3 }} />
+        </div>
+      )}
       {/* Hero */}
-      <div className="rounded-sm flex items-end px-1 pb-0.5" style={{
-        height: '35%',
+      <div className="rounded-sm flex items-end px-1 pb-0.5 relative overflow-hidden" style={{
+        height: showNav ? `calc(${heroH} - 10%)` : heroH,
         background: cfg.heroBg,
         border: cfg.border ? `1px solid ${cfg.border}` : undefined,
       }}>
-        <div className="rounded-full" style={{ width: '30%', height: '3px', backgroundColor: cfg.accent, opacity: 0.6 }} />
+        {/* Parallax hint */}
+        {cfg.hasParallax && (
+          <div className="absolute inset-0 opacity-20" style={{
+            background: `radial-gradient(ellipse at 30% 50%, ${cfg.accent}20 0%, transparent 70%)`,
+          }} />
+        )}
+        <div className="rounded-full relative z-10" style={{ width: '35%', height: '3px', backgroundColor: cfg.accent, opacity: 0.5 }} />
+        {cfg.hasScanlines && (
+          <div className="absolute inset-0" style={{
+            background: 'repeating-linear-gradient(0deg, rgba(0,255,65,0.04) 0px, rgba(0,255,65,0.04) 1px, transparent 1px, transparent 2px)',
+          }} />
+        )}
       </div>
       {/* Shelf cards */}
-      <div className="flex gap-[2px]" style={{ height: '50%' }}>
+      <div className="flex gap-[2px] px-[1px]" style={{ height: shelfH }}>
         {[0, 1, 2].map(i => (
           <div key={i} className="flex-1 rounded-sm" style={{
             backgroundColor: cfg.cardBg,
             border: cfg.border ? `1px solid ${cfg.border}` : undefined,
             boxShadow: cfg.cardShadow,
+            borderRadius: cfg.radius,
+            ...(cfg.id === 'retro' ? {
+              border: '1px solid rgba(0,255,65,0.2)',
+              boxShadow: '0 0 4px rgba(0,255,65,0.08)',
+            } : {}),
           }} />
         ))}
       </div>
       {/* Footer */}
       <div className="rounded-sm flex items-center gap-1 px-1" style={{
-        height: '12%',
+        height: '11%',
         backgroundColor: cfg.footerBg,
         border: cfg.border ? `1px solid ${cfg.border}` : undefined,
+        borderRadius: cfg.radius,
       }}>
-        <div className="rounded" style={{ width: '12%', height: '2px', backgroundColor: cfg.accent, opacity: 0.3 }} />
-        <div className="rounded flex-1" style={{ height: '2px', backgroundColor: cfg.accent, opacity: 0.15 }} />
+        <div className="rounded" style={{ width: '10%', height: '2px', backgroundColor: cfg.accent, opacity: cfg.id === 'retro' ? 0.5 : 0.3 }} />
+        <div className="rounded flex-1" style={{ height: '2px', backgroundColor: cfg.accent, opacity: cfg.id === 'retro' ? 0.2 : 0.1 }} />
+        {cfg.id === 'retro' && (
+          <div className="rounded" style={{ width: '6%', height: '2px', backgroundColor: cfg.accent, opacity: 0.4 }} />
+        )}
       </div>
       {/* Label */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -100,6 +131,7 @@ function ThemePreview({ id }: { id: string }) {
 }
 
 const THEME_PREVIEWS: Record<string, {
+  id: string
   label: string
   labelClass: string
   bg: string
@@ -109,8 +141,14 @@ const THEME_PREVIEWS: Record<string, {
   accent: string
   border?: string
   cardShadow?: string
+  radius?: string
+  heroHeight?: 'full' | 'half' | 'compact'
+  hasParallax?: boolean
+  hasScanlines?: boolean
+  navTop?: boolean
 }> = {
   default: {
+    id: 'default',
     label: 'Dark',
     labelClass: 'bg-black/60 text-white/80',
     bg: '#0a0a0d',
@@ -118,8 +156,12 @@ const THEME_PREVIEWS: Record<string, {
     cardBg: 'rgba(255,255,255,0.04)',
     footerBg: '#08080a',
     accent: '#a78bfa',
+    heroHeight: 'full',
+    hasParallax: true,
+    radius: '4px',
   },
   light: {
+    id: 'light',
     label: 'Light',
     labelClass: 'bg-white/80 text-black/70',
     bg: '#f8f9fa',
@@ -129,8 +171,12 @@ const THEME_PREVIEWS: Record<string, {
     accent: '#6c757d',
     border: 'rgba(0,0,0,0.08)',
     cardShadow: '0 1px 2px rgba(0,0,0,0.06)',
+    heroHeight: 'half',
+    hasParallax: false,
+    radius: '6px',
   },
   retro: {
+    id: 'retro',
     label: 'Retro',
     labelClass: 'bg-black/80 text-[#00ff41]/90 font-mono text-[8px]',
     bg: '#000000',
@@ -139,8 +185,14 @@ const THEME_PREVIEWS: Record<string, {
     footerBg: '#000000',
     accent: '#00ff41',
     border: 'rgba(0,255,65,0.2)',
+    heroHeight: 'compact',
+    hasParallax: false,
+    hasScanlines: true,
+    navTop: true,
+    radius: '0px',
   },
   minimal: {
+    id: 'minimal',
     label: 'Minimal',
     labelClass: 'bg-[#111]/80 text-white/70',
     bg: '#111111',
@@ -149,6 +201,9 @@ const THEME_PREVIEWS: Record<string, {
     footerBg: '#111111',
     accent: '#ffffff',
     border: 'rgba(255,255,255,0.06)',
+    heroHeight: 'compact',
+    hasParallax: false,
+    radius: '0px',
   },
 }
 
