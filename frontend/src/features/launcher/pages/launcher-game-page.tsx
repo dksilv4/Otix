@@ -4,7 +4,6 @@ import { LauncherGameHero } from '@/features/launcher/components/organisms/launc
 import { LauncherEmptyState } from '@/features/launcher/components/molecules/launcher-empty-state'
 import { LauncherShelf } from '@/features/launcher/components/organisms/launcher-shelf'
 import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
-import { LauncherProgressBar } from '@/features/launcher/components/atoms/launcher-progress-bar'
 import { usePopularGames } from '@/features/launcher/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 
@@ -67,20 +66,25 @@ export function LauncherGamePage() {
   return (
     <main
       id="launcher-main-panel"
-      className="max-w-[100vw] h-full overflow-y-auto relative flex flex-col scrollbar-none scroll-smooth"
-      style={{ backgroundColor: 'var(--color-background, #0a0a0d)' }}
+      className="max-w-[100vw] h-full overflow-y-auto relative flex flex-col scrollbar-none scroll-smooth bg-[#0a0a0d]"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <LauncherGameHero />
-      <section id="launcher-shelf-section" className="w-full border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8"
-        style={{ paddingLeft: 'calc(76px + 1.5rem)', backgroundColor: 'var(--dk-surface-base, #08080a)' }}>
+      <section id="launcher-shelf-section" className="w-full bg-[#08080a] border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8" style={{ paddingLeft: 'calc(76px + 1.5rem)' }}>
         <LauncherShelf id="launcher-shelf" />
         <LauncherFooter id="launcher-footer" />
       </section>
 
       {/* Auto-advance progress bar */}
-      {showProgress && <LauncherProgressBar progress={progress} />}
+      {showProgress && (
+        <div className="fixed bottom-0 inset-x-0 z-50 h-0.5 bg-white/5">
+          <div
+            className="h-full bg-[var(--color-accent)] transition-[width]"
+            style={{ width: `${progress}%`, transitionDuration: `${PROGRESS_TICK_MS}ms`, transitionTimingFunction: 'linear' }}
+          />
+        </div>
+      )}
     </main>
   )
 }

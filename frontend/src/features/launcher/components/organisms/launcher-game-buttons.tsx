@@ -6,7 +6,6 @@ import { OpenFolderButton } from '@/features/launcher/components/atoms/launcher-
 import { PickExeButton } from '@/features/launcher/components/atoms/launcher-pick-exe-button'
 import { GameDetailButton } from '@/features/launcher/components/atoms/launcher-game-detail-button'
 import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-installer-modal'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherGameButtons() {
   const {gameId} = useParams({ strict: false })
@@ -15,10 +14,6 @@ export function LauncherGameButtons() {
   const [isInstallerOpen, setIsInstallerOpen] = useState(false)
 
   if (!g) return null
-
-  const { component } = useLauncherTheme()
-  const ThemedButtons = component('GameButtons')
-  if (ThemedButtons) return <ThemedButtons />
 
   return (
     <>

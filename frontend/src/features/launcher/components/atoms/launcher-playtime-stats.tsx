@@ -1,7 +1,6 @@
 import { useParams } from '@tanstack/react-router'
 import { Clock } from 'lucide-react'
 import { useGamePlaytime } from '@/features/launcher/hooks/use-launcher-playtime'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime: number | null | undefined): string {
   if (steamPlaytime != null) {
@@ -22,10 +21,6 @@ export function LauncherPlaytimeStats() {
   const gameId = (p as Record<string, string>).gameId
   const playtime = useGamePlaytime(gameId)
   const playtimeStr = formatPlaytime(playtime, null)
-
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('PlaytimeStats')
-  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <div className="flex items-center gap-3 min-w-0">

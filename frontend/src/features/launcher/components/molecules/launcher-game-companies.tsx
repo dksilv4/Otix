@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 interface CompanyEntry {
   id: string
@@ -16,10 +15,6 @@ export function LauncherGameCompanies() {
   const companies = g?.data?.involvedCompanies as CompanyEntry[] | undefined
 
   if (!companies || companies.length === 0) return null
-
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('GameCompanies')
-  if (ThemedComponent) return <ThemedComponent />
 
   const roles: Array<{ key: 'developer' | 'publisher'; label: string }> = [
     { key: 'developer', label: 'Developer' },

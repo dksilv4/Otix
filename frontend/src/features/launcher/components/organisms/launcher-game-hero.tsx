@@ -8,7 +8,6 @@ import { LauncherGameStats } from '@/features/launcher/components/molecules/laun
 import { LauncherGameCompanies } from '@/features/launcher/components/molecules/launcher-game-companies'
 import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 function useRandomParallax() {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -65,10 +64,6 @@ export function LauncherGameHero() {
   // Subtle 3D tilt
   const rotX = -drift.y * 2.5
   const rotY = drift.x * 3.5
-
-  const { component } = useLauncherTheme()
-  const ThemedHero = component('Hero')
-  if (ThemedHero) return <ThemedHero />
 
   return (
     <section

@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 function LogoImage({ src, alt }: { src: string; alt: string }) {
   return (
@@ -49,10 +48,6 @@ export function LauncherGameDetailInfo() {
   // Read from g.data (hydrated) or from the LocalGame directly
   const avgRating = (d?.avgRating as number | undefined) ?? null
   const ratingCount = (d?.ratingCount as number) ?? 0
-
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('GameDetailInfo')
-  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <>

@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherRatingStats() {
   const p = useParams({ strict: false })
@@ -10,10 +9,6 @@ export function LauncherRatingStats() {
   const ratingCount = (g?.data?.ratingCount as number) ?? 0
 
   if (!avgRating || avgRating <= 0) return null
-
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('RatingStats')
-  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <>
