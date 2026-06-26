@@ -1,9 +1,13 @@
+import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { useGamePlaytime } from '@/features/launcher/hooks/use-launcher-playtime'
 
 export function MinimalGameStats() {
-  const { data: game } = useLauncherGame()
-  const { playtimeMinutes } = useGamePlaytime()
+  const p = useParams({ strict: false })
+  const gameId = (p as Record<string, string>).gameId
+  const { data: game } = useLauncherGame(gameId)
+  const playtime = useGamePlaytime(gameId)
+  const playtimeMinutes = playtime?.totalMinutes
 
   return (
     <div className="flex gap-6 text-sm text-white/60 font-mono">
