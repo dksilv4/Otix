@@ -58,6 +58,100 @@ function applyAccentColor(color: string) {
   localStorage.setItem(ACCENT_STORAGE_KEY, color)
 }
 
+function ThemePreview({ id }: { id: string }) {
+  const cfg = THEME_PREVIEWS[id] ?? THEME_PREVIEWS.default
+  return (
+    <div className="w-full h-full flex flex-col gap-[2px] p-[3px]" style={{ backgroundColor: cfg.bg }}>
+      {/* Hero */}
+      <div className="rounded-sm flex items-end px-1 pb-0.5" style={{
+        height: '35%',
+        background: cfg.heroBg,
+        border: cfg.border ? `1px solid ${cfg.border}` : undefined,
+      }}>
+        <div className="rounded-full" style={{ width: '30%', height: '3px', backgroundColor: cfg.accent, opacity: 0.6 }} />
+      </div>
+      {/* Shelf cards */}
+      <div className="flex gap-[2px]" style={{ height: '50%' }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} className="flex-1 rounded-sm" style={{
+            backgroundColor: cfg.cardBg,
+            border: cfg.border ? `1px solid ${cfg.border}` : undefined,
+            boxShadow: cfg.cardShadow,
+          }} />
+        ))}
+      </div>
+      {/* Footer */}
+      <div className="rounded-sm flex items-center gap-1 px-1" style={{
+        height: '12%',
+        backgroundColor: cfg.footerBg,
+        border: cfg.border ? `1px solid ${cfg.border}` : undefined,
+      }}>
+        <div className="rounded" style={{ width: '12%', height: '2px', backgroundColor: cfg.accent, opacity: 0.3 }} />
+        <div className="rounded flex-1" style={{ height: '2px', backgroundColor: cfg.accent, opacity: 0.15 }} />
+      </div>
+      {/* Label */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span className={cn('text-[9px] font-semibold px-1 py-0.5 rounded', cfg.labelClass)}>
+          {cfg.label}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+const THEME_PREVIEWS: Record<string, {
+  label: string
+  labelClass: string
+  bg: string
+  heroBg: string
+  cardBg: string
+  footerBg: string
+  accent: string
+  border?: string
+  cardShadow?: string
+}> = {
+  default: {
+    label: 'Dark',
+    labelClass: 'bg-black/60 text-white/80',
+    bg: '#0a0a0d',
+    heroBg: 'linear-gradient(135deg, #1a1040 0%, #0a0a20 60%, #0a0a0d 100%)',
+    cardBg: 'rgba(255,255,255,0.04)',
+    footerBg: '#08080a',
+    accent: '#a78bfa',
+  },
+  light: {
+    label: 'Light',
+    labelClass: 'bg-white/80 text-black/70',
+    bg: '#f8f9fa',
+    heroBg: 'linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%)',
+    cardBg: '#ffffff',
+    footerBg: '#e9ecef',
+    accent: '#6c757d',
+    border: 'rgba(0,0,0,0.08)',
+    cardShadow: '0 1px 2px rgba(0,0,0,0.06)',
+  },
+  retro: {
+    label: 'Retro',
+    labelClass: 'bg-black/80 text-[#00ff41]/90 font-mono text-[8px]',
+    bg: '#000000',
+    heroBg: '#000000',
+    cardBg: '#0a0a0a',
+    footerBg: '#000000',
+    accent: '#00ff41',
+    border: 'rgba(0,255,65,0.2)',
+  },
+  minimal: {
+    label: 'Minimal',
+    labelClass: 'bg-[#111]/80 text-white/70',
+    bg: '#111111',
+    heroBg: '#1a1a1a',
+    cardBg: '#1a1a1a',
+    footerBg: '#111111',
+    accent: '#ffffff',
+    border: 'rgba(255,255,255,0.06)',
+  },
+}
+
 export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; onSetTheme: (t: ThemeSetting) => void }) {
   const { shaderQuality, setShaderQuality } = useShaderQuality()
   const { motionPreference, setMotionPreference } = useMotionPreference()
@@ -163,15 +257,7 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
               )}
             >
               {/* Theme preview */}
-              <div className={cn(
-                'w-full h-full flex items-center justify-center text-xs font-medium',
-                meta.id === 'default' && 'bg-[#0a0a0d] text-white/60',
-                meta.id === 'light' && 'bg-[#f8f9fa] text-black/60',
-                meta.id === 'retro' && 'bg-black text-[#00ff41]/60 font-mono',
-                meta.id === 'minimal' && 'bg-[#1a1a1a] text-white/40',
-              )}>
-                {meta.name}
-              </div>
+              <ThemePreview id={meta.id} />
               {/* Checkmark overlay */}
               {launcherThemeId === meta.id && (
                 <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center">
