@@ -45,11 +45,11 @@ export const ShelfCard = memo(function ShelfCard({
                                                      onAcceptSuggestion,
                                                      onRejectSuggestion,
                                                  }: ShelfCardProps) {
+    const [imgFailed, setImgFailed] = useState(false)
+
     const { component } = useLauncherTheme()
     const ThemedComponent = component('ShelfCard')
     if (ThemedComponent) return <ThemedComponent game={game} catalogGame={catalogGame} onClick={onClick} onAcceptSuggestion={onAcceptSuggestion} onRejectSuggestion={onRejectSuggestion} />
-
-    const [imgFailed, setImgFailed] = useState(false)
 
     const isLocal = !!game
 

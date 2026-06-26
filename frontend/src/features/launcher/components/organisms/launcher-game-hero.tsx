@@ -37,10 +37,6 @@ function useRandomParallax() {
 }
 
 export function LauncherGameHero() {
-  const { component } = useLauncherTheme()
-  const ThemedHero = component('Hero')
-  if (ThemedHero) return <ThemedHero />
-
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -69,6 +65,10 @@ export function LauncherGameHero() {
   // Subtle 3D tilt
   const rotX = -drift.y * 2.5
   const rotY = drift.x * 3.5
+
+  const { component } = useLauncherTheme()
+  const ThemedHero = component('Hero')
+  if (ThemedHero) return <ThemedHero />
 
   return (
     <section

@@ -30,10 +30,6 @@ function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | nu
 }
 
 export function LauncherGameDetailInfo() {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('GameDetailInfo')
-  if (ThemedComponent) return <ThemedComponent />
-
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -53,6 +49,10 @@ export function LauncherGameDetailInfo() {
   // Read from g.data (hydrated) or from the LocalGame directly
   const avgRating = (d?.avgRating as number | undefined) ?? null
   const ratingCount = (d?.ratingCount as number) ?? 0
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('GameDetailInfo')
+  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <>
