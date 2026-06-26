@@ -10,16 +10,16 @@ interface CompanyEntry {
 }
 
 export function LauncherGameCompanies() {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('GameCompanies')
-  if (ThemedComponent) return <ThemedComponent />
-
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
   const companies = g?.data?.involvedCompanies as CompanyEntry[] | undefined
 
   if (!companies || companies.length === 0) return null
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('GameCompanies')
+  if (ThemedComponent) return <ThemedComponent />
 
   const roles: Array<{ key: 'developer' | 'publisher'; label: string }> = [
     { key: 'developer', label: 'Developer' },

@@ -8,10 +8,6 @@ import { useToast } from '@/old-features/dk-ui/molecules/toast'
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherScanWidget({ id }: { id?: string }) {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('ScanWidget')
-  if (ThemedComponent) return <ThemedComponent id={id} />
-
   const navigate = useNavigate()
   const { toast } = useToast()
   const [scanning, setScanning] = useState(false)
@@ -43,6 +39,10 @@ export function LauncherScanWidget({ id }: { id?: string }) {
 
   const goToSettings = useCallback(() => navigate({ to: '/settings', search: { section: 'scanners' } as never }), [navigate])
   const goToLibrary = useCallback(() => navigate({ to: '/library' }), [navigate])
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('ScanWidget')
+  if (ThemedComponent) return <ThemedComponent id={id} />
 
   return (
     <div id={id} className="flex-1 rounded-2xl bg-white/3 border border-white/5 p-4 flex flex-col justify-between hover:border-white/10 transition-colors">

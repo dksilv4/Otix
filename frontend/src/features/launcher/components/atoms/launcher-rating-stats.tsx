@@ -3,10 +3,6 @@ import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherRatingStats() {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('RatingStats')
-  if (ThemedComponent) return <ThemedComponent />
-
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -14,6 +10,10 @@ export function LauncherRatingStats() {
   const ratingCount = (g?.data?.ratingCount as number) ?? 0
 
   if (!avgRating || avgRating <= 0) return null
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('RatingStats')
+  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <>

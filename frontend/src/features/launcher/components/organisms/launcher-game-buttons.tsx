@@ -9,16 +9,16 @@ import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-ins
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherGameButtons() {
-  const { component } = useLauncherTheme()
-  const ThemedButtons = component('GameButtons')
-  if (ThemedButtons) return <ThemedButtons />
-
   const {gameId} = useParams({ strict: false })
   const { game: g } = useLauncherGame(gameId)
 
   const [isInstallerOpen, setIsInstallerOpen] = useState(false)
 
   if (!g) return null
+
+  const { component } = useLauncherTheme()
+  const ThemedButtons = component('GameButtons')
+  if (ThemedButtons) return <ThemedButtons />
 
   return (
     <>

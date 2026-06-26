@@ -18,13 +18,14 @@ function formatPlaytime(playtime: { totalMinutes: number } | null, steamPlaytime
 }
 
 export function LauncherPlaytimeStats() {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('PlaytimeStats')
-  if (ThemedComponent) return <ThemedComponent />
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const playtime = useGamePlaytime(gameId)
   const playtimeStr = formatPlaytime(playtime, null)
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('PlaytimeStats')
+  if (ThemedComponent) return <ThemedComponent />
 
   return (
     <div className="flex items-center gap-3 min-w-0">

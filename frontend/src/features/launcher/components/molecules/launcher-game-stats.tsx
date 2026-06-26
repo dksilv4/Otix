@@ -8,12 +8,12 @@ import { LauncherFpsStats } from '@/features/launcher/components/molecules/launc
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherGameStats() {
+  const { user } = useAuth()
+  const [showJson, setShowJson] = useState(false)
+
   const { component } = useLauncherTheme()
   const ThemedComponent = component('GameStats')
   if (ThemedComponent) return <ThemedComponent />
-
-  const { user } = useAuth()
-  const [showJson, setShowJson] = useState(false)
 
   return (
     <div className="flex items-center gap-4">

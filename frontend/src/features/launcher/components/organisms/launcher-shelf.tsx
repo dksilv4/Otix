@@ -18,13 +18,13 @@ interface LauncherShelfProps {
 }
 
 export function LauncherShelf({id}: LauncherShelfProps) {
-    const { component } = useLauncherTheme()
-    const ThemedShelf = component('Shelf')
-    if (ThemedShelf) return <ThemedShelf id={id} />
-
     const {data: localGames = []} = useLocalGames()
     const {data: popularGames = []} = usePopularGames()
     const [shelfTab, setShelfTab] = useState<ShelfTab>('my-games')
+
+    const { component } = useLauncherTheme()
+    const ThemedShelf = component('Shelf')
+    if (ThemedShelf) return <ThemedShelf id={id} />
 
     return (
         <div id={id}>

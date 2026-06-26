@@ -14,10 +14,6 @@ interface DiskInfo {
 }
 
 export function DiskSpaceWidget({ id }: { id?: string }) {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('DiskSpaceWidget')
-  if (ThemedComponent) return <ThemedComponent id={id} />
-
   const { isDesktop } = useDesktopPlatform()
   const [drives, setDrives] = useState<DiskInfo[]>([])
 
@@ -30,6 +26,10 @@ export function DiskSpaceWidget({ id }: { id?: string }) {
   }, [isDesktop])
 
   if (drives.length === 0) return null
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('DiskSpaceWidget')
+  if (ThemedComponent) return <ThemedComponent id={id} />
 
   return (
     <div id={id} className="flex-1 rounded-2xl bg-white/3 p-4 max-w-sm animate-fade-in flex flex-col gap-2">

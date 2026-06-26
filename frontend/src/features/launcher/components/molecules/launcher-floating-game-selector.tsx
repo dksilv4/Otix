@@ -11,10 +11,6 @@ import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function FloatingGameSelector() {
-    const { component } = useLauncherTheme()
-    const ThemedComponent = component('FloatingSelector')
-    if (ThemedComponent) return <ThemedComponent />
-
     const {toggle: toggleNav} = useNavigation()
     const navigate = useNavigate()
     const p = useParams({strict: false})
@@ -55,6 +51,10 @@ export function FloatingGameSelector() {
     const goToLibrary = useCallback(() => {
         navigate({to: '/library'})
     }, [navigate])
+
+    const { component } = useLauncherTheme()
+    const ThemedComponent = component('FloatingSelector')
+    if (ThemedComponent) return <ThemedComponent />
 
     return (
         <aside

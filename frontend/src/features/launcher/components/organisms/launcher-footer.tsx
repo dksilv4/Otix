@@ -8,10 +8,6 @@ import { LauncherScanWidget } from '@/features/launcher/components/molecules/lau
 import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherFooter({ id }: { id?: string }) {
-  const { component } = useLauncherTheme()
-  const ThemedFooter = component('Footer')
-  if (ThemedFooter) return <ThemedFooter id={id} />
-
   const [hydrating, setHydrating] = useState(false)
 
   const handleHydrate = async () => {
@@ -25,6 +21,10 @@ export function LauncherFooter({ id }: { id?: string }) {
       setHydrating(false)
     }
   }
+
+  const { component } = useLauncherTheme()
+  const ThemedFooter = component('Footer')
+  if (ThemedFooter) return <ThemedFooter id={id} />
 
   return (
     <div id={id} className="flex flex-col md:flex-row justify-between items-stretch gap-6">

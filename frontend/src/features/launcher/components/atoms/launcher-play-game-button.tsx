@@ -11,10 +11,6 @@ interface Props {
 }
 
 export function PlayGameButton({ game }: Props) {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('PlayButton')
-  if (ThemedComponent) return <ThemedComponent game={game} />
-
   const { toast } = useToast()
 
   const handleClick = () => {
@@ -26,6 +22,10 @@ export function PlayGameButton({ game }: Props) {
       toast({ title: 'Launch Simulated', variant: 'info' })
     }
   }
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('PlayButton')
+  if (ThemedComponent) return <ThemedComponent game={game} />
 
   return (
     <button

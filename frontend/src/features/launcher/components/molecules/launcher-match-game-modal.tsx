@@ -48,10 +48,6 @@ const PLATFORM_LABELS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────────
 
 export function MatchGameModal({ game, open, onOpenChange }: Props) {
-  const { component } = useLauncherTheme()
-  const ThemedComponent = component('MatchGameModal')
-  if (ThemedComponent) return <ThemedComponent game={game} open={open} onOpenChange={onOpenChange} />
-
   const queryClient = useQueryClient()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
@@ -307,6 +303,10 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
     matchConfidence >= 0.7 ? 'text-yellow-400' :
     matchConfidence >= 0.5 ? 'text-orange-400' :
     'text-red-400'
+
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('MatchGameModal')
+  if (ThemedComponent) return <ThemedComponent game={game} open={open} onOpenChange={onOpenChange} />
 
   return (
     <DkDialog
