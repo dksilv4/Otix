@@ -4,6 +4,7 @@ import { LauncherGameHero } from '@/features/launcher/components/organisms/launc
 import { LauncherEmptyState } from '@/features/launcher/components/molecules/launcher-empty-state'
 import { LauncherShelf } from '@/features/launcher/components/organisms/launcher-shelf'
 import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
+import { LauncherProgressBar } from '@/features/launcher/components/atoms/launcher-progress-bar'
 import { usePopularGames } from '@/features/launcher/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 
@@ -77,14 +78,7 @@ export function LauncherGamePage() {
       </section>
 
       {/* Auto-advance progress bar */}
-      {showProgress && (
-        <div className="fixed bottom-0 inset-x-0 z-50 h-0.5 bg-white/5">
-          <div
-            className="h-full bg-[var(--color-accent)] transition-[width]"
-            style={{ width: `${progress}%`, transitionDuration: `${PROGRESS_TICK_MS}ms`, transitionTimingFunction: 'linear' }}
-          />
-        </div>
-      )}
+      {showProgress && <LauncherProgressBar progress={progress} />}
     </main>
   )
 }
