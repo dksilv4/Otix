@@ -5,8 +5,13 @@ import { RefreshCw } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { DiskSpaceWidget } from '@/features/launcher/components/molecules/launcher-disk-space-widget'
 import { LauncherScanWidget } from '@/features/launcher/components/molecules/launcher-scan-widget'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherFooter({ id }: { id?: string }) {
+  const { component } = useLauncherTheme()
+  const ThemedFooter = component('Footer')
+  if (ThemedFooter) return <ThemedFooter id={id} />
+
   const [hydrating, setHydrating] = useState(false)
 
   const handleHydrate = async () => {
