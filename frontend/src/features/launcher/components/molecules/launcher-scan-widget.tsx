@@ -5,8 +5,13 @@ import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherScanWidget({ id }: { id?: string }) {
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('ScanWidget')
+  if (ThemedComponent) return <ThemedComponent id={id} />
+
   const navigate = useNavigate()
   const { toast } = useToast()
   const [scanning, setScanning] = useState(false)

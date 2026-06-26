@@ -1,5 +1,6 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 function LogoImage({ src, alt }: { src: string; alt: string }) {
   return (
@@ -29,6 +30,10 @@ function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | nu
 }
 
 export function LauncherGameDetailInfo() {
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('GameDetailInfo')
+  if (ThemedComponent) return <ThemedComponent />
+
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)

@@ -8,8 +8,13 @@ import {hasDesktopAPI} from '@/lib/desktop/api'
 import {toDisplayGame} from '@/features/launcher/utils'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function FloatingGameSelector() {
+    const { component } = useLauncherTheme()
+    const ThemedComponent = component('FloatingSelector')
+    if (ThemedComponent) return <ThemedComponent />
+
     const {toggle: toggleNav} = useNavigation()
     const navigate = useNavigate()
     const p = useParams({strict: false})

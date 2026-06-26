@@ -4,6 +4,7 @@ import {ContextMenuTrigger} from "@/features/_config/context-menu"
 import type {ContextMenuItemDef} from "@/features/_config/context-menu"
 import type {LocalGame} from "@/old-features/game-scanner/types"
 import type {CatalogGame} from "../types"
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 interface ShelfCardProps {
     game?: LocalGame
@@ -44,6 +45,10 @@ export const ShelfCard = memo(function ShelfCard({
                                                      onAcceptSuggestion,
                                                      onRejectSuggestion,
                                                  }: ShelfCardProps) {
+    const { component } = useLauncherTheme()
+    const ThemedComponent = component('ShelfCard')
+    if (ThemedComponent) return <ThemedComponent game={game} catalogGame={catalogGame} onClick={onClick} onAcceptSuggestion={onAcceptSuggestion} onRejectSuggestion={onRejectSuggestion} />
+
     const [imgFailed, setImgFailed] = useState(false)
 
     const isLocal = !!game
