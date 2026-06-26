@@ -1,0 +1,9 @@
+{
+  "id": "retro",
+  "name": "Retro",
+  "description": "CRT monitor aesthetic with scanlines, phosphor glow, and pixel-perfect fonts.",
+  "author": "Otix",
+  "version": "1.0.0",
+  "preview": "",
+  "tags": ["retro", "crt", "pixel", "90s"]
+}
