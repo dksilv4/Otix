@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
 import { Logo } from '@/old-features/dk-ui/atoms/logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
+import { getThemeIds, getThemeModule } from '@/features/launcher/themes/registry'
+import type { LauncherThemeManifest } from '@/features/launcher/themes/types'
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -66,6 +68,20 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
     applyAccentColor(accent)
   }, [accent])
 
+  const LAUNCHER_THEME_KEY = 'otix-launcher-theme'
+  const [launcherThemeId, setLauncherThemeId] = useState(() => {
+    try { return localStorage.getItem(LAUNCHER_THEME_KEY) || 'default' }
+    catch { return 'default' }
+  })
+  const [themeMetas, setThemeMetas] = useState<LauncherThemeManifest[]>([])
+
+  useEffect(() => {
+    const ids = getThemeIds()
+    Promise.all(ids.map(id => getThemeModule(id).then(m => m.default.meta).catch(() => null))).then(metas => {
+      setThemeMetas(metas.filter((m): m is LauncherThemeManifest => m !== null))
+    })
+  }, [])
+
   const setCustomSlot = (index: number, color: string) => {
     const next = [...customAccents]
     next[index] = color
@@ -124,6 +140,54 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Launcher Theme card */}
+      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+        <SectionHeader title="Launcher Theme" description="Change the look and feel of the game launcher." />
+
+        <div className="grid grid-cols-4 gap-3">
+          {themeMetas.map(meta => (
+            <button
+              key={meta.id}
+              type="button"
+              onClick={() => {
+                setLauncherThemeId(meta.id)
+                localStorage.setItem(LAUNCHER_THEME_KEY, meta.id)
+              }}
+              className={cn(
+                'relative rounded-xl overflow-hidden aspect-[4/3] border-2 transition-all',
+                launcherThemeId === meta.id
+                  ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/30'
+                  : 'border-white/10 hover:border-white/30',
+              )}
+            >
+              {/* Theme preview */}
+              <div className={cn(
+                'w-full h-full flex items-center justify-center text-xs font-medium',
+                meta.id === 'default' && 'bg-[#0a0a0d] text-white/60',
+                meta.id === 'light' && 'bg-[#f8f9fa] text-black/60',
+                meta.id === 'retro' && 'bg-black text-[#00ff41]/60 font-mono',
+                meta.id === 'minimal' && 'bg-[#1a1a1a] text-white/40',
+              )}>
+                {meta.name}
+              </div>
+              {/* Checkmark overlay */}
+              {launcherThemeId === meta.id && (
+                <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[var(--primary)] flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+        {/* Selected theme description */}
+        {(() => {
+          const selected = themeMetas.find(m => m.id === launcherThemeId)
+          return selected && (
+            <p className="mt-3 text-xs text-white/50">{selected.description}</p>
+          )
+        })()}
       </div>
 
       {/* Accent color card */}
