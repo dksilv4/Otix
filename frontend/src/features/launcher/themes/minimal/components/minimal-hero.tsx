@@ -1,8 +1,11 @@
+import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { heroImage } from '@/features/launcher/utils'
 
 export function MinimalHero() {
-  const { data: game } = useLauncherGame()
+  const p = useParams({ strict: false })
+  const gameId = (p as Record<string, string>).gameId
+  const { data: game } = useLauncherGame(gameId)
 
   return (
     <div className="relative w-full h-[30vh] bg-[#111] flex items-center px-8">
