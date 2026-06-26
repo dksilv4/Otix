@@ -1,6 +1,10 @@
 import {Gamepad2} from "lucide-react";
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 const GameThumb = ({icon, alt}: { icon: string | undefined, alt: string }) => {
+    const { component } = useLauncherTheme()
+    const ThemedComponent = component('GameThumb')
+    if (ThemedComponent) return <ThemedComponent icon={icon} alt={alt} />
 
 
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
