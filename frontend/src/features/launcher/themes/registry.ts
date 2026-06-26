@@ -12,15 +12,15 @@ const ENTRIES: RegistryEntry[] = [
   },
   {
     id: 'light',
-    loader: () => import('./light/index').then(m => m as unknown as LauncherThemeModule),
+    loader: () => import('./light/index').then(m => m.default),
   },
   {
     id: 'retro',
-    loader: () => import('./retro/index').then(m => m as unknown as LauncherThemeModule),
+    loader: () => import('./retro/index').then(m => m.default),
   },
   {
     id: 'minimal',
-    loader: () => import('./minimal/index').then(m => m as unknown as LauncherThemeModule),
+    loader: () => import('./minimal/index').then(m => m.default),
   },
 ]
 
