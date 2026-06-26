@@ -12,7 +12,8 @@ export function LauncherHomePage() {
   return (
     <LauncherThemeProvider>
       <QueryErrorBoundary label="launcher">
-        <div id="launcher-root" className="w-full h-screen bg-[#0a0a0d] text-white relative shadow-[0_24px_50px_rgba(0,0,0,0.85)] font-sans select-none">
+        <div id="launcher-root" className="w-full h-screen text-white relative shadow-[0_24px_50px_rgba(0,0,0,0.85)] font-sans select-none"
+          style={{ backgroundColor: 'var(--color-background, #0a0a0d)', color: 'var(--color-foreground, white)' }}>
           <Helmet><title>Launcher · Otix</title></Helmet>
           <WebPreviewBanner />
           <FloatingGameSelector />

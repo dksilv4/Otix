@@ -67,12 +67,14 @@ export function LauncherGamePage() {
   return (
     <main
       id="launcher-main-panel"
-      className="max-w-[100vw] h-full overflow-y-auto relative flex flex-col scrollbar-none scroll-smooth bg-[#0a0a0d]"
+      className="max-w-[100vw] h-full overflow-y-auto relative flex flex-col scrollbar-none scroll-smooth"
+      style={{ backgroundColor: 'var(--color-background, #0a0a0d)' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <LauncherGameHero />
-      <section id="launcher-shelf-section" className="w-full bg-[#08080a] border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8" style={{ paddingLeft: 'calc(76px + 1.5rem)' }}>
+      <section id="launcher-shelf-section" className="w-full border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8"
+        style={{ paddingLeft: 'calc(76px + 1.5rem)', backgroundColor: 'var(--dk-surface-base, #08080a)' }}>
         <LauncherShelf id="launcher-shelf" />
         <LauncherFooter id="launcher-footer" />
       </section>
