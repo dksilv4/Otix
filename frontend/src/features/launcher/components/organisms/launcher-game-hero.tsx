@@ -8,6 +8,7 @@ import { LauncherGameStats } from '@/features/launcher/components/molecules/laun
 import { LauncherGameCompanies } from '@/features/launcher/components/molecules/launcher-game-companies'
 import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 function useRandomParallax() {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -36,6 +37,10 @@ function useRandomParallax() {
 }
 
 export function LauncherGameHero() {
+  const { component } = useLauncherTheme()
+  const ThemedHero = component('Hero')
+  if (ThemedHero) return <ThemedHero />
+
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
