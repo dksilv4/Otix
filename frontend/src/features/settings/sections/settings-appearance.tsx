@@ -78,7 +78,7 @@ export function AppearanceSection({ theme, onSetTheme }: { theme: ThemeSetting; 
   useEffect(() => {
     const ids = getThemeIds()
     Promise.all(ids.map(id => getThemeModule(id).then(m => m.default.meta).catch(() => null))).then(metas => {
-      setThemeMetas(metas.filter((m): m is LauncherThemeManifest => m !== null))
+      setThemeMetas(metas.filter((m): m is LauncherThemeManifest => m != null && m.id != null))
     })
   }, [])
 

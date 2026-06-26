@@ -8,7 +8,7 @@ interface RegistryEntry {
 const ENTRIES: RegistryEntry[] = [
   {
     id: 'default',
-    loader: () => import('./default/index').then(m => m as unknown as LauncherThemeModule),
+    loader: () => import('./default/index').then(m => m.default),
   },
   {
     id: 'light',
