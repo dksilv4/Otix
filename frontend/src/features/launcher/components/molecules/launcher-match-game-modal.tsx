@@ -9,6 +9,7 @@ import { useMatchLocalGames, useSyncLocalGames } from '@/old-features/game-scann
 import { localGameKeys } from '@/old-features/game-scanner/game-queries'
 import { DkDialog } from '@/old-features/dk-ui/molecules/dialog'
 import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 // ── Modal step enum ──────────────────────────────────────────────
 
@@ -47,6 +48,10 @@ const PLATFORM_LABELS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────────
 
 export function MatchGameModal({ game, open, onOpenChange }: Props) {
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('MatchGameModal')
+  if (ThemedComponent) return <ThemedComponent game={game} open={open} onOpenChange={onOpenChange} />
+
   const queryClient = useQueryClient()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()

@@ -5,8 +5,13 @@ import { LauncherPlaytimeStats } from '@/features/launcher/components/atoms/laun
 import { LauncherRatingStats } from '@/features/launcher/components/atoms/launcher-rating-stats'
 import { LauncherCloudSyncStat } from '@/features/launcher/components/atoms/launcher-cloud-sync-stat'
 import { LauncherFpsStats } from '@/features/launcher/components/molecules/launcher-fps-stats'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 export function LauncherGameStats() {
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('GameStats')
+  if (ThemedComponent) return <ThemedComponent />
+
   const { user } = useAuth()
   const [showJson, setShowJson] = useState(false)
 

@@ -1,5 +1,6 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
+import { useLauncherTheme } from '@/features/launcher/themes/launcher-theme-context'
 
 interface CompanyEntry {
   id: string
@@ -9,6 +10,10 @@ interface CompanyEntry {
 }
 
 export function LauncherGameCompanies() {
+  const { component } = useLauncherTheme()
+  const ThemedComponent = component('GameCompanies')
+  if (ThemedComponent) return <ThemedComponent />
+
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
