@@ -1,5 +1,21 @@
 // ── Shared game types ──────────────────────────────────────────────
 
+export interface InstallResult {
+  success: boolean
+  gameExe?: string | null
+  installDir: string
+  crackApplied?: boolean
+  error?: string
+}
+
+export type InstallPhase = 'mounting' | 'detecting' | 'installing' | 'cracking' | 'finishing' | 'done' | 'error'
+
+export interface InstallProgress {
+  phase: InstallPhase
+  progress: number
+  message: string
+}
+
 export interface UpdateFile {
   name: string
   path: string

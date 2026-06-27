@@ -2,6 +2,9 @@ export * from './types'
 export * from './utils'
 export * from './queries'
 export * from './storage'
+export * from './storage-utils'
+export * from './game-queries'
+export * from './install-store'
 export {
   useGameUIState,
   useGameQueries,

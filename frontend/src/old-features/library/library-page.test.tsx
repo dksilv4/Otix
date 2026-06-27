@@ -117,7 +117,7 @@ vi.mock("@/old-features/list/list-queries", () => ({
   useCreateList: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
 }))
 
-vi.mock("@/old-features/spotify/use-player", () => ({
+vi.mock("@/lib/player/use-player", () => ({
   usePlayer: vi.fn(() => ({
     source: 'spotify',
     playSpotifyQueue: vi.fn(),

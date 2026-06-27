@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { LayoutGrid } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { usePlayer } from '@/old-features/spotify/use-player'
+import { usePlayer } from '@/lib/player/use-player'
 import { isDesktop } from '@/lib/desktop/api'
 import { usePanelContext } from '@activity/providers/panel-context'
 import { Feature } from '@/features/_config'

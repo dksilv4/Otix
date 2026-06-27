@@ -1,6 +1,6 @@
 import { queryOptions, infiniteQueryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-import type { UserInteractionState } from '@/old-features/interaction/interaction-queries'
+import type { UserInteractionState } from '@/features/interaction/interaction-queries'
 import { mediaKeys, type SearchParams } from './media-keys'
 
 export interface MediaItemSummary {

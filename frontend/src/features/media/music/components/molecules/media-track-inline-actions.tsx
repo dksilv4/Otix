@@ -1,5 +1,5 @@
 import { Heart } from 'lucide-react'
-import { StarInput } from '@/old-features/review/molecules/star-input'
+import { StarInput } from '@/features/review/molecules/star-input'
 
 interface TrackInlineActionsProps {
   spotifyId?: string | null
