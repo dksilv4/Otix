@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
 import { apiClient } from '@/lib/api/client'
 import { connectTaskSseStream, type SseEvent } from '@/lib/sse-client'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { DkButton } from '@/old-features/ui/atoms/button'
 import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
@@ -707,7 +708,7 @@ export function IntegrationsSection() {
     setYoutubeProgress({ phase: 'Starting sync...' })
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/youtube/sync',
@@ -779,7 +780,7 @@ export function IntegrationsSection() {
     setSpotifyProgress({ phase: 'Starting sync...' })
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/spotify/sync',
@@ -844,7 +845,7 @@ export function IntegrationsSection() {
     setSpotifyRecentlyPlayedMessage('')
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       const terminal = await connectTaskSseStream(
         {
           createEndpoint: '/integrations/spotify/recently-played/sync',
@@ -930,7 +931,7 @@ export function IntegrationsSection() {
     const progressKey = (server: string, library: string) => `${server}:${library}`
 
     try {
-      const token = localStorage.getItem('otix-access-token') ?? ''
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''
       await connectTaskSseStream(
         {
           createEndpoint: '/integrations/plex/sync',

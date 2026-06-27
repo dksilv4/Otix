@@ -1,13 +1,13 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { isDesktop } from '@/lib/desktop'
+import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 
-export const API_BASE_URL = isDesktop()
+// ponytail: client needs different fallback logic than lib/config (desktop vs web)
+export const CLIENT_API_BASE_URL = isDesktop()
   ? (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api')
   : (import.meta.env.VITE_API_BASE_URL || '/api')
-const BASE_URL = API_BASE_URL
-
-const ACCESS_TOKEN_KEY = 'otix-access-token'
+const BASE_URL = CLIENT_API_BASE_URL
 
 // ── Case conversion utilities ────────────────────────────────────────
 

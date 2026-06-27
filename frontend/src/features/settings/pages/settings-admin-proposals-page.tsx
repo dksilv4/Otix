@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Loader2, CheckCircle2, XCircle, ArrowLeft, Gamepad2, ExternalLink } from 'lucide-react'
-import { API_BASE_URL } from '@/lib/api/client'
+import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/lib/config'
 
 interface Proposal {
   id: string
@@ -27,7 +27,7 @@ export function SettingsAdminProposalsPage() {
   const fetchProposals = useCallback(async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('otix-access-token')
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
       const res = await fetch(`${API_BASE_URL}/admin/match-proposals?status=${filter}&limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -44,7 +44,7 @@ export function SettingsAdminProposalsPage() {
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     setActing(id)
     try {
-      const token = localStorage.getItem('otix-access-token')
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
       await fetch(`${API_BASE_URL}/admin/match-proposals/${id}/${action}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

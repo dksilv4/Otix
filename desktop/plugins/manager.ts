@@ -200,6 +200,33 @@ export class PluginManager {
       )
 
       await runtime.start()
+
+      // ── Mandatory plugin tests ─────────────────────────────────
+      // Every plugin must export a "test" function that returns
+      // { passed: boolean, failures?: string[] }. Tests run on every
+      // enable; a plugin whose tests don't pass is not enabled.
+      try {
+        const result = await runtime.callMethod('test') as { passed: boolean; failures?: string[] } | undefined;
+        if (!result?.passed) {
+          await runtime.stop();
+          throw new Error(
+            `Plugin tests failed: ${result?.failures?.join('; ') || 'tests did not pass'}`,
+          );
+        }
+      } catch (err: any) {
+        // Clean up the runtime regardless of which error path we hit
+        await runtime.stop().catch(() => {});
+        if (
+          err.message.includes('not found') ||
+          err.message.includes('Export "test"')
+        ) {
+          throw new Error(
+            `Plugin "${pluginId}" must export a "test" function that returns { passed: boolean }.`,
+          );
+        }
+        throw err;
+      }
+
       this.runtimes.set(pluginId, runtime)
 
       // Register manifest services in service registry
