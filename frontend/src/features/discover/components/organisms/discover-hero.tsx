@@ -15,17 +15,7 @@ const CONTENT_FADE = {
   transition: { duration: 0.5, ease: [0.25, 1, 0.5, 1] },
 } as const
 
-/**
- * Upscale images for hero-sized rendering.
- * TMDB: /w500/ -> /w1280/
- * IGDB: t_cover_big -> t_1080p
- */
-function heroImage(url: string): string {
-  return url
-    .replace(/\/w500\//, '/w1280/')
-    .replace(/t_cover_big/, 't_1080p')
-    .replace(/t_screenshot_big/, 't_1080p')
-}
+import { heroImage } from '@/lib/utils'
 
 /**
  * Compute the CSS transform and positioning for a card at a given slide offset.
