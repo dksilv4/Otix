@@ -1,6 +1,6 @@
 [project]
 name = "otix"
-version = "0.2.13"
+version = "0.2.14"
 description = "Otix media tracking and discovery platform"
 requires-python = ">=3.12"
 readme = "README.md"
@@ -75,7 +75,7 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration"]
 markers = [
     "integration: tests that require Docker services (db, redis)",
 ]
