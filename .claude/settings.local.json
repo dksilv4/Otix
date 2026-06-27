@@ -175,7 +175,8 @@
       "Bash(ls old-features/spotify/)",
       "Bash(.venv/Scripts/ruff.exe check *)",
       "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 7)",
-      "PowerShell(Copy-Item *)"
+      "PowerShell(Copy-Item *)",
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 9)"
     ]
   }
 }

@@ -43,6 +43,17 @@ export function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
+/** Upscale TMDB/IGDB image URLs for hero backdrop use. */
+export function heroImage(url: string): string {
+  return url
+    .replace(/\/w185\//, '/w1280/')
+    .replace(/\/w342\//, '/w1280/')
+    .replace(/\/w500\//, '/w1280/')
+    .replace(/\/w780\//, '/w1280/')
+    .replace(/t_cover_big/, 't_1080p')
+    .replace(/t_screenshot_big/, 't_1080p')
+}
+
 /** Human-readable OS name. Used in >1 place, so lives in utils. */
 export const osName: string = (() => {
   const plat = getDesktopPlatform().platform
