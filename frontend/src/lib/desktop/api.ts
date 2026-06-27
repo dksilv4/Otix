@@ -1,6 +1,6 @@
 /* ── Typed Desktop API — strongly-typed wrapper around window.desktopAPI ── */
 
-import type { LocalGame } from '@/old-features/game-scanner/types'
+import type { LocalGame } from '@/features/launcher/types'
 
 // ── API types ────────────────────────────────────────────────────────
 

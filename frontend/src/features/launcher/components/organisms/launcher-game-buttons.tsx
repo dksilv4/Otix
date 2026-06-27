@@ -5,7 +5,7 @@ import { LauncherPlayButton } from '@/features/launcher/components/organisms/lau
 import { OpenFolderButton } from '@/features/launcher/components/atoms/launcher-open-folder-button'
 import { PickExeButton } from '@/features/launcher/components/atoms/launcher-pick-exe-button'
 import { GameDetailButton } from '@/features/launcher/components/atoms/launcher-game-detail-button'
-import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-installer-modal'
+import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 
 export function LauncherGameButtons() {
   const {gameId} = useParams({ strict: false })

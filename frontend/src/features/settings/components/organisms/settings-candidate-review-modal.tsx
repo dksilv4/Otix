@@ -6,7 +6,7 @@ import {
   X, Import, Sparkles, ExternalLink, LogIn, AlertCircle,
   ChevronLeft, ChevronRight
 } from 'lucide-react'
-import type { LocalGame } from '@/old-features/game-scanner/types'
+import type { LocalGame } from '@/features/launcher/types'
 import { confirmMatch, rejectMatch } from '@/features/plugins/utils/matching'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useAuth } from '@/lib/providers/auth'

@@ -5,8 +5,8 @@ import { X, Search, Loader2, Check, Sparkles, Gamepad2, RefreshCw } from 'lucide
 import { useQueryClient } from '@tanstack/react-query'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useGameSuggestions } from '@/features/launcher/queries'
-import { useMatchLocalGames, useSyncLocalGames } from '@/old-features/game-scanner/queries'
-import { localGameKeys } from '@/old-features/game-scanner/game-queries'
+import { useMatchLocalGames, useSyncLocalGames } from '@/features/launcher/game-queries'
+import { localGameKeys } from '@/features/launcher/game-queries'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
 

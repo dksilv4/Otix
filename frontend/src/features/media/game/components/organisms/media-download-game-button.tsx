@@ -1,10 +1,10 @@
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
-import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-installer-modal'
+import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
 
-type LocalGame = import('@/old-features/game-scanner/types').LocalGame;
+type LocalGame = import('@/features/launcher/types').LocalGame;
 
 export function DownloadGameButton() {
   const state = useDownloadGame()

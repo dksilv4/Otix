@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react'
 import { useToast } from '@/old-features/ui/molecules/toast'
-import { useRejectSuggestion } from '@/old-features/game-scanner/game-queries'
+import { useRejectSuggestion } from '@/features/launcher/game-queries'
 
 interface Props {
   gameId: string

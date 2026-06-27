@@ -1,16 +1,16 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { createWrapper } from '@/test-utils'
 import { useGameUIState, useGameShelves } from '../use-launcher-data'
 
-// ── Module mocks — required for import resolution of use-launcher-data ──
+// -- Module mocks � required for import resolution of use-launcher-data --
 
 vi.mock('@/lib/desktop/api', () => ({
   getDesktopAPI: vi.fn(() => null),
   hasDesktopAPI: vi.fn(() => false),
 }))
 
-vi.mock('@/old-features/game-scanner/game-queries', () => ({
+vi.mock('@/features/launcher/game-queries', () => ({
   useLocalGames: vi.fn(() => ({ data: [], isLoading: false })),
   useAcceptSuggestion: vi.fn(() => ({ mutate: vi.fn() })),
   useRejectSuggestion: vi.fn(() => ({ mutate: vi.fn() })),
@@ -26,12 +26,12 @@ vi.mock('@/features/launcher/storage', () => ({
   fetchIsoPaths: vi.fn(() => Promise.resolve([])),
 }))
 
-// ── Import after mocks ───────────────────────────────────────────────
+// -- Import after mocks -----------------------------------------------
 
 import { usePopularGames } from '@/features/launcher/queries'
 import type { LocalGame, CatalogGame } from '@/features/launcher/types'
 
-// ── Fixtures ─────────────────────────────────────────────────────────
+// -- Fixtures ---------------------------------------------------------
 
 const mockLocalGames: LocalGame[] = [
   {
@@ -92,7 +92,7 @@ const mockPopular: CatalogGame[] = [
   },
 ]
 
-// ── Tests: useGameUIState ────────────────────────────────────────────
+// -- Tests: useGameUIState --------------------------------------------
 
 describe('useGameUIState', () => {
   it('returns default state values', () => {
@@ -162,7 +162,7 @@ describe('useGameUIState', () => {
   })
 })
 
-// ── Tests: useGameShelves ────────────────────────────────────────────
+// -- Tests: useGameShelves --------------------------------------------
 
 describe('useGameShelves', () => {
   beforeEach(() => {

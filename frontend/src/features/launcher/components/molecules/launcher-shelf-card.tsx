@@ -2,7 +2,7 @@ import {useState, memo} from "react"
 import {Check, X, Star, Play, Trash2, FolderOpen, Wrench} from "lucide-react"
 import {ContextMenuTrigger} from "@/features/_config/context-menu"
 import type {ContextMenuItemDef} from "@/features/_config/context-menu"
-import type {LocalGame} from "@/old-features/game-scanner/types"
+import type {LocalGame} from "@/features/launcher/types"
 import type {CatalogGame} from "../types"
 
 interface ShelfCardProps {
