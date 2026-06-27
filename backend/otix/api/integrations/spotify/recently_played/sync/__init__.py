@@ -14,7 +14,7 @@ import asyncio
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from otix.api._utils import get_current_user
+from otix.api.deps import get_current_user
 from otix.api.integrations.spotify import (
     SpotifySyncResponse,
     acquire_sync_lock,

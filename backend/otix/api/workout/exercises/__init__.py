@@ -4,7 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.schemas.workout import CategoryOut, ExerciseOut
 from otix.services.workout_service import WorkoutService
 

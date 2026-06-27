@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 interface DkSwitchProps {
   checked: boolean
-  onCheckedChange: (checked: boolean) => void
+  onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   label?: string
   className?: string
@@ -21,7 +21,7 @@ const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
           role="switch"
           aria-checked={checked}
           disabled={disabled}
-          onClick={() => onCheckedChange(!checked)}
+          onClick={() => onCheckedChange?.(!checked)}
           className={cn(
             'relative h-6 w-11 rounded-full',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--dk-ring-color)]',

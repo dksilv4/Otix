@@ -295,19 +295,29 @@ app.on('ready', async () => {
   });
 
   // Forward game detection events to renderer
+  // Guard with isDestroyed() — detector fires from timer callbacks
+  // that may outlive the window.
   gameDetector.on('game:started', (runningGame) => {
-    mainWindow?.webContents.send('game:started', runningGame);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:started', runningGame);
+    }
   });
   gameDetector.on('game:ended', (session) => {
-    mainWindow?.webContents.send('game:ended', session);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:ended', session);
+    }
   });
   gameDetector.on('game:fps', (snapshot) => {
-    mainWindow?.webContents.send('game:fps', snapshot);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:fps', snapshot);
+    }
   });
 
   // Forward PresentMon permission-needed events to renderer
   onFpsPermissionNeeded((evt) => {
-    mainWindow?.webContents.send('fps:permission-needed', evt);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('fps:permission-needed', evt);
+    }
   });
 
   // ── FPS permission fix (one-click Performance Log Users group) ──

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db, get_optional_user
+from otix.api.deps import get_db, get_optional_user
 from otix.api.discover.router_helpers import _cache_get, _cache_set
 from otix.domain.asset import MediaVideo
 from otix.domain.media import MediaItem

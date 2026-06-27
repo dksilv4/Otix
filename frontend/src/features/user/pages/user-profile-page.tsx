@@ -28,6 +28,7 @@ import { StreakDisplay } from '@/old-features/user/molecules/streak-display'
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
 import { UserProfileSkeleton } from '@user/components/organisms/user-profile-skeleton'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
 
 // ── Page ──
 
@@ -35,6 +36,7 @@ export function UserProfilePage() {
   const { username } = useParams({ from: '/u/$username' })
   const { user: currentUser } = useAuth()
   const queryClient = useQueryClient()
+  const { isDesktop } = useDesktopPlatform()
 
   const profileQuery = useQuery(userQueries.profile(username))
   const reviewsQuery = useQuery(userQueries.reviews(username))
@@ -60,12 +62,20 @@ export function UserProfilePage() {
   }, [profile, gamification.xpProgress])
 
   // Loading state
-  if (profileQuery.isLoading) return <UserProfileSkeleton />
+  if (profileQuery.isLoading) {
+    return (
+      <div className={`w-full h-screen overflow-hidden flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
+        <div className="mx-4">
+          <UserProfileSkeleton />
+        </div>
+      </div>
+    )
+  }
 
   // Error / missing
   if (profileQuery.isError || !profile) {
     return (
-      <div className="w-full">
+      <div className={`w-full h-screen overflow-hidden flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
         <div className="flex items-center justify-center min-h-[60vh] px-4">
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold mb-2">User not found</h1>
@@ -95,7 +105,7 @@ export function UserProfilePage() {
   ].join(', ')
 
   return (
-    <div className="w-full">
+    <div className={`w-full h-screen overflow-y-auto flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta
@@ -110,7 +120,7 @@ export function UserProfilePage() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mt-[4.5rem] mx-4 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-4 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
         style={{
           boxShadow: heroShadow,
           ['--hero-shadow-hover' as string]: heroShadowHover,
@@ -159,7 +169,7 @@ export function UserProfilePage() {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 px-6 pt-6 pb-10">
+        <div className="relative z-10 px-6 pt-6 pb-6">
           <div className="flex items-end gap-6 mb-4">
             {/* Avatar + XP ring */}
             <div
@@ -438,51 +448,51 @@ export function UserProfilePage() {
             </div>
           </div>
         </div>
-
-        {/* Platform links — floating below hero */}
-        {(profile.steam || profile.plex || profile.tmdbUsername) && (
-          <div
-            className="px-6 -mt-1 relative z-10"
-            style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
-          >
-            <div className="flex items-center gap-2">
-              {profile.steam && (
-                <a
-                  href={profile.steam.profileurl ?? '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
-                >
-                  <SteamIcon className="h-3.5 w-3.5" />
-                  Steam
-                </a>
-              )}
-              {profile.plex && (
-                <a
-                  href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
-                >
-                  <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
-                  Plex
-                </a>
-              )}
-              {profile.tmdbUsername && (
-                <a
-                  href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
-                >
-                  <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
-                  TMDb
-                </a>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Platform links — floating below hero */}
+      {(profile.steam || profile.plex || profile.tmdbUsername) && (
+        <div
+          className="mx-4 px-6 -mt-3 relative z-10"
+          style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
+        >
+          <div className="flex items-center gap-2">
+            {profile.steam && (
+              <a
+                href={profile.steam.profileurl ?? '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+              >
+                <SteamIcon className="h-3.5 w-3.5" />
+                Steam
+              </a>
+            )}
+            {profile.plex && (
+              <a
+                href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+              >
+                <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
+                Plex
+              </a>
+            )}
+            {profile.tmdbUsername && (
+              <a
+                href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+              >
+                <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
+                TMDb
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   )

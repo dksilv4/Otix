@@ -79,6 +79,13 @@ export interface PluginManifest {
   }
   services?: (string | PluginService)[]
   depends_on?: string[]
+  /** Shared database schema — tables auto-created on plugin enable */
+  db?: {
+    tables: Record<string, {
+      columns: Record<string, string>
+      indexes?: string[]
+    }>
+  }
 }
 
 // ── Runtime ──

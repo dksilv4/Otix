@@ -20,6 +20,7 @@ from otix.api.integrations.saves import router as saves_router
 from otix.api.integrations.spotify import router as spotify_router
 from otix.api.integrations.spotify.recently_played.sync import router as spotify_rp_sync_router
 from otix.api.integrations.spotify.sync import router as spotify_sync_router
+from otix.api.integrations.steam.owned_appids import router as steam_owned_appids_router
 from otix.api.integrations.steam.resolve_unmatched import router as steam_resolve_router
 from otix.api.integrations.steam.scan import router as steam_scan_router
 from otix.api.integrations.steam.wishlist.scan import router as steam_wishlist_scan_router
@@ -43,6 +44,7 @@ router.include_router(spotify_router)
 router.include_router(spotify_sync_router)
 router.include_router(spotify_rp_sync_router)
 
+router.include_router(steam_owned_appids_router)
 router.include_router(steam_scan_router)
 router.include_router(steam_wishlist_scan_router)
 router.include_router(steam_resolve_router)

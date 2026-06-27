@@ -13,14 +13,14 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import (
+from otix.api.deps import (
     get_current_admin_user,
     get_current_user,
     get_db,
     get_optional_user,
     resolve_country_code,
 )
-from otix.api.media._utils import SEARCH_CACHE_TTL, _cache_key
+from otix.api.media.embedding import SEARCH_CACHE_TTL, _cache_key
 from otix.domain.media import MediaItem
 from otix.domain.user import User
 from otix.infrastructure.celery import app

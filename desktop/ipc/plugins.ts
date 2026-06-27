@@ -83,14 +83,12 @@ export function registerPluginIPC(
     return await pluginManager.updatePlugin(id)
   })
 
-  ipcMain.handle('plugin:enable', async (event, id: string) => {
-    validateSender(event)
+  ipcMain.handle('plugin:enable', async (_event, id: string) => {
     assertString(id, 'id')
     return await pluginManager.enable(id)
   })
 
-  ipcMain.handle('plugin:disable', async (event, id: string) => {
-    validateSender(event)
+  ipcMain.handle('plugin:disable', async (_event, id: string) => {
     assertString(id, 'id')
     return await pluginManager.disable(id)
   })
@@ -103,8 +101,7 @@ export function registerPluginIPC(
     return await pluginManager.getAllPlugins()
   })
 
-  ipcMain.handle('plugin:set-config', async (event, pluginId: string, key: string, value: unknown) => {
-    validateSender(event)
+  ipcMain.handle('plugin:set-config', async (_event, pluginId: string, key: string, value: unknown) => {
     return await pluginManager.setConfig(pluginId, key, value)
   })
 
@@ -164,6 +161,15 @@ export function registerPluginIPC(
   // ── API base URL ──
   ipcMain.handle('plugin:get-api-base-url', async () => {
     return pluginManager.getApiBaseUrl()
+  })
+
+  // ── Free games ──
+  ipcMain.handle('free-games:get-all', async () => {
+    return await pluginManager.freeGames.getAll()
+  })
+
+  ipcMain.handle('free-games:refresh', async () => {
+    return await pluginManager.freeGames.refresh()
   })
 
   // ── OAuth window ──
@@ -241,19 +247,19 @@ export function wireOrchestratorEvents(
   orchestrator: GameScanOrchestrator,
   mainWindow: BrowserWindow,
 ): void {
-  orchestrator.on('game:matching:progress', (event: any) => {
+  orchestrator.on('match:progress', (event: any) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:matching:progress', event);
     }
   });
 
-  orchestrator.on('game:matching:complete', (event: any) => {
+  orchestrator.on('scan:complete', (event: any) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:matching:complete', event);
     }
   });
 
-  orchestrator.on('game:matching:cancelled', () => {
+  orchestrator.on('scan:cancelled', (_event: any) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:matching:cancelled');
     }

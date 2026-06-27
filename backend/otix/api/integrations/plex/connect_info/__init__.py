@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db
 from otix.domain.user import User
 
 router = APIRouter()

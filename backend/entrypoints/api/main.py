@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI) -> Any:
     # Pre-warm query embedding service in the background
     async def pre_warm_embedding():
         try:
-            from otix.api.media._utils import _embed_query
+            from otix.api.media.embedding import _embed_query
 
             logger.info("pre-warming embedding service...")
             await _embed_query("warmup")

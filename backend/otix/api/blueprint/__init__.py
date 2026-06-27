@@ -4,7 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db, get_optional_user
+from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.domain.user import User
 from otix.schemas.blueprint import BlueprintCreate, BlueprintDetailOut, BlueprintListOut, BlueprintUpdate
 from otix.services.blueprint_service import BlueprintService

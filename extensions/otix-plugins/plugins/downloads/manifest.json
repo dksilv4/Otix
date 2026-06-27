@@ -18,7 +18,8 @@
   },
   "slots": [
     { "location": "activity:panel", "label": "Downloads" },
-    { "location": "library:downloads", "label": "Downloads" }
+    { "location": "library:downloads", "label": "Downloads" },
+    { "location": "settings/downloads/main", "label": "Downloads Settings" }
   ],
   "entry": { "main": "main.js" }
 }

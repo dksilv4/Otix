@@ -18,7 +18,7 @@ export function SlidePanel({ children, onClose, isExiting, navOffset = '17rem' }
 
   return (
     <div
-      className="fixed inset-0 flex justify-end transition-opacity duration-200"
+      className="fixed inset-0 flex justify-end transition-opacity duration-200 z-50"
       style={{ opacity: visible ? 1 : 0 }}
     >
       {/* Backdrop */}
@@ -33,7 +33,7 @@ export function SlidePanel({ children, onClose, isExiting, navOffset = '17rem' }
 
       {/* Panel */}
       <div
-        className="w-full max-w-md my-8 mr-8 flex flex-col bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 ease-out"
+        className="w-full max-w-md my-8 mr-8 flex flex-col bg-white/5 backdrop-blur-xl rounded-3xl shadow-[var(--dk-shadow-glass)] overflow-hidden transition-all duration-300 ease-out"
         style={{
           transform: visible ? 'translateX(0)' : 'translateX(100%)',
         }}

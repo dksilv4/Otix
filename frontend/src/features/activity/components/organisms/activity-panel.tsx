@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { LayoutGrid } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/old-features/spotify/use-player'
@@ -41,6 +41,24 @@ export function ActivityModule({ open, onClose }: ActivityModuleProps) {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, togglePlay, onClose])
+
+  // Click outside handler
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('[data-now-playing-trigger]')) return
+    if (target.closest('[role="menu"]')) return
+    if (panelRef.current && !panelRef.current.contains(target)) {
+      onClose()
+    }
+  }, [onClose])
+
+  useEffect(() => {
+    if (!open) return
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [open, handleClickOutside])
 
   // Auto-scroll to top when panel opens
   useEffect(() => {

@@ -6,7 +6,7 @@ import uuid
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from otix.api._utils import get_current_user
+from otix.api.deps import get_current_user
 from otix.domain.user import User
 from otix.lib.sse import SseStreamConfig, create_sse_response
 from otix.lib.youtube_progress import get_latest_progress, get_stored_result

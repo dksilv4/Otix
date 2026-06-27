@@ -4,7 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
 from otix.schemas.auth import ResetPasswordRequest, ResetPasswordResponse
 from otix.services.auth.auth_service import AuthService

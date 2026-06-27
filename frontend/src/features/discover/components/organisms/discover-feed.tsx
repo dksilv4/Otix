@@ -1,5 +1,6 @@
 import { DiscoverHero } from './discover-hero'
 import { MediaSection } from './discover-media-section'
+import { FreeGamesSection } from './free-games-section'
 
 /**
  * Feed layout composing the hero carousel with personalized media sections.
@@ -34,6 +35,7 @@ export function DiscoverFeed() {
         mediaType="music"
         listType="popular"
       />
+      <FreeGamesSection />
     </div>
   )
 }

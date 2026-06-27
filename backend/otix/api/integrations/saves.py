@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db
 from otix.domain import GameSaveOfficialPath, GameSavePathSuggestion, MediaItem
 from otix.domain.user import User
 from otix.services.google_auth_service import get_user_google_access_token

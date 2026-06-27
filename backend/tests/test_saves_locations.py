@@ -34,7 +34,7 @@ def current_user():
 @pytest.fixture
 def app(mock_db, current_user):
     app = _make_app()
-    from otix.api import _utils as deps
+    from otix.api import deps
 
     async def override_get_db():
         try:

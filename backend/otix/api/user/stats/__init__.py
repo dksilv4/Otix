@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.domain.interaction import UserMediaInteraction
 from otix.domain.list import UserList
 from otix.domain.media import MediaItem

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_admin_user, get_current_user, get_db
+from otix.api.deps import get_current_admin_user, get_current_user, get_db
 from otix.domain.proposal import Proposal
 from otix.domain.user import User
 from otix.infrastructure.config import settings

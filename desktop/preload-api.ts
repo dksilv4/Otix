@@ -494,6 +494,8 @@ export interface IDesktopAPI {
     getSlotData: (location: string) => Promise<{pluginId: string; label: string; data: any}[]>;
     getPageSlotData: (pageId: string) => Promise<Record<string, {pluginId: string; label: string; data: any}[]>>;
     getPluginTabs: () => Promise<PluginSettingsTab[]>;
+    getFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
+    refreshFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
     fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;

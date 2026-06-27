@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 
 interface DkCheckboxProps {
   checked: boolean
-  onCheckedChange: (checked: boolean) => void
+  onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   label?: string
   className?: string
@@ -23,7 +23,7 @@ const DkCheckbox = forwardRef<HTMLInputElement, DkCheckboxProps>(
             type="checkbox"
             checked={checked}
             disabled={disabled}
-            onChange={(e) => onCheckedChange(e.target.checked)}
+            onChange={(e) => onCheckedChange?.(e.target.checked)}
             className="peer sr-only"
           />
           <span

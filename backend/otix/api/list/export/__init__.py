@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.services.list_service import ListService
 
 logger = structlog.get_logger()

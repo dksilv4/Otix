@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.domain.user import User
 from otix.schemas.karma import KarmaOut, KarmaTransactionOut
 from otix.services.karma_service import KarmaService

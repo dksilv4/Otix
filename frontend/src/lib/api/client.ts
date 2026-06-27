@@ -83,7 +83,7 @@ export const apiClient = axios.create({
   baseURL: BASE_URL,
   withCredentials: true, // for httpOnly refresh cookie
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15_000, // 15s — prevent forever-hanging requests (Docker/Win networking etc.)
+  timeout: 60_000, // 60s — grouped search cold path can take ~40s with embedding
 })
 
 // ── Request interceptor — camelCase → snake_case + auth token ─────────

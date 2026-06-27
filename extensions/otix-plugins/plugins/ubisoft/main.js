@@ -45,5 +45,5 @@ module.exports = {
     for (const p of UBI_PATHS) { if (await ctx.filesystem.access(p)) return { success: true, message: 'Ubisoft directory found' }; }
     return { success: true, message: 'No Ubisoft installation detected' };
   },
-  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'ubisoft', label: 'Ubisoft Connect', description: 'Scan local Ubisoft Connect game installations' }),
+  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'ubisoft', label: 'Ubisoft Connect', description: 'Scan local Ubisoft Connect game installations', mediaTypes: ['games'] }),
 };

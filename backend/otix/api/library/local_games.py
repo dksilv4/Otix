@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 
-from otix.api._utils import get_optional_user
+from otix.api.deps import get_optional_user
 from otix.domain.media import MediaItem, UserLocalGame
 from otix.domain.user import User
 from otix.infrastructure.database import async_session

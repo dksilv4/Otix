@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
 from otix.domain.user import User
 from otix.infrastructure.celery import app as celery_app

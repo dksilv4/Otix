@@ -8,9 +8,11 @@ import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
 import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
+import { initPluginsDb } from '../db/plugins-db'
 
 import { fetchAllRegistries } from './marketplace'
 import { SlotRegistry } from './slots'
+import { FreeGamesAggregator } from '../free-games/aggregator'
 import type {
   PluginManifest,
   PluginInfo,
@@ -53,6 +55,7 @@ export class PluginManager {
   private authToken = ''
   private slotRegistry: SlotRegistry = new SlotRegistry()
   public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
+  public readonly freeGames: FreeGamesAggregator
 
   constructor(
     extensionsDir: string,
@@ -63,6 +66,8 @@ export class PluginManager {
     this.extensionsDir = extensionsDir
     this.devExtensionsDir = devExtensionsDir
     this.pluginsRepo = pluginsRepo
+    this.freeGames = new FreeGamesAggregator(this)
+    initPluginsDb(_userDataPath)
   }
 
   // ── Per-plugin mutex ─────────────────────────────────────────────
@@ -721,10 +726,12 @@ export class PluginManager {
 
   setAuthToken(token: string): void {
     this.authToken = token
+    this.freeGames.setAuthToken(token)
   }
 
   setApiBaseUrl(url: string): void {
     this.apiBaseUrl = url
+    this.freeGames.setApiBaseUrl(url)
   }
 
   getApiBaseUrl(): string {

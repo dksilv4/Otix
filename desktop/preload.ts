@@ -276,6 +276,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     getSlotData: (location: string, context?: Record<string, unknown>) => ipcRenderer.invoke('plugin:get-slot-data', location, context),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
+    getFreeGames: () => ipcRenderer.invoke('free-games:get-all'),
+    refreshFreeGames: () => ipcRenderer.invoke('free-games:refresh'),
   },
 
   // ── Plugin game matching ──

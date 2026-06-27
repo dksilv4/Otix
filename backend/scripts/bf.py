@@ -1,6 +1,7 @@
-﻿import asyncio, json
+import asyncio, json
 from otix.infrastructure.database import get_session
 from otix.services.proposals_service import ProposalsService
+
 
 async def main():
     with open("/app/epic_matches.json") as f:
@@ -12,7 +13,8 @@ async def main():
         for m in matches:
             try:
                 proposal = await svc.create(
-                    proposal_type="match", target_type="media_item",
+                    proposal_type="match",
+                    target_type="media_item",
                     target_id=m["otix_media_id"],
                     payload={
                         "source": m["source"],
@@ -31,4 +33,6 @@ async def main():
             except Exception as e:
                 print("FAIL " + m["otix_title"] + ": " + str(e)[:80])
     print("Done: %d/%d" % (created, len(matches)))
+
+
 asyncio.run(main())
