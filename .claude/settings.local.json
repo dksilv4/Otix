@@ -160,7 +160,8 @@
       "Bash(.venv/Scripts/python.exe -c \"from otix.api.router import api_router; print\\(f'{len\\(api_router.routes\\)} routes'\\); [print\\(f'  {r.path} [{\", \".join\\(r.methods - {\"HEAD\"}\\)}]'\\) for r in api_router.routes if hasattr\\(r, 'path'\\) and hasattr\\(r, 'methods'\\)]\")",
       "Bash(Read-PSObject C:\\\\Users\\\\diogo\\\\.claude\\\\projects\\\\C--Users-diogo-OneDrive-Documents-GitHub-Otix\\\\4c9a8a36-1acb-46d1-b691-c7b6e833ad18\\\\tool-results\\\\brlx4daug.txt)",
       "Bash(Select-Object -First 200)",
-      "Bash(sort -t: -k1,1 -u)"
+      "Bash(sort -t: -k1,1 -u)",
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 6)"
     ]
   }
 }

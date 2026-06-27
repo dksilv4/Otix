@@ -20,7 +20,7 @@ export default defineConfig({
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
       '@search': path.resolve(__dirname, 'src/features/search'),
       '@settings': path.resolve(__dirname, 'src/features/settings'),
-      '@person': path.resolve(__dirname, 'src/old-features/person'),
+      '@person': path.resolve(__dirname, 'src/features/people'),
       '@library': path.resolve(__dirname, 'src/features/library'),
       '@list': path.resolve(__dirname, 'src/old-features/list'),
       '@people': path.resolve(__dirname, 'src/features/people'),

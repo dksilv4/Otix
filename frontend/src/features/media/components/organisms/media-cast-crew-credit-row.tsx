@@ -1,4 +1,4 @@
-import { PersonCard } from '@person/molecules/person-card'
+import { PeopleCard } from '@person/components/molecules/people-card'
 
 interface CreditItem {
   id: string
@@ -23,7 +23,7 @@ export function CreditRow({ label, items }: { label: string; items: CreditItem[]
       >
         {items.map((c) => (
           c.person ? (
-            <PersonCard
+            <PeopleCard
               key={c.id}
               id={c.person.id}
               name={c.person.name}
