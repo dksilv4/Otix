@@ -5,8 +5,8 @@ import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 
 // ponytail: client needs different fallback logic than lib/config (desktop vs web)
 export const CLIENT_API_BASE_URL = isDesktop()
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api')
-  : (import.meta.env.VITE_API_BASE_URL || '/api')
+  ? (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1')
+  : (import.meta.env.VITE_API_BASE_URL || '/api/v1')
 const BASE_URL = CLIENT_API_BASE_URL
 
 // ── Case conversion utilities ────────────────────────────────────────

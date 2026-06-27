@@ -8,7 +8,7 @@ export const IS_PROD = import.meta.env.PROD
 export const IS_TEST = import.meta.env.TEST
 
 // API Configuration
-export const API_BASE_URL = 'https://otix.app/api'
+export const API_BASE_URL = 'https://otix.app/api/v1'
 
 // Re-exports from config submodule
 export { ACCESS_TOKEN_KEY } from './config/config'

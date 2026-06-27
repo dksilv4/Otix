@@ -9,7 +9,7 @@ export function ProviderRow({ provider }: { provider: MediaWatchProvider }) {
 
   let url = provider.url
   if (url && url.startsWith('/api/')) {
-    const base = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0, -4) : API_BASE_URL
+    const base = API_BASE_URL.endsWith('/api/v1') ? API_BASE_URL.slice(0, -7) : API_BASE_URL
     url = `${base}${url}`
   }
 
