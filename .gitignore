@@ -10,6 +10,7 @@
 .idea/
 
 /backend/data/
+celerybeat-schedule
 /package-lock.json
 /.claude
 /.agents
@@ -21,3 +22,4 @@ desktop/nul
 /extensions
 /graphify-out
 /frontend/.superpowers
+.claude/settings.local.json
