@@ -51,9 +51,7 @@ async def add_to_list(
         raise
 
     if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     lst = await service.get_list(list_id)
     logger.info("item added to list", list_id=list_id, user_id=current_user.id, ip=ip)
@@ -105,9 +103,7 @@ async def remove_from_list(
         raise
 
     if not removed:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Item not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
 
     logger.info("item removed from list", list_id=list_id, user_id=current_user.id, ip=ip)
 
@@ -149,8 +145,6 @@ async def reorder_list(
         raise
 
     if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     logger.info("list reordered", list_id=list_id, user_id=current_user.id, ip=ip)

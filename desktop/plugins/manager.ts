@@ -624,6 +624,15 @@ export class PluginManager {
       }
     }
 
+    // Clean up registry rows for plugins that no longer exist on disk
+    const allRows = this.pluginsRepo.getAll()
+    for (const row of allRows) {
+      if (!seenIds.has(row.id)) {
+        this.pluginsRepo.delete(row.id)
+        console.log(`[PluginManager] Cleaned up obsolete plugin from DB: ${row.id}`)
+      }
+    }
+
     return discovered
   }
 

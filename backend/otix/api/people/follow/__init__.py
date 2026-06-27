@@ -34,18 +34,14 @@ async def follow_person(
     try:
         person = await db.get(Person, person_id)
         if person is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
 
         existing = await db.get(UserPersonFollow, (current_user.id, person_id))
         if not existing:
             follow = UserPersonFollow(user_id=current_user.id, person_id=person_id)
             db.add(follow)
 
-        count = await db.scalar(
-            select(func.count()).where(UserPersonFollow.person_id == person_id)
-        )
+        count = await db.scalar(select(func.count()).where(UserPersonFollow.person_id == person_id))
         await db.commit()
     except HTTPException:
         await db.rollback()
@@ -82,17 +78,13 @@ async def unfollow_person(
     try:
         person = await db.get(Person, person_id)
         if person is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
 
         follow = await db.get(UserPersonFollow, (current_user.id, person_id))
         if follow:
             await db.delete(follow)
 
-        count = await db.scalar(
-            select(func.count()).where(UserPersonFollow.person_id == person_id)
-        )
+        count = await db.scalar(select(func.count()).where(UserPersonFollow.person_id == person_id))
         await db.commit()
     except HTTPException:
         await db.rollback()

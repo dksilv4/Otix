@@ -170,7 +170,9 @@ async def update_subscription(
         raise
     except Exception:
         await db.rollback()
-        logger.exception("failed to update subscription", subscription_id=subscription_id, user_id=current_user.id, ip=ip)
+        logger.exception(
+            "failed to update subscription", subscription_id=subscription_id, user_id=current_user.id, ip=ip
+        )
         raise
 
     logger.info("subscription updated", subscription_id=subscription_id, user_id=current_user.id, ip=ip)
@@ -193,7 +195,9 @@ async def get_playlist_detail(
     try:
         playlist = await spotify.get_playlist(token, playlist_id)
     except Exception:
-        logger.exception("failed to get spotify playlist detail", playlist_id=playlist_id, user_id=current_user.id, ip=ip)
+        logger.exception(
+            "failed to get spotify playlist detail", playlist_id=playlist_id, user_id=current_user.id, ip=ip
+        )
         raise
 
     tracks = playlist.pop("items", {})
@@ -261,7 +265,14 @@ async def subscribe_playlist(
                 INSERT INTO spotify_playlist_subscriptions (id, user_id, playlist_id, playlist_name, playlist_owner, playlist_snapshot)
                 VALUES (:id, :uid, :pid, :name, :owner, :snapshot)
             """),
-            {"id": sub_id, "uid": current_user.id, "pid": playlist_id, "name": name, "owner": owner, "snapshot": snapshot},
+            {
+                "id": sub_id,
+                "uid": current_user.id,
+                "pid": playlist_id,
+                "name": name,
+                "owner": owner,
+                "snapshot": snapshot,
+            },
         )
         await db.commit()
     except HTTPException:
@@ -342,7 +353,9 @@ async def sync_playlist(
     await _require_spotify(current_user)
     try:
         result = await db.execute(
-            text("SELECT playlist_name FROM spotify_playlist_subscriptions WHERE user_id = :uid AND playlist_id = :pid"),
+            text(
+                "SELECT playlist_name FROM spotify_playlist_subscriptions WHERE user_id = :uid AND playlist_id = :pid"
+            ),
             {"uid": current_user.id, "pid": playlist_id},
         )
         row = result.one_or_none()

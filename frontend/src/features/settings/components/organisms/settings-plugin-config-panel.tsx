@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, type ChangeEvent, type ReactNode } fr
 import { X, Loader2, CheckCircle2, AlertCircle, Lock, Gamepad2, LogOut, RefreshCw, Puzzle } from 'lucide-react'
 import { SlidePanel } from '@/lib/modals'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
-import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
+import { DkSwitch } from '@/old-features/ui/atoms/switch'
 
 interface PluginConfigField {
   type: string

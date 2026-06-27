@@ -27,9 +27,7 @@ async def get_related_artists(
 
     try:
         person = await db.scalar(
-            sa_select(Person)
-            .options(joinedload(Person._external_ids))
-            .where(Person.id == person_id)
+            sa_select(Person).options(joinedload(Person._external_ids)).where(Person.id == person_id)
         )
     except Exception:
         await db.rollback()
@@ -37,9 +35,7 @@ async def get_related_artists(
         raise
 
     if not person:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
     if not person.spotify_artist_id:
         return {"artists": []}
 
@@ -62,11 +58,14 @@ async def get_related_artists(
             result = await db.execute(
                 sa_select(Person)
                 .options(joinedload(Person._external_ids))
-                .join(ExternalID, and_(
-                    ExternalID.entity_id == Person.id,
-                    ExternalID.entity_type == "person",
-                    ExternalID.provider == "spotify",
-                ))
+                .join(
+                    ExternalID,
+                    and_(
+                        ExternalID.entity_id == Person.id,
+                        ExternalID.entity_type == "person",
+                        ExternalID.provider == "spotify",
+                    ),
+                )
                 .where(ExternalID.external_id.in_(spotify_ids))
             )
             for p in result.unique().scalars().all():
@@ -87,12 +86,14 @@ async def get_related_artists(
         if ra_id and ra_id in existing:
             artists.append(existing[ra_id])
         else:
-            artists.append({
-                "id": None,
-                "spotify_artist_id": ra_id,
-                "name": ra.get("name"),
-                "image_url": images[0].get("url") if images else None,
-            })
+            artists.append(
+                {
+                    "id": None,
+                    "spotify_artist_id": ra_id,
+                    "name": ra.get("name"),
+                    "image_url": images[0].get("url") if images else None,
+                }
+            )
 
     logger.info("related artists fetched", person_id=person_id, count=len(artists), ip=ip)
     return {"artists": artists}

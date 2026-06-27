@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkButton } from '@/old-features/ui/atoms/button'
 import type { ParsedExercise } from '../lib/parser'
 import type { MatchResult } from '../lib/matcher'
 import './parse-preview.scss'

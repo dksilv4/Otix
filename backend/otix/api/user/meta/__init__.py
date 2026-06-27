@@ -32,9 +32,8 @@ async def search_users(
     try:
         query_embedding = await _embed_query(q)
 
-        fts_stmt = (
-            select(User.id)
-            .where(User.username.ilike(f"%{q}%"), User.is_active == True, User.embedding.isnot(None))
+        fts_stmt = select(User.id).where(
+            User.username.ilike(f"%{q}%"), User.is_active == True, User.embedding.isnot(None)
         )
         branches = [fts_stmt]
         if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
@@ -48,13 +47,10 @@ async def search_users(
 
         matched_ids = union(*branches).subquery()
 
-        stmt = (
-            select(User)
-            .where(
-                User.id.in_(select(matched_ids)),
-                User.is_active == True,
-                User.embedding.isnot(None),
-            )
+        stmt = select(User).where(
+            User.id.in_(select(matched_ids)),
+            User.is_active == True,
+            User.embedding.isnot(None),
         )
 
         sim = func.similarity(User.username, q)

@@ -59,9 +59,7 @@ async def get_person(
         raise
 
     if person is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
 
     logger.info("person fetched", person_id=person_id, user_id=user_id, ip=ip)
     return PersonDetail.model_validate(person)

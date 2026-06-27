@@ -1,6 +1,6 @@
 /* ── MatchGameButton — trigger catalog match for unmatched game ── */
 
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 import { useMatchLocalGames, useSyncLocalGames } from '@/old-features/game-scanner/queries'
 import type { LocalGame } from '@/old-features/games/types'
 

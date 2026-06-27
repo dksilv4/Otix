@@ -10,6 +10,7 @@ from otix.domain.user import User
 
 router = APIRouter()
 
+
 @router.get("/integrations/plex/connect-info/{media_item_id}")
 async def plex_connect_info(
     media_item_id: str,

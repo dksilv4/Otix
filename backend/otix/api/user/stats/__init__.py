@@ -41,20 +41,26 @@ async def get_user_stats(
             await db.execute(
                 select(
                     func.coalesce(
-                        select(func.count()).select_from(Review)
+                        select(func.count())
+                        .select_from(Review)
                         .where(Review.user_id == user.id, Review.content.isnot(None), Review.is_private == False)  # noqa: E712
-                        .scalar_subquery(), 0,
+                        .scalar_subquery(),
+                        0,
                     ).label("review_count"),
                     func.coalesce(
-                        select(func.count()).select_from(UserMediaInteraction)
+                        select(func.count())
+                        .select_from(UserMediaInteraction)
                         .where(UserMediaInteraction.user_id == user.id)
-                        .scalar_subquery(), 0,
+                        .scalar_subquery(),
+                        0,
                     ).label("interaction_count"),
                     func.coalesce(
-                        select(func.count()).select_from(Workout).where(Workout.user_id == user.id).scalar_subquery(), 0,
+                        select(func.count()).select_from(Workout).where(Workout.user_id == user.id).scalar_subquery(),
+                        0,
                     ).label("workout_count"),
                     func.coalesce(
-                        select(func.count()).select_from(UserList).where(UserList.user_id == user.id).scalar_subquery(), 0,
+                        select(func.count()).select_from(UserList).where(UserList.user_id == user.id).scalar_subquery(),
+                        0,
                     ).label("list_count"),
                 )
             )
@@ -107,8 +113,11 @@ async def get_user_top_rated(
         {
             "rating": {"score": rating.score, "created_at": rating.created_at.isoformat()},
             "media_item": {
-                "id": media.id, "title": media.title, "media_type": media.media_type,
-                "poster_url": media.poster_url, "release_year": media.release_year,
+                "id": media.id,
+                "title": media.title,
+                "media_type": media.media_type,
+                "poster_url": media.poster_url,
+                "release_year": media.release_year,
             },
         }
         for rating, media in rows
@@ -152,8 +161,11 @@ async def get_user_hall_of_fame(
     logger.info("hall of fame fetched", username=username, ip=ip)
     return [
         HallOfFameItem(
-            id=item.id, title=item.title, media_type=item.media_type,
-            poster_url=item.poster_url, release_year=item.release_date.year if item.release_date else None,
+            id=item.id,
+            title=item.title,
+            media_type=item.media_type,
+            poster_url=item.poster_url,
+            release_year=item.release_date.year if item.release_date else None,
         )
         for item in items
     ]
@@ -199,11 +211,15 @@ async def get_user_library_stats(
                 select(func.extract("dow", UserMediaInteraction.created_at))
                 .where(UserMediaInteraction.user_id == user.id)
                 .group_by(func.extract("dow", UserMediaInteraction.created_at))
-                .order_by(func.count().desc()).limit(1).scalar_subquery(),
+                .order_by(func.count().desc())
+                .limit(1)
+                .scalar_subquery(),
                 select(func.extract("hour", UserMediaInteraction.created_at))
                 .where(UserMediaInteraction.user_id == user.id)
                 .group_by(func.extract("hour", UserMediaInteraction.created_at))
-                .order_by(func.count().desc()).limit(1).scalar_subquery(),
+                .order_by(func.count().desc())
+                .limit(1)
+                .scalar_subquery(),
             )
         )
         day_val, hour_val = day_hour.one()

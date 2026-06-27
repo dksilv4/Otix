@@ -48,9 +48,7 @@ async def _patch_user_detail(
 
     # Launch all independent user-specific lookups concurrently
     interactions_future = asyncio.ensure_future(interaction_service.get_user_interactions(current_user.id, media_id))
-    youtube_future = asyncio.ensure_future(
-        interaction_service.get_youtube_liked_interaction(current_user.id, media_id)
-    )
+    youtube_future = asyncio.ensure_future(interaction_service.get_youtube_liked_interaction(current_user.id, media_id))
     steam_future: asyncio.Task | None = None
     if result.game:
         steam_future = asyncio.ensure_future(get_steam_playtime(db, current_user.id, media_id))

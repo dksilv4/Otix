@@ -1,11 +1,8 @@
 import { EventEmitter } from 'events'
 import * as os from 'os'
 import * as path from 'path'
-import * as fs from 'fs'
 
-// Use the real OS tmpdir so better-sqlite3 can create DB files
 const tmpBase = path.join(os.tmpdir(), 'otix-test')
-fs.mkdirSync(tmpBase, { recursive: true })
 
 const mockApp = new EventEmitter() as any
 mockApp.getPath = (name: string): string => {

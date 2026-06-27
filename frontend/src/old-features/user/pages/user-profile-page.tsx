@@ -18,8 +18,8 @@ import {
     Trophy
 } from 'lucide-react'
 
-import {DkAvatar} from '@/old-features/dk-ui/atoms/avatar'
-import {DkButton} from '@/old-features/dk-ui/atoms/button'
+import {DkAvatar} from '@/old-features/ui/atoms/avatar'
+import {DkButton} from '@/old-features/ui/atoms/button'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'

@@ -1,7 +1,7 @@
 /* ── RejectSuggestionButton — dismiss match suggestion ── */
 
 import { X } from 'lucide-react'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 import { useRejectSuggestion } from '@/old-features/game-scanner/game-queries'
 
 interface Props {

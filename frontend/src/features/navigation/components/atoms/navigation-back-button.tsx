@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "@tanstack/react-router"
-import { DkButton } from "@dk-ui/atoms/button"
+import { DkButton } from "@ui/atoms/button"
 
 /** Atom button to navigate back in browser history. */
 export function BackButton() {

@@ -168,6 +168,15 @@ export interface OtixEvents {
   'plugin:disabled': { pluginId: string }
   'plugin:slot-suspended': { pluginId: string; location: string }
   'scan:progress': { currentDir: string; progress: number; pluginId?: string }   // NEW
+
+  // ── Game lifecycle (emitted by GameDetector, consumed by plugins) ──
+  'game:started': { gameId: string; gameTitle: string; pid: number; launchedByOtix: boolean }
+  'game:ended': { gameId: string; gameTitle: string; startTime: number; endTime: number; launchedByOtix: boolean }
+
+  // ── FPS capture (emitted by fps-capture plugin) ──
+  'fps:live': { currentFps: number; frameCount: number; captureDurationMs: number; gameId: string }
+  'fps:stats': { gameId: string; fpsStats: { avgFps: number; onePercentLow: number; zeroPointOnePercentLow: number; maxFps: number; minFps: number; totalFrames: number; captureDurationMs: number } | null }
+  'fps:permission-needed': { pid: number; gameId: string }
 }
 
 export type OtixEventName = keyof OtixEvents

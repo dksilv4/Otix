@@ -11,7 +11,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
+      '@ui': path.resolve(__dirname, 'src/old-features/ui'),
       '@auth': path.resolve(__dirname, 'src/features/auth'),
       '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@media': path.resolve(__dirname, 'src/features/media'),
@@ -26,7 +26,6 @@ export default defineConfig({
       '@people': path.resolve(__dirname, 'src/features/people'),
       '@company': path.resolve(__dirname, 'src/features/company'),
       '@user': path.resolve(__dirname, 'src/features/user'),
-      '@dk-ui': path.resolve(__dirname, 'src/old-features/dk-ui'),
       '@desktop': path.resolve(__dirname, '../desktop'),
     },
   },

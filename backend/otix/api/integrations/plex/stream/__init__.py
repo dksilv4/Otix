@@ -11,6 +11,7 @@ from otix.domain.user import User
 
 router = APIRouter()
 
+
 @router.get("/integrations/plex/stream/{rating_key}")
 async def plex_stream(
     rating_key: str,

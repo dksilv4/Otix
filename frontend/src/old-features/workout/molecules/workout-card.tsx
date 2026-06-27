@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { Trash2 } from 'lucide-react'
-import { DkCard } from '@/old-features/dk-ui/molecules/card'
-import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkCard } from '@/old-features/ui/molecules/card'
+import { DkButton } from '@/old-features/ui/atoms/button'
 import type { WorkoutListOut } from '../workout-queries'
 import './workout-card.scss'
 

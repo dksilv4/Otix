@@ -14,7 +14,7 @@ export type FeatureName =
   | 'dashboard'
   | 'discover'
   | 'discover:search'
-  | 'dk-ui'
+  | 'ui'
   | 'downloads'
   | 'experiments'
   | 'game-scanner'

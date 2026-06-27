@@ -78,10 +78,7 @@ async def get_plex_library_tab(
     elif sort_by == "year":
         query = query.order_by(MediaItem.release_date.desc().nulls_last(), UserPlexItem.id)
     else:
-        query = query.order_by(
-            UserPlexItem.last_viewed_at.desc().nulls_last(),
-            UserPlexItem.id
-        )
+        query = query.order_by(UserPlexItem.last_viewed_at.desc().nulls_last(), UserPlexItem.id)
 
     if media_type:
         query = query.where(MediaItem.media_type == media_type)

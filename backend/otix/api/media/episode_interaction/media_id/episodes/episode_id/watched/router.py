@@ -10,8 +10,10 @@ from otix.services.episode_interaction_service import EpisodeInteractionService
 
 router = APIRouter()
 
+
 def _episode_interaction_out(ep_id: str, watched: bool, watched_at: str | None) -> EpisodeInteractionOut:
     return EpisodeInteractionOut(episode_id=ep_id, watched=watched, watched_at=watched_at)
+
 
 @router.put("/{media_type}/{media_id}/episodes/{episode_id}/watched", response_model=EpisodeToggleResponse)
 async def mark_episode_watched(
@@ -29,16 +31,13 @@ async def mark_episode_watched(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    await service.set_episode_watched(
-        user_id=current_user.id, episode_id=episode_id
-    )
-    progress = await service.get_show_progress(
-        user_id=current_user.id, show_id=media_id
-    )
+    await service.set_episode_watched(user_id=current_user.id, episode_id=episode_id)
+    progress = await service.get_show_progress(user_id=current_user.id, show_id=media_id)
     return EpisodeToggleResponse(
         interaction=_episode_interaction_out(episode_id, True, None),
         show_progress=ShowProgressOut(**progress),
     )
+
 
 @router.delete("/{media_type}/{media_id}/episodes/{episode_id}/watched", status_code=status.HTTP_204_NO_CONTENT)
 async def unmark_episode_watched(
@@ -55,9 +54,7 @@ async def unmark_episode_watched(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    deleted = await service.remove_episode_watched(
-        user_id=current_user.id, episode_id=episode_id
-    )
+    deleted = await service.remove_episode_watched(user_id=current_user.id, episode_id=episode_id)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

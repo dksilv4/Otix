@@ -1,5 +1,5 @@
 // TODO: Review this file
-import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
+import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
 import { cn } from '@/lib/utils'
 import './search-sort-bar.scss'
 

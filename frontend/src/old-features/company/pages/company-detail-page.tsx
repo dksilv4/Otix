@@ -144,7 +144,7 @@ function useUnrateCompany(id: string) {
     },
   })
 }
-import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
+import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
 import { SORT_OPTIONS } from '@/old-features/discover/molecules/search-sort-bar'
 import { MediaCard } from '@ui/molecules/media-card'
 import { MediaGrid } from '@ui/molecules/media-grid'

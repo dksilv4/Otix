@@ -22,7 +22,7 @@ describe('apiClient', () => {
   })
 
   it('adds bearer tokens and converts request and response keys', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     const seenConfigs: InternalAxiosRequestConfig[] = []
     const adapter: AxiosAdapter = async (config) => {
       seenConfigs.push(config)
@@ -54,7 +54,7 @@ describe('apiClient', () => {
   })
 
   it('leaves FormData payloads untouched and lets the browser set multipart headers', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     const form = new FormData()
     form.append('avatar', new Blob(['x']), 'avatar.txt')
     let seenConfig: InternalAxiosRequestConfig | undefined
@@ -72,7 +72,7 @@ describe('apiClient', () => {
   })
 
   it('does not camelize non-json response payloads', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => ({
       data: { still_snake: true },
       status: 200,
@@ -89,7 +89,7 @@ describe('apiClient', () => {
   })
 
   it('normalizes FastAPI 422 validation errors in error response', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       const err = new Error('Request failed with status code 422') as unknown as {
         response: { data: { detail: Array<{ loc: string[]; msg: string }> }; status: number; statusText: string; headers: Record<string, string>; config: InternalAxiosRequestConfig }
@@ -122,7 +122,7 @@ describe('apiClient', () => {
   })
 
   it('triggers token refresh flow on 401 error', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     let requestCount = 0
     const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
       requestCount++
@@ -154,7 +154,7 @@ describe('apiClient', () => {
   })
 
   it('handles token refresh failure', async () => {
-    const { apiClient } = await import('./api-client')
+    const { apiClient } = await import('./client')
     let sessionExpiredDispatched = false
     window.addEventListener('auth:sessionExpired', () => {
       sessionExpiredDispatched = true

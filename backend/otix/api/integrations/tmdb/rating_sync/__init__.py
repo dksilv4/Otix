@@ -14,6 +14,7 @@ from otix.services.tmdb_rating_service import run_tmdb_rating_sync
 
 router = APIRouter()
 
+
 @router.post("/integrations/tmdb/rating-sync", response_model=TmdbRatingSyncResponse)
 async def tmdb_rating_sync(
     body: TmdbRatingSyncRequest,

@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { LogOut, User, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@auth'
-import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
+import { DkAvatar } from '@/old-features/ui/atoms/avatar'
 import { usePanelContext } from '@activity/providers/panel-context'
 
 /** User avatar trigger with dropdown containing profile link and sign out. */

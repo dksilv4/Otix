@@ -8,7 +8,7 @@ import { useModal, SlidePanel } from '@/lib/modals'
 import { PluginConfigPanel } from './settings-plugin-config-panel'
 import type { PluginInfo } from '@/features/settings/types/plugins'
 import { cn } from '@/lib/utils'
-import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
+import { DkSwitch } from '@/old-features/ui/atoms/switch'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -519,9 +519,8 @@ function ConnectedCard({
           {!isError && (
             <DkSwitch
               checked={isConnected}
-              onChange={onToggle}
+              onCheckedChange={onToggle}
               disabled={toggling}
-              size="sm"
             />
           )}
         </div>

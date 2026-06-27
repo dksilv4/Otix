@@ -23,6 +23,7 @@ router = APIRouter()
 
 # ── Request schema ─────────────────────────────────────────────────────
 
+
 class FreeGameRef(BaseModel):
     store: str
     external_id: str  # Steam app ID, Epic namespace:offerId, etc.
@@ -39,6 +40,7 @@ class FreeGamesMatchRequest(BaseModel):
 
 
 # ── Response schema ────────────────────────────────────────────────────
+
 
 class FreeGameResult(BaseModel):
     media_item: MediaItemDetail | None = None
@@ -59,6 +61,7 @@ class FreeGamesMatchResponse(BaseModel):
 
 # ── Matching logic ─────────────────────────────────────────────────────
 
+
 async def _match_one(
     db: AsyncSession,
     ref: FreeGameRef,
@@ -66,21 +69,19 @@ async def _match_one(
     """Match a single free game ref to an Otix media item."""
     # Try exact external ID match
     result = await db.execute(
-        select(ExternalID).where(
+        select(ExternalID)
+        .where(
             ExternalID.provider == ref.store,
             ExternalID.entity_type == "media_item",
             ExternalID.external_id == ref.external_id,
-        ).limit(1)
+        )
+        .limit(1)
     )
     ext = result.scalar_one_or_none()
 
     if ext is not None:
         # Load full media item
-        media_result = await db.execute(
-            select(MediaItem)
-            .where(MediaItem.id == ext.entity_id)
-            .limit(1)
-        )
+        media_result = await db.execute(select(MediaItem).where(MediaItem.id == ext.entity_id).limit(1))
         media = media_result.scalar_one_or_none()
 
         if media is not None:
@@ -115,6 +116,7 @@ async def _match_one(
 
 # ── Endpoint ───────────────────────────────────────────────────────────
 
+
 @router.post("/free-games/match", response_model=FreeGamesMatchResponse)
 async def match_free_games(
     body: FreeGamesMatchRequest,
@@ -131,6 +133,7 @@ async def match_free_games(
 
     # Run matches concurrently
     import asyncio
+
     tasks = [_match_one(db, ref) for ref in body.games]
     items = await asyncio.gather(*tasks)
 

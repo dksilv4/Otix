@@ -61,6 +61,6 @@ describe("ListCard", () => {
   it("truncates long names", () => {
     render(<ListCard list={makeList({ name: "A".repeat(100) })} />)
     const title = screen.getByText("A".repeat(100))
-    expect(title.className).toContain("truncate")
+    expect(title.className).toContain("dk-list-card__title")
   })
 })

@@ -46,5 +46,7 @@ async def get_friends_activity(
 
     all_events.sort(key=lambda e: e["timestamp"], reverse=True)
 
-    logger.info("friends activity fetched", user_id=user_id, friend_count=len(friends), event_count=len(all_events), ip=ip)
+    logger.info(
+        "friends activity fetched", user_id=user_id, friend_count=len(friends), event_count=len(all_events), ip=ip
+    )
     return all_events[:limit]

@@ -3,8 +3,8 @@ import { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Navigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
-import { showXPToast } from '@/old-features/dk-ui/atoms/xp-toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
+import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
 import {
   useAdminAllProposals,
   useApproveAnyProposal,

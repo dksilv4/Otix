@@ -2,7 +2,7 @@
 import { Link } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { BarChart3, Pencil, FlaskConical, Droplets, ArrowRight, Calendar } from 'lucide-react'
-import { DkBadge } from '@/old-features/dk-ui/atoms/badge'
+import { DkBadge } from '@/old-features/ui/atoms/badge'
 import { ADMIN_BLOG_POSTS } from '../admin-blog.types'
 import { EXPERIMENTS } from '@/old-features/experiments/experiments.types'
 

@@ -11,7 +11,7 @@ import {SpotifyOAuthButton} from '@auth/components/molecules/auth-oauth-spotify-
 import {PlexOAuthButton} from '@auth/components/molecules/auth-oauth-plex-button'
 import {TmdbOAuthButton} from '@auth/components/molecules/auth-oauth-tmdb-button'
 import {SteamOAuthButton} from '@auth/components/molecules/auth-oauth-steam-button'
-import {Logo} from '@/old-features/dk-ui/atoms/logo'
+import {Logo} from '@/old-features/ui/atoms/logo'
 import {AuthBackButton} from '@auth/components/molecules/auth-back-button'
 
 export function AuthPage() {

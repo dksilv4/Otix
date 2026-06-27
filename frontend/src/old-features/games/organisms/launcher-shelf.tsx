@@ -2,7 +2,7 @@
 
 import {useState} from 'react'
 import {cn} from '@/lib/utils'
-import {MediaCard} from '@/old-features/dk-ui/molecules/media-card'
+import {MediaCard} from '@/old-features/ui/molecules/media-card'
 import {usePopularGames} from '@/old-features/games/games-queries'
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
 

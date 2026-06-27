@@ -21,7 +21,9 @@ def _mock_db():
     session = AsyncMock()
     session.scalars = AsyncMock(return_value=[])
     session.scalar = AsyncMock(return_value=None)
-    session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+    )
     session.get = AsyncMock(return_value=None)
     return session
 
@@ -133,9 +135,9 @@ async def test_trending_trailers_accepts_limit(app):
         ("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s", "dQw4w9WgXcQ"),
         ("dQw4w9WgXcQ", "dQw4w9WgXcQ"),  # already an ID
         # New edge cases
-        (None, ""),                         # None input
-        ("", ""),                           # empty string
-        ("   ", ""),                        # whitespace-only → falsy
+        (None, ""),  # None input
+        ("", ""),  # empty string
+        ("   ", ""),  # whitespace-only → falsy
         ("https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"),  # embed URL
         ("https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1", "dQw4w9WgXcQ"),  # embed with params
         ("https://vimeo.com/123456789", ""),  # non-YouTube URL

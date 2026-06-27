@@ -10,6 +10,7 @@ from otix.services.episode_interaction_service import EpisodeInteractionService
 
 router = APIRouter()
 
+
 @router.put("/{media_type}/{media_id}/show-watched", response_model=BulkMarkResponse)
 async def mark_show_watched(
     media_type: str,
@@ -22,10 +23,9 @@ async def mark_show_watched(
         await service.get_show(media_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    count = await service.set_show_watched(
-        user_id=current_user.id, show_id=media_id
-    )
+    count = await service.set_show_watched(user_id=current_user.id, show_id=media_id)
     return BulkMarkResponse(episodes_marked=count)
+
 
 @router.delete("/{media_type}/{media_id}/show-watched", response_model=BulkMarkResponse)
 async def unmark_show_watched(
@@ -39,7 +39,5 @@ async def unmark_show_watched(
         await service.get_show(media_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    count = await service.remove_show_watched(
-        user_id=current_user.id, show_id=media_id
-    )
+    count = await service.remove_show_watched(user_id=current_user.id, show_id=media_id)
     return BulkMarkResponse(episodes_marked=count)

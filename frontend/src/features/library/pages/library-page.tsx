@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Loader2, Film, List, Download, ChevronDown, CheckCircle2, XCircle, Clock, ArchiveX } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Loader2, Film, List, Download, ChevronDown, CheckCircle2, XCircle, Clock, ArchiveX, Tv, Music } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ListsTabContent } from '@/old-features/library/molecules/lists-tab-content'
 import { isDesktop } from '@/lib/desktop/api'
@@ -9,6 +9,8 @@ type Tab = { id: string; label: string; icon: React.ComponentType<{ className?: 
 const TABS: Tab[] = [
   { id: 'lists', label: 'My Lists', icon: List },
   { id: 'radarr', label: 'Radarr', icon: Film },
+  { id: 'sonarr', label: 'Sonarr', icon: Tv },
+  { id: 'lidarr', label: 'Lidarr', icon: Music },
   { id: 'downloads', label: 'Downloads', icon: Download },
 ]
 
@@ -53,6 +55,8 @@ export function LibraryPage() {
       {/* Tab content */}
       {activeTab === 'lists' && <ListsTab />}
       {activeTab === 'radarr' && <RadarrTab />}
+      {activeTab === 'sonarr' && <SonarrTab />}
+      {activeTab === 'lidarr' && <LidarrTab />}
       {activeTab === 'downloads' && <DownloadsTab />}
     </div>
   )
@@ -66,55 +70,77 @@ function ListsTab() {
   )
 }
 
-// ── Radarr tab (slot-driven from plugin) ──
+// ── Arr tab helper (shares logic between Radarr, Sonarr, Lidarr) ──
 
-interface Movie {
+interface ArrItem {
   id: number
   title: string
   year?: number
   images?: Array<{ coverType: string; remoteUrl: string }>
 }
 
-interface RadarrLibrary {
+interface ArrLibrary {
   name: string
   url: string
   count: number
-  movies?: Movie[]
+  movies?: ArrItem[]
+  series?: ArrItem[]
+  albums?: ArrItem[]
+  items?: ArrItem[]
   error?: string
 }
 
-function RadarrTab() {
+function ArrTab({
+  pluginId,
+  label,
+  icon: Icon,
+}: {
+  pluginId: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [libraries, setLibraries] = useState<RadarrLibrary[]>([])
+  const [libraries, setLibraries] = useState<ArrLibrary[]>([])
   const [expandedInstance, setExpandedInstance] = useState<string | null>(null)
 
-  async function loadLibraries() {
-    setLoading(true)
-    setError(null)
+  const loadLibraries = useCallback(async () => {
     try {
-      const api = (window as any).desktopAPI?.plugin
+      const api = (window as Window & {
+        desktopAPI?: {
+          plugin?: {
+            callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
+          }
+        }
+      }).desktopAPI?.plugin
+
       if (!api?.callData) {
-        setError('Radarr libraries are only available in the desktop app.')
-        setLoading(false)
+        Promise.resolve().then(() => {
+          setError(`${label} libraries are only available in the desktop app.`)
+          setLoading(false)
+        })
         return
       }
-      const data = await api.callData('otix-radarr', 'getAllLibraries') as RadarrLibrary[]
+      const data = await api.callData(pluginId, 'getAllLibraries') as ArrLibrary[]
       setLibraries(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load Radarr libraries')
+      setError(err instanceof Error ? err.message : `Failed to load ${label} libraries`)
     } finally {
       setLoading(false)
     }
-  }
+  }, [pluginId, label])
 
-  useEffect(() => { loadLibraries() }, [])
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      loadLibraries()
+    })
+  }, [loadLibraries])
 
   if (loading) {
     return (
       <div className="flex items-center gap-3 text-white/40">
         <Loader2 className="h-5 w-5 animate-spin" />
-        Loading Radarr libraries...
+        Loading {label} libraries...
       </div>
     )
   }
@@ -131,62 +157,77 @@ function RadarrTab() {
   if (libraries.length === 0) {
     return (
       <div className="p-12 rounded-2xl bg-white/5 border border-white/5 text-center">
-        <Film className="h-10 w-10 text-white/10 mx-auto mb-3" />
-        <h3 className="text-white/60 font-medium mb-1">No Radarr instances configured</h3>
-        <p className="text-white/30 text-sm">Configure a Radarr plugin instance to see your movie library here.</p>
+        <Icon className="h-10 w-10 text-white/10 mx-auto mb-3" />
+        <h3 className="text-white/60 font-medium mb-1">No {label} instances configured</h3>
+        <p className="text-white/30 text-sm">Configure a {label} plugin instance to see your library here.</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      {libraries.map((lib, idx) => (
-        <div key={idx} className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
-          <button
-            onClick={() => setExpandedInstance(expandedInstance === lib.name ? null : lib.name)}
-            className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                <Film className="h-5 w-5" style={{ color: 'var(--primary)' }} />
+      {libraries.map((lib, idx) => {
+        const items = lib.movies || lib.series || lib.albums || lib.items || []
+        return (
+          <div key={idx} className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
+            <button
+              onClick={() => setExpandedInstance(expandedInstance === lib.name ? null : lib.name)}
+              className="w-full flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                  <Icon className="h-5 w-5" style={{ color: 'var(--primary)' }} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-sm font-medium text-white">{lib.name}</h3>
+                  <p className="text-xs text-white/30">{lib.url} &middot; {lib.count} items</p>
+                </div>
               </div>
-              <div className="text-left">
-                <h3 className="text-sm font-medium text-white">{lib.name}</h3>
-                <p className="text-xs text-white/30">{lib.url} &middot; {lib.count} movies</p>
-              </div>
-            </div>
-            {lib.error && <span className="text-xs text-red-400">{lib.error}</span>}
-            <ChevronDown className={cn('h-4 w-4 text-white/30 transition-transform', expandedInstance === lib.name && 'rotate-180')} />
-          </button>
+              {lib.error && <span className="text-xs text-red-400">{lib.error}</span>}
+              <ChevronDown className={cn('h-4 w-4 text-white/30 transition-transform', expandedInstance === lib.name && 'rotate-180')} />
+            </button>
 
-          {expandedInstance === lib.name && !lib.error && (
-            <div className="px-4 pb-4">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {lib.movies?.map((movie) => (
-                  <div key={movie.id} className="rounded-xl overflow-hidden bg-white/5 hover:bg-white/10 transition-colors">
-                    {movie.images?.[0]?.remoteUrl ? (
-                      <img src={movie.images[0].remoteUrl} alt={movie.title} className="w-full aspect-[2/3] object-cover" loading="lazy" />
-                    ) : (
-                      <div className="w-full aspect-[2/3] flex items-center justify-center bg-white/5">
-                        <Film className="h-8 w-8 text-white/10" />
+            {expandedInstance === lib.name && !lib.error && (
+              <div className="px-4 pb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {items.map((item) => (
+                    <div key={item.id} className="rounded-xl overflow-hidden bg-white/5 hover:bg-white/10 transition-colors">
+                      {item.images?.[0]?.remoteUrl ? (
+                        <img src={item.images[0].remoteUrl} alt={item.title} className="w-full aspect-[2/3] object-cover" loading="lazy" />
+                      ) : (
+                        <div className="w-full aspect-[2/3] flex items-center justify-center bg-white/5">
+                          <Icon className="h-8 w-8 text-white/10" />
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <p className="text-xs text-white/80 font-medium truncate">{item.title}</p>
+                        {item.year && <p className="text-[0.625rem] text-white/30">{item.year}</p>}
                       </div>
-                    )}
-                    <div className="p-2">
-                      <p className="text-xs text-white/80 font-medium truncate">{movie.title}</p>
-                      {movie.year && <p className="text-[0.625rem] text-white/30">{movie.year}</p>}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {items.length === 0 && (
+                  <p className="text-sm text-white/30 text-center py-8">No items in this library.</p>
+                )}
               </div>
-              {(!lib.movies || lib.movies.length === 0) && (
-                <p className="text-sm text-white/30 text-center py-8">No movies in this library.</p>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        )
+      })}
     </div>
   )
+}
+
+function RadarrTab() {
+  return <ArrTab pluginId="otix-radarr" label="Radarr" icon={Film} />
+}
+
+function SonarrTab() {
+  return <ArrTab pluginId="otix-sonarr" label="Sonarr" icon={Tv} />
+}
+
+function LidarrTab() {
+  return <ArrTab pluginId="otix-lidarr" label="Lidarr" icon={Music} />
 }
 
 // ── Downloads tab (slot-driven from plugin) ──
@@ -202,12 +243,20 @@ function DownloadsTab() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([])
   const desktop = isDesktop()
 
-  async function loadDownloads() {
-    setLoading(true)
+  const loadDownloads = useCallback(async () => {
     try {
-      const api = (window as any).desktopAPI?.plugin
+      const api = (window as Window & {
+        desktopAPI?: {
+          plugin?: {
+            callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
+          }
+        }
+      }).desktopAPI?.plugin
+
       if (!api?.callData) {
-        setLoading(false)
+        Promise.resolve().then(() => {
+          setLoading(false)
+        })
         return
       }
       const data = await api.callData('downloads', 'get-downloads') as DownloadItem[]
@@ -217,9 +266,15 @@ function DownloadsTab() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { if (desktop) loadDownloads() }, [desktop])
+  useEffect(() => {
+    if (desktop) {
+      Promise.resolve().then(() => {
+        loadDownloads()
+      })
+    }
+  }, [desktop, loadDownloads])
 
   if (!desktop) {
     return (

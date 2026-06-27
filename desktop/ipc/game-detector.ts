@@ -2,9 +2,13 @@ import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
 import { GameDetector } from '../game/detector';
+import type { PluginManager } from '../plugins/manager';
 import type { LocalGame } from '../preload-api';
 
-export function registerGameDetectorIPC(gameDetector: GameDetector | null): void {
+export function registerGameDetectorIPC(
+  gameDetector: GameDetector | null,
+  pluginManager?: PluginManager,
+): void {
   // Launch game — accepts full LocalGame for tracking
   ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
     try {
@@ -37,11 +41,19 @@ export function registerGameDetectorIPC(gameDetector: GameDetector | null): void
     return gameDetector?.getRunningGame() ?? null;
   });
 
-  ipcMain.handle('game:get-recent-sessions', () => {
+  ipcMain.handle('game:get-recent-sessions', async () => {
+    if (pluginManager) {
+      try { return await pluginManager.callPluginData('fps-capture', 'getRecentSessions', 20); }
+      catch { /* fall back to detector */ }
+    }
     return gameDetector?.getRecentSessions() ?? [];
   });
 
-  ipcMain.handle('game:get-playtime', (_event, gameId: string) => {
+  ipcMain.handle('game:get-playtime', async (_event, gameId: string) => {
+    if (pluginManager) {
+      try { return await pluginManager.callPluginData('fps-capture', 'getPlaytimeForGame', gameId); }
+      catch { /* fall back to detector */ }
+    }
     return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
   });
 

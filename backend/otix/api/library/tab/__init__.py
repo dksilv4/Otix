@@ -63,7 +63,9 @@ async def get_library_tab(
 
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
-    auto_state = {t: t == interaction_type for t in ("liked", "watchlisted", "watched", "played", "started", "listened", "owned")}
+    auto_state = {
+        t: t == interaction_type for t in ("liked", "watchlisted", "watched", "played", "started", "listened", "owned")
+    }
     for summary in summaries:
         summary.user_interactions = UserInteractionState(**auto_state)
 

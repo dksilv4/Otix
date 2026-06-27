@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle, Eye } from 'lucide-react'
-import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
+import { Carousel } from '@/old-features/ui/molecules/carousel'
 
 interface EpicFreeGame {
   id: string

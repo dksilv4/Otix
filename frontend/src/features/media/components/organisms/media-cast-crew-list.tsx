@@ -1,6 +1,6 @@
 import { KeyCrewCard } from './media-cast-crew-key-card'
 import { CreditRow } from './media-cast-crew-credit-row'
-import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
+import { Carousel } from '@/old-features/ui/molecules/carousel'
 import { groupByRole } from '@media'
 
 export interface CreditItem {

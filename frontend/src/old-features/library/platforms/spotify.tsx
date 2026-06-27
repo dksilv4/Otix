@@ -17,7 +17,7 @@ import {
 import { usePlayer } from '@/old-features/spotify/use-player'
 import { TrackInlineActions } from "@media/music/components/molecules/media-track-inline-actions"
 import { useRateTrack } from "@media/queries/media-queries"
-import { useToast } from "@/old-features/dk-ui/molecules/toast"
+import { useToast } from "@/old-features/ui/molecules/toast"
 import SpotifyIcon from "@/assets/provider-logos/spotify.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"

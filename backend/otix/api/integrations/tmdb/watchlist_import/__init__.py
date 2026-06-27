@@ -13,6 +13,7 @@ from otix.services.tmdb_rating_service import import_tmdb_watchlist
 
 router = APIRouter()
 
+
 @router.post("/integrations/tmdb/watchlist-import", response_model=TmdbWatchlistImportResponse)
 async def tmdb_watchlist_import(
     db: AsyncSession = Depends(get_db),

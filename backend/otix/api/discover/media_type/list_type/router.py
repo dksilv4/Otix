@@ -104,12 +104,19 @@ async def discover_list(
         personalization = PersonalizationService(db)
         similar = await personalization._find_similar_users(current_user)
         seed_ids = await personalization._get_collaborative_items(
-            current_user.id, similar, media_type, limit=50,
+            current_user.id,
+            similar,
+            media_type,
+            limit=50,
         )
         if seed_ids:
             items, has_more, _ = await service.list_media(
-                media_type=media_type, sort_by="popularity", sort_dir="desc",
-                limit=limit, media_ids=seed_ids, exclude_adult=exclude_adult,
+                media_type=media_type,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
@@ -119,7 +126,10 @@ async def discover_list(
     if list_type == "semantic" and current_user:
         personalization = PersonalizationService(db)
         seed_ids = await personalization.get_semantic_recommendations(
-            current_user.id, media_type, limit=limit, exclude_adult=exclude_adult,
+            current_user.id,
+            media_type,
+            limit=limit,
+            exclude_adult=exclude_adult,
         )
         if seed_ids:
             items = await service.get_media_items_by_ids(seed_ids[:limit])
@@ -132,8 +142,12 @@ async def discover_list(
         seed_ids = await get_steam_game_seed_ids(db, current_user.id, limit=limit * 2)
         if seed_ids:
             items, has_more, _ = await service.list_media(
-                media_type=media_type, sort_by="popularity", sort_dir="desc",
-                limit=limit, media_ids=seed_ids, exclude_adult=exclude_adult,
+                media_type=media_type,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
@@ -144,8 +158,12 @@ async def discover_list(
         seed_ids = await get_plex_seed_ids(db, current_user.id, limit=limit * 2)
         if seed_ids:
             items, has_more, _ = await service.list_media(
-                media_type=media_type, sort_by="popularity", sort_dir="desc",
-                limit=limit, media_ids=seed_ids, exclude_adult=exclude_adult,
+                media_type=media_type,
+                sort_by="popularity",
+                sort_dir="desc",
+                limit=limit,
+                media_ids=seed_ids,
+                exclude_adult=exclude_adult,
             )
             response = await _build_response(db, items, has_more, current_user)
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
@@ -159,9 +177,17 @@ async def discover_list(
     require_artwork = not (language or is_anime is not None)
 
     items, has_more, _ = await service.list_media(
-        media_type=media_type, genre=genre, language=language, is_anime=is_anime,
-        has_artwork=require_artwork, sort_by=sort_by, sort_dir=sort_dir,
-        cursor=cursor, limit=limit, date_from=date_from, date_to=date_to,
+        media_type=media_type,
+        genre=genre,
+        language=language,
+        is_anime=is_anime,
+        has_artwork=require_artwork,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        cursor=cursor,
+        limit=limit,
+        date_from=date_from,
+        date_to=date_to,
         exclude_adult=exclude_adult,
     )
     response = await _build_response(db, items, has_more, current_user)

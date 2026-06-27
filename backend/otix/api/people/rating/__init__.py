@@ -35,9 +35,7 @@ async def rate_person(
     try:
         person = await db.get(Person, person_id)
         if person is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
         service = PeopleService(db)
         await service.rate_person(current_user.id, person_id, body.score)
         await db.commit()
@@ -76,9 +74,7 @@ async def unrate_person(
     try:
         person = await db.get(Person, person_id)
         if person is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Person not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
         service = PeopleService(db)
         await service.unrate_person(current_user.id, person_id)
         await db.commit()

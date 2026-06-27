@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
-import { MediaCard } from '@/old-features/dk-ui/molecules/media-card'
-import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
+import { MediaCard } from '@/old-features/ui/molecules/media-card'
+import { Carousel } from '@/old-features/ui/molecules/carousel'
 
 interface FreeGameResult {
   media_item: any | null

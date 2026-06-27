@@ -5,8 +5,8 @@ import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/old-features/auth'
 import { cn } from '@/lib/utils'
-import { showXPToast } from '@/old-features/dk-ui/atoms/xp-toast'
-import { DkDialog } from '@dk-ui/molecules/dialog'
+import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
+import { DkDialog } from '@ui/molecules/dialog'
 import {
  useToggleInteraction,
  useUserInteractions,

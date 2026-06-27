@@ -61,7 +61,8 @@ async def claim_badge(
 
         user_badge = await db.scalar(
             select(UserBadge).where(
-                UserBadge.user_id == current_user.id, UserBadge.badge_key == badge_key,
+                UserBadge.user_id == current_user.id,
+                UserBadge.badge_key == badge_key,
             )
         )
         if not user_badge:

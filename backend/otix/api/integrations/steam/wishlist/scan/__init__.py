@@ -12,6 +12,7 @@ from otix.infrastructure.config import settings
 logger = structlog.get_logger()
 router = APIRouter()
 
+
 @router.post("/integrations/steam/wishlist/scan")
 async def steam_scan_wishlist(
     db: AsyncSession = Depends(get_db),
@@ -24,6 +25,7 @@ async def steam_scan_wishlist(
     from otix.providers.base import ProviderError
     from otix.providers.steam.client import SteamError
     from otix.services.steam_library_service import scan_steam_wishlist
+
     try:
         result = await scan_steam_wishlist(db, current_user)
     except ValueError as e:

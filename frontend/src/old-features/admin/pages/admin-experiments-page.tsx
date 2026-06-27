@@ -10,7 +10,7 @@ import {
   CircleDot,
   CircleDashed,
 } from 'lucide-react'
-import { DkBadge } from '@/old-features/dk-ui/atoms/badge'
+import { DkBadge } from '@/old-features/ui/atoms/badge'
 import { EXPERIMENTS, MATURITY_LABELS, MATURITY_BADGE_VARIANT } from '@/old-features/experiments/experiments.types'
 import {
   EXPERIMENTS_ADMIN,

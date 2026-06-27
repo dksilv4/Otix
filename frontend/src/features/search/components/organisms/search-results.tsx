@@ -16,7 +16,7 @@ import { useCuratedSections, type CuratedSectionConfig } from '@search/hooks/use
 import { PeopleCard } from '@people/components/molecules/people-card'
 import { peopleQueries } from '@people/queries/people-queries'
 import { userQueries } from '@/old-features/user/user-queries'
-import { MediaCard } from '@dk-ui/molecules/media-card'
+import { MediaCard } from '@ui/molecules/media-card'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { TYPE_OPTIONS } from '@search/components/molecules/search-sort-bar'
 

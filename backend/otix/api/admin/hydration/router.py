@@ -29,8 +29,12 @@ async def get_media_hydration(
     """Get media hydration status for the admin panel. Admin only."""
     ip = request.client.host if request.client else None
     result = await AdminService(db).get_hydration_status(
-        media_type=media_type, search=search, page=page, per_page=per_page,
-        sort_by=sort_by, sort_dir=sort_dir,
+        media_type=media_type,
+        search=search,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
     )
     logger.info("hydration status fetched", media_type=media_type, page=page, total=result.total, ip=ip)
     return result

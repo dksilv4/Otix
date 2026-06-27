@@ -68,7 +68,8 @@ async def rate_user(
 
         existing = await db.scalar(
             select(UserRating).where(
-                UserRating.rater_id == current_user.id, UserRating.rated_user_id == user.id,
+                UserRating.rater_id == current_user.id,
+                UserRating.rated_user_id == user.id,
             )
         )
 
