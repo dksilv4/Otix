@@ -4,7 +4,7 @@ import { useDownloads } from '@/old-features/downloads/use-downloads'
 import { usePlayer } from '@/old-features/spotify/use-player'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { useAuth } from '@/lib/providers/auth'
-import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
+import { useRunningGame } from '@/features/launcher'
 import { notificationQueries } from '@/features/notifications/queries'
 import { usePlexSessions } from '../../hooks/use-plex-sessions'
 

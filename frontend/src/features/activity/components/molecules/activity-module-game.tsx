@@ -1,5 +1,5 @@
 import { Gamepad2, Clock } from 'lucide-react'
-import { useRunningGame } from '@/old-features/games/hooks/use-running-game'
+import { useRunningGame } from '@/features/launcher'
 import { formatDuration } from '@/lib/utils'
 import { ActivityModuleSection } from './activity-module-section'
 
