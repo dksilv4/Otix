@@ -3,7 +3,6 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
 
 from otix.api.deps import get_db, get_optional_user
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
