@@ -154,7 +154,9 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\integrations\" -Recurse -Filter \"router.py\")",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\discover\" -Recurse -Filter \"router.py\")",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\integrations\" -Recurse -Filter \"router.py\" | ForEach-Object { $_.FullName })"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\integrations\" -Recurse -Filter \"router.py\" | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\discover\" -Recurse -Filter \"router.py\" | ForEach-Object { $_.FullName })",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\otix\\\\api\\\\media\" -Recurse -Filter \"router.py\" | ForEach-Object { $_.FullName })"
     ]
   }
 }
