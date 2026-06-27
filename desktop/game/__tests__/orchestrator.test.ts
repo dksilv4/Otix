@@ -135,16 +135,15 @@ describe('GameScanOrchestrator', () => {
 
     const progressEvents: any[] = [];
     const completeEvents: any[] = [];
-    orchestrator.on('game:matching:progress', (e) => progressEvents.push(e));
-    orchestrator.on('game:matching:complete', (e) => completeEvents.push(e));
+    orchestrator.on('match:progress', (e) => progressEvents.push(e));
+    orchestrator.on('scan:complete', (e) => completeEvents.push(e));
 
-    const summary = await orchestrator.scanAll();
+    const results = await orchestrator.scanAll();
 
-    expect(summary.pluginsScanned).toBeGreaterThanOrEqual(1);
-    expect(summary.totalGames).toBe(1);
-    expect(summary.unmatched).toBe(1);
-    expect(summary.pluginResults).toHaveLength(1);
-    expect(summary.pluginResults[0].pluginId).toBe('otix-epic');
+    expect(results).toHaveLength(1);
+    expect(results[0].pluginId).toBe('otix-epic');
+    expect(results[0].totalGames).toBe(1);
+    expect(results[0].unmatched).toBe(1);
 
     // Should emit progress and complete events
     expect(progressEvents.length).toBeGreaterThanOrEqual(1);
@@ -201,17 +200,17 @@ describe('GameScanOrchestrator', () => {
     orchestrator.setApiBaseUrl('http://127.0.0.1:8000');
 
     // First scan: both unmatched
-    const summary = await orchestrator.scanAll();
-    expect(summary.unmatched).toBe(2);
+    const results = await orchestrator.scanAll();
+    expect(results[0].unmatched).toBe(2);
 
     // Reset events emitted flag
     const progressEvents: any[] = [];
-    orchestrator.on('game:matching:progress', (e) => progressEvents.push(e));
+    orchestrator.on('match:progress', (e) => progressEvents.push(e));
 
     // Second scan: Fortnite is still unmatched, RL matched from previous scan
-    const summary2 = await orchestrator.scanAll();
-    expect(summary2.unmatched).toBe(1);
-    expect(summary2.matched).toBe(1);
+    const results2 = await orchestrator.scanAll();
+    expect(results2[0].unmatched).toBe(1);
+    expect(results2[0].matched).toBe(1);
   });
 
   it('should handle plugin errors gracefully', async () => {
@@ -235,12 +234,12 @@ describe('GameScanOrchestrator', () => {
 
     const orchestrator = new GameScanOrchestrator(mockPluginManager as any);
     orchestrator.setApiBaseUrl('http://127.0.0.1:8000');
-    const summary = await orchestrator.scanAll();
+    const results = await orchestrator.scanAll();
 
-    expect(summary.pluginResults).toHaveLength(2);
-    expect(summary.pluginResults[0].totalGames).toBe(1);
-    expect(summary.pluginResults[1].errors).toBeDefined();
-    expect(summary.pluginResults[1].errors![0]).toBe('Plugin crashed');
+    expect(results).toHaveLength(2);
+    expect(results[0].totalGames).toBe(1);
+    expect(results[1].errors).toBeDefined();
+    expect(results[1].errors![0]).toBe('Plugin crashed');
   });
 
   it('should scan a single plugin', async () => {
@@ -260,7 +259,7 @@ describe('GameScanOrchestrator', () => {
 
     const orchestrator = new GameScanOrchestrator(mockPluginManager as any);
     orchestrator.setApiBaseUrl('http://127.0.0.1:8000');
-    const result = await orchestrator.scanPlugin('otix-epic');
+    const result = await orchestrator.scanPlugin({ pluginId: 'otix-epic', mediaType: 'game' });
 
     expect(result.totalGames).toBe(1);
     expect(result.unmatched).toBe(1);
@@ -275,7 +274,7 @@ describe('GameScanOrchestrator', () => {
     };
 
     const orchestrator = new GameScanOrchestrator(mockPluginManager as any);
-    const result = await orchestrator.scanPlugin('nonexistent');
+    const result = await orchestrator.scanPlugin({ pluginId: 'nonexistent', mediaType: 'game' });
 
     expect(result.errors).toBeDefined();
     expect(result.errors![0]).toContain('not registered');

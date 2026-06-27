@@ -171,13 +171,20 @@ export function upsertGames(games: GameRow[]): void {
     existingSeeded.set(r.id as string, r.seeded as number);
   }
 
-  // Delete stale entries (games no longer in this scan batch)
+  // Delete stale entries only within platforms in this batch
   const newIds = [...new Set(games.map((g) => g.id))];
-  if (newIds.length > 0) {
-    const placeholders = newIds.map(() => '?').join(',');
-    db().prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
-  } else {
-    db().prepare('DELETE FROM scanned_games').run();
+  const platforms = [...new Set(games.map((g) => g.platform))];
+  if (newIds.length > 0 && platforms.length > 0) {
+    const idPlaceholders = newIds.map(() => '?').join(',');
+    const platPlaceholders = platforms.map(() => '?').join(',');
+    db().prepare(
+      `DELETE FROM scanned_games WHERE id NOT IN (${idPlaceholders}) AND platform IN (${platPlaceholders})`
+    ).run(...newIds, ...platforms);
+  } else if (newIds.length === 0 && platforms.length > 0) {
+    const platPlaceholders = platforms.map(() => '?').join(',');
+    db().prepare(
+      `DELETE FROM scanned_games WHERE platform IN (${platPlaceholders})`
+    ).run(...platforms);
   }
 
   for (const g of games) {

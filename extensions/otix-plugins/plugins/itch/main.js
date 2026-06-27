@@ -64,5 +64,5 @@ module.exports = {
     if (await ctx.filesystem.access(ITCH_DIR)) return { success: true, message: 'Itch.io directory found' };
     return { success: true, message: 'No Itch.io installation detected' };
   },
-  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'itch', label: 'Itch.io', description: 'Scan local Itch.io game installations' }),
+  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'itch', label: 'Itch.io', description: 'Scan local Itch.io game installations', mediaTypes: ['games'] }),
 };

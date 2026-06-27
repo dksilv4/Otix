@@ -7,6 +7,7 @@ import { PluginTimeoutError } from './errors'
 import * as fs from 'fs/promises'
 import { app } from 'electron'
 import { getConnection } from '../db'
+import { replaceTableNames } from '../db/plugins-db'
 
 const GATED_METHODS: Record<string, PluginPermission> = {
   'events.on': 'events:subscribe',
@@ -37,6 +38,8 @@ export interface BridgeDependencies {
   worker: Worker
   eventBus: IsolatedEventBus
   pluginDb: Database.Database
+  /** DB schema config for table name prefixing */
+  dbConfig?: { tables: Record<string, { columns: Record<string, string>; indexes?: string[] }> } | null
   hasPermission: (permission: PluginPermission) => boolean
   requestPermission: (permission: PluginPermission) => Promise<boolean>
   apiBaseUrl: string
@@ -162,7 +165,7 @@ export function createWorkerBridge(deps: BridgeDependencies) {
       const timeout = setTimeout(() => {
         worker.off('message', handler)
         reject(new PluginTimeoutError(pluginId, method))
-      }, 5000)
+      }, 60000)
 
       const handler = (msg: WorkerToMainMessage) => {
         // The worker responds with { type: 'rpc-result', id, result }
@@ -220,12 +223,21 @@ async function executeMethod(
     case 'config.set':
       deps.setConfigValue(args[0] as string, args[1])
       return undefined
-    case 'db.run':
-      return pluginDb.prepare(args[0] as string).run(...(args[1] as any[] || []))
-    case 'db.get':
-      return pluginDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
-    case 'db.all':
-      return pluginDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
+    case 'db.run': {
+      const dbConfig = deps.dbConfig || null
+      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
+      return pluginDb.prepare(sql).run(...(args[1] as any[] || []))
+    }
+    case 'db.get': {
+      const dbConfig = deps.dbConfig || null
+      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
+      return pluginDb.prepare(sql).get(...(args[1] as any[] || [])) || null
+    }
+    case 'db.all': {
+      const dbConfig = deps.dbConfig || null
+      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
+      return pluginDb.prepare(sql).all(...(args[1] as any[] || []))
+    }
     case 'downloadsDb.all': {
       const dlDb = getConnection('downloads')
       return dlDb.prepare(args[0] as string).all(...(args[1] as any[] || []))

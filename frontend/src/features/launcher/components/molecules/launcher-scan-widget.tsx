@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
+import { fetchIsoPaths } from '@/features/launcher/storage'
 import { useToast } from '@/old-features/dk-ui/molecules/toast'
 
 export function LauncherScanWidget({ id }: { id?: string }) {
@@ -21,7 +22,7 @@ export function LauncherScanWidget({ id }: { id?: string }) {
       const api = getDesktopAPI()!
       const paths = await api.getScanPaths()
       const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path)
-      const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path)
+      const isoPaths = await fetchIsoPaths()
       const scanned = await api.scanPaths(gamePaths, isoPaths)
       if (scanned?.length) {
         toast({ title: 'Scan Complete', description: `Scanned ${scanned.length} games.`, variant: 'success' })

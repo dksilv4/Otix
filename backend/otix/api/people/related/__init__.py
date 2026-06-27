@@ -7,7 +7,7 @@ from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.domain.media import ExternalID
 from otix.domain.people import Person
 

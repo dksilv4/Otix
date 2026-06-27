@@ -4,7 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db, get_trusted_or_admin_user
+from otix.api.deps import get_db, get_trusted_or_admin_user
 from otix.domain.user import User
 from otix.schemas.admin_edit import MediaEditProposalList, MediaEditProposalOut
 from otix.services.admin_edit_service import AdminEditService

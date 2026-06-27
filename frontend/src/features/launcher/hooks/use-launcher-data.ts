@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api';
 import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/old-features/game-scanner/game-queries';
 import { useGameDetail, useGameGenres, usePopularGames } from '@/features/launcher/queries';
+import { fetchIsoPaths } from '@/features/launcher/storage';
 
 import type { GamesTab, CatalogGame, ShelfRow } from '@/features/launcher/types';
 import type { LocalGame } from '@/old-features/game-scanner/types';
@@ -187,7 +188,7 @@ export function useGameActions(setScanning: (v: boolean) => void) {
     try {
       const paths = await api.getScanPaths();
       const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path);
-      const isoPaths = paths.filter((p) => p.type === 'iso').map((p) => p.path);
+      const isoPaths = await fetchIsoPaths();
       await api.scanPaths(gamePaths, isoPaths);
     } catch (err) {
       console.error('Rescan failed:', err);

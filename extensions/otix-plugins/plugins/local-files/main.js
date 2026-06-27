@@ -177,6 +177,9 @@ function deduplicate(games) {
   return unique;
 }
 
+// ── Module-level scan progress ────────────────────────────────────────
+var _scanProgress = { phase: 'idle', current: 0, total: 0 };
+
 // ── Plugin exports ────────────────────────────────────────────────────
 
 module.exports = {
@@ -186,12 +189,19 @@ module.exports = {
 
   data: {
     scan: async (ctx) => {
-      const scanDirs = ctx.config.get('scanDirectories') || [];
-      const isoDirs = ctx.config.get('isoDirectories') || [];
+      const rawScan = await ctx.config.get('scanDirectories');
+      const rawIso = await ctx.config.get('isoDirectories');
+      const scanDirs = Array.isArray(rawScan) ? rawScan : [];
+      const isoDirs = Array.isArray(rawIso) ? rawIso : [];
       const allGames = [];
       let idx = 0;
       const total = scanDirs.length + isoDirs.length;
-      const emit = (dir) => ctx.host.emit('scan:progress', { currentDir: dir, progress: total > 0 ? Math.round((idx / total) * 100) : 100 });
+      _scanProgress = { phase: 'scanning', current: 0, total: total || 1 };
+      const emit = (dir) => {
+        _scanProgress.current = idx;
+        _scanProgress.phase = 'scanning';
+        ctx.host.emit('scan:progress', { currentDir: dir, progress: total > 0 ? Math.round((idx / total) * 100) : 100 });
+      };
 
       for (const dir of scanDirs) {
         emit(dir);
@@ -257,17 +267,19 @@ module.exports = {
         idx++;
       }
 
+      _scanProgress = { phase: 'done', current: total, total: total || 1 };
       ctx.host.emit('scan:progress', { currentDir: 'Done', progress: 100 });
-      return { games: deduplicate(allGames) };
+      const games = deduplicate(allGames);
+      return { success: true, games, total: games.length };
     },
 
-    'scan.status': async (ctx) => ({ phase: 'idle' })
+    'scan.status': async (ctx) => _scanProgress
   },
 
   status: async (ctx) => {
-    const dirs = ctx.config.get('scanDirectories') || [];
-    const isoDirs = ctx.config.get('isoDirectories') || [];
-    return { connected: dirs.length > 0 || isoDirs.length > 0, scanDirectories: dirs.length, isoDirectories: isoDirs.length };
+    const dirs = await ctx.config.get('scanDirectories') || [];
+    const isoDirs = await ctx.config.get('isoDirectories') || [];
+    return { connected: true, scanDirectories: Array.isArray(dirs) ? dirs.length : 0, isoDirectories: Array.isArray(isoDirs) ? isoDirs.length : 0 };
   },
 
   test: async (ctx, configDraft) => {
@@ -282,6 +294,8 @@ module.exports = {
 
   slotRender: async (ctx, location) => ({
     type: 'scan', platform: 'pc-directory', label: 'Local Files',
-    description: 'Scan local directories for Steam, PC, and ISO games'
+    description: 'Scan local directories for Steam, PC, and ISO games',
+    mediaTypes: ['games'],
+    configFields: ['scanDirectories', 'isoDirectories']
   }),
 };

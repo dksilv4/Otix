@@ -5,7 +5,6 @@ import type { PluginManager } from '../plugins/manager';
 import {
   getGameMatch,
   upsertGameMatch,
-  upsertGames,
   upsertGamesForPlatform,
   ensureGameMatchesTable,
   hydrateGame,
@@ -13,21 +12,33 @@ import {
   notifyGamesChanged,
 } from './storage';
 
+// ── Types ──────────────────────────────────────────────────────────────
 
 export interface ScannedGame {
   id: string
   title: string
   platform: string
-  externalIds: Array<{ source: string; id: string }>
-  developer?: string
-  publisher?: string
-  releaseYear?: number
+  externalIds?: Array<{ source: string; id: string }>
+  developer?: string | null
+  publisher?: string | null
+  releaseYear?: number | null
   installPath?: string
-  exePath?: string
-  posterUrl?: string
-  logoUrl?: string
+  exePath?: string | null
+  posterUrl?: string | null
+  logoUrl?: string | null
   dlcOf?: string | null
   rawMetadata?: Record<string, unknown>
+  // Plugin fields (may be present on raw scan results)
+  appName?: string
+  catalogItemId?: string
+}
+
+export interface ScanRequest {
+  pluginId: string
+  /** Media type for routing — 'game', 'movie', etc. Determines match endpoint. */
+  mediaType?: string
+  /** Override scan method name (default: 'scan') */
+  scanMethod?: string
 }
 
 export interface PluginScanResult {
@@ -36,25 +47,15 @@ export interface PluginScanResult {
   totalGames: number
   matched: number
   unmatched: number
+  cancelled?: boolean
   errors?: string[]
-}
-
-export interface ScanSummary {
-  pluginsScanned: number
-  totalGames: number
-  matched: number
-  unmatched: number
-  failed: number
-  startedAt: number
-  completedAt: number
-  pluginResults: PluginScanResult[]
 }
 
 export interface GameProgressEvent {
   pluginId: string
   queryId: string
   totalGames?: number
-  status: 'processing' | 'matched' | 'candidates' | 'failed'
+  status: 'processing' | 'matched' | 'candidates' | 'unmatched' | 'failed'
   queryTitle?: string
   match?: {
     media_item_id: string
@@ -72,14 +73,25 @@ export interface GameProgressEvent {
   error?: string
 }
 
+// ── SSE event buffers (per-request) ────────────────────────────────────
+
+interface SseRequest {
+  controller: AbortController
+  processed: number
+  total: number
+}
+
+// ── Orchestrator ───────────────────────────────────────────────────────
+
 export class GameScanOrchestrator extends EventEmitter {
   private apiBaseUrl = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
   private authToken = '';
-  private _isScanning = false;
-  private _scanStartedAt: number | null = null;
-  private _activeRequest: http.ClientRequest | null = null;
+  /** Per-plugin active scans — only one scan per plugin at a time */
+  private activeScans = new Map<string, AbortController>();
+  /** Track games per queryId for persistence during SSE stream */
+  private queryIdToGames = new Map<string, ScannedGame[]>();
 
-  get isScanning(): boolean { return this._isScanning; }
+  get isScanning(): boolean { return this.activeScans.size > 0; }
 
   constructor(
     private pluginManager: PluginManager,
@@ -90,285 +102,211 @@ export class GameScanOrchestrator extends EventEmitter {
   setApiBaseUrl(url: string): void { this.apiBaseUrl = url; }
   setAuthToken(token: string): void { this.authToken = token; }
 
-  async scanAll(): Promise<ScanSummary> {
-    if (this._isScanning) {
-      console.warn('[GameScanOrchestrator] scanAll called while scan in progress — ignoring');
-      return {
-        pluginsScanned: 0,
-        totalGames: 0,
-        matched: 0,
-        unmatched: 0,
-        failed: 0,
-        startedAt: this._scanStartedAt || Date.now(),
-        completedAt: Date.now(),
-        pluginResults: [],
-      };
-    }
-    this._isScanning = true;
-    try {
-    ensureGameMatchesTable();
-    this.queryIdToGames.clear();
+  // ── Public API ─────────────────────────────────────────────────────
 
-    const startedAt = Date.now();
-    const pluginResults: PluginScanResult[] = [];
-    const allGames: ScannedGame[] = [];
-    let totalUnmatchedCount = 0;
+  /**
+   * Scan a single plugin: run scan → save → match (SSE stream)
+   * Only blocks the SAME plugin from concurrent scans.
+   */
+  async scanPlugin(request: ScanRequest): Promise<PluginScanResult> {
+    const { pluginId, mediaType = 'game', scanMethod = 'scan' } = request;
 
-    // 1. Collect all matching:scan plugins
-    const plugins = this.pluginManager.getPluginsForSlot('matching:scan');
-
-    // 2. Scan each plugin
-    for (const plugin of plugins) {
-      let scanned: ScannedGame[] = [];
-      try {
-        const raw = await this.pluginManager.callPluginData(plugin.pluginId, 'scan');
-        scanned = (raw as { games?: ScannedGame[] })?.games || (raw as ScannedGame[]) || [];
-      } catch (err: any) {
-        pluginResults.push({
-          pluginId: plugin.pluginId,
-          pluginLabel: plugin.label,
-          totalGames: 0,
-          matched: 0,
-          unmatched: 0,
-          errors: [err.message],
-        });
-        continue;
-      }
-
-      // 3. Split: already-matched vs needs matching
-      const matched: ScannedGame[] = [];
-      const needsMatch: ScannedGame[] = [];
-      for (const game of scanned) {
-        let found = false;
-        for (const eid of game.externalIds) {
-          const existing = getGameMatch(eid.source, eid.id);
-          if (existing) {
-            matched.push(game);
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          needsMatch.push(game);
-        }
-      }
-
-      allGames.push(...scanned);
-      totalUnmatchedCount += needsMatch.length;
-
-      pluginResults.push({
-        pluginId: plugin.pluginId,
-        pluginLabel: plugin.label,
-        totalGames: scanned.length,
-        matched: matched.length,
-        unmatched: needsMatch.length,
-      });
-
-      // 3b. Persist scanned games so hydrateGame has rows to update
-      if (scanned.length > 0) {
-        const scanPlatform = scanned[0].platform;
-        upsertGamesForPlatform(scanned.map(g => ({
-          id: g.platform + '_' + g.id,
-          title: g.title,
-          exePath: g.exePath || '',
-          installDir: g.installPath || '',
-          platform: g.platform as any,
-          posterUrl: g.posterUrl || undefined,
-          iconUrl: g.logoUrl || g.posterUrl || undefined,
-          sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
-        })), scanPlatform);
-      }
-
-      // 4. Send unmatched to backend SSE
-      if (needsMatch.length > 0) {
-        await this.streamMatches(needsMatch, plugin.pluginId);
-      }
-    }
-
-    // Final cleanup: remove games no longer present in ANY launcher
-    if (allGames.length > 0) {
-      upsertGames(allGames.map(g => ({
-        id: g.platform + '_' + g.id,
-        title: g.title,
-        exePath: g.exePath || '',
-        installDir: g.installPath || '',
-        platform: g.platform as any,
-        posterUrl: g.posterUrl || undefined,
-        iconUrl: g.logoUrl || g.posterUrl || undefined,
-        sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
-      })));
-    }
-
-    return {
-      pluginsScanned: plugins.length,
-      totalGames: allGames.length,
-      matched: allGames.length - totalUnmatchedCount,
-      unmatched: totalUnmatchedCount,
-      failed: pluginResults.filter(p => (p.errors?.length || 0) > 0).length,
-      startedAt,
-      completedAt: Date.now(),
-      pluginResults,
-    };
-  } finally {
-    this._isScanning = false;
-    this._scanStartedAt = null;
-    this._activeRequest = null;
-  }
-  }
-
-  async scanPlugin(pluginId: string): Promise<PluginScanResult> {
-    if (this._isScanning) {
-      // If scan was started more than 10 minutes ago, force reset
-      if (this._scanStartedAt && Date.now() - this._scanStartedAt > 600_000) {
-        console.warn('[GameScanOrchestrator] Force-resetting stuck scan lock');
-        this._isScanning = false;
-        this._activeRequest?.destroy();
-        this._activeRequest = null;
+    // Per-plugin lock
+    if (this.activeScans.has(pluginId)) {
+      const existing = this.activeScans.get(pluginId)!;
+      if (existing.signal.aborted) {
+        this.activeScans.delete(pluginId);
       } else {
-        console.warn('[GameScanOrchestrator] scanPlugin called while scan in progress — ignoring, progress events still flowing');
         return {
-          pluginId,
-          pluginLabel: pluginId,
-          totalGames: 0,
-          matched: 0,
-          unmatched: 0,
+          pluginId, pluginLabel: pluginId,
+          totalGames: 0, matched: 0, unmatched: 0,
+          errors: ['Plugin is already being scanned'],
         };
       }
     }
-    this._isScanning = true;
-    this._scanStartedAt = Date.now();
+
+    const abortController = new AbortController();
+    this.activeScans.set(pluginId, abortController);
+
     try {
+      return await this._executeScan(pluginId, mediaType, scanMethod, abortController.signal);
+    } finally {
+      this.activeScans.delete(pluginId);
+    }
+  }
+
+  /**
+   * Scan all plugins registered in matching:scan or library:scan slots.
+   * Each plugin scans independently (per-plugin locks).
+   */
+  async scanAll(mediaType?: string): Promise<PluginScanResult[]> {
+    const matchingPlugins = this.pluginManager.getPluginsForSlot('matching:scan');
+    const libraryPlugins = this.pluginManager.getPluginsForSlot('library:scan');
+    const seen = new Set<string>();
+    const plugins = [...matchingPlugins, ...libraryPlugins]
+      .filter(p => { if (seen.has(p.pluginId)) return false; seen.add(p.pluginId); return true; });
+
+    const results: PluginScanResult[] = [];
+    for (const plugin of plugins) {
+      if (results.some(r => r.pluginId === plugin.pluginId)) continue;
+      const result = await this.scanPlugin({
+        pluginId: plugin.pluginId,
+        mediaType: mediaType || 'game',
+      });
+      results.push(result);
+    }
+    return results;
+  }
+
+  /** Cancel an active plugin scan */
+  cancelScan(pluginId?: string): void {
+    if (pluginId) {
+      const ctrl = this.activeScans.get(pluginId);
+      if (ctrl) { ctrl.abort(); this.activeScans.delete(pluginId); }
+      return;
+    }
+    // Cancel all
+    for (const [id, ctrl] of this.activeScans) {
+      ctrl.abort();
+      this.activeScans.delete(id);
+    }
+    this.emit('scan:cancelled', { pluginId: pluginId || 'all' });
+  }
+
+  // ── Core scan flow ──────────────────────────────────────────────────
+
+  private async _executeScan(
+    pluginId: string,
+    mediaType: string,
+    scanMethod: string,
+    signal: AbortSignal,
+  ): Promise<PluginScanResult> {
     ensureGameMatchesTable();
     this.queryIdToGames.clear();
 
-    let scanned: ScannedGame[] = [];
-    const plugins = this.pluginManager.getPluginsForSlot('matching:scan');
-    const plugin = plugins.find((p) => p.pluginId === pluginId);
-    if (!plugin) {
-      return {
-        pluginId,
-        pluginLabel: pluginId,
-        totalGames: 0,
-        matched: 0,
-        unmatched: 0,
-        errors: ['Plugin not registered for matching:scan slot'],
-      };
-    }
+    // Resolve plugin label from any slot
+    const plugs = [
+      ...this.pluginManager.getPluginsForSlot('matching:scan'),
+      ...this.pluginManager.getPluginsForSlot('library:scan'),
+    ];
+    const plug = plugs.find(p => p.pluginId === pluginId);
+    const label = plug?.label || pluginId;
 
+    // ── Phase 1: Run plugin scan ──
+    this.emit('scan:progress', { pluginId, phase: 'scanning', current: 0, total: 0 });
+
+    let scanned: ScannedGame[] = [];
     try {
-      const raw = await this.pluginManager.callPluginData(pluginId, 'scan');
+      const raw = await this.pluginManager.callPluginData(pluginId, scanMethod);
       scanned = (raw as { games?: ScannedGame[] })?.games || (raw as ScannedGame[]) || [];
     } catch (err: any) {
-      return {
-        pluginId,
-        pluginLabel: plugin.label,
-        totalGames: 0,
-        matched: 0,
-        unmatched: 0,
-        errors: [err.message],
-      };
+      return { pluginId, pluginLabel: label, totalGames: 0, matched: 0, unmatched: 0, errors: [err.message] };
     }
 
-    // Debug: log how many games have native posterUrl from the plugin
-    console.log(`[GameScanOrchestrator] Plugin ${pluginId} returned ${scanned.length} games, ${scanned.filter(g => g.posterUrl).length} with posterUrl`);
-
-    // Save all scanned games to scanned_games table so library UI has them.
-    // Use platform-scoped upsert so we don't wipe games from other plugins.
-    if (scanned.length > 0) {
-      const scanPlatform = scanned[0].platform;
-      upsertGamesForPlatform(scanned.map(g => ({
-        id: g.platform + '_' + g.id,
-        title: g.title,
-        exePath: g.exePath || '',
-        installDir: g.installPath || '',
-        platform: g.platform as any,
-        posterUrl: g.posterUrl || undefined,
-        iconUrl: g.logoUrl || g.posterUrl || undefined,
-        sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
-      })), scanPlatform);
+    if (signal.aborted) {
+      return { pluginId, pluginLabel: label, totalGames: scanned.length, matched: 0, unmatched: scanned.length, cancelled: true };
     }
+
+    // ── Normalize: deterministic externalIds ──
+    scanned = scanned.map(g => ({
+      ...g,
+      externalIds: this.buildExternalIds(g),
+    }));
+
+    console.log(`[Orchestrator] ${pluginId}: ${scanned.length} games, ${scanned.filter(g => g.posterUrl).length} with poster`);
+
+    if (scanned.length === 0) {
+      this.emit('scan:complete', { pluginId, totalGames: 0, matched: 0, unmatched: 0 });
+      return { pluginId, pluginLabel: label, totalGames: 0, matched: 0, unmatched: 0 };
+    }
+
+    // ── Phase 2: Save to local DB ──
+    const scanPlatform = scanned[0].platform;
+    upsertGamesForPlatform(scanned.map(g => ({
+      id: g.platform + '_' + g.id,
+      title: g.title,
+      exePath: g.exePath || '',
+      installDir: g.installPath || '',
+      platform: g.platform as any,
+      posterUrl: g.posterUrl || undefined,
+      iconUrl: g.logoUrl || g.posterUrl || undefined,
+      sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
+    })), scanPlatform);
+
+    // ── Phase 3: Split matched vs needs-match ──
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
     for (const game of scanned) {
       let found = false;
-      for (const eid of game.externalIds) {
+      for (const eid of (game.externalIds || [])) {
         const existing = getGameMatch(eid.source, eid.id);
-        if (existing) {
-          matched.push(game);
-          found = true;
-          break;
-        }
+        if (existing) { found = true; break; }
       }
-      if (!found) {
-        needsMatch.push(game);
-      }
+      (found ? matched : needsMatch).push(game);
     }
 
-    // Hydrate already-matched games from local cache (no SSE call needed)
+    // ── Phase 3b: Hydrate already-matched from cache ──
     for (const game of matched) {
       const scannedGameId = game.platform + '_' + game.id;
-      for (const eid of game.externalIds) {
-        const match = getGameMatch(eid.source, eid.id);
-        if (match && match.otixMediaId) {
-          hydrateGame(
-            scannedGameId,
-            match.otixTitle || game.title,
-            null,
-            match.otixPosterUrl || null,
-            { media_item_id: match.otixMediaId, title: match.otixTitle, poster_url: match.otixPosterUrl, confidence: match.otixConfidence },
-            match.otixConfidence,
-            match.otixMediaId,
-          );
+      for (const eid of (game.externalIds || [])) {
+        const m = getGameMatch(eid.source, eid.id);
+        if (m?.otixMediaId) {
+          hydrateGame(scannedGameId, m.otixTitle || game.title, null, m.otixPosterUrl || null,
+            { media_item_id: m.otixMediaId, title: m.otixTitle, poster_url: m.otixPosterUrl, confidence: m.otixConfidence },
+            m.otixConfidence, m.otixMediaId);
           break;
         }
       }
     }
+    if (matched.length > 0) notifyGamesChanged();
 
-    // Notify frontend that cached matches now have Otix images
-    if (matched.length > 0) {
-      notifyGamesChanged();
-    }
-
+    // ── Phase 4: SSE match stream ──
     if (needsMatch.length > 0) {
-      await this.streamMatches(needsMatch, pluginId);
+      // Dispatch progress for already-matched games so counter is accurate
+      for (let i = 0; i < matched.length; i++) {
+        this.emit('match:progress', {
+          pluginId, status: 'matched', totalGames: scanned.length,
+          queryId: `${matched[i].platform}:${matched[i].id}`,
+          queryTitle: matched[i].title,
+        });
+      }
+      await this.streamMatches(needsMatch, pluginId, mediaType, signal);
     }
+
+    // ── Auto-claim matched games ──
+    // (fire-and-forget, non-fatal)
+
+    this.emit('scan:complete', {
+      pluginId, totalGames: scanned.length, matched: matched.length, unmatched: needsMatch.length,
+    });
 
     return {
-      pluginId,
-      pluginLabel: plugin.label,
-      totalGames: scanned.length,
-      matched: matched.length,
-      unmatched: needsMatch.length,
+      pluginId, pluginLabel: label,
+      totalGames: scanned.length, matched: matched.length, unmatched: needsMatch.length,
     };
-  } finally {
-    this._isScanning = false;
-    this._activeRequest = null;
-  }
   }
 
-  cancelScan(): void {
-    if (!this._isScanning) return;
-    console.warn('[GameScanOrchestrator] Cancelling active scan');
-    this._activeRequest?.destroy();
-    this._activeRequest = null;
-    this._isScanning = false;
-    this._scanStartedAt = null;
-    this.emit('game:matching:cancelled', {});
-  }
+  // ── SSE stream ──────────────────────────────────────────────────────
 
-  private async streamMatches(games: ScannedGame[], pluginId: string): Promise<void> {
-    const requests = games.map((g) => ({
+  private async streamMatches(
+    games: ScannedGame[],
+    pluginId: string,
+    mediaType: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const requests = games.map(g => ({
       query_id: `${g.platform}:${g.id}`,
       title: g.title,
       developer: g.developer || null,
       publisher: g.publisher || null,
       release_year: g.releaseYear || null,
       poster_url: g.posterUrl || null,
-      external_ids: g.externalIds.length > 0 ? g.externalIds : [{ source: g.platform, id: g.id }],
-      media_type: 'game',
+      external_ids: (g.externalIds && g.externalIds.length > 0)
+        ? g.externalIds : [{ source: g.platform, id: g.id }],
+      media_type: mediaType,
     }));
 
-    // Track pending games by query_id so matched events can persist them
+    // Track games for persistence callbacks
     for (const g of games) {
       const qid = `${g.platform}:${g.id}`;
       const existing = this.queryIdToGames.get(qid) || [];
@@ -376,7 +314,7 @@ export class GameScanOrchestrator extends EventEmitter {
       this.queryIdToGames.set(qid, existing);
     }
 
-    const url = new URL('/api/media/match/stream', this.apiBaseUrl);
+    const url = new URL(`/api/media/match/stream`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
     return new Promise<void>((resolve, reject) => {
@@ -391,52 +329,41 @@ export class GameScanOrchestrator extends EventEmitter {
         timeout: 120_000,
       });
 
-      this._activeRequest = req;
+      signal.addEventListener('abort', () => {
+        req.destroy();
+        resolve(); // clean abort, not an error
+      });
 
       let buffer = '';
 
       req.on('response', (res) => {
         if (res.statusCode !== 200) {
-          let body = '';
-          res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
-          res.on('end', () => {
-            this._activeRequest = null;
-            reject(new Error(`Backend returned ${res.statusCode}: ${body.slice(0, 200)}`));
-          });
+          let errBody = '';
+          res.on('data', (chunk: Buffer) => { errBody += chunk.toString(); });
+          res.on('end', () => reject(new Error(`Backend ${res.statusCode}: ${errBody.slice(0, 200)}`)));
           return;
         }
         res.on('data', (chunk: Buffer) => {
           buffer += chunk.toString();
-          buffer = this.processSseBuffer(buffer, pluginId);
+          buffer = this.processSseEvents(buffer, pluginId);
         });
-        res.on('end', () => {
-          this._activeRequest = null;
-          resolve();
-        });
+        res.on('end', () => resolve());
       });
 
       req.on('error', (err) => {
-        // Ignore errors from cancelled requests (req.destroy() triggers an error)
-        if (this._activeRequest === null) return;
-        console.error('[GameScanOrchestrator] SSE stream error:', err.message);
-        this._activeRequest = null;
+        if (signal.aborted) { resolve(); return; }
         reject(err);
       });
-
-      req.on('timeout', () => {
-        this._activeRequest = null;
-        req.destroy();
-        reject(new Error('SSE stream request timed out'));
-      });
-
+      req.on('timeout', () => { req.destroy(); reject(new Error('SSE timeout')); });
       req.write(body);
       req.end();
     });
   }
 
-  private processSseBuffer(buffer: string, pluginId: string): string {
+  // ── SSE parser ──────────────────────────────────────────────────────
+
+  private processSseEvents(buffer: string, pluginId: string): string {
     const parts = buffer.split('\n\n');
-    // Keep last incomplete part in buffer (it doesn't have a trailing \n\n yet)
     const complete = parts.slice(0, -1);
     const remaining = parts[parts.length - 1];
 
@@ -449,206 +376,89 @@ export class GameScanOrchestrator extends EventEmitter {
       let dataStr = '';
 
       for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          eventType = line.slice(7).trim();
-        } else if (line.startsWith('data: ')) {
-          dataStr = line.slice(6).trim();
-        }
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataStr = line.slice(6).trim();
       }
-
       if (!dataStr) continue;
 
       try {
         if (eventType === 'game-progress') {
-          const data = JSON.parse(dataStr) as any;
-          const event: GameProgressEvent = {
-            pluginId,
-            queryId: data.query_id,
-            totalGames: data.total_games,
-            status: data.status,
-            queryTitle: data.query_title,
-            match: data.match,
-            candidates: data.candidates,
-            error: data.error,
-          };
-          this.emit('game:matching:progress', event);
-
-          const parts = data.query_id.split(':');
-          const source = parts[0] || 'unknown';
-          const sourceGameId = parts.slice(1).join(':') || data.query_id;
-          const scannedGameId = `${source}_${sourceGameId}`;
-
-          if (data.status === 'matched' && data.match?.media_item_id) {
-            // ── Auto-match: persist to game_matches + hydrate scanned_games ──
-            for (const game of this.getGamesForQueryId(data.query_id)) {
-              upsertGameMatch({
-                source,
-                sourceGameId,
-                otixMediaId: data.match.media_item_id,
-                otixTitle: data.match.title,
-                otixPosterUrl: data.match.poster_url,
-                otixBackdropUrl: data.match.backdrop_url,
-                otixConfidence: data.match.confidence,
-                matchType: 'auto',
-                status: 'pending',
-              });
-              hydrateGame(
-                scannedGameId,
-                data.match.title,
-                data.match.icon_url || null,
-                data.match.poster_url || null,
-                data.match,
-                data.match.confidence,
-                data.match.media_item_id,
-              );
-              // Backend handles match proposal inline during matching
-              notifyGamesChanged();
-            }
-
-            // Claim matched game if source plugin has mark_as_owned enabled
-            if (data.match.media_item_id) {
-              this.tryClaimForPlugin(pluginId, data.match.media_item_id);
-            }
-          } else if (data.status === 'matched' && data.candidates?.length > 0) {
-            // ── Candidates only (no auto_match): save as matchSuggestion ──
-            const best = data.candidates[0];
-            const suggestion = {
-              id: best.media_item_id || `${best.provider || 'igdb'}_${best.provider_id || scannedGameId}`,
-              title: best.title,
-              posterUrl: best.poster_url || null,
-              backdropUrl: best.backdrop_url || null,
-              developer: best.developer || null,
-              platforms: best.platforms || [],
-              confidence: best.confidence,
-              _candidates: data.candidates,
-            };
-            saveMatchSuggestion(scannedGameId, suggestion);
-            // Also hydrate with best poster for immediate visual feedback
-            hydrateGame(
-              scannedGameId,
-              best.title,
-              null,
-              best.poster_url || null,
-              { candidates: data.candidates, best_candidate: best },
-              best.confidence,
-            );
-            notifyGamesChanged();
-          }
-          // unmatched → no persistence, frontend shows "unmatched" label
+          this.handleProgress(dataStr, pluginId);
         } else if (eventType === 'complete') {
-          this.emit('game:matching:complete', { pluginId, ...JSON.parse(dataStr) as Record<string, unknown> });
+          this.emit('match:complete', { pluginId, ...JSON.parse(dataStr) as Record<string, unknown> });
         }
       } catch (err) {
-        console.error('[GameScanOrchestrator] Failed to parse SSE event:', err);
+        console.error('[Orchestrator] SSE parse error:', err);
       }
     }
-
     return remaining;
   }
 
-  // Fire-and-forget: submit match proposal to backend for admin review
-  private proposeOnBackend(
-    source: string, sourceGameId: string, mediaItemId: string,
-    sourceTitle: string, otixTitle: string, confidence: number,
-    matchType: string, developer?: string, releaseYear?: number,
-    posterUrl?: string,
-  ): void {
-    const url = new URL('/api/media/match/propose', this.apiBaseUrl);
-    const body = JSON.stringify({
-      query_id: `${source}:${sourceGameId}`,
-      media_item_id: mediaItemId,
-      source_title: sourceTitle,
-      developer: developer || null,
-      release_year: releaseYear || null,
-      poster_url: posterUrl || null,
-      otix_title: otixTitle,
-      otix_confidence: confidence,
-      match_type: matchType,
-    });
+  private handleProgress(dataStr: string, pluginId: string): void {
+    const data = JSON.parse(dataStr) as any;
+    const event: GameProgressEvent = {
+      pluginId, queryId: data.query_id, totalGames: data.total_games,
+      status: data.status, queryTitle: data.query_title,
+      match: data.match, candidates: data.candidates, error: data.error,
+    };
+    this.emit('match:progress', event);
 
-    const req = http.request(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': this.authToken ? `Bearer ${this.authToken}` : '',
-      },
-      timeout: 15_000,
-    });
+    const parts = data.query_id.split(':');
+    const source = parts[0] || 'unknown';
+    const sourceGameId = parts.slice(1).join(':') || data.query_id;
+    const scannedGameId = `${source}_${sourceGameId}`;
 
-    req.on('error', (err) => {
-      console.warn('[GameScanOrchestrator] proposeOnBackend failed (non-fatal):', err.message);
-    });
-
-    req.write(body);
-    req.end();
+    if (data.status === 'matched' && data.match?.media_item_id) {
+      for (const game of this.queryIdToGames.get(data.query_id) || []) {
+        upsertGameMatch({
+          source, sourceGameId,
+          otixMediaId: data.match.media_item_id, otixTitle: data.match.title,
+          otixPosterUrl: data.match.poster_url, otixBackdropUrl: data.match.backdrop_url,
+          otixConfidence: data.match.confidence, matchType: 'auto', status: 'pending',
+        });
+        hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
+          data.match, data.match.confidence, data.match.media_item_id);
+        notifyGamesChanged();
+      }
+      this.tryClaimForPlugin(pluginId, data.match.media_item_id);
+    } else if (data.candidates?.length > 0) {
+      const best = data.candidates[0];
+      saveMatchSuggestion(scannedGameId, {
+        id: best.media_item_id || `${best.provider || 'igdb'}_${best.provider_id || scannedGameId}`,
+        title: best.title, posterUrl: best.poster_url || null,
+        backdropUrl: best.backdrop_url || null, developer: best.developer || null,
+        platforms: best.platforms || [], confidence: best.confidence,
+        _candidates: data.candidates,
+      });
+      hydrateGame(scannedGameId, best.title, null, best.poster_url || null,
+        { candidates: data.candidates, best_candidate: best }, best.confidence);
+      notifyGamesChanged();
+    }
+    // unmatched → no persistence needed
   }
 
-  /**
-   * Claim a matched game on the backend if the source plugin has mark_as_owned enabled.
-   * Fire-and-forget — non-fatal if it fails.
-   */
+  // ── Helpers ──────────────────────────────────────────────────────────
+
+  /** Build deterministic external IDs from whatever fields the plugin provides */
+  private buildExternalIds(g: ScannedGame): Array<{ source: string; id: string }> {
+    if (g.externalIds && g.externalIds.length > 0) return g.externalIds;
+    const ids: Array<{ source: string; id: string }> = [];
+    ids.push({ source: g.platform || 'unknown', id: String(g.id) });
+    if (g.appName) ids.push({ source: g.platform || 'unknown', id: g.appName });
+    if (g.catalogItemId) ids.push({ source: g.platform || 'unknown', id: g.catalogItemId });
+    return ids;
+  }
+
   private tryClaimForPlugin(pluginId: string, mediaItemId: string): void {
-    // Only real plugins have config; skip synthetic labels like 'pc-directory'
     try {
       const config = this.pluginManager.getConfig(pluginId);
       if (!config?.mark_as_owned) return;
-    } catch {
-      // Not a real plugin or config not available — skip silently
-      return;
-    }
-
-    // Also skip if no auth token (can't claim without auth)
+    } catch { return; }
     if (!this.authToken) return;
 
     const url = new URL(`/api/media/${mediaItemId}/claim`, this.apiBaseUrl);
-    const req = http.request(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.authToken}`,
-      },
-      timeout: 10_000,
-    });
-    req.on('error', (err) => {
-      console.warn(`[GameScanOrchestrator] Claim failed for ${mediaItemId}:`, err.message);
-    });
+    const req = http.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
+    req.on('error', (err) => console.warn(`[Orchestrator] Claim failed for ${mediaItemId}:`, err.message));
     req.end();
-  }
-
-  /**
-   * Match directory-scanned (PC) games through the same SSE pipeline as plugin games.
-   * Fire-and-forget — games are persisted as they stream back.
-   */
-  async matchLocalGames(games: ScannedGame[], label = 'pc-directory'): Promise<void> {
-    if (this._isScanning) {
-      console.warn('[GameScanOrchestrator] matchLocalGames skipped — scan in progress');
-      return;
-    }
-    if (!games.length) return;
-
-    // Split: already-matched vs needs match
-    const needsMatch: ScannedGame[] = [];
-    for (const game of games) {
-      let found = false;
-      for (const eid of game.externalIds) {
-        const existing = getGameMatch(eid.source, eid.id);
-        if (existing) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) needsMatch.push(game);
-    }
-
-    if (needsMatch.length === 0) return;
-
-    console.log(`[GameScanOrchestrator] matchLocalGames: ${needsMatch.length}/${games.length} need matching`);
-    await this.streamMatches(needsMatch, label);
-  }
-
-  // Internal: track games per queryId for persistence
-  private queryIdToGames = new Map<string, ScannedGame[]>();
-
-  private getGamesForQueryId(queryId: string): ScannedGame[] {
-    return this.queryIdToGames.get(queryId) || [];
   }
 }

@@ -60,5 +60,5 @@ module.exports = {
     for (const p of EA_PATHS) { if (await ctx.filesystem.access(p)) return { success: true, message: 'EA directory found' }; }
     return { success: true, message: 'No EA installation detected' };
   },
-  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'ea', label: 'EA App', description: 'Scan local EA App game installations' }),
+  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'ea', label: 'EA App', description: 'Scan local EA App game installations', mediaTypes: ['games'] }),
 };

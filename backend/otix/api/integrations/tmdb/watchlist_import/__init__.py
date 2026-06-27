@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.providers.tmdb.client import TMDBProvider

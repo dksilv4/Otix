@@ -6,8 +6,8 @@ import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@auth/hooks/use-auth'
+import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { peopleQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '@people/queries/people-queries'
-import type { PersonDetail } from '@people/types'
 import { formatDate, getCreditsStats } from '@people/utils'
 import { PeopleTimeline } from '@people/components/organisms/people-timeline'
 import { PeopleTimelineFilters } from '@people/components/organisms/people-timeline-filters'
@@ -76,6 +76,9 @@ export function PeopleDetailPage() {
   const navigate = useNavigate()
   const personId = params.personId || ''
   const { isAuthenticated } = useAuth()
+  const { isDesktop } = useDesktopPlatform()
+
+  const ptClass = isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'
 
   const { data: person, isLoading, isError } = useQuery(peopleQueries.detail(personId))
   const { data: relatedArtists } = useQuery(peopleQueries.related(personId))
@@ -107,7 +110,7 @@ export function PeopleDetailPage() {
   // ── Loading state ──
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-4 pt-24 sm:px-6 lg:px-8 space-y-8">
+      <div className={`mx-auto max-w-4xl px-4 ${ptClass} sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           <Skeleton className="h-36 w-36 rounded-full sm:h-44 sm:w-44" />
           <div className="space-y-3 text-center sm:text-left">
@@ -123,7 +126,7 @@ export function PeopleDetailPage() {
   // ── Error state ──
   if (isError || !person) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center px-4 pt-24">
+      <div className={`flex min-h-[50vh] items-center justify-center px-4 ${ptClass}`}>
         <div className="text-center">
           <h2 className="text-lg font-semibold">Person not found</h2>
           <a href="/" className="text-sm text-primary hover:underline">
@@ -139,7 +142,7 @@ export function PeopleDetailPage() {
   const showBioExpand = (person.biography?.length ?? 0) > bioTruncation
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pt-24 pb-16 sm:px-6 lg:px-8 space-y-10">
+    <div className={`mx-auto max-w-4xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-10`}>
       <Helmet>
         <title>{`${person.name} - Otix`}</title>
         <meta

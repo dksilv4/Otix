@@ -123,9 +123,8 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
         installPath: g.installDir,
         posterUrl: g.posterUrl,
       }));
-      _orchestrator.matchLocalGames(scanned, 'pc-directory').catch((err: any) =>
-        console.error('[scanner] Directory match failed:', err)
-      );
+      // Games saved to DB above — matching handled by scanPlugin when user clicks Scan
+      // from the Library page. No fire-and-forget match here anymore.
     }
 
     return games;
@@ -134,8 +133,7 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
   // Scan installed launcher libraries (now handled by matching:scan plugins)
   ipcMain.handle('scanner:scan-launchers', async () => {
     if (_orchestrator) {
-      const summary = await _orchestrator.scanAll();
-      return summary.pluginResults;
+      return await _orchestrator.scanAll();
     }
     return [];
   });
@@ -235,14 +233,14 @@ export function registerPluginScanIPC(): void {
 
   ipcMain.handle('scanner:scan-plugin', async (_event, pluginId: string) => {
     try {
-      return await _orchestrator!.scanPlugin(pluginId);
+      return await _orchestrator!.scanPlugin({ pluginId, mediaType: 'game' });
     } catch (err: any) {
       console.error('[scanner:scan-plugin]', err.message);
       throw err;
     }
   });
 
-  ipcMain.handle('scanner:cancel-scan', async () => {
-    _orchestrator!.cancelScan();
+  ipcMain.handle('scanner:cancel-scan', async (_event, pluginId?: string) => {
+    _orchestrator!.cancelScan(pluginId);
   });
 }

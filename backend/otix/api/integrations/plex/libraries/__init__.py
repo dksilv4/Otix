@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db
+from otix.api.deps import get_current_user, get_db
 from otix.domain.media import UserPlexItem, UserPlexLibrary, UserPlexServer
 from otix.domain.user import User
 from otix.schemas.auth import PlexLibraryDetailResponse, PlexLibraryListResponse

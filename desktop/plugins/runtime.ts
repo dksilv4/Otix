@@ -1,17 +1,20 @@
 // desktop/plugins/runtime.ts
 import { Worker } from 'worker_threads'
 import path from 'path'
-import fs from 'fs'
-import Database from 'better-sqlite3'
 import type { PluginManifest, PluginPermission } from './types'
 import { createWorkerBridge, type BridgeDependencies } from './worker-bridge'
 import { IsolatedEventBus } from './event-bus'
+import {
+  getPluginsDb,
+  ensureSchema,
+  migratePluginData,
+} from '../db/plugins-db'
 
 export class PluginRuntime {
   public readonly pluginId: string
   public readonly manifest: PluginManifest
+  public readonly dbConfig: PluginManifest['db'] | null
   private worker: Worker | null = null
-  private db: Database.Database | null = null
   private bridge: Awaited<ReturnType<typeof createWorkerBridge>> | null = null
   private destroyed = false
 
@@ -34,18 +37,18 @@ export class PluginRuntime {
   ) {
     this.pluginId = pluginId
     this.manifest = manifest
+    this.dbConfig = manifest.db || null
   }
 
   async start(): Promise<void> {
     if (this.destroyed) throw new Error('Runtime destroyed')
 
-    // Open plugin data database
-    const dataDir = path.join(this.pluginDir, 'data')
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true })
+    // Shared DB — auto-migrate schema and data
+    const dbConfig = this.manifest.db
+    if (dbConfig) {
+      ensureSchema(this.pluginId, dbConfig)
+      migratePluginData(this.pluginId, this.pluginDir, dbConfig)
     }
-    this.db = new Database(path.join(dataDir, 'data.db'))
-    this.db.pragma('journal_mode = WAL')
 
     // Spawn worker
     const mainPath = path.join(this.pluginDir, this.manifest.entry.main)
@@ -64,13 +67,14 @@ export class PluginRuntime {
       }
     })
 
-    // Create bridge
+    // Create bridge — shared DB with auto-prefixing
     const bridgeDeps: BridgeDependencies = {
       pluginId: this.pluginId,
       manifest: this.manifest,
       worker: this.worker,
       eventBus: this.eventBus,
-      pluginDb: this.db,
+      pluginDb: getPluginsDb(),
+      dbConfig: this.dbConfig,
       hasPermission: this.permissionCheck,
       requestPermission: this.permissionRequest,
       apiBaseUrl: this.apiBaseUrl,
@@ -100,12 +104,7 @@ export class PluginRuntime {
       this.bridge = null
     }
 
-    // Close database (must happen after worker stops)
-    if (this.db) {
-      try { this.db.close() } catch {}
-      this.db = null
-    }
-
+    // Shared DB is managed globally, do NOT close it here
     this.worker = null
   }
 }

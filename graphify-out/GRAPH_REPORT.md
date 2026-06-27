@@ -1,16 +1,16 @@
-# Graph Report - Otix  (2026-06-23)
+# Graph Report - Otix  (2026-06-25)
 
 ## Corpus Check
-- 1325 files · ~2,369,864 words
+- 1316 files · ~2,311,296 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 14414 nodes · 33876 edges · 918 communities (742 shown, 176 thin omitted)
-- Extraction: 68% EXTRACTED · 32% INFERRED · 0% AMBIGUOUS · INFERRED: 10811 edges (avg confidence: 0.58)
+- 14715 nodes · 34322 edges · 909 communities (725 shown, 184 thin omitted)
+- Extraction: 68% EXTRACTED · 32% INFERRED · 0% AMBIGUOUS · INFERRED: 10850 edges (avg confidence: 0.58)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c41bdfa8`
+- Built from commit: `6f90a3ca`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -615,7 +615,6 @@
 - [[_COMMUNITY_Community 616|Community 616]]
 - [[_COMMUNITY_Community 617|Community 617]]
 - [[_COMMUNITY_Community 618|Community 618]]
-- [[_COMMUNITY_Community 620|Community 620]]
 - [[_COMMUNITY_Community 621|Community 621]]
 - [[_COMMUNITY_Community 622|Community 622]]
 - [[_COMMUNITY_Community 623|Community 623]]
@@ -652,11 +651,7 @@
 - [[_COMMUNITY_Community 687|Community 687]]
 - [[_COMMUNITY_Community 688|Community 688]]
 - [[_COMMUNITY_Community 689|Community 689]]
-- [[_COMMUNITY_Community 690|Community 690]]
 - [[_COMMUNITY_Community 691|Community 691]]
-- [[_COMMUNITY_Community 692|Community 692]]
-- [[_COMMUNITY_Community 693|Community 693]]
-- [[_COMMUNITY_Community 694|Community 694]]
 - [[_COMMUNITY_Community 695|Community 695]]
 - [[_COMMUNITY_Community 696|Community 696]]
 - [[_COMMUNITY_Community 697|Community 697]]
@@ -673,8 +668,6 @@
 - [[_COMMUNITY_Community 708|Community 708]]
 - [[_COMMUNITY_Community 709|Community 709]]
 - [[_COMMUNITY_Community 710|Community 710]]
-- [[_COMMUNITY_Community 711|Community 711]]
-- [[_COMMUNITY_Community 712|Community 712]]
 - [[_COMMUNITY_Community 713|Community 713]]
 - [[_COMMUNITY_Community 714|Community 714]]
 - [[_COMMUNITY_Community 715|Community 715]]
@@ -691,7 +684,6 @@
 - [[_COMMUNITY_Community 726|Community 726]]
 - [[_COMMUNITY_Community 727|Community 727]]
 - [[_COMMUNITY_Community 728|Community 728]]
-- [[_COMMUNITY_Community 729|Community 729]]
 - [[_COMMUNITY_Community 731|Community 731]]
 - [[_COMMUNITY_Community 732|Community 732]]
 - [[_COMMUNITY_Community 736|Community 736]]
@@ -702,7 +694,6 @@
 - [[_COMMUNITY_Community 742|Community 742]]
 - [[_COMMUNITY_Community 744|Community 744]]
 - [[_COMMUNITY_Community 746|Community 746]]
-- [[_COMMUNITY_Community 747|Community 747]]
 - [[_COMMUNITY_Community 748|Community 748]]
 - [[_COMMUNITY_Community 749|Community 749]]
 - [[_COMMUNITY_Community 750|Community 750]]
@@ -758,6 +749,7 @@
 - [[_COMMUNITY_Community 810|Community 810]]
 - [[_COMMUNITY_Community 811|Community 811]]
 - [[_COMMUNITY_Community 812|Community 812]]
+- [[_COMMUNITY_Community 819|Community 819]]
 - [[_COMMUNITY_Community 826|Community 826]]
 - [[_COMMUNITY_Community 828|Community 828]]
 - [[_COMMUNITY_Community 834|Community 834]]
@@ -771,12 +763,15 @@
 - [[_COMMUNITY_Community 873|Community 873]]
 - [[_COMMUNITY_Community 874|Community 874]]
 - [[_COMMUNITY_Community 877|Community 877]]
+- [[_COMMUNITY_Community 906|Community 906]]
+- [[_COMMUNITY_Community 907|Community 907]]
+- [[_COMMUNITY_Community 908|Community 908]]
 - [[_COMMUNITY_Community 934|Community 934]]
 - [[_COMMUNITY_Community 935|Community 935]]
 - [[_COMMUNITY_Community 936|Community 936]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `User` - 978 edges
+1. `User` - 989 edges
 2. `MediaItem` - 507 edges
 3. `ExternalID` - 346 edges
 4. `Person` - 262 edges
@@ -784,7 +779,7 @@
 6. `InvolvedCompany` - 194 edges
 7. `MediaCredit` - 190 edges
 8. `MediaAsset` - 172 edges
-9. `FastAPI` - 168 edges
+9. `FastAPI` - 169 edges
 10. `Album` - 158 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -809,107 +804,107 @@
 - 1-file cycle: `backend/otix/tasks/sync/_common.py -> backend/otix/tasks/sync/_common.py`
 - 1-file cycle: `backend/otix/tasks/sync/igdb.py -> backend/otix/tasks/sync/igdb.py`
 
-## Communities (918 total, 176 thin omitted)
+## Communities (909 total, 184 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.33
-Nodes (7): str, # TODO: Review this file, Sync a user's YouTube watch history into Otix., Sync a user's YouTube watch history into Otix., Sync a user's YouTube watch history into Otix., _sync_youtube_watch_history(), sync_youtube_watch_history_task()
+Cohesion: 0.14
+Nodes (16): str, catalog_hydration(), plex_sync_user(), # TODO: Review this file, Background scan: find stale catalog items and re-enqueue provider syncs.      Ru, Background scan: find stale catalog items and re-enqueue provider syncs.      Ru, Background scan: find stale catalog items and re-enqueue provider syncs., Sync Plex libraries for a single user, publishing progress via Redis pub/sub. (+8 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.03
-Nodes (72): Game, int, int, JSONValue, str, AsyncMock, # TODO: Review this file, Upsert Company rows and create InvolvedCompany links for a game. (+64 more)
+Cohesion: 0.04
+Nodes (54): Game, int, JSONValue, str, BaseProvider, Async HTTP client wrapper with rate limiting and circuit breaking., Async HTTP client wrapper with rate limiting and circuit breaking., Async HTTP client wrapper with rate limiting and circuit breaking. (+46 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.12
-Nodes (25): int, JSONValue, Response, str, IGDBError, IGDBProvider, Fetch multiple games by ID., Fetch multiple game by ID. (+17 more)
+Nodes (26): int, JSONValue, Response, str, IGDBError, IGDBProvider, Fetch multiple games by ID., Fetch multiple game by ID. (+18 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.09
 Nodes (60): parse_music_title(), Parse a YouTube video title into artist + song components.      Handles Topic ch, Parse a YouTube video title into artist + song components.      Handles Topic, Test YouTube music video title parser across 30+ formats., test_4k(), test_arrow_separator(), test_audio(), test_clean() (+52 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.07
-Nodes (44): Generate a new TOTP secret and provisioning info for *user*.          Does NOT, Verify *code* against the user's pending secret and enable 2FA., Disable 2FA after verifying the user's password., str, bool, bytes, int, str (+36 more)
+Cohesion: 0.10
+Nodes (34): Generate a new TOTP secret and provisioning info for *user*.          Does NOT, bool, bytes, int, str, User, MonkeyPatch, generate_qr_svg() (+26 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.03
-Nodes (97): bool, datetime, int, str, check_fast_queue_backlog(), compute_content_hash(), compute_next_sync_at(), enqueue_list_items() (+89 more)
+Cohesion: 0.04
+Nodes (82): datetime, int, str, check_fast_queue_backlog(), compute_content_hash(), compute_next_sync_at(), enqueue_list_items(), filter_stale_ids() (+74 more)
 
 ### Community 6 - "Community 6"
 Cohesion: 0.10
-Nodes (34): Redis, Any, str, Any, str, Any, str, close_redis() (+26 more)
+Nodes (36): Redis, Any, str, Any, str, Any, str, get_redis() (+28 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.08
-Nodes (45): GameMatchRequest, GameMatchResponse, IGDBProvider, int, MediaItem, object, str, GameMatchCandidate (+37 more)
+Cohesion: 0.07
+Nodes (53): bool, GameMatchRequest, GameMatchResponse, IGDBProvider, int, MediaItem, object, str (+45 more)
 
 ### Community 8 - "Community 8"
 Cohesion: 0.15
 Nodes (22): str, # TODO: Review this file, Insert ExternalID records for MusicBrainz url-rels, skipping existing., Insert ExternalID records for MusicBrainz url-rels, skipping existing., Insert ExternalID records for MusicBrainz url-rels, skipping existing., Insert ExternalID records for MusicBrainz url-rels, skipping existing., Find the MusicBrainz release via track ISRCs and sync cross-platform IDs.      C, Find the MusicBrainz release via track ISRCs and sync cross-platform IDs.      C (+14 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.04
-Nodes (76): User, AsyncSession, User, AsyncSession, AuthRateLimiter, Complete the Spotify OAuth link flow.      The user is resolved from the OAuth, Request, User (+68 more)
+Cohesion: 0.03
+Nodes (120): plex_album_tracks(), AsyncSession, AuthRateLimiter, Request, User, User, User, str (+112 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.04
-Nodes (44): DESKTOP_SECTIONS, NAV_ITEMS, NavGroup, NavItem, usePlexLibraries(), SettingsSaveBar(), SettingsSaveBarProps, SectionHeader() (+36 more)
+Cohesion: 0.05
+Nodes (35): DESKTOP_SECTIONS, NAV_ITEMS, NavGroup, NavItem, usePlexLibraries(), SettingsSaveBar(), SettingsSaveBarProps, SectionHeader() (+27 more)
 
 ### Community 11 - "Community 11"
-Cohesion: 0.06
-Nodes (43): WorkoutInput(), WorkoutInputProps, EXERCISE_CATALOG, ExerciseEntry, getFuse(), matchAll(), matchExercise(), MatchResult (+35 more)
+Cohesion: 0.05
+Nodes (47): WorkoutInput(), WorkoutInputProps, EXERCISE_CATALOG, ExerciseEntry, getFuse(), matchAll(), matchExercise(), MatchResult (+39 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.07
-Nodes (24): JSONValue, str, _cover_url(), extract_modes(), extract_platforms(), _extract_website(), # TODO: Review this file, Extract the official website URL from IGDB websites list.      Prefers category (+16 more)
+Cohesion: 0.10
+Nodes (13): str, _cover_url(), Convert IGDB game JSON to a MediaItem., Convert IGDB game JSON to a MediaItem., Convert IGDB game JSON to a MediaItem., Convert IGDB game JSON to a MediaItem., Convert IGDB game JSON to a Game with its MediaItem.      Maps IGDB fields to th, Convert IGDB game JSON to a Game with its MediaItem.      Maps IGDB fields to (+5 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.05
-Nodes (80): addNzbToSabnzbd(), addPathMapping(), __all(), autoPickBest(), batchCheckMatchCache(), CacheEntry, checkGameForUpdates(), compareByVersion() (+72 more)
+Cohesion: 0.04
+Nodes (85): addNzbToSabnzbd(), addPathMapping(), __all(), autoPickBest(), CacheEntry, checkGameForUpdates(), compareByVersion(), configRowToObj() (+77 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, jsx, lib, module, moduleDetection, moduleResolution (+11 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.08
-Nodes (27): JSONValue, str, _cover_url_from_caa(), _extract_date(), _extract_provider_id(), extract_spotify_id(), extract_url_external_ids(), extract_wikidata_id() (+19 more)
+Cohesion: 0.16
+Nodes (8): extract_url_external_ids(), Extract (provider, external_id) pairs from MusicBrainz url-rels.      Maps str, Extract (provider, external_id) pairs from MusicBrainz url-rels.      Maps strea, get_protected_image_types(), Test MusicBrainz transformer extracts external IDs from url-rels., Spotify gets spotify_id column; all get saved as _external_ids., TestExtractUrlExternalIds, TestToAlbumExtractsSpotifyFromUrlRels
 
 ### Community 16 - "Community 16"
-Cohesion: 0.12
-Nodes (19): AsyncMock, MediaItem, TMDBHydrator, CollectionOut, _added_objects(), hydrator(), media_item(), media_item_id() (+11 more)
+Cohesion: 0.11
+Nodes (20): AsyncMock, MediaItem, TMDBHydrator, # TODO: Review this file, CollectionOut, _added_objects(), hydrator(), media_item() (+12 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.05
-Nodes (157): AdminMetricPoint, AsyncSession, IGDBProvider, AsyncSession, str, AsyncSession, Company, Genre (+149 more)
+Cohesion: 0.03
+Nodes (139): AsyncSession, IGDBProvider, JSONValue, MediaItem, str, AsyncSession, int, str (+131 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.07
-Nodes (47): updateGamePathInDb(), findUpdateFilesForIso(), IGNORED_DIRS, ActiveInstallInfo, _addPersistedInstall(), applyCrack(), cancelCurrentInstall(), cancelInstall() (+39 more)
+Cohesion: 0.05
+Nodes (75): updateGamePathInDb(), applyNamingTemplate(), autoOrganizeDownload(), AutoOrganizeResult, batchOrganizeDirectory(), db(), DownloadedContent, findDownloadedContent() (+67 more)
 
 ### Community 19 - "Community 19"
 Cohesion: 0.06
-Nodes (28): useConnectionTest(), useDownloadConfig(), NAV_ITEMS, Section, AccountSection(), SessionInfo, SessionListData, VerificationCard() (+20 more)
+Nodes (29): useConnectionTest(), useDownloadConfig(), NAV_ITEMS, Section, AccountSection(), SessionInfo, SessionListData, VerificationCard() (+21 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.17
+Cohesion: 0.11
 Nodes (11): Image, DkMediaCard, DkMediaCardProps, getRoleMeta(), PersonCard(), PersonCardProps, EpisodeModal(), EpisodeModalProps (+3 more)
 
 ### Community 21 - "Community 21"
-Cohesion: 0.19
-Nodes (6): float, int, JSONValue, str, OMDbProvider, TMDBProvider
+Cohesion: 0.12
+Nodes (15): AsyncClient, float, int, JSONValue, Redis, str, OMDbProvider, get_http_client() (+7 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.06
-Nodes (77): Self, PaginatedResponse, PaginatedResponse, UserInteractionState, AlbumDetail, CollectionMovieOut, CompanyOut, CompanyRatingBody (+69 more)
+Cohesion: 0.05
+Nodes (93): Self, PaginatedResponse, PaginatedResponse, UserInteractionState, AlbumDetail, CollectionMovieOut, CompanyOut, CompanyRatingBody (+85 more)
 
 ### Community 23 - "Community 23"
 Cohesion: 0.21
 Nodes (11): AuthFormMode, AuthState, CallbackService, ForgotPasswordPageState, LoginResponse, ResetPasswordPageState, StandardServiceConfig, TokenResponse (+3 more)
 
 ### Community 24 - "Community 24"
-Cohesion: 0.08
-Nodes (41): listKeys, CollaboratorOut, getExportUrl(), ListLikeStatus, RankHistoryOut, useAcceptInvitation(), useAddToList(), useCreateList() (+33 more)
+Cohesion: 0.12
+Nodes (27): listKeys, CollaboratorOut, getExportUrl(), ListLikeStatus, RankHistoryOut, useAcceptInvitation(), useDeclineInvitation(), useDeleteList() (+19 more)
 
 ### Community 25 - "Community 25"
 Cohesion: 0.06
@@ -920,8 +915,8 @@ Cohesion: 0.06
 Nodes (32): LocalGame, DetectedProcess, GameDetector, getWindowTitles(), NON_GAME_PROCESSES, normalizeTitle(), PlaySession, ProcessMapping (+24 more)
 
 ### Community 27 - "Community 27"
-Cohesion: 0.03
-Nodes (89): JSONValue, MediaItem, str, AsyncSession, bool, ExternalRating, MediaItem, str (+81 more)
+Cohesion: 0.02
+Nodes (106): AsyncSession, Request, str, int, str, AsyncSession, bool, ExternalRating (+98 more)
 
 ### Community 28 - "Community 28"
 Cohesion: 0.10
@@ -936,8 +931,8 @@ Cohesion: 0.08
 Nodes (43): bool, float, int, str, _compute_confidence(), _detect_live(), _detect_remix(), _extract_feat_from_brackets() (+35 more)
 
 ### Community 31 - "Community 31"
-Cohesion: 0.05
-Nodes (42): DkAvatar, DkAvatarProps, sizeClasses, badgeVariants, DkBadge(), DkBadgeProps, buttonVariants, DkButton (+34 more)
+Cohesion: 0.03
+Nodes (64): DkAvatar, DkAvatarProps, sizeClasses, badgeVariants, DkBadge(), DkBadgeProps, buttonVariants, DkButton (+56 more)
 
 ### Community 32 - "Community 32"
 Cohesion: 0.08
@@ -948,20 +943,20 @@ Cohesion: 0.04
 Nodes (46): 1a. Update `media_type` CHECK constraint, 1b. Add `Album` model (1:1 with MediaItem, like Movie/Show/Game), 1c. Add `Track` model, 1d. Add artist linkage (reuse + extend), 1e. Add interaction types, 1f. Create Alembic migration, 3a. Sync tasks, 3b. Beat schedule additions (+38 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.10
-Nodes (38): ReviewActionButton(), ReviewActionButtonProps, CooldownBadge(), formatDate(), formatRemaining(), isInCooldown(), ReviewCard(), ReviewCardProps (+30 more)
+Cohesion: 0.08
+Nodes (46): InteractiveStar(), InteractiveStarProps, sizeMap, SwipeState, useSwipe(), UseSwipeOptions, ReviewActionButton(), ReviewActionButtonProps (+38 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.06
-Nodes (53): AsyncSession, bool, date, int, MediaItemListResponse, Request, str, User (+45 more)
+Cohesion: 0.21
+Nodes (12): str, User, CombinedSignal, _genre_label(), _guess_media_types_for_genre(), _language_label(), _media_label(), _merge_affinities() (+4 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.09
 Nodes (16): bool, int, Redis, str, Return True if this entity has failed too many times and should be skipped., Return True if this entity has failed too many times and should be skipped., Scale batch size based on current cooldown.          When cooldown=0, return *ba, Scale batch size based on current cooldown.          When cooldown=0, return * (+8 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.12
-Nodes (36): AsyncSession, Request, str, User, UserMoodCheckIn, AsyncMock, str, User (+28 more)
+Cohesion: 0.16
+Nodes (30): AsyncSession, Request, User, UserMoodCheckIn, AsyncMock, dismiss_mood_checkin(), _get_today_checkin(), get_today_mood_checkin() (+22 more)
 
 ### Community 38 - "Community 38"
 Cohesion: 0.24
@@ -985,19 +980,19 @@ Nodes (23): ListsPreviewSection(), LocalGamesOverviewSection(), LibraryIntegrati
 
 ### Community 43 - "Community 43"
 Cohesion: 0.06
-Nodes (45): GameProgressEvent, GameScanOrchestrator, PluginScanResult, ScanSummary, acceptSuggestion(), __all(), db(), DbRow (+37 more)
+Nodes (47): GameProgressEvent, GameScanOrchestrator, PluginScanResult, ScanRequest, ScanSummary, SseRequest, acceptSuggestion(), __all() (+39 more)
 
 ### Community 44 - "Community 44"
 Cohesion: 0.14
 Nodes (21): str, str, str, # TODO: Review this file, Enrich an album from Last.fm: wiki, tags, playcounts., Enrich an album from Last.fm: wiki, tags, playcounts., _sync_lastfm_enrich_album(), sync_lastfm_enrich_album_task() (+13 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.15
-Nodes (25): str, _basic_auth(), _build_callback_url(), build_spotify_link_url(), build_spotify_login_url(), consume_state(), exchange_code_for_tokens(), get_spotify_user_profile() (+17 more)
+Cohesion: 0.09
+Nodes (47): AsyncSession, int, str, User, Exception, _basic_auth(), _build_callback_url(), build_spotify_link_url() (+39 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.06
-Nodes (24): LauncherGameStats(), UserProfilePage(), LauncherGameStats(), AuthContext, useAuth(), PushSubscriptionState, usePushSubscription(), VAPID_KEY_CACHE (+16 more)
+Cohesion: 0.05
+Nodes (35): LauncherGameStats(), UserProfilePage(), LauncherGameStats(), AuthContext, useAuth(), PushSubscriptionState, usePushSubscription(), VAPID_KEY_CACHE (+27 more)
 
 ### Community 48 - "Community 48"
 Cohesion: 0.05
@@ -1009,23 +1004,23 @@ Nodes (17): int, str, bench_fanout_discovery(), bench_full_pipeline(), bench_pop
 
 ### Community 50 - "Community 50"
 Cohesion: 0.04
-Nodes (149): ActivityHeatmapEntry, ActivityHeatmapResponse, _fetch_user_activity_events(), get_my_activity_heatmap(), get_user_activity(), get_user_mood_timeline(), Get a user's recent activity timeline., Get a user's recent mood check-in timeline. (+141 more)
+Nodes (186): AdminMetricPoint, AsyncSession, str, User, AsyncSession, int, MediaItemListResponse, Request (+178 more)
 
 ### Community 51 - "Community 51"
 Cohesion: 0.04
-Nodes (72): main(), str, async_session(), Get a session from a process-aware factory. Safe for Celery prefork workers., Get a session from a process-aware factory. Safe for Celery prefork workers., enrich_content_ratings(), enrich_fanart(), enrich_game_age_ratings() (+64 more)
+Nodes (59): main(), async_session(), Get a session from a process-aware factory. Safe for Celery prefork workers., Get a session from a process-aware factory. Safe for Celery prefork workers., enrich_content_ratings(), enrich_fanart(), enrich_game_age_ratings(), enrich_lastfm() (+51 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.02
-Nodes (215): str, AsyncClient, AsyncSession, str, User, int, # TODO: Review this file, Convert arbitrary text to a URL-safe slug. (+207 more)
+Cohesion: 0.04
+Nodes (103): AsyncSession, str, User, _as_list(), _check_plex_library_needs_sync(), _connections(), _container_items(), discover_plex_libraries() (+95 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.09
-Nodes (41): AsyncSession, int, str, User, _build_callback_url(), build_google_link_url(), build_google_login_url(), consume_state() (+33 more)
+Cohesion: 0.07
+Nodes (48): AsyncSession, int, str, User, _build_callback_url(), build_google_link_url(), build_google_login_url(), consume_state() (+40 more)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.05
-Nodes (68): AbstractEventLoop, Any, # TODO: Review this file, Run an async coroutine with a fresh event loop (safe for Celery task retries)., Run an async coroutine, reusing the same event loop within a process.      Creat, Run an async coroutine, reusing the same event loop within a process.      Cre, run_async(), _start_background_loop() (+60 more)
+Nodes (70): AbstractEventLoop, Any, # TODO: Review this file, Run an async coroutine with a fresh event loop (safe for Celery task retries)., Run an async coroutine, reusing the same event loop within a process.      Creat, Run an async coroutine, reusing the same event loop within a process.      Cre, run_async(), _start_background_loop() (+62 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.09
@@ -1036,60 +1031,60 @@ Cohesion: 0.06
 Nodes (35): Acceptance Checklist, API Contract, Auth, Auth Flow, code:python (# tests/unit/test_auth_service.py), code:javascript (import { check } from "k6";), code:python (async def test_token_bucket_allows_up_to_burst():), code:python (# tests/integration/test_media_service.py) (+27 more)
 
 ### Community 57 - "Community 57"
-Cohesion: 0.09
-Nodes (30): AsyncSession, Request, AsyncSession, int, Request, User, AsyncSession, AuthRateLimiter (+22 more)
+Cohesion: 0.03
+Nodes (104): AsyncSession, AuthRateLimiter, Request, str, User, WorkoutOut, AsyncSession, Request (+96 more)
 
 ### Community 58 - "Community 58"
 Cohesion: 0.08
 Nodes (37): AsyncClient, int, JSONValue, Redis, Response, str, _get_steamgrid_client(), # TODO: Review this file (+29 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.05
-Nodes (31): CustomFieldRenderer, PluginAPI, PluginConfigField, PluginConfigPanel(), PluginInfo, PluginManifest, getPluginAPI(), getStatusConfig() (+23 more)
+Cohesion: 0.04
+Nodes (50): ConfigField(), CustomFieldRenderer, PluginAPI, PluginConfigField, PluginConfigPanel(), PluginInfo, PluginManifest, buildPluginGraph() (+42 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.24
-Nodes (10): float, int, str, decode_cursor(), encode_cursor(), # TODO: Review this file, Encode position data into an opaque cursor string., Encode position data into an opaque cursor string. (+2 more)
+Cohesion: 0.23
+Nodes (11): float, int, str, decode_cursor(), encode_cursor(), # TODO: Review this file, Encode position data into an opaque cursor string., Encode position data into an opaque cursor string. (+3 more)
 
 ### Community 61 - "Community 61"
-Cohesion: 0.07
-Nodes (35): Request, float, int, str, int, MonkeyPatch, str, Counter (+27 more)
+Cohesion: 0.10
+Nodes (24): float, int, str, int, MonkeyPatch, str, Counter, Gauge (+16 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.13
-Nodes (10): ExternalRating, JSONValue, omdb_to_ratings(), Extract ExternalRating rows from an OMDb response.      Returns a list of Extern, Extract ExternalRating rows from an OMDb response.      Returns a list of Exte, Game of Thrones has no Metacritic in Ratings array., Game of Thrones has no Metacritic in Ratings array., When Ratings array is empty, falls back to top-level imdbRating. (+2 more)
+Cohesion: 0.06
+Nodes (29): ExternalRating, float, int, JSONValue, str, AsyncMock, omdb_to_ratings(), _parse_score() (+21 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.17
 Nodes (19): AsyncSession, int, MediaItemListResponse, Request, str, User, get_steam_library_tab(), get_steam_status() (+11 more)
 
 ### Community 64 - "Community 64"
-Cohesion: 0.16
-Nodes (28): AsyncSession, Request, str, User, str, UserRating, delete_user_rating(), get_my_user_rating() (+20 more)
+Cohesion: 0.09
+Nodes (48): AsyncSession, bool, int, Request, ReviewWithUserOut, str, User, AsyncSession (+40 more)
 
 ### Community 65 - "Community 65"
 Cohesion: 0.06
 Nodes (32): API Client Generation, API Design, Approach, Auth (`/auth`), Auth Flow, Authenticated Requests, CI Integration, code:block1 (FastAPI route → Pydantic schema → /openapi.json → openapi-ty) (+24 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.13
-Nodes (18): AsyncMock, FriendRequest, MagicMock, str, User, FriendRequest, # TODO: Review this file, FriendService (+10 more)
+Cohesion: 0.04
+Nodes (49): main(), _build_album_context(), _build_episode_cache(), _build_guid_cache(), _compute_show_watches(), Compute which shows are fully watched from episode data.      A show is "fully w, Compute which shows are fully watched from episode data.      A show is "fully, Batch-load every (provider, external_id) pair from *items* in one query. (+41 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.08
-Nodes (39): CircuitBreaker, ABC, bool, AsyncClient, float, int, Redis, Response (+31 more)
+Cohesion: 0.09
+Nodes (28): CircuitBreaker, ABC, bool, AsyncClient, float, int, Redis, Response (+20 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.07
-Nodes (22): int, str, BadgeContext, BadgeDef, # TODO: Review this file, Stats snapshot used by badge condition checks., Stats snapshot used by badge condition checks., Stats snapshot used by badge condition checks. (+14 more)
+Cohesion: 0.11
+Nodes (34): AsyncSession, int, Request, str, User, AsyncSession, bool, int (+26 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.08
-Nodes (28): AsyncSession, bool, int, MediaItem, str, MediaEditProposal, MediaImageOverride, ProposalVote (+20 more)
+Cohesion: 0.05
+Nodes (59): bool, MediaItem, AsyncSession, bool, int, MediaItem, str, bool (+51 more)
 
 ### Community 70 - "Community 70"
-Cohesion: 0.05
-Nodes (60): AsyncSession, User, AsyncSession, int, str, TMDBProvider, User, TmdbWatchlistImportResponse (+52 more)
+Cohesion: 0.07
+Nodes (48): AsyncSession, User, AsyncSession, int, str, TMDBProvider, User, TmdbWatchlistImportResponse (+40 more)
 
 ### Community 71 - "Community 71"
 Cohesion: 0.06
@@ -1104,20 +1099,20 @@ Cohesion: 0.11
 Nodes (24): bool, int, Proposal, str, User, get_handler(), Get the handler for a proposal type, or raise KeyError., proposer_self_action() (+16 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.14
-Nodes (28): applyNamingTemplate(), autoOrganizeDownload(), AutoOrganizeResult, batchOrganizeDirectory(), db(), DownloadedContent, findDownloadedContent(), NAMING_PRESETS (+20 more)
+Cohesion: 0.05
+Nodes (36): 10. Error Handling, 11. Implementation Order, 12. Future Considerations (Not in Scope), 13. Design Decisions (Resolved), 1. Architecture, 2. Plugin Manifest, 3. Blueprint Parsing Engine, 4. Core Slot System Changes (+28 more)
 
 ### Community 75 - "Community 75"
 Cohesion: 0.11
 Nodes (17): compilerOptions, allowImportingTsExtensions, erasableSyntaxOnly, lib, module, moduleDetection, moduleResolution, noEmit (+9 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.16
+Cohesion: 0.17
 Nodes (9): AsyncClient, TMDBProvider, Tests for TMDB client — API request construction and error handling., TestMovieEndpoints, TestOtherEndpoints, TestRateLimitHandling, TestShowEndpoints, TestTMDBProviderConstruction (+1 more)
 
 ### Community 77 - "Community 77"
-Cohesion: 0.08
-Nodes (24): ProviderLogo(), GameRow(), GameRowProps, getStatusInfo(), CandidateReviewModal(), CandidateReviewModalProps, MATCH_LABELS, MatchCandidate (+16 more)
+Cohesion: 0.22
+Nodes (7): ManualSearch(), ManualSearchProps, ProviderResult, CONFIDENCE_COLORS, MATCH_LABELS, MatchCandidateExtra, MatchDetailPanelProps
 
 ### Community 78 - "Community 78"
 Cohesion: 0.08
@@ -1132,24 +1127,24 @@ Cohesion: 0.09
 Nodes (28): Album, JSONValue, str, Fetch artist info from Last.fm and update Person record if found., Fetch artist info from Last.fm and update Person record if found., Fetch artist info from Last.fm and update Person record if found., Fetch artist info from Last.fm and update Person record if found., MusicBrainzHydrator (+20 more)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.17
-Nodes (20): Revoke every active refresh token for the given user., Base exception for refresh token failures., Raised when a revoked refresh token is reused — invalidates all tokens for the u, Raised when the user account is no longer active., Validates refresh tokens and issues new token pairs.      Handles token rotati, Validate a refresh token and issue a new token pair.          Returns:, RefreshError, RefreshService (+12 more)
+Cohesion: 0.10
+Nodes (15): BlueprintIcon(), FONT_MAP, Props, SIZE_MAP, BlueprintCard(), ParsedBlueprint, Props, CommunityBlueprint (+7 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.09
 Nodes (26): AsyncClient, int, JSONValue, Redis, Response, str, # TODO: Review this file, Fetch all owned games for a Steam user.          Calls IPlayerService/GetOwnedGa (+18 more)
 
 ### Community 84 - "Community 84"
-Cohesion: 0.12
-Nodes (17): getSpotifyLikedTracksNextPageParam(), LIBRARY_TABS, LibraryResponse, PlexAlbumTrack, PlexAlbumTracksResult, PlexLibraryInfo, PlexSyncResult, SpotifyLikedTracks (+9 more)
+Cohesion: 0.10
+Nodes (20): CORE_TABS, getSpotifyLikedTracksNextPageParam(), LIBRARY_TABS, LibraryResponse, LibraryTab, PlexAlbumTrack, PlexAlbumTracksResult, PlexLibraryInfo (+12 more)
 
 ### Community 85 - "Community 85"
-Cohesion: 0.08
-Nodes (7): int, Path, _download_steam_app_list(), Tests for catalog seeding pipeline — three concurrent seeders.  Covers: state, TestCeleryTasks, TestDownloadExport, TestDownloadSteamAppList
+Cohesion: 0.05
+Nodes (18): bool, int, Path, _download_steam_app_list(), _enqueue_if_new(), Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD fo, Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD for, Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD for (+10 more)
 
 ### Community 86 - "Community 86"
-Cohesion: 0.13
-Nodes (7): game_images_to_assets(), movie_images_to_assets(), HD and SD clearart with same URL — only one record., HD and SD clearart with same URL — only one record., HD and SD clearart with same URL — only one record., HD and SD logo with same URL — only one record., TestFanartTransformer
+Cohesion: 0.10
+Nodes (24): JSONValue, MediaAsset, str, _extract_album_covers_by_rg(), _extract_artist_assets(), _extract_assets(), game_images_to_assets(), movie_images_to_assets() (+16 more)
 
 ### Community 87 - "Community 87"
 Cohesion: 0.08
@@ -1160,7 +1155,7 @@ Cohesion: 0.06
 Nodes (30): Auth Flow, Before → After, Client Initialization, code:block1 (┌──────────────────────────────────────────────┐), code:typescript (// src/lib/persistence.ts), code:typescript (// src/features/sync/useSyncStream.ts), code:block12 (MediaDetail → MediaProvider → TMDBProvider → MovieDetail → M), code:block13 (MediaDetail → MediaCasts (fetches + renders) → PersonCard) (+22 more)
 
 ### Community 89 - "Community 89"
-Cohesion: 0.15
+Cohesion: 0.16
 Nodes (11): _process_backlog_batch(), Query ExternalID stubs and dispatch sync tasks with mixed media types.      Quer, Query ExternalID stubs and dispatch sync tasks with mixed media types.      Qu, Query ExternalID stubs and dispatch sync tasks with mixed media types.      Quer, _make_async_session_mock(), mock_session(), Each batch should include both movie and show stubs (250/250 split)., Each batch should include both movie and show stubs (250/250 split). (+3 more)
 
 ### Community 90 - "Community 90"
@@ -1168,12 +1163,12 @@ Cohesion: 0.05
 Nodes (40): 10. IPC Hardening, 11. Event Bus Hardening, 12. Epic Plugin Migration, 13. Forward Compatibility Policy, 14. What Gets Deleted, 1. Architecture, 2. Sandbox Model — worker_threads, 3. Plugin Lifecycle — State Machine (+32 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.11
-Nodes (19): useMediaParams(), useSaveSpotifyTrack(), ArtistAlbumsSection(), MovieSection(), MovieSectionProps, AudioFeatureRow(), MetaItem(), ALBUM_AUDIO_FEATURE_ORDER (+11 more)
+Cohesion: 0.19
+Nodes (10): AsyncMock, ReviewService, _make_review(), During cooldown, text fields can still be edited., During cooldown, text fields can still be edited., After cooldown expires, only score can change — text fields are locked., After cooldown expires, text fields are locked., After cooldown expires, text fields are locked. (+2 more)
 
 ### Community 92 - "Community 92"
-Cohesion: 0.11
-Nodes (23): closeAllConnections(), closeConnection(), connections, getConnection(), getDbPath(), downloadsMigrations, initAllDatabases(), createMigrationService() (+15 more)
+Cohesion: 0.13
+Nodes (22): closeAllConnections(), closeConnection(), connections, getConnection(), getDbPath(), downloadsMigrations, initAllDatabases(), createMigrationService() (+14 more)
 
 ### Community 93 - "Community 93"
 Cohesion: 0.07
@@ -1197,14 +1192,14 @@ Nodes (24): Circuit Breaker, code:python (CELERY_TASK_QUEUES = {), code:block10 
 
 ### Community 99 - "Community 99"
 Cohesion: 0.05
-Nodes (31): AuthBackground(), DeepLinkData, useDeepLink(), AuthBackButton(), AuthCard(), AuthCardProps, AuthHeaderProps, OAuthButton() (+23 more)
+Nodes (40): AuthBackground(), FeatureFallback(), Feature(), REGISTRY, FeatureDefinition, FeatureName, FeatureOverrides, FeatureContext (+32 more)
 
 ### Community 100 - "Community 100"
 Cohesion: 0.13
-Nodes (24): AsyncSession, SpotifyProvider, str, User, _fetch_all_liked_tracks(), _fetch_all_saved_albums(), # TODO: Review this file, Sync user's recently played tracks from Spotify, creating 'listened' interaction (+16 more)
+Nodes (21): str, _fetch_all_liked_tracks(), _fetch_all_saved_albums(), # TODO: Review this file, Sync user's recently played tracks from Spotify, creating 'listened' interaction, Sync user's recently played tracks from Spotify, creating 'listened' interaction, Sync user's recently played tracks from Spotify, creating 'listened' interaction, Sync user's recently played tracks from Spotify, creating 'listened' interaction (+13 more)
 
 ### Community 101 - "Community 101"
-Cohesion: 0.19
+Cohesion: 0.20
 Nodes (13): AdminMetricPoint, AdminMetricsResponse, AdminRecentUser, AdminStatsResponse, EnrichmentCounts, MediaHydrationItem, MediaHydrationResponse, # TODO: Review this file (+5 more)
 
 ### Community 102 - "Community 102"
@@ -1217,7 +1212,7 @@ Nodes (15): COUNT_KEY, InteractionCounts, InteractionOut, InteractionToggleRespo
 
 ### Community 104 - "Community 104"
 Cohesion: 0.11
-Nodes (46): int, Proposal, AsyncSession, int, Proposal, str, User, bool (+38 more)
+Nodes (43): main(), main(), AsyncSession, int, Proposal, str, User, approve_proposal() (+35 more)
 
 ### Community 105 - "Community 105"
 Cohesion: 0.10
@@ -1228,7 +1223,7 @@ Cohesion: 0.13
 Nodes (14): _daily_import_loop(), _detect_deletions_after_import(), # TODO: Review this file, Daily import: download all TMDB exports, insert stubs, detect deletions.      Us, Daily import: download all TMDB exports, insert stubs, detect deletions., Daily import: download all TMDB exports, insert stubs, detect deletions.      Us, Detect TMDB IDs in our DB that are no longer in the daily exports.      Re-downl, Detect TMDB IDs in our DB that are no longer in the daily exports.      Re-dow (+6 more)
 
 ### Community 107 - "Community 107"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (4): Tests for TMDB daily export import and backlog processor.  Covers: export down, TestCeleryTasks, TestDownloadExport, TestQueueBacklog
 
 ### Community 108 - "Community 108"
@@ -1240,8 +1235,8 @@ Cohesion: 0.04
 Nodes (48): Backend — Create, Backend — Modify, code:python (SCOPES = [), code:bash (git add backend/otix/tasks/sync/spotify.py), code:python (# Spotify playlist refresh (every 6 hours at off-peak minute), code:bash (git add backend/otix/infrastructure/celery.py), code:python ("""Spotify playlist API endpoints.), code:python (from otix.api.spotify_playlists import spotify_playlists_rou) (+40 more)
 
 ### Community 110 - "Community 110"
-Cohesion: 0.06
-Nodes (45): Game, int, JSONValue, str, _get_platform_id(), _pick_best(), _pick_best_match(), # TODO: Review this file (+37 more)
+Cohesion: 0.05
+Nodes (53): Game, int, JSONValue, MediaItem, str, _get_platform_id(), _pick_best(), _pick_best_match() (+45 more)
 
 ### Community 111 - "Community 111"
 Cohesion: 0.31
@@ -1252,28 +1247,28 @@ Cohesion: 0.10
 Nodes (19): 14.1 Unified Calendar, 14. CALENDAR, 15.1 Achievement System, 15. ACHIEVEMENTS, 16.1 Dedicated Genre Discovery Page, 16.2 Genre-Relevance Scoring, 16. GENRE, 20.1 Electron App (+11 more)
 
 ### Community 113 - "Community 113"
-Cohesion: 0.10
-Nodes (15): CORE_TABS, mockNavigate, queryClient, LibraryTab, TAB_LABELS, ListsTabContent(), MediaTabContent(), SkeletonGrid() (+7 more)
+Cohesion: 0.14
+Nodes (10): mockNavigate, queryClient, ListsTabContent(), LibraryLikePage, LibraryListenedPage, LibraryOwnedPage, LibraryPlayedPage, LibraryWatchedPage (+2 more)
 
 ### Community 114 - "Community 114"
 Cohesion: 0.17
 Nodes (13): discoverKeys, discoverKeys, DiscoverListResponse, discoverQueries, PersonalizedSection, SearchSortBar(), SearchSortBarProps, SORT_OPTIONS (+5 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.11
-Nodes (21): fetchAllRegistries(), fetchRegistry(), RegistryData, RegistryEntry, PendingRequest, PermissionManager, addPluginRepo(), getGrantedPermissions() (+13 more)
+Cohesion: 0.18
+Nodes (10): RegistryEntry, PendingRequest, PermissionManager, getGrantedPermissions(), grantPermission(), revokeAllPermissions(), revokePermission(), PermissionRequest (+2 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.11
-Nodes (26): createApiProxy(), eventBus, OtixEventBus, getAllPlugins(), loadPluginData(), loadPluginMain(), loadPluginStatus(), loadPluginTest() (+18 more)
+Cohesion: 0.15
+Nodes (16): createApiProxy(), eventBus, ensurePluginDb(), getAllPlugins(), PluginRuntime, ApiProxy, EventSubscriber, OtixEventName (+8 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.10
-Nodes (19): bool, str, # TODO: Review this file, Thin async wrapper around the YouTube Data API v3., Thin async wrapper around the YouTube Data API v3., Thin async wrapper around the YouTube Data API v3., Fetch one page of the user's watch history.          Returns: {items: [{snippe, Fetch one page of the user's watch history.          Returns: {items: [{snippet: (+11 more)
+Cohesion: 0.20
+Nodes (8): bool, str, Fetch one page of the user's Watch Later playlist (WL). Useful for diagnostics., Fetch one page of the user's Watch Later playlist (WL). Useful for diagnostics., Fetch one page of the user's Watch Later playlist (WL). Useful for diagnostics., Fetch metadata for up to 50 videos.          Returns: {items: [{id, snippet: {, Fetch metadata for up to 50 videos.          Returns: {items: [{id, snippet: {ti, Fetch metadata for up to 50 videos.          Returns: {items: [{id, snippet: {ti
 
 ### Community 118 - "Community 118"
-Cohesion: 0.09
-Nodes (34): gameDetailOptions(), gameGenresOptions(), gameKeys, gameSuggestionsOptions(), MediaItemDetailResponse, MediaItemListResponse, MediaItemSummaryResponse, popularGamesOptions() (+26 more)
+Cohesion: 0.06
+Nodes (47): gameDetailOptions(), gameGenresOptions(), gameKeys, gameSuggestionsOptions(), MediaItemDetailResponse, MediaItemListResponse, MediaItemSummaryResponse, popularGamesOptions() (+39 more)
 
 ### Community 119 - "Community 119"
 Cohesion: 0.10
@@ -1288,24 +1283,24 @@ Cohesion: 0.09
 Nodes (37): computedHash, skillPath, source, sourceType, computedHash, skillPath, source, sourceType (+29 more)
 
 ### Community 122 - "Community 122"
-Cohesion: 0.16
-Nodes (8): int, _parse_timestamp(), Convert a Unix timestamp to a date., Convert a Unix timestamp to a date., Timestamp 0 = 1970-01-01, should not be treated as missing., Timestamp 0 = 1970-01-01, should not be treated as missing., TestImageUrl, _image_url()
+Cohesion: 0.22
+Nodes (6): int, _parse_timestamp(), Convert a Unix timestamp to a date., Convert a Unix timestamp to a date., Timestamp 0 = 1970-01-01, should not be treated as missing., Timestamp 0 = 1970-01-01, should not be treated as missing.
 
 ### Community 123 - "Community 123"
 Cohesion: 0.13
 Nodes (12): str, main(), Celery beat scheduler entry point.  Usage:     celery -A otix.infrastructure., _on_worker_process_init(), # TODO: Review this file, Route tasks to purpose-based queues with per-provider isolation., Route tasks to purpose-based queues with per-provider isolation., route_task() (+4 more)
 
 ### Community 124 - "Community 124"
-Cohesion: 0.17
-Nodes (10): Fetch Fanart images for a music album and store as MediaAsset rows.          Res, Insert only assets whose URLs don't already exist in the DB.          Also set, Insert only assets whose URLs don't already exist in the DB.          Also sets, Insert only assets whose URLs don't already exist in the DB.          Also sets, Fetch Fanart images for a movie and store as MediaAsset rows.          Uses TM, Fetch Fanart images for a movie and store as MediaAsset rows.          Uses TMDB, Fetch Fanart images for a show and store as MediaAsset rows.          Uses TVD, Fetch Fanart images for a show and store as MediaAsset rows.          Uses TVDB (+2 more)
+Cohesion: 0.15
+Nodes (15): int, MediaItemRating, str, MediaRatingService, _make_rating(), mock_celery_app(), mock_celery_app_rating(), rating_service() (+7 more)
 
 ### Community 125 - "Community 125"
-Cohesion: 0.15
-Nodes (23): AsyncSession, Request, str, User, AsyncSession, AsyncMock, User, BadgeOut (+15 more)
+Cohesion: 0.18
+Nodes (20): AsyncSession, Request, str, User, AsyncMock, User, BadgeOut, claim_badge() (+12 more)
 
 ### Community 126 - "Community 126"
-Cohesion: 0.12
-Nodes (19): AsyncSession, bool, datetime, Exercise, int, str, Workout, Exercise (+11 more)
+Cohesion: 0.15
+Nodes (17): MediaItemRating, str, AsyncSession, float, str, Upsert a rating and return (rating, avg_rating, rating_count)., Upsert a rating and return (rating, avg_rating, rating_count)., _blend_pair() (+9 more)
 
 ### Community 127 - "Community 127"
 Cohesion: 0.10
@@ -1344,48 +1339,48 @@ Cohesion: 0.26
 Nodes (8): Otix, Celery, Django, FastAPI, PostgreSQL, Redis, React, TanStack Query
 
 ### Community 136 - "Community 136"
-Cohesion: 0.09
-Nodes (21): AsyncMock, FanartHydrator, Every Fanart movie category maps to the correct asset_type., Every Fanart movie category maps to the correct asset_type., Lang codes are correctly extracted, including textless '00'., Lang codes are correctly extracted, including textless '00'., All inserted assets have provider='fanart' and correct media_item_id., All inserted assets have provider='fanart' and correct media_item_id. (+13 more)
+Cohesion: 0.07
+Nodes (31): AsyncMock, FanartHydrator, make_media_item(), Factory for creating a basic MediaItem with known values., Factory for creating a basic MediaItem with known values., fanart_hydrator(), fanart_movie_raw(), fanart_show_raw() (+23 more)
 
 ### Community 137 - "Community 137"
-Cohesion: 0.18
-Nodes (10): AdminEditService, make_media_item(), make_proposal(), Tests for AdminEditService., System proposals (proposer_user_id=None) can be approved by any admin., TestApproveProposal, TestCreateProposal, TestRejectProposal (+2 more)
+Cohesion: 0.16
+Nodes (14): useAddToList(), useCreateList(), UserListCreate, UserListOut, useUserLists(), AddToListButton(), AddToListButtonProps, ListCard() (+6 more)
 
 ### Community 138 - "Community 138"
 Cohesion: 0.26
 Nodes (6): AsyncClient, Redis, str, get_http_client(), LastFMProvider, # TODO: Review this file
 
 ### Community 139 - "Community 139"
-Cohesion: 0.08
-Nodes (19): Test game-specific sync scheduling based on release lifecycle., Games with no release date sync every 12 hours., Test game-specific sync scheduling based on release lifecycle., Games releasing in the future sync every 12 hours., Games with no release date sync every 12 hours., Games released within 90 days sync every 24 hours., Games releasing in the future sync every 12 hours., Test game-specific sync scheduling based on release lifecycle. (+11 more)
+Cohesion: 0.16
+Nodes (14): fetchAllRegistries(), fetchRegistry(), RegistryData, addPluginRepo(), getPlugin(), getPluginConfig(), getPluginRepos(), removePluginRepo() (+6 more)
 
 ### Community 140 - "Community 140"
-Cohesion: 0.17
-Nodes (12): bool, float, int, Redis, str, Block until tokens are available or *timeout* expires., Block until tokens are available or *timeout* expires., Block until tokens are available or *timeout* expires. (+4 more)
+Cohesion: 0.13
+Nodes (17): float, int, Redis, bool, float, int, Redis, str (+9 more)
 
 ### Community 141 - "Community 141"
 Cohesion: 0.17
 Nodes (20): ContextMenuContent(), ContextMenuContentProps, ContextMenuContextValue, ContextMenuCtx, ContextMenuProvider(), useMenuContext(), ContextMenuItem, ContextMenuItemProps (+12 more)
 
 ### Community 142 - "Community 142"
-Cohesion: 0.16
+Cohesion: 0.15
 Nodes (11): Path, _import_export_file(), Download and fully import one TMDB export file.      Returns counts only for n, Download and fully import one TMDB export file.      Returns counts only for new, Download and fully import one TMDB export file.      Returns counts only for new, _make_tmdb_gzip(), File with more entries than BATCH_INSERT_SIZE triggers multiple inserts., File with more entries than BATCH_INSERT_SIZE triggers multiple inserts. (+3 more)
 
 ### Community 143 - "Community 143"
-Cohesion: 0.13
-Nodes (14): EpisodeRef, expandCredits(), groupCredits(), GroupedCredit, isUpcoming(), PersonTimeline(), PersonTimelineProps, TimelineGroup (+6 more)
+Cohesion: 0.10
+Nodes (17): EpisodeRef, expandCredits(), MEDIA_TYPE_OPTIONS, PeopleTimelineFiltersProps, ROLE_OPTIONS, groupCredits(), GroupedCredit, isUpcoming() (+9 more)
 
 ### Community 144 - "Community 144"
-Cohesion: 0.18
-Nodes (25): AsyncSession, str, User, _build_auth_url(), build_plex_link_url(), build_plex_login_url(), _consume_state(), find_or_create_plex_user() (+17 more)
+Cohesion: 0.08
+Nodes (42): AsyncSession, AuthRateLimiter, Request, User, AuthRateLimiter, Request, User, AuthRateLimiter (+34 more)
 
 ### Community 145 - "Community 145"
-Cohesion: 0.21
-Nodes (9): connectTaskSseStream(), convertSseEvent(), convertToCamelCase(), SseEvent, SseStreamOptions, TaskStreamConfig, DEFAULT_RECONNECT_DELAYS, UseSseStreamOptions (+1 more)
+Cohesion: 0.10
+Nodes (16): apiClient, convertKeysToCamelCase(), convertKeysToSnakeCase(), isObject(), refreshQueue, connectTaskSseStream(), convertSseEvent(), convertToCamelCase() (+8 more)
 
 ### Community 146 - "Community 146"
-Cohesion: 0.11
-Nodes (7): float, int, Redis, str, AuthRateLimiter, get_auth_rate_limiter(), # TODO: Review this file
+Cohesion: 0.12
+Nodes (4): str, AuthRateLimiter, get_auth_rate_limiter(), # TODO: Review this file
 
 ### Community 147 - "Community 147"
 Cohesion: 0.14
@@ -1400,8 +1395,8 @@ Cohesion: 0.06
 Nodes (51): AsyncSession, str, User, AsyncSession, int, Request, str, AsyncSession (+43 more)
 
 ### Community 150 - "Community 150"
-Cohesion: 0.10
-Nodes (33): getDesktopAPI(), GamesFilter, Listener, listeners, localGameKeys, subscribeToGameDbChanges(), useAcceptSuggestion(), acceptSuggestionOnServer() (+25 more)
+Cohesion: 0.12
+Nodes (31): getDesktopAPI(), GamesFilter, Listener, listeners, localGameKeys, subscribeToGameDbChanges(), useAcceptSuggestion(), acceptSuggestionOnServer() (+23 more)
 
 ### Community 151 - "Community 151"
 Cohesion: 0.06
@@ -1413,23 +1408,23 @@ Nodes (4): calculatePasswordStrength(), getStrengthTier(), getTierLabel(), Stren
 
 ### Community 153 - "Community 153"
 Cohesion: 0.11
-Nodes (30): int, str, _extract_header_image(), # TODO: Review this file, Fetch Steam player counts and store data for an existing game., Fetch Steam player counts and store data for an existing game., Fetch Steam player counts and store data for an existing game., Fetch SteamGridDB artwork for a Steam game. (+22 more)
+Nodes (31): int, str, _extract_header_image(), # TODO: Review this file, Fetch Steam player counts and store data for an existing game., Fetch Steam player counts and store data for an existing game., Fetch Steam player counts and store data for an existing game., Fetch SteamGridDB artwork for a Steam game. (+23 more)
 
 ### Community 154 - "Community 154"
 Cohesion: 0.08
 Nodes (25): FIELD_LABELS, IMAGE_TYPE_LABELS, ProposalCard(), ConfidenceBadge(), formatDate(), MATCH_TYPE_LABELS, MatchDetails(), ProposalCardProps (+17 more)
 
 ### Community 155 - "Community 155"
-Cohesion: 0.11
-Nodes (25): playlistKeys, useSpotifyPlaylist(), useSpotifyPlaylists(), useSubscribePlaylist(), useSyncPlaylist(), useUnsubscribePlaylist(), PlaylistCard(), PlaylistCardProps (+17 more)
+Cohesion: 0.05
+Nodes (48): playlistKeys, useSpotifyPlaylist(), useSpotifyPlaylists(), useSubscribePlaylist(), useSyncPlaylist(), useUnsubscribePlaylist(), DEFAULT_PALETTE, ExtractedPalette (+40 more)
 
 ### Community 156 - "Community 156"
 Cohesion: 0.39
 Nodes (9): API Service, Beat Service, PostgreSQL Database Service, Redis Service, Worker CCU, Worker Control, Worker Fast, Worker Provider (+1 more)
 
 ### Community 157 - "Community 157"
-Cohesion: 0.11
-Nodes (20): AsyncSession, User, AsyncSession, int, str, str, AsyncMock, PushSubscription (+12 more)
+Cohesion: 0.12
+Nodes (19): AsyncSession, User, AsyncSession, int, str, str, AsyncMock, subscribe() (+11 more)
 
 ### Community 158 - "Community 158"
 Cohesion: 0.11
@@ -1445,11 +1440,11 @@ Nodes (40): code:ts (// frontend/src/features/games/types.ts), code:bash (git ad
 
 ### Community 161 - "Community 161"
 Cohesion: 0.13
-Nodes (19): str, app(), _make_app(), _mock_db(), mock_redis(), GET /discover/trailers/trending returns 200 with expected paginated shape., GET /discover/trailers/trending?limit=X still returns 200., Return an AsyncMock that looks like an AsyncSession. (+11 more)
+Nodes (18): app(), _make_app(), _mock_db(), mock_redis(), GET /discover/trailers/trending returns 200 with expected paginated shape., GET /discover/trailers/trending?limit=X still returns 200., Return an AsyncMock that looks like an AsyncSession., Return an AsyncMock that looks like an AsyncSession. (+10 more)
 
 ### Community 162 - "Community 162"
 Cohesion: 0.06
-Nodes (45): int, Request, AsyncMock, bool, float, int, str, Yield ``text/event-stream`` chunks until a terminal event or timeout.      Lif (+37 more)
+Nodes (42): AsyncMock, bool, float, int, str, _data_events(), _drain(), _drain_with_publish() (+34 more)
 
 ### Community 163 - "Community 163"
 Cohesion: 0.07
@@ -1460,8 +1455,8 @@ Cohesion: 0.25
 Nodes (8): bulk queue, critical queue, default queue, deferred queue, provider queue, scheduled queue, steam_ccu queue, route_task
 
 ### Community 165 - "Community 165"
-Cohesion: 0.08
-Nodes (35): AuthService, hash_password(), hash_token(), # TODO: Review this file, Verify a 2FA challenge token + TOTP code and issue real tokens., Verify a 2FA challenge token + TOTP code and issue real tokens., Revoke all refresh tokens and set global logout marker., Revoke all refresh tokens and set global logout marker. (+27 more)
+Cohesion: 0.11
+Nodes (17): Architecture, Context, Files Touched, Plugins Page Redesign, Step 10: Clean `settings-plugin-config-panel.tsx`, Step 11: Fix `settings-plugin-slot.tsx` import, Step 1: Consolidate types → `types/plugins.ts`, Step 2: Create `utils/plugin-categories.ts` (+9 more)
 
 ### Community 166 - "Community 166"
 Cohesion: 0.06
@@ -1493,7 +1488,7 @@ Nodes (29): 10. Not In Scope (Future), 11. Migration Path, 12. Design Decisions,
 
 ### Community 173 - "Community 173"
 Cohesion: 0.09
-Nodes (22): usePlexAlbumTracks(), MediaDetail(), useMediaDetail(), PlatformIcon(), GameSection(), GameSectionProps, MediaHero(), MediaHeroProps (+14 more)
+Nodes (21): MediaDetail(), useMediaDetail(), PlatformIcon(), GameSection(), GameSectionProps, MediaHero(), MediaHeroProps, backdropSrc() (+13 more)
 
 ### Community 174 - "Community 174"
 Cohesion: 0.13
@@ -1508,32 +1503,32 @@ Cohesion: 0.20
 Nodes (10): scripts, build, dev, generate:types, lint, prepare, preview, test (+2 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.11
-Nodes (24): createMediaRoutes(), MediaDetailPage, MediaDetailPage(), ListParams, mediaKeys, SearchParams, AlbumDetail, EpisodeOut (+16 more)
+Cohesion: 0.05
+Nodes (43): ALBUM_AUDIO_FEATURE_ORDER, DOWNLOAD_STATUS_LABELS, EMPTY_TRACKS, FLIP_TRANSITION, StatusLabelConfig, useMediaParams(), usePlexAlbumTracks(), createMediaRoutes() (+35 more)
 
 ### Community 178 - "Community 178"
 Cohesion: 0.09
 Nodes (11): Bot, A simulated human with a unique identity, personality, and taste profile., A simulated human with a unique identity, personality, and taste profile., Get next search term from the dynamic queue, replenishing as needed., Get next search term from the dynamic queue, replenishing as needed., Add new search terms based on discovered content., Add new search terms based on discovered content., Generate related search terms from a media detail view. (+3 more)
 
 ### Community 179 - "Community 179"
-Cohesion: 0.12
-Nodes (16): ProviderState, # TODO: Review this file, SyncJob, Without stored state, defaults to 24h ago., Without stored state, defaults to 24h ago., Returns stored timestamp when available., Without stored state, defaults to 24h ago., Returns stored timestamp when available. (+8 more)
+Cohesion: 0.16
+Nodes (15): gameDetailOptions(), gameGenresOptions(), gameKeys, gameSuggestionsOptions(), MediaItemDetailResponse, MediaItemListResponse, MediaItemSummaryResponse, popularGamesOptions() (+7 more)
 
 ### Community 180 - "Community 180"
-Cohesion: 0.15
-Nodes (16): AuthRateLimiter, Request, SteamInitiateResponse, AuthRateLimiter, Request, SteamInitiateResponse, str, User (+8 more)
+Cohesion: 0.17
+Nodes (9): AsyncSession, Proposal, MatchProposalHandler, Match proposal handler — game ID linking.  When a scanned game is auto-matched t, Handler for proposal_type='match' — game-to-Otix ID linking., Auto-approve high-confidence matches.          Same thresholds as the existing G, Create ExternalID mapping + increment confirmed_count., Create MatchSkip to prevent re-processing this external ID. (+1 more)
 
 ### Community 181 - "Community 181"
-Cohesion: 0.07
-Nodes (32): ActiveInstallInfo, AiModelStatus, clearDesktopAPICache(), CloudSettings, DesktopAPI, DesktopSettingsData, DiskInfo, FpsStatsData (+24 more)
+Cohesion: 0.08
+Nodes (29): ActiveInstallInfo, AiModelStatus, clearDesktopAPICache(), CloudSettings, DesktopAPI, DesktopSettingsData, DiskInfo, FpsStatsData (+21 more)
 
 ### Community 182 - "Community 182"
 Cohesion: 0.33
 Nodes (7): API Layer, Domain Layer, Lib Layer, Provider Layer, Schema Layer, Service Layer, Task Layer
 
 ### Community 183 - "Community 183"
-Cohesion: 0.15
-Nodes (10): bool, int, str, # TODO: Review this file, Batch upsert interactions for a single user. Returns count of NEW interactions., Batch upsert interactions for a single user. Returns count of NEW interactions., Batch upsert interactions for a single user. Returns count of NEW interactions., Return a YouTube liked-video interaction for a user+media combination, if any. (+2 more)
+Cohesion: 0.13
+Nodes (12): AsyncSession, bool, int, MediaItem, str, # TODO: Review this file, Batch upsert interactions for a single user. Returns count of NEW interactions., Batch upsert interactions for a single user. Returns count of NEW interactions. (+4 more)
 
 ### Community 184 - "Community 184"
 Cohesion: 0.10
@@ -1549,15 +1544,15 @@ Nodes (7): lint-staged, *.{css,json,md}, *.{ts,tsx}, name, private, type, versio
 
 ### Community 187 - "Community 187"
 Cohesion: 0.21
-Nodes (8): ConfirmMatchResponse, str, Remove an external_id mapping so the game can be re-matched.          Also rem, Split 'provider:external_id' into (provider, external_id)., Insert a permanent rejection record., Synchronously import an IGDB game into the catalog.          Uses the existing, Fire-and-forget SteamGridDB hydration for a game.          This runs asynchron, Handle a user's match decision.          Actions:         - rejected_permanen
+Nodes (9): bool, int, MediaItemRating, Review, str, Like get_reviews_for_media but also loads each reviewer's rating., Like get_reviews_for_media but also loads each reviewer's rating., Update review fields from a dict. Respects cooldown. Returns the updated review (+1 more)
 
 ### Community 188 - "Community 188"
 Cohesion: 0.07
 Nodes (29): ADMIN_BLOG_POSTS, AdminBlogPost, CriterionStatus, CrossIntegration, ExperimentAdminMeta, EXPERIMENTS_ADMIN, getReadinessStats(), IntegrationStatus (+21 more)
 
 ### Community 189 - "Community 189"
-Cohesion: 0.09
-Nodes (19): Path, str, AsyncSession, float, str, BaseSettings, # TODO: Review this file, Settings (+11 more)
+Cohesion: 0.14
+Nodes (6): Path, str, BaseSettings, # TODO: Review this file, Settings, backfill()
 
 ### Community 190 - "Community 190"
 Cohesion: 0.60
@@ -1572,24 +1567,24 @@ Cohesion: 0.20
 Nodes (8): AnimationPreset, BackgroundEffect, CardVariant, ColumnConfig, HeroStyle, LauncherLayout, NavigationStyle, ThemeDefinition
 
 ### Community 193 - "Community 193"
-Cohesion: 0.12
-Nodes (31): AuthService, date, AsyncMock, MagicMock, str, User, AuthActionToken, AuthActionType (+23 more)
+Cohesion: 0.06
+Nodes (64): AuthService, hash_password(), hash_token(), # TODO: Review this file, Verify a 2FA challenge token + TOTP code and issue real tokens., Verify a 2FA challenge token + TOTP code and issue real tokens., Revoke all refresh tokens and set global logout marker., Revoke all refresh tokens and set global logout marker. (+56 more)
 
 ### Community 194 - "Community 194"
 Cohesion: 0.13
 Nodes (13): UserProfilePage(), StreakDisplay(), StreakDisplayProps, ALL_SECTIONS, computeGamification(), DEFAULT_SECTIONS, getLevelTier(), GRADIENTS (+5 more)
 
 ### Community 195 - "Community 195"
-Cohesion: 0.32
-Nodes (6): AsyncClient, close_http_client(), get_http_client(), # TODO: Review this file, Return a module-level shared httpx.AsyncClient with connection pooling.      Con, Return a module-level shared httpx.AsyncClient with connection pooling.      C
+Cohesion: 0.15
+Nodes (11): create_app(), lifespan(), Any, AsyncClient, close_http_client(), get_http_client(), # TODO: Review this file, Return a module-level shared httpx.AsyncClient with connection pooling.      Con (+3 more)
 
 ### Community 196 - "Community 196"
-Cohesion: 0.13
-Nodes (23): PlexSession, PlexSessionsResponse, ActivityModuleButton(), GLASS_STYLE, usePlexSessions(), ActivityModulePlexCard(), ActivityModulePlexCardProps, ActivityModulePlexSection() (+15 more)
+Cohesion: 0.08
+Nodes (38): PlexSession, PlexSessionsResponse, ActivityModuleButton(), GLASS_STYLE, GLASS_STYLE, usePlexSessions(), ActivityModuleDownloads(), ActivityModuleGame() (+30 more)
 
 ### Community 197 - "Community 197"
-Cohesion: 0.18
-Nodes (26): int, Redis, str, get_protected_image_types(), filter_missing_ids(), Return IDs that are NOT in the database., Return IDs that are NOT in the database., Return IDs that are NOT in the database. (+18 more)
+Cohesion: 0.09
+Nodes (40): int, Redis, str, filter_missing_ids(), Return IDs that are NOT in the database., Return IDs that are NOT in the database., Return IDs that are NOT in the database., Return IDs that are NOT in the database. (+32 more)
 
 ### Community 198 - "Community 198"
 Cohesion: 0.48
@@ -1628,8 +1623,8 @@ Cohesion: 0.22
 Nodes (9): 13.1 Exercise Catalog Facets, 13.2 Exercise Media, 13.3 Workout Templates, 13.4 Detailed Set Tracking, 13.5 AI Exercise Suggestions, 13.6 Active Session Tracking, 13.7 Exercise Aliases & Multilingual Support, 13.8 Exercise Metric Profiles (+1 more)
 
 ### Community 207 - "Community 207"
-Cohesion: 0.14
-Nodes (8): deletePlugin(), insertPlugin(), updatePluginManifest(), updatePluginStatus(), updatePluginVersion(), PluginManager, PluginRuntime, PluginInfo
+Cohesion: 0.17
+Nodes (6): deletePlugin(), insertPlugin(), updatePluginStatus(), updatePluginVersion(), PluginManager, PluginInfo
 
 ### Community 208 - "Community 208"
 Cohesion: 0.22
@@ -1640,44 +1635,44 @@ Cohesion: 0.07
 Nodes (26): After Migration, Architecture, Bridge Handlers (worker-bridge.ts), Config Migration, Core Scanning Logic (Ported from scanner.ts), Current Scanner IPC (desktop/ipc/scanner.ts), Deduplication (Ported), File Changes (+18 more)
 
 ### Community 210 - "Community 210"
-Cohesion: 0.12
-Nodes (15): _backfill_tmdb_movies should search TMDB and enqueue individual tasks., _backfill_tmdb_movies should search TMDB and enqueue individual tasks., _backfill_tmdb_movies should search TMDB and enqueue individual tasks., _backfill_tmdb_shows should only collect tv-typed results., _backfill_tmdb_shows should only collect tv-typed results., _backfill_tmdb_shows should only collect tv-typed results., _backfill_igdb_games should search IGDB and enqueue individual tasks., _backfill_igdb_games should search IGDB and enqueue individual tasks. (+7 more)
+Cohesion: 0.16
+Nodes (7): bool, ExternalID, str, Increment confirmed_count for a matched external ID, dedup by user., Bulk lookup returning full metadata: entity_id, confirmed_count, etc., Idempotent create-or-update.          Order of lookups prevents unique-constra, Delete an external ID row by its natural key (provider, external_id).
 
 ### Community 211 - "Community 211"
 Cohesion: 0.10
 Nodes (19): AsyncSession, bool, Proposal, str, User, list_types(), ProposalTypeHandler, Proposal type handler protocol + registry.  Each proposal type registers a handl (+11 more)
 
 ### Community 212 - "Community 212"
-Cohesion: 0.07
-Nodes (30): useGameActions(), useGameQueries(), useGameShelves(), useGameUIState(), gameDetailOptions(), gameGenresOptions(), gameKeys, gameSuggestionsOptions() (+22 more)
+Cohesion: 0.10
+Nodes (15): useGameActions(), useGameQueries(), useGameShelves(), useGameUIState(), CatalogGame, CatalogGameDetail, DisplayGame, Game (+7 more)
 
 ### Community 213 - "Community 213"
-Cohesion: 0.06
-Nodes (33): float, str, _clear_seen(), _elapsed_str(), _log_overall_summary(), _process_musicbrainz_batch(), # TODO: Review this file, Delete the seen set when a seeder completes. (+25 more)
+Cohesion: 0.05
+Nodes (38): float, str, _clear_seen(), _elapsed_str(), _log_overall_summary(), _log_progress(), _process_musicbrainz_batch(), # TODO: Review this file (+30 more)
 
 ### Community 214 - "Community 214"
-Cohesion: 0.13
-Nodes (16): AsyncSession, int, MediaItemListResponse, Request, User, AsyncSession, bool, int (+8 more)
+Cohesion: 0.20
+Nodes (11): int, str, AsyncSession, Request, User, _cache_get(), _cache_set(), PersonalizedSectionsResponse (+3 more)
 
 ### Community 215 - "Community 215"
-Cohesion: 0.26
-Nodes (15): AsyncSession, str, User, claim_game(), get_user_interactions(), # TODO: Review this file, Record that the current user owns this game., Record that the current user owns this game. (+7 more)
+Cohesion: 0.35
+Nodes (12): AsyncSession, str, User, claim_game(), get_user_interactions(), # TODO: Review this file, Record that the current user owns this game., Record that the current user owns this game. (+4 more)
 
 ### Community 216 - "Community 216"
 Cohesion: 0.08
 Nodes (23): Architecture, Arr Plugins (Multi-Instance), Code Migration, Directory Structure, Discovery, Downloads Plugin Architecture, Event Bus Extension, Flow (+15 more)
 
 ### Community 217 - "Community 217"
-Cohesion: 0.06
-Nodes (22): GameDetailButton(), GameDetailButton(), OpenFolderButton(), PickExeButton(), PlayGameButton(), Props, OpenFolderButton(), PickExeButton() (+14 more)
+Cohesion: 0.08
+Nodes (23): LauncherPlayButton(), LauncherPlayButtonProps, LauncherPlayButton(), LauncherPlayButtonProps, InstallStoreEntry, useInstallProgress(), AnalyzedUpdate, InstallerStep (+15 more)
 
 ### Community 218 - "Community 218"
-Cohesion: 0.26
-Nodes (17): AsyncSession, AuthRateLimiter, BackgroundTasks, Request, User, SendVerificationEmailResponse, VerifyEmailRequest, VerifyEmailResponse (+9 more)
+Cohesion: 0.13
+Nodes (16): _get_redis(), match_game(), match_games_batch(), Lightweight autocomplete — quick search, no backfill, no embeddings., Lightweight autocomplete — quick search, no backfill, no embeddings., Lightweight autocomplete — quick search, no backfill, no embeddings., Lightweight autocomplete — quick search, no backfill, no embeddings., Late-import get_redis so tests can patch otix.api.media.get_redis. (+8 more)
 
 ### Community 221 - "Community 221"
-Cohesion: 0.13
-Nodes (14): AsyncSession, bool, Proposal, str, User, EditProposalHandler, Edit proposal handler — media metadata changes.  When a trusted user proposes ch, No side effects on reject — just status change. (+6 more)
+Cohesion: 0.06
+Nodes (38): AsyncSession, int, Proposal, str, User, bool, AsyncSession, bool (+30 more)
 
 ### Community 223 - "Community 223"
 Cohesion: 0.22
@@ -1688,24 +1683,24 @@ Cohesion: 0.07
 Nodes (28): Architecture, Backwards compat, code:block1 (features/game-scanner/), code:tsx (if (typeof window !== "undefined" && window.electronAPI) {), code:block3 (┌──────────────────────────────────────────────────┐), code:block4 (┌──────────────────────────────────────────────────┐), code:block5 (┌───────────────────────────────────────────────────┐), code:block6 (localStorage                    electronAPI              Bac) (+20 more)
 
 ### Community 225 - "Community 225"
-Cohesion: 0.04
-Nodes (139): AsyncSession, int, MediaItemListResponse, str, User, Request, AsyncSession, bool (+131 more)
+Cohesion: 0.27
+Nodes (16): AsyncSession, str, force_rehydrate_media(), get_company_by_slug(), list_certifications(), list_genres(), list_media(), _poll_query_hash() (+8 more)
 
 ### Community 226 - "Community 226"
 Cohesion: 0.25
 Nodes (8): 10.1 Comprehensive Settings Sections, 10.2 Appearance Settings, 10.3 Content Settings, 10.4 Notification Preferences, 10.5 Playback Settings, 10.6 Privacy / Social Settings, 10.7 Blocked Keywords, 10. SETTINGS
 
 ### Community 227 - "Community 227"
-Cohesion: 0.16
-Nodes (15): GLASS_STYLE, ActivityModuleDownloads(), ActivityModuleGame(), ActivityModuleInstalls(), ActivityModuleNotifications(), ActivityModulePlugins(), ActivityPollResult, ActivitySlotEntry (+7 more)
+Cohesion: 0.12
+Nodes (15): Factorio Blueprint Plugin Implementation Plan, File Map, Global Constraints, Modified files, New files, Task 10: Community Frontend, Task 1: Plugin Scaffold, Task 2: Blueprint Decode Utility (+7 more)
 
 ### Community 228 - "Community 228"
-Cohesion: 0.05
-Nodes (36): Props, RejectSuggestionButton(), MatchGameButton(), Props, Props, RejectSuggestionButton(), LauncherShelf(), LauncherShelfProps (+28 more)
+Cohesion: 0.09
+Nodes (16): LauncherShelf(), LauncherShelfProps, ShelfTab, TAB_LABELS, LauncherHomePage(), LauncherShelf(), LauncherShelfProps, ShelfTab (+8 more)
 
 ### Community 229 - "Community 229"
-Cohesion: 0.12
-Nodes (19): UnmatchedGame, useSteamLibraryScan(), useSteamStatus(), useUnmatchedSteamGames(), mockNavigate, mockPlayWithQueue, mockRateTrackMutate, mockSearch (+11 more)
+Cohesion: 0.08
+Nodes (32): SpotifyTrack, UnmatchedGame, useLibraryTab(), useSpotifyLibraryScan(), useSpotifyLikedTracks(), useSpotifyStatus(), useSteamLibraryScan(), useSteamStatus() (+24 more)
 
 ### Community 230 - "Community 230"
 Cohesion: 0.09
@@ -1717,7 +1712,7 @@ Nodes (10): AsyncClient, int, JSONValue, Redis, str, get_http_client(), MusicBra
 
 ### Community 232 - "Community 232"
 Cohesion: 0.08
-Nodes (17): PermissionRequest, usePluginPermissions(), UsePluginPermissionsReturn, loadPinState(), RootLayout(), ModalContext, ModalContextValue, ModalInstance (+9 more)
+Nodes (25): ProviderLogo(), PermissionRequest, usePluginPermissions(), UsePluginPermissionsReturn, loadPinState(), RootLayout(), ModalContext, ModalContextValue (+17 more)
 
 ### Community 233 - "Community 233"
 Cohesion: 0.09
@@ -1728,32 +1723,32 @@ Cohesion: 0.25
 Nodes (19): ApproveRejectRequest, AsyncSession, MediaEditProposalList, str, User, approve_edit_proposal(), create_edit_proposal(), list_edit_proposals() (+11 more)
 
 ### Community 238 - "Community 238"
-Cohesion: 0.23
-Nodes (9): detectPlatform(), GameCard(), gameGradient(), gameHue(), GamesTab, HeroSection(), isSuitable(), PLATFORM_LABELS (+1 more)
+Cohesion: 0.24
+Nodes (12): AsyncSession, bool, date, int, MediaItemListResponse, Request, str, User (+4 more)
 
 ### Community 239 - "Community 239"
 Cohesion: 0.06
 Nodes (42): bool, float, int, str, bool, float, str, _cache_key() (+34 more)
 
 ### Community 240 - "Community 240"
-Cohesion: 0.16
-Nodes (9): IsolatedEventBus, PluginRuntime, OtixEvents, PluginManifest, PluginPermission, BridgeDependencies, createWorkerBridge(), eventSubs (+1 more)
+Cohesion: 0.12
+Nodes (19): allQuery(), DbConfig, ensureSchema(), getPluginsDb(), getQuery(), migratePluginData(), prefixed(), replaceTableNames() (+11 more)
 
 ### Community 241 - "Community 241"
 Cohesion: 0.10
 Nodes (20): Files, Interfaces Consumed, Interfaces Produced, Notes, Source reference, Step 10: Update desktop/db/index.ts, Step 11: Update desktop/downloads/index.ts, Step 12: Verify TypeScript compilation (+12 more)
 
 ### Community 242 - "Community 242"
-Cohesion: 0.03
-Nodes (55): create_app(), lifespan(), health(), # TODO: Review this file, Any, AsyncSession, AuthRateLimiter, Request (+47 more)
+Cohesion: 0.02
+Nodes (76): health(), # TODO: Review this file, AuthRateLimiter, Request, SteamInitiateResponse, AsyncSession, AuthRateLimiter, Request (+68 more)
 
 ### Community 252 - "Community 252"
 Cohesion: 0.21
 Nodes (11): DiscoverListResponse, FeelingValue, MoodValue, PersonalizedSection, RecordedMoodContext, TrendingTrailerItem, useMoodCheckIn(), DiscoverPage() (+3 more)
 
 ### Community 254 - "Community 254"
-Cohesion: 0.13
-Nodes (14): AsyncEngine, main(), main(), AsyncSession, dispose_engine(), _get_engine(), get_session(), _process_pending_external_ids() (+6 more)
+Cohesion: 0.17
+Nodes (14): AsyncEngine, AsyncSession, dispose_engine(), _get_engine(), get_session(), _process_pending_external_ids(), # TODO: Review this file, after_flush handler: persist any ExternalIDDescriptor values set on     attached (+6 more)
 
 ### Community 255 - "Community 255"
 Cohesion: 0.11
@@ -1764,8 +1759,8 @@ Cohesion: 0.25
 Nodes (8): 11.1 Plex Integration, 11.2 Steam Account Linking, 11.3 TMDB Account Linking, 11.4 OAuth Framework, 11.5 Integration Settings Hub, 11.6 Provider Capabilities & API Proxy, 11.7 Provider Health Dashboard, 11. PROVIDER INTEGRATIONS (User-Facing)
 
 ### Community 258 - "Community 258"
-Cohesion: 0.22
-Nodes (17): JSONValue, MediaAsset, str, _extract_album_covers_by_rg(), _extract_artist_assets(), _extract_assets(), music_images_to_assets(), # TODO: Review this file (+9 more)
+Cohesion: 0.38
+Nodes (13): JSONValue, str, _cover_url_from_caa(), _extract_date(), extract_wikidata_id(), # TODO: Review this file, Extract Wikidata Q-ID from MusicBrainz url-rels., Extract Wikidata Q-ID from MusicBrainz url-rels. (+5 more)
 
 ### Community 261 - "Community 261"
 Cohesion: 0.25
@@ -1776,24 +1771,24 @@ Cohesion: 0.11
 Nodes (17): API Types, Architecture Highlights, Build, Development, Docker, Environment Variables, Feature Module Convention, Getting Started (+9 more)
 
 ### Community 268 - "Community 268"
-Cohesion: 0.18
-Nodes (14): DEFAULT_PALETTE, ExtractedPalette, extractPalette(), hslToRgb(), isHotRedHue(), relativeLuminance(), Rgb, rgbaCss() (+6 more)
+Cohesion: 0.23
+Nodes (3): _extract_provider_id(), Unit tests for URL → (provider, external_id) extraction., TestExtractProviderId
 
 ### Community 269 - "Community 269"
-Cohesion: 0.17
-Nodes (10): registerPluginIPC(), wireOrchestratorEvents(), eventBus, PAGE_SLOT_MAP, fetchAllRegistries(), fetchRegistry(), RegistryData, RegistryEntry (+2 more)
+Cohesion: 0.15
+Nodes (8): registerPluginIPC(), wireOrchestratorEvents(), eventBus, PAGE_SLOT_MAP, ServiceRegistry, OtixEventName, PluginStatus, ServiceInfo
 
 ### Community 288 - "Community 288"
-Cohesion: 0.19
-Nodes (17): AsyncSession, str, User, approve_proposal(), list_proposals(), _payload_to_match_out(), ProposalListOut, ProposalOut (+9 more)
+Cohesion: 0.23
+Nodes (12): Request, SpotifySyncResponse, str, Spotify recently-played sync endpoint.  Initiates a background sync of the use, Start a recently-played sync., User, SSE stream of sync progress events., # TODO: Replace asyncio.create_task with a Celery task so the sync (+4 more)
 
 ### Community 289 - "Community 289"
-Cohesion: 0.15
-Nodes (5): PendingRequest, PermissionManager, ApiProxy, PermissionRequest, PermissionResponse
+Cohesion: 0.14
+Nodes (10): fetchAllRegistries(), fetchRegistry(), RegistryData, RegistryEntry, PendingRequest, PermissionManager, ApiProxy, PermissionRequest (+2 more)
 
 ### Community 290 - "Community 290"
-Cohesion: 0.11
-Nodes (12): BRAND_BG, BRAND_COLORS, IntegrationAction(), IntegrationCard(), IntegrationProfile(), PERSONA_STATES, PlexIntegration, PlexLibraryProgress (+4 more)
+Cohesion: 0.15
+Nodes (14): User, force_rehydrate_media_stream(), match_games_stream(), Trigger background IGDB seeding for local game titles from a desktop scan., Trigger background IGDB seeding for local game titles from a desktop scan., SSE stream of media rehydration progress events., SSE stream of media rehydration progress events., Trigger background IGDB seeding for local game titles from a desktop scan. (+6 more)
 
 ### Community 303 - "Community 303"
 Cohesion: 0.25
@@ -1820,8 +1815,8 @@ Cohesion: 0.22
 Nodes (24): AsyncSession, int, str, User, build_tmdb_link_url(), build_tmdb_link_url_for_user(), build_tmdb_login_url(), _consume_request_token() (+16 more)
 
 ### Community 309 - "Community 309"
-Cohesion: 0.15
-Nodes (13): int, str, flush_pending_external_ids(), gen_otix_id(), get_expected_media_types(), # TODO: Review this file, Apply pending external IDs stored by ExternalIDDescriptor.__set__.      Uses dir, Apply pending external IDs stored by ExternalIDDescriptor.__set__.      Uses d (+5 more)
+Cohesion: 0.22
+Nodes (12): Any, str, get_stored_result(), publish_progress(), Thin delegation wrapper — delegates to ``otix.lib.redis_progress.plex_progress``, Publish a progress event to the task's Redis pub/sub channel., Publish a progress event to the task's Redis pub/sub channel., Store the final sync result so the SSE endpoint can replay it. (+4 more)
 
 ### Community 310 - "Community 310"
 Cohesion: 0.24
@@ -1832,8 +1827,8 @@ Cohesion: 0.29
 Nodes (5): Additional Rules, code:block1 (services/   → depends on → domain/), Dependency Direction, Forbidden Imports, Module Dependency Rules
 
 ### Community 312 - "Community 312"
-Cohesion: 0.18
-Nodes (11): bool, int, str, # TODO: Review this file, SearchLog, _log_search(), Fire-and-forget: write a search event to search_logs., Fire-and-forget: write a search event to search_logs. (+3 more)
+Cohesion: 0.24
+Nodes (8): bool, int, str, # TODO: Review this file, SearchLog, log_search(), Search log service — fire-and-forget search event logging., Fire-and-forget: write a search event to search_logs.
 
 ### Community 313 - "Community 313"
 Cohesion: 0.33
@@ -1872,8 +1867,8 @@ Cohesion: 0.14
 Nodes (6): _process_igdb_batch(), Process IGDB_PAGES_PER_CYCLE offset pages., Process IGDB_PAGES_PER_CYCLE offset pages., Process IGDB_PAGES_PER_CYCLE offset pages., Process IGDB_PAGES_PER_CYCLE offset pages., TestProcessIGDBBatch
 
 ### Community 322 - "Community 322"
-Cohesion: 0.31
-Nodes (9): FeatureFallback(), Feature(), REGISTRY, FeatureDefinition, FeatureName, FeatureOverrides, FeatureContext, useFeature() (+1 more)
+Cohesion: 0.18
+Nodes (11): float, int, _jaccard(), Find users with similar preferences using Jaccard similarity.          Composite, Find users with similar preferences using Jaccard similarity.          Composite, Find users with similar preferences using Jaccard similarity.          Composite, Get media IDs that similar users interacted with, excluding items the current us, Get media IDs that similar users interacted with, excluding items the current us (+3 more)
 
 ### Community 323 - "Community 323"
 Cohesion: 0.53
@@ -1900,12 +1895,12 @@ Cohesion: 0.40
 Nodes (5): SUMMARY: CRITICAL GAPS, Tier 1 — Core User Experience, Tier 2 — Social & Engagement, Tier 3 — Platform Integrations, Tier 4 — Enhanced Experiences
 
 ### Community 329 - "Community 329"
-Cohesion: 0.03
-Nodes (173): AsyncSession, int, MediaItemListResponse, Request, str, User, AsyncSession, Request (+165 more)
+Cohesion: 0.02
+Nodes (218): str, int, User, AsyncSession, int, MediaItemListResponse, Request, str (+210 more)
 
 ### Community 330 - "Community 330"
-Cohesion: 0.17
-Nodes (12): SpotifyTrack, useSpotifyLibraryScan(), useSpotifyLikedTracks(), useSpotifyStatus(), LibraryIntegrationSpotifySection(), LibrarySearchParams, parseSpotifyView(), SpotifyEmptyState() (+4 more)
+Cohesion: 0.18
+Nodes (10): MatchGameButton(), Props, MatchResponse, MatchResult, useMatchLocalGames(), useSyncLocalGames(), MatchGameModal(), ModalStep (+2 more)
 
 ### Community 331 - "Community 331"
 Cohesion: 0.08
@@ -1920,8 +1915,8 @@ Cohesion: 0.50
 Nodes (4): 4.1 Dedicated Discover API Endpoints, 4.2 Continue Watching, 4.3 Discover Cache Warming, 4. DISCOVER
 
 ### Community 334 - "Community 334"
-Cohesion: 0.08
-Nodes (32): AsyncSession, bool, EpisodeInteractionOut, str, User, AsyncSession, bool, EpisodeInteractionOut (+24 more)
+Cohesion: 0.07
+Nodes (38): AsyncSession, bool, EpisodeInteractionOut, str, User, AsyncSession, bool, EpisodeInteractionOut (+30 more)
 
 ### Community 335 - "Community 335"
 Cohesion: 0.08
@@ -1932,8 +1927,8 @@ Cohesion: 0.50
 Nodes (3): Should use custom limit when provided., Should use custom limit when provided., Should use custom limit when provided.
 
 ### Community 338 - "Community 338"
-Cohesion: 0.27
-Nodes (13): AsyncSession, AuthRateLimiter, Request, str, User, WorkoutOut, delete_workout(), get_workout() (+5 more)
+Cohesion: 0.22
+Nodes (11): AsyncSession, int, Request, str, User, # TODO: Review this file, Raw YouTube liked video for a user — stores all music videos from sync., UserYoutubeLikedVideo (+3 more)
 
 ### Community 339 - "Community 339"
 Cohesion: 0.39
@@ -1952,20 +1947,20 @@ Cohesion: 0.50
 Nodes (3): Should default to limit 50., Should default to limit 50., Should default to limit 50.
 
 ### Community 343 - "Community 343"
-Cohesion: 0.42
+Cohesion: 0.45
 Nodes (10): str, _check_badges(), check_badges_task(), # TODO: Review this file, streak_update_review_task(), streak_update_task(), streak_update_workout_task(), _update_review_streak() (+2 more)
 
 ### Community 344 - "Community 344"
-Cohesion: 0.29
-Nodes (14): AsyncSession, AuthRateLimiter, Request, User, me(), _me_response(), Return the authenticated user's core profile., Update the authenticated user's profile.      Only fields listed in ``_UPDATAB (+6 more)
+Cohesion: 0.51
+Nodes (11): JSONValue, str, _is_anime(), # TODO: Review this file, _to_episode(), to_genre(), to_genres(), to_media_item() (+3 more)
 
 ### Community 345 - "Community 345"
 Cohesion: 0.10
-Nodes (29): AsyncSession, bool, str, User, Request, SpotifySyncResponse, str, Spotify recently-played sync endpoint.  Initiates a background sync of the use (+21 more)
+Nodes (29): AsyncSession, bool, str, User, Request, SpotifySyncResponse, str, Spotify library sync endpoint.  Initiates a background sync of the user's like (+21 more)
 
 ### Community 346 - "Community 346"
-Cohesion: 0.11
-Nodes (29): AsyncSession, AuthRateLimiter, BackgroundTasks, AsyncSession, AuthRateLimiter, BackgroundTasks, Request, Response (+21 more)
+Cohesion: 0.08
+Nodes (46): AsyncSession, AuthRateLimiter, BackgroundTasks, AsyncSession, AuthRateLimiter, BackgroundTasks, Request, Response (+38 more)
 
 ### Community 347 - "Community 347"
 Cohesion: 0.08
@@ -1984,36 +1979,36 @@ Cohesion: 0.09
 Nodes (20): API Routes (`backend/otix/api/download.py`), Celery Tasks, Data Model, `download_configs` table, Download Queue Page (`frontend/src/features/downloads/`), DownloadConfigService, `downloads` table, DownloadService (+12 more)
 
 ### Community 351 - "Community 351"
-Cohesion: 0.08
-Nodes (35): NowPlayingButton(), Props, getClientId(), PlexAudioProvider(), PlexPlayerContext, PlexPlayerContextValue, PlexTrackInfo, usePlexPlayer() (+27 more)
+Cohesion: 0.07
+Nodes (41): useSaveSpotifyTrack(), TrackRow(), TrackRowProps, SpotifyTrackList(), useRateTrack(), NowPlayingButton(), Props, getClientId() (+33 more)
 
 ### Community 352 - "Community 352"
-Cohesion: 0.04
-Nodes (41): useAdminStats(), DkImage(), DkImageProps, allPathsHtml, allPathsMaskHtml, DkInfinitySpinner(), DkSkeleton(), DkStarRating() (+33 more)
+Cohesion: 0.03
+Nodes (48): DkImage(), DkImageProps, allPathsHtml, allPathsMaskHtml, DkInfinitySpinner(), DkSkeleton(), DkStarRating(), DkStarRatingProps (+40 more)
 
 ### Community 353 - "Community 353"
 Cohesion: 0.29
 Nodes (6): ExperimentDefinition, EXPERIMENTS, Maturity, MATURITY_BADGE_VARIANT, MATURITY_COLORS, MATURITY_LABELS
 
 ### Community 354 - "Community 354"
-Cohesion: 0.15
-Nodes (14): Download, DownloadConfig, HypervisorConfirmResponse, NZBResult, WishlistTrackingEntry, useDownloads(), DownloadCard(), DownloadCardProps (+6 more)
+Cohesion: 0.06
+Nodes (28): isDesktop(), Download, DownloadConfig, HypervisorConfirmResponse, NZBResult, WishlistTrackingEntry, useDownloads(), DownloadGameState (+20 more)
 
 ### Community 355 - "Community 355"
-Cohesion: 0.23
-Nodes (12): Request, SpotifySyncResponse, str, Spotify library sync endpoint.  Initiates a background sync of the user's like, Start a full library sync (liked tracks + saved albums)., User, SSE stream of sync progress events., # TODO: Replace asyncio.create_task with a Celery task so the sync (+4 more)
+Cohesion: 0.15
+Nodes (8): _fetch_plex_library_items(), Fetch library items from the Plex API with pagination (HTTP only, no DB)., Fetch library items from the Plex API (HTTP only, no DB).      Retries with a fr, Fetches all pages when totalSize exceeds PLEX_PAGE_SIZE., Older Plex servers may not return totalSize; loop breaks on empty page., First attempt fails, retries with fresh client., Artist libraries append &type=9 for album-level results., When totalSize <= PLEX_PAGE_SIZE, only one request is made.
 
 ### Community 356 - "Community 356"
-Cohesion: 0.11
-Nodes (16): AdminMetrics, AdminRecentUser, AdminStats, EnrichmentCounts, MediaHydrationItem, MediaHydrationResponse, MetricPoint, useAdminHydration() (+8 more)
+Cohesion: 0.07
+Nodes (26): AdminMetrics, AdminRecentUser, AdminStats, EnrichmentCounts, MediaHydrationItem, MediaHydrationResponse, MetricPoint, useAdminHydration() (+18 more)
 
 ### Community 357 - "Community 357"
 Cohesion: 0.14
 Nodes (31): AsyncSession, bool, int, Person, str, _count_ext_ids(), dedupe_all_people(), _ext_id_providers() (+23 more)
 
 ### Community 358 - "Community 358"
-Cohesion: 0.18
-Nodes (14): AsyncMock, Exercise, str, Workout, _make_exercise(), _make_workout(), mock_celery_app(), Tests for WorkoutService — creating, retrieving, updating, and deleting workouts (+6 more)
+Cohesion: 0.27
+Nodes (10): AsyncSession, AuthRateLimiter, Request, str, User, follow_person(), Follow a person.      Rate-limited per IP address., Unfollow a person.      Rate-limited per IP address. (+2 more)
 
 ### Community 359 - "Community 359"
 Cohesion: 0.16
@@ -2024,8 +2019,8 @@ Cohesion: 0.10
 Nodes (24): dependencies, better-sqlite3, sql.js, devDependencies, concurrently, cross-env, electron, electron-rebuild (+16 more)
 
 ### Community 361 - "Community 361"
-Cohesion: 0.13
-Nodes (29): int, str, _compute_game_next_sync_at(), _hydrate_game_age_ratings(), # TODO: Review this file, Hydrate age ratings (ESRB, PEGI) for a single game., Hydrate age ratings (ESRB, PEGI) for a single game., Hydrate age ratings (ESRB, PEGI) for a single game. (+21 more)
+Cohesion: 0.08
+Nodes (32): str, _compute_game_next_sync_at(), _hydrate_game_age_ratings(), # TODO: Review this file, Hydrate age ratings (ESRB, PEGI) for a single game., Hydrate age ratings (ESRB, PEGI) for a single game., Hydrate age ratings (ESRB, PEGI) for a single game., Sync a single IGDB game: fetch → transform → upsert → hydrate. (+24 more)
 
 ### Community 362 - "Community 362"
 Cohesion: 0.19
@@ -2036,12 +2031,12 @@ Cohesion: 0.18
 Nodes (6): _normalize_title(), Normalize a game title for comparison.      - Strip ™®© BEFORE NFKD decompositio, Fix 1a/1b: title normalization strips special characters., Additional normalization scenarios encountered by plugins., TestNormalizeEdgeCases, TestNormalizeTitle
 
 ### Community 364 - "Community 364"
-Cohesion: 0.13
-Nodes (13): AsyncSession, bool, int, str, UserList, ListItemRankHistory, MediaListCollaborator, ListService (+5 more)
+Cohesion: 0.12
+Nodes (10): bool, int, str, UserList, ListItemRankHistory, MediaListCollaborator, Get list if user is owner or has EDIT/ADMIN collaborator permission., Get list if user is owner or has EDIT/ADMIN collaborator permission. (+2 more)
 
 ### Community 365 - "Community 365"
-Cohesion: 0.22
-Nodes (12): AsyncMock, float, MediaItem, str, MediaService, _make_media(), Tests for MediaService — listing, details fetching with revenue ranks, hybrid se, service() (+4 more)
+Cohesion: 0.27
+Nodes (8): loadPluginData(), loadPluginMain(), loadPluginStatus(), loadPluginTest(), _require, PluginContext, PluginEntry, PluginManifest
 
 ### Community 366 - "Community 366"
 Cohesion: 0.19
@@ -2052,12 +2047,12 @@ Cohesion: 0.12
 Nodes (19): AsyncClient, bool, int, Redis, Response, str, _get_nzbplanet_client(), NZBPlanetError (+11 more)
 
 ### Community 368 - "Community 368"
-Cohesion: 0.08
-Nodes (45): applyDesktopSettings(), DEFAULT_SETTINGS, DesktopSettings, getSettings(), loadDesktopSettings(), saveDesktopSettings(), settingsPath(), setTrayRef() (+37 more)
+Cohesion: 0.09
+Nodes (38): applyDesktopSettings(), DEFAULT_SETTINGS, DesktopSettings, getSettings(), loadDesktopSettings(), saveDesktopSettings(), settingsPath(), setTrayRef() (+30 more)
 
 ### Community 369 - "Community 369"
-Cohesion: 0.08
-Nodes (36): cancelInstallByIsoPath(), _cleanupTimers, completeInstall(), dismissInstall(), emit(), ensureIpcListening(), failInstall(), getAllInstalls() (+28 more)
+Cohesion: 0.17
+Nodes (19): cancelInstallByIsoPath(), _cleanupTimers, completeInstall(), dismissInstall(), emit(), ensureIpcListening(), failInstall(), getAllInstalls() (+11 more)
 
 ### Community 370 - "Community 370"
 Cohesion: 0.14
@@ -2068,8 +2063,8 @@ Cohesion: 0.13
 Nodes (16): bool, NZBPlanetTransformer, # TODO: Review this file, Stateless transformer for NZBPlanet search results., Stateless transformer for NZBPlanet search results., Check if an NZB result looks like a full game, not a demo/update., Check if an NZB result looks like a full game, not a demo/update., Check if an NZB result is not an update/patch/DLC. (+8 more)
 
 ### Community 372 - "Community 372"
-Cohesion: 0.09
-Nodes (26): _has_youtube_scope(), _link_channel_to_person(), _match_album(), _paginate_liked_videos(), # TODO: Review this file, Match a parsed title to an Otix album via artist + song title lookup., Match a parsed title to an Otix album via artist + song title lookup., Match a parsed title to an Otix album via artist + song title lookup. (+18 more)
+Cohesion: 0.14
+Nodes (16): _link_channel_to_person(), _paginate_liked_videos(), # TODO: Review this file, Link a YouTube channel to a Person record if there's a clear match.      Returns, Link a YouTube channel to a Person record if there's a clear match.      Returns, Link a YouTube channel to a Person record if there's a clear match.      Returns, Link a YouTube channel to a Person record if there's a clear match.      Returns, Fetch all liked videos via videos.list(myRating=like). (+8 more)
 
 ### Community 373 - "Community 373"
 Cohesion: 0.20
@@ -2080,8 +2075,8 @@ Cohesion: 0.14
 Nodes (13): compilerOptions, baseUrl, esModuleInterop, forceConsistentCasingInFileNames, ignoreDeprecations, module, moduleResolution, outDir (+5 more)
 
 ### Community 375 - "Community 375"
-Cohesion: 0.26
-Nodes (13): Any, str, get_latest_progress(), get_stored_result(), publish_progress(), Thin delegation wrapper — delegates to ``otix.lib.redis_progress.spotify_progres, Publish a progress event to the task's Redis pub/sub channel., Store the latest progress event so SSE can replay it on reconnect. (+5 more)
+Cohesion: 0.20
+Nodes (10): MockExternalID, Tests for match confirmation with confirmed_count., increment_confirmed on a nonexistent external_id returns None., Confirm without media_item_id or igdb_id returns error., Same user confirming twice does not double-count., Different users confirming both increment the count., test_confirm_without_media_id_returns_error(), test_increment_confirmed_dedup_by_user() (+2 more)
 
 ### Community 376 - "Community 376"
 Cohesion: 0.31
@@ -2096,24 +2091,24 @@ Cohesion: 0.20
 Nodes (8): Bot, main(), float, int, Register/login the bot, then loop: session → per-bot cooldown., Print aggregate stats every 60 seconds., Spawns N bots sharing a single httpx.AsyncClient.      Only BOT_ACTIVE_POOL bo, Runner
 
 ### Community 379 - "Community 379"
-Cohesion: 0.18
-Nodes (15): AsyncSession, int, User, find_or_create_spotify_user(), get_user_access_token(), Find an existing user by spotify_id or create a new one., Remove the Spotify link from a user., Get a valid access token for the user, refreshing if expired.      Returns the a (+7 more)
+Cohesion: 0.20
+Nodes (7): AsyncSession, bool, PersonalizedSection, # TODO: Review this file, Get items near the centroid of the user's top-rated content embeddings., Get items near the centroid of the user's top-rated content embeddings., Get items near the centroid of the user's top-rated content embeddings.
 
 ### Community 380 - "Community 380"
 Cohesion: 0.13
 Nodes (24): AsyncSession, int, Request, str, User, AsyncSession, bool, int (+16 more)
 
 ### Community 381 - "Community 381"
-Cohesion: 0.11
-Nodes (31): BaseModel, ConfirmMatchRequest, ExternalIDRef, GameMatchRequest, GameMatchResponse, ProviderSearchRequest, ProviderSearchResult, Unified search across Otix, IGDB, and SteamGrid. (+23 more)
+Cohesion: 0.14
+Nodes (28): BaseModel, BlueprintCreate, BlueprintDetailOut, BlueprintListOut, BlueprintOut, BlueprintUpdate, FollowCountsOut, FollowRequestListOut (+20 more)
 
 ### Community 382 - "Community 382"
 Cohesion: 0.23
 Nodes (12): int, str, compute_level_info(), get_level_title(), get_reputation_tier(), LevelTier, # TODO: Review this file, Return level, title, xp_to_next_level, xp_progress from total XP. (+4 more)
 
 ### Community 383 - "Community 383"
-Cohesion: 0.12
-Nodes (18): AsyncSession, bool, int, str, User, AsyncMock, str, User (+10 more)
+Cohesion: 0.14
+Nodes (17): bool, int, str, User, AsyncMock, str, User, UserSession (+9 more)
 
 ### Community 384 - "Community 384"
 Cohesion: 0.44
@@ -2128,8 +2123,8 @@ Cohesion: 0.18
 Nodes (12): get_steam_game_seed_ids(), get_steam_playtime(), get_steam_wishlist(), # TODO: Review this file, Get media_item_ids from a user's Steam game, sorted by playtime., Get media_item_ids from a user's Steam games, sorted by playtime., Fetch Steam playtime for a user+media combination., Fetch Steam playtime for a user+media combination. (+4 more)
 
 ### Community 387 - "Community 387"
-Cohesion: 0.28
-Nodes (11): AsyncSession, AuthRateLimiter, Request, User, check_in_today(), get_today_workout(), Undo today's check-in.      Rate-limited per IP address., Get the authenticated user's workout status for today. (+3 more)
+Cohesion: 0.20
+Nodes (9): poll_search_updates(), Poll for new search results added by backfill.      Re-runs the search and retur, Poll for new search results added by backfill.      Re-runs the search and retur, Poll for new search results added by backfill.      Re-runs the search and retur, Poll for new search results added by backfill.      Re-runs the search and retur, Poll for new search results added by backfill.      Re-runs the search and retur, increment_view_count(), # TODO: Review this file (+1 more)
 
 ### Community 388 - "Community 388"
 Cohesion: 0.15
@@ -2144,16 +2139,16 @@ Cohesion: 0.28
 Nodes (10): ActivityTier, avatar_url(), Chronotype, cover_url(), Personality, _pick(), str, Generate a unique avatar for a bot using DiceBear. (+2 more)
 
 ### Community 391 - "Community 391"
-Cohesion: 0.20
-Nodes (10): make_media_item(), Factory for creating a basic MediaItem with known values., Factory for creating a basic MediaItem with known values., media_item(), media_item(), omdb_hydrator(), omdb_movie_raw(), omdb_show_raw() (+2 more)
+Cohesion: 0.22
+Nodes (10): batchCheckMatchCache(), getUnseededGames(), getUnseededTitles(), markGamesAsSeeded(), MatchCacheEntry, ScannedGame, registerPluginScanIPC(), seedTitlesOnBackend() (+2 more)
 
 ### Community 392 - "Community 392"
 Cohesion: 0.23
 Nodes (8): AsyncClient, int, JSONValue, Redis, str, get_http_client(), # TODO: Review this file, TheAudioDBProvider
 
 ### Community 393 - "Community 393"
-Cohesion: 0.06
-Nodes (31): DkLogo(), DkLogoProps, SVG_MAP, AnimatedShaderBackground(), SettingsPage(), LOGO_VARIANTS, LogoPreferenceContext, LogoPreferenceProvider() (+23 more)
+Cohesion: 0.05
+Nodes (40): DkLogo(), DkLogoProps, SVG_MAP, AnimatedShaderBackground(), AnimatedShaderBackgroundProps, clamp(), logFallback(), PROFILES (+32 more)
 
 ### Community 394 - "Community 394"
 Cohesion: 0.19
@@ -2164,16 +2159,16 @@ Cohesion: 0.29
 Nodes (10): UserProfileSkeleton(), GRADIENTS, LEVEL_TIERS, LEVEL_TITLES, LevelTier, UserGamification, computeGamification(), formatMemberSince() (+2 more)
 
 ### Community 396 - "Community 396"
-Cohesion: 0.16
-Nodes (14): Exception, Refresh an expired access token. Returns tokens dict or raises.      Raises:, Refresh an expired access token. Returns tokens dict or raises.      Raises:, Raised when the OAuth provider indicates the user has revoked access.      Calle, Raised when the OAuth provider indicates the user has revoked access.      Calle, Refresh an expired access token. Returns tokens dict or raises., refresh_google_token(), TokenRevokedError (+6 more)
+Cohesion: 0.18
+Nodes (11): match_local_games(), Return False for queries that aren't worth backfilling.      Filters out:, Return False for queries that aren't worth backfilling.      Filters out:, Fuzzy-match local PC/ISO game titles to Otix catalog entries.      Accepts a lis, Fuzzy-match local PC/ISO game titles to Otix catalog entries.      Accepts a lis, Return False for queries that aren't worth backfilling.      Filters out:, Return False for queries that aren't worth backfilling.      Filters out:, Return False for queries that aren't worth backfilling.      Filters out: (+3 more)
 
 ### Community 397 - "Community 397"
 Cohesion: 0.07
 Nodes (56): AsyncSession, AuthRateLimiter, int, Request, str, User, AsyncSession, bool (+48 more)
 
 ### Community 398 - "Community 398"
-Cohesion: 0.06
-Nodes (30): _make_async_session_mock(), Unit tests for sync task helpers — hash, scheduling, filtering, enqueuing, searc, Create an AsyncMock that supports async context manager protocol., Create an AsyncMock that supports async context manager protocol., IDs with next_sync_at in the past should be returned., IDs with next_sync_at in the past should be returned., IDs with next_sync_at in the future should be filtered out., Should enqueue tasks for stale IDs, skip fresh ones. (+22 more)
+Cohesion: 0.03
+Nodes (64): ProviderState, # TODO: Review this file, SyncJob, Sync a TMDB discover list. Enqueues individual movie/show tasks., Sync a TMDB discover list. Enqueues individual movie/show tasks., Sync a TMDB discover list. Enqueues individual movie/show tasks., _sync_tmdb_discover_list(), sync_tmdb_discover_list_task() (+56 more)
 
 ### Community 399 - "Community 399"
 Cohesion: 0.16
@@ -2192,20 +2187,20 @@ Cohesion: 0.13
 Nodes (14): Commit, Files, Implementation strategy, Key changes from current version, Section 1: Imports and constructor, Section 2: Lock mechanism, Section 3: Plugin info helpers, Section 4: Enable/Disable with Runtime (+6 more)
 
 ### Community 403 - "Community 403"
-Cohesion: 0.27
-Nodes (8): FanartHydrator, # TODO: Review this file, fanart_hydrator(), fanart_movie_raw(), fanart_show_raw(), Tests for Fanart provider — transformer, hydrator, and client., TestFanartMoviePipeline, TestFanartShowPipeline
+Cohesion: 0.36
+Nodes (8): AsyncSession, int, MediaItemListResponse, str, User, get_recommendations(), get_similar_media(), # TODO: Review this file
 
 ### Community 404 - "Community 404"
 Cohesion: 0.19
 Nodes (10): AsyncClient, int, JSONValue, Redis, str, get_http_client(), LRCLIBProvider, # TODO: Review this file (+2 more)
 
 ### Community 405 - "Community 405"
-Cohesion: 0.11
-Nodes (31): # TODO: Review this file, TwoFactorService, AsyncSession, AuthRateLimiter, Request, User, AsyncSession, AuthRateLimiter (+23 more)
+Cohesion: 0.09
+Nodes (35): # TODO: Review this file, Verify *code* against the user's pending secret and enable 2FA., Disable 2FA after verifying the user's password., TwoFactorService, AsyncSession, AuthRateLimiter, Request, User (+27 more)
 
 ### Community 406 - "Community 406"
-Cohesion: 0.10
-Nodes (39): AuthRateLimiter, Request, AsyncSession, AuthRateLimiter, bool, int, Request, str (+31 more)
+Cohesion: 0.06
+Nodes (65): AsyncSession, AuthRateLimiter, Request, str, User, AsyncSession, AuthRateLimiter, Request (+57 more)
 
 ### Community 407 - "Community 407"
 Cohesion: 0.24
@@ -2216,40 +2211,40 @@ Cohesion: 0.18
 Nodes (23): bool, int, str, fetch_caa_cover(), get_caa_client(), main(), phase_direct(), phase_search() (+15 more)
 
 ### Community 409 - "Community 409"
-Cohesion: 0.33
-Nodes (10): AsyncSession, AuthRateLimiter, Complete the Plex OAuth link flow.      The user is resolved from the OAuth st, Request, User, plex_connect_callback(), PlexCallbackRequest, PlexCallbackResponse (+2 more)
+Cohesion: 0.20
+Nodes (10): int, import_igdb_game(), Import a game from IGDB into the Otix database.      Fetches full game data, tra, Import a game from IGDB into the Otix database.      Fetches full game data, tra, Search companies by name using hybrid vector-keyword queries., Search companies by name using hybrid vector-keyword queries., Import a game from IGDB into the Otix database.      Fetches full game data, tra, Import a game from IGDB into the Otix database.      Fetches full game data, tra (+2 more)
 
 ### Community 410 - "Community 410"
-Cohesion: 0.21
-Nodes (11): detectPlatform(), gameGradient(), gameHue(), GamesTab, heroBackground(), isSuitable(), LauncherData, LauncherStats (+3 more)
+Cohesion: 0.29
+Nodes (8): str, normalize_genre_names(), # TODO: Review this file, Split composite external genre labels into individual genre names., Split composite external genre labels into individual genre names., Return slug -> display name for external genre names after splitting., Return slug -> display name for external genre names after splitting., split_genre_name()
 
 ### Community 411 - "Community 411"
 Cohesion: 0.25
 Nodes (8): code:block1 (features/game-scanner/              (all new)), code:typescript (// frontend/src/features/game-scanner/queries.ts), code:bash (git add frontend/src/features/game-scanner/queries.ts), code:typescript (// frontend/src/features/game-scanner/molecules/empty-state.), code:bash (git add frontend/src/features/game-scanner/molecules/empty-s), File Structure, Task 2: Create queries hook, Task 3: Create empty-state component
 
 ### Community 412 - "Community 412"
-Cohesion: 0.24
-Nodes (9): libraryKeys, useLibraryTab(), usePlexStatus(), LibraryIntegrationPlexSection(), formatDaysAgo(), PlexEmptyState(), PlexOverviewModule(), PlexTabContent() (+1 more)
+Cohesion: 0.20
+Nodes (10): libraryKeys, usePlexLibraryScan(), usePlexStatus(), LibraryIntegrationPlexSection(), formatDaysAgo(), PlexEmptyState(), PlexOverviewModule(), plexPlatform (+2 more)
 
 ### Community 413 - "Community 413"
-Cohesion: 0.18
-Nodes (16): AsyncMock, Notification, str, Notification, _on_notification_insert(), _publish_notification(), # TODO: Review this file, NotificationService (+8 more)
+Cohesion: 0.21
+Nodes (12): AsyncMock, Notification, str, NotificationService, _make_notification(), Tests for NotificationService — create, get_for_user, mark_read, mark_all_read,, service(), TestCreateNotification (+4 more)
 
 ### Community 414 - "Community 414"
-Cohesion: 0.17
-Nodes (11): DailyMoodCheckIn(), DailyMoodCheckInProps, feelingOptions, FeelingValue, MoodCheckInOut, moodOptions, moodQueryKey, MoodStatus (+3 more)
+Cohesion: 0.40
+Nodes (8): _async_value(), _request(), test_auth_rate_limiter_raises_429_after_burst(), test_client_ip_prefers_forwarded_for_and_falls_back_to_client_or_unknown(), test_metrics_counter_histogram_gauge_and_snapshot(), test_rate_limiter_handles_missing_last_field(), test_run_async_runs_coroutine_in_fresh_loop(), test_tracking_context_managers_record_elapsed_time()
 
 ### Community 415 - "Community 415"
-Cohesion: 0.21
-Nodes (10): float, int, str, _parse_score(), _parse_votes(), # TODO: Review this file, Parse a comma-separated vote count like '2,304,528' → 2304528., Parse a comma-separated vote count like '2,304,528' → 2304528. (+2 more)
+Cohesion: 0.31
+Nodes (4): extract_spotify_id(), Extract a Spotify album ID from a URL or URI string.      Handles: open.spotif, Extract a Spotify album ID from a URL or URI string.      Handles: open.spotify., TestExtractSpotifyId
 
 ### Community 416 - "Community 416"
 Cohesion: 0.21
 Nodes (8): AsyncClient, JSONValue, Redis, Response, str, get_http_client(), OMDbError, # TODO: Review this file
 
 ### Community 417 - "Community 417"
-Cohesion: 0.33
-Nodes (7): SteamGridDBHydrator, _hydrator(), Tests for SteamGridDB artwork selection., test_fetch_assets_requests_full_asset_sets(), test_hydrate_promotes_text_safe_hero_over_existing_backdrop(), test_hydrate_stores_all_assets_but_only_promotes_text_safe_hero(), TestPickHero
+Cohesion: 0.29
+Nodes (5): _best_connection(), Verify local HTTPS preferred (speed), relay as fallback., Verify local HTTPS preferred (fastest), relay as fallback., Verify local HTTPS preferred (fastest), relay as fallback., TestBestConnection
 
 ### Community 418 - "Community 418"
 Cohesion: 0.46
@@ -2264,8 +2259,8 @@ Cohesion: 0.32
 Nodes (3): Props, QueryErrorBoundary, State
 
 ### Community 421 - "Community 421"
-Cohesion: 0.14
-Nodes (10): bool, _enqueue_if_new(), Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD fo, Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD for, Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD for, Enqueue a task only if the ID hasn't been seen before.      Uses Redis SADD for, Each seeder uses its own Redis key., Each seeder uses its own Redis key. (+2 more)
+Cohesion: 0.25
+Nodes (9): Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., Fetch a TMDB keyword and upsert the Keyword row., _sync_tmdb_keyword() (+1 more)
 
 ### Community 422 - "Community 422"
 Cohesion: 0.60
@@ -2280,12 +2275,12 @@ Cohesion: 0.29
 Nodes (7): code:typescript (// Change line:), code:typescript (// Add after the "lists" entry in TAB_LABELS:), code:typescript (import { Gamepad2 } from "lucide-react"), code:typescript (// After the "lists" tab push, before "return tabs":), code:typescript (if (activeTab === "local-games") {), code:bash (git add frontend/src/features/library/library-queries.ts fro), Task 12: Wire into library
 
 ### Community 426 - "Community 426"
-Cohesion: 0.22
-Nodes (6): _log_progress(), Log progress for one seeder., Log progress for one seeder., Log progress for one seeder., Log progress for one seeder., TestLogProgress
+Cohesion: 0.25
+Nodes (8): _call_embed_query(), _log_search(), Late-import _embed_query so tests can patch otix.api.media._embed_query., Late-import _embed_query so tests can patch otix.api.media._embed_query., Late-import _embed_query so tests can patch otix.api.media._embed_query., Late-import _embed_query so tests can patch otix.api.media._embed_query., Late-import _embed_query so tests can patch otix.api.media._embed_query., Fire-and-forget: write a search event to search_logs.
 
 ### Community 427 - "Community 427"
-Cohesion: 0.20
-Nodes (8): useSseStream(), AppShell(), loadPinState(), NotificationEvent, RECONNECT_DELAYS, useNotificationToasts(), NotificationsProvider(), usePageMeta()
+Cohesion: 0.28
+Nodes (5): AppShell(), loadPinState(), NotificationEvent, RECONNECT_DELAYS, useNotificationToasts()
 
 ### Community 428 - "Community 428"
 Cohesion: 0.17
@@ -2308,16 +2303,16 @@ Cohesion: 0.62
 Nodes (5): check_version(), get_version(), has_staged(), staged_files(), check-versions.sh script
 
 ### Community 433 - "Community 433"
-Cohesion: 0.04
-Nodes (51): bool, int, str, FakeCompany, FakeInvolvedCompany, _make_eid_row(), _make_mi(), Realistic matching quality tests using ScannedGame-shaped data.  Verifies the Ga (+43 more)
+Cohesion: 0.03
+Nodes (56): bool, int, str, _developer_overlap(), Check if the request developer matches any company name from the media item., Check if the request developer matches any company name from the media item., FakeCompany, FakeInvolvedCompany (+48 more)
 
 ### Community 434 - "Community 434"
 Cohesion: 0.25
 Nodes (10): useAnimatedScore(), useRateUser(), UserRatingContent(), userRatingKeys, UserRatingOut, userRatingQueries, UserRatingSection(), UserRatingSectionProps (+2 more)
 
 ### Community 435 - "Community 435"
-Cohesion: 0.26
-Nodes (11): plex_album_tracks(), AsyncSession, str, User, PlexAlbumTracksResponse, PlexAlbumTracksResponse, PlexTrackItem, A track within a Plex music album. (+3 more)
+Cohesion: 0.25
+Nodes (7): 1. `extensions/otix-plugins/plugins/factorio-blueprints/main.js`, 2. `frontend/src/features/media/game/components/organisms/media-game-blueprint-vault.tsx`, 3. `frontend/src/features/media/game/components/organisms/media-game-blueprint-community.tsx`, 4. `backend/otix/api/blueprint/__init__.py`, Changes Applied, Factorio Blueprint Plugin — Final Review Fixes Report, Verification
 
 ### Community 436 - "Community 436"
 Cohesion: 0.52
@@ -2340,20 +2335,20 @@ Cohesion: 0.40
 Nodes (5): code:bash (cd frontend && npx tsc --noEmit), code:bash (cd frontend && npx vite build), code:bash (cd frontend && npx tsc --noEmit --pretty 2>&1 | grep -E "Can), code:bash (git add -A), Task 16: Final verification
 
 ### Community 441 - "Community 441"
-Cohesion: 0.17
-Nodes (4): _extract_store_ids(), Extract all platform store IDs from IGDB websites.      Matches URLs against kno, Extract all platform store IDs from IGDB websites.      Matches URLs against k, Extract all platform store IDs from IGDB websites.      Matches URLs against kno
+Cohesion: 0.22
+Nodes (5): _extract_store_ids(), Extract all platform store IDs from IGDB websites.      Matches URLs against kno, Extract all platform store IDs from IGDB websites.      Matches URLs against k, Extract all platform store IDs from IGDB websites.      Matches URLs against kno, TestExtractStoreIDs
 
 ### Community 442 - "Community 442"
-Cohesion: 0.29
-Nodes (8): InteractiveStar(), InteractiveStarProps, sizeMap, SwipeState, useSwipe(), UseSwipeOptions, StarInputProps, SwipeHarness()
+Cohesion: 0.25
+Nodes (7): `desktop/downloads/index.ts`, `desktop/ipc/downloads.ts`, `desktop/main.ts`, Files Changed, Key Stats, Summary, Task 7-11 Report: IPC Refactor + Config Migration
 
 ### Community 443 - "Community 443"
-Cohesion: 0.07
-Nodes (51): AsyncSession, bool, int, Request, ReviewWithUserOut, str, User, AsyncSession (+43 more)
+Cohesion: 0.06
+Nodes (54): AsyncSession, int, Request, User, AsyncSession, Request, str, User (+46 more)
 
 ### Community 444 - "Community 444"
-Cohesion: 0.25
-Nodes (5): apiClient, convertKeysToCamelCase(), convertKeysToSnakeCase(), isObject(), refreshQueue
+Cohesion: 0.29
+Nodes (7): AsyncSession, int, Request, User, Get trending media items that have YouTube trailers (movies & shows)., trending_trailers(), TrendingTrailerResponse
 
 ### Community 445 - "Community 445"
 Cohesion: 0.29
@@ -2368,8 +2363,8 @@ Cohesion: 0.40
 Nodes (4): NZBPlanetHydrator, # TODO: Review this file, No-op hydrator — kept for pattern consistency., No-op hydrator — kept for pattern consistency.
 
 ### Community 448 - "Community 448"
-Cohesion: 0.28
-Nodes (9): encodePositionInUrl(), parsePositionFromUrl(), stripPositionFromUrl(), openExternal(), formatBytes(), formatDuration(), formatTime(), formatTimeAgo() (+1 more)
+Cohesion: 0.33
+Nodes (5): str, # TODO: Review this file, Convert arbitrary text to a URL-safe slug., Convert arbitrary text to a URL-safe slug., slugify()
 
 ### Community 449 - "Community 449"
 Cohesion: 0.60
@@ -2408,12 +2403,12 @@ Cohesion: 0.15
 Nodes (12): Changed public methods, Changes in main.ts, Changes in manager.ts, Files Modified, New architecture, New public methods, Preserved methods (unchanged signatures), Private methods (+4 more)
 
 ### Community 463 - "Community 463"
-Cohesion: 0.18
-Nodes (9): AsyncSession, int, MediaEditProposalList, Request, str, User, get_edit_proposals(), List media edit proposals. Requires admin or trusted user. (+1 more)
+Cohesion: 0.33
+Nodes (5): # TODO: Review this file, Thin async wrapper around the YouTube Data API v3., Thin async wrapper around the YouTube Data API v3., Thin async wrapper around the YouTube Data API v3., YouTubeClient
 
 ### Community 464 - "Community 464"
-Cohesion: 0.36
-Nodes (9): AsyncSession, AuthRateLimiter, Request, Response, login(), LoginRequest, LoginResponse, LoginRequest (+1 more)
+Cohesion: 0.29
+Nodes (6): Bug 1: Sort values mismatch, Bug 2: Like response field name, Bug 3: Community list response format, Bug Fix Report: Factorio Blueprint Plugin Community Data Plumbing, Concerns, Test Results
 
 ### Community 465 - "Community 465"
 Cohesion: 0.15
@@ -2422,10 +2417,6 @@ Nodes (12): 1. Page Header, 2. Scan All Card, 3. Game Scan Paths, 4. ISO Mount P
 ### Community 466 - "Community 466"
 Cohesion: 0.15
 Nodes (12): 1.1 New column on `game_matches` (desktop SQLite), 1.2 New table on backend (PostgreSQL), 1. Data Model, 2. Flow, 3. Confidence-Driven Auto-Approval, 4. Admin Panel UI, 5. API Endpoints, 6. Backward Compatibility (+4 more)
-
-### Community 467 - "Community 467"
-Cohesion: 0.26
-Nodes (10): AsyncSession, AuthRateLimiter, Request, str, User, CompanyRatingBody, rate_company(), Rate a company on a 1–5 scale.      Sets or updates the authenticated user's r (+2 more)
 
 ### Community 473 - "Community 473"
 Cohesion: 0.67
@@ -2476,16 +2467,16 @@ Cohesion: 0.31
 Nodes (8): Request, str, User, SSE stream of YouTube sync progress events., SSE stream of YouTube sync progress events., _run_youtube_sync_background(), youtube_sync_stream(), youtube_sync_watch_history()
 
 ### Community 486 - "Community 486"
-Cohesion: 0.27
-Nodes (8): AsyncSession, str, Resolve unmatched Steam games via the central GameMatcher pipeline., Resolve unmatched Steam games via the central GameMatcher.      Delegates to t, Resolve unmatched Steam games by looking them up in IGDB.      For each unmatche, Resolve unmatched Steam games by looking them up in IGDB.      For each unmatche, resolve_unmatched_steam_games(), ResolverResult
+Cohesion: 0.36
+Nodes (6): Resolve unmatched Steam games via the central GameMatcher pipeline., Resolve unmatched Steam games via the central GameMatcher.      Delegates to t, Resolve unmatched Steam games by looking them up in IGDB.      For each unmatche, Resolve unmatched Steam games by looking them up in IGDB.      For each unmatche, resolve_unmatched_steam_games(), ResolverResult
 
 ### Community 487 - "Community 487"
-Cohesion: 0.36
-Nodes (8): AnimatedShaderBackgroundProps, clamp(), logFallback(), PROFILES, QUALITY_PROFILES, QualityTier, resolveQualityTier(), ShaderMode
+Cohesion: 0.33
+Nodes (6): Search IGDB for game, import missing ones async, return already-imported.      G, Search IGDB for game, import missing ones async, return already-imported.      G, Search IGDB for games, import missing ones async, return already-imported., Search IGDB for games, import missing ones async, return already-imported., Search IGDB for games, import missing ones async, return already-imported., search_external_games()
 
 ### Community 488 - "Community 488"
-Cohesion: 0.43
-Nodes (6): ListItemRankHistory, MediaListCollaborator, MediaListLike, # TODO: Review this file, UserList, UserListItem
+Cohesion: 0.33
+Nodes (6): Search SteamGridDB for game art assets.      Returns grid, logo, hero, and icon, Search SteamGridDB for game art assets.      Returns grid, logo, hero, and icon, Search SteamGridDB for game art assets.      Returns grid, logo, hero, and icon, Search SteamGridDB for game art assets.      Returns grid, logo, hero, and icon, SSE stream of per-game match progress for the desktop orchestrator.      Returns, search_steamgrid()
 
 ### Community 490 - "Community 490"
 Cohesion: 0.43
@@ -2516,12 +2507,12 @@ Cohesion: 0.27
 Nodes (12): app(), current_user(), _make_app(), mock_db(), test_google_callback_generic_error(), test_google_callback_http_exception_passthrough(), test_google_callback_success(), test_google_callback_unconfigured() (+4 more)
 
 ### Community 514 - "Community 514"
-Cohesion: 0.10
-Nodes (18): Any, str, _format_sse(), _normalize_stored_result(), Async generator that powers all SSE event streams., Return headers required for SSE delivery through proxies., Ensure a stored result carries a ``type`` field.      Two legacy patterns exis, sse_headers() (+10 more)
+Cohesion: 0.08
+Nodes (23): Any, int, Request, str, _format_sse(), _normalize_stored_result(), Async generator that powers all SSE event streams., Return headers required for SSE delivery through proxies. (+15 more)
 
 ### Community 515 - "Community 515"
-Cohesion: 0.06
-Nodes (58): AsyncSession, int, ReviewWithUserOut, str, User, bool, int, Review (+50 more)
+Cohesion: 0.17
+Nodes (26): AsyncSession, int, ReviewWithUserOut, str, User, AsyncSession, Review, MediaRatingAggregateOut (+18 more)
 
 ### Community 516 - "Community 516"
 Cohesion: 0.20
@@ -2536,32 +2527,28 @@ Cohesion: 0.30
 Nodes (12): Auth Features, Discover API, Friends / Social Graph, Lists Features, Media Features, Otium (Django), Otix (FastAPI), Provider Integrations (User-Facing) (+4 more)
 
 ### Community 519 - "Community 519"
-Cohesion: 0.29
-Nodes (9): AsyncSession, AuthRateLimiter, Request, str, User, follow_company(), Follow a company.      Adds the company to the authenticated user's followed l, Unfollow a company.      Removes the company from the authenticated user's fol (+1 more)
+Cohesion: 0.33
+Nodes (5): Changes Made, File Modified, Sections Kept, Summary, Task 12 Report: Frontend - Simplify Settings (Downloads)
 
 ### Community 520 - "Community 520"
 Cohesion: 0.25
 Nodes (9): int, str, incr(), # TODO: Review this file, Atomically increment a counter field., Atomically increment a counter field., Read all counters and atomically reset them.      Returns a dict of field_name →, Read all counters and atomically reset them.      Returns a dict of field_name (+1 more)
 
 ### Community 521 - "Community 521"
-Cohesion: 0.23
-Nodes (9): User, str, _integrations_response(), my_integrations(), Return the authenticated user's connected integration details., _gravatar_url(), MeIntegrationsResponse, MeIntegrationsResponse (+1 more)
+Cohesion: 0.40
+Nodes (3): Request, get_metrics(), Return internal application metrics.
 
 ### Community 522 - "Community 522"
 Cohesion: 0.25
 Nodes (17): AsyncSession, AuthRateLimiter, Request, str, User, CollaboratorInvite, CollaboratorOut, accept_collaboration() (+9 more)
 
 ### Community 523 - "Community 523"
-Cohesion: 0.26
-Nodes (11): AsyncSession, SpotifyProvider, str, User, _fetch_all_playlist_tracks(), _fetch_all_user_playlists(), # TODO: Review this file, Fetch all playlists for the current user, handling pagination. (+3 more)
+Cohesion: 0.33
+Nodes (9): SpotifyProvider, str, _fetch_all_playlist_tracks(), _fetch_all_user_playlists(), # TODO: Review this file, Fetch all playlists for the current user, handling pagination., Fetch tracks in a playlist from the embedded playlist response.      Uses GET, Fetch a playlist's tracks and sync them into Otix.      Matches tracks by Spot (+1 more)
 
 ### Community 524 - "Community 524"
 Cohesion: 0.31
 Nodes (9): date, int, str, _check_media_release(), check_media_release_task(), _notify_watchlisters(), # TODO: Review this file, Check if a specific release should trigger notifications for watchlisters. (+1 more)
-
-### Community 525 - "Community 525"
-Cohesion: 0.36
-Nodes (7): AsyncSession, AuthRateLimiter, Request, User, tmdb_disconnect(), TmdbDisconnectResponse, TmdbDisconnectResponse
 
 ### Community 526 - "Community 526"
 Cohesion: 0.47
@@ -2572,8 +2559,8 @@ Cohesion: 0.18
 Nodes (10): Global Constraints, Plugin Game Matching Framework Implementation Plan, Self-Review Checklist, Task 1: Backend - confirmed_count migration + Phase 1 confidence, Task 2: Backend - SSE match stream endpoint, Task 3: Desktop - game_matches table + GameScanOrchestrator, Task 4: Desktop - IPC wiring + main process integration, Task 5: Epic plugin refactor — standardized scan interface (+2 more)
 
 ### Community 528 - "Community 528"
-Cohesion: 0.36
-Nodes (8): FollowCountsOut, FollowRequestListOut, FollowRequestOut, FollowRequestRequesterOut, FollowRequestResponse, FollowStatusOut, FollowUserOut, # TODO: Review this file
+Cohesion: 0.40
+Nodes (4): Drain the token bucket so subsequent requests are throttled., Drain the token bucket so subsequent requests are throttled., Drain the token bucket so subsequent requests are throttled., Drain the token bucket so subsequent requests are throttled.
 
 ### Community 529 - "Community 529"
 Cohesion: 0.17
@@ -2588,16 +2575,16 @@ Cohesion: 0.28
 Nodes (7): # TODO: Review this file, Batch update current player counts for games with a Steam app ID.      Runs ever, Batch update current player counts for game with a Steam app ID.      Runs eve, Find games without a steam_app_id by searching the Steam store by name.      Run, Find game without a steam_app_id by searching the Steam store by name.      Ru, steam_ccu_batch(), steam_name_match()
 
 ### Community 533 - "Community 533"
-Cohesion: 0.50
-Nodes (3): AsyncMock, OMDbHydrator, TestOMDbHydrator
+Cohesion: 0.40
+Nodes (4): Return media types that have affinity for this genre, ordered by score., Return media types that have affinity for this genre, ordered by score., Return media types that have affinity for this genre, ordered by score., Return media types that have affinity for this genre, ordered by score.
 
 ### Community 534 - "Community 534"
-Cohesion: 0.22
-Nodes (4): extract_involved_companies(), Extract involved companies from IGDB response.      Returns a list of {company_n, Extract involved companies from IGDB response.      Returns a list of {company, Extract involved companies from IGDB response.      Returns a list of {company_n
+Cohesion: 0.09
+Nodes (15): JSONValue, extract_involved_companies(), extract_modes(), extract_platforms(), _extract_website(), # TODO: Review this file, Extract the official website URL from IGDB websites list.      Prefers category, Extract involved companies from IGDB response.      Returns a list of {company_n (+7 more)
 
 ### Community 535 - "Community 535"
 Cohesion: 0.02
-Nodes (109): AdminMetricsResponse, AsyncSession, int, Request, str, TMDBDeletedIDListResponse, User, AsyncSession (+101 more)
+Nodes (153): ActivityHeatmapEntry, ActivityHeatmapResponse, _fetch_user_activity_events(), get_my_activity_heatmap(), get_user_activity(), get_user_mood_timeline(), Get a user's recent activity timeline., Get a user's recent mood check-in timeline. (+145 more)
 
 ### Community 536 - "Community 536"
 Cohesion: 0.22
@@ -2615,21 +2602,13 @@ Nodes (9): Files, Interfaces Produced, Notes, Step 1: Create connection.ts, Step
 Cohesion: 0.20
 Nodes (9): Compilation Result, Files Deleted, Files Modified, Final Verification, Issues Found & Fixes Applied, Key Notes, Status: COMPLETED, Task 1.4 Report: Wire migration service into main.ts, remove old db files (+1 more)
 
-### Community 540 - "Community 540"
-Cohesion: 0.16
-Nodes (18): AsyncSession, str, User, AsyncSession, int, MediaItemListResponse, Request, str (+10 more)
-
 ### Community 541 - "Community 541"
 Cohesion: 0.38
 Nodes (9): apiGet(), apiPost(), BASIC_AUTH, dumpFullGameData(), exchangeCode(), fetchAllLibraryItems(), main(), showAuthUrl() (+1 more)
 
 ### Community 542 - "Community 542"
-Cohesion: 0.35
+Cohesion: 0.33
 Nodes (10): bool, Path, str, _generate_preview(), main(), process_batch(), process_logo(), Save a 3-row composite: logo on white, gray, and black backgrounds. (+2 more)
-
-### Community 543 - "Community 543"
-Cohesion: 0.22
-Nodes (3): Tests for the reusable SSE framework (otix.lib.sse)., TestPrebuiltInstances, TestSseHeaders
 
 ### Community 544 - "Community 544"
 Cohesion: 0.22
@@ -2640,8 +2619,8 @@ Cohesion: 0.21
 Nodes (12): AuthRateLimiter, Request, TmdbInitiateResponse, User, AuthRateLimiter, Request, TmdbInitiateResponse, tmdb_login_initiate() (+4 more)
 
 ### Community 546 - "Community 546"
-Cohesion: 0.18
-Nodes (10): ALBUM_AUDIO_FEATURE_ORDER, DOWNLOAD_STATUS_LABELS, EMPTY_TRACKS, FLIP_TRANSITION, StatusLabelConfig, DownloadGameState, LocalGame, useDownloadGame() (+2 more)
+Cohesion: 0.40
+Nodes (5): _has_youtube_scope(), Check if the user's Google token has the youtube scope., Check if the user's Google token has the youtube scope., Check if the user's Google token has the youtube scope., Check if the user's Google token has the youtube scope.
 
 ### Community 547 - "Community 547"
 Cohesion: 0.33
@@ -2668,8 +2647,8 @@ Cohesion: 0.48
 Nodes (5): InteractionCounts, InteractionCreate, InteractionOut, InteractionToggleResponse, # TODO: Review this file
 
 ### Community 553 - "Community 553"
-Cohesion: 0.33
-Nodes (3): LauncherHomePage(), hydrateGame(), useHydrateLocalGames()
+Cohesion: 0.40
+Nodes (5): _match_album(), Match a parsed title to an Otix album via artist + song title lookup., Match a parsed title to an Otix album via artist + song title lookup., Match a parsed title to an Otix album via artist + song title lookup., Match a parsed title to an Otix album via artist + song title lookup.
 
 ### Community 554 - "Community 554"
 Cohesion: 0.43
@@ -2684,12 +2663,12 @@ Cohesion: 0.33
 Nodes (4): Real-world title variations that plugins encounter., Titles with different subtitle separators should match., Game Remastered' should match original 'Game'., TestTitleEdgeCases
 
 ### Community 557 - "Community 557"
-Cohesion: 0.07
-Nodes (53): AsyncSession, AuthRateLimiter, GoogleCallbackRequest, Request, Response, TokenResponse, AsyncSession, AuthRateLimiter (+45 more)
+Cohesion: 0.03
+Nodes (108): Revoke every active refresh token for the given user., Base exception for refresh token failures., Raised when a revoked refresh token is reused — invalidates all tokens for the u, Raised when the user account is no longer active., Validates refresh tokens and issues new token pairs.      Handles token rotati, Validate a refresh token and issue a new token pair.          Returns:, RefreshError, RefreshService (+100 more)
 
 ### Community 558 - "Community 558"
-Cohesion: 0.33
-Nodes (4): _developer_overlap(), Check if the request developer matches any company name from the media item., Fix 2b: _developer_overlap actually works now., TestDeveloperOverlap
+Cohesion: 0.50
+Nodes (3): Search games by name., Search games by name., Search games by name.
 
 ### Community 559 - "Community 559"
 Cohesion: 0.67
@@ -2731,13 +2710,9 @@ Nodes (8): Files, Notes, Step 1: Create migration, Step 2: Create PluginsReposit
 Cohesion: 0.27
 Nodes (10): AsyncSession, AuthRateLimiter, Request, str, User, like_list(), Like a list.      Rate-limited per IP address., Unlike a list.      Rate-limited per IP address. (+2 more)
 
-### Community 569 - "Community 569"
-Cohesion: 0.21
-Nodes (11): AsyncSession, int, PersonListResponse, Request, str, User, get_person(), Search people by name. (+3 more)
-
 ### Community 570 - "Community 570"
-Cohesion: 0.26
-Nodes (10): AsyncSession, AuthRateLimiter, Request, str, User, PersonRatingBody, rate_person(), Rate a person on a 1–5 scale.      Rate-limited per IP address. (+2 more)
+Cohesion: 0.67
+Nodes (3): GameRow(), GameRowProps, getStatusInfo()
 
 ### Community 571 - "Community 571"
 Cohesion: 0.22
@@ -2745,7 +2720,7 @@ Nodes (8): Files, Important, Step 1: Read current file first, Step 2: Rewrite wi
 
 ### Community 572 - "Community 572"
 Cohesion: 0.50
-Nodes (3): Check if the user has already logged a workout today., Check if the user has already logged a workout today., Check if the user has already logged a workout today.
+Nodes (4): _parse_date(), Parse a Plex date string (YYYY-MM-DD) into a Python date., Parse a Plex date string (YYYY-MM-DD) into a Python date., Parse a Plex date string (YYYY-MM-DD) into a Python date.
 
 ### Community 573 - "Community 573"
 Cohesion: 0.33
@@ -2771,6 +2746,10 @@ Nodes (8): constants.ts, Files Modified, Implementation Details, router.tsx, set
 Cohesion: 0.40
 Nodes (4): Get game IDs changed since the given Unix timestamp., Get game IDs changed since the given Unix timestamp., Get game IDs changed since the given Unix timestamp., Get game IDs changed since the given Unix timestamp.
 
+### Community 579 - "Community 579"
+Cohesion: 0.50
+Nodes (4): Convert a Plex-relative thumb path to an absolute URL (no token)., Convert a Plex-relative thumb path to an absolute URL (no token)., Convert a Plex-relative thumb path to an absolute URL (no token)., _resolve_plex_thumb()
+
 ### Community 580 - "Community 580"
 Cohesion: 0.40
 Nodes (4): Map Steam app IDs to IGDB game IDs via the external_games endpoint.          cat, Map Steam app IDs to IGDB game IDs via the external_games endpoint.          cat, Map Steam app IDs to IGDB game IDs via the external_games endpoint.          cat, Map Steam app IDs to IGDB game IDs via the external_games endpoint.          c
@@ -2780,8 +2759,8 @@ Cohesion: 0.50
 Nodes (3): Files list, Otix Code Review Tracker, Progress: 53 / 283 files reviewed (19%)
 
 ### Community 582 - "Community 582"
-Cohesion: 0.43
-Nodes (6): AsyncSession, BulkMarkResponse, str, User, mark_show_watched(), unmark_show_watched()
+Cohesion: 0.50
+Nodes (3): Fetch one page of the user's watch history.          Returns: {items: [{snippe, Fetch one page of the user's watch history.          Returns: {items: [{snippet:, Fetch one page of the user's watch history.          Returns: {items: [{snippet:
 
 ### Community 583 - "Community 583"
 Cohesion: 0.43
@@ -2804,28 +2783,20 @@ Cohesion: 0.33
 Nodes (5): addXPToast(), listeners, showXPToast(), XPToast, XPToastContainer()
 
 ### Community 596 - "Community 596"
-Cohesion: 0.25
-Nodes (6): AsyncSession, Request, str, export_list(), Export a list as JSON or CSV.      Only public lists can be exported., PlainTextResponse
+Cohesion: 0.13
+Nodes (15): AsyncSession, Request, str, AsyncSession, Request, str, export_list(), Export a list as JSON or CSV.      Only public lists can be exported. (+7 more)
 
 ### Community 597 - "Community 597"
-Cohesion: 0.29
-Nodes (6): int, User, InstalledGamesResponse, get_installed_games(), GET /library/installed — user's locally installed game enriched with catalog dat, Return the user's locally installed game, enriched with catalog data.      Ord
+Cohesion: 0.50
+Nodes (3): Fetch channel metadata including verification status.          Returns: {items, Fetch channel metadata including verification status.          Returns: {items:, Fetch channel metadata including verification status.          Returns: {items:
 
 ### Community 598 - "Community 598"
-Cohesion: 0.29
-Nodes (6): Created Files, Lidarr, Pattern, Sonarr, Task 10: Sonarr & Lidarr Plugins — Complete, Verification
-
-### Community 599 - "Community 599"
-Cohesion: 0.25
-Nodes (6): AsyncSession, Request, str, list_rank_history(), Get the rank change history for a list., RankHistoryOut
+Cohesion: 0.13
+Nodes (14): Commit Notes, Created Files, Created: `frontend/src/features/media/game/components/organisms/media-game-blueprint-community.tsx`, Files Changed, Lidarr, Modified: `extensions/otix-plugins/plugins/factorio-blueprints/main.js`, Modified: `frontend/src/features/media/components/organisms/media-detail.tsx`, Pattern (+6 more)
 
 ### Community 600 - "Community 600"
 Cohesion: 0.31
 Nodes (7): AsyncSession, AuthRateLimiter, RedirectResponse, Request, str, tmdb_connect_redirect(), _tmdb_frontend_redirect()
-
-### Community 601 - "Community 601"
-Cohesion: 0.67
-Nodes (4): main(), _ok(), # TODO: Review this file, report()
 
 ### Community 602 - "Community 602"
 Cohesion: 0.25
@@ -2851,17 +2822,9 @@ Nodes (6): CloudSettings, LauncherCloudSyncStat(), SaveLocationEntry, ServerLoca
 Cohesion: 0.29
 Nodes (6): CloudSettings, LauncherCloudSyncStat(), SaveLocationEntry, ServerLocations, useCloudSync(), UseCloudSyncOptions
 
-### Community 609 - "Community 609"
-Cohesion: 0.25
-Nodes (5): ACTIVITIES, ActivityHeatmap(), ActivityHeatmapProps, ActivityType, WeekData
-
 ### Community 610 - "Community 610"
-Cohesion: 0.33
-Nodes (5): Actions Taken, File Created, Summary, Task 8: Create Arr Instance Manager, Verification
-
-### Community 611 - "Community 611"
-Cohesion: 0.25
-Nodes (4): Movie, RadarrLibrary, Tab, TABS
+Cohesion: 0.13
+Nodes (14): Actions Taken, Concerns, Created, File Created, Files changed, How it's wired in media-detail.tsx, Modified, Self-review findings (+6 more)
 
 ### Community 613 - "Community 613"
 Cohesion: 0.25
@@ -2876,16 +2839,16 @@ Cohesion: 0.25
 Nodes (7): Commits, Compilation Result, Concerns, Files Created, Files Modified, Status, Task 1.3 Implementation Report — Extract plugins DB into migrations
 
 ### Community 663 - "Community 663"
-Cohesion: 0.25
-Nodes (7): Commits, Concerns, Design Corrections Applied, Files Changed, Status: DONE, Task 2: Inter-Plugin Call Routing — Report, TypeScript Compilation
+Cohesion: 0.16
+Nodes (14): Changes Made, Commits, Concerns, Design Corrections Applied, Files Changed, Minor finding, Negative: Error handling, Positive: Generated blueprint (4 entities, 2 tiles, 1 icon) (+6 more)
 
 ### Community 685 - "Community 685"
 Cohesion: 0.25
 Nodes (7): Critical: SSE buffer re-processing causes duplicate events, Important: Uncaught streamMatches errors kill scan, Minor: Hardcoded `failed: 0`, Minor: Storage test isolation, Minor: Unused `remaining` variable, Task 3 Fixes, Test Results
 
 ### Community 686 - "Community 686"
-Cohesion: 0.25
-Nodes (7): 1. `desktop/game/orchestrator.ts`, 2. `desktop/ipc/scanner.ts`, 3. `desktop/main.ts`, Changes Made, Concerns, Task 3 Report: Wire Plugin into Orchestrator + Update IPC, Test Results
+Cohesion: 0.18
+Nodes (12): 1. `desktop/game/orchestrator.ts`, 2. `desktop/ipc/scanner.ts`, 3. `desktop/main.ts`, Changes Made, Changes Summary, Concerns, Files Changed, Self-Review Findings (+4 more)
 
 ### Community 687 - "Community 687"
 Cohesion: 0.25
@@ -2896,28 +2859,12 @@ Cohesion: 0.25
 Nodes (7): Files, Step 1: ErrorBoundary.tsx, Step 2: ErrorCard.tsx, Step 3: SlotRenderer.tsx, Step 4: Verify, Step 5: Commit, Task 5.2: Create SlotRenderer and ErrorBoundary
 
 ### Community 689 - "Community 689"
-Cohesion: 0.33
-Nodes (5): Files Created, Next Steps, Summary, Task 9 Report: Radarr Multi-Instance Plugin, Verification
-
-### Community 690 - "Community 690"
-Cohesion: 0.40
-Nodes (3): get_related_artists(), Return related artists for a person with a Spotify artist ID., Return related artists for a person with a Spotify artist ID.
+Cohesion: 0.22
+Nodes (9): API Endpoints, Files Created, Files Modified, Next Steps, Self-Review Findings, Summary, Task 9: Backend Blueprint API -- Implementation Report, Task 9 Report: Radarr Multi-Instance Plugin (+1 more)
 
 ### Community 691 - "Community 691"
 Cohesion: 0.48
 Nodes (5): bool, str, column_exists(), table_exists(), upgrade()
-
-### Community 692 - "Community 692"
-Cohesion: 0.40
-Nodes (4): Get games with offset pagination, optionally filtered by release date., Get games with offset pagination, optionally filtered by release date., Get games with offset pagination, optionally filtered by release date., Get game with offset pagination, optionally filtered by release date.
-
-### Community 693 - "Community 693"
-Cohesion: 0.38
-Nodes (4): AsyncClient, Redis, get_http_client(), # TODO: Review this file
-
-### Community 694 - "Community 694"
-Cohesion: 0.80
-Nodes (4): ExerciseSetRow(), ExerciseSetRowProps, formatWeight(), SetData
 
 ### Community 695 - "Community 695"
 Cohesion: 0.38
@@ -2932,8 +2879,8 @@ Cohesion: 0.29
 Nodes (6): Global Constraints, Library Settings Refactor Implementation Plan, Task 1: Rename nav item + route + page files, Task 2: Rewrite library.tsx with scan buttons + glassmorphic style, Task 3: Move Organizer sub-section to Downloads page, Task 4: Verify build compiles
 
 ### Community 698 - "Community 698"
-Cohesion: 0.29
-Nodes (6): Commits, Concerns, One-line Test Summary, Status: DONE, Task 1 Report: Extend Plugin Framework — Service Registry & Types, Test/Compile Results
+Cohesion: 0.17
+Nodes (12): 1. `manifest.json`, 2. `main.js`, 3. `README.md`, Commits, Concerns, One-line Test Summary, Status: DONE, Task 1: Plugin Scaffold — Report (+4 more)
 
 ### Community 699 - "Community 699"
 Cohesion: 0.29
@@ -2964,8 +2911,8 @@ Cohesion: 0.29
 Nodes (6): Commit, Key architectural change, Task 7.1 & 7.2 Report — File Deletion Cleanup, Task 7.1: Delete hardcoded Epic files, Task 7.2: Delete old loader, TypeScript Verification
 
 ### Community 706 - "Community 706"
-Cohesion: 0.29
-Nodes (6): Concerns, Design Notes, Files Created (5), Files Modified (5), Task 7: Backend PWA Push — Report, Test Results
+Cohesion: 0.14
+Nodes (14): Concerns, Created, Design Notes, Files Created (5), Files Modified (5), `frontend/src/features/media/components/organisms/media-detail.tsx`, `frontend/src/features/media/game/components/molecules/media-game-tab-bar.tsx`, `frontend/src/features/media/game/components/organisms/media-game-blueprint-vault.tsx` (+6 more)
 
 ### Community 707 - "Community 707"
 Cohesion: 0.47
@@ -2983,10 +2930,6 @@ Nodes (5): get_steam_library(), Return the user's Steam library joined with Medi
 Cohesion: 0.40
 Nodes (5): get_unmatched_steam_games(), Return unmatched Steam games (no Otix match) sorted by playtime desc.      Curso, Return unmatched Steam games (no Otix match) sorted by playtime desc.      Curso, Return unmatched Steam games (no Otix match) sorted by playtime desc.      Curso, Return unmatched Steam game (no Otix match) sorted by playtime desc.      Curs
 
-### Community 711 - "Community 711"
-Cohesion: 0.50
-Nodes (3): Generic discover endpoint for movies or tv.          Pass sort_by, date filters,, Generic discover endpoint for movies or tv.          Pass sort_by, date filters,, Generic discover endpoint for movies or tv.          Pass sort_by, date filter
-
 ### Community 714 - "Community 714"
 Cohesion: 0.33
 Nodes (3): CONTENT_FADE, DiscoverHero(), useHeroCarousel()
@@ -3000,7 +2943,7 @@ Cohesion: 0.33
 Nodes (5): AnimatedShaderBackground, DiscoverPage(), HomeExperience(), MEDIA_DOT_COLORS, MEDIA_TYPE_FILTERS
 
 ### Community 718 - "Community 718"
-Cohesion: 0.28
+Cohesion: 0.38
 Nodes (5): Register, rootRoute, router, RouterContext, routeTree
 
 ### Community 719 - "Community 719"
@@ -3028,8 +2971,8 @@ Cohesion: 0.33
 Nodes (5): Commit, Created, Implementation Details, Task 3.3: Create PluginRuntime — Report, TypeScript
 
 ### Community 725 - "Community 725"
-Cohesion: 0.33
-Nodes (5): Commit, Files Created, Status: DONE, Task 4: SABnzbd Downloader Plugin, Test Results
+Cohesion: 0.14
+Nodes (13): 1. `desktop/plugins/manager.ts`, 2. `desktop/ipc/plugins.ts`, 3. `desktop/preload.ts`, Commit, Concerns, Files Created, Files Modified, Self-Review Findings (+5 more)
 
 ### Community 726 - "Community 726"
 Cohesion: 0.25
@@ -3079,10 +3022,6 @@ Nodes (3): LauncherGamePage, LauncherHomePage, LauncherSlidePicker
 Cohesion: 0.50
 Nodes (4): CardFallback(), getGameHue(), ShelfCard, ShelfCardProps
 
-### Community 747 - "Community 747"
-Cohesion: 0.40
-Nodes (3): MEDIA_TYPE_OPTIONS, PeopleTimelineFiltersProps, ROLE_OPTIONS
-
 ### Community 748 - "Community 748"
 Cohesion: 0.50
 Nodes (4): getPermissionDescription(), PERMISSION_DESCRIPTIONS, PluginPermissionModal(), PluginPermissionModalProps
@@ -3104,8 +3043,8 @@ Cohesion: 0.40
 Nodes (4): Dependencies, Files Created, Task 5.2 Report: Create SlotRenderer and ErrorBoundary, Verification
 
 ### Community 753 - "Community 753"
-Cohesion: 0.18
-Nodes (10): 1. `frontend/src/features/discover/components/organisms/discover-feed.tsx`, 2. `frontend/src/features/discover/index.ts`, Changes Made, Commit, Files Created (7 files), Notes, Status: Complete, Task 6 Report: Downloads Orchestrator Plugin (+2 more)
+Cohesion: 0.12
+Nodes (17): 1. BlueprintIcon (atom), 1. `frontend/src/features/discover/components/organisms/discover-feed.tsx`, 2. BlueprintCard (molecule), 2. `frontend/src/features/discover/index.ts`, Changes Made, Commit, Concerns, Files Created (2 files) (+9 more)
 
 ### Community 756 - "Community 756"
 Cohesion: 0.67
@@ -3143,22 +3082,26 @@ Nodes (3): Files list, Otix Code Review Tracker, Progress: 53 / 283 files review
 Cohesion: 0.67
 Nodes (3): 23.1 Admin Dashboard, 23.2 Content Moderation, 23. ADMIN / MODERATION
 
+### Community 819 - "Community 819"
+Cohesion: 0.40
+Nodes (4): bool, str, table_exists(), upgrade()
+
 ## Knowledge Gaps
-- **2288 isolated node(s):** `env.sh script`, `fs`, `content`, `images`, `str` (+2283 more)
+- **2432 isolated node(s):** `env.sh script`, `fs`, `content`, `images`, `str` (+2427 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **176 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **184 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `User` connect `Community 535` to `Community 512`, `Community 0`, `Community 515`, `Community 4`, `Community 519`, `Community 521`, `Community 9`, `Community 522`, `Community 523`, `Community 525`, `Community 17`, `Community 540`, `Community 28`, `Community 545`, `Community 35`, `Community 549`, `Community 550`, `Community 37`, `Community 557`, `Community 45`, `Community 50`, `Community 51`, `Community 52`, `Community 53`, `Community 568`, `Community 569`, `Community 570`, `Community 57`, `Community 63`, `Community 64`, `Community 66`, `Community 68`, `Community 69`, `Community 70`, `Community 582`, `Community 73`, `Community 78`, `Community 81`, `Community 597`, `Community 95`, `Community 100`, `Community 104`, `Community 125`, `Community 126`, `Community 127`, `Community 131`, `Community 133`, `Community 134`, `Community 137`, `Community 144`, `Community 149`, `Community 157`, `Community 161`, `Community 165`, `Community 175`, `Community 180`, `Community 193`, `Community 211`, `Community 214`, `Community 215`, `Community 218`, `Community 221`, `Community 225`, `Community 234`, `Community 242`, `Community 288`, `Community 308`, `Community 312`, `Community 318`, `Community 329`, `Community 334`, `Community 338`, `Community 339`, `Community 344`, `Community 345`, `Community 355`, `Community 362`, `Community 364`, `Community 373`, `Community 379`, `Community 380`, `Community 383`, `Community 387`, `Community 388`, `Community 396`, `Community 397`, `Community 405`, `Community 406`, `Community 409`, `Community 413`, `Community 435`, `Community 438`, `Community 443`, `Community 458`, `Community 463`, `Community 467`, `Community 483`, `Community 484`, `Community 488`?**
-  _High betweenness centrality (0.161) - this node is a cross-community bridge._
-- **Why does `MediaAsset` connect `Community 17` to `Community 1`, `Community 258`, `Community 136`, `Community 137`, `Community 16`, `Community 403`, `Community 408`, `Community 27`, `Community 540`, `Community 40`, `Community 50`, `Community 69`, `Community 329`, `Community 80`, `Community 86`, `Community 225`, `Community 102`, `Community 110`, `Community 381`?**
-  _High betweenness centrality (0.112) - this node is a cross-community bridge._
-- **Why does `AdminEditModal()` connect `Community 40` to `Community 17`, `Community 217`?**
-  _High betweenness centrality (0.108) - this node is a cross-community bridge._
-- **Are the 974 inferred relationships involving `User` (e.g. with `ActivityHeatmapEntry` and `ActivityHeatmapResponse`) actually correct?**
-  _`User` has 974 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `User` connect `Community 535` to `Community 512`, `Community 0`, `Community 515`, `Community 4`, `Community 9`, `Community 522`, `Community 523`, `Community 17`, `Community 27`, `Community 28`, `Community 545`, `Community 35`, `Community 549`, `Community 550`, `Community 37`, `Community 557`, `Community 45`, `Community 50`, `Community 52`, `Community 53`, `Community 568`, `Community 57`, `Community 63`, `Community 64`, `Community 68`, `Community 69`, `Community 70`, `Community 73`, `Community 78`, `Community 596`, `Community 95`, `Community 100`, `Community 104`, `Community 125`, `Community 127`, `Community 131`, `Community 133`, `Community 134`, `Community 144`, `Community 149`, `Community 157`, `Community 175`, `Community 180`, `Community 193`, `Community 211`, `Community 214`, `Community 215`, `Community 221`, `Community 225`, `Community 234`, `Community 238`, `Community 242`, `Community 288`, `Community 290`, `Community 308`, `Community 312`, `Community 318`, `Community 322`, `Community 329`, `Community 334`, `Community 338`, `Community 339`, `Community 345`, `Community 346`, `Community 358`, `Community 362`, `Community 364`, `Community 373`, `Community 379`, `Community 380`, `Community 383`, `Community 388`, `Community 397`, `Community 403`, `Community 405`, `Community 406`, `Community 409`, `Community 438`, `Community 443`, `Community 444`, `Community 458`, `Community 483`, `Community 484`?**
+  _High betweenness centrality (0.154) - this node is a cross-community bridge._
+- **Why does `MediaAsset` connect `Community 17` to `Community 1`, `Community 69`, `Community 102`, `Community 136`, `Community 329`, `Community 40`, `Community 110`, `Community 80`, `Community 16`, `Community 50`, `Community 86`, `Community 408`, `Community 441`, `Community 27`, `Community 381`?**
+  _High betweenness centrality (0.095) - this node is a cross-community bridge._
+- **Why does `AdminEditModal()` connect `Community 40` to `Community 17`, `Community 31`?**
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
+- **Are the 985 inferred relationships involving `User` (e.g. with `ActivityHeatmapEntry` and `ActivityHeatmapResponse`) actually correct?**
+  _`User` has 985 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 501 inferred relationships involving `MediaItem` (e.g. with `ActivityHeatmapEntry` and `ActivityHeatmapResponse`) actually correct?**
   _`MediaItem` has 501 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 344 inferred relationships involving `ExternalID` (e.g. with `AdminMetricPoint` and `AsyncEngine`) actually correct?**

@@ -10,7 +10,7 @@ from redis.exceptions import BusyLoadingError
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db, get_optional_user, resolve_country_code
+from otix.api.deps import get_db, get_optional_user, resolve_country_code
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState

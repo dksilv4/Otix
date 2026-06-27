@@ -86,5 +86,5 @@ module.exports = {
     for (const p of XBOX_PATHS) { if (await ctx.filesystem.access(p)) return { success: true, message: 'Xbox directory found' }; }
     return { success: true, message: 'No Xbox games directory detected' };
   },
-  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'xbox', label: 'Xbox / MS Store', description: 'Scan local Xbox and Microsoft Store game installations' }),
+  slotRender: async (ctx, location) => ({ type: 'scan', platform: 'xbox', label: 'Xbox / MS Store', description: 'Scan local Xbox and Microsoft Store game installations', mediaTypes: ['games'] }),
 };

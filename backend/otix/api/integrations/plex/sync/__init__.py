@@ -6,7 +6,7 @@ import structlog
 from fastapi import APIRouter, Body, Depends, Request, status
 from pydantic import BaseModel
 
-from otix.api._utils import get_current_user
+from otix.api.deps import get_current_user
 from otix.domain.user import User
 from otix.lib.plex_progress import get_stored_result
 from otix.lib.sse import SseStreamConfig, create_sse_response

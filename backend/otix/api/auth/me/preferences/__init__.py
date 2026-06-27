@@ -3,7 +3,7 @@ from __future__ import annotations
 import structlog
 from fastapi import APIRouter, Depends
 
-from otix.api._utils import get_current_user
+from otix.api.deps import get_current_user
 from otix.domain.user import User
 from otix.schemas.auth import MePreferencesResponse
 

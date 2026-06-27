@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_current_user, get_db, get_optional_user
+from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.domain.media import MediaItem
 from otix.domain.media_rating import MediaItemRating
 from otix.domain.notification import Notification

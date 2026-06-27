@@ -45,8 +45,8 @@
     "semantic_hash": ""
   },
   "backend/alembic/versions/3d46508f1384_add_match_proposals_table.py": {
-    "mtime": 1782104794.8666754,
-    "ast_hash": "9d46e70e7ef61b509d84194abfbf818b",
+    "mtime": 1782260226.3850257,
+    "ast_hash": "a22b90e47d57acb85238e1af1477b1f4",
     "semantic_hash": ""
   },
   "backend/alembic/versions/5d0f9126d3c6_add_icon_url_to_media_items.py": {
@@ -945,8 +945,8 @@
     "semantic_hash": ""
   },
   "backend/otix/api/media/search.py": {
-    "mtime": 1782124711.4739335,
-    "ast_hash": "e61fc0f6b7b758790ab4d3db7c4a5f4a",
+    "mtime": 1782403252.4742124,
+    "ast_hash": "8147ca79dce59c480683eef608a17052",
     "semantic_hash": ""
   },
   "backend/otix/api/people/__init__.py": {
@@ -990,8 +990,8 @@
     "semantic_hash": ""
   },
   "backend/otix/api/router.py": {
-    "mtime": 1782124904.4531984,
-    "ast_hash": "b22ec46dc29e0be198fc3604b3645f8b",
+    "mtime": 1782374793.5900588,
+    "ast_hash": "ccfdae7e93a37900ad3bc6292fd19478",
     "semantic_hash": ""
   },
   "backend/otix/api/track/__init__.py": {
@@ -1115,8 +1115,8 @@
     "semantic_hash": ""
   },
   "backend/otix/domain/__init__.py": {
-    "mtime": 1782124711.4754584,
-    "ast_hash": "80319dd67c9e2851eb95aa4c0aaa823b",
+    "mtime": 1782374800.0601,
+    "ast_hash": "4420cf51d60a5b512c4c753a7bb07908",
     "semantic_hash": ""
   },
   "backend/otix/domain/admin_edit.py": {
@@ -1245,8 +1245,8 @@
     "semantic_hash": ""
   },
   "backend/otix/domain/user.py": {
-    "mtime": 1782018470.8189793,
-    "ast_hash": "0ec3e483b07baabe106c522c288685df",
+    "mtime": 1782374881.5411158,
+    "ast_hash": "9f91705d65b1980a0515b4028de9c1d2",
     "semantic_hash": ""
   },
   "backend/otix/domain/user_badge.py": {
@@ -1890,8 +1890,8 @@
     "semantic_hash": ""
   },
   "backend/otix/services/game_matcher.py": {
-    "mtime": 1782124928.0227349,
-    "ast_hash": "850997b2999da11b76b76f3d4ee2adbc",
+    "mtime": 1782405644.5496378,
+    "ast_hash": "589ea7b8f91d722a8e8c53098474a507",
     "semantic_hash": ""
   },
   "backend/otix/services/gamification_service.py": {
@@ -2695,8 +2695,8 @@
     "semantic_hash": ""
   },
   "desktop/downloads/index.ts": {
-    "mtime": 1782018470.8649242,
-    "ast_hash": "79cc9aad7e5e3d3de6885de73f4b90be",
+    "mtime": 1782187271.61052,
+    "ast_hash": "550579a4edce49cd82b0628e3e9c4947",
     "semantic_hash": ""
   },
   "desktop/downloads/organizer.ts": {
@@ -2730,8 +2730,8 @@
     "semantic_hash": ""
   },
   "desktop/game/orchestrator.ts": {
-    "mtime": 1782183178.7211616,
-    "ast_hash": "79c41b2d44f7d35f491a2217855e8a29",
+    "mtime": 1782404546.3550613,
+    "ast_hash": "969f57d0e10b7b3e882b4fbc5395ce5e",
     "semantic_hash": ""
   },
   "desktop/game/parser.ts": {
@@ -2740,8 +2740,8 @@
     "semantic_hash": ""
   },
   "desktop/game/storage.ts": {
-    "mtime": 1782124711.4782321,
-    "ast_hash": "9c061a3626fd55dc2b204b9b96f1d036",
+    "mtime": 1782380604.0115972,
+    "ast_hash": "1b30550f878dcb169a0db8e7e076e3ed",
     "semantic_hash": ""
   },
   "desktop/installer/index.ts": {
@@ -2750,8 +2750,8 @@
     "semantic_hash": ""
   },
   "desktop/ipc/downloads.ts": {
-    "mtime": 1782018470.8739326,
-    "ast_hash": "5a89723d25027e0347ff46278bbb0ed8",
+    "mtime": 1782187775.6248076,
+    "ast_hash": "370339c0100571c68a37e6c81e9c8dd1",
     "semantic_hash": ""
   },
   "desktop/ipc/game-detector.ts": {
@@ -2780,8 +2780,8 @@
     "semantic_hash": ""
   },
   "desktop/ipc/plugins.ts": {
-    "mtime": 1782124711.4782321,
-    "ast_hash": "b9c64bf26e8ce22d9e652b894dae6280",
+    "mtime": 1782404559.3646917,
+    "ast_hash": "b6ab0f11e935eab782d89b9fb3ab88b5",
     "semantic_hash": ""
   },
   "desktop/ipc/saves.ts": {
@@ -2790,8 +2790,8 @@
     "semantic_hash": ""
   },
   "desktop/ipc/scanner.ts": {
-    "mtime": 1782186545.3116503,
-    "ast_hash": "3c3ff644ac4ece3de547a4bd34ec65a4",
+    "mtime": 1782404590.0682411,
+    "ast_hash": "249cd9589274632765ea061c28d484ce",
     "semantic_hash": ""
   },
   "desktop/ipc/settings.ts": {
@@ -2805,8 +2805,8 @@
     "semantic_hash": ""
   },
   "desktop/main.ts": {
-    "mtime": 1782186385.517353,
-    "ast_hash": "9def986701334ff482cc97dc6623c466",
+    "mtime": 1782187663.6924813,
+    "ast_hash": "30f4e56c8d0618bf365b4e5c21ed5b0e",
     "semantic_hash": ""
   },
   "desktop/package.json": {
@@ -2880,8 +2880,8 @@
     "semantic_hash": ""
   },
   "desktop/plugins/manager.ts": {
-    "mtime": 1782183336.7815232,
-    "ast_hash": "40e733815357b6095b6245e32c815f25",
+    "mtime": 1782381553.168972,
+    "ast_hash": "f837ba84a167b048579d0571eadd7241",
     "semantic_hash": ""
   },
   "desktop/plugins/marketplace.ts": {
@@ -2895,8 +2895,8 @@
     "semantic_hash": ""
   },
   "desktop/plugins/runtime.ts": {
-    "mtime": 1782183336.7820282,
-    "ast_hash": "0e8d7da3084808c39dd4e3e344d25f73",
+    "mtime": 1782381712.3461466,
+    "ast_hash": "9bd1f430e9062ca6c143ac5071f64eaa",
     "semantic_hash": ""
   },
   "desktop/plugins/service-registry.ts": {
@@ -2910,28 +2910,28 @@
     "semantic_hash": ""
   },
   "desktop/plugins/types.ts": {
-    "mtime": 1782183336.7830324,
-    "ast_hash": "336b7ece9dc7768b80e7e59355122abb",
+    "mtime": 1782381390.9599059,
+    "ast_hash": "296b029f4dab77491260de6ad47f9a61",
     "semantic_hash": ""
   },
   "desktop/plugins/worker-bridge.ts": {
-    "mtime": 1782183791.3608701,
-    "ast_hash": "1dc4dd197fcbe63f35ba621df42fc9f4",
+    "mtime": 1782381690.5551398,
+    "ast_hash": "eb8fb702e0f198a04e6660956f56b094",
     "semantic_hash": ""
   },
   "desktop/plugins/worker.ts": {
-    "mtime": 1782183357.2851462,
-    "ast_hash": "7c9278c7b69676edef30cefe528020ff",
+    "mtime": 1782374630.6334229,
+    "ast_hash": "8c40f283315b0bb54f4e7b1eaa2dd279",
     "semantic_hash": ""
   },
   "desktop/preload-api.ts": {
-    "mtime": 1782187138.2319655,
+    "mtime": 1782187399.4067562,
     "ast_hash": "63620eb0e742e2e7e667e2ed49509776",
     "semantic_hash": ""
   },
   "desktop/preload.ts": {
-    "mtime": 1782124711.479862,
-    "ast_hash": "5024535bac129fad4fab06787df4e390",
+    "mtime": 1782372777.9020884,
+    "ast_hash": "ca7227a59836c189c51c1746b2b178c6",
     "semantic_hash": ""
   },
   "desktop/saves/export.ts": {
@@ -3270,8 +3270,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/activity/components/organisms/activity-panel.tsx": {
-    "mtime": 1782124711.4849527,
-    "ast_hash": "e06ea40ebdb7c79b7b5b134fbc5452fb",
+    "mtime": 1782188126.8368895,
+    "ast_hash": "a3f806d253045fd50f0fa27aae2b0c22",
     "semantic_hash": ""
   },
   "frontend/src/features/activity/constants/activity-panel-constants.ts": {
@@ -3380,7 +3380,7 @@
     "semantic_hash": ""
   },
   "frontend/src/features/auth/components/organisms/auth-user-menu.tsx": {
-    "mtime": 1782187138.2324705,
+    "mtime": 1782187399.407754,
     "ast_hash": "bcc385c91b653253984b4fe1c98c46c8",
     "semantic_hash": ""
   },
@@ -3425,8 +3425,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/auth/providers/auth-provider.tsx": {
-    "mtime": 1782018470.9467788,
-    "ast_hash": "5cdf4be0088fe19c118d7a05dc6020da",
+    "mtime": 1782260226.4004252,
+    "ast_hash": "364fea12a2885a8e97ac72b2e1110ca1",
     "semantic_hash": ""
   },
   "frontend/src/features/auth/router.tsx": {
@@ -3805,8 +3805,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/library/pages/library-page.tsx": {
-    "mtime": 1782018470.9796019,
-    "ast_hash": "cd78c29c98c3947ff67ccaad3718948e",
+    "mtime": 1782188161.235782,
+    "ast_hash": "3ceb64a3b3493a5a1a0f2607af82c357",
     "semantic_hash": ""
   },
   "frontend/src/features/library/router.tsx": {
@@ -3875,8 +3875,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/media/components/organisms/media-detail.tsx": {
-    "mtime": 1782018470.984102,
-    "ast_hash": "67ec975be0c06f4412f4066bac3bb988",
+    "mtime": 1782375285.5167968,
+    "ast_hash": "fb2814773da03ad337079ff09dd472d9",
     "semantic_hash": ""
   },
   "frontend/src/features/media/components/organisms/media-general-details.tsx": {
@@ -3975,7 +3975,7 @@
     "semantic_hash": ""
   },
   "frontend/src/features/media/music/components/organisms/media-music-section.tsx": {
-    "mtime": 1782187138.2334712,
+    "mtime": 1782187399.408755,
     "ast_hash": "c982cd22602d06f40017db1969bdeda3",
     "semantic_hash": ""
   },
@@ -4215,7 +4215,7 @@
     "semantic_hash": ""
   },
   "frontend/src/features/notifications/providers/notifications-provider.tsx": {
-    "mtime": 1782187138.2334712,
+    "mtime": 1782187399.4092543,
     "ast_hash": "d3a44fc091b8c4900e7911a77edc3ffe",
     "semantic_hash": ""
   },
@@ -4285,8 +4285,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/plugins/utils/matching.ts": {
-    "mtime": 1782018471.0254376,
-    "ast_hash": "89aecdeaa3d4b02b748f500b0f5973ce",
+    "mtime": 1782403586.4394016,
+    "ast_hash": "545ef4ce354d6917a401ec7bb6eccb4e",
     "semantic_hash": ""
   },
   "frontend/src/features/proposals/components/molecules/proposal-card.tsx": {
@@ -4295,8 +4295,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/proposals/pages/proposals-page.tsx": {
-    "mtime": 1782107192.9643426,
-    "ast_hash": "899303cb946ea6a94820bc9c2049b166",
+    "mtime": 1782260226.4014318,
+    "ast_hash": "0786c80dcce2c169a3b3e55049f82384",
     "semantic_hash": ""
   },
   "frontend/src/features/proposals/proposals-queries.ts": {
@@ -4405,8 +4405,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/components/organisms/settings-plugin-config-panel.tsx": {
-    "mtime": 1782187138.234472,
-    "ast_hash": "3c1858ea40c0f7d4b02ca20295b082cd",
+    "mtime": 1782403168.4971876,
+    "ast_hash": "2616c457580e92da9d0de8c269f35011",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/components/organisms/settings-plugin-permission-modal.tsx": {
@@ -4420,13 +4420,13 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/components/organisms/settings-plugin-settings.tsx": {
-    "mtime": 1782187138.238472,
-    "ast_hash": "6e06ea1f1f100ac46ce582698b9675a2",
+    "mtime": 1782374882.1127205,
+    "ast_hash": "7b18709eeae372639854443c0defa1e8",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/components/organisms/settings-plugin-slot.tsx": {
-    "mtime": 1782018471.0355055,
-    "ast_hash": "68a5c2f64381d66bfc4511b2f78a41bd",
+    "mtime": 1782404062.3413963,
+    "ast_hash": "87c68fa5c2d53675a17024c1b79aa281",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/components/organisms/settings-scanned-game-modal.tsx": {
@@ -4435,8 +4435,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/constants/index.ts": {
-    "mtime": 1782187138.240976,
-    "ast_hash": "c88d8fd1170e9804ffb927c28122c244",
+    "mtime": 1782375321.3397796,
+    "ast_hash": "e767841e46a0f60c3648bc77af9f0c1d",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/hooks/index.ts": {
@@ -4455,8 +4455,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/index.ts": {
-    "mtime": 1782005714.5403306,
-    "ast_hash": "dc2e0e358def84686940870082ec8b82",
+    "mtime": 1782403638.319229,
+    "ast_hash": "933adf486c846fac99d0d9f02166452e",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-account-page.tsx": {
@@ -4465,8 +4465,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-admin-proposals-page.tsx": {
-    "mtime": 1782104132.505891,
-    "ast_hash": "a16cb0b54754f448970880a55f142481",
+    "mtime": 1782375298.865697,
+    "ast_hash": "044134be42c4ccc2a116204c19238e83",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-appearance-page.tsx": {
@@ -4490,23 +4490,13 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-layout.tsx": {
-    "mtime": 1782187138.2414706,
-    "ast_hash": "4ec2dbe8c1d045ae06153c47c3ae2c3e",
-    "semantic_hash": ""
-  },
-  "frontend/src/features/settings/pages/settings-library-matching-page.tsx": {
-    "mtime": 1782124711.520594,
-    "ast_hash": "821ab8b77e7f63feae26c73564137e0b",
+    "mtime": 1782188215.8469155,
+    "ast_hash": "863986e3114d695399d5b6f81df25134",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-library-page.tsx": {
     "mtime": 1782124711.5215974,
     "ast_hash": "c79d5f771d9ee25758908f8c50d81e25",
-    "semantic_hash": ""
-  },
-  "frontend/src/features/settings/pages/settings-matching-page.tsx": {
-    "mtime": 1782124711.5215974,
-    "ast_hash": "5ce5f893c10ed6fe6bfb744aa892c498",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-notifications-page.tsx": {
@@ -4535,8 +4525,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-scanned-games-page.tsx": {
-    "mtime": 1782124711.5246198,
-    "ast_hash": "e271637cd72a3d4529c798b7abb15e57",
+    "mtime": 1782401614.552911,
+    "ast_hash": "cdf7c90d8dce7f2604e53e4f8a1c23fc",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/pages/settings-scanners-page.tsx": {
@@ -4545,13 +4535,13 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/router.tsx": {
-    "mtime": 1782124711.5251212,
-    "ast_hash": "0b24ab6b913d7f50e97ccf40ace5e461",
+    "mtime": 1782375216.6166759,
+    "ast_hash": "ef04f8f89c8c0d00fdaeefd255ebfb03",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/index.ts": {
-    "mtime": 1782007934.6942255,
-    "ast_hash": "bcbfbd329f0315f26c6758ad5afff4fb",
+    "mtime": 1782403617.9921794,
+    "ast_hash": "cf53ffd09f481c84c3cfe990f27dfa0d",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/settings-account.tsx": {
@@ -4570,13 +4560,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/settings-downloads.tsx": {
-    "mtime": 1782018471.0435793,
-    "ast_hash": "5bd6eed2627f6a793a83f39fae64cefa",
-    "semantic_hash": ""
-  },
-  "frontend/src/features/settings/sections/settings-game-matching.tsx": {
-    "mtime": 1782124711.5271523,
-    "ast_hash": "d2905a96c17ebce7c1ad4e963a416291",
+    "mtime": 1782374882.1142213,
+    "ast_hash": "dc41d3f8785576fcc3c54877adf18a3d",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/settings-integrations.tsx": {
@@ -4585,13 +4570,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/settings-library.tsx": {
-    "mtime": 1782124711.527652,
-    "ast_hash": "368587f5ba405ea18881aaa581d876bc",
-    "semantic_hash": ""
-  },
-  "frontend/src/features/settings/sections/settings-matching.tsx": {
-    "mtime": 1782124711.528157,
-    "ast_hash": "dc7c58c47f61dd1b3bc9b0e24a15bedf",
+    "mtime": 1782402774.8247917,
+    "ast_hash": "02f05ec4489766bbb4378f7f5b02b386",
     "semantic_hash": ""
   },
   "frontend/src/features/settings/sections/settings-notifications.tsx": {
@@ -4620,8 +4600,8 @@
     "semantic_hash": ""
   },
   "frontend/src/features/settings/types/plugins.ts": {
-    "mtime": 1782018471.0479946,
-    "ast_hash": "fe4202974744db2601f3b250ac2d79ea",
+    "mtime": 1782381401.445721,
+    "ast_hash": "a8575d3a604e597a0210ade577a3d4cd",
     "semantic_hash": ""
   },
   "frontend/src/features/user/components/atoms/user-xp-progress-ring.tsx": {
@@ -4755,8 +4735,8 @@
     "semantic_hash": ""
   },
   "frontend/src/lib/modals/slide-panel.tsx": {
-    "mtime": 1782018471.063337,
-    "ast_hash": "eeefa5c348cc7ea0cb278d47c2077e81",
+    "mtime": 1782374882.1152205,
+    "ast_hash": "c45e3c362555d255febaa3ed8122d02a",
     "semantic_hash": ""
   },
   "frontend/src/lib/providers/auth.tsx": {
@@ -5040,8 +5020,8 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/dk-ui/atoms/checkbox.tsx": {
-    "mtime": 1782018471.0921884,
-    "ast_hash": "d609c6a9485628d75d42cd132cf8bbfa",
+    "mtime": 1782374882.1157207,
+    "ast_hash": "ee439122e13b95948f29ca0d95c82f36",
     "semantic_hash": ""
   },
   "frontend/src/old-features/dk-ui/atoms/dropdown.tsx": {
@@ -5095,8 +5075,8 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/dk-ui/atoms/switch.tsx": {
-    "mtime": 1782018471.096275,
-    "ast_hash": "e53a2878293e141cd5c80e76423f1224",
+    "mtime": 1782374882.1162229,
+    "ast_hash": "e6c9ee892e64a9264b9df19ad5dc4092",
     "semantic_hash": ""
   },
   "frontend/src/old-features/dk-ui/atoms/textarea.tsx": {
@@ -5160,7 +5140,7 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/dk-ui/organisms/app-layout.tsx": {
-    "mtime": 1782187138.2414706,
+    "mtime": 1782187399.4117553,
     "ast_hash": "21247514df205ba6fd24261b15638517",
     "semantic_hash": ""
   },
@@ -5414,11 +5394,6 @@
     "ast_hash": "6725a26e91edc45d3cac5db93d54ce1e",
     "semantic_hash": ""
   },
-  "frontend/src/old-features/games/molecules/scan-widget.tsx": {
-    "mtime": 1782018471.1250982,
-    "ast_hash": "0617e9f67368fcce6c8c463cc74b4b2c",
-    "semantic_hash": ""
-  },
   "frontend/src/old-features/games/molecules/shelf-card.tsx": {
     "mtime": 1782018471.1250982,
     "ast_hash": "eef9acbd60ccd5f2b345fde4ea8e360d",
@@ -5430,8 +5405,8 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/games/organisms/launcher-footer.tsx": {
-    "mtime": 1782018471.1266232,
-    "ast_hash": "cbf077e243a11ed98179f388dc7da0a4",
+    "mtime": 1782187484.9254372,
+    "ast_hash": "73428498da367bffc00656f5318a158e",
     "semantic_hash": ""
   },
   "frontend/src/old-features/games/organisms/launcher-game-buttons.tsx": {
@@ -5512,11 +5487,6 @@
   "frontend/src/old-features/library/library-queries.ts": {
     "mtime": 1782124711.538731,
     "ast_hash": "c340ad4a6cd45625cf1aba1f5b215864",
-    "semantic_hash": ""
-  },
-  "frontend/src/old-features/library/molecules/games-launcher.tsx": {
-    "mtime": 1782018471.1341717,
-    "ast_hash": "cfa47b0f8864d90d6bd01a5db82cbe2a",
     "semantic_hash": ""
   },
   "frontend/src/old-features/library/molecules/lists-preview-section.tsx": {
@@ -5715,13 +5685,13 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/person/organisms/person-detail.tsx": {
-    "mtime": 1782057849.3389943,
-    "ast_hash": "c3309c3b3c06b73ae8a563950759adbd",
+    "mtime": 1782374882.1167226,
+    "ast_hash": "c1a4c6d7a1634ad043363de62bc34115",
     "semantic_hash": ""
   },
   "frontend/src/old-features/person/organisms/person-timeline-filters.tsx": {
-    "mtime": 1782057849.339504,
-    "ast_hash": "949d3ee8e0c62af89e1ac68152537bc8",
+    "mtime": 1782374882.1172204,
+    "ast_hash": "8b203b95776bd3487b2a22d136e1f897",
     "semantic_hash": ""
   },
   "frontend/src/old-features/person/organisms/person-timeline.tsx": {
@@ -5730,8 +5700,8 @@
     "semantic_hash": ""
   },
   "frontend/src/old-features/person/person-queries.ts": {
-    "mtime": 1782057849.339504,
-    "ast_hash": "db62fac42e796963037dff96fa3b79a4",
+    "mtime": 1782374882.1172204,
+    "ast_hash": "6056edb1ab841cd9243e18c0e29753e8",
     "semantic_hash": ""
   },
   "frontend/src/old-features/review/atoms/interactive-star.tsx": {
@@ -6425,8 +6395,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/progress.md": {
-    "mtime": 1782187039.3712957,
-    "ast_hash": "4fb44d788cd7d1cec80d75fc84b31a24",
+    "mtime": 1782375384.3446524,
+    "ast_hash": "ab36f9826cb535da478cff2d7de66c96",
     "semantic_hash": ""
   },
   ".superpowers/sdd/review-fix-report.md": {
@@ -6435,8 +6405,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-1-brief.md": {
-    "mtime": 1782182816.2574692,
-    "ast_hash": "3ffb3c6d4d46775890560a3d1f4385f4",
+    "mtime": 1782371980.7336998,
+    "ast_hash": "f2d50d6b8dbe2c7cdbf0d40c122339d7",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-1-fix-report.md": {
@@ -6445,8 +6415,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-1-report.md": {
-    "mtime": 1782182920.6232245,
-    "ast_hash": "85138a64bdbd9287cf56dc2ae6454a68",
+    "mtime": 1782372036.9591956,
+    "ast_hash": "25eebe5676d0fa01ab383218cb6f6c9c",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-1.1-brief.md": {
@@ -6490,13 +6460,13 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-2-brief.md": {
-    "mtime": 1782183057.414077,
-    "ast_hash": "6b1e8b5e0f10ed1aea56de163a9a9763",
+    "mtime": 1782372319.776377,
+    "ast_hash": "95681bf7d819a2fe17d8b0397389b490",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-2-report.md": {
-    "mtime": 1782183421.2461045,
-    "ast_hash": "b951d7df0ef4529e9a345ceb43cc0275",
+    "mtime": 1782372402.4018452,
+    "ast_hash": "78f6e275c2dd07d519a9ef9d69ca6584",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-2.1-brief.md": {
@@ -6520,8 +6490,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-3-brief.md": {
-    "mtime": 1782183117.794992,
-    "ast_hash": "6c1b41604dd35f2bf2abada2d7cfddcb",
+    "mtime": 1782372572.112318,
+    "ast_hash": "964d57ef9f17747fb95c631ca4bd8ca9",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-3-fixes.md": {
@@ -6530,8 +6500,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-3-report.md": {
-    "mtime": 1782183280.3387048,
-    "ast_hash": "833d8938bd1980488a49be59c1ecebcd",
+    "mtime": 1782372625.007738,
+    "ast_hash": "f157308cda2cd4722bbfb3318277d195",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-3.1-brief.md": {
@@ -6580,13 +6550,13 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-4-brief.md": {
-    "mtime": 1782184105.7755086,
-    "ast_hash": "1b7a61d67ac4edc77da66b43278d9d2e",
+    "mtime": 1782372743.1714602,
+    "ast_hash": "83550be7f79056e7c2c4bdf3d9566eb8",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-4-report.md": {
-    "mtime": 1782186010.241253,
-    "ast_hash": "b1e4abd8a757652876b9cabc102171f0",
+    "mtime": 1782372805.9119601,
+    "ast_hash": "749feb24112906d918bdec3232e67932",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-4.1-brief.md": {
@@ -6605,8 +6575,8 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-5-brief.md": {
-    "mtime": 1782186219.417952,
-    "ast_hash": "2deeeae8718146ba874cd36aec2fa605",
+    "mtime": 1782372979.242795,
+    "ast_hash": "fce86e0336660a6350398dd9c63e8baa",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-5-report.md": {
@@ -6645,13 +6615,13 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-6-brief.md": {
-    "mtime": 1782118115.2622843,
-    "ast_hash": "741f8e42138d4a34b993999c63c53e6a",
+    "mtime": 1782373310.0396388,
+    "ast_hash": "836d3ebc6a31c7df55d16f5ef7a8529f",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-6-report.md": {
-    "mtime": 1782186759.7936056,
-    "ast_hash": "69fd02bda5ffbc51b1f5a573862315bc",
+    "mtime": 1782373407.0604336,
+    "ast_hash": "e32f597aab43123586611ea863a766a9",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-6.1-brief.md": {
@@ -6680,13 +6650,13 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-7-brief.md": {
-    "mtime": 1782014865.6453085,
-    "ast_hash": "be1a19c1eb07ea45e3292aab14267353",
+    "mtime": 1782373712.4643874,
+    "ast_hash": "b574a57064a13f671851e16172ef5a8c",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-7-report.md": {
-    "mtime": 1782015299.823524,
-    "ast_hash": "960f70abcf11f812a6b476dc6e139377",
+    "mtime": 1782373970.5751126,
+    "ast_hash": "3b5c0ceec4791ad62d2c9dc00ead4e3a",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-7.1-7.2-report.md": {
@@ -6715,128 +6685,8 @@
     "semantic_hash": ""
   },
   "docker-compose.yml": {
-    "mtime": 1782018660.2049556,
-    "ast_hash": "351934610a6b18d32882e50b4c7ed926",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-08-game-storage-refactor.md": {
-    "mtime": 1781362572.754946,
-    "ast_hash": "de076c7f34e23180ae2be931a1cca9ea",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-19-game-matching-page.md": {
-    "mtime": 1782018470.902665,
-    "ast_hash": "3741004a1d770c7fe4c9afad742d0789",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-19-library-settings-refactor.md": {
-    "mtime": 1782018470.9031658,
-    "ast_hash": "9d20b6eb384b67fc4d2e5b6854eb0eee",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-19-plugin-framework-slot-system.md": {
-    "mtime": 1782018470.9041672,
-    "ast_hash": "38c7ac581b913379d9556717ae5dda5d",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-21-notification-framework.md": {
-    "mtime": 1782012931.5267012,
-    "ast_hash": "cde9ea2855d6645a095fd1571b189a1c",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-21-plugin-game-matching-framework.md": {
-    "mtime": 1782011775.1136208,
-    "ast_hash": "ed82b309972780da64c201a9f7045e5d",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-22-trending-trailers-discover.md": {
-    "mtime": 1782111417.8716981,
-    "ast_hash": "4f8be46a4e9cbd9fcb8d620cfc50aaca",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-23-context-menu-framework.md": {
-    "mtime": 1782178967.5957165,
-    "ast_hash": "0db4299f774d83f4d361bcaedd5dff0e",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-23-downloads-plugin-migration.md": {
-    "mtime": 1782182712.0468557,
-    "ast_hash": "195b7be2518b02d085dba2db5dc47240",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-06-23-local-game-scanner-plugin.md": {
-    "mtime": 1782182097.7419596,
-    "ast_hash": "65132773b1673efc39c314fd68194a9c",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2025-06-03-spotify-playlist-sync-design.md": {
-    "mtime": 1781362572.755947,
-    "ast_hash": "f49f1a4b8b25a98711ad09a7f63d05ea",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-01-game-scanner-integration-design.md": {
-    "mtime": 1781362572.7569473,
-    "ast_hash": "00d4023b6704a2bb5fc6125adb9c74d6",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-01-sabnzbd-nzbplanet-integration-design.md": {
-    "mtime": 1781362572.7574468,
-    "ast_hash": "8826be9dc4a80a29a96d7acba1870ff1",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-02-games-page-redesign.md": {
-    "mtime": 1781362572.757946,
-    "ast_hash": "9b570e03fef2b9b173aa95baf4eb29e6",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-03-about-page-redesign.md": {
-    "mtime": 1781362572.7584455,
-    "ast_hash": "fe4b529207876993757c522ab95dc65c",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-19-game-matching-page-design.md": {
-    "mtime": 1782018470.9041672,
-    "ast_hash": "cb113622ee5acdb3df29129acc11df2b",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-19-library-settings-refactor-design.md": {
-    "mtime": 1782018470.9046638,
-    "ast_hash": "db32132eafbc8ad7df2e804d8869c636",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-19-plugin-framework-slot-system-design.md": {
-    "mtime": 1782018470.9051638,
-    "ast_hash": "51d781ee9428aee50a483f54dc11f6f2",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-21-notification-framework-design.md": {
-    "mtime": 1782018470.9056642,
-    "ast_hash": "bfb56d544e1b1d0fa082a72312851864",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-21-plugin-game-matching-framework-design.md": {
-    "mtime": 1782018470.906664,
-    "ast_hash": "85e96ca7d9811ab2bce233570c26fa70",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-22-match-approval-workflow.md": {
-    "mtime": 1782094002.5428212,
-    "ast_hash": "44521347f73050d6b37c0691633be526",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-23-context-menu-framework-design.md": {
-    "mtime": 1782178836.2855313,
-    "ast_hash": "a7884ea444198ca555c9506e9fa75723",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-23-downloads-plugin-architecture-design.md": {
-    "mtime": 1782182535.3617654,
-    "ast_hash": "df471c32077a84e0756c9f5aede591b7",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-06-23-local-game-scanner-plugin-design.md": {
-    "mtime": 1782181853.8194108,
-    "ast_hash": "5a04371b8584da3d9bbe37d239b000c8",
+    "mtime": 1782260226.386037,
+    "ast_hash": "8ddd5f2acb58a9fc5383977ae1ee9b7f",
     "semantic_hash": ""
   },
   "frontend/OTIUM_GAP_ANALYSIS.md": {
@@ -7440,18 +7290,123 @@
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-10-report.md": {
-    "mtime": 1782187021.6173408,
-    "ast_hash": "b720ca038cd248ee1718910fc0519572",
+    "mtime": 1782375337.6589515,
+    "ast_hash": "1c091974b1998cd9a53a2d15f762f760",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-8-report.md": {
-    "mtime": 1782186871.4871366,
-    "ast_hash": "25a156dea5ca1e6c491bcdfb5da6bc24",
+    "mtime": 1782374467.702423,
+    "ast_hash": "0cf05f87c6942a207176983dacf9b525",
     "semantic_hash": ""
   },
   ".superpowers/sdd/task-9-report.md": {
-    "mtime": 1782186972.731181,
-    "ast_hash": "2806199b3b687bc4a49840df34934392",
+    "mtime": 1782374852.3308642,
+    "ast_hash": "625ef73959a5fc999425205c3f219c3f",
+    "semantic_hash": ""
+  },
+  "backend/alembic/versions/9a8b7c6d5e4f_add_blueprint_tables.py": {
+    "mtime": 1782400796.043712,
+    "ast_hash": "e98fea3908c3434aca522650724c086f",
+    "semantic_hash": ""
+  },
+  "backend/otix/api/blueprint/__init__.py": {
+    "mtime": 1782400290.3042612,
+    "ast_hash": "e143d5db56f258e326e15da4a986a83c",
+    "semantic_hash": ""
+  },
+  "backend/otix/domain/blueprint.py": {
+    "mtime": 1782374881.5406165,
+    "ast_hash": "f25af9714c97fbcc8f8bcf496f616dc5",
+    "semantic_hash": ""
+  },
+  "backend/otix/schemas/blueprint.py": {
+    "mtime": 1782374736.8012018,
+    "ast_hash": "05b69db6f81ce09c7c303608a2192c02",
+    "semantic_hash": ""
+  },
+  "backend/otix/services/blueprint_service.py": {
+    "mtime": 1782375166.7649393,
+    "ast_hash": "bdd65f42d80f731a9c9923798fb519be",
+    "semantic_hash": ""
+  },
+  "desktop/db/plugins-db.ts": {
+    "mtime": 1782381440.691856,
+    "ast_hash": "b0f9ae25779bb42dff224281fd9ffcfe",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/atoms/media-game-blueprint-icon.tsx": {
+    "mtime": 1782373685.884196,
+    "ast_hash": "999ab314bca28deae1206c4778f39bbd",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/molecules/media-game-blueprint-card.tsx": {
+    "mtime": 1782373485.5342672,
+    "ast_hash": "611fcb5238c0ba3314319d11c7f10dc2",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/molecules/media-game-tab-bar.tsx": {
+    "mtime": 1782373805.4472895,
+    "ast_hash": "f79f5ba30ef0dd333d56c4f26498be04",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/organisms/media-game-blueprint-community.tsx": {
+    "mtime": 1782400289.6286945,
+    "ast_hash": "6f8b3e4643395517f1273f0c2c17147d",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/organisms/media-game-blueprint-detail.tsx": {
+    "mtime": 1782374260.7132678,
+    "ast_hash": "8be926db588f61a7c3a13e55108915c9",
+    "semantic_hash": ""
+  },
+  "frontend/src/features/media/game/components/organisms/media-game-blueprint-vault.tsx": {
+    "mtime": 1782400288.9332922,
+    "ast_hash": "b792005a9d76bd9d48fe7f6177a22450",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/fix-critical-bugs-report.md": {
+    "mtime": 1782380757.0999918,
+    "ast_hash": "17542b5187ce33abe3e0d6ef435df655",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/fix-remaining-report.md": {
+    "mtime": 1782400297.9769647,
+    "ast_hash": "64741ed38fcc59ce6cc2090c58750113",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/task-10-brief.md": {
+    "mtime": 1782375193.8740406,
+    "ast_hash": "9879892177a5d842177b2c2a32a2178f",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/task-12-report.md": {
+    "mtime": 1782187658.1464925,
+    "ast_hash": "83f0b255101b286dc76533d82dc7cb69",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/task-7-11-report.md": {
+    "mtime": 1782187413.6331573,
+    "ast_hash": "eed913a00ccb87050da0553a44e13f7e",
+    "semantic_hash": ""
+  },
+  ".superpowers/sdd/task-8-brief.md": {
+    "mtime": 1782374183.1576402,
+    "ast_hash": "14f767718fc41c65990b1179854a626d",
+    "semantic_hash": ""
+  },
+  "docs/plugins-page-redesign-plan.md": {
+    "mtime": 1782221615.7791276,
+    "ast_hash": "234581b61b72d950c1dc7d4a1f7b40de",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-06-25-factorio-blueprint-plugin.md": {
+    "mtime": 1782371786.5877824,
+    "ast_hash": "f8c1d04efd6710955a9e9b26532d2c88",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-06-25-factorio-blueprint-plugin-design.md": {
+    "mtime": 1782371623.135888,
+    "ast_hash": "ba1c2f550c4547128abe98252a998124",
     "semantic_hash": ""
   }
 }

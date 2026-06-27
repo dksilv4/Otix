@@ -587,6 +587,11 @@ class GameMatcher:
             dev_match = _developer_overlap(requests[req_idx].developer, dev_map.get(mi.id))
             year_bonus = _year_proximity_bonus(requests[req_idx].release_year, mi)
             confidence = min(0.88, (0.85 if dev_match else 0.75) + year_bonus)
+
+            # Franchise entry penalty: different numbers → cap below auto-match
+            if _different_franchise_entry(requests[req_idx].title, mi.title):
+                confidence = min(confidence, 0.70)
+
             all_candidates[req_idx].append(
                 GameMatchCandidate(
                     media_item_id=mi.id,
@@ -660,6 +665,10 @@ class GameMatcher:
             # Prevent fuzzy matches with wrong first word (e.g. "Alien Isolation" ≠ "Isolation")
             if not _titles_compatible(requests[idx].title, row["title"]):
                 continue
+
+            # Franchise entry penalty: different numbers → cap below auto-match
+            if _different_franchise_entry(requests[idx].title, row["title"]):
+                confidence = min(confidence, 0.70)
 
             all_candidates[idx].append(
                 GameMatchCandidate(
@@ -1511,12 +1520,74 @@ def _parse_igdb_year(ts: object) -> int | None:
     return None
 
 
+def _extract_numbers(title: str) -> list[int]:
+    """Extract all integer numbers and roman numerals from a title.
+
+    Returns numbers in title order (not sorted).
+    Roman numerals I-XIV are converted to integers.
+    """
+    words = title.lower().split()
+    numbers: list[int] = []
+    roman_map = {
+        "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5,
+        "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
+        "xi": 11, "xii": 12, "xiii": 13, "xiv": 14,
+    }
+    for w in words:
+        # Strip trailing punctuation (colons, periods, etc.)
+        stripped = w.strip(":;,.!?()[]{}'\"")
+        if stripped in roman_map:
+            numbers.append(roman_map[stripped])
+            continue
+        # Try parsing as integer
+        try:
+            numbers.append(int(stripped))
+        except ValueError:
+            continue
+    return numbers
+
+
+def _different_franchise_entry(req_title: str, candidate_title: str) -> bool:
+    """Detect when two titles share a base name but have DIFFERENT numbers.
+
+    This means they're different entries in the same franchise (sequels),
+    NOT editions/variants of the same game.
+
+    Examples:
+        "Borderlands 3" vs "Borderlands 2" → True (different entry)
+        "Far Cry 5" vs "Far Cry 4" → True
+        "Civilization VI" vs "Civilization V" → True
+        "Borderlands 3" vs "Borderlands 3" → False (same number)
+        "The Witcher 3" vs "The Witcher 3: Wild Hunt" → False (same number)
+        "Control" vs "Control Ultimate Edition" → False (only one has number)
+    """
+    req_nums = _extract_numbers(req_title)
+    cand_nums = _extract_numbers(candidate_title)
+
+    # If neither has numbers, not a franchise conflict
+    if not req_nums and not cand_nums:
+        return False
+
+    # If only one has numbers, not a franchise conflict (could be edition)
+    if not req_nums or not cand_nums:
+        return False
+
+    # Compare the FIRST number in each title (usually the entry number)
+    # If they differ, these are different franchise entries
+    if req_nums[0] != cand_nums[0]:
+        return True
+
+    # Same first number — could be same game (editions, subtitles)
+    return False
+
+
 def _titles_compatible(req_title: str, candidate_title: str) -> bool:
     """Reject matches where the first word differs, or the length ratio is extreme.
 
     - Both titles must share the first word (prevents "Alien Isolation" matching "Isolation")
     - Exception: edition/DLC suffixes allowed if titles share the first word
     - Length ratio must not exceed 2.5x unless one is an edition
+    - Reject franchise entries with different numbers (Borderlands 3 ≠ Borderlands 2)
     """
     req_words = req_title.lower().split()
     cand_words = candidate_title.lower().split()
@@ -1526,6 +1597,26 @@ def _titles_compatible(req_title: str, candidate_title: str) -> bool:
     # First word must match
     req_first = req_words[0]
     cand_first = cand_words[0]
+    # ── Single-word title guards ──
+    if len(req_words) == 1:
+        # Query is a single word → candidate must match exactly OR only add edition markers
+        if len(cand_words) > 1:
+            # "Control" matching "Control Resonant" — extra words must be edition markers
+            extra_words = set(cand_words[1:])
+            edition_words = {"edition", "deluxe", "goty", "ultimate", "complete", "definitive", "enhanced",
+                            "remastered", "collector", "pack", "bundle", "season", "pass", "dlc", "expansion",
+                            "director", "cut", "hd", "redux", "anniversary", "special", "gold", "platinum"}
+            if not extra_words.issubset(edition_words):
+                return False
+    elif len(cand_words) == 1:
+        # Candidate is single word, query has more — same check reversed
+        extra_words = set(req_words[1:])
+        edition_words = {"edition", "deluxe", "goty", "ultimate", "complete", "definitive", "enhanced",
+                        "remastered", "collector", "pack", "bundle", "season", "pass", "dlc", "expansion",
+                        "director", "cut", "hd", "redux", "anniversary", "special", "gold", "platinum"}
+        if not extra_words.issubset(edition_words):
+            return False
+
     both_single = len(req_words) == 1 and len(cand_words) == 1
     if both_single:
         # Single-word titles: require exact match, no substring (doom ≠ doomsday)
@@ -1540,13 +1631,17 @@ def _titles_compatible(req_title: str, candidate_title: str) -> bool:
         else:
             return False
 
+    # ── Franchise entry check: different numbers = different games ──
+    if _different_franchise_entry(req_title, candidate_title):
+        return False
+
     # Length ratio check: allow up to 3x for editions, 2x otherwise
     len_ratio = max(len(req_words), len(cand_words)) / min(len(req_words), len(cand_words))
     if len_ratio > 3.0:
         return False
     if len_ratio > 2.0:
         # Only allow large length differences if edition/DLC keywords present
-        longer = " ".join(req_words if len(req_words) > len(cand_words) else cand_words).lower()
+        longer_title = " ".join(req_words if len(req_words) > len(cand_words) else cand_words).lower()
         edition_markers = (
             "edition",
             "deluxe",
@@ -1564,7 +1659,7 @@ def _titles_compatible(req_title: str, candidate_title: str) -> bool:
             "pack",
             "bundle",
         )
-        if not any(marker in longer for marker in edition_markers):
+        if not any(marker in longer_title for marker in edition_markers):
             return False
 
     return True

@@ -4,7 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api._utils import get_db
+from otix.api.deps import get_db
 from otix.api.people.detail import router as detail_router
 from otix.api.people.follow import router as follow_router
 from otix.api.people.rating import router as rating_router
