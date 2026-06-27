@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api';
-import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/launcher/game-queries';
-import { useGameDetail, useGameGenres, usePopularGames } from '@/features/launcher/queries';
-import { fetchIsoPaths } from '@/features/launcher/storage';
+import { useLocalGames as useLocalGamesQuery, useAcceptSuggestion, useRejectSuggestion, type GamesFilter } from '@/features/launcher/data/game-queries';
+import { useGameDetail, useGameGenres, usePopularGames } from '@/features/launcher/data/queries';
+import { fetchIsoPaths } from '@/features/launcher/data/storage';
 
 import type { GamesTab, CatalogGame, ShelfRow } from '@/features/launcher/types';
 import type { LocalGame } from '@/features/launcher/types';

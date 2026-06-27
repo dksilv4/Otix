@@ -10,25 +10,25 @@ vi.mock('@/lib/desktop/api', () => ({
   hasDesktopAPI: vi.fn(() => false),
 }))
 
-vi.mock('@/features/launcher/game-queries', () => ({
+vi.mock('@/features/launcher/data/game-queries', () => ({
   useLocalGames: vi.fn(() => ({ data: [], isLoading: false })),
   useAcceptSuggestion: vi.fn(() => ({ mutate: vi.fn() })),
   useRejectSuggestion: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
-vi.mock('@/features/launcher/queries', () => ({
+vi.mock('@/features/launcher/data/queries', () => ({
   usePopularGames: vi.fn(() => ({ data: [], isLoading: false })),
   useGameDetail: vi.fn(() => ({ data: null, isLoading: false })),
   useGameGenres: vi.fn(() => ({ data: [], isLoading: false })),
 }))
 
-vi.mock('@/features/launcher/storage', () => ({
+vi.mock('@/features/launcher/data/storage', () => ({
   fetchIsoPaths: vi.fn(() => Promise.resolve([])),
 }))
 
 // -- Import after mocks -----------------------------------------------
 
-import { usePopularGames } from '@/features/launcher/queries'
+import { usePopularGames } from '@/features/launcher/data/queries'
 import type { LocalGame, CatalogGame } from '@/features/launcher/types'
 
 // -- Fixtures ---------------------------------------------------------

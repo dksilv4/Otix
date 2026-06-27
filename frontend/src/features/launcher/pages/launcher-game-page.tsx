@@ -4,7 +4,7 @@ import { LauncherGameHero } from '@/features/launcher/components/organisms/launc
 import { LauncherEmptyState } from '@/features/launcher/components/molecules/launcher-empty-state'
 import { LauncherShelf } from '@/features/launcher/components/organisms/launcher-shelf'
 import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
-import { usePopularGames } from '@/features/launcher/queries'
+import { usePopularGames } from '@/features/launcher/data/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 
 const SLIDE_INTERVAL_MS = 30000

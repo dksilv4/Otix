@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { getDesktopAPI } from '@/lib/desktop/api'
-import { useLocalGames } from '@/features/launcher/game-queries'
-import { localGameKeys } from '@/features/launcher/game-queries'
-import { gameKeys } from '@/features/launcher/queries'
+import { useLocalGames } from '@/features/launcher/data/game-queries'
+import { localGameKeys } from '@/features/launcher/data/game-queries'
+import { gameKeys } from '@/features/launcher/data/queries'
 import type { LocalGame, Game } from '@/features/launcher/types'
 
 /** Check if a local game is missing rich catalog data (poster, backdrop, logo). */

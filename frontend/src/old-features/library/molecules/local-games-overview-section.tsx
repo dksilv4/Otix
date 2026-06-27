@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import { isDesktop } from "@/lib/desktop"
-import { useLocalGames } from "@/features/launcher/game-queries"
+import { useLocalGames } from "@/features/launcher/data/game-queries"
 import { GameCard } from "@/features/launcher/components/molecules/game-card"
 
 export function LocalGamesOverviewSection() {

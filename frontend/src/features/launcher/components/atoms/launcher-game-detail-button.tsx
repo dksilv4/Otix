@@ -1,7 +1,7 @@
 /* ── GameDetailButton — navigate to media detail page ── */
 
 import {useNavigate, useParams} from '@tanstack/react-router'
-import {useLocalGame} from '@/features/launcher/game-queries'
+import {useLocalGame} from '@/features/launcher/data/game-queries'
 
 
 export function GameDetailButton() {

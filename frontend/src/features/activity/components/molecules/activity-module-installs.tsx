@@ -1,5 +1,5 @@
 import { Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { useInstallProgress } from '@/features/launcher/install-store'
+import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { ActivityModuleSection } from './activity-module-section'
 
 /** Molecule showing in-progress and completed game installs. */

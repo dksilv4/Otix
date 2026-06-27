@@ -1,5 +1,5 @@
-import { useLocalGame } from '@/features/launcher/game-queries'
-import { useGameDetail } from '@/features/launcher/queries'
+import { useLocalGame } from '@/features/launcher/data/game-queries'
+import { useGameDetail } from '@/features/launcher/data/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import type { LocalGame } from '@/features/launcher/types'
 

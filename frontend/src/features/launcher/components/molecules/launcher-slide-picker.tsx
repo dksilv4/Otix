@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { usePopularGames } from '@/features/launcher/queries'
+import { usePopularGames } from '@/features/launcher/data/queries'
 
 export function LauncherSlidePicker() {
   const { data: popularGames = [] } = usePopularGames()

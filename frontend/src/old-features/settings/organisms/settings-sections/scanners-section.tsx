@@ -2,9 +2,9 @@
 import './scanners-section.scss'
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Disc, Monitor, Gamepad2, Folder, Check, X } from "lucide-react"
-import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/features/launcher/storage"
-import { useLocalGames, useRejectSuggestion } from "@/features/launcher/game-queries"
-import { useMatchLocalGames } from "@/features/launcher/game-queries"
+import { getScanPaths, setScanPaths, getIsoPaths, setIsoPaths, hasDesktopAPI } from "@/features/launcher/data/storage"
+import { useLocalGames, useRejectSuggestion } from "@/features/launcher/data/game-queries"
+import { useMatchLocalGames } from "@/features/launcher/data/game-queries"
 import { useClaimGame } from "@/old-features/library/library-queries"
 import { apiClient } from "@/lib/api/client"
 import type { LocalGame } from "@/features/launcher/types"
