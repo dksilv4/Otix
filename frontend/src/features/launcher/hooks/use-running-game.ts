@@ -1,21 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-
-export interface RunningGameData {
-  game: {
-    id: string
-    title: string
-    platform: string
-    iconUrl?: string
-    posterUrl?: string | null
-    exePath?: string
-    installDir?: string
-    otixMediaId?: string
-    otixMediaTitle?: string
-  }
-  startTime: number
-  launchedByOtix: boolean
-  pid?: number
-}
+import type { RunningGameData } from '@/lib/desktop/api'
 
 export function useRunningGame() {
   const [runningGame, setRunningGame] = useState<RunningGameData | null>(null)

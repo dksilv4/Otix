@@ -1,112 +1,12 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
+import type { CamelCaseKeys } from "@/lib/api/camel-client"
+import type { components } from "@/lib/api/openapi"
 import type { CatalogGame, CatalogGameDetail } from "./types"
 
-// ── Raw API response shapes (snake_case from backend → camelCase by axios interceptor) ──
-
-interface MediaItemSummaryResponse {
-  id: string
-  mediaType: string
-  title: string
-  slug: string
-  posterUrl?: string | null
-  textlessPosterUrl?: string | null
-  logoUrl?: string | null
-  iconUrl?: string | null
-  backdropUrl?: string | null
-  releaseDate?: string | null
-  popularity: number
-  avgRating?: number | null
-  ratingCount: number
-  isAdult: boolean
-}
-
-interface MediaItemListResponse {
-  items: MediaItemSummaryResponse[]
-  hasMore: boolean
-  total?: number | null
-  nextCursor?: string | null
-}
-
-interface MediaItemDetailResponse extends MediaItemSummaryResponse {
-  overview?: string | null
-  originalLanguage?: string | null
-  genres: { id: string; name: string; slug: string }[]
-  involvedCompanies: {
-    id: string
-    company: { id: string; name: string; slug: string; logoUrl?: string | null }
-    developer: boolean
-    publisher: boolean
-  }[]
-  platforms: { id: string; platform: { id: string; name: string; slug: string } }[]
-  gameModes: { id: string; gameMode: { id: string; name: string; slug: string } }[]
-  game?: {
-    releaseStatus?: string | null
-    website?: string | null
-    steamAppId?: number | null
-    isFree: boolean
-    hasMultiplayer: boolean
-  } | null
-  steamPlaytimeForever?: number | null
-  steamPlaytime2weeks?: number | null
-  youtubeVideoId?: string | null
-  youtubeChannelTitle?: string | null
-}
-
-// ── Map response to camelCase types ────────────────────────────────
-
-function toCatalogGame(item: MediaItemSummaryResponse): CatalogGame {
-  return {
-    id: item.id,
-    mediaType: item.mediaType,
-    title: item.title,
-    slug: item.slug,
-    posterUrl: item.posterUrl,
-    textlessPosterUrl: item.textlessPosterUrl,
-    logoUrl: item.logoUrl,
-    iconUrl: item.iconUrl,
-    backdropUrl: item.backdropUrl,
-    releaseDate: item.releaseDate,
-    popularity: item.popularity,
-    avgRating: item.avgRating,
-    ratingCount: item.ratingCount,
-    isAdult: item.isAdult,
-  }
-}
-
-function toCatalogGameDetail(item: MediaItemDetailResponse): CatalogGameDetail {
-  return {
-    ...toCatalogGame(item),
-    overview: item.overview,
-    originalLanguage: item.originalLanguage,
-    genres: item.genres ?? [],
-    involvedCompanies: (item.involvedCompanies ?? []).map((c) => ({
-      ...c,
-      company: {
-        ...c.company,
-        logoUrl: c.company.logoUrl,
-      },
-    })),
-    platforms: item.platforms ?? [],
-    gameModes: (item.gameModes ?? []).map((gm) => ({
-      id: gm.id,
-      gameMode: {
-        id: gm.gameMode.id,
-        name: gm.gameMode.name,
-        slug: gm.gameMode.slug,
-      },
-    })),
-    releaseStatus: item.game?.releaseStatus ?? null,
-    website: item.game?.website ?? null,
-    steamAppId: item.game?.steamAppId ?? null,
-    steamPlaytimeForever: item.steamPlaytimeForever ?? null,
-    steamPlaytime2weeks: item.steamPlaytime2weeks ?? null,
-    isFree: item.game?.isFree ?? false,
-    hasMultiplayer: item.game?.hasMultiplayer ?? false,
-    youtubeVideoId: item.youtubeVideoId,
-    youtubeChannelTitle: item.youtubeChannelTitle,
-  }
-}
+// ponytail: use generated API types — the axios interceptor converts snake_case → camelCase
+type MediaItemSummary = CamelCaseKeys<components["schemas"]["MediaItemSummary"]>
+type MediaItemDetail = CamelCaseKeys<components["schemas"]["MediaItemDetail"]>
 
 // ── Query key factory ──────────────────────────────────────────────
 
@@ -124,10 +24,10 @@ export const popularGamesOptions = () =>
   queryOptions({
     queryKey: gameKeys.popular(),
     queryFn: async (): Promise<CatalogGame[]> => {
-      const { data } = await apiClient.get<MediaItemListResponse>("/media/", {
+      const { data } = await apiClient.get<{ items: MediaItemSummary[] }>("/media/", {
         params: { media_type: "game", sort_by: "popularity", sort_dir: "desc", limit: 24 },
       })
-      return (data.items ?? []).map(toCatalogGame)
+      return (data.items ?? [])
     },
     staleTime: 1000 * 60 * 2,
   })
@@ -137,8 +37,8 @@ export const gameDetailOptions = (id: string) =>
     queryKey: gameKeys.detail(id),
     queryFn: async (): Promise<CatalogGameDetail | null> => {
       try {
-        const { data } = await apiClient.get<MediaItemDetailResponse>(`/media/game/${id}`)
-        return toCatalogGameDetail(data)
+        const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${id}`)
+        return data
       } catch {
         return null
       }
@@ -152,12 +52,10 @@ export const gameSuggestionsOptions = (query: string) =>
     queryKey: gameKeys.suggestions(query),
     queryFn: async (): Promise<CatalogGame[]> => {
       if (!query || query.length < 1) return []
-      const { data } = await apiClient.get<MediaItemSummaryResponse[]>("/media/suggestions", {
+      const { data } = await apiClient.get<MediaItemSummary[]>("/media/suggestions", {
         params: { q: query, limit: 8, media_type: 'game' },
       })
-      return (data ?? [])
-        .filter((item) => item.mediaType === 'game')
-        .map(toCatalogGame)
+      return (data ?? []).filter((item) => item.mediaType === 'game')
     },
     enabled: query.length >= 1,
     staleTime: 1000 * 30,
@@ -167,10 +65,10 @@ export const gameGenresOptions = () =>
   queryOptions({
     queryKey: gameKeys.genres(),
     queryFn: async (): Promise<{ id: string; name: string; slug: string }[]> => {
-      const { data } = await apiClient.get<MediaItemSummaryResponse[]>("/media/genres", {
+      const { data } = await apiClient.get<{ id: string; name: string; slug: string }[]>("/media/genres", {
         params: { media_type: "game" },
       })
-      return data as unknown as { id: string; name: string; slug: string }[]
+      return data as { id: string; name: string; slug: string }[]
     },
     staleTime: 1000 * 60 * 10,
   })
@@ -205,12 +103,12 @@ export function useSaveLocations(mediaItemId: string | undefined | null) {
     queryKey: ["saves", "locations", mediaItemId],
     queryFn: async () => {
       if (!mediaItemId) return null
-      const { data } = await apiClient.get(`/saves/locations/${mediaItemId}`)
-      return data as {
+      const { data } = await apiClient.get<{
         gameId: string
         verified: { platform: string; pathPattern: string; isVerified: boolean }[]
         suggested: { platform: string; pathPattern: string; count: number }[]
-      }
+      }>(`/saves/locations/${mediaItemId}`)
+      return data
     },
     enabled: !!mediaItemId,
     staleTime: 1000 * 60 * 5,

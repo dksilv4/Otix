@@ -4,24 +4,11 @@
 // Persists to localStorage and rehydrates from backend on refresh.
 
 import { useState, useEffect, useCallback } from 'react'
-import type { InstallProgress, InstallResult, InstallPhase } from './types'
+import type { InstallProgress, InstallResult, InstallPhase, InstallStoreEntry } from './types'
 import type { InstallProgressEvent } from '@/lib/desktop'
 import { hasDesktopAPI } from './storage'
 
 const LS_KEY = 'otix_game_installs'
-
-// ── Types ────────────────────────────────────────────────────────
-
-export interface InstallStoreEntry {
-  active: boolean
-  isoPath: string
-  gameTitle: string | null
-  targetDir: string | null
-  installId: string | null
-  progress: InstallProgress | null
-  result: InstallResult | null
-  error: string | null
-}
 
 type Listener = () => void
 

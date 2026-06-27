@@ -169,3 +169,30 @@ export type GamesTab = "all" | "matched" | "unmatched"
 // ── Sort options ───────────────────────────────────────────────────
 
 export type GameSortBy = "popularity" | "rating" | "release_date" | "title"
+
+// ── From install-store ─────────────────────────────────────────────
+
+export interface InstallStoreEntry {
+  active: boolean
+  isoPath: string
+  gameTitle: string | null
+  targetDir: string | null
+  installId: string | null
+  progress: InstallProgress | null
+  result: InstallResult | null
+  error: string | null
+}
+
+// ── From game-queries ──────────────────────────────────────────────
+
+export interface GamesFilter {
+  platform?: string[]
+  matched?: boolean
+  hasSuggestion?: boolean
+  search?: string
+  installed?: boolean
+  limit?: number
+  offset?: number
+  sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at'
+  sortDir?: 'asc' | 'desc'
+}

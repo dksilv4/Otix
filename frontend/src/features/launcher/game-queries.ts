@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
 import { getDesktopAPI } from '@/lib/desktop/api';
 import { useEffect } from 'react';
+import type { GamesFilter } from './types';
 
 type Listener = () => void;
 
@@ -25,20 +26,6 @@ function subscribeToGameDbChanges(listener: Listener): () => void {
       unsub = null;
     }
   };
-}
-
-// ── Filter type (mirrors GameFilter in desktop game-storage-service) ──
-
-export interface GamesFilter {
-  platform?: string[];
-  matched?: boolean;
-  hasSuggestion?: boolean;
-  search?: string;
-  installed?: boolean;
-  limit?: number;
-  offset?: number;
-  sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at';
-  sortDir?: 'asc' | 'desc';
 }
 
 // ── Query key factory ─────────────────────────────────────────────
