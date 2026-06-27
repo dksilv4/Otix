@@ -21,8 +21,8 @@
       "@/*": ["./src/*"],
       "@auth/*": ["./src/features/auth/*"],
       "@auth": ["./src/features/auth"],
-      "@ui/*": ["./src/old-features/dk-ui/*"],
-      "@ui": ["./src/old-features/dk-ui"],
+      "@ui/*": ["./src/old-features/ui/*"],
+      "@ui": ["./src/old-features/ui"],
       "@media/*": ["./src/features/media/*"],
       "@media": ["./src/features/media"],
       "@discover/*": ["./src/features/discover/*"],
@@ -45,8 +45,6 @@
       "@library": ["./src/features/library"],
       "@list/*": ["./src/features/list/*", "./src/old-features/list/*"],
       "@list": ["./src/features/list", "./src/old-features/list"],
-      "@dk-ui/*": ["./src/old-features/dk-ui/*"],
-      "@dk-ui": ["./src/old-features/dk-ui"],
       "@desktop/*": ["../desktop/*"],
       "@desktop": ["../desktop"]
     }
