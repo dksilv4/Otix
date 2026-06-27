@@ -1,8 +1,9 @@
-import {useState, useCallback} from 'react'
+import {useState, useCallback, useEffect} from 'react'
 import {Link, useParams} from '@tanstack/react-router'
 import {Helmet} from 'react-helmet-async'
 import {useAuth} from '@auth/hooks/use-auth'
-import {Building2} from 'lucide-react'
+import {Building2, ArrowDownToLine, Check, Loader2} from 'lucide-react'
+import {cn} from '@/lib/utils'
 
 import {MediaHero} from './media-hero'
 import {MediaGeneralDetails} from './media-general-details'
@@ -20,8 +21,6 @@ import {MoreLikeThisSection} from './media-more-like-this-section'
 import {CastCrewList} from './media-cast-crew-list'
 import {CollectionSection} from './media-collection-section'
 import {DeferredSection} from '@ui/molecules/deferred-section'
-import {Badge} from '@ui/atoms/badge'
-import {Image} from '@ui/atoms/image'
 import {ReviewSection} from '@/old-features/review/organisms/review-section'
 import {ReviewsListSection} from '@/old-features/review/organisms/reviews-list-section'
 import {RatingsSection} from '@/old-features/review/organisms/ratings-section'
@@ -158,6 +157,7 @@ export function MediaDetail() {
                                 <ReviewActionButton mediaType={displayType} mediaId={detail.id}/>
                                 <AdminActionsMenu mediaId={detail.id} media={detail}/>
                                 <AddToListButton mediaItemId={detail.id}/>
+                                <MediaDetailPluginActions mediaId={detail.id} mediaType={displayType} />
                             </InteractionSection>
 
                             {detail.mediaType === 'game' && (
@@ -345,3 +345,225 @@ export function MediaDetail() {
         </div>
     )
 }
+
+interface RequestInstance {
+  id: string
+  name: string
+  status: 'exists' | 'not_exists' | 'error'
+}
+
+interface RequestWidget {
+  pluginId: string
+  label: string
+  props: {
+    label: string
+    mediaType: string
+    mediaId: string
+    instances: RequestInstance[]
+  }
+}
+
+function MediaDetailPluginActions({ mediaId, mediaType }: { mediaId: string; mediaType: string }) {
+  const [widgets, setWidgets] = useState<RequestWidget[]>([])
+  const [loading, setLoading] = useState(true)
+  const [requesting, setRequesting] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null)
+
+  const loadSlots = useCallback(async () => {
+    const api = (window as Window & {
+      desktopAPI?: {
+        plugin?: {
+          getSlotData: (location: string, context?: Record<string, unknown>) => Promise<unknown>
+          callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
+        }
+      }
+    }).desktopAPI?.plugin
+
+    if (!api?.getSlotData) {
+      setLoading(false)
+      return
+    }
+    try {
+      const data = await api.getSlotData('media/detail/actions', { mediaId, mediaType }) as Array<{
+        pluginId: string
+        label: string
+        data?: {
+          widgets?: Array<{
+            type: string
+            props: {
+              label: string
+              mediaType: string
+              mediaId: string
+              instances: RequestInstance[]
+            }
+          }>
+        }
+      }>
+      const requestWidgets: RequestWidget[] = []
+      if (data) {
+        for (const entry of data) {
+          for (const widget of entry.data?.widgets || []) {
+            if (widget.type === 'request-button') {
+              requestWidgets.push({
+                pluginId: entry.pluginId,
+                label: entry.label,
+                props: widget.props,
+              })
+            }
+          }
+        }
+      }
+      setWidgets(requestWidgets)
+    } catch (err) {
+      console.error('Failed to load plugin slots:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [mediaId, mediaType])
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      loadSlots()
+    })
+  }, [loadSlots])
+
+  if (loading || widgets.length === 0) return null
+
+  const handleRequest = async (pluginId: string, instanceId: string) => {
+    setRequesting(instanceId)
+    const api = (window as Window & {
+      desktopAPI?: {
+        plugin?: {
+          getSlotData: (location: string, context?: Record<string, unknown>) => Promise<unknown>
+          callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
+        }
+      }
+    }).desktopAPI?.plugin
+
+    if (!api?.callData) {
+      setRequesting(null)
+      return
+    }
+
+    try {
+      const method = mediaType === 'movie' ? 'request-movie' : 'request-series'
+      const res = await api.callData(pluginId, method, { instanceId, tmdbId: mediaId }) as {
+        success?: boolean
+        error?: string
+        message?: string
+      } | null
+      if (res?.success) {
+        await loadSlots()
+      } else {
+        alert(res?.error || 'Failed to request')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to request')
+    } finally {
+      setRequesting(null)
+      setDropdownOpen(null)
+    }
+  }
+
+  return (
+    <>
+      {widgets.map((widget) => {
+        const instances = widget.props.instances || []
+        const existsAny = instances.some(i => i.status === 'exists')
+        const allExist = instances.every(i => i.status === 'exists')
+        const label = allExist ? 'In Library' : existsAny ? 'Request Additional' : widget.props.label
+
+        if (instances.length === 1) {
+          const single = instances[0]
+          const isExists = single.status === 'exists'
+          return (
+            <button
+              key={widget.pluginId}
+              type="button"
+              disabled={isExists || requesting != null}
+              onClick={() => handleRequest(widget.pluginId, single.id)}
+              className={cn(
+                'dk-interaction__btn glass-inset relative overflow-hidden',
+                isExists && 'opacity-60 cursor-default'
+              )}
+            >
+              {requesting === single.id ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : isExists ? (
+                <Check className="h-5 w-5 text-green-400" />
+              ) : (
+                <ArrowDownToLine className="h-5 w-5 text-primary" />
+              )}
+              <span className="dk-interaction__label">
+                {requesting === single.id ? 'Requesting...' : label}
+              </span>
+            </button>
+          )
+        }
+
+        return (
+          <div key={widget.pluginId} className="relative">
+            <button
+              type="button"
+              disabled={allExist || requesting != null}
+              onClick={() => setDropdownOpen(dropdownOpen === widget.pluginId ? null : widget.pluginId)}
+              className={cn(
+                'dk-interaction__btn glass-inset relative overflow-hidden',
+                allExist && 'opacity-60 cursor-default'
+              )}
+            >
+              {requesting ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : allExist ? (
+                <Check className="h-5 w-5 text-green-400" />
+              ) : (
+                <ArrowDownToLine className="h-5 w-5 text-primary" />
+              )}
+              <span className="dk-interaction__label">
+                {requesting ? 'Requesting...' : label}
+              </span>
+            </button>
+
+            {dropdownOpen === widget.pluginId && (
+              <div className="absolute left-0 bottom-full mb-2 z-50 min-w-[200px] rounded-xl border border-white/10 bg-[var(--dk-surface-overlay)] p-1 shadow-2xl backdrop-blur-md">
+                <div className="px-2.5 py-1.5 border-b border-white/5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-white/35">Select Server</span>
+                </div>
+                <div className="mt-1 space-y-0.5">
+                  {instances.map((instance) => {
+                    const isExists = instance.status === 'exists'
+                    const isError = instance.status === 'error'
+                    return (
+                      <button
+                        key={instance.id}
+                        type="button"
+                        disabled={isExists || requesting != null}
+                        onClick={() => handleRequest(widget.pluginId, instance.id)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left',
+                          isExists ? 'text-green-400/70 bg-green-500/5 cursor-default' :
+                          isError ? 'text-red-400/80 hover:bg-white/5' :
+                          'text-white/80 hover:bg-white/5 hover:text-white'
+                        )}
+                      >
+                        <span>{instance.name}</span>
+                        {isExists ? (
+                          <span className="text-[10px] bg-green-500/10 px-1.5 py-0.5 rounded-full font-medium">Available</span>
+                        ) : isError ? (
+                          <span className="text-[10px] bg-red-500/10 px-1.5 py-0.5 rounded-full font-medium">Error</span>
+                        ) : (
+                          <span className="text-[10px] text-white/40 hover:text-primary transition-colors">Request</span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+

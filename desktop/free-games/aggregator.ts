@@ -4,6 +4,7 @@
 // matches against Otix catalog via backend, deduplicates, and caches.
 
 import type { PluginManager } from '../plugins/manager'
+import { getApiUrl } from '../config'
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function extractExternalId(game: any, store: string): string {
 export class FreeGamesAggregator {
   private cache: AggregatedResult | null = null
   private cacheTtl = 5 * 60 * 1000 // 5 minutes
-  private apiBaseUrl = 'http://127.0.0.1:8000/api'
+  private apiBaseUrl = getApiUrl('')
   private authToken = ''
 
   constructor(private pluginManager: PluginManager) {}

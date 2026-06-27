@@ -149,7 +149,8 @@
       "Bash(.venv/Scripts/python.exe -c \"from otix.api.router import api_router; print\\('OK -', len\\(api_router.routes\\), 'routes'\\)\")",
       "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/)",
       "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/ --fix)",
-      "Bash(graphify query *)"
+      "Bash(graphify query *)",
+      "Bash(.venv/Scripts/python.exe -c \"from otix.api.router import api_router; print\\(f'{len\\(api_router.routes\\)} routes'\\)\")"
     ]
   }
 }

@@ -5,6 +5,23 @@ import { interactionKeys } from './interaction-keys'
 import { mediaKeys } from '@media/queries/media-keys'
 import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@media/queries/media-queries'
 
+function emit(event: string, payload: unknown) {
+  try {
+    const api = (window as Window & {
+      desktopAPI?: {
+        plugin?: {
+          emitEvent: (event: string, payload: unknown) => Promise<unknown>
+        }
+      }
+    }).desktopAPI?.plugin
+    if (api?.emitEvent) {
+      api.emitEvent(event, payload)
+    }
+  } catch (err) {
+    console.error('Failed to emit event:', err)
+  }
+}
+
 export interface UserInteractionState {
   liked: boolean
   watchlisted: boolean
@@ -38,7 +55,7 @@ export interface InteractionToggleResponse {
   counts: InteractionCounts
 }
 
-const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started', 'listened'] as const
+export const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started', 'listened'] as const
 export type InteractionType = (typeof VALID_TYPES)[number]
 
 export function useUserInteractions(
@@ -163,6 +180,14 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
       }
       if (context?.prevDetail) {
         qc.setQueryData(mediaKeys.detail(mediaType, mediaId), context.prevDetail)
+      }
+    },
+    onSuccess: (_data, variables) => {
+      if (variables.type === 'watchlisted') {
+        emit(variables.active ? 'otix:list:item_added' : 'otix:list:item_removed', {
+          listId: 'watchlist',
+          item: { mediaItemId: mediaId, mediaType: mediaType },
+        })
       }
     },
     onSettled: () => {

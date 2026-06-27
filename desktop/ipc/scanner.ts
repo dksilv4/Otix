@@ -12,8 +12,9 @@ import {
 } from '../downloads';
 import { GameDetector } from '../game/detector';
 import http from 'http';
+import { getApiBaseUrl } from '../config';
 
-const BACKEND_BASE = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
+const BACKEND_BASE = getApiBaseUrl();
 
 let _orchestrator: GameScanOrchestrator | null = null;
 let _pluginManager: PluginManager | null = null;

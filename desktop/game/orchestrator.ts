@@ -2,6 +2,7 @@ import http from 'http';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
 import type { PluginManager } from '../plugins/manager';
+import { getApiBaseUrl } from '../config';
 import {
   getGameMatch,
   upsertGameMatch,
@@ -84,7 +85,7 @@ interface SseRequest {
 // ── Orchestrator ───────────────────────────────────────────────────────
 
 export class GameScanOrchestrator extends EventEmitter {
-  private apiBaseUrl = process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000';
+  private apiBaseUrl = getApiBaseUrl();
   private authToken = '';
   /** Per-plugin active scans — only one scan per plugin at a time */
   private activeScans = new Map<string, AbortController>();
