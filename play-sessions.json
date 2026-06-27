@@ -1,0 +1,10 @@
+[
+  {
+    "gameId": "test-1",
+    "gameTitle": "Test Game",
+    "startTime": 1782561423477,
+    "endTime": 1782561483477,
+    "launchedByOtix": true,
+    "fpsStats": null
+  }
+]
