@@ -176,7 +176,26 @@
       "Bash(.venv/Scripts/ruff.exe check *)",
       "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 7)",
       "PowerShell(Copy-Item *)",
-      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 9)"
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 9)",
+      "Bash(mv test_auth_service.py unit/services/)",
+      "Bash(mv test_admin_edit_service.py unit/services/)",
+      "Bash(mv test_email_service.py unit/services/)",
+      "Bash(mv test_follow_service.py unit/services/)",
+      "Bash(mv test_friend_service.py unit/services/)",
+      "Bash(mv test_lib/* unit/lib/)",
+      "Bash(mv test_lib_helpers.py unit/lib/)",
+      "Bash(mv test_levels.py unit/lib/)",
+      "Bash(mv test_youtube_title_parser.py unit/lib/)",
+      "Bash(mv test_admin_edit_api.py unit/api/)",
+      "Bash(mv test_discover.py unit/api/)",
+      "Bash(mv test_google_auth_api.py unit/api/)",
+      "Bash(mv test_search_api.py unit/api/)",
+      "Bash(mv test_search_suggestions.py unit/api/)",
+      "Bash(mv test_badge_claiming.py integration/)",
+      "Bash(mv test_catalog_seed.py integration/)",
+      "Bash(mv test_fanart.py integration/)",
+      "Bash(mv test_igdb.py integration/)",
+      "Bash(mv test_igdb_franchise.py integration/)"
     ]
   }
 }
