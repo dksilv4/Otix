@@ -1,7 +1,8 @@
 import { ipcMain } from 'electron';
 import { getMatchedGames, hydrateGame, notifyGamesChanged } from '../game/storage';
+import { getApiUrl } from '../config';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = getApiUrl('');
 
 function toCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());

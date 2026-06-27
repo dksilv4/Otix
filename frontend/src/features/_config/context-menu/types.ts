@@ -16,7 +16,7 @@ export interface ContextMenuPosition {
   y: number
 }
 
-export type ContextMenuMediaType = 'game' | 'movie' | 'tv' | 'music' | 'generic'
+export type ContextMenuMediaType = 'game' | 'movie' | 'show' | 'music' | 'generic'
 
 export interface ContextMenuState {
   isOpen: boolean

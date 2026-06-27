@@ -23,6 +23,9 @@ function rpc(method: string, ...args: unknown[]): Promise<unknown> {
 // Plugin module reference - stored for callMethod RPCs from main
 let pluginModule: any = null
 
+// Event handlers registered via ctx.events.on
+const eventHandlers = new Map<string, Set<Function>>()
+
 // Handle all messages from main process
 parentPort!.on('message', async (msg: MainToWorkerMessage) => {
   // Handle init message (sent after startup)
@@ -33,8 +36,17 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
 
   // Handle events pushed from the main process
   if (msg.type === 'event') {
-    // Events are handled by the plugin via their event subscription mechanism
-    // Route to plugin event handler if one was registered
+    const handlers = eventHandlers.get(msg.event)
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(msg.payload)
+        } catch (err: any) {
+          sendMessage({ type: 'log', level: 'error', msg: `Event handler failed: ${err.message}` })
+        }
+      }
+    }
+    // Route to plugin event handler if one was registered (legacy)
     if (typeof pluginModule?.onEvent === 'function') {
       pluginModule.onEvent(msg.event, msg.payload)
     }
@@ -136,11 +148,30 @@ const ctx = {
     set: (key: string, value: unknown) => rpc('config.set', key, value),
   },
   events: {
-    on: (event: string, handler: Function) =>
-      rpc('events.on', event).then(() => {
-        return () => rpc('events.off', event)
-      }),
-    off: (event: string, handler: Function) => rpc('events.off', event),
+    on: (event: string, handler: Function) => {
+      let handlers = eventHandlers.get(event)
+      if (!handlers) {
+        handlers = new Set()
+        eventHandlers.set(event, handlers)
+      }
+      handlers.add(handler)
+      return rpc('events.on', event).then((subId) => {
+        return () => {
+          const hs = eventHandlers.get(event)
+          if (hs) {
+            hs.delete(handler)
+            if (hs.size === 0) {
+              eventHandlers.delete(event)
+            }
+          }
+          return rpc('events.off', subId)
+        }
+      })
+    },
+    off: (event: string, handler: Function) => {
+      // In new event model, unsubscribe is handled by calling the returned function from on()
+      return rpc('events.off', event)
+    },
   },
   fetch: (url: string, init?: RequestInit) => rpc('fetch', url, init),
   db: {
