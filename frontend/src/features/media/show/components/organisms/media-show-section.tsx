@@ -7,7 +7,7 @@ import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut, type EpisodeOut } from "@media"
-import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/old-features/interaction/episode-interaction-queries"
+import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 
 interface ShowSectionProps {
   className?: string

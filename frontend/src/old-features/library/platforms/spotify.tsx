@@ -14,7 +14,7 @@ import {
  useSaveSpotifyTrack,
  type SpotifyTrack,
 } from "../library-queries"
-import { usePlayer } from '@/old-features/spotify/use-player'
+import { usePlayer } from '@/lib/player/use-player'
 import { TrackInlineActions } from "@media/music/components/molecules/media-track-inline-actions"
 import { useRateTrack } from "@media/queries/media-queries"
 import { useToast } from "@/old-features/ui/molecules/toast"

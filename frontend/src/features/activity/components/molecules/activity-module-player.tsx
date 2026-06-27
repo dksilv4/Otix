@@ -5,7 +5,7 @@ import {
   Volume1, Volume2, VolumeX, ChevronLeft, Clock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { usePlayer } from '@/old-features/spotify/use-player'
+import { usePlayer } from '@/lib/player/use-player'
 import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { apiClient } from '@/lib/api/client'

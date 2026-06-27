@@ -161,7 +161,21 @@
       "Bash(Read-PSObject C:\\\\Users\\\\diogo\\\\.claude\\\\projects\\\\C--Users-diogo-OneDrive-Documents-GitHub-Otix\\\\4c9a8a36-1acb-46d1-b691-c7b6e833ad18\\\\tool-results\\\\brlx4daug.txt)",
       "Bash(Select-Object -First 200)",
       "Bash(sort -t: -k1,1 -u)",
-      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 6)"
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 6)",
+      "Bash(uv run *)",
+      "PowerShell(cd C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend; \\(Get-Command python\\).Source; python -c \"import fastapi; print\\(fastapi.__version__\\)\" 2>&1)",
+      "PowerShell(C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\.venv\\\\Scripts\\\\python.exe -c \"from entrypoints.api.main import app; routes = [\\(r.path, r.methods\\) for r in app.routes if hasattr\\(r, 'path'\\)]; health_routes = [r for r in routes if 'health' in r[0]]; print\\('Health routes:', health_routes\\); print\\(\\); api_routes = [r for r in routes if r[0].startswith\\('/api'\\)]; print\\('All /api routes \\(first 20\\):'\\); [print\\(f'  {m} {p}'\\) for p, m in sorted\\(api_routes, key=lambda x: x[0]\\)[:20]]\")",
+      "PowerShell($env:PYTHONPATH = \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\"; & \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -c \"from entrypoints.api.main import app; routes = [\\(r.path, r.methods\\) for r in app.routes if hasattr\\(r, 'path'\\)]; health_routes = [r for r in routes if 'health' in r[0]]; print\\('Health routes:', health_routes\\); print\\(\\); api_routes = [r for r in routes if r[0].startswith\\('/api'\\)]; print\\('All /api routes \\(first 20\\):'\\); [print\\(f'  {m} {p}'\\) for p, m in sorted\\(api_routes, key=lambda x: x[0]\\)[:20]]\")",
+      "PowerShell(& \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -c \"import fastapi; print\\(fastapi.__file__\\); print\\(fastapi.__version__\\)\")",
+      "PowerShell(& \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\backend\\\\.venv\\\\Scripts\\\\python.exe\" -c \"import fastapi; print\\(dir\\(fastapi\\)\\)\")",
+      "Bash(UV_LINK_MODE=copy uv sync)",
+      "Bash(ls old-features/interaction/)",
+      "Bash(ls old-features/review/)",
+      "Bash(ls old-features/downloads/)",
+      "Bash(ls old-features/spotify/)",
+      "Bash(.venv/Scripts/ruff.exe check *)",
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 7)",
+      "PowerShell(Copy-Item *)"
     ]
   }
 }

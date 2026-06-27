@@ -111,7 +111,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -144,7 +144,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -176,7 +176,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -207,7 +207,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -237,7 +237,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -267,7 +267,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
@@ -297,7 +297,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
       DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev

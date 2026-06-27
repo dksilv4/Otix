@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Clock, Download, Loader2, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { useDownloads } from '@/old-features/downloads/use-downloads'
+import { useDownloads } from '@/features/downloads/use-downloads'
 import { useAuth } from '@/lib/providers/auth'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatBytes } from '@/lib/utils'

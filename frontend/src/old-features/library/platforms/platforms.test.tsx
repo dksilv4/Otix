@@ -62,7 +62,7 @@ vi.mock("../library-queries", () => ({
 const mockPlayWithQueue = vi.fn()
 const mockSetQueueMetadata = vi.fn()
 const mockTogglePlay = vi.fn()
-vi.mock("@/old-features/spotify/use-player", () => ({
+vi.mock("@/lib/player/use-player", () => ({
   usePlayer: vi.fn(() => ({
     source: 'spotify',
 	    playSpotifyQueue: mockPlayWithQueue,
