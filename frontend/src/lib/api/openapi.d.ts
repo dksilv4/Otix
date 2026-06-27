@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/admin/stats": {
+    "/api/v1/admin/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -24,7 +24,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/metrics": {
+    "/api/v1/admin/metrics": {
         parameters: {
             query?: never;
             header?: never;
@@ -44,7 +44,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/deleted-tmdb-ids": {
+    "/api/v1/admin/deleted-tmdb-ids": {
         parameters: {
             query?: never;
             header?: never;
@@ -64,7 +64,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/edit-proposals": {
+    "/api/v1/admin/edit-proposals": {
         parameters: {
             query?: never;
             header?: never;
@@ -84,7 +84,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/hydration": {
+    "/api/v1/admin/hydration": {
         parameters: {
             query?: never;
             header?: never;
@@ -104,7 +104,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/register": {
+    "/api/v1/auth/register": {
         parameters: {
             query?: never;
             header?: never;
@@ -121,7 +121,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/login": {
+    "/api/v1/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -138,7 +138,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/refresh": {
+    "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -155,7 +155,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/logout": {
+    "/api/v1/auth/logout": {
         parameters: {
             query?: never;
             header?: never;
@@ -178,7 +178,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/forgot-password": {
+    "/api/v1/auth/forgot-password": {
         parameters: {
             query?: never;
             header?: never;
@@ -201,7 +201,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/reset-password": {
+    "/api/v1/auth/reset-password": {
         parameters: {
             query?: never;
             header?: never;
@@ -221,7 +221,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/verify-email/send": {
+    "/api/v1/auth/verify-email/send": {
         parameters: {
             query?: never;
             header?: never;
@@ -244,7 +244,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/verify-email": {
+    "/api/v1/auth/verify-email": {
         parameters: {
             query?: never;
             header?: never;
@@ -267,7 +267,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/sessions": {
+    "/api/v1/auth/sessions": {
         parameters: {
             query?: never;
             header?: never;
@@ -285,7 +285,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/sessions/{session_key}": {
+    "/api/v1/auth/sessions/{session_key}": {
         parameters: {
             query?: never;
             header?: never;
@@ -302,7 +302,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/2fa/setup": {
+    "/api/v1/auth/2fa/setup": {
         parameters: {
             query?: never;
             header?: never;
@@ -326,7 +326,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/2fa/enable": {
+    "/api/v1/auth/2fa/enable": {
         parameters: {
             query?: never;
             header?: never;
@@ -346,7 +346,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/2fa/disable": {
+    "/api/v1/auth/2fa/disable": {
         parameters: {
             query?: never;
             header?: never;
@@ -366,7 +366,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/2fa/login/verify": {
+    "/api/v1/auth/2fa/login/verify": {
         parameters: {
             query?: never;
             header?: never;
@@ -389,7 +389,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/me": {
+    "/api/v1/auth/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -416,7 +416,7 @@ export interface paths {
         patch: operations["update_me_api_auth_me_patch"];
         trace?: never;
     };
-    "/api/auth/me/preferences": {
+    "/api/v1/auth/me/preferences": {
         parameters: {
             query?: never;
             header?: never;
@@ -436,7 +436,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/me/integrations": {
+    "/api/v1/auth/me/integrations": {
         parameters: {
             query?: never;
             header?: never;
@@ -456,7 +456,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/google/initiate": {
+    "/api/v1/auth/google/initiate": {
         parameters: {
             query?: never;
             header?: never;
@@ -473,7 +473,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/google/callback": {
+    "/api/v1/auth/google/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -490,7 +490,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/spotify/initiate": {
+    "/api/v1/auth/spotify/initiate": {
         parameters: {
             query?: never;
             header?: never;
@@ -507,7 +507,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/spotify/callback": {
+    "/api/v1/auth/spotify/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -524,7 +524,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/plex/initiate": {
+    "/api/v1/auth/plex/initiate": {
         parameters: {
             query?: never;
             header?: never;
@@ -541,7 +541,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/plex/callback": {
+    "/api/v1/auth/plex/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -558,7 +558,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/tmdb/initiate": {
+    "/api/v1/auth/tmdb/initiate": {
         parameters: {
             query?: never;
             header?: never;
@@ -575,7 +575,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/tmdb/callback": {
+    "/api/v1/auth/tmdb/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -592,7 +592,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/steam/initiate": {
+    "/api/v1/auth/steam/initiate": {
         parameters: {
             query?: never;
             header?: never;
@@ -609,7 +609,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/steam/callback": {
+    "/api/v1/auth/steam/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -626,7 +626,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth": {
+    "/api/v1/auth/oauth": {
         parameters: {
             query?: never;
             header?: never;
@@ -643,7 +643,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/spotify": {
+    "/api/v1/auth/oauth/spotify": {
         parameters: {
             query?: never;
             header?: never;
@@ -667,7 +667,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/spotify/callback": {
+    "/api/v1/auth/oauth/spotify/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -691,7 +691,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/spotify/disconnect": {
+    "/api/v1/auth/oauth/spotify/disconnect": {
         parameters: {
             query?: never;
             header?: never;
@@ -708,7 +708,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/steam": {
+    "/api/v1/auth/oauth/steam": {
         parameters: {
             query?: never;
             header?: never;
@@ -725,7 +725,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/steam/callback": {
+    "/api/v1/auth/oauth/steam/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -742,7 +742,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/steam/disconnect": {
+    "/api/v1/auth/oauth/steam/disconnect": {
         parameters: {
             query?: never;
             header?: never;
@@ -759,7 +759,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/plex": {
+    "/api/v1/auth/oauth/plex": {
         parameters: {
             query?: never;
             header?: never;
@@ -783,7 +783,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/plex/callback": {
+    "/api/v1/auth/oauth/plex/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -808,7 +808,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/plex/disconnect": {
+    "/api/v1/auth/oauth/plex/disconnect": {
         parameters: {
             query?: never;
             header?: never;
@@ -825,7 +825,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/tmdb": {
+    "/api/v1/auth/oauth/tmdb": {
         parameters: {
             query?: never;
             header?: never;
@@ -849,7 +849,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/tmdb/redirect": {
+    "/api/v1/auth/oauth/tmdb/redirect": {
         parameters: {
             query?: never;
             header?: never;
@@ -866,7 +866,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/tmdb/callback": {
+    "/api/v1/auth/oauth/tmdb/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -891,7 +891,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/tmdb/disconnect": {
+    "/api/v1/auth/oauth/tmdb/disconnect": {
         parameters: {
             query?: never;
             header?: never;
@@ -908,7 +908,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/google": {
+    "/api/v1/auth/oauth/google": {
         parameters: {
             query?: never;
             header?: never;
@@ -932,7 +932,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/google/token": {
+    "/api/v1/auth/oauth/google/token": {
         parameters: {
             query?: never;
             header?: never;
@@ -952,7 +952,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/google/callback": {
+    "/api/v1/auth/oauth/google/callback": {
         parameters: {
             query?: never;
             header?: never;
@@ -976,7 +976,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/auth/oauth/google/disconnect": {
+    "/api/v1/auth/oauth/google/disconnect": {
         parameters: {
             query?: never;
             header?: never;
@@ -993,7 +993,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/blueprints": {
+    "/api/v1/blueprints": {
         parameters: {
             query?: never;
             header?: never;
@@ -1017,7 +1017,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/blueprints/{blueprint_id}": {
+    "/api/v1/blueprints/{blueprint_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1045,7 +1045,7 @@ export interface paths {
         patch: operations["update_blueprint_api_blueprints__blueprint_id__patch"];
         trace?: never;
     };
-    "/api/blueprints/{blueprint_id}/like": {
+    "/api/v1/blueprints/{blueprint_id}/like": {
         parameters: {
             query?: never;
             header?: never;
@@ -1065,7 +1065,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/blueprints/{blueprint_id}/download": {
+    "/api/v1/blueprints/{blueprint_id}/download": {
         parameters: {
             query?: never;
             header?: never;
@@ -1085,7 +1085,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/servers": {
+    "/api/v1/integrations/plex/servers": {
         parameters: {
             query?: never;
             header?: never;
@@ -1102,7 +1102,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/libraries": {
+    "/api/v1/integrations/plex/libraries": {
         parameters: {
             query?: never;
             header?: never;
@@ -1122,7 +1122,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/sync": {
+    "/api/v1/integrations/plex/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1139,7 +1139,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/sync/{task_id}/stream": {
+    "/api/v1/integrations/plex/sync/{task_id}/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -1159,7 +1159,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/watchlist/sync": {
+    "/api/v1/integrations/plex/watchlist/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1176,7 +1176,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/webhook": {
+    "/api/v1/integrations/plex/webhook": {
         parameters: {
             query?: never;
             header?: never;
@@ -1193,7 +1193,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/sessions": {
+    "/api/v1/integrations/plex/sessions": {
         parameters: {
             query?: never;
             header?: never;
@@ -1210,7 +1210,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/connect-info/{media_item_id}": {
+    "/api/v1/integrations/plex/connect-info/{media_item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1227,7 +1227,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/album-tracks/{media_item_id}": {
+    "/api/v1/integrations/plex/album-tracks/{media_item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1244,7 +1244,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/plex/stream/{rating_key}": {
+    "/api/v1/integrations/plex/stream/{rating_key}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1261,7 +1261,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/spotify/token": {
+    "/api/v1/integrations/spotify/token": {
         parameters: {
             query?: never;
             header?: never;
@@ -1285,7 +1285,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/spotify/sync": {
+    "/api/v1/integrations/spotify/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1305,7 +1305,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/spotify/sync/{task_id}/stream": {
+    "/api/v1/integrations/spotify/sync/{task_id}/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -1325,7 +1325,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/spotify/recently-played/sync": {
+    "/api/v1/integrations/spotify/recently-played/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1345,7 +1345,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/spotify/recently-played/sync/{task_id}/stream": {
+    "/api/v1/integrations/spotify/recently-played/sync/{task_id}/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -1365,7 +1365,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/steam/owned-appids": {
+    "/api/v1/integrations/steam/owned-appids": {
         parameters: {
             query?: never;
             header?: never;
@@ -1387,7 +1387,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/steam/scan": {
+    "/api/v1/integrations/steam/scan": {
         parameters: {
             query?: never;
             header?: never;
@@ -1404,7 +1404,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/steam/wishlist/scan": {
+    "/api/v1/integrations/steam/wishlist/scan": {
         parameters: {
             query?: never;
             header?: never;
@@ -1421,7 +1421,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/steam/resolve-unmatched": {
+    "/api/v1/integrations/steam/resolve-unmatched": {
         parameters: {
             query?: never;
             header?: never;
@@ -1438,7 +1438,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/tmdb/rating-sync": {
+    "/api/v1/integrations/tmdb/rating-sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1455,7 +1455,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/tmdb/watchlist-import": {
+    "/api/v1/integrations/tmdb/watchlist-import": {
         parameters: {
             query?: never;
             header?: never;
@@ -1472,7 +1472,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/youtube/sync": {
+    "/api/v1/integrations/youtube/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -1489,7 +1489,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/integrations/youtube/sync/{task_id}/stream": {
+    "/api/v1/integrations/youtube/sync/{task_id}/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -1509,7 +1509,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/{game_id}/files": {
+    "/api/v1/saves/{game_id}/files": {
         parameters: {
             query?: never;
             header?: never;
@@ -1529,7 +1529,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/{game_id}/upload": {
+    "/api/v1/saves/{game_id}/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -1553,7 +1553,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/{game_id}/download/{file_id}": {
+    "/api/v1/saves/{game_id}/download/{file_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1573,7 +1573,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/{game_id}/delete/{file_id}": {
+    "/api/v1/saves/{game_id}/delete/{file_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1593,7 +1593,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/locations/{media_item_id}": {
+    "/api/v1/saves/locations/{media_item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1613,7 +1613,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/saves/locations/{media_item_id}/suggest": {
+    "/api/v1/saves/locations/{media_item_id}/suggest": {
         parameters: {
             query?: never;
             header?: never;
@@ -1633,7 +1633,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/company/{company_id}": {
+    "/api/v1/company/{company_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1656,7 +1656,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/company/{company_id}/rating": {
+    "/api/v1/company/{company_id}/rating": {
         parameters: {
             query?: never;
             header?: never;
@@ -1685,7 +1685,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/company/{company_id}/follow": {
+    "/api/v1/company/{company_id}/follow": {
         parameters: {
             query?: never;
             header?: never;
@@ -1715,7 +1715,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/discover/hero": {
+    "/api/v1/discover/hero": {
         parameters: {
             query?: never;
             header?: never;
@@ -1735,7 +1735,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/discover/sections": {
+    "/api/v1/discover/sections": {
         parameters: {
             query?: never;
             header?: never;
@@ -1755,7 +1755,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/discover/trailers/trending": {
+    "/api/v1/discover/trailers/trending": {
         parameters: {
             query?: never;
             header?: never;
@@ -1775,7 +1775,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/discover/{media_type}/{list_type}": {
+    "/api/v1/discover/{media_type}/{list_type}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1795,7 +1795,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/discover/free-games/match": {
+    "/api/v1/discover/free-games/match": {
         parameters: {
             query?: never;
             header?: never;
@@ -1819,7 +1819,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/requests/{user_id}": {
+    "/api/v1/friends/requests/{user_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1839,7 +1839,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/requests/{request_id}/accept": {
+    "/api/v1/friends/requests/{request_id}/accept": {
         parameters: {
             query?: never;
             header?: never;
@@ -1859,7 +1859,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/requests/{request_id}/reject": {
+    "/api/v1/friends/requests/{request_id}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -1879,7 +1879,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends": {
+    "/api/v1/friends": {
         parameters: {
             query?: never;
             header?: never;
@@ -1899,7 +1899,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/requests/incoming": {
+    "/api/v1/friends/requests/incoming": {
         parameters: {
             query?: never;
             header?: never;
@@ -1919,7 +1919,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/requests/outgoing": {
+    "/api/v1/friends/requests/outgoing": {
         parameters: {
             query?: never;
             header?: never;
@@ -1939,7 +1939,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/{user_id}": {
+    "/api/v1/friends/{user_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1959,7 +1959,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/friends/status/{user_id}": {
+    "/api/v1/friends/status/{user_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1979,7 +1979,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow": {
+    "/api/v1/users/{username}/follow": {
         parameters: {
             query?: never;
             header?: never;
@@ -2003,7 +2003,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow/requests": {
+    "/api/v1/users/{username}/follow/requests": {
         parameters: {
             query?: never;
             header?: never;
@@ -2023,7 +2023,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow/requests/{request_id}/accept": {
+    "/api/v1/users/{username}/follow/requests/{request_id}/accept": {
         parameters: {
             query?: never;
             header?: never;
@@ -2043,7 +2043,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow/requests/{request_id}/decline": {
+    "/api/v1/users/{username}/follow/requests/{request_id}/decline": {
         parameters: {
             query?: never;
             header?: never;
@@ -2063,7 +2063,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/followers": {
+    "/api/v1/users/{username}/followers": {
         parameters: {
             query?: never;
             header?: never;
@@ -2083,7 +2083,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/following": {
+    "/api/v1/users/{username}/following": {
         parameters: {
             query?: never;
             header?: never;
@@ -2103,7 +2103,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow/counts": {
+    "/api/v1/users/{username}/follow/counts": {
         parameters: {
             query?: never;
             header?: never;
@@ -2123,7 +2123,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/follow/status": {
+    "/api/v1/users/{username}/follow/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -2143,7 +2143,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/suggestions": {
+    "/api/v1/media/suggestions": {
         parameters: {
             query?: never;
             header?: never;
@@ -2163,7 +2163,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/": {
+    "/api/v1/media/": {
         parameters: {
             query?: never;
             header?: never;
@@ -2180,7 +2180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/genres": {
+    "/api/v1/media/genres": {
         parameters: {
             query?: never;
             header?: never;
@@ -2197,7 +2197,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/company": {
+    "/api/v1/media/company": {
         parameters: {
             query?: never;
             header?: never;
@@ -2214,7 +2214,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search/companies": {
+    "/api/v1/media/search/companies": {
         parameters: {
             query?: never;
             header?: never;
@@ -2234,7 +2234,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/certifications": {
+    "/api/v1/media/certifications": {
         parameters: {
             query?: never;
             header?: never;
@@ -2251,7 +2251,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search": {
+    "/api/v1/media/search": {
         parameters: {
             query?: never;
             header?: never;
@@ -2268,7 +2268,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search/grouped": {
+    "/api/v1/media/search/grouped": {
         parameters: {
             query?: never;
             header?: never;
@@ -2292,7 +2292,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match": {
+    "/api/v1/media/match": {
         parameters: {
             query?: never;
             header?: never;
@@ -2315,7 +2315,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match/batch": {
+    "/api/v1/media/match/batch": {
         parameters: {
             query?: never;
             header?: never;
@@ -2338,7 +2338,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match/stream": {
+    "/api/v1/media/match/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -2365,7 +2365,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match/confirm": {
+    "/api/v1/media/match/confirm": {
         parameters: {
             query?: never;
             header?: never;
@@ -2390,7 +2390,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match/unlink": {
+    "/api/v1/media/match/unlink": {
         parameters: {
             query?: never;
             header?: never;
@@ -2412,7 +2412,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match-local-games": {
+    "/api/v1/media/match-local-games": {
         parameters: {
             query?: never;
             header?: never;
@@ -2439,7 +2439,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/seed-from-titles": {
+    "/api/v1/media/seed-from-titles": {
         parameters: {
             query?: never;
             header?: never;
@@ -2468,7 +2468,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/rehydrate": {
+    "/api/v1/media/{media_id}/rehydrate": {
         parameters: {
             query?: never;
             header?: never;
@@ -2485,7 +2485,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/rehydrate/{task_id}/stream": {
+    "/api/v1/media/{media_id}/rehydrate/{task_id}/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -2505,7 +2505,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search/poll": {
+    "/api/v1/media/search/poll": {
         parameters: {
             query?: never;
             header?: never;
@@ -2528,7 +2528,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search/external": {
+    "/api/v1/media/search/external": {
         parameters: {
             query?: never;
             header?: never;
@@ -2554,7 +2554,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/import/igdb": {
+    "/api/v1/media/import/igdb": {
         parameters: {
             query?: never;
             header?: never;
@@ -2577,7 +2577,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search-providers": {
+    "/api/v1/media/search-providers": {
         parameters: {
             query?: never;
             header?: never;
@@ -2601,7 +2601,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/search-steamgrid": {
+    "/api/v1/media/search-steamgrid": {
         parameters: {
             query?: never;
             header?: never;
@@ -2624,7 +2624,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/sync-local-games": {
+    "/api/v1/media/sync-local-games": {
         parameters: {
             query?: never;
             header?: never;
@@ -2647,7 +2647,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/match/propose": {
+    "/api/v1/media/match/propose": {
         parameters: {
             query?: never;
             header?: never;
@@ -2667,7 +2667,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/admin/match-proposals": {
+    "/api/v1/media/admin/match-proposals": {
         parameters: {
             query?: never;
             header?: never;
@@ -2687,7 +2687,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/admin/match-proposals/{proposal_id}/approve": {
+    "/api/v1/media/admin/match-proposals/{proposal_id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -2707,7 +2707,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/admin/match-proposals/{proposal_id}/reject": {
+    "/api/v1/media/admin/match-proposals/{proposal_id}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -2727,7 +2727,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}": {
+    "/api/v1/media/{media_type}/{media_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2744,7 +2744,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/assets": {
+    "/api/v1/media/{media_type}/{media_id}/assets": {
         parameters: {
             query?: never;
             header?: never;
@@ -2761,7 +2761,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/edit-proposals": {
+    "/api/v1/media/{media_id}/edit-proposals": {
         parameters: {
             query?: never;
             header?: never;
@@ -2779,7 +2779,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/edit-proposals/{proposal_id}/approve": {
+    "/api/v1/media/{media_id}/edit-proposals/{proposal_id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -2796,7 +2796,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/edit-proposals/{proposal_id}/reject": {
+    "/api/v1/media/{media_id}/edit-proposals/{proposal_id}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -2813,7 +2813,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/edit-proposals/{proposal_id}/undo": {
+    "/api/v1/media/{media_id}/edit-proposals/{proposal_id}/undo": {
         parameters: {
             query?: never;
             header?: never;
@@ -2830,7 +2830,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/edit-proposals/{proposal_id}/vote": {
+    "/api/v1/media/{media_id}/edit-proposals/{proposal_id}/vote": {
         parameters: {
             query?: never;
             header?: never;
@@ -2848,7 +2848,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/similar": {
+    "/api/v1/media/{media_type}/{media_id}/similar": {
         parameters: {
             query?: never;
             header?: never;
@@ -2865,7 +2865,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/recommendations": {
+    "/api/v1/media/{media_type}/{media_id}/recommendations": {
         parameters: {
             query?: never;
             header?: never;
@@ -2882,7 +2882,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/interactions": {
+    "/api/v1/media/{media_type}/{media_id}/interactions": {
         parameters: {
             query?: never;
             header?: never;
@@ -2899,7 +2899,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/interactions/{interaction_type}": {
+    "/api/v1/media/{media_type}/{media_id}/interactions/{interaction_type}": {
         parameters: {
             query?: never;
             header?: never;
@@ -2917,7 +2917,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_id}/claim": {
+    "/api/v1/media/{media_id}/claim": {
         parameters: {
             query?: never;
             header?: never;
@@ -2941,7 +2941,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/episode-interactions": {
+    "/api/v1/media/{media_type}/{media_id}/episode-interactions": {
         parameters: {
             query?: never;
             header?: never;
@@ -2958,7 +2958,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/episodes/{episode_id}/watched": {
+    "/api/v1/media/{media_type}/{media_id}/episodes/{episode_id}/watched": {
         parameters: {
             query?: never;
             header?: never;
@@ -2976,7 +2976,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/seasons/{season_number}/watched": {
+    "/api/v1/media/{media_type}/{media_id}/seasons/{season_number}/watched": {
         parameters: {
             query?: never;
             header?: never;
@@ -2994,7 +2994,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/show-watched": {
+    "/api/v1/media/{media_type}/{media_id}/show-watched": {
         parameters: {
             query?: never;
             header?: never;
@@ -3012,7 +3012,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/installed": {
+    "/api/v1/library/installed": {
         parameters: {
             query?: never;
             header?: never;
@@ -3034,7 +3034,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/plex": {
+    "/api/v1/library/plex": {
         parameters: {
             query?: never;
             header?: never;
@@ -3054,7 +3054,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/plex/thumb/{media_item_id}": {
+    "/api/v1/library/plex/thumb/{media_item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3074,7 +3074,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/plex/status": {
+    "/api/v1/library/plex/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -3094,7 +3094,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify": {
+    "/api/v1/library/spotify": {
         parameters: {
             query?: never;
             header?: never;
@@ -3114,7 +3114,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/status": {
+    "/api/v1/library/spotify/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -3134,7 +3134,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/tracks": {
+    "/api/v1/library/spotify/tracks": {
         parameters: {
             query?: never;
             header?: never;
@@ -3154,7 +3154,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/tracks/{track_id}/liked": {
+    "/api/v1/library/spotify/tracks/{track_id}/liked": {
         parameters: {
             query?: never;
             header?: never;
@@ -3174,7 +3174,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/steam": {
+    "/api/v1/library/steam": {
         parameters: {
             query?: never;
             header?: never;
@@ -3194,7 +3194,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/steam/status": {
+    "/api/v1/library/steam/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -3214,7 +3214,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/steam/unmatched": {
+    "/api/v1/library/steam/unmatched": {
         parameters: {
             query?: never;
             header?: never;
@@ -3234,7 +3234,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/steam/wishlist": {
+    "/api/v1/library/steam/wishlist": {
         parameters: {
             query?: never;
             header?: never;
@@ -3254,7 +3254,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/youtube": {
+    "/api/v1/library/youtube": {
         parameters: {
             query?: never;
             header?: never;
@@ -3274,7 +3274,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/{tab}": {
+    "/api/v1/library/{tab}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3296,7 +3296,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list": {
+    "/api/v1/list": {
         parameters: {
             query?: never;
             header?: never;
@@ -3322,7 +3322,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/mine": {
+    "/api/v1/list/mine": {
         parameters: {
             query?: never;
             header?: never;
@@ -3342,7 +3342,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}": {
+    "/api/v1/list/{list_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3374,7 +3374,7 @@ export interface paths {
         patch: operations["update_list_api_list__list_id__patch"];
         trace?: never;
     };
-    "/api/list/{list_id}/item": {
+    "/api/v1/list/{list_id}/item": {
         parameters: {
             query?: never;
             header?: never;
@@ -3402,7 +3402,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/item/{media_item_id}": {
+    "/api/v1/list/{list_id}/item/{media_item_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3424,7 +3424,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/collaborators": {
+    "/api/v1/list/{list_id}/collaborators": {
         parameters: {
             query?: never;
             header?: never;
@@ -3450,7 +3450,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/collaborators/{user_id}": {
+    "/api/v1/list/{list_id}/collaborators/{user_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3472,7 +3472,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/collaborators/accept": {
+    "/api/v1/list/{list_id}/collaborators/accept": {
         parameters: {
             query?: never;
             header?: never;
@@ -3494,7 +3494,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/collaborators/decline": {
+    "/api/v1/list/{list_id}/collaborators/decline": {
         parameters: {
             query?: never;
             header?: never;
@@ -3516,7 +3516,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/like": {
+    "/api/v1/list/{list_id}/like": {
         parameters: {
             query?: never;
             header?: never;
@@ -3544,7 +3544,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/export": {
+    "/api/v1/list/{list_id}/export": {
         parameters: {
             query?: never;
             header?: never;
@@ -3566,7 +3566,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/list/{list_id}/history": {
+    "/api/v1/list/{list_id}/history": {
         parameters: {
             query?: never;
             header?: never;
@@ -3586,7 +3586,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person": {
+    "/api/v1/person": {
         parameters: {
             query?: never;
             header?: never;
@@ -3606,7 +3606,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person/search": {
+    "/api/v1/person/search": {
         parameters: {
             query?: never;
             header?: never;
@@ -3626,7 +3626,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person/{person_id}": {
+    "/api/v1/person/{person_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3646,7 +3646,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person/{person_id}/follow": {
+    "/api/v1/person/{person_id}/follow": {
         parameters: {
             query?: never;
             header?: never;
@@ -3674,7 +3674,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person/{person_id}/rating": {
+    "/api/v1/person/{person_id}/rating": {
         parameters: {
             query?: never;
             header?: never;
@@ -3702,7 +3702,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/person/{person_id}/related": {
+    "/api/v1/person/{person_id}/related": {
         parameters: {
             query?: never;
             header?: never;
@@ -3722,7 +3722,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals": {
+    "/api/v1/proposals": {
         parameters: {
             query?: never;
             header?: never;
@@ -3746,7 +3746,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals/{proposal_id}": {
+    "/api/v1/proposals/{proposal_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -3766,7 +3766,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals/{proposal_id}/approve": {
+    "/api/v1/proposals/{proposal_id}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -3786,7 +3786,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals/{proposal_id}/reject": {
+    "/api/v1/proposals/{proposal_id}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -3806,7 +3806,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals/{proposal_id}/undo": {
+    "/api/v1/proposals/{proposal_id}/undo": {
         parameters: {
             query?: never;
             header?: never;
@@ -3826,7 +3826,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/proposals/{proposal_id}/vote": {
+    "/api/v1/proposals/{proposal_id}/vote": {
         parameters: {
             query?: never;
             header?: never;
@@ -3850,7 +3850,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/push/vapid-public-key": {
+    "/api/v1/push/vapid-public-key": {
         parameters: {
             query?: never;
             header?: never;
@@ -3867,7 +3867,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/push/subscribe": {
+    "/api/v1/push/subscribe": {
         parameters: {
             query?: never;
             header?: never;
@@ -3885,7 +3885,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/metric": {
+    "/api/v1/metric": {
         parameters: {
             query?: never;
             header?: never;
@@ -3905,7 +3905,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mood-checkins/today": {
+    "/api/v1/mood-checkins/today": {
         parameters: {
             query?: never;
             header?: never;
@@ -3925,7 +3925,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mood-checkins": {
+    "/api/v1/mood-checkins": {
         parameters: {
             query?: never;
             header?: never;
@@ -3945,7 +3945,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/mood-checkins/dismiss": {
+    "/api/v1/mood-checkins/dismiss": {
         parameters: {
             query?: never;
             header?: never;
@@ -3965,7 +3965,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications": {
+    "/api/v1/notifications": {
         parameters: {
             query?: never;
             header?: never;
@@ -3985,7 +3985,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/unread-count": {
+    "/api/v1/notifications/unread-count": {
         parameters: {
             query?: never;
             header?: never;
@@ -4005,7 +4005,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/{notification_id}/read": {
+    "/api/v1/notifications/{notification_id}/read": {
         parameters: {
             query?: never;
             header?: never;
@@ -4025,7 +4025,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/read-all": {
+    "/api/v1/notifications/read-all": {
         parameters: {
             query?: never;
             header?: never;
@@ -4045,7 +4045,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/stream": {
+    "/api/v1/notifications/stream": {
         parameters: {
             query?: never;
             header?: never;
@@ -4065,7 +4065,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/review": {
+    "/api/v1/media/{media_type}/{media_id}/review": {
         parameters: {
             query?: never;
             header?: never;
@@ -4085,7 +4085,7 @@ export interface paths {
         patch: operations["update_review_api_media__media_type___media_id__review_patch"];
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/reviews": {
+    "/api/v1/media/{media_type}/{media_id}/reviews": {
         parameters: {
             query?: never;
             header?: never;
@@ -4102,7 +4102,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/media/{media_type}/{media_id}/rating": {
+    "/api/v1/media/{media_type}/{media_id}/rating": {
         parameters: {
             query?: never;
             header?: never;
@@ -4121,7 +4121,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/reviews/{review_user_id}/{media_item_id}/vote": {
+    "/api/v1/reviews/{review_user_id}/{media_item_id}/vote": {
         parameters: {
             query?: never;
             header?: never;
@@ -4140,7 +4140,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists": {
+    "/api/v1/library/spotify/playlists": {
         parameters: {
             query?: never;
             header?: never;
@@ -4160,7 +4160,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/subscriptions": {
+    "/api/v1/library/spotify/playlists/subscriptions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4180,7 +4180,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/subscriptions/{subscription_id}": {
+    "/api/v1/library/spotify/playlists/subscriptions/{subscription_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4202,7 +4202,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/{playlist_id}": {
+    "/api/v1/library/spotify/playlists/{playlist_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4222,7 +4222,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/{playlist_id}/subscribe": {
+    "/api/v1/library/spotify/playlists/{playlist_id}/subscribe": {
         parameters: {
             query?: never;
             header?: never;
@@ -4244,7 +4244,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/{playlist_id}/unsubscribe": {
+    "/api/v1/library/spotify/playlists/{playlist_id}/unsubscribe": {
         parameters: {
             query?: never;
             header?: never;
@@ -4266,7 +4266,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/library/spotify/playlists/{playlist_id}/sync": {
+    "/api/v1/library/spotify/playlists/{playlist_id}/sync": {
         parameters: {
             query?: never;
             header?: never;
@@ -4288,7 +4288,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tracks/{track_id}/rating": {
+    "/api/v1/tracks/{track_id}/rating": {
         parameters: {
             query?: never;
             header?: never;
@@ -4314,7 +4314,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/upload": {
+    "/api/v1/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -4336,7 +4336,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/search": {
+    "/api/v1/users/search": {
         parameters: {
             query?: never;
             header?: never;
@@ -4356,7 +4356,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/achievements": {
+    "/api/v1/users/achievements": {
         parameters: {
             query?: never;
             header?: never;
@@ -4376,7 +4376,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}": {
+    "/api/v1/users/{username}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4396,7 +4396,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/reviews": {
+    "/api/v1/users/{username}/reviews": {
         parameters: {
             query?: never;
             header?: never;
@@ -4416,7 +4416,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/rating": {
+    "/api/v1/users/{username}/rating": {
         parameters: {
             query?: never;
             header?: never;
@@ -4444,7 +4444,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/reputation": {
+    "/api/v1/users/{username}/reputation": {
         parameters: {
             query?: never;
             header?: never;
@@ -4464,7 +4464,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/rating-distribution": {
+    "/api/v1/users/{username}/rating-distribution": {
         parameters: {
             query?: never;
             header?: never;
@@ -4484,7 +4484,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/karma": {
+    "/api/v1/users/{username}/karma": {
         parameters: {
             query?: never;
             header?: never;
@@ -4504,7 +4504,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/karma/transactions": {
+    "/api/v1/users/{username}/karma/transactions": {
         parameters: {
             query?: never;
             header?: never;
@@ -4524,7 +4524,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/badges": {
+    "/api/v1/users/{username}/badges": {
         parameters: {
             query?: never;
             header?: never;
@@ -4544,7 +4544,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/badges/{badge_key}/claim": {
+    "/api/v1/users/me/badges/{badge_key}/claim": {
         parameters: {
             query?: never;
             header?: never;
@@ -4564,7 +4564,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/stats": {
+    "/api/v1/users/{username}/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -4584,7 +4584,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/top-rated": {
+    "/api/v1/users/{username}/top-rated": {
         parameters: {
             query?: never;
             header?: never;
@@ -4604,7 +4604,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/hall-of-fame": {
+    "/api/v1/users/{username}/hall-of-fame": {
         parameters: {
             query?: never;
             header?: never;
@@ -4624,7 +4624,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/library-stats": {
+    "/api/v1/users/{username}/library-stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -4644,7 +4644,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/activity": {
+    "/api/v1/users/{username}/activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -4664,7 +4664,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{username}/mood-timeline": {
+    "/api/v1/users/{username}/mood-timeline": {
         parameters: {
             query?: never;
             header?: never;
@@ -4684,7 +4684,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/activity-heatmap": {
+    "/api/v1/users/me/activity-heatmap": {
         parameters: {
             query?: never;
             header?: never;
@@ -4707,7 +4707,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/continue": {
+    "/api/v1/users/me/continue": {
         parameters: {
             query?: never;
             header?: never;
@@ -4727,7 +4727,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/daily-activity": {
+    "/api/v1/users/me/daily-activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -4744,7 +4744,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/me/friends/activity": {
+    "/api/v1/users/me/friends/activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -4764,7 +4764,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/workout": {
+    "/api/v1/workout": {
         parameters: {
             query?: never;
             header?: never;
@@ -4790,7 +4790,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/workout/{workout_id}": {
+    "/api/v1/workout/{workout_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -4822,7 +4822,7 @@ export interface paths {
         patch: operations["update_workout_api_workout__workout_id__patch"];
         trace?: never;
     };
-    "/api/workout/today": {
+    "/api/v1/workout/today": {
         parameters: {
             query?: never;
             header?: never;
@@ -4854,7 +4854,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/workout/heatmap": {
+    "/api/v1/workout/heatmap": {
         parameters: {
             query?: never;
             header?: never;
@@ -4874,7 +4874,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/exercises": {
+    "/api/v1/exercises": {
         parameters: {
             query?: never;
             header?: never;
@@ -4894,7 +4894,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/exercises/categories": {
+    "/api/v1/exercises/categories": {
         parameters: {
             query?: never;
             header?: never;
@@ -4914,7 +4914,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/health": {
+    "/api/v1/health": {
         parameters: {
             query?: never;
             header?: never;
