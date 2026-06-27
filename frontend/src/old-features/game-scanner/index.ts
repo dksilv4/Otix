@@ -1,3 +1,3 @@
-export type { LocalGame } from "@/old-features/games/types"
+export type { LocalGame } from "@/features/launcher"
 export type { MountResult } from "./types";
 export { hasDesktopAPI } from "./storage";
