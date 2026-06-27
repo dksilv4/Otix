@@ -11,7 +11,7 @@
 //   data.createdAt    ← typed as string, not data.created_at
 
 import createClient from 'openapi-fetch'
-import type { paths as ApiPaths } from '@/api-types'
+import type { paths as ApiPaths } from './openapi'
 import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 import { isDesktop } from '@/lib/desktop'
 import { convertKeysToCamelCase } from './client'
