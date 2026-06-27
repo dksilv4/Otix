@@ -6,6 +6,7 @@ import { promisify } from 'util'
 import { app } from 'electron'
 import { PluginRuntime } from './runtime'
 import { eventBus } from './event-bus'
+import { getApiUrl } from '../config'
 import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
 import { initPluginsDb } from '../db/plugins-db'
@@ -51,7 +52,7 @@ export class PluginManager {
   private pluginsRepo: PluginsRepository
   private extensionsDir: string
   private devExtensionsDir: string | undefined
-  private apiBaseUrl = 'http://127.0.0.1:8000/api'
+  private apiBaseUrl = getApiUrl('')
   private authToken = ''
   private slotRegistry: SlotRegistry = new SlotRegistry()
   public readonly serviceRegistry: ServiceRegistry = new ServiceRegistry()
