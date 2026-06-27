@@ -5,7 +5,7 @@ import { TrackInlineActions } from '@media/music/components/molecules/media-trac
 import { usePlayer } from '@/old-features/spotify/use-player'
 import { useRateTrack } from '@media/queries/media-queries'
 import { useSaveSpotifyTrack } from '@/old-features/library/library-queries'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 
 export interface TrackRowProps {
   track: TrackOut

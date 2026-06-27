@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/providers/auth'
-import { showXPToast } from '@/old-features/dk-ui/atoms/xp-toast'
+import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
 import type { MoodValue, FeelingValue } from '../types'
 
 export function useMoodCheckIn(onMoodRecorded?: () => void) {

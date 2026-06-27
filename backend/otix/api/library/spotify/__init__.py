@@ -24,6 +24,7 @@ async def _get_spotify_track_lookup(db: AsyncSession, spotify_ids: list[str]) ->
     if not spotify_ids:
         return {}
     from otix.domain.media import Track
+
     result = await db.execute(
         select(ExternalID.external_id, Track.id, Track.avg_rating, Track.rating_count)
         .join(Track, Track.id == ExternalID.entity_id)
@@ -79,11 +80,14 @@ async def get_spotify_library_tab(
     query = (
         select(MediaItem)
         .join(Album, Album.media_item_id == MediaItem.id)
-        .join(ExternalID, and_(
-            ExternalID.entity_id == Album.media_item_id,
-            ExternalID.entity_type == "media_item",
-            ExternalID.provider == "spotify",
-        ))
+        .join(
+            ExternalID,
+            and_(
+                ExternalID.entity_id == Album.media_item_id,
+                ExternalID.entity_type == "media_item",
+                ExternalID.provider == "spotify",
+            ),
+        )
         .options(
             joinedload(MediaItem.movie),
             joinedload(MediaItem.show),
@@ -156,6 +160,7 @@ async def get_spotify_status(
         last_scanned_at = None
         if ttl > 0:
             from datetime import datetime, timezone
+
             last_scanned_at = datetime.now(UTC).isoformat()
     except Exception:
         logger.exception("failed to fetch spotify status", user_id=current_user.id, ip=ip)
@@ -215,17 +220,19 @@ async def get_spotify_liked_tracks(
         album = t.get("album", {})
         album_images = album.get("images", [])
         artists = t.get("artists", [])
-        tracks.append({
-            "id": t.get("id"),
-            "name": t.get("name"),
-            "artist": artists[0].get("name") if artists else "Unknown",
-            "albumName": album.get("name"),
-            "albumArt": album_images[0].get("url") if album_images else None,
-            "durationMs": t.get("duration_ms"),
-            "uri": t.get("uri"),
-            "previewUrl": t.get("preview_url"),
-            "spotifyLiked": True,
-        })
+        tracks.append(
+            {
+                "id": t.get("id"),
+                "name": t.get("name"),
+                "artist": artists[0].get("name") if artists else "Unknown",
+                "albumName": album.get("name"),
+                "albumArt": album_images[0].get("url") if album_images else None,
+                "durationMs": t.get("duration_ms"),
+                "uri": t.get("uri"),
+                "previewUrl": t.get("preview_url"),
+                "spotifyLiked": True,
+            }
+        )
 
     track_lookup = await _get_spotify_track_lookup(db, [t["id"] for t in tracks if t.get("id")])
     for track in tracks:

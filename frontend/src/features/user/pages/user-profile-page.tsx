@@ -12,8 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-import { DkAvatar } from '@/old-features/dk-ui/atoms/avatar'
-import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkAvatar } from '@/old-features/ui/atoms/avatar'
+import { DkButton } from '@/old-features/ui/atoms/button'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
@@ -201,7 +201,7 @@ export function UserProfilePage() {
                 {profile.isAdmin && (
                   <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80 align-middle" />
                 )}
-                <span className="scale-[0.8]">
+                <span className="inline-flex items-center ml-2.5 align-middle [&>div>span:last-child]:hidden scale-[0.8]">
                   <UserRatingSection username={username} />
                 </span>
               </h1>
@@ -436,7 +436,7 @@ export function UserProfilePage() {
 
             {/* Streaks */}
             <div
-              className="mt-0.5 text-right"
+              className="mt-0.5 flex justify-end"
               style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '380ms' }}
             >
               <StreakDisplay

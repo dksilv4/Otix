@@ -46,7 +46,7 @@ describe("ListComposer", () => {
   it("calls onClose when backdrop is clicked", async () => {
     const onClose = vi.fn()
     render(<ListComposer open={true} onClose={onClose} onSave={vi.fn()} />)
-    const backdrop = document.querySelector(".absolute.inset-0")
+    const backdrop = document.querySelector(".dk-list-composer__backdrop")
     if (backdrop) await userEvent.click(backdrop)
     expect(onClose).toHaveBeenCalled()
   })

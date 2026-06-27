@@ -27,7 +27,9 @@ async def get_edit_proposals(
     ip = request.client.host if request.client else None
     service = AdminEditService(db)
     proposals, total = await service.get_all_proposals(status=status, limit=limit, offset=offset)
-    vote_map = await service.get_user_votes_for_proposals(current_user.id, [p.id for p in proposals]) if proposals else {}
+    vote_map = (
+        await service.get_user_votes_for_proposals(current_user.id, [p.id for p in proposals]) if proposals else {}
+    )
     items = []
     for p in proposals:
         out = MediaEditProposalOut.model_validate(p)

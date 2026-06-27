@@ -64,7 +64,4 @@ async def get_user_karma_transactions(
         raise
 
     logger.info("karma transactions fetched", username=username, count=len(items), ip=ip)
-    return [
-        KarmaTransactionOut(amount=item.amount, reason=item.reason, created_at=item.created_at)
-        for item in items
-    ]
+    return [KarmaTransactionOut(amount=item.amount, reason=item.reason, created_at=item.created_at) for item in items]

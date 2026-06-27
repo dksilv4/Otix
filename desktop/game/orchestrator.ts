@@ -190,7 +190,13 @@ export class GameScanOrchestrator extends EventEmitter {
       ...this.pluginManager.getPluginsForSlot('library:scan'),
     ];
     const plug = plugs.find(p => p.pluginId === pluginId);
-    const label = plug?.label || pluginId;
+
+    // ponytail: guard against unregistered plugins
+    if (!plug) {
+      return { pluginId, pluginLabel: pluginId, totalGames: 0, matched: 0, unmatched: 0, errors: [`Plugin "${pluginId}" is not registered in any scan slot`] };
+    }
+
+    const label = plug.label || pluginId;
 
     // ── Phase 1: Run plugin scan ──
     this.emit('scan:progress', { pluginId, phase: 'scanning', current: 0, total: 0 });

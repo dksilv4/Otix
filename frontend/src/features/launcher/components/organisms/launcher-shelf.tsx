@@ -1,7 +1,7 @@
 /* ── LauncherShelf — self-contained shelf: My Games + Popular tabs ── */
 
 import {useState} from 'react'
-import {MediaCard} from '@/old-features/dk-ui/molecules/media-card'
+import {MediaCard} from '@/old-features/ui/molecules/media-card'
 import {usePopularGames} from '@/features/launcher/queries'
 import {useLocalGames} from '@/old-features/game-scanner/game-queries'
 

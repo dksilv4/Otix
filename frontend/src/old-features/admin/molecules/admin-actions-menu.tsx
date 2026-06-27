@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 import { connectTaskSseStream } from '@/lib/api/sse-client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { AdminEditModal } from '../organisms/admin-edit-modal'

@@ -84,7 +84,7 @@ vi.mock("@media/queries/media-queries", () => ({
 
 // Mock Toast
 const mockToast = vi.fn()
-vi.mock("@/old-features/dk-ui/molecules/toast", () => ({
+vi.mock("@/old-features/ui/molecules/toast", () => ({
   useToast: vi.fn(() => ({
     toast: mockToast,
   })),

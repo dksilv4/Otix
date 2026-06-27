@@ -3,10 +3,8 @@ import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
-import type { LocalGame } from '../preload-api';
+import type { LocalGame, FpsStats } from '../preload-api';
 import { updateLastPlayedAt } from './storage';
-import { startFpsCapture, stopFpsCapture, isPresentMonAvailable, getLiveFps, isCapturing } from './fps';
-import type { FpsStats, LiveFpsSnapshot } from './fps';
 
 export interface RunningGame {
   game: LocalGame;
@@ -116,11 +114,6 @@ export class GameDetector extends EventEmitter {
   private trackedPids = new Set<number>();
   private processCheckTimer: ReturnType<typeof setInterval> | null = null;
   private deadCheckTimer: ReturnType<typeof setInterval> | null = null;
-  private fpsPollTimer: ReturnType<typeof setInterval> | null = null;
-  /** Which game ID owns the active PresentMon FPS capture. */
-  private fpsTargetGameId: string | null = null;
-  /** Stashed FPS stats for games whose capture was ended by a new game taking priority. */
-  private _pendingFpsStats = new Map<string, FpsStats>();
 
   constructor(sessionsDir: string) {
     super();
@@ -152,13 +145,7 @@ export class GameDetector extends EventEmitter {
     if (pid) {
       this.trackedPids.add(pid);
       this.startProcessCheck(); this.startDeadCheck();
-      // Start FPS capture if PresentMon is available
-      if (isPresentMonAvailable()) {
-        const exeName = game.exePath ? path.basename(game.exePath) : game.title;
-        if (startFpsCapture(pid, game.id, exeName)) {
-          this.startFpsPolling(game.id);
-        }
-      }
+      // FPS capture is handled by the fps-capture plugin via eventBus
     }
 
     this.emit('game:started', entry);
@@ -234,20 +221,10 @@ export class GameDetector extends EventEmitter {
         getWindowTitles(),
       ]);
 
-      // Build set of PIDs with visible windows
-      const pidsWithWindows = new Set<number>();
-      for (const [key] of windowTitles) {
-        const pid = parseInt(key.split('|')[1], 10);
-        if (!isNaN(pid)) pidsWithWindows.add(pid);
-      }
-
       const currentlyRunning = new Set<string>();
 
       // 0. Check custom user mappings first
       this.checkMappings(processes, currentlyRunning);
-
-      // Track best FPS candidate: prefer windowed games, fallback to last detected
-      let fpsCandidate: { gameId: string; pid: number } | null = null;
 
       for (const game of this.library) {
         if (currentlyRunning.has(game.id)) continue;
@@ -308,41 +285,7 @@ export class GameDetector extends EventEmitter {
             existing.pid = detectedPid;
             if (oldPid) { this.trackedPids.delete(oldPid); }
             this.trackedPids.add(detectedPid);
-            // Restart FPS capture only if this game owns the active capture
-            if (this.fpsTargetGameId === game.id || !isCapturing()) {
-              fpsCandidate = { gameId: game.id, pid: detectedPid };
-            }
-          }
-
-          // Update FPS candidate — prefer windowed, else first detected wins
-          const hasWin = pidsWithWindows.has(detectedPid);
-          if (!fpsCandidate) {
-            fpsCandidate = { gameId: game.id, pid: detectedPid };
-          } else if (hasWin && !pidsWithWindows.has(fpsCandidate.pid)) {
-            fpsCandidate = { gameId: game.id, pid: detectedPid };
-          }
-        }
-      }
-
-      // Start FPS capture for best candidate.
-      // Don't switch away from a game that's still alive (prevents wallpaper engine flip-flop).
-      if (fpsCandidate && isPresentMonAvailable()) {
-        const currentAlive = this.fpsTargetGameId && isCapturing() &&
-          this.runningGames.get(this.fpsTargetGameId)?.pid;
-        const skipFps = currentAlive
-          ? this.fpsTargetGameId === fpsCandidate.gameId  // only switch if same game (new PID)
-          : this.fpsTargetGameId === fpsCandidate.gameId && isCapturing();
-        if (!skipFps) {
-          if (isCapturing()) {
-            const lastStats = stopFpsCapture();
-            if (lastStats) {
-              // Stash stats for the old fps target's endSession, which runs next
-              const oldTarget = this.fpsTargetGameId;
-              if (oldTarget) this._pendingFpsStats.set(oldTarget, lastStats);
-            }
-          }
-          if (startFpsCapture(fpsCandidate.pid, fpsCandidate.gameId)) {
-            this.startFpsPolling(fpsCandidate.gameId);
+            // FPS capture handled by fps-capture plugin via eventBus
           }
         }
       }
@@ -417,35 +360,10 @@ export class GameDetector extends EventEmitter {
     this.stopPeriodicScan();
     this.stopProcessCheck();
     this.stopDeadCheck();
-    this.stopFpsPolling();
     for (const entry of this.runningGames.values()) {
       this.endSession(entry);
     }
     this.runningGames.clear();
-  }
-
-  // ── Live FPS polling (one game at a time, set by gameId) ──
-
-  private startFpsPolling(gameId: string) {
-    this.stopFpsPolling();
-    this.fpsTargetGameId = gameId;
-    this.fpsPollTimer = setInterval(() => {
-      if (!isCapturing()) {
-        this.fpsTargetGameId = null;
-        this.stopFpsPolling();
-        return;
-      }
-      const snapshot = getLiveFps();
-      if (snapshot) this.emit('game:fps', snapshot);
-    }, 500);
-  }
-
-  private stopFpsPolling() {
-    if (this.fpsPollTimer) {
-      clearInterval(this.fpsPollTimer);
-      this.fpsPollTimer = null;
-    }
-    this.fpsTargetGameId = null;
   }
 
   // ── Manual mappings ──
@@ -551,11 +469,7 @@ export class GameDetector extends EventEmitter {
           this.runningGames.set(mapping.gameId, entry);
           this.trackedPids.add(proc.pid);
           this.startProcessCheck(); this.startDeadCheck();
-          if (isPresentMonAvailable() && !isCapturing()) {
-            if (startFpsCapture(proc.pid, game.id)) {
-              this.startFpsPolling(game.id);
-            }
-          }
+          // FPS capture handled by fps-capture plugin via eventBus
           this.emit('game:started', entry);
         }
       }
@@ -736,10 +650,8 @@ export class GameDetector extends EventEmitter {
   }
 
   private endSession(entry: RunningGame) {
-    // Stop FPS polling and capture, grab final stats before saving session
-    this.stopFpsPolling();
-    const fpsStats = this._pendingFpsStats.get(entry.game.id) ?? stopFpsCapture();
-    this._pendingFpsStats.delete(entry.game.id);
+    // FPS stats are captured by the fps-capture plugin via eventBus.
+    // The plugin saves the enriched session to play-sessions.json.
 
     const session: PlaySession = {
       gameId: entry.game.id,
@@ -747,7 +659,6 @@ export class GameDetector extends EventEmitter {
       startTime: entry.startTime,
       endTime: Date.now(),
       launchedByOtix: entry.launchedByOtix,
-      fpsStats,
     };
 
     this.saveSession(session);

@@ -16,6 +16,7 @@ def _make_app():
     from fastapi import FastAPI
 
     from otix.api.router import api_router
+
     app = FastAPI()
     app.include_router(api_router, prefix="/api")
     return app
@@ -178,6 +179,7 @@ def client(app):
 @pytest.fixture
 def admin_client(client):
     """Shortcut: client with admin user and common scalar setup."""
+
     async def _make(scalar_side_effect=None, scalars_result=None, execute_result=None):
         async for c in client(
             _make_admin_user(),
@@ -186,6 +188,7 @@ def admin_client(client):
             execute_result=execute_result,
         ):
             yield c
+
     return _make
 
 

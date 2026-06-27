@@ -83,9 +83,7 @@ async def invite_collaborator(
         raise
 
     if collab is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     logger.info(
         "collaborator invited",
@@ -169,9 +167,7 @@ async def accept_collaboration(
     try:
         ok = await service.accept_collaboration(list_id=list_id, user_id=current_user.id)
         if not ok:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
         await db.flush()
     except HTTPException:
         await db.rollback()
@@ -208,9 +204,7 @@ async def decline_collaboration(
     try:
         ok = await service.decline_collaboration(list_id=list_id, user_id=current_user.id)
         if not ok:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
         await db.flush()
     except HTTPException:
         await db.rollback()

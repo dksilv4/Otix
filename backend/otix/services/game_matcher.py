@@ -1529,9 +1529,20 @@ def _extract_numbers(title: str) -> list[int]:
     words = title.lower().split()
     numbers: list[int] = []
     roman_map = {
-        "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5,
-        "vi": 6, "vii": 7, "viii": 8, "ix": 9, "x": 10,
-        "xi": 11, "xii": 12, "xiii": 13, "xiv": 14,
+        "i": 1,
+        "ii": 2,
+        "iii": 3,
+        "iv": 4,
+        "v": 5,
+        "vi": 6,
+        "vii": 7,
+        "viii": 8,
+        "ix": 9,
+        "x": 10,
+        "xi": 11,
+        "xii": 12,
+        "xiii": 13,
+        "xiv": 14,
     }
     for w in words:
         # Strip trailing punctuation (colons, periods, etc.)
@@ -1603,17 +1614,61 @@ def _titles_compatible(req_title: str, candidate_title: str) -> bool:
         if len(cand_words) > 1:
             # "Control" matching "Control Resonant" — extra words must be edition markers
             extra_words = set(cand_words[1:])
-            edition_words = {"edition", "deluxe", "goty", "ultimate", "complete", "definitive", "enhanced",
-                            "remastered", "collector", "pack", "bundle", "season", "pass", "dlc", "expansion",
-                            "director", "cut", "hd", "redux", "anniversary", "special", "gold", "platinum"}
+            edition_words = {
+                "edition",
+                "deluxe",
+                "goty",
+                "ultimate",
+                "complete",
+                "definitive",
+                "enhanced",
+                "remastered",
+                "collector",
+                "pack",
+                "bundle",
+                "season",
+                "pass",
+                "dlc",
+                "expansion",
+                "director",
+                "cut",
+                "hd",
+                "redux",
+                "anniversary",
+                "special",
+                "gold",
+                "platinum",
+            }
             if not extra_words.issubset(edition_words):
                 return False
     elif len(cand_words) == 1:
         # Candidate is single word, query has more — same check reversed
         extra_words = set(req_words[1:])
-        edition_words = {"edition", "deluxe", "goty", "ultimate", "complete", "definitive", "enhanced",
-                        "remastered", "collector", "pack", "bundle", "season", "pass", "dlc", "expansion",
-                        "director", "cut", "hd", "redux", "anniversary", "special", "gold", "platinum"}
+        edition_words = {
+            "edition",
+            "deluxe",
+            "goty",
+            "ultimate",
+            "complete",
+            "definitive",
+            "enhanced",
+            "remastered",
+            "collector",
+            "pack",
+            "bundle",
+            "season",
+            "pass",
+            "dlc",
+            "expansion",
+            "director",
+            "cut",
+            "hd",
+            "redux",
+            "anniversary",
+            "special",
+            "gold",
+            "platinum",
+        }
         if not extra_words.issubset(edition_words):
             return False
 

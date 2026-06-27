@@ -1,5 +1,5 @@
 import { Menu } from "lucide-react"
-import { DkButton } from "@dk-ui/atoms/button"
+import { DkButton } from "@ui/atoms/button"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 
 /** Atom toggle button for the sidebar navigation menu. */

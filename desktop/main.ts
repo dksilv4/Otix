@@ -16,7 +16,6 @@ import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
-import { onFpsPermissionNeeded, ensurePresentMon } from './game/fps';
 import { purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './saves';
 import { registerSaveIPC } from './ipc/saves';
@@ -262,12 +261,7 @@ function handleDeepLink(url: string) {
 }
 
 app.on('ready', async () => {
-  // Auto-download PresentMon if not installed
-  ensurePresentMon().then((p) => {
-    if (p) console.log('[startup] PresentMon ready at', p);
-    else console.warn('[startup] PresentMon unavailable (FPS capture disabled)');
-  });
-
+  // PresentMon is managed by the fps-capture plugin — no startup download needed here.
   gameDetector = new GameDetector(app.getPath('userData'));
 
   // Purge old deleted downloads every hour
@@ -294,51 +288,51 @@ app.on('ready', async () => {
     callback({ cancel: false, responseHeaders });
   });
 
-  // Forward game detection events to renderer
+  // Forward game detection events to renderer AND bridge to plugin event bus.
   // Guard with isDestroyed() — detector fires from timer callbacks
   // that may outlive the window.
   gameDetector.on('game:started', (runningGame) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:started', runningGame);
     }
+    eventBus.emit('game:started', {
+      gameId: runningGame.game.id,
+      gameTitle: runningGame.game.title,
+      pid: runningGame.pid ?? 0,
+      launchedByOtix: runningGame.launchedByOtix,
+    });
   });
   gameDetector.on('game:ended', (session) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:ended', session);
     }
-  });
-  gameDetector.on('game:fps', (snapshot) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('game:fps', snapshot);
-    }
-  });
-
-  // Forward PresentMon permission-needed events to renderer
-  onFpsPermissionNeeded((evt) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('fps:permission-needed', evt);
-    }
+    eventBus.emit('game:ended', {
+      gameId: session.gameId,
+      gameTitle: session.gameTitle,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      launchedByOtix: session.launchedByOtix,
+    });
   });
 
-  // ── FPS permission fix (one-click Performance Log Users group) ──
+  // FPS data now comes from the fps-capture plugin via eventBus (not GameDetector).
+  eventBus.on('fps:live', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:fps', payload);
+    }
+  }, 'main');
+  eventBus.on('fps:permission-needed', (payload) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('fps:permission-needed', payload);
+    }
+  }, 'main');
+
+  // ── FPS permission fix (delegates to fps-capture plugin) ──
   ipcMain.handle('fps:fix-permissions', async () => {
+    if (!pluginManager) return { success: false, error: 'Plugin system not ready' };
     try {
-      const psFile = path.join(app.getPath('userData'), 'fix-fps-permissions.ps1');
-      const psContent =
-        'try {\n' +
-        '  net localgroup "Performance Log Users" $env:USERNAME /add\n' +
-        '  Write-Output "OK"\n' +
-        '} catch { Write-Error $_.Exception.Message; exit 1 }\n';
-      fs.writeFileSync(psFile, psContent, 'utf-8');
-      const { execSync } = require('child_process');
-      execSync(
-        `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File \\"${psFile}\\"' -WindowStyle Hidden -Wait"`,
-        { timeout: 120000 },
-      );
-      fs.unlinkSync(psFile);
-      return { success: true, needRestart: true };
+      return await pluginManager.callPluginData('fps-capture', 'fixPermissions');
     } catch (err: any) {
-      console.error('[main] FPS permission fix failed:', err.message);
       return { success: false, error: err.message };
     }
   });
@@ -435,7 +429,7 @@ app.on('ready', async () => {
   registerGamesIPC();
   registerScannerIPC(gameDetector);
   registerInstallerIPC();
-  registerGameDetectorIPC(gameDetector);
+  // game-detector IPC registered after pluginManager init (needs plugin ref for session queries)
 
   // Seed detector with previously-scanned games so it can detect
   // games already running when the app loads.
@@ -483,6 +477,7 @@ app.on('ready', async () => {
     setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
+    registerGameDetectorIPC(gameDetector, pluginManager);
 
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
@@ -503,9 +498,24 @@ app.on('ready', async () => {
       console.log('[plugins] UserData extensions dir:', devExtensionsDir);
       console.log('[plugins] Exists:', require('fs').existsSync(devExtensionsDir));
     }
-    pluginManager.discoverPlugins().then(() => {
+    pluginManager.discoverPlugins().then(async () => {
       const all = pluginManager!.getAllPlugins();
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
+
+      // Auto-enable default plugins (always enabled, no user action needed)
+      const DEFAULT_PLUGINS = ['fps-capture'];
+      for (const id of DEFAULT_PLUGINS) {
+        const p = pluginManager!.getPlugin(id);
+        if (p && p.status !== 'enabled') {
+          try {
+            await pluginManager!.enable(id);
+            console.log(`[plugins] Auto-enabled default plugin: ${id}`);
+          } catch (err) {
+            console.error(`[plugins] Failed to auto-enable default plugin ${id}:`, err);
+          }
+        }
+      }
+
       return pluginManager!.loadEnabledPlugins();
     }).then(async () => {
       // Migrate existing scan paths to local-files plugin config (if plugin is discovered)

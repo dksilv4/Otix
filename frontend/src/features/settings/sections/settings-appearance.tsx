@@ -5,7 +5,7 @@ import { useLogoPreference, LOGO_VARIANTS, type LogoVariant } from '@/lib/provid
 import type { ThemeSetting } from '@/lib/providers/theme'
 import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
-import { Logo } from '@/old-features/dk-ui/atoms/logo'
+import { Logo } from '@/old-features/ui/atoms/logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 
 const ACCENTS = [

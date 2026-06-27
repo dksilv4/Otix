@@ -103,7 +103,9 @@ async def dismiss_mood_checkin(
             user_id=current_user.id,
             checkin_date=_today_utc(),
             status="dismissed",
-            mood=None, feeling=None, note=None,
+            mood=None,
+            feeling=None,
+            note=None,
         )
         db.add(checkin)
     else:

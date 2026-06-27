@@ -29,9 +29,7 @@ async def get_my_track_rating(
     try:
         track = await db.get(Track, track_id)
         if track is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Track not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Track not found")
 
         service = TrackRatingService(db)
         rating = await service.get_my_rating(current_user.id, track_id)
@@ -72,9 +70,7 @@ async def upsert_track_rating(
     try:
         track = await db.get(Track, track_id)
         if track is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Track not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Track not found")
 
         service = TrackRatingService(db)
         rating, avg, count = await service.upsert_rating(current_user.id, track_id, body.score)

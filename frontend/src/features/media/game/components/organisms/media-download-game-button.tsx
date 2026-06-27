@@ -1,4 +1,4 @@
-import { DkDialog } from '@/old-features/dk-ui/molecules/dialog'
+import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { IsoInstallerModal } from '@/old-features/game-scanner/organisms/iso-installer-modal'
 import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'

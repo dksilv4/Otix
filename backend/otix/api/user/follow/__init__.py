@@ -115,7 +115,9 @@ async def accept_follow_request(
     ip = request.client.host if request.client else None
     target = await _get_target_user(username, db)
     if target.id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only accept your own follow requests")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only accept your own follow requests"
+        )
 
     service = FollowService(db)
     try:
@@ -140,7 +142,9 @@ async def decline_follow_request(
     ip = request.client.host if request.client else None
     target = await _get_target_user(username, db)
     if target.id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only decline your own follow requests")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only decline your own follow requests"
+        )
 
     service = FollowService(db)
     try:

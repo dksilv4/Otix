@@ -26,6 +26,7 @@ async def plex_sync_now(
     body: PlexSyncRequest = Body(default_factory=PlexSyncRequest),
 ) -> PlexSyncTaskResponse:
     from otix.infrastructure.celery import app as celery_app
+
     task_id = str(uuid.uuid4())
     args = [task_id, current_user.id]
     if body.library_id:

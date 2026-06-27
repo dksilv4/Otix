@@ -34,13 +34,9 @@ async def get_workout(
         raise
 
     if not workout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
     if workout.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout")
 
     logger.info("workout fetched", workout_id=workout_id, user_id=current_user.id, ip=ip)
     return WorkoutOut.model_validate(workout)
@@ -66,13 +62,9 @@ async def update_workout(
     try:
         workout = await service.get_workout(workout_id)
         if not workout:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
         if workout.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout")
 
         updated = await service.update_workout(
             workout_id=workout_id,
@@ -115,13 +107,9 @@ async def delete_workout(
     try:
         workout = await service.get_workout(workout_id)
         if not workout:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
         if workout.user_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout")
 
         await service.delete_workout(workout_id)
     except HTTPException:

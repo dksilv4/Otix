@@ -1,5 +1,5 @@
 import {Link, useLocation} from "@tanstack/react-router"
-import {DkLogo} from "@dk-ui/atoms/logo"
+import {DkLogo} from "@ui/atoms/logo"
 import {usePageMeta} from "@/lib/providers/page-context"
 import {useDesktopPlatform} from "@/lib/desktop/platform"
 import {NavPill} from "../atoms/navigation-pill"

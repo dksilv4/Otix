@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Monitor, Power, MinusCircle, XCircle, ChevronUp, Eye, Loader2 } from 'lucide-react'
-import { DkSwitch } from '@/old-features/dk-ui/atoms/switch'
+import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import type { DesktopSettingsData } from '@/lib/desktop/api'
 

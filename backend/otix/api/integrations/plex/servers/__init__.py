@@ -14,6 +14,7 @@ from otix.services.plex_sync_service import discover_plex_libraries, discover_pl
 logger = structlog.get_logger()
 router = APIRouter()
 
+
 @router.get("/integrations/plex/servers", response_model=PlexDiscoveryResponse)
 async def plex_discover_servers(
     db: AsyncSession = Depends(get_db),

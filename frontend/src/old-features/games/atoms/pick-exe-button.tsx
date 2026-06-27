@@ -1,7 +1,7 @@
 /* ── PickExeButton — pick different executable via native dialog ── */
 
 import { getDesktopAPI } from '@/lib/desktop/api'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
 import {useLocalGame} from "@/old-features/game-scanner/game-queries.ts";
 

@@ -11,6 +11,7 @@ from otix.domain.user import User
 logger = structlog.get_logger()
 router = APIRouter()
 
+
 @router.post("/integrations/plex/watchlist/sync")
 async def plex_watchlist_sync(
     db: AsyncSession = Depends(get_db),
@@ -19,6 +20,7 @@ async def plex_watchlist_sync(
     if not current_user.plex_id:
         raise HTTPException(status_code=400, detail="No Plex account linked")
     from otix.services.plex_sync_service import sync_plex_watchlist
+
     try:
         result = await sync_plex_watchlist(db, current_user)
         await db.commit()

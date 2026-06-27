@@ -42,9 +42,7 @@ async def get_list(
         raise
 
     if lst is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     can_access = lst.is_public or (
         current_user is not None
@@ -53,9 +51,7 @@ async def get_list(
     if not can_access:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
-    like_count, is_liked = await service.get_like_status(
-        list_id, current_user.id if current_user else None
-    )
+    like_count, is_liked = await service.get_like_status(list_id, current_user.id if current_user else None)
 
     collabs = await service.get_collaborators(list_id)
     collaborator_outs = [
@@ -133,9 +129,7 @@ async def update_list(
         raise
 
     if lst is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     logger.info("list updated", list_id=list_id, user_id=current_user.id, ip=ip)
     return UserListOut(
@@ -174,8 +168,6 @@ async def delete_list(
         raise
 
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
 
     logger.info("list deleted", list_id=list_id, user_id=current_user.id, ip=ip)

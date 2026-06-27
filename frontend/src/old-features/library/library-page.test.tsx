@@ -133,7 +133,7 @@ vi.mock("@media/queries/media-queries", () => ({
   useRateTrack: vi.fn(() => ({ mutate: vi.fn() })),
 }))
 
-vi.mock("@/old-features/dk-ui/molecules/toast", () => ({
+vi.mock("@/old-features/ui/molecules/toast", () => ({
   useToast: vi.fn(() => ({ toast: vi.fn() })),
 }))
 

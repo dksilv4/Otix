@@ -195,7 +195,11 @@ async def get_daily_activity(
         )
     )
     mood_checkin = mood_result.scalar_one_or_none()
-    mood = DailyMoodItem(mood=mood_checkin.mood, feeling=mood_checkin.feeling, note=mood_checkin.note) if mood_checkin else None
+    mood = (
+        DailyMoodItem(mood=mood_checkin.mood, feeling=mood_checkin.feeling, note=mood_checkin.note)
+        if mood_checkin
+        else None
+    )
 
     logger.info(
         "daily activity fetched",

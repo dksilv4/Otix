@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Loader2, Gamepad2, ArrowLeft, CheckCircle2, AlertCircle, Star, Trash2, Search, ArrowUpDown, Clock } from 'lucide-react'
-import { DkImage } from '@dk-ui/atoms/image'
+import { DkImage } from '@ui/atoms/image'
 import { ProviderLogo } from '../components/atoms/provider-logo'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
 import { useModal } from '@/lib/modals'

@@ -81,7 +81,6 @@ async def list_edit_proposals(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media item not found")
 
-
     proposals = await service.get_proposals_for_media(media_id)
     vote_map = (
         await service.get_user_votes_for_proposals(current_user.id, [p.id for p in proposals]) if proposals else {}

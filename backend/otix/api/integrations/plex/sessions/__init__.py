@@ -12,6 +12,7 @@ from otix.services.plex_sync_service import get_plex_sessions
 
 router = APIRouter()
 
+
 @router.get("/integrations/plex/sessions", response_model=PlexSessionsResponse)
 async def plex_sessions(
     db: AsyncSession = Depends(get_db),

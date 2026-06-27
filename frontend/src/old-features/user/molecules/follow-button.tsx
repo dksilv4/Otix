@@ -1,6 +1,6 @@
 // TODO: Review this file
 import { UserPlus, UserCheck } from 'lucide-react'
-import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkButton } from '@/old-features/ui/atoms/button'
 import { useAuth } from '@/lib/providers/auth'
 import { useFollowUser, useUnfollowUser } from '../user-queries'
 import './follow-button.scss'

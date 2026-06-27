@@ -13,7 +13,7 @@ import {
 } from "../library-queries"
 import { useQueryClient } from "@tanstack/react-query"
 import { libraryKeys } from "../library-keys"
-import { DkDropdown } from "@/old-features/dk-ui/atoms/dropdown"
+import { DkDropdown } from "@/old-features/ui/atoms/dropdown"
 import PlexIcon from "@/assets/provider-logos/plex.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"

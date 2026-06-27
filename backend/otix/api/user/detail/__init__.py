@@ -201,7 +201,9 @@ async def get_user_reviews(
 
         service = ReviewService(db)
         items, _ = await service.get_reviews_by_user(
-            user.id, cursor=cursor, limit=limit,
+            user.id,
+            cursor=cursor,
+            limit=limit,
             current_user_id=current_user.id if current_user else None,
         )
     except HTTPException:

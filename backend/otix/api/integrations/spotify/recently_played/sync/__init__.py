@@ -58,15 +58,11 @@ async def spotify_sync_recently_played(
     )
     # TODO: Replace asyncio.create_task with a Celery task so the sync
     # survives worker restarts and can be tracked/ managed centrally.
-    asyncio.create_task(
-        _run_spotify_recently_played_background(task_id, current_user.id)
-    )
+    asyncio.create_task(_run_spotify_recently_played_background(task_id, current_user.id))
     return SpotifySyncResponse(task_id=task_id)
 
 
-async def _run_spotify_recently_played_background(
-    task_id: str, user_id: str
-) -> None:
+async def _run_spotify_recently_played_background(task_id: str, user_id: str) -> None:
     # TODO: Replace with Celery task — see POST handler
     try:
         async with async_session() as session:
@@ -90,9 +86,7 @@ async def _run_spotify_recently_played_background(
                 await store_result(task_id, {"error": "No valid token"})
                 return
 
-            await sync_spotify_recently_played(
-                session, user, token, task_id=task_id
-            )
+            await sync_spotify_recently_played(session, user, token, task_id=task_id)
             await session.commit()
     except Exception:
         logger.exception(

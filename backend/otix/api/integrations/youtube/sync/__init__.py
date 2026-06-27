@@ -31,6 +31,7 @@ async def _run_youtube_sync_background(task_id: str, user_id: str) -> None:
     from otix.infrastructure.database import async_session
     from otix.lib.youtube_progress import publish_progress, store_result
     from otix.services.youtube_sync_service import sync_youtube_watch_history
+
     try:
         async with async_session() as session:
             user = await session.get(User, user_id)

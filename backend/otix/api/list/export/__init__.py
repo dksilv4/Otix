@@ -45,13 +45,15 @@ async def export_list(
 
     items = []
     for item in lst.items:
-        items.append({
-            "rank": item.sort_order + 1,
-            "title": item.media_item.title,
-            "media_type": item.media_item.media_type,
-            "release_date": str(item.media_item.release_date) if item.media_item.release_date else "",
-            "avg_rating": item.media_item.avg_rating,
-        })
+        items.append(
+            {
+                "rank": item.sort_order + 1,
+                "title": item.media_item.title,
+                "media_type": item.media_item.media_type,
+                "release_date": str(item.media_item.release_date) if item.media_item.release_date else "",
+                "avg_rating": item.media_item.avg_rating,
+            }
+        )
 
     if format == "csv":
         output = io.StringIO()

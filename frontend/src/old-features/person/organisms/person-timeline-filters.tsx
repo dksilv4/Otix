@@ -1,6 +1,6 @@
 // TODO: Review this file
 import './person-timeline-filters.scss'
-import { DkDropdown } from '@/old-features/dk-ui/atoms/dropdown'
+import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
 
 const MEDIA_TYPE_OPTIONS = [
   { value: 'all', label: 'All Types' },

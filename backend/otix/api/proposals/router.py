@@ -19,6 +19,7 @@ router = APIRouter(prefix="/proposals", tags=["proposals"])
 
 # ── Schemas ──────────────────────────────────────────────────────────
 
+
 class ProposerUserOut(BaseModel):
     id: str
     username: str
@@ -83,6 +84,7 @@ class RejectRequest(BaseModel):
 
 # ── Endpoints ───────────────────────────────────────────────────────
 
+
 @router.post("", response_model=ProposalOut, status_code=201)
 async def create_proposal(
     body: ProposalCreate,
@@ -136,9 +138,7 @@ async def list_proposals(
     # Fetch user's votes if authenticated
     my_votes = {}
     if proposals:
-        my_votes = await svc.get_user_votes(
-            current_user.id, [p.id for p in proposals]
-        )
+        my_votes = await svc.get_user_votes(current_user.id, [p.id for p in proposals])
 
     # Enrich with target media info
     media_map = await _fetch_target_media(db, proposals)
@@ -257,6 +257,7 @@ async def remove_proposal_vote(
 
 # ── Serialization helper ────────────────────────────────────────────
 
+
 def _to_out(
     proposal: Proposal,
     my_vote: str | None = None,
@@ -289,17 +290,16 @@ def _to_out(
 
 # ── Media enrichment helper ─────────────────────────────────────────
 
+
 async def _fetch_target_media(
-    db: AsyncSession, proposals: list[Proposal],
+    db: AsyncSession,
+    proposals: list[Proposal],
 ) -> dict[str, dict]:
     """Bulk-fetch MediaItem titles + images for proposals targeting media_items.
 
     Returns {target_id: {title, poster_url, backdrop_url}}.
     """
-    media_ids = list({
-        p.target_id for p in proposals
-        if p.target_type == "media_item"
-    })
+    media_ids = list({p.target_id for p in proposals if p.target_type == "media_item"})
     if not media_ids:
         return {}
 
@@ -307,8 +307,9 @@ async def _fetch_target_media(
     from otix.domain.media import MediaItem
 
     rows = await db.execute(
-        select(MediaItem.id, MediaItem.title, MediaItem.poster_url, MediaItem.backdrop_url)
-        .where(MediaItem.id.in_(media_ids))
+        select(MediaItem.id, MediaItem.title, MediaItem.poster_url, MediaItem.backdrop_url).where(
+            MediaItem.id.in_(media_ids)
+        )
     )
     return {
         row.id: {

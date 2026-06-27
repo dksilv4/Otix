@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Search, X } from 'lucide-react'
-import { DkInput } from '@dk-ui/atoms/input'
+import { DkInput } from '@ui/atoms/input'
 import { cn } from '@/lib/utils'
 
 interface DkSearchFieldProps {

@@ -102,10 +102,7 @@ async def list_workouts(
                 updated_at=w.updated_at,
                 exercise_count=len(w.workout_exercises),
                 total_sets=total_sets,
-                exercises=[
-                    {"exercise_name": we.exercise.name, "sets": we.sets}
-                    for we in w.workout_exercises
-                ],
+                exercises=[{"exercise_name": we.exercise.name, "sets": we.sets} for we in w.workout_exercises],
             )
         )
 

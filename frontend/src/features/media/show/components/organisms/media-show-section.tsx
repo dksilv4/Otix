@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react"
 import { Image } from "@ui/atoms/image"
-import { DkDialog } from "@dk-ui/molecules/dialog"
+import { DkDialog } from "@ui/molecules/dialog"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
 import { useQuery } from '@tanstack/react-query'

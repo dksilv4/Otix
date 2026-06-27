@@ -33,7 +33,9 @@ _SIMILAR_TTL = 60
 async def get_similar_media(
     media_type: str,
     media_id: str,
-    filter_media_type: str | None = Query(None, alias="media_type", description="Filter similar items to a specific media type"),
+    filter_media_type: str | None = Query(
+        None, alias="media_type", description="Filter similar items to a specific media type"
+    ),
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),

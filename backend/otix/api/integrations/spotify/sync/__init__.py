@@ -51,9 +51,7 @@ async def spotify_sync_library(
         )
 
     task_id = generate_task_id()
-    logger.info(
-        "spotify sync task started", user_id=current_user.id, task_id=task_id
-    )
+    logger.info("spotify sync task started", user_id=current_user.id, task_id=task_id)
     # TODO: Replace asyncio.create_task with a Celery task so the sync
     # survives worker restarts and can be tracked/ managed centrally.
     asyncio.create_task(_run_spotify_sync_background(task_id, current_user.id))
@@ -70,9 +68,7 @@ async def _run_spotify_sync_background(task_id: str, user_id: str) -> None:
 
             token = await get_user_access_token(user, session=session)
             if token is None:
-                logger.warning(
-                    "spotify sync failed, no valid token", user_id=user_id
-                )
+                logger.warning("spotify sync failed, no valid token", user_id=user_id)
                 from otix.lib.spotify_progress import publish_progress, store_result
 
                 await publish_progress(
@@ -86,9 +82,7 @@ async def _run_spotify_sync_background(task_id: str, user_id: str) -> None:
             await sync_spotify_user_library(session, user, token, task_id=task_id)
             await session.commit()
     except Exception:
-        logger.exception(
-            "spotify sync background task failed", user_id=user_id, task_id=task_id
-        )
+        logger.exception("spotify sync background task failed", user_id=user_id, task_id=task_id)
     finally:
         await release_sync_lock(user_id)
 

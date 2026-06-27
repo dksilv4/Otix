@@ -337,7 +337,7 @@ async function executeMethod(
     case 'host.emit': {
       const [event, data] = args as [string, unknown]
       // Only allow documented plugin-emitted events
-      const ALLOWED_EVENTS = new Set(['scan:progress'])
+      const ALLOWED_EVENTS = new Set(['scan:progress', 'fps:live', 'fps:stats', 'fps:permission-needed'])
       if (!ALLOWED_EVENTS.has(event)) {
         throw new Error(`Event "${event}" is not in the allowed list for host.emit`)
       }

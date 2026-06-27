@@ -24,6 +24,7 @@ router = APIRouter()
 
 # ── Schemas (kept for backward compatibility) ─────────────────────────
 
+
 class ProposeMatchRequest(BaseModel):
     query_id: str  # "epic:Jaguar"
     media_item_id: str
@@ -63,6 +64,7 @@ class ProposalListOut(BaseModel):
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+
 def _payload_to_match_out(p: Proposal) -> ProposalOut:
     """Map a unified Proposal with type='match' to the old ProposalOut shape."""
     pl = p.payload
@@ -86,6 +88,7 @@ def _payload_to_match_out(p: Proposal) -> ProposalOut:
 
 
 # ── Endpoints (delegate to unified service) ────────────────────────────
+
 
 @router.post("/match/propose", response_model=dict)
 async def propose_match(

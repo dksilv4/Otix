@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
 import { Move, Check, X } from 'lucide-react'
-import { DkButton } from '@/old-features/dk-ui/atoms/button'
+import { DkButton } from '@/old-features/ui/atoms/button'
 import './position-modal.scss'
 
 interface PositionModalProps {

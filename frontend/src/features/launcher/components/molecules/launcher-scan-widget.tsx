@@ -5,7 +5,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { fetchIsoPaths } from '@/features/launcher/storage'
-import { useToast } from '@/old-features/dk-ui/molecules/toast'
+import { useToast } from '@/old-features/ui/molecules/toast'
 
 export function LauncherScanWidget({ id }: { id?: string }) {
   const navigate = useNavigate()

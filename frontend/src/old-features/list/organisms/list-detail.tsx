@@ -20,7 +20,7 @@ import { apiClient } from "@/lib/api/client"
 import { MediaCard } from "@ui/molecules/media-card"
 import { MediaGrid } from "@ui/molecules/media-grid"
 import { SearchField } from "@ui/molecules/search-field"
-import { DkTabs, DkTabList, DkTab } from "@/old-features/dk-ui/molecules/tabs"
+import { DkTabs, DkTabList, DkTab } from "@/old-features/ui/molecules/tabs"
 import { useAuth } from "@/lib/providers/auth"
 import { type MediaListResponse } from "@media/queries/media-queries"
 import {

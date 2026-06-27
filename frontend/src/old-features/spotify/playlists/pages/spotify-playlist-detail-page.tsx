@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
 import { useSpotifyPlaylist, useSubscribePlaylist, useUnsubscribePlaylist, useSyncPlaylist } from "../api/spotify-playlists-api"
 import { PlaylistDetail } from "../organisms/playlist-detail"
-import { DkInfinitySpinner } from '@dk-ui/atoms/infinity-spinner'
+import { DkInfinitySpinner } from '@ui/atoms/infinity-spinner'
 
 export function SpotifyPlaylistDetailPage() {
   const { id } = useParams({ from: "/library/spotify/playlists/$id" })

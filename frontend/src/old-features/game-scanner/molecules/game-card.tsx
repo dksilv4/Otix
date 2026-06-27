@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Play, Gamepad2, CheckCircle2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { DkBadge } from "@/old-features/dk-ui/atoms/badge";
+import { DkBadge } from "@/old-features/ui/atoms/badge";
 import type { LocalGame } from "../types";
 import { hasDesktopAPI } from "../storage";
 

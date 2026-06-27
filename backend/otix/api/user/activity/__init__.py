@@ -31,13 +31,15 @@ async def _fetch_user_activity_events(
     limit: int = 20,
 ) -> list[dict]:
     """Fetch activity events for a given user. Shared by activity and friend-feed endpoints."""
+
     async def _fetch_reviews():
         async with async_session() as s:
             result = await s.execute(
                 select(Review, MediaItem)
                 .join(MediaItem, Review.media_item_id == MediaItem.id)
                 .where(Review.user_id == user_id, Review.content.isnot(None), Review.is_private == False)  # noqa: E712
-                .order_by(Review.created_at.desc()).limit(limit)
+                .order_by(Review.created_at.desc())
+                .limit(limit)
             )
             return result.all()
 
@@ -47,7 +49,8 @@ async def _fetch_user_activity_events(
                 select(UserMediaInteraction, MediaItem)
                 .join(MediaItem, UserMediaInteraction.media_item_id == MediaItem.id)
                 .where(UserMediaInteraction.user_id == user_id)
-                .order_by(UserMediaInteraction.created_at.desc()).limit(limit)
+                .order_by(UserMediaInteraction.created_at.desc())
+                .limit(limit)
             )
             return result.all()
 
@@ -59,44 +62,75 @@ async def _fetch_user_activity_events(
                 .join(Season, Season.id == Episode.season_id)
                 .join(MediaItem, MediaItem.id == Season.show_id)
                 .where(UserEpisodeInteraction.user_id == user_id)
-                .order_by(UserEpisodeInteraction.created_at.desc()).limit(limit)
+                .order_by(UserEpisodeInteraction.created_at.desc())
+                .limit(limit)
             )
             return result.all()
 
     review_rows, interaction_rows, episode_rows = await asyncio.gather(
-        _fetch_reviews(), _fetch_interactions(), _fetch_episode_interactions(),
+        _fetch_reviews(),
+        _fetch_interactions(),
+        _fetch_episode_interactions(),
     )
 
     events: list[dict] = []
     for review, media in review_rows:
-        events.append({
-            "type": "review",
-            "timestamp": review.created_at.isoformat(),
-            "summary": f"Reviewed {media.title}",
-            "score": review.score,
-            "content": review.content[:200] if review.content else None,
-            "media_item": {"id": media.id, "title": media.title, "media_type": media.media_type, "poster_url": media.poster_url},
-        })
+        events.append(
+            {
+                "type": "review",
+                "timestamp": review.created_at.isoformat(),
+                "summary": f"Reviewed {media.title}",
+                "score": review.score,
+                "content": review.content[:200] if review.content else None,
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     for interaction, media in interaction_rows:
         action = interaction.interaction_type
-        past_tense = {"like": "Liked", "watched": "Watched", "played": "Played", "watchlist": "Added to watchlist",
-                       "started": "Started", "completed": "Completed", "dropped": "Dropped"}.get(action, action.capitalize())
-        events.append({
-            "type": "interaction",
-            "timestamp": interaction.created_at.isoformat(),
-            "summary": f"{past_tense} {media.title}",
-            "interaction_type": action,
-            "media_item": {"id": media.id, "title": media.title, "media_type": media.media_type, "poster_url": media.poster_url},
-        })
+        past_tense = {
+            "like": "Liked",
+            "watched": "Watched",
+            "played": "Played",
+            "watchlist": "Added to watchlist",
+            "started": "Started",
+            "completed": "Completed",
+            "dropped": "Dropped",
+        }.get(action, action.capitalize())
+        events.append(
+            {
+                "type": "interaction",
+                "timestamp": interaction.created_at.isoformat(),
+                "summary": f"{past_tense} {media.title}",
+                "interaction_type": action,
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     for ei, episode, season, media in episode_rows:
-        events.append({
-            "type": "episode_watched",
-            "timestamp": ei.created_at.isoformat(),
-            "summary": f"Watched S{season.season_number}E{episode.episode_number} of {media.title}",
-            "media_item": {"id": media.id, "title": media.title, "media_type": media.media_type, "poster_url": media.poster_url},
-        })
+        events.append(
+            {
+                "type": "episode_watched",
+                "timestamp": ei.created_at.isoformat(),
+                "summary": f"Watched S{season.season_number}E{episode.episode_number} of {media.title}",
+                "media_item": {
+                    "id": media.id,
+                    "title": media.title,
+                    "media_type": media.media_type,
+                    "poster_url": media.poster_url,
+                },
+            }
+        )
 
     events.sort(key=lambda e: e["timestamp"], reverse=True)
     return events[:limit]
@@ -143,7 +177,8 @@ async def get_user_mood_timeline(
         checkins_result = await db.scalars(
             select(UserMoodCheckIn)
             .where(UserMoodCheckIn.user_id == user.id, UserMoodCheckIn.status == "submitted")
-            .order_by(UserMoodCheckIn.checkin_date.desc()).limit(30)
+            .order_by(UserMoodCheckIn.checkin_date.desc())
+            .limit(30)
         )
         checkins = list(checkins_result)
     except Exception:

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
-import { Carousel } from '@/old-features/dk-ui/molecules/carousel'
+import { Carousel } from '@/old-features/ui/molecules/carousel'
 
 interface SteamFreeGame {
   id: number

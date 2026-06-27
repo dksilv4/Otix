@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { DkButton } from "@/old-features/dk-ui/atoms/button";
+import { DkButton } from "@/old-features/ui/atoms/button";
 import { hasDesktopAPI, getScanPaths, markGameInstalled } from "../storage";
 import { useInstallProgress } from "../install-store";
 import type {

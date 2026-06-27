@@ -137,7 +137,18 @@
       "Bash(Select-String \"backfill|bf\\\\.py|epic_matches|run_seed|test_search|gitignore\")",
       "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 2)",
       "Bash(dir C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\frontend\\\\src\\\\lib\\\\api *)",
-      "Bash(poetry run *)"
+      "Bash(poetry run *)",
+      "Bash(ruff check *)",
+      "Bash(bash \"C:/Users/diogo/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief\" \"docs/superpowers/plans/2026-06-27-backend-production-readiness.md\" 3)",
+      "Bash(PYTHONPATH=. python -c ' *)",
+      "Bash(which python3 *)",
+      "Bash(.venv/Scripts/python.exe -c \"from otix.api.router import api_router; print\\('Routes registered:', len\\(api_router.routes\\)\\)\")",
+      "PowerShell($dir = \"C:\\\\Users\\\\diogo\\\\OneDrive\\\\Documents\\\\GitHub\\\\Otix\\\\frontend\\\\src\\\\features\\\\launcher\\\\hooks\\\\__tests__\"; if \\(-not \\(Test-Path $dir\\)\\) { New-Item -ItemType Directory -Path $dir -Force }; Write-Output \"Directory ready: $dir\")",
+      "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/ --select F401,F821,B904)",
+      "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/ --fix --select F401,F821,B904)",
+      "Bash(.venv/Scripts/python.exe -c \"from otix.api.router import api_router; print\\('OK -', len\\(api_router.routes\\), 'routes'\\)\")",
+      "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/)",
+      "Bash(.venv/Scripts/python.exe -m ruff check otix/api/auth/ --fix)"
     ]
   }
 }

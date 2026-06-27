@@ -47,10 +47,7 @@ async def get_today_workout(
             updated_at=w.updated_at,
             exercise_count=len(w.workout_exercises),
             total_sets=total_sets,
-            exercises=[
-                {"exercise_name": we.exercise.name, "sets": we.sets}
-                for we in w.workout_exercises
-            ],
+            exercises=[{"exercise_name": we.exercise.name, "sets": we.sets} for we in w.workout_exercises],
         )
 
     logger.info("today workout status fetched", user_id=current_user.id, ip=ip)
@@ -98,10 +95,7 @@ async def check_in_today(
         updated_at=w.updated_at,
         exercise_count=len(w.workout_exercises),
         total_sets=total_sets,
-        exercises=[
-            {"exercise_name": we.exercise.name, "sets": we.sets}
-            for we in w.workout_exercises
-        ],
+        exercises=[{"exercise_name": we.exercise.name, "sets": we.sets} for we in w.workout_exercises],
     )
 
     logger.info("today check-in created", workout_id=workout.id, user_id=current_user.id, ip=ip)

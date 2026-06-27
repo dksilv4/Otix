@@ -852,6 +852,7 @@ async def match_game(
     """
     redis = await _get_redis()
     from otix.providers.steamgrid.client import SteamGridDBProvider
+
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     return await matcher.match_single(body)
 
@@ -868,6 +869,7 @@ async def match_games_batch(
     """
     redis = await _get_redis()
     from otix.providers.steamgrid.client import SteamGridDBProvider
+
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     matches = await matcher.match_batch(body.games)
     return GameMatchBatchResponse(matches=matches)
@@ -890,6 +892,7 @@ async def match_games_stream(
     """
     redis = await _get_redis()
     from otix.providers.steamgrid.client import SteamGridDBProvider
+
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     return StreamingResponse(
         matcher.match_batch_stream(body.games),
