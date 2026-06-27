@@ -13,8 +13,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DkButton } from "@/old-features/ui/atoms/button";
-import { hasDesktopAPI, getScanPaths, markGameInstalled } from "@/features/launcher/storage";
-import { useInstallProgress } from "@/features/launcher/install-store";
+import { hasDesktopAPI, getScanPaths, markGameInstalled } from "@/features/launcher/data/storage";
+import { useInstallProgress } from "@/features/launcher/data/install-store";
 import type {
   LocalGame,
   InstallResult,

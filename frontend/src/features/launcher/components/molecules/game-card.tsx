@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { DkBadge } from "@/old-features/ui/atoms/badge";
 import type { LocalGame } from "@/features/launcher/types";
-import { hasDesktopAPI } from "@/features/launcher/storage";
+import { hasDesktopAPI } from "@/features/launcher/data/storage";
 
 const PLATFORM_BADGES: Record<
   string,

@@ -2,8 +2,8 @@
 
 import {useState} from 'react'
 import {MediaCard} from '@/old-features/ui/molecules/media-card'
-import {usePopularGames} from '@/features/launcher/queries'
-import {useLocalGames} from '@/features/launcher/game-queries'
+import {usePopularGames} from '@/features/launcher/data/queries'
+import {useLocalGames} from '@/features/launcher/data/game-queries'
 
 type ShelfTab = 'my-games' | 'popular'
 

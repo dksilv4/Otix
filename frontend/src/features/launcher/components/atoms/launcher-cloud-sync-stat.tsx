@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { Cloud, RefreshCw, AlertCircle } from 'lucide-react'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-import { useSaveLocations } from '@/features/launcher/queries'
+import { useSaveLocations } from '@/features/launcher/data/queries'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/lib/config'
 

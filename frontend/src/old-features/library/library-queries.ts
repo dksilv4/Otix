@@ -3,7 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { apiClient } from "@/lib/api/client"
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from "@/lib/config"
 import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/api/sse-client"
-import { getScannedGames, setScannedGames } from "@/features/launcher/storage"
+import { getScannedGames, setScannedGames } from "@/features/launcher/data/storage"
 import { libraryKeys } from "./library-keys"
 
 export interface LibraryResponse {
