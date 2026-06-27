@@ -1,4 +1,4 @@
-import { useLocalGame } from '@/old-features/game-scanner/game-queries'
+import { useLocalGame } from '@/features/launcher/game-queries'
 import { useGameDetail } from '@/features/launcher/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import type { LocalGame } from '@/features/launcher/types'

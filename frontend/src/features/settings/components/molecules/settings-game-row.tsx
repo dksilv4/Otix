@@ -1,5 +1,5 @@
 import { Gamepad2, CheckCircle2, Star, Users } from 'lucide-react'
-import type { LocalGame } from '@/old-features/game-scanner/types'
+import type { LocalGame } from '@/features/launcher/types'
 
 interface GameRowProps {
   game: LocalGame

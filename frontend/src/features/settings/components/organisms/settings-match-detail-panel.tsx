@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle2, X, Gamepad2, Folder, Loader2, Check, Star, Import, ExternalLink } from 'lucide-react'
-import type { LocalGame } from '@/old-features/game-scanner/types'
+import type { LocalGame } from '@/features/launcher/types'
 import { ManualSearch } from './settings-manual-search'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { confirmMatch, rejectMatch, unlinkMatch } from '@/features/plugins/utils/matching'

@@ -3,7 +3,7 @@
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@/old-features/ui/molecules/toast'
 import {useParams} from "@tanstack/react-router";
-import {useLocalGame} from "@/old-features/game-scanner/game-queries.ts";
+import {useLocalGame} from "@/features/launcher/game-queries.ts";
 
 
 

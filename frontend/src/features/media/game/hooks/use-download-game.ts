@@ -5,13 +5,13 @@ import { useAuth } from '@/old-features/auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
 import type { HypervisorConfirmResponse, Download, DownloadConfig } from '@/features/downloads/types'
 import { useFeature } from '@/features/_config'
-import { useLocalGames } from '@/old-features/game-scanner/game-queries'
-import { setLocalGamesMapEntry, getLocalGamesMap } from '@/old-features/game-scanner/storage'
-import { useInstallProgress } from '@/old-features/game-scanner/install-store'
-import type { InstallStoreEntry } from '@/old-features/game-scanner/install-store'
+import { useLocalGames } from '@/features/launcher/game-queries'
+import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/launcher/storage'
+import { useInstallProgress } from '@/features/launcher/install-store'
+import type { InstallStoreEntry } from '@/features/launcher/install-store'
 import { isTitleMatch, mediaQueries } from '@media'
 
-type LocalGame = import('@/old-features/game-scanner/types').LocalGame
+type LocalGame = import('@/features/launcher/types').LocalGame
 
 export interface DownloadGameState {
   hidden: boolean
