@@ -18,7 +18,11 @@ export function PlayGameButton({ game }: Props) {
       api.launchGame(game).catch(console.error)
       toast({ title: 'Launching Game', description: `Running ${game.title}...`, variant: 'success' })
     } else {
-      toast({ title: 'Launch Simulated', variant: 'info' })
+      toast({
+        title: 'Desktop App Required',
+        description: 'Download the Otix desktop app to launch games natively with FPS overlay, cloud sync, and more.',
+        variant: 'default',
+      })
     }
   }
 

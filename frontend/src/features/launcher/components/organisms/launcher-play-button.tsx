@@ -66,7 +66,7 @@ export function LauncherPlayButton({ onOpenInstaller }: LauncherPlayButtonProps)
 
   // â”€â”€ Unmatched: match game + reject suggestion â”€â”€
   return (
-    <div className="flex gap-1.5">
+    <div id="launcher-play-button" className="flex gap-1.5">
       <MatchGameButton game={g} />
       {g.matchSuggestion && (
         <RejectSuggestionButton

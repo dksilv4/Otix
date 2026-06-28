@@ -33,8 +33,7 @@ export function PeopleTimeline({ credits, mediaTypeFilter, roleFilter }: PeopleT
   }
 
   return (
-    <div className="relative">
-      {/* Main vertical timeline line */}
+    <div id="people-timeline" className="relative">
       <div className="absolute left-[23px] top-4 bottom-4 w-px bg-border" aria-hidden="true" />
 
       <div className="space-y-10">

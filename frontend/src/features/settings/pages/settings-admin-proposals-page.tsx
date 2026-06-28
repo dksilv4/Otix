@@ -60,7 +60,7 @@ export function SettingsAdminProposalsPage() {
   return (
     <div className="p-6 min-h-full">
       <div className="flex items-center gap-3 mb-6">
-        <a href="/settings/matching" className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
+        <a href="/settings/scanners" className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </a>
         <h2 className="text-lg font-semibold text-white">Match Proposals</h2>

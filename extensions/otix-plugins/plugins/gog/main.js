@@ -260,10 +260,10 @@ module.exports = {
 
   test: async (ctx, configDraft) => {
     const token = configDraft?.access_token || ctx.config.get('access_token');
-    if (!token) return { success: false, message: 'Not authenticated — log in with GOG first' };
+    if (!token) return { passed: false, failures: ['Not authenticated — log in with GOG first'] };
     const res = await apiGet(API_HOST, '/userData.json', token);
-    if (res.status === 200) return { success: true, message: `Connected as ${res.data?.username || 'unknown'}` };
-    return { success: false, message: `API returned ${res.status}` };
+    if (res.status === 200) return { passed: true };
+    return { passed: false, failures: [`API returned ${res.status}`] };
   },
 
   slotRender: async (ctx, location) => ({
@@ -294,10 +294,10 @@ module.exports = {
 
   test: async (ctx, configDraft) => {
     const token = configDraft?.access_token || ctx.config.get('access_token');
-    if (!token) return { success: false, message: 'Not authenticated — log in with GOG first' };
+    if (!token) return { passed: false, failures: ['Not authenticated — log in with GOG first'] };
     const res = await apiGet(API_HOST, '/userData.json', token);
-    if (res.status === 200) return { success: true, message: `Connected as ${res.data?.username || 'unknown'}` };
-    return { success: false, message: `API returned ${res.status}` };
+    if (res.status === 200) return { passed: true };
+    return { passed: false, failures: [`API returned ${res.status}`] };
   },
 
   slotRender: async (ctx, location) => ({

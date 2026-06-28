@@ -11,11 +11,9 @@ const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-pa
 const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
 const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
 const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
-const SettingsLibraryMatchingPage = lazy(() => import('./pages/settings-library-matching-page').then(m => ({ default: m.SettingsLibraryMatchingPage })))
 const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
 const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
-const SettingsMatchingPage = lazy(() => import('./pages/settings-matching-page').then(m => ({ default: m.SettingsMatchingPage })))
 const SettingsScannedGamesPage = lazy(() => import('./pages/settings-scanned-games-page').then(m => ({ default: m.SettingsScannedGamesPage })))
 const ProposalsPage = lazy(() => import('@/features/proposals/pages/proposals-page').then(m => ({ default: m.ProposalsPage })))
 
@@ -64,16 +62,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsIntegrationsPage,
   })
 
-  const settingsMatchingRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/matching',
-    component: SettingsMatchingPage,
-  })
-
   const settingsScannedGamesRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/matching/games',
-    validateSearch: (search: Record<string, unknown>) => ({ source: (search.source as string) || '' }),
     component: SettingsScannedGamesPage,
   })
 
@@ -94,12 +85,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/library',
     component: SettingsLibraryPage,
-  })
-
-  const settingsLibraryMatchingRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/library/matching',
-    component: SettingsLibraryMatchingPage,
   })
 
   const settingsDownloadsRoute = createRoute({
@@ -136,12 +121,10 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsAppearanceRoute,
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
-    settingsMatchingRoute,
     settingsScannedGamesRoute,
     settingsAdminProposalsRedirect,
     settingsProposalsRoute,
     settingsLibraryRoute,
-    settingsLibraryMatchingRoute,
     settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,

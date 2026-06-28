@@ -47,6 +47,7 @@ export interface Game {
   avgRating?: number | null
   ratingCount?: number
   mediaId?: string
+  screenshots?: { url: string; width?: number; height?: number; provider?: string }[]
 }
 
 export interface LocalGame {

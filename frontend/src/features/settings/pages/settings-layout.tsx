@@ -34,7 +34,7 @@ export function SettingsLayout() {
     )
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
+    <div id="settings-layout" className="relative h-screen w-full overflow-hidden">
       <Helmet>
         <title>Settings - Otix</title>
       </Helmet>
@@ -132,13 +132,10 @@ export function SettingsLayout() {
       )}
 
       {/* ===== Desktop layout ===== */}
-      <div className="flex flex-col sm:flex-row gap-6 px-6 h-full">
+      <div className="flex flex-col sm:flex-row gap-6 px-6  h-full">
         {/* Sidebar */}
-        <aside className="hidden sm:flex flex-col w-56 shrink-0 h-full">
-          <div
-            className="glass-card flex flex-col h-full pt-8 pb-5 px-5"
-            style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}
-          >
+        <aside id="settings-sidebar" className="hidden sm:flex flex-col w-56 shrink-0 h-full pt-26 ">
+          <div className="glass-card flex flex-col h-full pt-8 pb-5 px-5 " style={{ backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.3)' }}>
             <h1 className="text-lg font-bold mb-5">Settings</h1>
             <nav ref={navRef} className="flex flex-col gap-1 flex-1 overflow-y-auto">
               {/* General — always visible */}
@@ -203,7 +200,7 @@ export function SettingsLayout() {
         </aside>
 
         {/* Mobile nav trigger + Content */}
-        <div className="flex flex-col gap-3 flex-1 min-w-0 min-h-0">
+        <div className="flex flex-col gap-3 flex-1 min-w-0 min-h-0 pt-12">
           <button
             onClick={() => setMobileOpen(true)}
             className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start"
@@ -212,7 +209,7 @@ export function SettingsLayout() {
             {NAV_ITEMS.find(i => i.id === activeSection)?.label || 'Settings'}
           </button>
 
-          <main className="flex-1 min-w-0 overflow-y-auto scroll-smooth">
+          <main id="settings-content" className="flex-1 min-w-0 overflow-y-auto scroll-smooth">
             <div key={location.pathname} className="min-h-full p-6 sm:p-8" style={{ animation: 'settings-enter 0.2s ease-out' }}>
               <Outlet />
             </div>

@@ -39,13 +39,11 @@ class MatchProposalHandler:
                 raise ValueError(f"Match proposal payload missing required field: {field!r}")
 
     def auto_approve(self, proposal: Proposal, proposer: User | None) -> bool:
-        """Auto-approve high-confidence matches.
+        """Manual review required for all match proposals.
 
-        Same thresholds as the existing GameMatcher._create_match_proposal:
-        - confidence >= 0.95
+        No auto-approval — every match must be reviewed by a human.
         """
-        confidence = proposal.payload.get("otix_confidence", 0)
-        return confidence >= 0.95
+        return False
 
     async def on_approve(
         self, proposal: Proposal, db: AsyncSession

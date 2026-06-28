@@ -32,7 +32,7 @@ export function GameSection({ className }: GameSectionProps = {}) {
   if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !hasTimeToBeat && !game.website) return null
 
   return (
-    <section className={`space-y-6 ${className || ''}`}>
+    <section id="media-game-section" className={`space-y-6 ${className || ''}`}>
       {/* Platforms */}
       {hasPlatforms && (
         <div className="space-y-2">

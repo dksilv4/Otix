@@ -3,7 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { apiClient } from "@/lib/api/client"
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from "@/lib/config"
 import { connectTaskSseStream, createSseStream, type SseEvent } from "@/lib/api/sse-client"
-import { getScannedGames, setScannedGames } from "@/features/launcher/data/storage"
+import { getLocalGamesCache, setScannedGames } from "@/features/launcher/data/storage"
 import { libraryKeys } from "./library-keys"
 
 export interface LibraryResponse {
@@ -427,7 +427,7 @@ export function useSteamWishlistScan() {
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function cleanupStaleMediaRef(mediaId: string) {
-  const games = getScannedGames()
+  const games = getLocalGamesCache()
   const updated = games.map((g) => {
     if (g.data?.id === mediaId || g.matchSuggestion?.id === mediaId) {
       const { otixMediaId, otixMediaTitle, otixMediaSlug, otixPosterUrl, otixTextlessPosterUrl, otixLogoUrl, otixMatchSuggestion, otixConfidence, otixClaimed, otixMatchVerified, ...rest } = g

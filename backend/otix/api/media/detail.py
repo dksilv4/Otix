@@ -161,6 +161,15 @@ async def get_media_item(
 
     result = MediaItemDetail.model_validate(item)
 
+    # Populate screenshots from assets (filter screenshot type, sort by score desc)
+    from otix.schemas.admin_edit import MediaAssetOut
+
+    result.screenshots = sorted(
+        (MediaAssetOut.model_validate(a) for a in item.assets if a.asset_type == 'screenshot'),
+        key=lambda s: s.score or 0,
+        reverse=True,
+    )
+
     # Compute the blended overall rating if not yet cached on the model
     if result.overall_rating is None:
         overall_rating, overall_source = await compute_overall_rating(db, media_id)

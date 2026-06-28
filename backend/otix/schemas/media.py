@@ -7,6 +7,7 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from otix.schemas.admin_edit import MediaAssetOut
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.user import UserSearchResult
@@ -325,33 +326,6 @@ class SteamWishlistListResponse(PaginatedResponse):
     total: int | None = None
 
 
-# ── Local game matching ───────────────────────────────────────────
-
-
-class MatchGameEntry(BaseModel):
-    """A single game from the desktop scanner, with optional context for matching."""
-
-    title: str
-    platform: str | None = None
-    steam_app_id: int | None = None
-
-
-class LocalGameMatchRequest(BaseModel):
-    games: list[MatchGameEntry]
-
-
-class LocalGameMatch(BaseModel):
-    query_title: str
-    matched_media: MediaItemSummary | None = None
-    confidence: float = 0.0  # trigram similarity 0–1
-
-    model_config = {"from_attributes": True}
-
-
-class LocalGameMatchResponse(BaseModel):
-    matches: list[LocalGameMatch]
-
-
 # ── Game matching (internal API / batch) ────────────────────────
 
 
@@ -459,6 +433,7 @@ class StreamMatchEvent(BaseModel):
     auto_match: bool = False
     match: GameMatchCandidate | None = None
     candidates: list[GameMatchCandidate] | None = None
+    hydrated: dict | None = None  # full MediaItem detail when auto-matched + hydrate=true
     proposal_status: str | None = None  # "approved" | "pending" — set when auto-matched
     error: str | None = None
 
@@ -476,27 +451,6 @@ class StreamCompleteEvent(BaseModel):
 # ── Backward-compat alias (old code expects GameMatchResult) ─────
 # Remove once all consumers updated to GameMatchResponse.
 GameMatchResult = GameMatchResponse
-
-
-# ── Seed game titles from desktop scan ──────────────────────────
-
-
-class SeedGameEntry(BaseModel):
-    """A single game from the desktop scanner, with optional context for IGDB seeding."""
-
-    title: str
-    platform: str | None = None
-    steam_app_id: int | None = None
-
-
-class SeedFromTitlesRequest(BaseModel):
-    games: list[SeedGameEntry]
-
-
-class SeedFromTitlesResponse(BaseModel):
-    accepted: bool = True
-    total_titles: int = 0
-    task_id: str | None = None
 
 
 # ── Media detail (full) ──────────────────────────────────────────
@@ -756,6 +710,7 @@ class MediaItemDetail(BaseModel):
     platforms: list[MediaPlatformOut] = []
     game_modes: list[MediaGameModeOut] = []
     watch_providers: list[MediaWatchProviderOut] = []
+    screenshots: list[MediaAssetOut] = []
 
     movie: MovieDetail | None = None
     show: ShowDetail | None = None

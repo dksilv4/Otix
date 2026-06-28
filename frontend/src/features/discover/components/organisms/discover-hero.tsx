@@ -149,11 +149,13 @@ export function DiscoverHero({ className }: { className?: string }) {
 
   return (
     <div
+      id="discover-hero"
       ref={containerRef}
       className={`relative w-full flex flex-col items-center justify-center pb-12 ${className || ''}`}
     >
       {/* ═══ Slide stack ═══ */}
       <div
+        id="discover-hero-slides"
         className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8 mt-16 sm:mt-20 md:mt-24"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -325,6 +327,7 @@ export function DiscoverHero({ className }: { className?: string }) {
 
       {/* ═══ Bottom navigation bar ═══ */}
       <div
+        id="discover-hero-controls"
         className={
           'relative z-10 mt-4 ' +
           'flex items-center gap-4 px-5 py-2.5 ' +

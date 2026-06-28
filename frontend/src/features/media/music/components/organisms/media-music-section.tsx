@@ -137,7 +137,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
 
 
  return (
- <section className={cn('space-y-8', className)}>
+ <section id="media-music-section" className={cn('space-y-8', className)}>
  <div className="flex items-center gap-2">
  <Music2 className="h-5 w-5 text-amber-500" aria-hidden />
  <h2 className="text-lg font-semibold">Album</h2>

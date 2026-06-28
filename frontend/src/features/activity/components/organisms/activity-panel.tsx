@@ -73,6 +73,7 @@ export function ActivityModule({ open, onClose }: ActivityModuleProps) {
     <AnimatePresence>
       {open && (
         <motion.div
+          id="activity-panel"
           ref={panelRef}
           key="activity-panel"
           initial={{ x: PANEL_WIDTH + PANEL_MARGIN, opacity: 0 }}

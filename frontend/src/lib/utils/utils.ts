@@ -43,15 +43,15 @@ export function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-/** Upscale TMDB/IGDB image URLs for hero backdrop use. */
+/** Upscale TMDB/IGDB/Steam image URLs for hero backdrop use. */
 export function heroImage(url: string): string {
   return url
-    .replace(/\/w185\//, '/w1280/')
-    .replace(/\/w342\//, '/w1280/')
-    .replace(/\/w500\//, '/w1280/')
-    .replace(/\/w780\//, '/w1280/')
-    .replace(/t_cover_big/, 't_1080p')
-    .replace(/t_screenshot_big/, 't_1080p')
+    // TMDB — upscale any size to w1280 (skip /original/ which is already max)
+    .replace(/\/w(92|154|185|342|500|780)\//, '/w1280/')
+    // IGDB — upscale to t_1080p (highest non-original tier)
+    .replace(/t_(cover_small|cover_big|screenshot_med|screenshot_big|screenshot_huge|thumb|720p)/g, 't_1080p')
+    // Steam — replace small/medium headers with full-quality
+    .replace(/\/header\.jpg$/, '/library_600x900.jpg')
 }
 
 /** Human-readable OS name. Used in >1 place, so lives in utils. */

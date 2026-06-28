@@ -30,7 +30,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div id="auth-forgot-password-page" className="relative flex min-h-screen items-center justify-center p-4">
       <AuthBackground />
       <AuthCard>
         <div className="mb-6 flex justify-center">

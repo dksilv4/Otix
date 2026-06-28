@@ -1,10 +1,10 @@
-import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle, Shuffle } from 'lucide-react'
+import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
 export type NavGroup = 'general' | 'desktop'
 
-export const DESKTOP_SECTIONS = new Set(['library', 'downloads', 'desktop', 'plugins', 'matching'])
+export const DESKTOP_SECTIONS = new Set(['library', 'downloads', 'desktop', 'plugins'])
 
 export interface NavItem {
   id: string
@@ -21,7 +21,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell, desktop: false, group: 'general' },
   { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false, group: 'general' },
   { id: 'library', label: 'Library', icon: Gamepad2, desktop: true, group: 'desktop' },
-  { id: 'matching', label: 'Matching', icon: Shuffle, desktop: true, group: 'desktop' },
   { id: 'proposals', label: 'Proposals', icon: Shield, desktop: true, group: 'desktop' },
   { id: 'downloads', label: 'Downloads', icon: Download, desktop: true, group: 'desktop' },
   { id: 'desktop', label: 'Desktop', icon: Monitor, desktop: true, group: 'desktop' },

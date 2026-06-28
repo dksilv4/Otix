@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { execSync } from 'child_process';
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
-import { registerGamesIPC } from './ipc/games';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
@@ -426,7 +425,6 @@ app.on('ready', async () => {
 
   // Register modular IPC handlers (safe — registration doesn't touch DB)
   registerDownloadsIPC();
-  registerGamesIPC();
   registerScannerIPC(gameDetector);
   registerInstallerIPC();
   // game-detector IPC registered after pluginManager init (needs plugin ref for session queries)

@@ -13,7 +13,7 @@ import { FreeGamesSection } from './free-games-section'
  */
 export function DiscoverFeed() {
   return (
-    <div className="space-y-16">
+    <div id="discover-feed" className="space-y-16">
       <DiscoverHero />
       <MediaSection
         title="Popular Movies"

@@ -691,7 +691,7 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
   if (!hasInfiniteResults) return <SearchEmpty query={query} type={type} />
 
   return (
-    <div>
+    <div id="search-results">
       {/* Total count */}
       {total !== undefined && (
         <p className="px-4 pb-2 text-sm text-muted-foreground/50 lg:px-8">

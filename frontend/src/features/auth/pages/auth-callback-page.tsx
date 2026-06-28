@@ -182,7 +182,7 @@ export function CallbackPage() {
   const cfg = service ? SERVICES[service] : null
   if (!cfg) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center p-4">
+      <div id="auth-callback-page" className="relative flex min-h-screen items-center justify-center p-4">
         <AuthBackground />
         <Helmet><title>Invalid - Otix</title></Helmet>
         <AuthCard>
@@ -196,7 +196,7 @@ export function CallbackPage() {
   const desc = error ? error : done ? (cfg.successMsg ?? `Your ${cfg.name} account has been linked successfully.`) : (cfg.loadingMsg ?? `Verifying with ${cfg.name}...`)
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div id="auth-callback-page" className="relative flex min-h-screen items-center justify-center p-4">
       <AuthBackground />
       <Helmet><title>{error ? 'Link Failed' : title} - Otix</title></Helmet>
       <AuthCard>

@@ -1,25 +1,12 @@
-/**
- * Shared matching utility for plugin-scanned games.
- *
- * Takes scanned games from any platform plugin, batch-matches them
- * against Otix media items via /media/match/batch, and persists the
- * results to the desktop scanned-games database.
- *
- * Updated for new candidate-based matching (multi-candidate per game,
- * auto-match vs suggestions, confirm endpoint).
- *
- * Single source of truth — used by PluginSlot and any future plugin UI.
- */
-
 import { apiClient } from '@/lib/api/client'
-
-// ── Types ────────────────────────────────────────────────────────────────
 
 export interface MatchableGame {
   id: string
   title: string
   developer?: string
-  developerId?: string | null        // Epic account ID of developer/company
+  developerId?: string | null
+  publisher?: string
+  releaseYear?: number | null
   appName?: string
   namespace?: string
   catalogItemId?: string
@@ -30,34 +17,33 @@ export interface MatchableGame {
   logoUrl?: string | null
   contentType?: string
   platforms?: string[]
-  savePaths?: string[] | null       // detected save game directories
+  savePaths?: string[] | null
   sources?: Record<string, unknown>[]
   developerExternalIds?: { source: string; id: string; entity_type: string; name: string }[]
 }
 
-export interface MatchCandidate {
-  media_item_id: string | null
+// ── API response types (camelCase — axios interceptor converts snake_case) ──
+
+interface MatchCandidateCamel {
+  mediaItemId: string | null
   title: string
-  poster_url: string | null
-  backdrop_url: string | null
-  release_year: number | null
+  posterUrl: string | null
+  backdropUrl: string | null
+  releaseYear: number | null
   platforms: string[] | null
   developer: string | null
   confidence: number
-  match_type: string  // "direct" | "exact_title" | "ilike" | "trigram" | "igdb_crossref" | "igdb_search" | "igdb_fuzzy" | "none"
-  needs_import: boolean
-  provider_id: string | null
+  matchType: string
+  needsImport: boolean
+  providerId: string | null
   provider: string | null
 }
 
-export interface GameMatchResponse {
-  query_id: string
-  query_title: string
-  candidates: MatchCandidate[]
-  auto_match: MatchCandidate | null
-  // Plugin-injected fields (not from backend)
-  _epic_poster_url?: string | null
-  _epic_logo_url?: string | null
+interface MatchResponse {
+  queryId: string
+  queryTitle: string
+  candidates: MatchCandidateCamel[]
+  autoMatch: MatchCandidateCamel | null
 }
 
 export interface BatchMatchOutcome {
@@ -65,21 +51,11 @@ export interface BatchMatchOutcome {
   suggested: number
   total: number
   games: MatchableGame[]
-  matches: GameMatchResponse[]
+  matches: MatchResponse[]
 }
 
 // ── Batch match + save ────────────────────────────────────────────────────
 
-/**
- * Run the full match pipeline for a set of scanned games.
- *
- * 1. POSTs games to /media/match/batch (new candidate-based format)
- * 2. Saves all games to scanned-games DB
- * 3. For auto-matched games (high confidence), calls /media/match/confirm
- * 4. For suggested games (candidates but no auto_match), leaves for user pick
- *
- * @returns summary with matched/suggested counts and match data
- */
 export async function batchMatchAndSave(
   games: MatchableGame[],
   desktopAPI?: any,
@@ -89,29 +65,61 @@ export async function batchMatchAndSave(
     return { matched: 0, suggested: 0, total: 0, games: [], matches: [] }
   }
 
-  // Build batch match request with query_id for correlation
   const batchGames = games.map((g) => ({
     query_id: (g.platform || 'unknown') + ':' + (g.appName || g.catalogItemId || g.id),
     title: g.title,
     developer: g.developer || null,
-    external_ids: [
-      {
-        source: g.platform || 'unknown',
-        id: g.appName || g.catalogItemId || g.id,
-      },
-    ],
+    publisher: g.publisher || null,
+    release_year: g.releaseYear || null,
+    poster_url: g.posterUrl || null,
+    external_ids: g.sources?.length
+      ? g.sources.map((s: any) => ({ source: s.source || g.platform || 'unknown', id: s.id || s.appName || s.catalogItemId || g.id }))
+      : [{ source: g.platform || 'unknown', id: g.appName || g.catalogItemId || g.id }],
     media_type: 'game',
   }))
 
-  let matches: GameMatchResponse[] = []
+  let matches: MatchResponse[] = []
 
   try {
-    const { data } = await apiClient.post<{ matches: GameMatchResponse[] }>(
+    const { data } = await apiClient.post<{ matches: any[] }>(
       '/media/match/batch',
       { games: batchGames },
-      { timeout: 120000 },  // 200+ games needs time for IGDB phase
+      { timeout: 120000 },
     )
-    matches = data.matches || []
+    // axios converts snake_case → camelCase. Map to our types.
+    matches = (data.matches || []).map((m: any) => ({
+      queryId: m.queryId || m.query_id || '',
+      queryTitle: m.queryTitle || m.query_title || '',
+      candidates: (m.candidates || []).map((c: any) => ({
+        mediaItemId: c.mediaItemId || c.media_item_id || null,
+        title: c.title,
+        posterUrl: c.posterUrl || c.poster_url || null,
+        backdropUrl: c.backdropUrl || c.backdrop_url || null,
+        releaseYear: c.releaseYear || c.release_year || null,
+        platforms: c.platforms || null,
+        developer: c.developer || null,
+        confidence: c.confidence,
+        matchType: c.matchType || c.match_type || 'unknown',
+        needsImport: c.needsImport || c.needs_import || false,
+        providerId: c.providerId || c.provider_id || null,
+        provider: c.provider || null,
+      })),
+      autoMatch: m.autoMatch || m.auto_match ? {
+        mediaItemId: (m.autoMatch || m.auto_match).mediaItemId || (m.autoMatch || m.auto_match).media_item_id || null,
+        title: (m.autoMatch || m.auto_match).title,
+        posterUrl: (m.autoMatch || m.auto_match).posterUrl || (m.autoMatch || m.auto_match).poster_url || null,
+        backdropUrl: (m.autoMatch || m.auto_match).backdropUrl || (m.autoMatch || m.auto_match).backdrop_url || null,
+        releaseYear: (m.autoMatch || m.auto_match).releaseYear || (m.autoMatch || m.auto_match).release_year || null,
+        platforms: (m.autoMatch || m.auto_match).platforms || null,
+        developer: (m.autoMatch || m.auto_match).developer || null,
+        confidence: (m.autoMatch || m.auto_match).confidence,
+        matchType: (m.autoMatch || m.auto_match).matchType || (m.autoMatch || m.auto_match).match_type || 'unknown',
+        needsImport: (m.autoMatch || m.auto_match).needsImport || (m.autoMatch || m.auto_match).needs_import || false,
+        providerId: (m.autoMatch || m.auto_match).providerId || (m.autoMatch || m.auto_match).provider_id || null,
+        provider: (m.autoMatch || m.auto_match).provider || null,
+      } : null,
+    }))
+    console.log(`[matching] ${games.length} games sent, ${matches.length} responses, ${matches.filter(m => m.autoMatch).length} auto-matched, ${matches.filter(m => m.candidates.length > 0 && !m.autoMatch).length} candidates`)
   } catch (err) {
     console.error('[matching] batch match request failed:', err)
   }
@@ -119,28 +127,14 @@ export async function batchMatchAndSave(
   // Save to scanned games DB
   if (desktopAPI?.saveScannedGames) {
     try {
-      const toSave = games.map((g, i) => ({
-        id: g.id,
-        title: g.title,
+      const toSave = games.map((g) => ({
+        id: g.id, title: g.title,
         exePath: g.exePath || g.installDir || '',
         installDir: g.installDir || '',
         platform: g.platform as any,
         posterUrl: g.posterUrl || undefined,
         iconUrl: g.logoUrl || undefined,
-        savePaths: g.savePaths || undefined,
-        sources: g.sources || [
-          {
-            source: g.platform,
-            appName: g.appName,
-            namespace: g.namespace,
-            catalogItemId: g.catalogItemId,
-            developer: g.developer,
-            developerId: g.developerId,
-            contentType: g.contentType,
-            platforms: g.platforms,
-            savePaths: g.savePaths,
-          },
-        ],
+        sources: g.sources || [{ source: g.platform, appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, developerId: g.developerId, contentType: g.contentType, platforms: g.platforms, savePaths: g.savePaths }],
       }))
       await desktopAPI.saveScannedGames(toSave)
     } catch (err) {
@@ -148,58 +142,41 @@ export async function batchMatchAndSave(
     }
   }
 
-  // Persist matches — two layers:
-  //   1. Backend external_ids table (via POST /match/confirm) — canonical
-  //   2. Desktop scanned_games SQLite (via acceptSuggestion) — local cache
-  // Both must be written for Phase 1 lookups to work on next scan.
   let matched = 0
   let suggested = 0
   if (desktopAPI?.acceptSuggestion) {
     for (let i = 0; i < Math.min(games.length, matches.length); i++) {
-      const match = matches[i]
-      if (!match) continue
+      const m = matches[i]
+      if (!m) continue
       const queryId = (games[i].platform || 'unknown') + ':' + (games[i].appName || games[i].catalogItemId || games[i].id)
 
-      // ── Auto-match: high confidence, backend confirmed ──
-      if (match.auto_match && match.auto_match.media_item_id && !match.auto_match.needs_import) {
-        const am = match.auto_match
+      // Auto-match (backend already creates approved proposal)
+      let best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
+
+      if (best) {
         try {
-          // Persist to backend external_ids table (canonical)
-          await confirmMatch(queryId, am.media_item_id, am.provider_id ? parseInt(am.provider_id) : null)
-          // Persist to local scanned_games DB (UI cache)
           await desktopAPI.acceptSuggestion(games[i].id, {
-            id: am.media_item_id,
-            title: am.title,
-            slug: am.media_item_id,
-            mediaType: 'game',
-            posterUrl: am.poster_url || null,
-            developer: am.developer || null,
-            platforms: am.platforms || [],
-            confidence: am.confidence,
+            id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
+            posterUrl: best.posterUrl || null, developer: best.developer || null,
+            platforms: best.platforms || [], confidence: best.confidence,
           } as any)
           matched++
         } catch (err) {
-          console.error('[matching] auto-match persist failed for', games[i].id, err)
+          console.error('[matching] persist failed for', games[i].id, err)
         }
       }
 
-      // ── Candidates: save as suggestions for user review ──
-      else if (match.candidates.length > 0) {
+      // Candidates — save as suggestions for user review
+      else if (m.candidates.length > 0) {
         suggested++
-        const best = match.candidates[0]
-        if (best.media_item_id && !best.needs_import) {
+        const best = m.candidates[0]
+        if (best.mediaItemId && !best.needsImport) {
           try {
             await desktopAPI.acceptSuggestion(games[i].id, {
-              id: best.media_item_id,
-              title: best.title,
-              slug: best.media_item_id,
-              mediaType: 'game',
-              posterUrl: best.poster_url || match._epic_poster_url || null,
-              developer: best.developer || null,
-              platforms: best.platforms || [],
-              confidence: best.confidence,
-              _candidates: match.candidates,  // store all candidates for UI
-              _epic_poster_url: match._epic_poster_url,
+              id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
+              posterUrl: best.posterUrl || null, developer: best.developer || null,
+              platforms: best.platforms || [], confidence: best.confidence,
+              _candidates: m.candidates,
             } as any)
           } catch (err) {
             console.error('[matching] acceptSuggestion (candidate) failed for', games[i].id, err)
@@ -214,12 +191,6 @@ export async function batchMatchAndSave(
 
 // ── Confirm / Reject ──────────────────────────────────────────────────────
 
-/**
- * Confirm a match candidate selected by the user.
- *
- * Calls POST /media/match/confirm to persist the external_id mapping
- * and optionally import the IGDB game.
- */
 export async function confirmMatch(
   queryId: string,
   mediaItemId: string | null,
@@ -227,11 +198,8 @@ export async function confirmMatch(
 ): Promise<{ success: boolean; media_item_id?: string; error?: string }> {
   try {
     const { data } = await apiClient.post('/media/match/confirm', {
-      query_id: queryId,
-      media_item_id: mediaItemId,
-      igdb_id: igdbId,
-      rejected: false,
-      rejected_permanently: false,
+      query_id: queryId, media_item_id: mediaItemId,
+      igdb_id: igdbId, rejected: false, rejected_permanently: false,
     }, { timeout: 30000 })
     return data
   } catch (err) {
@@ -240,21 +208,12 @@ export async function confirmMatch(
   }
 }
 
-/**
- * Permanently reject all candidates for a game.
- *
- * Calls POST /media/match/confirm with rejected_permanently=true
- * so the game won't be re-suggested on the next scan.
- */
 export async function rejectMatch(
-  queryId: string,
-  permanent: boolean = false,
+  queryId: string, permanent: boolean = false,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const { data } = await apiClient.post('/media/match/confirm', {
-      query_id: queryId,
-      rejected: !permanent,
-      rejected_permanently: permanent,
+      query_id: queryId, rejected: !permanent, rejected_permanently: permanent,
     })
     return data
   } catch (err) {
@@ -263,9 +222,6 @@ export async function rejectMatch(
   }
 }
 
-/**
- * Remove an existing external_id mapping so a game can be re-matched.
- */
 export async function unlinkMatch(
   queryId: string,
 ): Promise<{ success: boolean; error?: string }> {

@@ -1,4 +1,4 @@
-import type { LocalGame } from './types';
+import type { LocalGame, GamesFilter } from './types';
 import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop/api';
 import { mergeDuplicateGames } from './storage-utils';
 
@@ -42,10 +42,10 @@ function preserveInstallStatus(games: LocalGame[]): LocalGame[] {
 
 // ── Async IPC fetchers (single source of truth: SQLite) ──────────
 
-export async function fetchGames(filter?: Record<string, unknown>): Promise<LocalGame[]> {
+export async function fetchGames(filter?: GamesFilter): Promise<LocalGame[]> {
   if (!hasDesktopAPI()) return [];
   const api = getDesktopAPI()!;
-  const games = filter ? await api.getScannedGamesFiltered(filter) : await api.getScannedGames();
+  const games = await api.getLocalGames(filter);
   cache.games = games;
   return games;
 }
@@ -56,10 +56,10 @@ export async function fetchGameById(id: string): Promise<LocalGame | null> {
   return api.getGameById(id);
 }
 
-export async function fetchGameCount(filter?: Record<string, unknown>): Promise<number> {
+export async function fetchGameCount(filter?: GamesFilter): Promise<number> {
   if (!hasDesktopAPI()) return 0;
   const api = getDesktopAPI()!;
-  return api.getGameCount(filter || {} as Record<string, unknown>);
+  return api.getGameCount(filter ?? {});
 }
 
 export async function fetchScanPaths(): Promise<{ game: string[]; iso: string[] }> {
@@ -102,7 +102,7 @@ export async function loadFromDatabase(): Promise<void> {
   try {
     const [dbPaths, dbGames, dbMap] = await Promise.all([
       api.getScanPaths(),
-      api.getScannedGames(),
+      api.getLocalGames(),
       api.getLocalGamesMap(),
     ]);
 
@@ -140,7 +140,7 @@ export function getIsoPaths(): string[] {
   return cache.isoPaths;
 }
 
-export function getScannedGames(): LocalGame[] {
+export function getLocalGamesCache(): LocalGame[] {
   return cache.games;
 }
 

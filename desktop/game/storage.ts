@@ -188,13 +188,20 @@ export function upsertGames(games: GameRow[]): void {
   }
 
   for (const g of games) {
-    const seeded = existingSeeded.get(g.id) ?? 0;
+    const seeded = existingSeeded.get(g.id) ?? 0
+    // Preserve existing match data if the incoming row doesn't have it
+    const existing = __get('SELECT otix_media_id, otix_media_title, otix_match_suggestion, otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence FROM scanned_games WHERE id = ?', g.id)
+    const otixMediaId = g.data?.id || (existing as any)?.otix_media_id || null
+    const otixMediaTitle = g.data?.title || (existing as any)?.otix_media_title || null
+    const matchSuggestion = g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : (existing as any)?.otix_match_suggestion || null
+    // ponytail: only update otix columns if we have data — preserve existing match on re-scan
     db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
         local_icon_url, icon_url, poster_url, sources, update_files,
-        otix_media_id, otix_media_title, otix_match_suggestion, seeded
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        otix_media_id, otix_media_title, otix_match_suggestion,
+        otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence, seeded
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       g.id,
       g.title,
@@ -207,9 +214,14 @@ export function upsertGames(games: GameRow[]): void {
       g.posterUrl || null,
       g.sources ? JSON.stringify(g.sources) : null,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
-      g.data?.id || null,
-      g.data?.title || null,
-      g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : null,
+      otixMediaId,
+      otixMediaTitle,
+      matchSuggestion,
+      (existing as any)?.otix_data || null,
+      (existing as any)?.otix_poster_url || null,
+      (existing as any)?.otix_backdrop_url || null,
+      (existing as any)?.otix_icon_url || null,
+      (existing as any)?.otix_confidence ?? null,
       seeded,
     );
   }
@@ -408,6 +420,17 @@ export function getScanPaths(): { path: string; type: 'game' | 'iso' }[] {
     path: r.path as string,
     type: r.type as 'game' | 'iso',
   }));
+}
+
+export function deleteGamesByPlatforms(platforms: string[]): void {
+  if (!platforms.length) return
+  const placeholders = platforms.map(() => '?').join(',')
+  db().prepare(`DELETE FROM scanned_games WHERE platform IN (${placeholders})`).run(...platforms)
+  db().prepare(`DELETE FROM game_matches WHERE source IN (${placeholders})`).run(...platforms)
+}
+
+export function deleteGamesByDirectory(dirPrefix: string): void {
+  db().prepare("DELETE FROM scanned_games WHERE install_dir LIKE ?").run(`${dirPrefix}%`)
 }
 
 export function resetGameData(): void {

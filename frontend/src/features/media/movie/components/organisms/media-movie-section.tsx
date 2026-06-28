@@ -22,7 +22,7 @@ export function MovieSection({ className }: MovieSectionProps = {}) {
   const isProfitable = hasProfit && profitAbs > 0
 
   return (
-    <section className={className || ''}>
+    <section id="media-movie-section" className={className || ''}>
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 ">
 
         {movie.budget != null && movie.budget > 0 && (

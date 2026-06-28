@@ -50,7 +50,7 @@ export function NotificationList({ onClose }: { onClose?: () => void }) {
   if (allItems.length === 0) return <NotificationEmpty />
 
   return (
-    <div className="flex flex-col">
+    <div id="notification-list" className="flex flex-col">
       {allItems.map((n, i) => (
         <div
           key={n.id}

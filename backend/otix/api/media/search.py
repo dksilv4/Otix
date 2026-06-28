@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import json
 import re
+import time
 import uuid
 
 import structlog
@@ -46,20 +47,17 @@ from otix.schemas.media import (
     GameMatchResponse,
     GenreOut,
     ImportGameResponse,
-    LocalGameMatch,
-    LocalGameMatchRequest,
-    LocalGameMatchResponse,
     MediaItemListResponse,
     MediaItemSummary,
     PersonSearchResult,
     ProviderSearchRequest,
     ProviderSearchResponse,
     ProviderSearchResult,
-    SeedFromTitlesRequest,
-    SeedFromTitlesResponse,
     SteamGridGame,
     SteamGridSearchRequest,
     SteamGridSearchResponse,
+    StreamCompleteEvent,
+    StreamMatchEvent,
     StructuredSearchResponse,
     SyncLocalGamesRequest,
     SyncLocalGamesResponse,
@@ -864,14 +862,34 @@ async def match_games_batch(
 ) -> GameMatchBatchResponse:
     """Match multiple games in a single batch call.
 
-    Each game runs through the full pipeline and returns ranked
-    candidates plus an optional auto_match.
+    Each game runs through the full pipeline. Auto-matched games
+    (confidence >= 95%) create auto-approved proposals so Phase 1
+    direct lookup finds them instantly on future scans.
     """
     redis = await _get_redis()
     from otix.providers.steamgrid.client import SteamGridDBProvider
 
     matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
     matches = await matcher.match_batch(body.games)
+
+    # Create proposals — one per distinct provider for high-confidence matches
+    for req, response in zip(body.games, matches):
+        seen = set()  # dedupe by media_item_id
+        candidates = []
+        if response.auto_match:
+            candidates.append(response.auto_match)
+        for c in response.candidates:
+            if c.media_item_id and c.confidence >= 0.85 and c.media_item_id not in seen:
+                candidates.append(c)
+                seen.add(c.media_item_id)
+
+        for candidate in candidates:
+            if candidate.confidence >= 0.70:
+                try:
+                    await matcher._create_match_proposal(req, candidate)
+                except Exception:
+                    pass
+
     return GameMatchBatchResponse(matches=matches)
 
 
@@ -903,6 +921,226 @@ async def match_games_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@media_router.post("/match/scan")
+async def match_scan(
+    body: GameMatchBatchRequest,
+    hydrate: bool = Query(True, description="Include full MediaItem detail for auto-matched games"),
+    seed_missing: bool = Query(True, description="Fire background import tasks for unmatched/needs-import games"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> StreamingResponse:
+    """Unified match+hydrate+seed endpoint.
+
+    Replaces ``/match/stream``, ``/match-local-games``, and ``/seed-from-titles``
+    with a single SSE call. For each game:
+
+    - Runs the full GameMatcher pipeline
+    - If auto-matched and ``hydrate=true``: fetches full MediaItem detail and
+      includes it in the ``hydrated`` field of the SSE event
+    - If candidate needs import and ``seed_missing=true``: fires the
+      appropriate import task in the background
+    - If no match and ``seed_missing=true``: searches IGDB and fires import
+
+    Returns a ``text/event-stream`` response compatible with any SSE client.
+    """
+    redis = await _get_redis()
+    from otix.providers.steamgrid.client import SteamGridDBProvider
+
+    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
+    media_type = body.games[0].media_type if body.games else "game"
+
+    # Run non-streaming match first so we can hydrate before yielding
+    results = await matcher.match_batch(body.games, media_type=media_type)
+
+    start = time.monotonic()
+    n = len(results)
+    matched_count = 0
+    unmatched_count = 0
+    errored_count = 0
+
+    async def _generate():
+        nonlocal matched_count, unmatched_count, errored_count
+
+        for i, (req, response) in enumerate(zip(body.games, results)):
+            try:
+                has_match = response.auto_match is not None or bool(response.candidates)
+                status = "matched" if has_match else "unmatched"
+
+                if has_match:
+                    matched_count += 1
+                else:
+                    unmatched_count += 1
+
+                # ── Hydrate: fetch full MediaItem detail for auto-matches ──
+                hydrated = None
+                if hydrate and response.auto_match and response.auto_match.media_item_id:
+                    try:
+                        from sqlalchemy.orm import selectinload
+                        from otix.domain.media import MediaItem
+
+                        stmt = (
+                            select(MediaItem)
+                            .where(MediaItem.id == response.auto_match.media_item_id)
+                            .options(
+                                selectinload(MediaItem.genres),
+                                selectinload(MediaItem.involved_companies).selectinload(
+                                    __import__("otix.domain.company").domain.company.InvolvedCompany.company
+                                ),
+                                selectinload(MediaItem.game_modes),
+                                selectinload(MediaItem.platforms),
+                                selectinload(MediaItem.screenshots),
+                                selectinload(MediaItem.external_ids),
+                            )
+                        )
+                        row = await db.execute(stmt)
+                        mi = row.scalars().first()
+                        if mi:
+                            hydrated = {
+                                "id": mi.id,
+                                "title": mi.title,
+                                "slug": mi.slug,
+                                "poster_url": mi.poster_url,
+                                "backdrop_url": mi.backdrop_url,
+                                "logo_url": mi.logo_url,
+                                "icon_url": mi.icon_url,
+                                "textless_poster_url": mi.textless_poster_url,
+                                "release_date": mi.release_date.isoformat() if mi.release_date else None,
+                                "overview": mi.overview,
+                                "avg_rating": float(mi.avg_rating) if mi.avg_rating else None,
+                                "rating_count": mi.rating_count,
+                                "is_free": mi.is_free,
+                                "has_multiplayer": mi.has_multiplayer,
+                                "genres": [
+                                    {"id": g.genre.id, "name": g.genre.name, "slug": g.genre.slug}
+                                    for g in (mi.genres or []) if g.genre
+                                ],
+                                "involved_companies": [
+                                    {
+                                        "company": {
+                                            "id": ic.company.id,
+                                            "name": ic.company.name,
+                                            "slug": ic.company.slug,
+                                            "logo_url": ic.company.logo_url,
+                                        },
+                                        "developer": ic.developer,
+                                        "publisher": ic.publisher,
+                                    }
+                                    for ic in (mi.involved_companies or [])
+                                ],
+                                "game_modes": [
+                                    {"id": gm.game_mode.id, "name": gm.game_mode.name, "slug": gm.game_mode.slug}
+                                    for gm in (mi.game_modes or []) if gm.game_mode
+                                ],
+                                "platforms": [
+                                    {"id": p.platform.id, "name": p.platform.name, "slug": p.platform.slug}
+                                    for p in (mi.platforms or []) if p.platform
+                                ],
+                                "screenshots": [
+                                    {"url": s.url, "width": s.width, "height": s.height}
+                                    for s in (mi.screenshots or [])
+                                ],
+                                "steam_app_id": mi.steam_app_id,
+                                "steam_playtime_forever": mi.steam_playtime_forever,
+                                "steam_playtime_2weeks": mi.steam_playtime_2weeks,
+                                "website": mi.website,
+                            }
+                    except Exception:
+                        logger.exception("hydrate_failed", media_item_id=response.auto_match.media_item_id)
+
+                # ── Seed missing in background ──
+                if seed_missing:
+                    if response.auto_match and response.auto_match.needs_import and response.auto_match.provider_id:
+                        _fire_import_task(response.auto_match, media_type)
+                    elif not response.auto_match and not response.candidates:
+                        # No match at all — seed from IGDB by title for game type
+                        if media_type == "game":
+                            _fire_title_seed(req)
+
+                # ── Create match proposal for auto-matches ──
+                proposal_status = None
+                if response.auto_match and response.auto_match.media_item_id:
+                    proposal_status = await matcher._create_match_proposal(req, response.auto_match)
+
+                yield (
+                    f"event: game-progress\n"
+                    f"data: {StreamMatchEvent(
+                        game_index=i,
+                        total_games=n,
+                        query_id=req.query_id,
+                        query_title=req.title,
+                        status=status,
+                        candidates_count=len(response.candidates),
+                        auto_match=response.auto_match is not None,
+                        match=response.auto_match,
+                        candidates=response.candidates if response.candidates else None,
+                        hydrated=hydrated,
+                        proposal_status=proposal_status,
+                    ).model_dump_json()}\n\n"
+                )
+            except Exception as exc:
+                errored_count += 1
+                logger.exception("match_scan_error", title=req.title)
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                yield (
+                    f"event: game-progress\n"
+                    f"data: {StreamMatchEvent(
+                        game_index=i,
+                        total_games=n,
+                        query_id=req.query_id,
+                        query_title=req.title,
+                        status='error',
+                        error=str(exc),
+                    ).model_dump_json()}\n\n"
+                )
+
+        duration_ms = int((time.monotonic() - start) * 1000)
+        yield (
+            f"event: complete\n"
+            f"data: {StreamCompleteEvent(
+                total_games=n,
+                matched_count=matched_count,
+                unmatched_count=unmatched_count,
+                errored_count=errored_count,
+                duration_ms=duration_ms,
+            ).model_dump_json()}\n\n"
+        )
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _fire_import_task(candidate, media_type: str = "game") -> None:
+    """Fire background import task for a needs-import candidate."""
+    try:
+        provider = candidate.provider or "igdb"
+        provider_id = candidate.provider_id
+        if provider == "igdb" and provider_id:
+            app.send_task("sync.igdb.game", args=[int(provider_id)], priority=9)
+            logger.info("seed_import_fired", provider=provider, provider_id=provider_id)
+    except Exception:
+        logger.exception("seed_import_failed", provider=candidate.provider, provider_id=candidate.provider_id)
+
+
+def _fire_title_seed(request) -> None:
+    """Fire title-based IGDB search + import for an unmatched game."""
+    try:
+        payload = [{"title": request.title, "platform": request.platforms[0] if request.platforms else None}]
+        app.send_task("seed.igdb_from_titles", args=[payload])
+        logger.info("seed_title_fired", title=request.title)
+    except Exception:
+        logger.exception("seed_title_failed", title=request.title)
 
 
 @media_router.post("/match/confirm", response_model=ConfirmMatchResponse)
@@ -941,135 +1179,6 @@ async def unlink_match(
     result = await svc.unlink(query_id)
     await db.commit()
     return result
-
-
-@media_router.post("/match-local-games")
-async def match_local_games(
-    body: LocalGameMatchRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_optional_user),
-) -> LocalGameMatchResponse:
-    """Fuzzy-match local PC/ISO game titles to Otix catalog entries.
-
-    Accepts a list of game (title + optional platform and Steam App ID) and
-    returns the best-matching Otix media item per entry. Delegates to
-    ``GameMatcher`` for the full multi-stage pipeline (external ID lookup,
-    IGDB cross-reference, IGDB title search, trigram fallback).
-
-    Backward-compatible wrapper around the internal ``/match/batch`` pipeline.
-    """
-    exclude_adult = should_exclude_adult(current_user)
-
-    # Convert legacy LocalGameMatchRequest to GameMatchRequest batch
-    requests: list[GameMatchRequest] = []
-    for g in body.games:
-        external_ids = None
-        if g.steam_app_id:
-            external_ids = [ExternalIDRef(source="steam", id=str(g.steam_app_id))]
-        platforms = [g.platform] if g.platform else None
-        requests.append(
-            GameMatchRequest(
-                title=g.title,
-                platforms=platforms,
-                external_ids=external_ids,
-            )
-        )
-
-    redis = await _get_redis()
-    matcher = GameMatcher(db, redis, SteamGridDBProvider(redis))
-    results = await matcher.match_batch(requests)
-
-    # Extract best match per result: auto_match first, then top candidate
-    # Build list of (query_title, media_item_id, confidence)
-    best_matches: list[tuple[str, str | None, float]] = []
-    for r in results:
-        best = r.auto_match or (r.candidates[0] if r.candidates else None)
-        if best and best.media_item_id:
-            best_matches.append((r.query_title, best.media_item_id, best.confidence))
-        elif best and best.needs_import:
-            best_matches.append((r.query_title, None, best.confidence))
-        else:
-            best_matches.append((r.query_title, None, 0.0))
-
-    # Batch-fetch MediaItems for matched results
-    matched_ids = list({mid for _, mid, _ in best_matches if mid is not None})
-    media_items: dict[str, MediaItem] = {}
-    if matched_ids:
-        rows = await db.execute(select(MediaItem).where(MediaItem.id.in_(matched_ids)))
-        media_items = {mi.id: mi for mi in rows.scalars().all()}
-
-    matches: list[LocalGameMatch] = []
-    for query_title, media_id, confidence in best_matches:
-        confidence = round(confidence, 4)
-
-        if media_id and media_id in media_items:
-            item = media_items[media_id]
-            if exclude_adult and item.is_adult:
-                matches.append(LocalGameMatch(query_title=query_title, matched_media=None, confidence=0.0))
-            else:
-                matches.append(
-                    LocalGameMatch(
-                        query_title=query_title,
-                        matched_media=MediaItemSummary.model_validate(item),
-                        confidence=confidence,
-                    )
-                )
-        else:
-            matches.append(LocalGameMatch(query_title=query_title, matched_media=None, confidence=confidence))
-
-    return LocalGameMatchResponse(matches=matches)
-
-
-@media_router.post("/seed-from-titles")
-async def seed_from_titles(
-    body: SeedFromTitlesRequest,
-    current_user: User = Depends(get_optional_user),
-) -> SeedFromTitlesResponse:
-    """Trigger background IGDB seeding for local game titles from a desktop scan.
-
-    When a user runs a desktop game scan, the extracted titles (with optional
-    platform and Steam App ID) are sent here so the backend can search IGDB or
-    do direct Steam lookups for each game and import any missing game into the
-    catalog. This ensures subsequent match-local-game calls can find them.
-
-    The actual IGDB searches / Steam sync tasks run asynchronously via
-    ``seed.igdb_from_titles``. This endpoint returns immediately with the
-    Celery task ID for optional tracking.
-    """
-    # Dedup by normalized title, preferring entries with more context
-    deduped: dict[str, SeedGameEntry] = {}
-    for game in body.games:
-        key = game.title.strip().lower()
-        if not key:
-            continue
-        existing = deduped.get(key)
-        if existing is None:
-            deduped[key] = game
-        elif game.steam_app_id and not existing.steam_app_id:
-            deduped[key] = game  # prefer entry with Steam App ID
-
-    unique = list(deduped.values())
-    if not unique:
-        return SeedFromTitlesResponse(accepted=True, total_titles=0)
-
-    games_data = [{"title": g.title, "platform": g.platform, "steam_app_id": g.steam_app_id} for g in unique]
-    task = app.send_task("seed.igdb_from_titles", args=[games_data])
-
-    # Track via Redis counter for debugging
-    try:
-        redis = await _get_redis()
-        await redis.incr("seed_from_titles_count")
-    except Exception:
-        pass
-
-    print(f"SEED_FROM_TITLES_HIT: {len(unique)} game -> task {task.id}", flush=True)
-    logger.info("seed_from_titles_requested", total=len(unique), task_id=task.id)
-
-    return SeedFromTitlesResponse(
-        accepted=True,
-        total_titles=len(unique),
-        task_id=task.id,
-    )
 
 
 def _should_backfill(q: str) -> bool:

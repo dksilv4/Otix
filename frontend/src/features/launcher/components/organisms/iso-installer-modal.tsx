@@ -165,6 +165,11 @@ export function IsoInstallerModal({
       // Update game in storage so main page sees it as installed (pc, not iso)
       if (res.success) {
         markGameInstalled(isoPath, res.gameExe ?? null, res.installDir)
+        // Trigger local-files scan to pick up the newly installed game
+        const pluginApi = window.desktopAPI?.plugin
+        if (pluginApi?.callData) {
+          pluginApi.callData('local-files', 'scan').catch(() => {})
+        }
         // Direct callback to parent for immediate UI update
         onInstallComplete?.(isoPath, res.installDir, res.gameExe ?? null)
       }

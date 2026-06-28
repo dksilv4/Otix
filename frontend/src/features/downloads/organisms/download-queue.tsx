@@ -56,7 +56,7 @@ export function DownloadQueuePage() {
   const activeCount = downloads.filter(d => d.status === 'queued' || d.status === 'downloading').length;
 
   return (
-    <div className="dk-downloads__page">
+    <div id="download-queue" className="dk-downloads__page">
       <Helmet>
         <title>Downloads - Otix</title>
         <meta name="description" content="Manage your downloads on Otix." />

@@ -17,7 +17,7 @@ export function RegisterPage() {
   const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div id="auth-register-page" className="relative flex min-h-screen items-center justify-center p-4">
       <Helmet>
         <title>Create Account - Otix</title>
         <meta name="description" content="Create an account on Otix to track movies, shows, games, and music." />

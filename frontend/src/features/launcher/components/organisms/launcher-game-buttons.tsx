@@ -17,7 +17,7 @@ export function LauncherGameButtons() {
 
   return (
     <>
-      <div className="flex gap-2.5 items-center justify-end">
+      <div id="launcher-game-buttons" className="flex gap-2.5 items-center justify-end">
         <LauncherPlayButton onOpenInstaller={() => setIsInstallerOpen(true)} />
 
         {!!g.exePath && g.platform !== 'iso' && (

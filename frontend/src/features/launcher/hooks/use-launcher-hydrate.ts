@@ -1,6 +1,6 @@
 /* ── useHydrateLocalGames — auto-refresh matched game data from server ── */
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { getDesktopAPI } from '@/lib/desktop/api'
@@ -9,11 +9,16 @@ import { localGameKeys } from '@/features/launcher/data/game-queries'
 import { gameKeys } from '@/features/launcher/data/queries'
 import type { LocalGame, Game } from '@/features/launcher/types'
 
-/** Check if a local game is missing rich catalog data (poster, backdrop, logo). */
+// Module-level set — survives remounts, runs once per app session
+const _hydrated = new Set<string>()
+
+/** Check if a local game is missing rich catalog data. */
 function needsHydration(g: LocalGame): boolean {
   if (!g.otixMediaId && !g.data?.id) return false
-  // Check both g.data (backend match flow) and otix* (desktop DB) fields
-  return !(g.data?.backdropUrl || g.otixBackdropUrl) && !(g.data?.posterUrl || g.otixPosterUrl)
+  const hasPoster = !!(g.data?.posterUrl || g.otixPosterUrl)
+  const hasRichData = !!(g.data?.genres?.length || g.data?.involvedCompanies?.length)
+  if (hasPoster && hasRichData) return false
+  return true
 }
 
 /** Hydrate a single matched game: fetch catalog detail, update cache + desktop DB. */
@@ -22,12 +27,10 @@ async function hydrateGame(
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<void> {
   const mediaId = g.otixMediaId || g.data?.id
-  // Guard against bogus IDs — empty string, literal "undefined", etc.
   if (!mediaId || mediaId === 'undefined' || mediaId === 'null') return
   try {
     const { data } = await apiClient.get<Record<string, unknown>>(`/media/game/${mediaId}`)
 
-    // Update local game cache with rich catalog data
     queryClient.setQueryData(localGameKeys.detail(g.id), (old: LocalGame | undefined) => {
       if (!old) return old
       return {
@@ -40,10 +43,8 @@ async function hydrateGame(
       }
     })
 
-    // Update catalog detail cache
     queryClient.setQueryData(gameKeys.detail(mediaId), data)
 
-    // Persist to desktop local DB
     const api = getDesktopAPI()
     if (api?.acceptSuggestion) {
       await api.acceptSuggestion(g.id, {
@@ -62,28 +63,21 @@ async function hydrateGame(
   }
 }
 
-/**
- * On mount, checks all matched local games and refreshes stale catalog data
- * from the server. Runs once per mount.
- */
+/** Auto-hydrate matched games once per app session. */
 export function useHydrateLocalGames(): void {
   const queryClient = useQueryClient()
-  // Fetch ALL games and filter by otix ID manually — desktop `matched` filter unreliable
   const { data: games } = useLocalGames()
-  const hydratedRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (!games?.length) return
 
     const toHydrate = games.filter(
-      (g) => (g.otixMediaId || g.data?.id) && needsHydration(g) && !hydratedRef.current.has(g.id),
+      (g) => (g.otixMediaId || g.data?.id) && needsHydration(g) && !_hydrated.has(g.id),
     )
     if (!toHydrate.length) return
 
-    // Mark as hydrated immediately to avoid double-fires
-    toHydrate.forEach((g) => hydratedRef.current.add(g.id))
+    toHydrate.forEach((g) => _hydrated.add(g.id))
 
-    // Hydrate concurrently with a semaphore to avoid flooding
     const concurrency = 4
     const run = async () => {
       const queue = [...toHydrate]

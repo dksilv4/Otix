@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { Loader2, Gamepad2, ArrowLeft, CheckCircle2, AlertCircle, Star, Trash2, Search, ArrowUpDown, Clock } from 'lucide-react'
+import { Loader2, Gamepad2, ArrowLeft, CheckCircle2, AlertCircle, Star, Trash2, Search, ArrowUpDown, Clock, Filter } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { ProviderLogo } from '../components/atoms/provider-logo'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
@@ -22,18 +22,16 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ]
 
 export function SettingsScannedGamesPage() {
-  const params = new URLSearchParams(window.location.search)
-  const source = params.get('source') || ''
   const [games, setGames] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [resetting, setResetting] = useState(false)
   const [filterTab, setFilterTab] = useState<FilterTab>('all')
+  const [platformFilter, setPlatformFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const api = window.desktopAPI
   const { openModal } = useModal()
-
   const [resetConfirm, setResetConfirm] = useState(false)
 
   const handleReset = async () => {
@@ -50,21 +48,18 @@ export function SettingsScannedGamesPage() {
   }
 
   const fetchGames = useCallback(() => {
-    if (!api?.getScannedGamesFiltered) return
+    if (!api?.getLocalGames) return
     setLoading(true)
     const filter: Record<string, unknown> = {}
-    if (source) filter.platform = [source]
-    // Server-side sort for efficiency on large libraries
     filter.sortBy = sortKey
     filter.sortDir = sortDir
-    api.getScannedGamesFiltered(filter).then((data: any[]) => {
+    api.getLocalGames(filter).then((data: any[]) => {
       setGames(data || [])
     }).finally(() => setLoading(false))
-  }, [source, api, sortKey, sortDir])
+  }, [api, sortKey, sortDir])
 
   useEffect(() => { fetchGames() }, [fetchGames])
 
-  // Re-fetch when games DB changes (new match data arrives)
   useEffect(() => {
     if (!api?.onGamesUpdated) return
     const unsub = api.onGamesUpdated(() => fetchGames())
@@ -81,10 +76,23 @@ export function SettingsScannedGamesPage() {
     )
   }, [openModal, fetchGames])
 
+  // Extract unique platforms from games
+  const availablePlatforms = useMemo(() => {
+    const platforms = new Set<string>()
+    for (const g of games) {
+      if (g.platform) platforms.add(g.platform)
+    }
+    return [...platforms].sort()
+  }, [games])
+
   // Client-side filter + search
   const filteredGames = useMemo(() => {
     let result = games
-    // Filter tab
+    // Platform filter
+    if (platformFilter) {
+      result = result.filter((g: any) => g.platform === platformFilter)
+    }
+    // Matched/candidates/unmatched filter
     if (filterTab === 'matched') result = result.filter((g: any) => !!g.otixMediaId)
     else if (filterTab === 'candidates') result = result.filter((g: any) => !g.otixMediaId && !!g.otixMatchSuggestion)
     else if (filterTab === 'unmatched') result = result.filter((g: any) => !g.otixMediaId && !g.otixMatchSuggestion)
@@ -94,21 +102,19 @@ export function SettingsScannedGamesPage() {
       result = result.filter((g: any) => g.title?.toLowerCase().includes(q) || g.otixMediaTitle?.toLowerCase().includes(q))
     }
     return result
-  }, [games, filterTab, searchQuery])
-
-  const title = source ? `${source.toUpperCase()} Games` : 'All Scanned Games'
+  }, [games, filterTab, platformFilter, searchQuery])
 
   return (
     <div className="p-6 min-h-full">
       <div className="flex items-center gap-3 mb-6">
         <a
-          href="/settings/matching"
+          href="/settings/library"
           className="inline-flex items-center justify-center h-8 w-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
         </a>
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        <span className="text-sm text-white/40">({games.length})</span>
+        <h2 className="text-lg font-semibold text-white">Scanned Games</h2>
+        <span className="text-sm text-white/40">({filteredGames.length}{platformFilter || filterTab !== 'all' ? ` / ${games.length}` : ''})</span>
         <div className="flex-1" />
         <button
           onClick={handleReset}
@@ -149,6 +155,21 @@ export function SettingsScannedGamesPage() {
               {tab.label}
             </button>
           ))}
+          <div className="w-px h-4 bg-white/10 mx-1" />
+          {/* Platform filter */}
+          <div className="flex items-center gap-1.5 text-xs text-white/40">
+            <Filter className="h-3 w-3" />
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="bg-transparent text-white/60 outline-none cursor-pointer appearance-none"
+            >
+              <option value="" className="bg-zinc-900">All Platforms</option>
+              {availablePlatforms.map((p) => (
+                <option key={p} value={p} className="bg-zinc-900">{p.toUpperCase()}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex-1" />
           {/* Search */}
           <div className="relative">
@@ -191,7 +212,7 @@ export function SettingsScannedGamesPage() {
         </div>
       )}
 
-      {!loading && games.length > 0 && (
+      {!loading && filteredGames.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
           {filteredGames.map((game: any) => {
             const posterUrl = game.otixPosterUrl || game.posterUrl
@@ -205,7 +226,6 @@ export function SettingsScannedGamesPage() {
             })()
             return (
               <div key={game.id} onClick={() => handleGameClick(game)} className="group relative aspect-[2/3] overflow-hidden rounded-xl bg-white/[0.03] border border-white/[0.06] cursor-pointer">
-                {/* Poster */}
                 {posterUrl ? (
                   <DkImage
                     src={posterUrl}
@@ -217,17 +237,12 @@ export function SettingsScannedGamesPage() {
                     <Gamepad2 className="h-12 w-12 text-white/10" />
                   </div>
                 )}
-                {/* Dark overlay for text readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-                {/* Platform logo top-left */}
                 <div className="absolute top-2 left-2 z-10">
                   <div className="px-2 py-0.5 rounded bg-black/50 flex items-center justify-center">
                     <ProviderLogo platform={game.platform} className="h-3.5" />
                   </div>
                 </div>
-
-                {/* Match status badge top-right */}
                 <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
                   {isMatched && (
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 flex items-center gap-1">
@@ -254,8 +269,6 @@ export function SettingsScannedGamesPage() {
                     </span>
                   )}
                 </div>
-
-                {/* Title + matched media at bottom */}
                 <div className="absolute bottom-0 left-0 right-0 p-3 z-10">
                   <p className="text-sm font-semibold text-white truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                     {game.title}
