@@ -358,9 +358,7 @@ class MediaService:
                 .joinedload(Movie.collection)
                 .selectinload(Collection.movies)
                 .joinedload(Movie.media_item),
-                joinedload(MediaItem.show)
-                .selectinload(Show.seasons)
-                .selectinload(Season.episodes),
+                joinedload(MediaItem.show).selectinload(Show.seasons).selectinload(Season.episodes),
                 joinedload(MediaItem.game).selectinload(Game._external_ids),
                 joinedload(MediaItem.album).selectinload(Album._external_ids),
                 joinedload(MediaItem.album).selectinload(Album.tracks).selectinload(Track._external_ids),
@@ -431,19 +429,13 @@ class MediaService:
         # branch use its dedicated index (GIN on search_vector, GiST trigram on
         # title, GIN trigram on people.name + FK on media_credits).
         # Restricted to only items that have embeddings populated.
-        fts_ids = (
-            select(MediaItem.id)
-            .where(
-                MediaItem.search_vector.op("@@")(tsquery),
-                MediaItem.embedding.isnot(None),
-            )
+        fts_ids = select(MediaItem.id).where(
+            MediaItem.search_vector.op("@@")(tsquery),
+            MediaItem.embedding.isnot(None),
         )
-        fuzzy_ids = (
-            select(MediaItem.id)
-            .where(
-                MediaItem.title.op("%")(query_str),
-                MediaItem.embedding.isnot(None),
-            )
+        fuzzy_ids = select(MediaItem.id).where(
+            MediaItem.title.op("%")(query_str),
+            MediaItem.embedding.isnot(None),
         )
         credit_ids = (
             select(MediaItem.id)
@@ -459,18 +451,12 @@ class MediaService:
 
         # If query embedding is available, add vector similarity candidates
         if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
-            vector_q = (
-                select(MediaItem.id)
-                .where(MediaItem.embedding.isnot(None))
-            )
+            vector_q = select(MediaItem.id).where(MediaItem.embedding.isnot(None))
             if media_type:
                 vector_q = vector_q.where(MediaItem.media_type == media_type)
             if exclude_adult:
                 vector_q = vector_q.where(MediaItem.is_adult.isnot(True))
-            vector_q = (
-                vector_q.order_by(MediaItem.embedding.cosine_distance(query_embedding))
-                .limit(50)
-            )
+            vector_q = vector_q.order_by(MediaItem.embedding.cosine_distance(query_embedding)).limit(50)
             branches.append(vector_q)
 
         matched_ids = union(*branches).subquery()

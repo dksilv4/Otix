@@ -171,4 +171,3 @@ async def _backfill_tmdb_movies(query: str, redis: aioredis.Redis, query_hash: s
 
 async def _backfill_tmdb_shows(query: str, redis: aioredis.Redis, query_hash: str) -> dict:
     return await _backfill_tmdb(query, redis, query_hash, "show")
-
