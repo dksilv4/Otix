@@ -165,7 +165,7 @@ async def get_media_item(
     from otix.schemas.admin_edit import MediaAssetOut
 
     result.screenshots = sorted(
-        (MediaAssetOut.model_validate(a) for a in item.assets if a.asset_type == 'screenshot'),
+        (MediaAssetOut.model_validate(a) for a in item.assets if a.asset_type == "screenshot"),
         key=lambda s: s.score or 0,
         reverse=True,
     )

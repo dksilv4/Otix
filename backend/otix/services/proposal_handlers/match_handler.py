@@ -45,9 +45,7 @@ class MatchProposalHandler:
         """
         return False
 
-    async def on_approve(
-        self, proposal: Proposal, db: AsyncSession
-    ) -> None:
+    async def on_approve(self, proposal: Proposal, db: AsyncSession) -> None:
         """Create ExternalID mapping + increment confirmed_count."""
         source = proposal.payload["source"]
         source_game_id = proposal.payload["source_game_id"]
@@ -57,9 +55,7 @@ class MatchProposalHandler:
         await eid_svc.upsert(source, source_game_id, "media_item", media_item_id)
         await eid_svc.increment_confirmed(source, source_game_id, "auto")
 
-    async def on_reject(
-        self, proposal: Proposal, db: AsyncSession
-    ) -> None:
+    async def on_reject(self, proposal: Proposal, db: AsyncSession) -> None:
         """Create MatchSkip to prevent re-processing this external ID."""
         from otix.domain.media import MatchSkip
 
@@ -75,9 +71,7 @@ class MatchProposalHandler:
         if not existing:
             db.add(MatchSkip(provider=source, external_id=source_game_id))
 
-    async def on_undo(
-        self, proposal: Proposal, db: AsyncSession
-    ) -> None:
+    async def on_undo(self, proposal: Proposal, db: AsyncSession) -> None:
         """Delete the ExternalID mapping created by approval.
 
         Uses the snapshot (stored at create time) to know which

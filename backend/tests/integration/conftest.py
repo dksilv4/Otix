@@ -42,7 +42,13 @@ def sample_movie_raw() -> dict:
         ],
         "credits": {
             "cast": [
-                {"id": 819, "name": "Edward Norton", "character": "The Narrator", "order": 0, "profile_path": "/edward.jpg"},
+                {
+                    "id": 819,
+                    "name": "Edward Norton",
+                    "character": "The Narrator",
+                    "order": 0,
+                    "profile_path": "/edward.jpg",
+                },
                 {"id": 287, "name": "Brad Pitt", "character": "Tyler Durden", "order": 1, "profile_path": "/brad.jpg"},
             ],
             "crew": [
@@ -108,15 +114,33 @@ def sample_show_raw() -> dict:
                 "overview": "The first season...",
                 "poster_path": "/s1.jpg",
                 "episodes": [
-                    {"episode_number": 1, "name": "Winter Is Coming", "overview": "...", "runtime": 62, "air_date": "2011-04-17"},
-                    {"episode_number": 2, "name": "The Kingsroad", "overview": "...", "runtime": 56, "air_date": "2011-04-24"},
+                    {
+                        "episode_number": 1,
+                        "name": "Winter Is Coming",
+                        "overview": "...",
+                        "runtime": 62,
+                        "air_date": "2011-04-17",
+                    },
+                    {
+                        "episode_number": 2,
+                        "name": "The Kingsroad",
+                        "overview": "...",
+                        "runtime": 56,
+                        "air_date": "2011-04-24",
+                    },
                 ],
             },
             {"season_number": 0, "name": "Specials", "overview": "...", "poster_path": None, "episodes": []},
         ],
         "credits": {
             "cast": [
-                {"id": 17286, "name": "Peter Dinklage", "character": "Tyrion Lannister", "order": 0, "profile_path": "/peter.jpg"},
+                {
+                    "id": 17286,
+                    "name": "Peter Dinklage",
+                    "character": "Tyrion Lannister",
+                    "order": 0,
+                    "profile_path": "/peter.jpg",
+                },
             ],
             "crew": [],
         },
@@ -231,7 +255,9 @@ def mock_httpx_client(
 
         def raise_for_status(self):
             if self.status_code >= 400:
-                raise httpx.HTTPStatusError("error", request=MagicMock(), response=MagicMock(status_code=self.status_code))
+                raise httpx.HTTPStatusError(
+                    "error", request=MagicMock(), response=MagicMock(status_code=self.status_code)
+                )
 
     class MockTransport(httpx.AsyncBaseTransport):
         async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
@@ -239,24 +265,36 @@ def mock_httpx_client(
             body = None
 
             if "/person/changes" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 287, "adult": False}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 287, "adult": False}],
+                    }
+                ).encode()
             elif "/person/287/combined_credits" in url:
                 body = json.dumps(sample_person_combined_credits).encode()
             elif "/person/287" in url:
                 body = json.dumps(sample_person_raw).encode()
             elif "/tv/changes" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 1399, "adult": False}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 1399, "adult": False}],
+                    }
+                ).encode()
             elif "/movie/changes" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 550, "adult": False}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 550, "adult": False}],
+                    }
+                ).encode()
             elif "/movie/550" in url:
                 body = json.dumps(sample_movie_raw).encode()
             elif "/movie/999" in url:
@@ -266,58 +304,94 @@ def mock_httpx_client(
             elif "/collection/123" in url:
                 body = json.dumps(sample_collection_raw).encode()
             elif "/movie/popular" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 2,
-                    "results": [
-                        {"id": 550, "title": "Fight Club"},
-                        {"id": 680, "title": "Pulp Fiction"},
-                    ],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 2,
+                        "results": [
+                            {"id": 550, "title": "Fight Club"},
+                            {"id": 680, "title": "Pulp Fiction"},
+                        ],
+                    }
+                ).encode()
             elif "/tv/popular" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [
-                        {"id": 1399, "name": "Game of Thrones"},
-                    ],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [
+                            {"id": 1399, "name": "Game of Thrones"},
+                        ],
+                    }
+                ).encode()
             elif "/movie/top_rated" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 550, "title": "Fight Club"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 550, "title": "Fight Club"}],
+                    }
+                ).encode()
             elif "/movie/upcoming" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 680, "title": "Pulp Fiction"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 680, "title": "Pulp Fiction"}],
+                    }
+                ).encode()
             elif "/movie/now_playing" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 550, "title": "Fight Club"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 550, "title": "Fight Club"}],
+                    }
+                ).encode()
             elif "/tv/top_rated" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 1399, "name": "Game of Thrones"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 1399, "name": "Game of Thrones"}],
+                    }
+                ).encode()
             elif "/tv/on_the_air" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 1399, "name": "Game of Thrones"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 1399, "name": "Game of Thrones"}],
+                    }
+                ).encode()
             elif "/tv/airing_today" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 1,
-                    "results": [{"id": 1399, "name": "Game of Thrones"}],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 1,
+                        "results": [{"id": 1399, "name": "Game of Thrones"}],
+                    }
+                ).encode()
             elif "/trending/" in url:
-                body = json.dumps({
-                    "page": 1, "total_pages": 1, "total_results": 2,
-                    "results": [
-                        {"id": 550, "title": "Fight Club", "media_type": "movie"},
-                        {"id": 1399, "name": "Game of Thrones", "media_type": "tv"},
-                    ],
-                }).encode()
+                body = json.dumps(
+                    {
+                        "page": 1,
+                        "total_pages": 1,
+                        "total_results": 2,
+                        "results": [
+                            {"id": 550, "title": "Fight Club", "media_type": "movie"},
+                            {"id": 1399, "name": "Game of Thrones", "media_type": "tv"},
+                        ],
+                    }
+                ).encode()
             elif "/configuration" in url:
                 body = json.dumps({"images": {"base_url": "http://image.tmdb.org/t/p/"}}).encode()
             elif "/genre/movie/list" in url:

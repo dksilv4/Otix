@@ -1014,7 +1014,8 @@ async def match_scan(
                                 "has_multiplayer": mi.has_multiplayer,
                                 "genres": [
                                     {"id": g.genre.id, "name": g.genre.name, "slug": g.genre.slug}
-                                    for g in (mi.genres or []) if g.genre
+                                    for g in (mi.genres or [])
+                                    if g.genre
                                 ],
                                 "involved_companies": [
                                     {
@@ -1031,15 +1032,16 @@ async def match_scan(
                                 ],
                                 "game_modes": [
                                     {"id": gm.game_mode.id, "name": gm.game_mode.name, "slug": gm.game_mode.slug}
-                                    for gm in (mi.game_modes or []) if gm.game_mode
+                                    for gm in (mi.game_modes or [])
+                                    if gm.game_mode
                                 ],
                                 "platforms": [
                                     {"id": p.platform.id, "name": p.platform.name, "slug": p.platform.slug}
-                                    for p in (mi.platforms or []) if p.platform
+                                    for p in (mi.platforms or [])
+                                    if p.platform
                                 ],
                                 "screenshots": [
-                                    {"url": s.url, "width": s.width, "height": s.height}
-                                    for s in (mi.screenshots or [])
+                                    {"url": s.url, "width": s.width, "height": s.height} for s in (mi.screenshots or [])
                                 ],
                                 "steam_app_id": mi.steam_app_id,
                                 "steam_playtime_forever": mi.steam_playtime_forever,
@@ -1065,19 +1067,21 @@ async def match_scan(
 
                 yield (
                     f"event: game-progress\n"
-                    f"data: {StreamMatchEvent(
-                        game_index=i,
-                        total_games=n,
-                        query_id=req.query_id,
-                        query_title=req.title,
-                        status=status,
-                        candidates_count=len(response.candidates),
-                        auto_match=response.auto_match is not None,
-                        match=response.auto_match,
-                        candidates=response.candidates if response.candidates else None,
-                        hydrated=hydrated,
-                        proposal_status=proposal_status,
-                    ).model_dump_json()}\n\n"
+                    f"data: {
+                        StreamMatchEvent(
+                            game_index=i,
+                            total_games=n,
+                            query_id=req.query_id,
+                            query_title=req.title,
+                            status=status,
+                            candidates_count=len(response.candidates),
+                            auto_match=response.auto_match is not None,
+                            match=response.auto_match,
+                            candidates=response.candidates if response.candidates else None,
+                            hydrated=hydrated,
+                            proposal_status=proposal_status,
+                        ).model_dump_json()
+                    }\n\n"
                 )
             except Exception as exc:
                 errored_count += 1
@@ -1088,26 +1092,30 @@ async def match_scan(
                     pass
                 yield (
                     f"event: game-progress\n"
-                    f"data: {StreamMatchEvent(
-                        game_index=i,
-                        total_games=n,
-                        query_id=req.query_id,
-                        query_title=req.title,
-                        status='error',
-                        error=str(exc),
-                    ).model_dump_json()}\n\n"
+                    f"data: {
+                        StreamMatchEvent(
+                            game_index=i,
+                            total_games=n,
+                            query_id=req.query_id,
+                            query_title=req.title,
+                            status='error',
+                            error=str(exc),
+                        ).model_dump_json()
+                    }\n\n"
                 )
 
         duration_ms = int((time.monotonic() - start) * 1000)
         yield (
             f"event: complete\n"
-            f"data: {StreamCompleteEvent(
-                total_games=n,
-                matched_count=matched_count,
-                unmatched_count=unmatched_count,
-                errored_count=errored_count,
-                duration_ms=duration_ms,
-            ).model_dump_json()}\n\n"
+            f"data: {
+                StreamCompleteEvent(
+                    total_games=n,
+                    matched_count=matched_count,
+                    unmatched_count=unmatched_count,
+                    errored_count=errored_count,
+                    duration_ms=duration_ms,
+                ).model_dump_json()
+            }\n\n"
         )
 
     return StreamingResponse(

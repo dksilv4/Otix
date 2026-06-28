@@ -151,7 +151,7 @@ export async function batchMatchAndSave(
       const queryId = (games[i].platform || 'unknown') + ':' + (games[i].appName || games[i].catalogItemId || games[i].id)
 
       // Auto-match (backend already creates approved proposal)
-      let best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
+      const best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
 
       if (best) {
         try {
