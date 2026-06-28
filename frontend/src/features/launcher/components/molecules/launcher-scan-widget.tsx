@@ -37,11 +37,11 @@ export function LauncherScanWidget({ id }: { id?: string }) {
     }
   }, [toast])
 
-  const goToSettings = useCallback(() => navigate({ to: '/settings', search: { section: 'scanners' } as never }), [navigate])
+  const goToSettings = useCallback(() => navigate({ to: '/settings/scanners' }), [navigate])
   const goToLibrary = useCallback(() => navigate({ to: '/library' }), [navigate])
 
   return (
-    <div id={id} className="flex-1 rounded-2xl bg-white/3 border border-white/5 p-4 flex flex-col justify-between hover:border-white/10 transition-colors">
+    <div id={id} className="flex-1 rounded-2xl bg-white/3 p-4 flex flex-col justify-between">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-xs font-bold text-white/90 mb-1 flex items-center gap-1.5">

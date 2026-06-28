@@ -105,7 +105,7 @@ export function UserProfilePage() {
   ].join(', ')
 
   return (
-    <div className={`w-full h-screen overflow-y-auto flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
+    <div id="user-profile-page" className={`w-full h-screen overflow-y-auto flex flex-col ${isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'}`}>
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta

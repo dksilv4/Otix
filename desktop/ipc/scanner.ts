@@ -6,15 +6,9 @@ import type { PluginManager } from '../plugins/manager';
 import {
   batchCheckMatchCache,
   saveMatchCache,
-  getUnseededGames,
-  markGamesAsSeeded,
   type MatchCacheEntry,
 } from '../downloads';
 import { GameDetector } from '../game/detector';
-import http from 'http';
-import { getApiBaseUrl } from '../config';
-
-const BACKEND_BASE = getApiBaseUrl();
 
 let _orchestrator: GameScanOrchestrator | null = null;
 let _pluginManager: PluginManager | null = null;
@@ -25,58 +19,6 @@ export function setScanOrchestrator(o: GameScanOrchestrator): void {
 
 export function setPluginManager(pm: PluginManager): void {
   _pluginManager = pm;
-}
-
-/**
- * Fire-and-forget: send UNSEEDED game titles to backend for IGDB seeding.
- *
- * The local SQLite DB is the source of truth — only titles where
- * `seeded = 0` are sent. On a successful response the titles are
- * marked as seeded so they are never re-sent.
- *
- * This is the ONLY place that calls POST /api/media/seed-from-titles.
- * Frontend components MUST NOT call it independently (avoids HTTP/1.1
- * connection pool exhaustion in the renderer).
- */
-function seedTitlesOnBackend(): void {
-  const games = getUnseededGames();
-  if (!games.length) {
-    console.log('[seedTitlesOnBackend] no unseeded game — skipping');
-    return;
-  }
-  const steamCount = games.filter(g => g.steam_app_id !== null).length;
-  console.log(
-    '[seedTitlesOnBackend] sending', games.length, 'unseeded game',
-    `(${steamCount} with Steam App ID)`,
-  );
-  try {
-    const url = new URL('/api/media/seed-from-titles', BACKEND_BASE);
-    const body = JSON.stringify({ games });
-    const req = http.request(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-      timeout: 10_000,
-    });
-    req.on('response', (res) => {
-      let data = '';
-      res.on('data', (chunk: string) => (data += chunk));
-      res.on('end', () => {
-        console.log('[seedTitlesOnBackend] response', res.statusCode, data);
-        if (res.statusCode === 200) {
-          markGamesAsSeeded(games);
-          console.log('[seedTitlesOnBackend] marked', games.length, 'game as seeded');
-        }
-      });
-    });
-    req.on('error', (err) => {
-      console.error('[seedTitlesOnBackend] error:', err.message);
-      // Don't mark as seeded on error — will retry next scan
-    });
-    req.write(body);
-    req.end();
-  } catch (e) {
-    console.error('[seedTitlesOnBackend] exception:', e);
-  }
 }
 
 export function registerScannerIPC(gameDetector: GameDetector | null): void {
@@ -106,11 +48,10 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     // Feed scanned game into detector for external process matching
     gameDetector?.setLibrary(games as LocalGame[]);
     gameDetector?.startPeriodicScan();
-    // Persist to local DB (source of truth), then seed unseeded titles
+    // Persist to local DB (source of truth)
     if (games.length > 0) {
       gameService.upsertGames(games);
       gameService.notifyGamesChanged();
-      seedTitlesOnBackend();
     }
 
     // Match directory games through the same pipeline as plugin games
@@ -166,8 +107,21 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
     gameService.updateGamePath(id, exePath, installDir);
     gameService.notifyGamesChanged();
   });
-  ipcMain.handle('scanner:accept-suggestion', (_event, gameId: string, suggestion: gameService.GameRow['matchSuggestion']) => {
+  ipcMain.handle('scanner:accept-suggestion', (_event, gameId: string, suggestion: any) => {
     gameService.acceptSuggestion(gameId, suggestion ?? undefined);
+    console.log('[scanner] acceptSuggestion:', gameId, '->', suggestion?.id || 'no-suggestion');
+    // If SSE provided hydrated catalog data, store it
+    if (suggestion?.hydrated) {
+      gameService.hydrateGame(
+        gameId,
+        suggestion.title || suggestion.hydrated.title || '',
+        suggestion.hydrated.icon_url || suggestion.hydrated.iconUrl || null,
+        suggestion.hydrated.poster_url || suggestion.hydrated.posterUrl || suggestion.posterUrl || null,
+        suggestion.hydrated,
+        suggestion.confidence ?? null,
+        suggestion.id || suggestion.hydrated.id || null,
+      );
+    }
     gameService.notifyGamesChanged();
   });
   ipcMain.handle('scanner:unmatch-game', (_event, gameId: string) => {
@@ -196,6 +150,67 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
 
   ipcMain.handle('scanner:save-match-cache', (_event, entries: MatchCacheEntry[]) => {
     return saveMatchCache(entries);
+  });
+
+  // ── Full hydration from Otix API ──────────────────────────
+  ipcMain.handle('games:hydrate-matched', async () => {
+    const matched = gameService.getMatchedGames()
+    if (!matched.length) return { updated: 0, failed: 0, total: 0 }
+
+    const { getApiBaseUrl } = require('../config')
+    const store = require('electron-store')
+    const appStore = new store({ name: 'otix-desktop' })
+    const token = appStore.get('auth.access_token') as string | undefined
+    const baseUrl = getApiBaseUrl()
+
+    let updated = 0, failed = 0
+    const concurrency = 6
+
+    // Fetch full catalog data for every matched game, store in local DB
+    for (let i = 0; i < matched.length; i += concurrency) {
+      const batch = matched.slice(i, i + concurrency)
+      const results = await Promise.allSettled(
+        batch.map(async (game) => {
+          const url = `${baseUrl}/api/v1/media/game/${game.otix_media_id}`
+          const res = await fetch(url, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          })
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.json()
+        }),
+      )
+      for (let j = 0; j < batch.length; j++) {
+        const result = results[j]
+        if (result.status === 'fulfilled') {
+          const data = result.value
+          gameService.hydrateGame(
+            batch[j].id,
+            data.title || batch[j].title,
+            data.iconUrl || null,
+            data.posterUrl || null,
+            data,
+            data.confidence ?? null,
+            batch[j].otix_media_id,
+          )
+          updated++
+        } else {
+          failed++
+        }
+      }
+    }
+    return { updated, failed, total: matched.length }
+  });
+
+  // Reset scanned games for specific platforms only
+  ipcMain.handle('scanner:reset-platform-games', (_event, platforms: string[]) => {
+    gameService.deleteGamesByPlatforms(platforms);
+    gameService.notifyGamesChanged();
+  });
+
+  // Delete games whose installDir starts with the given prefix
+  ipcMain.handle('scanner:delete-games-by-dir', (_event, dirPrefix: string) => {
+    gameService.deleteGamesByDirectory(dirPrefix);
+    gameService.notifyGamesChanged();
   });
 
   // Reset all scanned game data and match records

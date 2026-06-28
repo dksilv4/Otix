@@ -1,3 +1,15 @@
+export interface GameFilter {
+  platform?: string[]
+  matched?: boolean
+  hasSuggestion?: boolean
+  search?: string
+  installed?: boolean
+  limit?: number
+  offset?: number
+  sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at'
+  sortDir?: 'asc' | 'desc'
+}
+
 export interface LocalGame {
   id: string;
   title: string;
@@ -364,7 +376,7 @@ export interface IDesktopAPI {
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
   onScannerProgress: (callback: (data: { currentDir: string; progress: number }) => void) => () => void;
   onGamesUpdated: (callback: () => void) => () => void;
-  getScannedGames: () => Promise<LocalGame[]>;
+  getLocalGames: (filter?: GameFilter) => Promise<LocalGame[]>;
   saveScannedGames: (games: LocalGame[]) => Promise<void>;
   pickExecutable: (defaultPath?: string) => Promise<string | null>;
   getScanPaths: () => Promise<{ path: string; type: 'game' | 'iso' }[]>;
@@ -374,12 +386,12 @@ export interface IDesktopAPI {
   batchCheckMatchCache: (isoPaths: string[]) => Promise<Record<string, MatchCacheEntry | null>>;
   saveMatchCache: (entries: MatchCacheEntry[]) => Promise<void>;
   updateGamePath: (id: string, exePath: string, installDir?: string) => Promise<void>;
-  getScannedGamesFiltered: (filter: unknown) => Promise<LocalGame[]>;
   getGameById: (id: string) => Promise<LocalGame | null>;
   getGameCount: (filter: unknown) => Promise<number>;
   acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
   unmatchGame: (gameId: string) => Promise<void>;
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
+  resetPlatformGames: (platforms: string[]) => Promise<void>;
   resetGameData: () => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;
 

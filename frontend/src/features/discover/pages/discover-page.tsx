@@ -12,7 +12,7 @@ export function DiscoverPage() {
           content="Discover movies, shows, games, and music on Otix."
         />
       </Helmet>
-      <div className="relative">
+      <div id="discover-page" className="relative">
         <DiscoverFeed />
       </div>
       <Outlet />

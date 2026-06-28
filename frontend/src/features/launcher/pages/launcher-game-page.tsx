@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { LauncherGameHero } from '@/features/launcher/components/organisms/launcher-game-hero'
 import { LauncherEmptyState } from '@/features/launcher/components/molecules/launcher-empty-state'
+import { LauncherNotFound } from '@/features/launcher/components/molecules/launcher-not-found'
 import { LauncherShelf } from '@/features/launcher/components/organisms/launcher-shelf'
 import { LauncherFooter } from '@/features/launcher/components/organisms/launcher-footer'
 import { usePopularGames } from '@/features/launcher/data/queries'
+import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 
 const SLIDE_INTERVAL_MS = 30000
@@ -15,6 +17,7 @@ export function LauncherGamePage() {
   const navigate = useNavigate()
   const isDesktop = hasDesktopAPI()
   const { data: popularGames = [] } = usePopularGames()
+  const { game, isLoading } = useLauncherGame(gameId)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [paused, setPaused] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -22,7 +25,7 @@ export function LauncherGamePage() {
   const handleMouseEnter = useCallback(() => setPaused(true), [])
   const handleMouseLeave = useCallback(() => setPaused(false), [])
 
-  // Progress ticker
+  // Progress ticker (web only)
   useEffect(() => {
     if (paused || isDesktop || popularGames.length === 0 || !gameId) {
       setProgress(0)
@@ -38,7 +41,7 @@ export function LauncherGamePage() {
     return () => clearInterval(tick)
   }, [gameId, paused, isDesktop, popularGames.length])
 
-  // Auto-advance timer
+  // Auto-advance timer (web only)
   useEffect(() => {
     if (isDesktop || popularGames.length === 0 || !gameId || paused) return
 
@@ -59,8 +62,13 @@ export function LauncherGamePage() {
     }
   }, [gameId, isDesktop, popularGames, navigate, paused])
 
+  // ── States ──
   if (!gameId) return <LauncherEmptyState />
 
+  // gameId exists but resolved to nothing (not loading, no game = truly missing)
+  if (!isLoading && !game) return <LauncherNotFound />
+
+  // ponytail: hero/shelf/footer each manage their own loading/empty states internally
   const showProgress = !isDesktop && popularGames.length > 0
 
   return (
@@ -71,7 +79,11 @@ export function LauncherGamePage() {
       onMouseLeave={handleMouseLeave}
     >
       <LauncherGameHero />
-      <section id="launcher-shelf-section" className="w-full bg-[#08080a] border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8" style={{ paddingLeft: 'calc(76px + 1.5rem)' }}>
+      <section
+        id="launcher-shelf-section"
+        className="w-full bg-[#08080a] border-t border-white/[0.03] py-8 pr-8 shrink-0 flex flex-col gap-8"
+        style={{ paddingLeft: 'calc(76px + 1.5rem)' }}
+      >
         <LauncherShelf id="launcher-shelf" />
         <LauncherFooter id="launcher-footer" />
       </section>
@@ -81,7 +93,11 @@ export function LauncherGamePage() {
         <div className="fixed bottom-0 inset-x-0 z-50 h-0.5 bg-white/5">
           <div
             className="h-full bg-[var(--color-accent)] transition-[width]"
-            style={{ width: `${progress}%`, transitionDuration: `${PROGRESS_TICK_MS}ms`, transitionTimingFunction: 'linear' }}
+            style={{
+              width: `${progress}%`,
+              transitionDuration: `${PROGRESS_TICK_MS}ms`,
+              transitionTimingFunction: 'linear',
+            }}
           />
         </div>
       )}

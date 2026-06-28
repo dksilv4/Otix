@@ -321,7 +321,7 @@ export class GameScanOrchestrator extends EventEmitter {
       this.queryIdToGames.set(qid, existing);
     }
 
-    const url = new URL(`/api/media/match/stream`, this.apiBaseUrl);
+    const url = new URL(`/api/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
     return new Promise<void>((resolve, reject) => {
@@ -423,8 +423,14 @@ export class GameScanOrchestrator extends EventEmitter {
           otixPosterUrl: data.match.poster_url, otixBackdropUrl: data.match.backdrop_url,
           otixConfidence: data.match.confidence, matchType: 'auto', status: 'pending',
         });
-        hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
-          data.match, data.match.confidence, data.match.media_item_id);
+        // Save full hydrated data if the backend returned it
+        if (data.hydrated) {
+          hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
+            data.hydrated, data.match.confidence, data.match.media_item_id);
+        } else {
+          hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
+            data.match, data.match.confidence, data.match.media_item_id);
+        }
         notifyGamesChanged();
       }
       this.tryClaimForPlugin(pluginId, data.match.media_item_id);

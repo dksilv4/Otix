@@ -6,7 +6,6 @@ const LibraryLayout = lazy(() => import('@/old-features/library/pages/library-la
 
 // Page components — all from old-features until migrated
 const LibraryOverviewPage = lazy(() => import('@/old-features/library/pages/library-overview-page').then(m => ({ default: m.LibraryOverviewPage })))
-const LibraryGamesPage = lazy(() => import('@/old-features/library/pages/library-games-page').then(m => ({ default: m.LibraryGamesPage })))
 const LibraryWatchlistPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchlistPage })))
 const LibraryLikePage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryLikePage })))
 const LibraryWatchedPage = lazy(() => import('@/old-features/library/pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchedPage })))
@@ -39,12 +38,6 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/overview',
     component: LibraryOverviewPage,
-  })
-
-  const libraryGamesRoute = createRoute({
-    getParentRoute: () => libraryLayoutRoute,
-    path: '/games',
-    component: LibraryGamesPage,
   })
 
   const libraryWatchlistRoute = createRoute({
@@ -123,7 +116,6 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     libraryLayoutRoute,
     libraryIndexRoute,
     libraryOverviewRoute,
-    libraryGamesRoute,
     libraryWatchlistRoute,
     libraryLikeRoute,
     libraryWatchedRoute,

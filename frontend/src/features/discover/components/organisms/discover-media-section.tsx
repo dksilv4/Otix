@@ -39,6 +39,7 @@ export const MediaSection = memo(function MediaSection({
 
   return (
     <motion.section
+      id={`discover-section-${mediaType}-${listType}`}
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}

@@ -61,7 +61,7 @@ export function MediaHero({
 
 
     return (
-        <div className={`relative flex min-h-[45vh] items-end  rounded-3xl lg:min-h-[50vh] mx-12 mt-20 pb-14 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
+        <div id="media-hero" className={`relative flex min-h-[45vh] items-end  rounded-3xl lg:min-h-[50vh] mx-12 mt-20 pb-14 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
             {/* Backdrop with cinematic gradient */}
             {heroBackdrop && (
                 <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">

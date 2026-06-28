@@ -1,37 +1,50 @@
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useGameDetail } from '@/features/launcher/data/queries'
 import { hasDesktopAPI } from '@/lib/desktop/api'
-import type { LocalGame } from '@/features/launcher/types'
+import type { LocalGame, Game } from '@/features/launcher/types'
 
 export function useLauncherGame(gameId: string | undefined) {
   const isDesktop = hasDesktopAPI()
   const { data: localGame, isLoading } = useLocalGame(gameId)
   // For desktop matched games, use the otix ID for catalog detail fetch.
   // For web, gameId is already a catalog UUID. Falls back gracefully via enabled check.
-  const catalogId = localGame?.otixMediaId || (!isDesktop ? gameId : undefined)
+  const catalogId = localGame?.data?.id || localGame?.otixMediaId || (!isDesktop ? gameId : undefined)
   const { data: catalogDetail } = useGameDetail(catalogId)
 
   // Merge catalog data into local game — prefers data, falls back to otix* fields / catalog detail
   if (localGame) {
-    const hasRichData = localGame.data?.backdropUrl && localGame.data?.posterUrl
+    const hasRichData = !!(localGame.data?.backdropUrl && localGame.data?.posterUrl)
+    const catalogSource = (catalogDetail as Record<string, unknown> | null) ?? {}
+
     if (!hasRichData) {
-      // Try catalog API detail first, then desktop otix* fields, then nothing
-      const catalogSource = catalogDetail as Record<string, unknown> ?? {}
-      const richData = {
+      const richData: Game = {
         id: localGame.otixMediaId || localGame.data?.id || '',
         title: localGame.otixMediaTitle || localGame.data?.title || localGame.title,
         slug: localGame.otixMediaSlug || localGame.data?.slug || '',
-        posterUrl: localGame.otixPosterUrl || (catalogSource.posterUrl as string) || localGame.data?.posterUrl || null,
-        backdropUrl: localGame.otixBackdropUrl || (catalogSource.backdropUrl as string) || localGame.data?.backdropUrl || null,
-        textlessPosterUrl: localGame.otixTextlessPosterUrl || (catalogSource.textlessPosterUrl as string) || localGame.data?.textlessPosterUrl || null,
-        logoUrl: localGame.otixLogoUrl || (catalogSource.logoUrl as string) || localGame.data?.logoUrl || null,
-        iconUrl: localGame.otixIconUrl || (catalogSource.iconUrl as string) || localGame.data?.iconUrl || null,
-      } as Game
+        posterUrl: (localGame.otixPosterUrl || catalogSource.posterUrl || localGame.data?.posterUrl) as string | undefined,
+        backdropUrl: (localGame.otixBackdropUrl || catalogSource.backdropUrl || localGame.data?.backdropUrl) as string | undefined,
+        textlessPosterUrl: (localGame.otixTextlessPosterUrl || catalogSource.textlessPosterUrl || localGame.data?.textlessPosterUrl) as string | null | undefined,
+        logoUrl: (localGame.otixLogoUrl || catalogSource.logoUrl || localGame.data?.logoUrl) as string | null | undefined,
+        iconUrl: (localGame.otixIconUrl || catalogSource.iconUrl || localGame.data?.iconUrl) as string | undefined,
+        screenshots: (catalogSource.screenshots || localGame.data?.screenshots) as Game['screenshots'],
+      }
       return {
         game: { ...localGame, data: richData } as LocalGame,
         isLoading: false,
       }
     }
+
+    // Already has rich data — merge screenshots from catalog if newer
+    if (catalogSource.screenshots && !localGame.data?.screenshots?.length) {
+      return {
+        game: {
+          ...localGame,
+          data: { ...localGame.data, screenshots: catalogSource.screenshots as Game['screenshots'] },
+        } as LocalGame,
+        isLoading: false,
+      }
+    }
+
     return { game: localGame, isLoading: false }
   }
 
@@ -44,7 +57,10 @@ export function useLauncherGame(gameId: string | undefined) {
       installDir: '',
       iconUrl: catalogDetail.iconUrl ?? undefined,
       posterUrl: catalogDetail.posterUrl ?? undefined,
-      data: catalogDetail as unknown as LocalGame['data'],
+      data: {
+        ...(catalogDetail as unknown as Game),
+        screenshots: (catalogDetail as Record<string, unknown>).screenshots as Game['screenshots'],
+      } as LocalGame['data'],
     }
     return { game: webGame, isLoading: false }
   }

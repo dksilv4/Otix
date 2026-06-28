@@ -110,7 +110,7 @@ export function PeopleDetailPage() {
   // ── Loading state ──
   if (isLoading) {
     return (
-      <div className={`mx-auto max-w-4xl px-4 ${ptClass} sm:px-6 lg:px-8 space-y-8`}>
+      <div id="people-detail-page" className={`mx-auto max-w-4xl px-4 ${ptClass} sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           <Skeleton className="h-36 w-36 rounded-full sm:h-44 sm:w-44" />
           <div className="space-y-3 text-center sm:text-left">
@@ -142,7 +142,7 @@ export function PeopleDetailPage() {
   const showBioExpand = (person.biography?.length ?? 0) > bioTruncation
 
   return (
-    <div className={`mx-auto max-w-4xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-10`}>
+    <div id="people-detail-page" className={`mx-auto max-w-4xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-10`}>
       <Helmet>
         <title>{`${person.name} - Otix`}</title>
         <meta

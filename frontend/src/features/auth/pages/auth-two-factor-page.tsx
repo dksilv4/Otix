@@ -36,7 +36,7 @@ export function TwoFactorPage() {
     }
 
     return (
-        <div className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+        <div id="auth-two-factor-page" className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4">
             <Helmet>
                 <title>Two-Factor Authentication - Otix</title>
                 <meta name="description" content="Verify your identity using two-factor authentication." />

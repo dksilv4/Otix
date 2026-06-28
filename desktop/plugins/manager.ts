@@ -215,7 +215,6 @@ export class PluginManager {
           );
         }
       } catch (err: any) {
-        // Clean up the runtime regardless of which error path we hit
         await runtime.stop().catch(() => {});
         if (
           err.message.includes('not found') ||
@@ -669,18 +668,27 @@ export class PluginManager {
   async loadEnabledPlugins(): Promise<void> {
     const allRows = this.pluginsRepo.getAll()
     const enabled = allRows.filter((r) => r.status === 'enabled')
+    const errored = allRows.filter((r) => r.status === 'error')
 
     for (const row of enabled) {
       try {
         await this.enable(row.id)
-        console.log(
-          `[PluginManager] Loaded plugin: ${row.name} v${row.version}`,
-        )
+        console.log(`[PluginManager] Loaded plugin: ${row.name} v${row.version}`)
       } catch (err) {
         console.error(
           `[PluginManager] Failed to load plugin ${row.id}:`,
           err,
         )
+      }
+    }
+
+    // Retry previously-errored plugins — they may have been fixed
+    for (const row of errored) {
+      try {
+        await this.enable(row.id)
+        console.log(`[PluginManager] Recovered plugin: ${row.name} v${row.version}`)
+      } catch {
+        // Still failing — status remains error, no spam
       }
     }
   }

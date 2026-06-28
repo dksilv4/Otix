@@ -84,6 +84,7 @@ export function SearchPage() {
 
   return (
     <div
+      id="search-page"
       className="relative flex flex-col"
       style={{ minHeight: 'calc(100vh - 5rem)' }}
     >

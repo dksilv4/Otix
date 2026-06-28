@@ -93,7 +93,7 @@ export function MediaDetail() {
 
 
     return (
-        <div className={`animate-fade-in pb-16 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
+        <div id="media-detail" className={`animate-fade-in pb-16 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
             {/* ── SEO ── */}
             <Helmet>
                 <title>{`${titleWithYear} - Otix`}</title>

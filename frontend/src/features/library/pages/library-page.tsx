@@ -30,7 +30,7 @@ export function LibraryPage() {
   const [activeTab, setActiveTab] = useState('lists')
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div id="library-page" className="p-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Library</h1>
 
       {/* Tabs */}

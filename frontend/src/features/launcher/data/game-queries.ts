@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, rejectSuggestionOnServer } from './storage';
 import { getDesktopAPI } from '@/lib/desktop/api';
+import { apiClient } from "@/lib/api/client";
 import { useEffect } from 'react';
 import type { GamesFilter } from './types';
+import type { Game, LocalGame } from "./types";
 
 type Listener = () => void;
 
@@ -54,7 +56,7 @@ export function useLocalGames(filter?: GamesFilter) {
 
   return useQuery({
     queryKey: localGameKeys.list(filter),
-    queryFn: () => fetchGames(filter as Record<string, unknown>),
+    queryFn: () => fetchGames(filter),
     staleTime: 30_000,
   });
 }
@@ -81,7 +83,7 @@ export function useLocalGame(id: string | undefined) {
 export function useLocalGameCount(filter?: GamesFilter) {
   return useQuery({
     queryKey: localGameKeys.count(filter),
-    queryFn: () => fetchGameCount(filter as Record<string, unknown>),
+    queryFn: () => fetchGameCount(filter),
     staleTime: 30_000,
   });
 }
@@ -128,28 +130,44 @@ export function useUnmatchedGames() {
   return useLocalGames({ matched: false } satisfies GamesFilter);
 }
 
-// ── Match/sync mutations (previously in game-scanner/queries.ts) ──
+// ── Match/sync mutations ──────────────────────────────────────────
 
-import { apiClient } from "@/lib/api/client";
-import type { LocalGame } from "./types";
-
-interface MatchResult {
-  queryTitle: string;
-  matchedMedia: {
-    id: string;
-    title: string;
-    slug: string;
-    posterUrl?: string | null;
-    textlessPosterUrl?: string | null;
-    backdropUrl?: string | null;
-    logoUrl?: string | null;
-    iconUrl?: string | null;
-  } | null;
-  confidence: number;
+// Types for POST /media/match/batch response
+interface BatchMatchCandidate {
+  media_item_id: string | null
+  title: string
+  poster_url: string | null
+  backdrop_url: string | null
+  release_year: number | null
+  platforms: string[] | null
+  confidence: number
+  match_type: string
+  needs_import: boolean
 }
 
-interface MatchResponse {
-  matches: MatchResult[];
+interface BatchMatchResult {
+  query_id: string
+  query_title: string
+  candidates: BatchMatchCandidate[]
+  auto_match: BatchMatchCandidate | null
+}
+
+interface BatchMatchResponse {
+  matches: BatchMatchResult[]
+}
+
+function candidateToGame(c: BatchMatchCandidate, confidence: number): Game {
+  return {
+    id: c.media_item_id || '',
+    title: c.title,
+    slug: '',
+    posterUrl: c.poster_url ?? undefined,
+    textlessPosterUrl: null,
+    backdropUrl: c.backdrop_url ?? undefined,
+    logoUrl: null,
+    iconUrl: null,
+    confidence,
+  }
 }
 
 export function useSyncLocalGames() {
@@ -159,12 +177,10 @@ export function useSyncLocalGames() {
       if (matched.length === 0) return;
       await apiClient.post("/media/sync-local-games", {
         games: matched.map((g) => ({
-          id: g.id,
-          mediaId: g.data?.id,
           title: g.title,
           platform: g.platform,
-          exePath: g.exePath,
-          installDir: g.installDir,
+          otixMediaId: g.data?.id,
+          matchSuggestionMediaId: g.matchSuggestion?.id ?? null,
         })),
       });
     },
@@ -174,57 +190,26 @@ export function useSyncLocalGames() {
 export function useMatchLocalGames() {
   return useMutation({
     mutationFn: async (games: LocalGame[]): Promise<LocalGame[]> => {
-      // Always send all game to refresh catalog data for every title
-      const gameEntries = games.map((g) => ({
-        title: g.title,
-        platform: g.platform,
-      }));
-      const { data } = await apiClient.post<MatchResponse>(
-        "/media/match-local-games",
-        { games: gameEntries },
+      const { data } = await apiClient.post<BatchMatchResponse>(
+        "/media/match/batch",
+        { games: games.map((g, i) => ({ query_id: g.id || `game-${i}`, title: g.title, platform: g.platform })) },
       );
 
-      const matchMap = new Map(
-        data.matches.map((m) => [m.queryTitle, m]),
-      );
+      // Build title → best match lookup (auto_match first, then top candidate)
+      const matchMap = new Map<string, BatchMatchCandidate>();
+      for (const m of data.matches) {
+        const best = m.auto_match || m.candidates[0] || null;
+        if (best?.media_item_id) matchMap.set(m.query_title, best);
+      }
 
       return games.map((game) => {
         const match = matchMap.get(game.title);
-        if (match && match.matchedMedia) {
-          const media = match.matchedMedia;
-          const autoAcceptNew = match.confidence >= 0.9;
-
-          // Always refresh data for already-matched game, only auto-match new ones at high confidence
-          if (game.data?.id || autoAcceptNew) {
-            return {
-              ...game,
-              otixMediaId: media.id,
-              otixMediaTitle: media.title,
-              otixMediaSlug: media.slug,
-              otixConfidence: match.confidence,
-              otixPosterUrl: media.posterUrl,
-              otixTextlessPosterUrl: media.textlessPosterUrl,
-              otixBackdropUrl: media.backdropUrl,
-              otixIconUrl: media.iconUrl,
-              otixLogoUrl: media.logoUrl,
-            };
+        if (match?.media_item_id) {
+          const catalogGame = candidateToGame(match, match.confidence);
+          if (game.data?.id || match.confidence >= 0.9) {
+            return { ...game, data: catalogGame, matchSuggestion: undefined };
           }
-          // Medium confidence — show as recommendation for new matches
-          return {
-            ...game,
-            otixConfidence: match.confidence,
-            otixPosterUrl: media.posterUrl,
-            otixTextlessPosterUrl: media.textlessPosterUrl,
-            otixBackdropUrl: media.backdropUrl,
-            otixIconUrl: media.iconUrl,
-            otixLogoUrl: media.logoUrl,
-            otixMatchSuggestion: {
-              id: media.id,
-              mediaId: media.id,
-              title: media.title,
-              slug: media.slug,
-            },
-          } as LocalGame;
+          return { ...game, matchSuggestion: catalogGame };
         }
         return game;
       });

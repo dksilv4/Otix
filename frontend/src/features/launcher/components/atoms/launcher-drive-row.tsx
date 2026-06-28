@@ -1,13 +1,15 @@
 /* ── DriveRow — single drive row with progress bar ── */
 
 import { motion } from 'framer-motion'
-import { HardDrive } from 'lucide-react'
+import { HardDrive, Gamepad2, Disc } from 'lucide-react'
 
 interface DriveInfo {
   drive: string
   total?: number
   used: number
   free: number
+  hasGamePaths?: boolean
+  hasIsoPaths?: boolean
 }
 
 function formatBytes(bytes: number) {
@@ -15,7 +17,12 @@ function formatBytes(bytes: number) {
   return gb >= 1 ? `${gb.toFixed(0)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`
 }
 
-export function DriveRow({ drive, total, used, free, index = 0 }: DriveInfo & { index?: number }) {
+function driveLetter(drive: string) {
+  // Normalize "C:\" or "C:" to just "C:"
+  return drive.endsWith('\\') || drive.endsWith('/') ? drive.slice(0, -1) : drive
+}
+
+export function DriveRow({ drive, total, used, free, hasGamePaths, hasIsoPaths, index = 0 }: DriveInfo & { index?: number }) {
   const totalBytes = total || used + free
   const usedPct = (used / totalBytes) * 100
 
@@ -27,7 +34,17 @@ export function DriveRow({ drive, total, used, free, index = 0 }: DriveInfo & { 
     >
       <div className="flex items-center gap-2 mb-1">
         <HardDrive size={12} className="text-white/40 shrink-0" />
-        <span className="text-[11px] font-semibold text-white/70">{drive}</span>
+        <span className="text-[11px] font-semibold text-white/70">{driveLetter(drive)}</span>
+        {hasGamePaths && (
+          <span className="text-[9px] text-white/30 flex items-center gap-0.5" title="Game folders on this drive">
+            <Gamepad2 size={9} />
+          </span>
+        )}
+        {hasIsoPaths && (
+          <span className="text-[9px] text-white/30 flex items-center gap-0.5" title="ISO folders on this drive">
+            <Disc size={9} />
+          </span>
+        )}
         <span className="text-[10px] text-white/30 ml-auto">{formatBytes(free)} free</span>
       </div>
       <div className="h-1 rounded-full bg-white/5 overflow-hidden">

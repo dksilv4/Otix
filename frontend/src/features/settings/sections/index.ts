@@ -1,10 +1,2 @@
-export { ProfileSection } from './settings-profile'
-export { AccountSection } from './settings-account'
-export { AppearanceSection } from './settings-appearance'
-export { NotificationsSection } from './settings-notifications'
-export { IntegrationsSection } from './settings-integrations'
-export { LibrarySection } from './settings-library'
-export { MatchingSection } from './settings-matching'
-export { GameMatchingSection } from './settings-game-matching'
-export { DownloadsSection } from './settings-downloads'
-export { DesktopSection } from './settings-desktop'
+// All section files have been inlined directly into their respective page files.
+// This file is kept to avoid import resolution issues, but no longer exports anything.

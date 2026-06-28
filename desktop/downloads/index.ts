@@ -482,60 +482,6 @@ export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'i
     db().prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
   }
 }
-
-// ── Seed tracking ─────────────────────────────────────────────────────────
-
-export interface UnseededGame {
-  title: string;
-  platform: string | null;
-  steam_app_id: number | null;
-}
-
-/** Return unseeded games from scanned_games, grouped by normalized title.
- *  For Steam games, extracts the numeric Steam App ID from the game's id. */
-export function getUnseededGames(): UnseededGame[] {
-  const rows = __all('SELECT DISTINCT id, title, platform FROM scanned_games WHERE seeded = 0') as Array<{ id: string; title: string; platform: string }>;
-
-  // Group by normalized title, preferring Steam entries (which have an app ID)
-  const byTitle = new Map<string, UnseededGame>();
-  for (const row of rows) {
-    const key = row.title.toLowerCase().trim();
-    const existing = byTitle.get(key);
-    // Keep the Steam entry if we already have one
-    if (existing && existing.steam_app_id !== null) continue;
-
-    const steamAppId =
-      row.platform === 'steam' ? parseInt(row.id, 10) : null;
-    byTitle.set(key, {
-      title: row.title,
-      platform: row.platform,
-      steam_app_id: isNaN(steamAppId as number) ? null : steamAppId,
-    });
-  }
-
-  return Array.from(byTitle.values());
-}
-
-/** Mark the given games as seeded in scanned_games (matches by title). */
-export function markGamesAsSeeded(games: UnseededGame[]): void {
-  if (!games.length) return;
-  const titles = games.map(g => g.title);
-  const placeholders = titles.map(() => '?').join(',');
-  db().prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
-}
-
-/** @deprecated Use getUnseededGames() instead. */
-export function getUnseededTitles(): string[] {
-  return getUnseededGames().map(g => g.title);
-}
-
-/** @deprecated Use markGamesAsSeeded() instead. */
-export function markTitlesAsSeeded(titles: string[]): void {
-  if (!titles.length) return;
-  const placeholders = titles.map(() => '?').join(',');
-  db().prepare(`UPDATE scanned_games SET seeded = 1 WHERE title IN (${placeholders})`).run(titles);
-}
-
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
   const rows = __all('SELECT * FROM local_games_map');
   const map: Record<string, any> = {};

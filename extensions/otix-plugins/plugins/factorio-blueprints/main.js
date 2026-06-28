@@ -350,6 +350,6 @@ module.exports = {
   },
 
   test: async function(ctx, configDraft) {
-    return { success: true, message: 'Plugin ready' }
+    return { passed: true }
   }
 }

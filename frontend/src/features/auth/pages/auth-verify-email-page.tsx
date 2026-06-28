@@ -44,7 +44,7 @@ export function VerifyEmailPage() {
 
   if (!search.token) {
     return (
-      <div className="relative flex min-h-screen items-center justify-center p-4">
+      <div id="auth-verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
         <AuthBackground />
         <AuthCard>
           <div className="mb-6 flex justify-center">
@@ -64,7 +64,7 @@ export function VerifyEmailPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div id="auth-verify-email-page" className="relative flex min-h-screen items-center justify-center p-4">
       <AuthBackground />
       <AuthCard>
         <div className="mb-6 flex justify-center">

@@ -1,6 +1,6 @@
 /* ── Typed Desktop API — strongly-typed wrapper around window.desktopAPI ── */
 
-import type { LocalGame } from '@/features/launcher/types'
+import type { LocalGame, GamesFilter } from '@/features/launcher/types'
 
 // ── API types ────────────────────────────────────────────────────────
 
@@ -126,22 +126,18 @@ export interface DesktopAPI {
   cacheLoad: () => Promise<unknown>
   cacheSave: (data: unknown) => Promise<void>
 
-  // Game hydration
-  hydrateMatchedGames: () => Promise<{ updated: number; failed: number; total: number }>
-
   // Game scanning & detection
   scanPaths(scanPaths: string[], isoPaths: string[]): Promise<LocalGame[]>
   getScanPaths(): Promise<{ path: string; type: 'game' | 'iso' }[]>
   saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void>
   resetGameData(): Promise<void>
-  getScannedGames(): Promise<LocalGame[]>
+  getLocalGames(filter?: GamesFilter): Promise<LocalGame[]>
   saveScannedGames(games: LocalGame[]): Promise<void>
   getLocalGamesMap(): Promise<Record<string, LocalGame>>
   saveLocalGamesMapEntry(mediaId: string, game: LocalGame | null): Promise<void>
   onGamesUpdated(cb: () => void): () => void
-  getScannedGamesFiltered(filter: Record<string, unknown>): Promise<LocalGame[]>
   getGameById(id: string): Promise<LocalGame | null>
-  getGameCount(filter: Record<string, unknown>): Promise<number>
+  getGameCount(filter?: GamesFilter): Promise<number>
   acceptSuggestion(gameId: string, suggestion: Record<string, unknown>): Promise<void>
   rejectSuggestion(gameId: string, suggestionMediaId: string): Promise<void>
   onGamesDbChanged(cb: () => void): () => void
@@ -228,20 +224,8 @@ export interface DesktopAPI {
   applyCrack(...args: unknown[]): Promise<void>
   launchSetup(path: string): Promise<void>
 
-  // Legacy game management (Record-style)
-  saveLocalGamesMapEntry(mediaId: string, game: Record<string, unknown>): Promise<void>
-  updateGamePath(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void>
-
   // Plugin system (subset — full API has many more methods)
   plugin?: Record<string, (...args: unknown[]) => Promise<unknown>>
-
-  // Plugin game matching (exposed via desktop preload bridge)
-  scanAllPlugins?: () => Promise<unknown>
-  scanPlugin?: (pluginId: string) => Promise<unknown>
-  cancelScan?: () => Promise<void>
-  onMatchingProgress?: (callback: (event: Record<string, unknown>) => void) => () => void
-  onMatchingComplete?: (callback: (event: Record<string, unknown>) => void) => () => void
-  onMatchingCancelled?: (callback: () => void) => () => void
 
   // AI model management (IPC handlers removed — methods absent at runtime.
   // intelligence.tsx guards with null checks. Restore handlers to re-enable.)

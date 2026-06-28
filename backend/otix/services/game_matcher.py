@@ -80,6 +80,7 @@ def _normalize_title(raw: str) -> str:
 
     - Strip ™®© BEFORE NFKD decomposition (NFKD splits ™→TM)
     - Decompose unicode (accents → base) and strip combining marks
+    - Remove punctuation so "Batman: Arkham" matches "Batman Arkham"
     - Collapse whitespace
     """
     # Strip trademark/copyright symbols BEFORE NFKD (which decomposes ™→TM)
@@ -88,6 +89,10 @@ def _normalize_title(raw: str) -> str:
     clean = unicodedata.normalize("NFKD", clean)
     # Strip combining diacritical marks (Unicode category Mn)
     clean = "".join(ch for ch in clean if unicodedata.category(ch) != "Mn")
+    # Remove punctuation except hyphens and apostrophes (game titles use these)
+    # "Batman: Arkham" → "Batman Arkham", "Widget Inc." → "Widget Inc"
+    clean = re.sub(r"[:,\.;!\?\(\)\[\]\{\}]", "", clean)
+    # Collapse whitespace
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
 
@@ -164,12 +169,13 @@ class GameMatcher:
 
     async def match_single(self, request: GameMatchRequest) -> GameMatchResponse:
         """Match a single game through all four phases."""
-        results = await self.match_batch([request])
+        results = await self.match_batch([request], media_type=request.media_type)
         return results[0]
 
     async def match_batch(
         self,
         requests: list[GameMatchRequest],
+        media_type: str = "game",
     ) -> list[GameMatchResponse]:
         """Match multiple games through all four phases.
 
@@ -187,24 +193,25 @@ class GameMatcher:
 
         # ── Phase 2: Otix catalog search ────────────────────────────────────
         if unmatched:
-            unmatched = await self._phase2_otix(requests, unmatched, all_candidates)
+            unmatched = await self._phase2_otix(requests, unmatched, all_candidates, media_type)
 
-        # ── Phase 3: IGDB provider search ───────────────────────────────────
-        if unmatched:
+        # ── Phase 3: IGDB provider search (game only) ───────────────────────
+        if unmatched and media_type == "game":
             await self._phase3_igdb(requests, unmatched, all_candidates)
 
-        # ── Phase 3c: SteamGrid search ──────────────────────────────────────
-        if unmatched and self._steamgrid:
+        # ── Phase 3c: SteamGrid search (game only) ──────────────────────────
+        if unmatched and media_type == "game" and self._steamgrid:
             await self._phase3c_steamgrid(requests, unmatched, all_candidates)
 
         # ── Phase 4: Assemble, rank, auto-match ─────────────────────────────
-        return self._phase4_assemble(requests, all_candidates)
+        return self._phase4_assemble(requests, all_candidates, media_type)
 
     # ── SSE batch stream ────────────────────────────────────────────────────
 
     async def match_batch_stream(
         self,
         requests: list[GameMatchRequest],
+        media_type: str = "game",
     ) -> AsyncGenerator[str, None]:
         """Async generator yielding SSE-formatted per-game match progress.
 
@@ -434,6 +441,7 @@ class GameMatcher:
         requests: list[GameMatchRequest],
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
+        media_type: str = "game",
     ) -> list[int]:
         """Search Otix's own catalog in three sub-stages.
 
@@ -447,15 +455,15 @@ class GameMatcher:
 
         # 2a: Exact title match
         if unmatched:
-            unmatched = await self._phase2a_exact(requests, unmatched, all_candidates)
+            unmatched = await self._phase2a_exact(requests, unmatched, all_candidates, media_type)
 
         # 2b: ILIKE pattern match
         if unmatched:
-            unmatched = await self._phase2b_ilike(requests, unmatched, all_candidates)
+            unmatched = await self._phase2b_ilike(requests, unmatched, all_candidates, media_type)
 
         # 2c: Trigram similarity
         if unmatched:
-            unmatched = await self._phase2c_trigram(requests, unmatched, all_candidates)
+            unmatched = await self._phase2c_trigram(requests, unmatched, all_candidates, media_type)
 
         return unmatched
 
@@ -464,6 +472,7 @@ class GameMatcher:
         requests: list[GameMatchRequest],
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
+        media_type: str = "game",
     ) -> list[int]:
         """Exact case-insensitive title match against media_items."""
         titles = {_normalize_title(requests[i].title).lower(): i for i in indices}
@@ -472,13 +481,13 @@ class GameMatcher:
 
         rows = await self._session.execute(
             select(MediaItem).where(
-                MediaItem.media_type == "game",
-                func.lower(MediaItem.title).in_(list(titles)),
+                MediaItem.media_type == media_type,
             )
         )
+        # Normalize both sides for comparison
         media_map: dict[str, list[MediaItem]] = {}
         for mi in rows.scalars().all():
-            key = mi.title.strip().lower()
+            key = _normalize_title(mi.title).lower()
             if key in titles:
                 media_map.setdefault(key, []).append(mi)
 
@@ -513,6 +522,7 @@ class GameMatcher:
         requests: list[GameMatchRequest],
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
+        media_type: str = "game",
     ) -> list[int]:
         """ILIKE pattern match -- batched into one DB round trip.
 
@@ -542,7 +552,7 @@ class GameMatcher:
         rows = await self._session.execute(
             select(MediaItem)
             .where(
-                MediaItem.media_type == "game",
+                MediaItem.media_type == media_type,
                 or_(*conditions),
             )
             .limit(500)  # safety limit
@@ -605,18 +615,22 @@ class GameMatcher:
             )
             assigned_items.add(mi.id)
 
-        # Return indices that received no ILIKE candidate
-        matched_indices: set[int] = set()
-        for req_idx, mi, _score in item_matches:
-            if mi.id in assigned_items:
-                matched_indices.add(req_idx)
-        return [i for i in indices if i not in matched_indices]
+        # Return indices that received no ILIKE candidate, or only low-confidence ones.
+        # Low-confidence ILIKE matches stay eligible for Phase 3 IGDB search.
+        best_iliKE: dict[int, float] = {}
+        for req_idx, _, _score in item_matches:
+            # Get confidence from the candidate we just added for this index
+            added = all_candidates[req_idx]
+            if added:
+                best_iliKE[req_idx] = max(best_iliKE.get(req_idx, 0), added[-1].confidence)
+        return [i for i in indices if best_iliKE.get(i, 0) < 0.85]
 
     async def _phase2c_trigram(
         self,
         requests: list[GameMatchRequest],
         indices: list[int],
         all_candidates: list[list[GameMatchCandidate]],
+        media_type: str = "game",
     ) -> list[int]:
         """PostgreSQL trigram similarity fallback."""
         title_to_idx: dict[str, int] = {}
@@ -631,7 +645,7 @@ class GameMatcher:
         if not clean_list:
             return list(indices)
 
-        sql = text("""
+        sql = text(f"""
             SELECT DISTINCT ON (input.clean_title)
                 input.clean_title,
                 mi.id,
@@ -641,13 +655,13 @@ class GameMatcher:
                 mi.release_date,
                 similarity(mi.title, input.clean_title) AS sim
             FROM unnest(CAST(:titles AS text[])) AS input(clean_title)
-            JOIN media_items mi ON mi.media_type = 'game'
+            JOIN media_items mi ON mi.media_type = :media_type
                 AND mi.title % input.clean_title
             ORDER BY input.clean_title, sim DESC
         """)
 
         try:
-            rows = await self._session.execute(sql, {"titles": clean_list})
+            rows = await self._session.execute(sql, {"titles": clean_list, "media_type": media_type})
         except Exception:
             logger.exception("trigram match query failed")
             return list(indices)
@@ -683,7 +697,14 @@ class GameMatcher:
             )
             matched.add(idx)
 
-        return [i for i in indices if i not in matched]
+        # Only remove high-confidence trigram matches (>= 0.85). Lower-confidence
+        # matches stay eligible for Phase 3 IGDB search.
+        best_trigram: dict[int, float] = {}
+        for idx in matched:
+            added = all_candidates[idx]
+            if added:
+                best_trigram[idx] = max(best_trigram.get(idx, 0), added[-1].confidence)
+        return [i for i in indices if best_trigram.get(i, 0) < 0.85]
 
     # ── Phase 3: IGDB provider search ───────────────────────────────────────
 
@@ -958,6 +979,7 @@ class GameMatcher:
         self,
         requests: list[GameMatchRequest],
         all_candidates: list[list[GameMatchCandidate]],
+        media_type: str = "game",
     ) -> list[GameMatchResponse]:
         """Merge candidates, dedupe by media_item_id, rank by confidence,
         and decide auto-match."""
@@ -1034,12 +1056,12 @@ class GameMatcher:
         if best.confidence >= 0.95:
             return best
 
-        # High confidence with clear gap to 2nd place
+        # High confidence with clear gap to 2nd place (or only candidate)
         if best.confidence >= 0.85:
             if len(candidates) == 1:
                 return best
             second = candidates[1]
-            if best.confidence - second.confidence >= 0.20:
+            if best.confidence - second.confidence >= 0.10:
                 return best
 
         return None
@@ -1303,9 +1325,12 @@ class GameMatcher:
             "source_title": req.title,
             "developer": req.developer,
             "release_year": req.release_year,
-            "poster_url": req.poster_url,  # source store poster (Epic, GOG, etc.)
+            "poster_url": req.poster_url,
             "otix_media_id": auto_match.media_item_id,
             "otix_title": auto_match.title,
+            "otix_poster_url": auto_match.poster_url,
+            "otix_backdrop_url": auto_match.backdrop_url,
+            "otix_release_year": auto_match.release_year,
             "otix_confidence": confidence,
             "match_type": match_type,
         }
@@ -1340,7 +1365,7 @@ class GameMatcher:
 
     # ── IGDB seeding ───────────────────────────────────────────────────────
 
-    async def _seed_game_from_igdb(self, raw: dict, igdb_id: int) -> str:
+    async def _seed_game_from_igdb(self, raw: dict, igdb_id: int, media_type: str = "game") -> str:
         """Create a minimal MediaItem + ExternalID from IGDB data.
 
         Returns the new media_item_id so the candidate can reference it.
@@ -1383,7 +1408,7 @@ class GameMatcher:
             id=new_id,
             title=title,
             slug=slug,
-            media_type="game",
+            media_type=media_type,
             poster_url=poster_url,
             release_date=release_date,
             created_at=now,

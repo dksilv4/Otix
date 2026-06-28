@@ -896,14 +896,14 @@ const dataMethods = {
 
   test: async (ctx) => {
     const rt = await _getRt(ctx);
-    if (!rt) return { success: false, message: 'Not connected. Sign in first.' };
+    if (!rt) return { passed: false, failures: ['Not connected. Sign in first.'] };
 
     try {
       const token = await _ensureToken(ctx);
-      if (!token) return { success: false, message: 'Auth expired. Sign in again.' };
-      return { success: true, message: 'Connected and authenticated' };
+      if (!token) return { passed: false, failures: ['Auth expired. Sign in again.'] };
+      return { passed: true };
     } catch (err) {
-      return { success: false, message: 'Connection check failed: ' + err.message };
+      return { passed: false, failures: ['Connection check failed: ' + err.message] };
     }
   },
 
@@ -964,13 +964,13 @@ module.exports = {
 
   test: async (ctx) => {
     const rt = await ctx.config.get('refresh_token');
-    if (!rt) return { success: false, message: 'Not connected. Sign in first.' };
+    if (!rt) return { passed: false, failures: ['Not connected. Sign in first.'] };
     try {
       const token = await _ensureToken(ctx);
-      if (!token) return { success: false, message: 'Auth expired. Sign in again.' };
-      return { success: true, message: 'Connected and authenticated' };
+      if (!token) return { passed: false, failures: ['Auth expired. Sign in again.'] };
+      return { passed: true };
     } catch (err) {
-      return { success: false, message: 'Connection check failed: ' + err.message };
+      return { passed: false, failures: ['Connection check failed: ' + err.message] };
     }
   },
 

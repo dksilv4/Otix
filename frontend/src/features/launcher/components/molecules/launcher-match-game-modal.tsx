@@ -87,28 +87,34 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
     const r = results[0]
     if (!r) { setStep('no-match'); return }
 
-    // High confidence — mutation set otixMediaId with full catalog data
-    if (r.otixMediaId) {
-      setMatchedId(r.otixMediaId)
-      setMatchedTitle(r.otixMediaTitle || r.title)
-      setMatchedSlug(r.otixMediaSlug || '')
-      setMatchedPoster(r.otixPosterUrl ?? null)
-      setMatchedBackdrop(r.otixBackdropUrl ?? null)
-      setMatchedTextlessPoster(r.otixTextlessPosterUrl ?? null)
-      setMatchedLogo(r.otixLogoUrl ?? null)
-      setMatchedIcon(r.otixIconUrl ?? null)
-      setMatchConfidence(r.otixConfidence ?? 0)
+    // High confidence — mutation set data with full catalog info
+    if (r.data?.id) {
+      const d = r.data
+      setMatchedId(d.id)
+      setMatchedTitle(d.title || r.title)
+      setMatchedSlug(d.slug || '')
+      setMatchedPoster(d.posterUrl ?? null)
+      setMatchedBackdrop(d.backdropUrl ?? null)
+      setMatchedTextlessPoster(d.textlessPosterUrl ?? null)
+      setMatchedLogo(d.logoUrl ?? null)
+      setMatchedIcon(d.iconUrl ?? null)
+      setMatchConfidence(d.confidence ?? 0)
       setStep('matched')
       return
     }
 
-    // Medium confidence — mutation set otixMatchSuggestion
-    if (r.otixMatchSuggestion) {
-      const s = r.otixMatchSuggestion
-      setMatchedId(s.id || '')
+    // Medium confidence — mutation set matchSuggestion
+    if (r.matchSuggestion?.id) {
+      const s = r.matchSuggestion
+      setMatchedId(s.id)
       setMatchedTitle(s.title || '')
       setMatchedSlug(s.slug || '')
-      setMatchConfidence(r.otixConfidence ?? 0)
+      setMatchedPoster(s.posterUrl ?? null)
+      setMatchedBackdrop(s.backdropUrl ?? null)
+      setMatchedTextlessPoster(s.textlessPosterUrl ?? null)
+      setMatchedLogo(s.logoUrl ?? null)
+      setMatchedIcon(s.iconUrl ?? null)
+      setMatchConfidence(s.confidence ?? 0)
       setStep('suggestion')
       return
     }
@@ -199,14 +205,8 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
         if (!old) return old
         return {
           ...old,
-          ...synced,
           data: synced.data,
-          otixConfidence: matchConfidence,
-          otixMediaSlug: matchedSlug,
-          otixPosterUrl: matchedPoster,
-          otixBackdropUrl: matchedBackdrop,
-          otixIconUrl: matchedIcon,
-          otixLogoUrl: matchedLogo,
+          matchSuggestion: undefined,
         }
       })
 
@@ -249,15 +249,12 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
           ...old,
           data: {
             id,
-            mediaId: id,
             title,
             slug: slug || '',
             posterUrl: posterUrl ?? null,
             iconUrl: iconUrl ?? null,
           } as Game,
-          otixMediaId: id,
-          otixMediaTitle: title,
-          otixConfidence: 1,
+          matchSuggestion: undefined,
         }
       })
 

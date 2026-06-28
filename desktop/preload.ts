@@ -84,8 +84,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     };
   },
   hydrateMatchedGames: () => ipcRenderer.invoke('games:hydrate-matched'),
-  getScannedGames: () => ipcRenderer.invoke('scanner:get-scanned-game'),
-  getScannedGamesFiltered: (filter: unknown) => ipcRenderer.invoke('scanner:get-scanned-games-filtered', filter),
+  getLocalGames: (filter?: import('./preload-api').GameFilter) => ipcRenderer.invoke('scanner:get-scanned-games-filtered', filter ?? {}),
   getGameById: (id: string) => ipcRenderer.invoke('scanner:get-game-by-id', id),
   getGameCount: (filter: unknown) => ipcRenderer.invoke('scanner:get-game-count', filter),
   saveScannedGames: (games: unknown[]) => ipcRenderer.invoke('scanner:save-scanned-game', games),
@@ -102,6 +101,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   acceptSuggestion: (gameId: string, suggestion: unknown) => ipcRenderer.invoke('scanner:accept-suggestion', gameId, suggestion),
   unmatchGame: (gameId: string) => ipcRenderer.invoke('scanner:unmatch-game', gameId),
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => ipcRenderer.invoke('scanner:reject-suggestion', gameId, suggestionMediaId),
+  resetPlatformGames: (platforms: string[]) => ipcRenderer.invoke('scanner:reset-platform-games', platforms),
+  deleteGamesByDirectory: (dirPrefix: string) => ipcRenderer.invoke('scanner:delete-games-by-dir', dirPrefix),
   onGamesDbChanged: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('games-db:changed', handler);
