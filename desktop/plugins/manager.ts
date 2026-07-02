@@ -121,6 +121,29 @@ export class PluginManager {
     return this.pluginsRepo.getAll().map((r) => this.pluginRowToInfo(r))
   }
 
+  async getAllPluginsWithStatuses(): Promise<PluginInfo[]> {
+    const plugins = this.getAllPlugins()
+    const batchResults = await Promise.allSettled(
+      plugins.map(async (p) => {
+        if (p.status !== 'enabled') return { id: p.id, connected: undefined }
+        const runtime = this.runtimes.get(p.id)
+        if (!runtime) return { id: p.id, connected: undefined }
+        try {
+          const result = await runtime.callMethod('status')
+          const status = (result as Record<string, unknown>) || {}
+          return { id: p.id, connected: !!(status.connected || status.authenticated) }
+        } catch {
+          return { id: p.id, connected: undefined }
+        }
+      }),
+    )
+    const connectedMap = new Map<string, boolean | undefined>()
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled') connectedMap.set(r.value.id, r.value.connected)
+    }
+    return plugins.map((p) => ({ ...p, connected: connectedMap.get(p.id) }))
+  }
+
   getPlugin(pluginId: string): PluginInfo | null {
     const row = this.pluginsRepo.getById(pluginId)
     return row ? this.pluginRowToInfo(row) : null
@@ -205,26 +228,24 @@ export class PluginManager {
       // ── Mandatory plugin tests ─────────────────────────────────
       // Every plugin must export a "test" function that returns
       // { passed: boolean, failures?: string[] }. Tests run on every
-      // enable; a plugin whose tests don't pass is not enabled.
+      // enable. A failing test logs a warning but does not block
+      // enablement — the plugin may need to be running for the user
+      // to configure it (e.g. sign in) before it can pass.
       try {
         const result = await runtime.callMethod('test') as { passed: boolean; failures?: string[] } | undefined;
         if (!result?.passed) {
-          await runtime.stop();
-          throw new Error(
-            `Plugin tests failed: ${result?.failures?.join('; ') || 'tests did not pass'}`,
-          );
+          const failures = result?.failures?.join('; ') || 'tests did not pass'
+          console.warn(`[PluginManager] Plugin "${pluginId}" tests failed: ${failures}`)
         }
       } catch (err: any) {
-        await runtime.stop().catch(() => {});
         if (
           err.message.includes('not found') ||
           err.message.includes('Export "test"')
         ) {
-          throw new Error(
-            `Plugin "${pluginId}" must export a "test" function that returns { passed: boolean }.`,
-          );
+          console.warn(`[PluginManager] Plugin "${pluginId}" does not export a test function`)
+        } else {
+          console.warn(`[PluginManager] Plugin "${pluginId}" test threw: ${err.message}`)
         }
-        throw err;
       }
 
       this.runtimes.set(pluginId, runtime)

@@ -86,6 +86,7 @@ export function PluginSlot({ location, pluginApi }: Props) {
 
 function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: PluginAPI }) {
   const data = entry.data!
+  const pluginName = data.label || entry.label
   const hasAuth = !!data.actions?.login
   const configFields = data.configFields || []
 
@@ -209,7 +210,9 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
     if (!getLoginUrlMethod) return false
     const urlResult = await pluginApi.callData(entry.pluginId, getLoginUrlMethod) as any
     if (!urlResult?.url) return false
-    const windowResult = await desktopAPI?.plugin?.openOAuthWindow(urlResult.url, 'id/api/redirect')
+    const redirectPattern = urlResult.redirectPattern || 'id/api/redirect'
+    const options = urlResult.tokenExtraction ? { tokenExtraction: urlResult.tokenExtraction } : undefined
+    const windowResult = await desktopAPI?.plugin?.openOAuthWindow(urlResult.url, redirectPattern, options)
     if (!windowResult?.success || !windowResult?.code) return false
     const handleCallbackMethod = data.actions?.['handleCallback'] || 'auth.handleCallback'
     const cbRes = await pluginApi.callData(entry.pluginId, handleCallbackMethod, windowResult.code) as any
@@ -254,7 +257,12 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
 
         console.log('[PluginSlot] scan result:', result?.success, 'games:', result?.games?.length || result?.total, result)
         if (!result?.success || !result.games?.length) {
-          setScanProgress({ phase: 'done', scanned: result?.total || 0, matched: 0, suggested: 0, total: result?.total || 0, currentDir: '', message: 'No games found' })
+          const errorMsg = result?.error
+            ? (result.error === 'not_authenticated' ? `Not signed in to ${pluginName}. Sign in first.` :
+               result.error === 'no_account_id' ? `No ${pluginName} account — sign in to scan your library.` :
+               `Scan failed: ${result.error}`)
+            : 'No games found'
+          setScanProgress({ phase: 'done', scanned: result?.total || 0, matched: 0, suggested: 0, total: result?.total || 0, currentDir: '', message: errorMsg })
           setLoading(false)
           return
         }
