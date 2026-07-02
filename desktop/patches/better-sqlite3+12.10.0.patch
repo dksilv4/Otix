@@ -3,27 +3,14 @@ index 13f054a..c50992a 100644
 --- a/node_modules/better-sqlite3/src/better_sqlite3.cpp
 +++ b/node_modules/better-sqlite3/src/better_sqlite3.cpp
 @@ -57,7 +57,7 @@ NODE_MODULE_INIT(/* exports, context */) {
- 
+
  	// Initialize addon instance.
  	Addon* addon = new Addon(isolate);
 -	v8::Local<v8::External> data = v8::External::New(isolate, addon);
 +	v8::Local<v8::External> data = v8::External::New(isolate, addon, v8::kExternalPointerTypeTagDefault);
  	node::AddEnvironmentCleanupHook(isolate, Addon::Cleanup, addon);
- 
+
  	// Create and export native-backed classes and functions.
-diff --git a/node_modules/better-sqlite3/src/util/helpers.cpp b/node_modules/better-sqlite3/src/util/helpers.cpp
-index f777152..db7fd9f 100644
---- a/node_modules/better-sqlite3/src/util/helpers.cpp
-+++ b/node_modules/better-sqlite3/src/util/helpers.cpp
-@@ -89,7 +89,7 @@ void SetPrototypeGetter(
- 	recv->InstanceTemplate()->SetNativeDataProperty(
- 		InternalizedFromLatin1(isolate, name),
- 		func,
--		0,
-+		nullptr,
- 		data
- 	);
- }
 diff --git a/node_modules/better-sqlite3/src/util/macros.cpp b/node_modules/better-sqlite3/src/util/macros.cpp
 index e75d537..a6d85b7 100644
 --- a/node_modules/better-sqlite3/src/util/macros.cpp

@@ -197,9 +197,11 @@ function ConfigField({
 
 function PluginAuthSection({
   pluginId,
+  pluginName,
   api,
 }: {
   pluginId: string
+  pluginName: string
   api: PluginAPI
 }) {
   const [authState, setAuthState] = useState<{
@@ -238,7 +240,9 @@ function PluginAuthSection({
         setAuthState(prev => ({ ...prev, message: 'Failed to get login URL' }))
         return
       }
-      const winResult = await desktopAPI?.plugin?.openOAuthWindow(urlResult.url, 'id/api/redirect')
+      const redirectPattern = urlResult.redirectPattern || 'id/api/redirect'
+      const options = urlResult.tokenExtraction ? { tokenExtraction: urlResult.tokenExtraction } : undefined
+      const winResult = await desktopAPI?.plugin?.openOAuthWindow(urlResult.url, redirectPattern, options)
       if (!winResult?.success || !winResult?.code) {
         if (!winResult?.success) setAuthState(prev => ({ ...prev, message: winResult?.error || 'Login cancelled' }))
         return
@@ -279,6 +283,13 @@ function PluginAuthSection({
       if (result?.success && result.games?.length) {
         const outcome = await batchMatchAndSave(result.games, desktopAPI)
         setAuthState(prev => ({ ...prev, scanTotal: result.total, scanMatched: outcome.matched }))
+      } else {
+        const errorMsg = result?.error
+          ? (result.error === 'not_authenticated' ? `Not signed in to ${pluginName}. Sign in first.` :
+             result.error === 'no_account_id' ? `No ${pluginName} account — sign in to scan your library.` :
+             `Scan failed: ${result.error}`)
+          : 'No games found in library'
+        setAuthState(prev => ({ ...prev, message: errorMsg }))
       }
     } catch (err) {
       console.error('[PluginConfig] scan failed:', err)
@@ -316,7 +327,7 @@ function PluginAuthSection({
         {!authState.connected ? (
           <>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white">Epic Games</p>
+              <p className="text-sm font-medium text-white">{pluginName}</p>
               <p className="text-xs text-white/40">{authState.message || 'Sign in to sync your game library'}</p>
             </div>
             <button
@@ -507,7 +518,7 @@ export function PluginConfigPanel({
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
         {/* Auth / Connection section (only for plugins with slots — OAuth flow plugins) */}
         {(plugin.manifest as any).slots?.length > 0 && (
-          <PluginAuthSection pluginId={plugin.id} api={api} />
+          <PluginAuthSection pluginId={plugin.id} pluginName={plugin.name} api={api} />
         )}
 
         {status && !status.error && (

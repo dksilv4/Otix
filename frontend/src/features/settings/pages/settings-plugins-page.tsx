@@ -365,7 +365,9 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
 // ── Hero Banner ────────────────────────────────────────────────────────────────
 
 function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseAll: () => void }) {
-  const enabledPlugins = plugins.filter((p) => p.status === 'enabled')
+  const connectedPlugins = plugins.filter((p) => p.status === 'enabled' && p.connected)
+  const enabledPlugins = plugins.filter((p) => p.status === 'enabled' && !p.connected)
+  const hasActive = connectedPlugins.length > 0 || enabledPlugins.length > 0
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent border border-white/[0.06]">
@@ -374,18 +376,18 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
         <div className="flex-1 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
             <Puzzle className="h-3 w-3" />
-            {enabledPlugins.length > 0
-              ? `${enabledPlugins.length} connected`
+            {hasActive
+              ? `${connectedPlugins.length} connected, ${enabledPlugins.length} enabled`
               : 'Plugin Ecosystem'}
           </div>
           <h1 className="text-3xl font-bold text-white leading-tight tracking-tight">
-            {enabledPlugins.length > 0
-              ? 'Your connected ecosystem'
+            {hasActive
+              ? 'Your plugin ecosystem'
               : 'Powerful connections for better results'}
           </h1>
           <p className="mt-3 text-base text-white/50 leading-relaxed max-w-lg">
-            {enabledPlugins.length > 0
-              ? `You have ${enabledPlugins.length} plugin${enabledPlugins.length === 1 ? '' : 's'} active. Browse more to extend Otix with community-built plugins.`
+            {hasActive
+              ? `You have ${connectedPlugins.length} plugin${connectedPlugins.length === 1 ? '' : 's'} connected and ${enabledPlugins.length} running. Browse more to extend Otix with community-built plugins.`
               : 'Connect your favorite services and extend Otix with community-built plugins. Automate workflows, sync your library, and unlock new capabilities.'}
           </p>
           <button
@@ -399,7 +401,7 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
 
         {/* Right — Topology graph */}
         <div className="hidden lg:block shrink-0">
-          <PluginTopologyGraph enabledPlugins={enabledPlugins} />
+          <PluginTopologyGraph enabledPlugins={plugins.filter((p) => p.status === 'enabled')} />
         </div>
       </div>
     </div>
@@ -412,17 +414,21 @@ const TH_CLASSES = 'text-left text-[11px] font-medium text-white/30 uppercase tr
 const TD_CLASSES = 'py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04]'
 const ROW_HOVER = 'hover:bg-white/[0.02] transition-colors'
 
-function StatusBadge({ status }: { status: PluginInfo['status'] }) {
-  const isConnected = status === 'enabled'
+function StatusBadge({ status, connected }: { status: PluginInfo['status']; connected?: boolean }) {
+  const isConnected = status === 'enabled' && connected
+  const isEnabled = status === 'enabled' && !connected
   const isError = status === 'error'
+  const isDisabled = status === 'disabled' || status === 'installed'
   return (
     <span className={cn(
       'inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0',
-      isError ? 'text-red-400 bg-red-500/10' : isConnected ? 'text-green-400 bg-green-500/10' : 'text-white/40 bg-white/5',
+      isError && 'text-red-400 bg-red-500/10',
+      isConnected && 'text-green-400 bg-green-500/10',
+      isEnabled && 'text-blue-400 bg-blue-500/10',
+      isDisabled && 'text-white/40 bg-white/5',
     )}>
       {isConnected && <CheckCircle2 className="h-3 w-3" />}
-      {isError && <XCircle className="h-3 w-3" />}
-      {isConnected ? 'Connected' : isError ? 'Error' : 'Disabled'}
+      {isConnected ? 'Connected' : isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
     </span>
   )
 }
@@ -476,7 +482,7 @@ function PluginRow({
   onUpdate?: () => void
 }) {
   const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
-  const isConnected = plugin.status === 'enabled'
+  const isEnabled = plugin.status === 'enabled'
   const isError = plugin.status === 'error'
   const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
 
@@ -513,7 +519,7 @@ function PluginRow({
         {plugin.author}
       </td>
       <td className={TD_CLASSES}>
-        <StatusBadge status={plugin.status} />
+        <StatusBadge status={plugin.status} connected={plugin.connected} />
       </td>
       <td className={cn(TD_CLASSES, 'text-right')}>
         <div className="flex items-center justify-end gap-2">
@@ -538,9 +544,9 @@ function PluginRow({
             <Settings className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Manage</span>
           </button>
-          {!isError && (
-            <DkSwitch checked={isConnected} onCheckedChange={onToggle} disabled={toggling} />
-          )}
+          <span onClick={(e) => e.stopPropagation()}>
+            <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
+          </span>
         </div>
       </td>
     </tr>

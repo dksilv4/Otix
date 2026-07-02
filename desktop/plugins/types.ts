@@ -104,6 +104,7 @@ export interface PluginInfo {
   manifest: PluginManifest
   installedAt: string
   enabledAt?: string
+  connected?: boolean
 }
 
 // ── Permissions ──

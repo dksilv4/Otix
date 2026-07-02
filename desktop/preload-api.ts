@@ -277,6 +277,7 @@ export interface PluginInfo {
   manifest: any;
   installedAt: string;
   enabledAt?: string;
+  connected?: boolean;
 }
 
 export interface RegistryEntry {
@@ -512,7 +513,7 @@ export interface IDesktopAPI {
     getRepos: () => Promise<{ url: string; label: string | null; added_at: string }[]>;
     addRepo: (url: string, label?: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
     removeRepo: (url: string) => Promise<{ url: string; label: string | null; added_at: string }[]>;
-    openOAuthWindow: (url: string, redirectPattern: string) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
+    openOAuthWindow: (url: string, redirectPattern: string, options?: { tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage'; key?: string } }) => Promise<{ success: boolean; code?: string; redirectUrl?: string; error?: string }>;
   };
 
   // ── Plugin game matching ──
