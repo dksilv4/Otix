@@ -134,6 +134,7 @@ class MediaService:
         genre: str | None = None,
         company: str | None = None,
         has_artwork: bool = False,
+        has_logo: bool = False,
         sort_by: str | None = None,
         sort_dir: str = "desc",
         cursor: str | None = None,
@@ -206,6 +207,9 @@ class MediaService:
                 | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
             )
 
+        if has_logo:
+            query = query.where(MediaItem.logo_url.isnot(None))
+
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
 
@@ -272,6 +276,8 @@ class MediaService:
                     MediaItem.textless_poster_url.isnot(None)
                     | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
                 )
+            if has_logo:
+                count_query = count_query.where(MediaItem.logo_url.isnot(None))
             if language:
                 count_query = count_query.where(MediaItem.original_language == language)
             if certification:

@@ -1,5 +1,6 @@
 {
   "name": "SABnzbd",
+  "stage": "alpha",
   "version": "0.7.0",
   "description": "SABnzbd usenet download client",
   "author": "Otix",

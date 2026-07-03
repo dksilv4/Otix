@@ -16,6 +16,26 @@ export function DiscoverFeed() {
     <div id="discover-feed" className="space-y-16">
       <DiscoverHero />
       <MediaSection
+        title="Trending Movies"
+        mediaType="movie"
+        listType="trending"
+      />
+      <MediaSection
+        title="Trending Shows"
+        mediaType="show"
+        listType="trending"
+      />
+      <MediaSection
+        title="Trending Games"
+        mediaType="game"
+        listType="trending"
+      />
+      <MediaSection
+        title="Trending Music"
+        mediaType="music"
+        listType="trending"
+      />
+      <MediaSection
         title="Popular Movies"
         mediaType="movie"
         listType="popular"

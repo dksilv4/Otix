@@ -49,8 +49,10 @@ export const Carousel = forwardRef(function Carousel(
 
     const measure = () => {
       const available = track.clientWidth - 2 * gap
-      const n = Math.max(1, Math.floor((available + gap) / (minItemWidth + gap)))
-      setItemWidth(Math.max(minItemWidth, (available - (n - 1) * gap) / n))
+      // On small screens, reduce min width so at least 2 cards show
+      const effectiveMin = Math.min(minItemWidth, Math.max(140, available / 2.5))
+      const n = Math.max(1, Math.floor((available + gap) / (effectiveMin + gap)))
+      setItemWidth(Math.max(effectiveMin, (available - (n - 1) * gap) / n))
     }
 
     measure()
@@ -142,7 +144,7 @@ export const Carousel = forwardRef(function Carousel(
         <div
           ref={trackRef}
           className={cn(
-            'flex overflow-x-auto scrollbar-none pb-2 select-none',
+            'flex overflow-x-auto overflow-y-hidden scrollbar-none pb-2 select-none',
             isDragging && 'cursor-grabbing',
             !isDragging && 'cursor-grab',
           )}
@@ -151,7 +153,7 @@ export const Carousel = forwardRef(function Carousel(
             paddingInline: '16px',
             scrollPaddingInline: '16px',
             scrollSnapType: 'x mandatory',
-            touchAction: 'pan-y pinch-zoom',
+            touchAction: 'pan-x pan-y pinch-zoom',
           }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}

@@ -271,7 +271,12 @@
       "Bash(echo \"App started, PID: $!\")",
       "Bash(pkill -f \"vite --port 5174\")",
       "Read(//Users/dk/Applications/**)",
-      "Bash(mdfind \"kMDItemFSName == 'Battle.net.app'\")"
+      "Bash(mdfind \"kMDItemFSName == 'Battle.net.app'\")",
+      "Bash(PGPASSWORD=password psql *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c ' *)",
+      "Bash(docker-compose ps *)",
+      "Bash(python3 -c \"import json,sys; [print\\(f'{m[\\\\\"Source\\\\\"]} -> {m[\\\\\"Destination\\\\\"]} \\({m[\\\\\"Type\\\\\"]}\\)'\\) for m in json.load\\(sys.stdin\\)]\")"
     ]
   }
 }
