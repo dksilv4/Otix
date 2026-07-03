@@ -35,6 +35,7 @@ export interface PluginManifest {
   repository: string
   min_app_version: string
   icon?: string
+  stage?: 'alpha' | 'beta' | 'stable'
   permissions: PluginPermission[]
   config?: Record<string, PluginConfigField>
   slots?: PluginSlot[]

@@ -66,7 +66,7 @@ export function RootLayout() {
         <PanelProvider>
           <NotificationsProvider>
             <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
-              <main className="">
+              <main className="pt-16 md:pt-20">
                 <Outlet />
               </main>
             </NavShell>

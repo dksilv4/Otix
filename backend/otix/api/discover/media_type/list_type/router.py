@@ -38,7 +38,7 @@ VALID_LIST_TYPES = {
 }
 
 _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
-    "trending": ("popularity", "desc", None),
+    "trending": ("popularity", "desc", "trending_window"),
     "popular": ("popularity", "desc", None),
     "top_rated": ("rating", "desc", None),
     "upcoming": ("release_date", "asc", "future"),
@@ -55,6 +55,8 @@ def _date_filter(name: str | None) -> tuple[date | None, date | None]:
         return (today, None)
     if name == "recent":
         return (today - timedelta(days=90), None)
+    if name == "trending_window":
+        return (today - timedelta(days=365), today + timedelta(days=180))
     return (None, None)
 
 
@@ -112,16 +114,13 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
+                has_logo=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
                 media_ids=seed_ids,
                 exclude_adult=exclude_adult,
             )
-            response = await _build_response(db, items, has_more, current_user)
-            await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
-            logger.info("discover collaborative fetched", media_type=media_type, ip=ip)
-            return response
 
     if list_type == "semantic" and current_user:
         personalization = PersonalizationService(db)
@@ -143,6 +142,7 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
+                has_logo=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
@@ -159,6 +159,7 @@ async def discover_list(
         if seed_ids:
             items, has_more, _ = await service.list_media(
                 media_type=media_type,
+                has_logo=True,
                 sort_by="popularity",
                 sort_dir="desc",
                 limit=limit,
@@ -175,6 +176,7 @@ async def discover_list(
     sort_by, sort_dir, date_filter_name = _LIST_CONFIG[list_type]
     date_from, date_to = _date_filter(date_filter_name)
     require_artwork = not (language or is_anime is not None)
+    require_logo = True
 
     items, has_more, _ = await service.list_media(
         media_type=media_type,
@@ -182,6 +184,7 @@ async def discover_list(
         language=language,
         is_anime=is_anime,
         has_artwork=require_artwork,
+        has_logo=require_logo,
         sort_by=sort_by,
         sort_dir=sort_dir,
         cursor=cursor,

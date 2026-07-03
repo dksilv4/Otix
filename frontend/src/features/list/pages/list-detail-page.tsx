@@ -29,14 +29,14 @@ import {
   useRemoveFromList,
   useAddToList,
   useReorderList,
-} from "../list-queries"
-import { ListComposer } from "../../old-features/list/organisms/list-composer"
+} from "../../../old-features/list/list-queries"
+import { ListComposer } from "../../../old-features/list/organisms/list-composer"
 import {
   ListLikeButton,
   ShareModal,
   CollaboratorsModal,
   RankHistoryTimeline,
-} from "../molecules/list-actions"
+} from "../../../old-features/list/molecules/list-actions"
 
 const TYPE_TABS = [
   { value: "all", label: "All" },

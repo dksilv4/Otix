@@ -1,5 +1,6 @@
 {
   "name": "NZBPlanet",
+  "stage": "alpha",
   "version": "0.7.0",
   "description": "NZBPlanet usenet search provider",
   "author": "Otix",
