@@ -5,15 +5,21 @@ import { mediaKeys } from '@media/queries/media-keys'
 
 export function useSearchBackfill(
   query: string,
+  type: string,
+  sort: string,
   currentIds: Set<string>,
   hasMore: boolean | undefined,
 ) {
   const queryClient = useQueryClient()
   const polledIdsRef = useRef<Set<string>>(new Set())
 
+  const searchType = type === 'all' || type === 'person' || type === 'user' ? undefined : type
+  const sortBy = sort || undefined
+
   const { data: pollData } = useQuery({
     ...mediaQueries.pollSearch({
       query,
+      type: searchType,
       knownIds: Array.from(currentIds).join(','),
     }),
     enabled: !!query && currentIds.size > 0 && hasMore,
@@ -26,7 +32,11 @@ export function useSearchBackfill(
     newItems.forEach((item) => polledIdsRef.current.add(item.id))
 
     queryClient.setQueryData<InfiniteData<{ items: typeof pollData.items }>>(
-      mediaKeys.search(query, 'all'),
+      mediaKeys.search({
+        query,
+        type: searchType,
+        sortBy,
+      }),
       (prev) => {
         if (!prev) return prev
         const firstPage = prev.pages[0]
@@ -36,5 +46,5 @@ export function useSearchBackfill(
         }
       },
     )
-  }, [pollData, query, queryClient])
+  }, [pollData, query, searchType, sortBy, queryClient])
 }

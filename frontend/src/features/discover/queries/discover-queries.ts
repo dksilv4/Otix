@@ -1,11 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
-import { IS_DEV } from '@/lib/config'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 import type { PersonalizedSection, TrendingTrailerItem } from '../types'
 
-const gcTime = IS_DEV ? 0 : 1000 * 60 * 60 * 24
+const ONE_DAY = 1000 * 60 * 60 * 24
 
 export interface DiscoverListResponse {
   items: MediaItemSummary[]
@@ -32,8 +31,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: 1000 * 60 * 30,
-      gcTime,
+      staleTime: ONE_DAY,
+      gcTime: ONE_DAY,
     }),
 
   hero: () =>
@@ -47,8 +46,8 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: 1000 * 60 * 60,
-      gcTime,
+      staleTime: ONE_DAY,
+      gcTime: ONE_DAY,
     }),
 
   sections: () =>
@@ -58,8 +57,8 @@ export const discoverQueries = {
         const { data } = await apiClient.get<{ sections: PersonalizedSection[] }>('/discover/sections')
         return data.sections
       },
-      staleTime: 1000 * 60 * 60,
-      gcTime,
+      staleTime: ONE_DAY,
+      gcTime: ONE_DAY,
     }),
 
   trailers: () =>
@@ -71,7 +70,7 @@ export const discoverQueries = {
         )
         return data.items
       },
-      staleTime: 1000 * 60 * 30,
-      gcTime,
+      staleTime: ONE_DAY,
+      gcTime: ONE_DAY,
     }),
 }

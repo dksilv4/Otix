@@ -276,7 +276,19 @@
       "Bash(python3 -m json.tool)",
       "Bash(python3 -c ' *)",
       "Bash(docker-compose ps *)",
-      "Bash(python3 -c \"import json,sys; [print\\(f'{m[\\\\\"Source\\\\\"]} -> {m[\\\\\"Destination\\\\\"]} \\({m[\\\\\"Type\\\\\"]}\\)'\\) for m in json.load\\(sys.stdin\\)]\")"
+      "Bash(python3 -c \"import json,sys; [print\\(f'{m[\\\\\"Source\\\\\"]} -> {m[\\\\\"Destination\\\\\"]} \\({m[\\\\\"Type\\\\\"]}\\)'\\) for m in json.load\\(sys.stdin\\)]\")",
+      "Bash(Bash:)",
+      "Bash(sips -z 16 16 /Users/dk/dev/Otix/assets/appstore.png --out /tmp/otix-icon.iconset/icon_16x16.png)",
+      "Bash(sips -z 32 32 /Users/dk/dev/Otix/assets/appstore.png --out /tmp/otix-icon.iconset/icon_16x16@2x.png)",
+      "Bash(sips -z 32 32 /Users/dk/dev/Otix/assets/appstore.png --out /tmp/otix-icon.iconset/icon_32x32.png)",
+      "Bash(sips -z 64 64 /Users/dk/dev/Otix/assets/appstore.png --out /tmp/otix-icon.iconset/icon_32x32@2x.png)",
+      "Bash(sips -z 128 128 /Users/dk/dev/Otix/assets/appstore.png --out /tmp/otix-icon.iconset/icon_128x128.png)",
+      "Bash(iconutil -c icns /tmp/otix-icon.iconset -o /Users/dk/dev/Otix/desktop/assets/icon.icns)",
+      "Bash(python3 -c \"from PIL import Image; print\\('Pillow found'\\)\")",
+      "Bash(kill 99841 99840 99815)",
+      "Bash(rg \"ACCESS_TOKEN_KEY\" frontend/src/lib/config/ -r '$0')",
+      "Bash(rg \"@auth\" frontend/tsconfig.*.json)",
+      "Bash(rg \"auth\" frontend/vite.config.*)"
     ]
   }
 }

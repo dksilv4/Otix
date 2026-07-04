@@ -49,9 +49,7 @@ class PeopleService:
             .options(
                 selectinload(Person.credits)
                 .joinedload(MediaCredit.media_item)
-                .joinedload(MediaItem.show)
-                .selectinload(Show.seasons)
-                .selectinload(Season.episodes),
+                .joinedload(MediaItem.show),
                 selectinload(Person._external_ids),
             )
             .where(Person.id == person_id)
@@ -94,15 +92,18 @@ class PeopleService:
         # Rating info
         person.avg_rating = None
         person.user_rating = None
+        person.rating_count = 0
         try:
             from otix.domain.people import PersonRating
-            avg = await self.session.scalar(
-                select(func.avg(PersonRating.score)).where(
+            res = await self.session.execute(
+                select(func.avg(PersonRating.score), func.count(PersonRating.id)).where(
                     PersonRating.person_id == person_id
                 )
             )
+            avg, count = res.first()
             if avg is not None:
                 person.avg_rating = round(float(avg), 1)
+            person.rating_count = count or 0
 
             if user_id:
                 user_score = await self.session.scalar(

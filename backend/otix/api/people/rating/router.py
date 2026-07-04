@@ -39,6 +39,14 @@ async def rate_person(
         service = PeopleService(db)
         await service.rate_person(current_user.id, person_id, body.score)
         await db.commit()
+
+        # Invalidate cache
+        try:
+            from otix.infrastructure.redis import get_redis
+            redis = await get_redis()
+            await redis.delete(f"person:detail:{person_id}")
+        except Exception:
+            pass
     except HTTPException:
         await db.rollback()
         raise
@@ -78,6 +86,14 @@ async def unrate_person(
         service = PeopleService(db)
         await service.unrate_person(current_user.id, person_id)
         await db.commit()
+
+        # Invalidate cache
+        try:
+            from otix.infrastructure.redis import get_redis
+            redis = await get_redis()
+            await redis.delete(f"person:detail:{person_id}")
+        except Exception:
+            pass
     except HTTPException:
         await db.rollback()
         raise

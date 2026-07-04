@@ -31,12 +31,30 @@ export function HeroCard({
   children,
 }: HeroCardProps) {
   const cardRef = useRef<HTMLDivElement>(null)
-  const tilt = useCardTilt()
+  const tilt = useCardTilt(isActive)
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
     tilt.handleMouseMove(e, rect)
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    tilt.handleTouchStart(e, rect)
+    onTouchStart?.(e)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    tilt.handleTouchMove(e, rect)
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    tilt.handleTouchEnd()
+    onTouchEnd?.(e)
   }
 
   return (
@@ -51,8 +69,9 @@ export function HeroCard({
       onMouseEnter={onMouseEnter}
       onMouseLeave={(e) => { tilt.handleMouseLeave(); onMouseLeave?.() }}
       onClick={onClick}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      onTouchStart={isActive ? handleTouchStart : onTouchStart}
+      onTouchMove={isActive ? handleTouchMove : undefined}
+      onTouchEnd={isActive ? handleTouchEnd : onTouchEnd}
     >
       <motion.div
         className="relative w-full h-full"

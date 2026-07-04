@@ -100,6 +100,7 @@ class MediaItemSummary(BaseModel):
     listened_count: int = 0
     view_count: int = 0
     is_adult: bool = False
+    new_season_released: bool = False
     user_interactions: UserInteractionState | None = None
     steam_playtime_forever: int | None = None
     steam_playtime_2weeks: int | None = None
@@ -693,6 +694,7 @@ class MediaItemDetail(BaseModel):
     listened_count: int = 0
     view_count: int = 0
     is_adult: bool = False
+    new_season_released: bool = False
     user_interactions: UserInteractionState | None = None
     # Steam playtime (populated for authenticated users who own the game)
     steam_playtime_forever: int | None = None

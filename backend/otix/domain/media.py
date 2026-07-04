@@ -73,6 +73,18 @@ class MediaItem(Base, TimestampMixin):
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    @property
+    def new_season_released(self) -> bool:
+        if self.media_type != "show":
+            return False
+        if "show" not in self.__dict__ or self.show is None:
+            return False
+        show = self.show
+        if not show.last_air_date:
+            return False
+        delta = date.today() - show.last_air_date
+        return delta.days <= 180
+
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),
         CheckConstraint("completeness_score >= 0 AND completeness_score <= 1", name="ck_completeness_score"),

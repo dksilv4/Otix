@@ -24,6 +24,7 @@ export interface MediaItemSummary {
   listenedCount?: number
   viewCount: number
   isAdult?: boolean
+  newSeasonReleased?: boolean
   userInteractions?: UserInteractionState | null
   revenue?: number | null
   budget?: number | null
@@ -73,6 +74,7 @@ export interface MediaItemDetail {
   listenedCount?: number
   viewCount: number
   isAdult?: boolean
+  newSeasonReleased?: boolean
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null

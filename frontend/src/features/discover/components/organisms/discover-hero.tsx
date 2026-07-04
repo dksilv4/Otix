@@ -151,7 +151,7 @@ export function DiscoverHero({ className }: { className?: string }) {
     <div
       id="discover-hero"
       ref={containerRef}
-      className={`relative w-full flex flex-col items-center justify-center pb-12 ${className || ''}`}
+      className={`relative w-full flex flex-col items-center justify-center pb-12 overflow-x-hidden ${className || ''}`}
     >
       {/* ═══ Slide stack ═══ */}
       <div
@@ -264,6 +264,16 @@ export function DiscoverHero({ className }: { className?: string }) {
                           </Badge>
                         )}
 
+                        {heroDetail.mediaType === 'show' && heroDetail.newSeasonReleased && (
+                          <Badge
+                            size="sm"
+                            variant="success"
+                            className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
+                          >
+                            New Season
+                          </Badge>
+                        )}
+
                         {heroDetail.releaseDate && (
                           <span className="text-[11px] font-semibold text-white/70">
                             {heroDetail.releaseDate.slice(0, 4)}
@@ -306,16 +316,28 @@ export function DiscoverHero({ className }: { className?: string }) {
                       <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1 line-clamp-1">
                         {activeItem.title}
                       </h3>
-                      {activeItem.mediaType && (
-                        <Badge
-                          size="sm"
-                          className={`text-white border-none w-fit ${MEDIA_TYPE_COLOR[activeItem.mediaType as keyof typeof MEDIA_TYPE_COLOR] || ''}`}
-                        >
-                          {MEDIA_TYPE_LABEL[
-                            activeItem.mediaType as keyof typeof MEDIA_TYPE_LABEL
-                          ] ?? 'Media'}
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {activeItem.mediaType && (
+                          <Badge
+                            size="sm"
+                            className={`text-white border-none w-fit ${MEDIA_TYPE_COLOR[activeItem.mediaType as keyof typeof MEDIA_TYPE_COLOR] || ''}`}
+                          >
+                            {MEDIA_TYPE_LABEL[
+                              activeItem.mediaType as keyof typeof MEDIA_TYPE_LABEL
+                            ] ?? 'Media'}
+                          </Badge>
+                        )}
+
+                        {activeItem.mediaType === 'show' && activeItem.newSeasonReleased && (
+                          <Badge
+                            size="sm"
+                            variant="success"
+                            className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
+                          >
+                            New Season
+                          </Badge>
+                        )}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

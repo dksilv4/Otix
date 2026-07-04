@@ -11,6 +11,7 @@ import { MotionPreferenceProvider } from '@/lib/providers/motion-preference'
 import { ThemeProvider } from '@/lib/providers/theme'
 import { LogoPreferenceProvider } from '@/lib/providers/logo-preference'
 import { AuthProvider } from '@/features/auth'
+import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
 import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
 import { SpotifyPlayerProvider } from '@/lib/player/spotify-player-provider'
@@ -19,6 +20,7 @@ import { PlayerProvider } from '@/lib/player/use-player'
 import { DkToastProvider } from '@/old-features/ui/molecules/toast'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import './index.css'
 
 // Set desktop platform attribute for CSS targeting
@@ -51,6 +53,8 @@ window.addEventListener('unhandledrejection', (event) => {
 // (This is harmless — it only catches what's already an unhandled
 // rejection from the browser's own EME probing.)
 
+const hasToken = !!localStorage.getItem(ACCESS_TOKEN_KEY)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
@@ -64,13 +68,14 @@ createRoot(document.getElementById('root')!).render(
               <LogoPreferenceProvider>
                 <FeatureProvider>
                 <AuthProvider>
+                  <AuthRouterBridge />
                   <DkToastProvider>
                     <SpotifyPlayerProvider>
                       <PlexAudioProvider>
                         <PlayerProvider>
                           <PageMetaProvider>
                             <ModalProvider>
-                              <RouterProvider router={router} context={{ queryClient }} />
+                              <RouterProvider router={router} context={{ queryClient, isAuthenticated: false, isAuthLoaded: !hasToken }} />
                               <ModalRoot />
                             </ModalProvider>
                           </PageMetaProvider>

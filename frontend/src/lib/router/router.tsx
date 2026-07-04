@@ -36,6 +36,8 @@ const routeTree = rootRoute.addChildren([
 
 export interface RouterContext {
   queryClient: QueryClient
+  isAuthenticated: boolean
+  isAuthLoaded: boolean
 }
 
 export const router = createRouter({
