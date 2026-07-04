@@ -76,13 +76,14 @@ export function MediaDetail() {
       }
     }, [pluginIdForTab, activeGameTab])
 
-    const {data, isError} = useMediaDetail(mediaType, mediaId)
+    const {data, isError, isPending} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
     const episodeInteractions = useEpisodeInteractions(mediaType, mediaId, {enabled: isShowDetail})
     const markShowWatched = useMarkShowWatched(mediaType, mediaId)
 
     // Route param not available yet during hard refresh — show skeleton, not error
     if (!mediaId) return <DetailSkeleton/>
+    if (isPending) return <DetailSkeleton/>
     if (isError || !data) return <ErrorState mediaType={mediaType}/>
 
     const detail = data

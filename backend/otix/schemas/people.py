@@ -115,6 +115,7 @@ class PersonDetail(BaseModel):
     is_followed: bool | None = None
     avg_rating: float | None = None
     user_rating: int | None = None
+    rating_count: int = 0
 
     credits: list[PersonCreditOut] = []
 

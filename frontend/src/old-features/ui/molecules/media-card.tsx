@@ -20,6 +20,7 @@ interface DkMediaCardProps {
   ratingCount?: number
   showTypeBadge?: boolean
   isAdult?: boolean
+  newSeasonReleased?: boolean
   zoomed?: boolean
   className?: string
   subtitle?: string | null
@@ -39,6 +40,7 @@ const DkMediaCard = memo(function DkMediaCard({
   ratingCount: _ratingCount,
   showTypeBadge = true,
   isAdult,
+  newSeasonReleased,
   zoomed = true,
   className,
   subtitle,
@@ -119,6 +121,15 @@ const DkMediaCard = memo(function DkMediaCard({
             )}
           >
             {TypeIcon && <TypeIcon className="h-3.5 w-3.5" />}
+          </span>
+        </div>
+      )}
+
+      {/* New Season Badge */}
+      {mediaType === 'show' && newSeasonReleased && (
+        <div className="absolute top-3 right-3 z-10">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-bold text-emerald-400 bg-emerald-950/75 border border-emerald-500/30 backdrop-blur-md shadow-lg uppercase tracking-wider">
+            New Season
           </span>
         </div>
       )}

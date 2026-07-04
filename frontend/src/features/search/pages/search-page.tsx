@@ -18,8 +18,6 @@ export function SearchPage() {
 
   // Local input state for responsive typing
   const [inputValue, setInputValue] = useState(urlQ)
-  const [searchType, setSearchType] = useState<TypeValue>(urlType)
-  const [searchSort, setSearchSort] = useState<SortValue>(urlSort)
 
   // Sync URL → local state when URL changes externally (back/forward nav)
   const prevUrlQRef = useRef(urlQ)
@@ -27,19 +25,16 @@ export function SearchPage() {
     if (prevUrlQRef.current !== urlQ) {
       prevUrlQRef.current = urlQ
       setInputValue(urlQ)
-      setSearchType(urlType)
-      setSearchSort(urlSort)
     }
-     
-  }, [urlQ, urlType, urlSort])
+  }, [urlQ])
 
   // Navigation helper
   const updateUrl = (q: string) => {
     void navigate({
       search: {
         q: q || undefined,
-        type: searchType !== 'all' ? searchType : undefined,
-        sort: searchSort || undefined,
+        type: urlType !== 'all' ? urlType : undefined,
+        sort: urlSort || undefined,
       },
       replace: true,
     })
@@ -57,23 +52,21 @@ export function SearchPage() {
   }
 
   const handleTypeChange = (type: TypeValue) => {
-    setSearchType(type)
     void navigate({
       search: {
         q: urlQ || undefined,
         type: type !== 'all' ? type : undefined,
-        sort: searchSort || undefined,
+        sort: urlSort || undefined,
       },
       replace: true,
     })
   }
 
   const handleSortChange = (sort: SortValue) => {
-    setSearchSort(sort)
     void navigate({
       search: {
         q: urlQ || undefined,
-        type: searchType !== 'all' ? searchType : undefined,
+        type: urlType !== 'all' ? urlType : undefined,
         sort: sort || undefined,
       },
       replace: true,
@@ -119,8 +112,8 @@ export function SearchPage() {
             {/* Type / sort filters */}
             <div className="mx-auto w-full max-w-[700px] px-4">
               <SearchSortBar
-                type={searchType}
-                sort={searchSort}
+                type={urlType}
+                sort={urlSort}
                 onTypeChange={handleTypeChange}
                 onSortChange={handleSortChange}
                 className="mt-4"
@@ -131,8 +124,8 @@ export function SearchPage() {
             <div className="mt-6 flex-1">
               <SearchResults
                 query={urlQ}
-                type={searchType}
-                sort={searchSort}
+                type={urlType}
+                sort={urlSort}
               />
             </div>
           </>

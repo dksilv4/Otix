@@ -1,7 +1,20 @@
-import { app, BrowserWindow, ipcMain, dialog, screen, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, screen, shell, nativeImage, protocol, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { execSync } from 'child_process';
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'media-cache',
+    privileges: {
+      bypassCSP: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
 import { GameDetector } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
@@ -124,6 +137,7 @@ function createWindow() {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
+    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     title: 'Otix',
     // macOS: hidden title bar keeps native traffic lights
     // Windows/Linux: fully frameless — we draw our own title bar
@@ -260,6 +274,11 @@ function handleDeepLink(url: string) {
 }
 
 app.on('ready', async () => {
+  // macOS dock icon — in dev mode the default Electron icon is used otherwise
+  if (process.platform === 'darwin') {
+    app.dock!.setIcon(nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')));
+  }
+
   // PresentMon is managed by the fps-capture plugin — no startup download needed here.
   gameDetector = new GameDetector(app.getPath('userData'));
 
@@ -269,7 +288,9 @@ app.on('ready', async () => {
 
   // Fix SameSite cookies for cross-origin requests from file:// (frontend) to backend
   const { session } = require('electron');
-  session.fromPartition('persist:main').webRequest.onHeadersReceived((details: any, callback: any) => {
+  const sess = session.fromPartition('persist:main');
+
+  sess.webRequest.onHeadersReceived((details: any, callback: any) => {
     let responseHeaders = details.responseHeaders || {};
     const setCookie = responseHeaders['set-cookie'] || responseHeaders['Set-Cookie'];
     if (setCookie) {
@@ -285,6 +306,67 @@ app.on('ready', async () => {
       });
     }
     callback({ cancel: false, responseHeaders });
+  });
+
+  // Register media-cache protocol handler for caching images locally
+  sess.protocol.handle('media-cache', async (request: Request) => {
+    const originalUrl = 'https://' + request.url.replace(/^media-cache:\/\//, '');
+    const cacheDir = path.join(app.getPath('userData'), 'image-cache');
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+
+    const crypto = require('crypto');
+    const hash = crypto.createHash('sha256').update(originalUrl).digest('hex');
+    const cachePath = path.join(cacheDir, hash);
+
+    const getMimeType = (url: string) => {
+      const ext = url.split('.').pop()?.toLowerCase();
+      if (ext === 'png') return 'image/png';
+      if (ext === 'webp') return 'image/webp';
+      if (ext === 'gif') return 'image/gif';
+      if (ext === 'svg') return 'image/svg+xml';
+      return 'image/jpeg';
+    };
+
+    if (fs.existsSync(cachePath)) {
+      const buffer = fs.readFileSync(cachePath);
+      return new Response(buffer, {
+        headers: { 'content-type': getMimeType(originalUrl) },
+      });
+    }
+
+    try {
+      const response = await net.fetch(originalUrl);
+      if (response.ok) {
+        const buffer = await response.arrayBuffer();
+        fs.writeFileSync(cachePath, Buffer.from(buffer));
+        return new Response(buffer, {
+          headers: {
+            'content-type': response.headers.get('content-type') || getMimeType(originalUrl),
+          },
+          status: response.status,
+          statusText: response.statusText,
+        });
+      }
+      return response;
+    } catch (err) {
+      console.error('[ImageCache] Fetch failed for', originalUrl, err);
+      return new Response('Fetch failed', { status: 500 });
+    }
+  });
+
+  // Intercept HTTPS image requests and redirect them to media-cache protocol
+  sess.webRequest.onBeforeRequest({ urls: ['https://*/*'] }, (details: any, callback: any) => {
+    if (details.resourceType === 'image' && details.url.startsWith('https://')) {
+      const url = details.url;
+      // Do not cache images from localhost/127.0.0.1 (local backend or local dev server)
+      if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
+        callback({ redirectURL: 'media-cache://' + url.slice(8) });
+        return;
+      }
+    }
+    callback({});
   });
 
   // Forward game detection events to renderer AND bridge to plugin event bus.

@@ -42,6 +42,7 @@ export interface PersonDetail {
   isFollowed: boolean | null
   avgRating: number | null
   userRating: number | null
+  ratingCount: number
   credits: PersonCredit[]
 }
 

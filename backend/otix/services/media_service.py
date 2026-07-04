@@ -174,12 +174,12 @@ class MediaService:
             order = None
 
         if order is not None or is_financial_sort:
-            query = select(MediaItem)
+            query = select(MediaItem).options(joinedload(MediaItem.show))
             if is_financial_sort:
                 query = query.join(MediaItem.movie).options(joinedload(MediaItem.movie))
         else:
             # Cursor pagination with default popularity sort
-            query = select(MediaItem)
+            query = select(MediaItem).options(joinedload(MediaItem.show))
 
         # Eager-load album for music queries so callers can access release-group ids
         if media_type == "music":

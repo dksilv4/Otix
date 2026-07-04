@@ -43,6 +43,14 @@ async def follow_person(
 
         count = await db.scalar(select(func.count()).where(UserPersonFollow.person_id == person_id))
         await db.commit()
+
+        # Invalidate cache
+        try:
+            from otix.infrastructure.redis import get_redis
+            redis = await get_redis()
+            await redis.delete(f"person:detail:{person_id}")
+        except Exception:
+            pass
     except HTTPException:
         await db.rollback()
         raise
@@ -86,6 +94,14 @@ async def unfollow_person(
 
         count = await db.scalar(select(func.count()).where(UserPersonFollow.person_id == person_id))
         await db.commit()
+
+        # Invalidate cache
+        try:
+            from otix.infrastructure.redis import get_redis
+            redis = await get_redis()
+            await redis.delete(f"person:detail:{person_id}")
+        except Exception:
+            pass
     except HTTPException:
         await db.rollback()
         raise

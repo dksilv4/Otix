@@ -179,9 +179,7 @@ async def search_suggestions(
                                         id=tid,
                                         media_type=media_type,
                                         title=item.get("title") or item.get("name", q),
-                                        slug=item.get("title", "").lower().replace(" ", "-")
-                                        if item.get("title")
-                                        else "",
+                                        slug=(item.get("title") or item.get("name") or "").lower().replace(" ", "-"),
                                         posterUrl=f"https://image.tmdb.org/t/p/w500{item.get('poster_path')}"
                                         if item.get("poster_path")
                                         else None,
