@@ -487,8 +487,8 @@ function PluginRow({
   const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
 
   return (
-    <tr className={cn(ROW_HOVER, 'cursor-pointer')} onClick={onManage}>
-      <td className={TD_CLASSES}>
+    <tr className={cn(ROW_HOVER, 'cursor-pointer group')} onClick={onManage}>
+      <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
         <div className="flex items-center gap-3">
           <div className={cn(
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base',
@@ -521,7 +521,7 @@ function PluginRow({
       <td className={TD_CLASSES}>
         <StatusBadge status={plugin.status} connected={plugin.connected} />
       </td>
-      <td className={cn(TD_CLASSES, 'text-right')}>
+      <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
         <div className="flex items-center justify-end gap-2">
           {hasUpdate && onUpdate && (
             <button
@@ -1172,15 +1172,15 @@ export function SettingsPluginsPage() {
                   {installedPlugins.length}
                 </span>
               </div>
-              <div className="rounded-xl border border-white/[0.06]">
-                <table className="w-full">
+              <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
+                <table className="w-full min-w-[750px]">
                   <thead>
                     <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
-                      <SortHeader label="Plugin" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+                      <SortHeader label="Plugin" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="sticky left-0 bg-[#0a0a0b] z-30" />
                       <SortHeader label="Version" sortKey="version" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
                       <SortHeader label="Author" sortKey="author" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="hidden sm:table-cell" />
                       <SortHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
-                      <th className={cn(TH_CLASSES, 'text-right')}>Actions</th>
+                      <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1303,15 +1303,15 @@ export function SettingsPluginsPage() {
                       {entries.length}
                     </span>
                   </div>
-                  <div className="rounded-xl border border-white/[0.06]">
-                    <table className="w-full">
+                  <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
+                    <table className="w-full min-w-[750px]">
                       <thead>
                         <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
-                          <th className={TH_CLASSES}>Plugin</th>
+                          <th className={cn(TH_CLASSES, 'sticky left-0 bg-[#0a0a0b] z-30')}>Plugin</th>
                           <th className={TH_CLASSES}>Version</th>
                           <th className={cn(TH_CLASSES, 'hidden sm:table-cell')}>Author</th>
                           <th className={cn(TH_CLASSES, 'hidden md:table-cell')}>Category</th>
-                          <th className={cn(TH_CLASSES, 'text-right')}>Actions</th>
+                          <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1324,10 +1324,10 @@ export function SettingsPluginsPage() {
                           return (
                             <tr
                               key={entry.id}
-                              className={cn(ROW_HOVER, 'cursor-pointer')}
+                              className={cn(ROW_HOVER, 'cursor-pointer group')}
                               onClick={() => setSelectedEntry(entry)}
                             >
-                              <td className={TD_CLASSES}>
+                              <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
                                 <div className="flex items-center gap-3">
                                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
                                     {icon}
@@ -1362,7 +1362,7 @@ export function SettingsPluginsPage() {
                                   {CATEGORY_STYLES[category]?.label || category}
                                 </span>
                               </td>
-                              <td className={cn(TD_CLASSES, 'text-right')}>
+                              <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
                                 <div className="flex items-center justify-end">
                                   {needsUpdate ? (
                                     <button
