@@ -516,6 +516,10 @@ export function PluginConfigPanel({
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        {plugin.description && (
+          <p className="text-sm text-white/60 leading-relaxed">{plugin.description}</p>
+        )}
+
         {/* Auth / Connection section (only for plugins with slots — OAuth flow plugins) */}
         {(plugin.manifest as any).slots?.length > 0 && (
           <PluginAuthSection pluginId={plugin.id} pluginName={plugin.name} api={api} />
