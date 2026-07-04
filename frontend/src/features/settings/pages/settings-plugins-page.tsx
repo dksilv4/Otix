@@ -487,73 +487,66 @@ function PluginRow({
   const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
 
   return (
-    <>
-      <tr className={cn(ROW_HOVER, 'cursor-pointer group')} onClick={onManage}>
-        <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base',
-              isError ? 'bg-red-500/10' : 'bg-primary/10',
-            )}>
-              {pluginIcon}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-white truncate">{plugin.name}</span>
-                <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-              </div>
+    <tr className={cn(ROW_HOVER, 'cursor-pointer group')} onClick={onManage}>
+      <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base',
+            isError ? 'bg-red-500/10' : 'bg-primary/10',
+          )}>
+            {pluginIcon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white truncate">{plugin.name}</span>
+              <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
             </div>
           </div>
-        </td>
-        <td className={TD_CLASSES}>
-          <span className="text-xs text-white/50">v{plugin.version}</span>
-          {hasUpdate && (
-            <span className="ml-2 text-[10px] text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
-              v{marketplaceEntry!.version}
-            </span>
-          )}
-        </td>
-        <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
-          {plugin.author}
-        </td>
-        <td className={TD_CLASSES}>
-          <StatusBadge status={plugin.status} connected={plugin.connected} />
-        </td>
-        <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-          <div className="flex items-center justify-end gap-2">
-            {hasUpdate && onUpdate && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onUpdate() }}
-                disabled={updating}
-                className="inline-flex items-center gap-1 h-7 rounded-lg px-2.5 text-[11px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
-              >
-                {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
-                Update
-              </button>
-            )}
+        </div>
+      </td>
+      <td className={TD_CLASSES}>
+        <span className="text-xs text-white/50">v{plugin.version}</span>
+        {hasUpdate && (
+          <span className="ml-2 text-[10px] text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
+            v{marketplaceEntry!.version}
+          </span>
+        )}
+      </td>
+      <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
+        {plugin.author}
+      </td>
+      <td className={TD_CLASSES}>
+        <StatusBadge status={plugin.status} connected={plugin.connected} />
+      </td>
+      <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+        <div className="flex items-center justify-end gap-2">
+          {hasUpdate && onUpdate && (
             <button
-              onClick={(e) => { e.stopPropagation(); onManage() }}
-              className={cn(
-                'inline-flex items-center gap-1.5 text-xs font-medium transition-colors',
-                isError ? 'text-red-400/70 hover:text-red-400' : 'text-primary/70 hover:text-primary',
-              )}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onUpdate() }}
+              disabled={updating}
+              className="inline-flex items-center gap-1 h-7 rounded-lg px-2.5 text-[11px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
             >
-              <Settings className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Manage</span>
+              {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
+              Update
             </button>
-            <span onClick={(e) => e.stopPropagation()}>
-              <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
-            </span>
-          </div>
-        </td>
-      </tr>
-      <tr className="cursor-pointer group" onClick={onManage}>
-        <td colSpan={5} className="py-1.5 px-3 pb-3 text-xs text-white/40 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors sticky left-0 right-0 z-20 border-t-0">
-          <p className="max-w-2xl leading-relaxed pl-[56px]">{plugin.description || 'No description provided.'}</p>
-        </td>
-      </tr>
-    </>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onManage() }}
+            className={cn(
+              'inline-flex items-center gap-1.5 text-xs font-medium transition-colors',
+              isError ? 'text-red-400/70 hover:text-red-400' : 'text-primary/70 hover:text-primary',
+            )}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Manage</span>
+          </button>
+          <span onClick={(e) => e.stopPropagation()}>
+            <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
+          </span>
+        </div>
+      </td>
+    </tr>
   )
 }
 
@@ -1326,92 +1319,84 @@ export function SettingsPluginsPage() {
                           const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
                           const category = entry.category || getPluginCategory(entry)
                           return (
-                            <Fragment key={entry.id}>
-                              <tr
-                                className={cn(ROW_HOVER, 'cursor-pointer group')}
-                                onClick={() => setSelectedEntry(entry)}
-                              >
-                                <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
-                                      {icon}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-medium text-white truncate">{entry.name}</span>
-                                        <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-                                        {isInstalled && !needsUpdate && (
-                                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5 shrink-0">
-                                            <CheckCircle2 className="h-2.5 w-2.5" /> Installed
-                                          </span>
-                                        )}
-                                        {needsUpdate && (
-                                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
-                                            <ArrowUpCircle className="h-2.5 w-2.5" /> v{entry.version}
-                                          </span>
-                                        )}
-                                      </div>
+                          return (
+                            <tr
+                              key={entry.id}
+                              className={cn(ROW_HOVER, 'cursor-pointer group')}
+                              onClick={() => setSelectedEntry(entry)}
+                            >
+                              <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
+                                    {icon}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-white truncate">{entry.name}</span>
+                                      <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+                                      {isInstalled && !needsUpdate && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                          <CheckCircle2 className="h-2.5 w-2.5" /> Installed
+                                        </span>
+                                      )}
+                                      {needsUpdate && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                          <ArrowUpCircle className="h-2.5 w-2.5" /> v{entry.version}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
-                                </td>
-                                <td className={TD_CLASSES}>
-                                  <span className="text-xs text-white/50">v{entry.version}</span>
-                                </td>
-                                <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
-                                  {entry.author}
-                                </td>
-                                <td className={cn(TD_CLASSES, 'hidden md:table-cell')}>
-                                  <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
-                                    {CATEGORY_STYLES[category]?.label || category}
-                                  </span>
-                                </td>
-                                <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
-                                  <div className="flex items-center justify-end">
-                                    {needsUpdate ? (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleMarketplaceInstall(entry) }}
-                                        disabled={installingMarketplaceId === entry.id}
-                                        className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
-                                      >
-                                        {installingMarketplaceId === entry.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                                        Update
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          if (isInstalled) {
-                                            const p = plugins.find((pl) => pl.id === entry.id)
-                                            if (p) openConfig(p)
-                                          } else {
-                                            handleMarketplaceInstall(entry)
-                                          }
-                                        }}
-                                        disabled={installingMarketplaceId === entry.id}
-                                        className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
-                                      >
-                                        {installingMarketplaceId === entry.id ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : isInstalled ? (
-                                          <Settings className="h-3 w-3" />
-                                        ) : (
-                                          <Download className="h-3 w-3" />
-                                        )}
-                                        {isInstalled ? 'Configure' : 'Connect'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                              <tr
-                                className="cursor-pointer group"
-                                onClick={() => setSelectedEntry(entry)}
-                              >
-                                <td colSpan={5} className="py-1.5 px-3 pb-3 text-xs text-white/40 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors sticky left-0 right-0 z-20 border-t-0">
-                                  <p className="max-w-2xl leading-relaxed pl-[56px]">{entry.description || 'No description provided.'}</p>
-                                </td>
-                              </tr>
-                            </Fragment>
+                                </div>
+                              </td>
+                              <td className={TD_CLASSES}>
+                                <span className="text-xs text-white/50">v{entry.version}</span>
+                              </td>
+                              <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
+                                {entry.author}
+                              </td>
+                              <td className={cn(TD_CLASSES, 'hidden md:table-cell')}>
+                                <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
+                                  {CATEGORY_STYLES[category]?.label || category}
+                                </span>
+                              </td>
+                              <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+                                <div className="flex items-center justify-end">
+                                  {needsUpdate ? (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarketplaceInstall(entry) }}
+                                      disabled={installingMarketplaceId === entry.id}
+                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+                                    >
+                                      {installingMarketplaceId === entry.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      Update
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (isInstalled) {
+                                          const p = plugins.find((pl) => pl.id === entry.id)
+                                          if (p) openConfig(p)
+                                        } else {
+                                          handleMarketplaceInstall(entry)
+                                        }
+                                      }}
+                                      disabled={installingMarketplaceId === entry.id}
+                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
+                                    >
+                                      {installingMarketplaceId === entry.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : isInstalled ? (
+                                        <Settings className="h-3 w-3" />
+                                      ) : (
+                                        <Download className="h-3 w-3" />
+                                      )}
+                                      {isInstalled ? 'Configure' : 'Connect'}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
                           )
                         })}
                       </tbody>
