@@ -1319,7 +1319,6 @@ export function SettingsPluginsPage() {
                           const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
                           const category = entry.category || getPluginCategory(entry)
                           return (
-                          return (
                             <tr
                               key={entry.id}
                               className={cn(ROW_HOVER, 'cursor-pointer group')}
