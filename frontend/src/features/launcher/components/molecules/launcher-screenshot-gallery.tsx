@@ -103,8 +103,47 @@ function ScreenshotLightboxModal({ screenshots, initialIndex, onClose }: Screens
 export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: LauncherScreenshotGalleryProps) {
   const { openModal } = useModal()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [activeIdx, setActiveIdx] = useState(0)
+  const pausedRef = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   if (screenshots.length === 0) return null
+
+  // Auto-cycle screenshots
+  useEffect(() => {
+    if (screenshots.length <= 1) return
+
+    const startTimer = () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      timerRef.current = setInterval(() => {
+        if (pausedRef.current) return
+        setActiveIdx((prev) => {
+          const next = (prev + 1) % screenshots.length
+          onHoverScreenshot?.(screenshots[next].url)
+          return next
+        })
+      }, 5000)
+    }
+
+    startTimer()
+    // Fire the first one immediately
+    onHoverScreenshot?.(screenshots[0].url)
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenshots.length])
+
+  // Scroll active thumbnail into view
+  useEffect(() => {
+    if (!scrollRef.current) return
+    const container = scrollRef.current
+    const child = container.children[activeIdx] as HTMLElement | undefined
+    if (child) {
+      child.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    }
+  }, [activeIdx])
 
   const handleScroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -127,6 +166,16 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: La
     )
   }
 
+  const handleThumbEnter = (idx: number) => {
+    pausedRef.current = true
+    setActiveIdx(idx)
+    onHoverScreenshot?.(screenshots[idx].url)
+  }
+
+  const handleThumbLeave = () => {
+    pausedRef.current = false
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center gap-3">
@@ -147,9 +196,13 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: La
             <button
               key={`${shot.url}-${idx}`}
               onClick={() => handleOpenLightbox(idx)}
-              onMouseEnter={() => onHoverScreenshot?.(shot.url)}
-              onMouseLeave={() => onHoverScreenshot?.(null)}
-              className="shrink-0 rounded-xl overflow-hidden border border-white/[0.08] hover:border-white/30 transition-all duration-300 cursor-pointer group relative shadow-md hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 aspect-video snap-start"
+              onMouseEnter={() => handleThumbEnter(idx)}
+              onMouseLeave={handleThumbLeave}
+              className={`shrink-0 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer group relative shadow-md hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 aspect-video snap-start ${
+                idx === activeIdx
+                  ? 'border-2 border-white/40 shadow-[0_0_16px_rgba(255,255,255,0.1)]'
+                  : 'border border-white/[0.08] hover:border-white/30'
+              }`}
               style={{ width: 'calc((100% - 48px) / 5)' }}
             >
               <img
