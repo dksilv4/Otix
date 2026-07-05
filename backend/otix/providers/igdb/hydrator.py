@@ -519,7 +519,7 @@ class IGDBHydrator:
 
         if franchise is None:
             normalized = normalize_franchise_name(data["name"])
-            existing = (await self.session.scalars(select(Franchise))).all()
+            existing = (await self.session.scalars(select(Franchise).limit(10000))).all()
             slug = _slugify(data["name"])
             for fr in existing or []:
                 if normalize_franchise_name(fr.name) == normalized:

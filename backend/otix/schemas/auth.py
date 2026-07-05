@@ -365,6 +365,10 @@ class GoogleInitiateResponse(BaseModel):
     state: str
 
 
+class GoogleAccessTokenResponse(BaseModel):
+    access_token: str
+
+
 class GoogleCallbackRequest(BaseModel):
     code: str
     state: str

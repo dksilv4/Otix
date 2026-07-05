@@ -39,19 +39,22 @@ class NotificationService:
             from otix.services.vapid import get_vapid_public_key, vapid_private_key
 
             async def _deliver():
-                async with async_session_factory() as session:
-                    push_service = PushService(session, vapid_private_key, get_vapid_public_key())
-                    await push_service.send_notification(
-                        user_id=notification.user_id,
-                        title=notification.title,
-                        body=notification.body,
-                        type_=notification.type,
-                        metadata=notification.metadata_json,
-                    )
+                try:
+                    async with async_session_factory() as session:
+                        push_service = PushService(session, vapid_private_key, get_vapid_public_key())
+                        await push_service.send_notification(
+                            user_id=notification.user_id,
+                            title=notification.title,
+                            body=notification.body,
+                            type_=notification.type,
+                            metadata=notification.metadata_json,
+                        )
+                except Exception:
+                    logger.exception("push notification delivery failed", notification_id=notification.id)
 
             asyncio.create_task(_deliver())
         except Exception:
-            pass
+            logger.exception("failed to schedule push notification delivery")
 
         return notification
 

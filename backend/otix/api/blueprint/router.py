@@ -6,7 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_user, get_db, get_optional_user
 from otix.domain.user import User
-from otix.schemas.blueprint import BlueprintCreate, BlueprintDetailOut, BlueprintListOut, BlueprintUpdate
+from otix.schemas.blueprint import (
+    BlueprintCreate,
+    BlueprintDetailOut,
+    BlueprintDownloadResponse,
+    BlueprintLikeResponse,
+    BlueprintListOut,
+    BlueprintUpdate,
+)
 from otix.services.blueprint_service import BlueprintService
 
 logger = structlog.get_logger()
@@ -231,13 +238,13 @@ async def delete_blueprint(
     logger.info("blueprint deleted", blueprint_id=blueprint_id, user_id=current_user.id, ip=ip)
 
 
-@blueprint_router.post("/{blueprint_id}/like", response_model=dict)
+@blueprint_router.post("/{blueprint_id}/like", response_model=BlueprintLikeResponse)
 async def toggle_like_blueprint(
     blueprint_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> dict:
+) -> BlueprintLikeResponse:
     """Toggle like on a blueprint."""
     ip = _client_ip(request)
     service = BlueprintService(db)
@@ -260,16 +267,16 @@ async def toggle_like_blueprint(
         raise
 
     logger.info("blueprint like toggled", blueprint_id=blueprint_id, user_id=current_user.id, is_liked=is_liked, ip=ip)
-    return {"is_liked": is_liked, "like_count": like_count}
+    return BlueprintLikeResponse(is_liked=is_liked, like_count=like_count)
 
 
-@blueprint_router.post("/{blueprint_id}/download", response_model=dict)
+@blueprint_router.post("/{blueprint_id}/download", response_model=BlueprintDownloadResponse)
 async def increment_download(
     blueprint_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
-) -> dict:
+) -> BlueprintDownloadResponse:
     """Increment download counter for a blueprint."""
     ip = _client_ip(request)
     service = BlueprintService(db)
@@ -285,7 +292,7 @@ async def increment_download(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blueprint not found")
 
     logger.info("blueprint download incremented", blueprint_id=blueprint_id, downloads=bp.downloads, ip=ip)
-    return {"downloads": bp.downloads}
+    return BlueprintDownloadResponse(downloads=bp.downloads)
 
 
 def _client_ip(request: Request) -> str:

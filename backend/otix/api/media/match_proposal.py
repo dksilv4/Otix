@@ -67,6 +67,12 @@ class ProposalListOut(BaseModel):
     total: int
 
 
+class MatchProposeResponse(BaseModel):
+    success: bool
+    status: str
+    auto_approved: bool
+
+
 # ── Helpers ────────────────────────────────────────────────────────────
 
 
@@ -100,12 +106,12 @@ def _payload_to_match_out(p: Proposal) -> ProposalOut:
 # ── Endpoints (delegate to unified service) ────────────────────────────
 
 
-@router.post("/match/propose", response_model=dict)
+@router.post("/match/propose", response_model=MatchProposeResponse)
 async def propose_match(
     body: ProposeMatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
-) -> dict:
+) -> MatchProposeResponse:
     """Submit an auto-match for review. Delegates to unified ProposalsService."""
     parts = body.query_id.split(":", 1)
     source = parts[0] if parts else "unknown"
@@ -136,11 +142,11 @@ async def propose_match(
     auto_approved = proposal.status == "approved"
     logger.warning("deprecated_endpoint_used", endpoint="/media/match/propose")
 
-    return {
-        "success": True,
-        "status": proposal.status,
-        "auto_approved": auto_approved,
-    }
+    return MatchProposeResponse(
+        success=True,
+        status=proposal.status,
+        auto_approved=auto_approved,
+    )
 
 
 @router.get("/admin/match-proposals", response_model=ProposalListOut)
