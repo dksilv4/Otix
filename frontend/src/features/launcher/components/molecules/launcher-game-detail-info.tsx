@@ -28,6 +28,13 @@ function formatTimeToBeat(ttb: Record<string, unknown> | undefined): string | nu
   return null
 }
 
+interface CompanyEntry {
+  id: string
+  company: { id: string; name: string; slug: string; logoUrl?: string | null }
+  developer: boolean
+  publisher: boolean
+}
+
 export function LauncherGameDetailInfo() {
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
@@ -44,10 +51,16 @@ export function LauncherGameDetailInfo() {
   const hasMultiplayer = d?.hasMultiplayer as boolean | undefined
   const genres = d?.genres as { id: string; name: string }[] | undefined
   const ttb = formatTimeToBeat((d as unknown as Record<string, unknown>)?.timeToBeat as Record<string, unknown> | undefined)
+  const companies = d?.involvedCompanies as CompanyEntry[] | undefined
 
   // Read from g.data (hydrated) or from the LocalGame directly
   const avgRating = (d?.avgRating as number | undefined) ?? null
   const ratingCount = (d?.ratingCount as number) ?? 0
+
+  const roles: Array<{ key: 'developer' | 'publisher'; label: string }> = [
+    { key: 'developer', label: 'Developer' },
+    { key: 'publisher', label: 'Publisher' },
+  ]
 
   return (
     <>
@@ -64,7 +77,7 @@ export function LauncherGameDetailInfo() {
         {overview || 'No description available.'}
       </p>
 
-      <div className="flex flex-wrap gap-1.5 justify-end max-w-xs mb-4">
+      <div className="flex flex-wrap gap-1.5 justify-end max-w-xs mb-3">
         {releaseDate && (
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/50 border border-white/5">
             {releaseDate.slice(0, 4)}
@@ -94,6 +107,19 @@ export function LauncherGameDetailInfo() {
           <span key={genre.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/50 border border-white/5">{genre.name}</span>
         ))}
       </div>
+
+      {companies && companies.length > 0 && (
+        <div className="flex flex-col gap-0.5 items-end text-[10px] text-white/35 mb-4 max-w-xs">
+          {roles.filter(r => companies.some(c => c[r.key])).map((role) => (
+            <span key={role.key}>
+              <span className="uppercase tracking-wider font-semibold">{role.label}</span>{' '}
+              <span className="text-white/60">
+                {companies.filter(c => c[role.key]).map(c => c.company.name).join(", ")}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
     </>
   )
 }
