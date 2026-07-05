@@ -195,7 +195,6 @@ class UserUpdateRequest(BaseModel):
     show_adult_content: bool | None = None
     country: str | None = None
     is_private: bool | None = None
-    is_bot: bool | None = None
     notification_preferences: dict[str, bool] | None = None
 
 

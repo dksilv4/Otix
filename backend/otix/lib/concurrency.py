@@ -48,5 +48,5 @@ def run_async(coro: Coroutine[Any, Any, Any]) -> Any:
         _loop_pid = current_pid
 
     future = asyncio.run_coroutine_threadsafe(coro, _loop)
-    return future.result()
+    return future.result(timeout=1800)  # 30 min timeout to prevent worker thread hangs
 
