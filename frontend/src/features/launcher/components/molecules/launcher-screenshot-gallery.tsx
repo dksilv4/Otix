@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useModal } from '@/lib/modals'
@@ -12,6 +12,7 @@ interface Screenshot {
 
 interface LauncherScreenshotGalleryProps {
   screenshots: Screenshot[]
+  onHoverScreenshot?: (url: string | null) => void
 }
 
 interface ScreenshotLightboxModalProps {
@@ -99,14 +100,22 @@ function ScreenshotLightboxModal({ screenshots, initialIndex, onClose }: Screens
   )
 }
 
-export function LauncherScreenshotGallery({ screenshots }: LauncherScreenshotGalleryProps) {
+export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: LauncherScreenshotGalleryProps) {
   const { openModal } = useModal()
-  const [scrollIdx, setScrollIdx] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   if (screenshots.length === 0) return null
 
-  const scrollLeft = () => setScrollIdx((s) => Math.max(0, s - 1))
-  const scrollRight = () => setScrollIdx((s) => Math.min(screenshots.length - 3, s + 1))
+  const handleScroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const container = scrollRef.current
+      const scrollAmount = container.clientWidth
+      container.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      })
+    }
+  }
 
   const handleOpenLightbox = (index: number) => {
     const close = openModal(
@@ -119,43 +128,48 @@ export function LauncherScreenshotGallery({ screenshots }: LauncherScreenshotGal
   }
 
   return (
-    <div className="absolute bottom-24 left-[calc(76px+1.5rem)] right-8 z-20">
-      <div className="flex items-end gap-2">
-        {screenshots.length > 3 && (
+    <div className="w-full">
+      <div className="flex items-center gap-3">
+        {screenshots.length > 5 && (
           <button
-            onClick={scrollLeft}
-            disabled={scrollIdx === 0}
-            className="shrink-0 w-8 h-[72px] rounded-lg bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all disabled:opacity-20 cursor-pointer"
+            onClick={() => handleScroll('left')}
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"
           >
-            <ChevronLeft size={14} className="text-white/80" />
+            <ChevronLeft size={16} className="text-white/80" />
           </button>
         )}
 
-        <div className="flex gap-2 overflow-hidden">
-          {screenshots.slice(scrollIdx, scrollIdx + 5).map((shot, i) => (
+        <div
+          ref={scrollRef}
+          className="flex-1 flex gap-3 overflow-x-auto scrollbar-none scroll-smooth py-1 snap-x snap-mandatory"
+        >
+          {screenshots.map((shot, idx) => (
             <button
-              key={`${shot.url}-${scrollIdx + i}`}
-              onClick={() => handleOpenLightbox(scrollIdx + i)}
-              className="shrink-0 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all cursor-pointer group"
-              style={{ width: 128, height: 72 }}
+              key={`${shot.url}-${idx}`}
+              onClick={() => handleOpenLightbox(idx)}
+              onMouseEnter={() => onHoverScreenshot?.(shot.url)}
+              onMouseLeave={() => onHoverScreenshot?.(null)}
+              className="shrink-0 rounded-xl overflow-hidden border border-white/[0.08] hover:border-white/30 transition-all duration-300 cursor-pointer group relative shadow-md hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 aspect-video snap-start"
+              style={{ width: 'calc((100% - 48px) / 5)' }}
             >
               <img
                 src={shot.url}
-                alt={`Screenshot ${scrollIdx + i + 1}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                alt={`Screenshot ${idx + 1}`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                 loading="lazy"
               />
+              {/* Gloss reflection sheen */}
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
             </button>
           ))}
         </div>
 
-        {screenshots.length > 3 && (
+        {screenshots.length > 5 && (
           <button
-            onClick={scrollRight}
-            disabled={scrollIdx >= screenshots.length - 3}
-            className="shrink-0 w-8 h-[72px] rounded-lg bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all disabled:opacity-20 cursor-pointer"
+            onClick={() => handleScroll('right')}
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"
           >
-            <ChevronRight size={14} className="text-white/80" />
+            <ChevronRight size={16} className="text-white/80" />
           </button>
         )}
       </div>

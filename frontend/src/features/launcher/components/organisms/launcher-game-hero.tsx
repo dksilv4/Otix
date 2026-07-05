@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { heroImage } from '@/features/launcher/utils'
 import { LauncherGameStats } from '@/features/launcher/components/molecules/launcher-game-stats'
-import { LauncherGameCompanies } from '@/features/launcher/components/molecules/launcher-game-companies'
 import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
 import { LauncherScreenshotGallery } from '@/features/launcher/components/molecules/launcher-screenshot-gallery'
@@ -60,6 +59,12 @@ export function LauncherGameHero() {
   const { game: g } = useLauncherGame(gameId)
   const detail = g?.data
   const drift = useRandomParallax()
+  const [activeBackdrop, setActiveBackdrop] = useState<string | null>(null)
+
+  // Reset hovered screenshot backdrop when changing games
+  useEffect(() => {
+    setActiveBackdrop(null)
+  }, [gameId])
 
   const screenshots = useMemo(() => {
     if (!detail?.screenshots?.length) return []
@@ -72,6 +77,8 @@ export function LauncherGameHero() {
     return raw ? heroImage(raw) : ''
   }, [detail])
 
+  const currentBackdrop = activeBackdrop || backdropUrl
+
   // Normalize drift to usable pixel offsets
   const bgX = drift.x * 22
   const bgY = drift.y * 14
@@ -80,73 +87,98 @@ export function LauncherGameHero() {
   const rotX = -drift.y * 2.5
   const rotY = drift.x * 3.5
 
+  const isHoveringScreenshot = activeBackdrop !== null
+
   return (
     <section
       id="launcher-game-hero"
-      className="w-full min-h-[100vh] bg-[white] bg-grid-pattern relative shrink-0 overflow-hidden"
+      className="w-full min-h-[100vh] bg-neutral-950 bg-grid-pattern relative shrink-0 overflow-hidden"
       style={{ perspective: '1200px' }}
     >
       {/* Background layers */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={gameId}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.6 }}
-          className="absolute inset-0 z-0"
-          style={{
-            transform: `translateX(${bgX}px) translateY(${bgY}px) scale(1.05)`,
-            transition: 'transform 2.5s linear',
-          }}
-        >
-          {backdropUrl && (
-            <>
-              <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${backdropUrl})` }} />
-              <div
-                className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${backdropUrl})`,
-                  filter: 'blur(60px)',
-                  opacity: 0.35,
-                }}
-              />
-            </>
-          )}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 z-1 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={currentBackdrop}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeInOut' }}
+            className="absolute inset-0"
+            style={{
+              transform: `translateX(${bgX}px) translateY(${bgY}px) scale(1.05)`,
+              transition: 'transform 2.5s linear',
+            }}
+          >
+            {currentBackdrop && (
+              <>
+                <div
+                  className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-out-back ${
+                    isHoveringScreenshot
+                      ? 'opacity-90 brightness-95 saturate-100 contrast-100'
+                      : 'opacity-45 brightness-[0.45] saturate-[0.75] contrast-[1.05]'
+                  }`}
+                  style={{ backgroundImage: `url(${currentBackdrop})` }}
+                />
+                <div
+                  className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
+                  style={{
+                    backgroundImage: `url(${currentBackdrop})`,
+                    filter: 'blur(60px)',
+                    opacity: 0.25,
+                  }}
+                />
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
-      <div className="absolute z-10 bottom-8 pointer-events-auto" style={{ left: 'calc(76px + 1.5rem)' }}>
-        <div className="flex items-start gap-3">
+      {/* Gradient overlays */}
+      <div
+        className="absolute inset-0 z-1 pointer-events-none transition-opacity duration-500"
+        style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+      </div>
+
+      {/* Bottom info dock */}
+      <div
+        className="absolute z-10 bottom-8 pointer-events-auto flex flex-col gap-5"
+        style={{ left: 'calc(76px + 1.5rem)', right: '2rem' }}
+      >
+        <div
+          className="flex items-start gap-3 transition-opacity duration-500"
+          style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
+        >
           <LauncherGameStats />
         </div>
+
+        {/* Screenshot gallery */}
+        {screenshots.length > 0 && (
+          <LauncherScreenshotGallery
+            screenshots={screenshots}
+            onHoverScreenshot={setActiveBackdrop}
+          />
+        )}
       </div>
 
       <div className="absolute inset-0 z-10 pointer-events-none">
-        <LauncherGameCompanies />
-
         {/* Logo/content with 3D parallax */}
         <motion.div
           className="absolute right-8 top-1/2 flex flex-col items-end text-right max-w-sm pointer-events-auto"
           style={{
             transform: `translateY(-35%) translateX(${lgX}px) translateY(${lgY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
             transformStyle: 'preserve-3d',
-            transition: 'transform 2.5s linear',
+            transition: 'transform 2.5s linear, opacity 0.5s ease-in-out',
+            opacity: isHoveringScreenshot ? 0.1 : 1,
           }}
         >
           <LauncherGameDetailInfo />
           <LauncherGameButtons />
         </motion.div>
       </div>
-
-      {/* Screenshot gallery */}
-      {screenshots.length > 0 && <LauncherScreenshotGallery screenshots={screenshots} />}
     </section>
   )
 }

@@ -65,7 +65,7 @@ export function FloatingGameSelector() {
     }, [isDesktop, queryClient])
 
     const goToLibrary = useCallback(() => {
-        navigate({to: '/library'})
+        navigate({to: '/launcher/library'})
     }, [navigate])
 
     return (

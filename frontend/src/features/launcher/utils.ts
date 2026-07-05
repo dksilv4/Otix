@@ -13,7 +13,7 @@ export function toDisplayGame(g: LocalGame): DisplayGame {
     backdropUrl: undefined,
     localIconUrl: g.localIconUrl || undefined,
     iconUrl: g.data?.iconUrl || g.iconUrl || undefined,
-    logoUrl: undefined,
+    logoUrl: g.otixLogoUrl || g.data?.logoUrl || g.logoUrl || undefined,
     badge: `${platformLabel} · ${matchLabel}`,
     playtime: '—',
     achievements: isMatched ? 'Owned' : '—',
