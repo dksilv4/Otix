@@ -479,10 +479,6 @@ class AdminEditService:
         )
         return list(proposals)
 
-    async def get_pending_proposals(self) -> list[MediaEditProposal]:
-        items, _ = await self.get_all_proposals(status="pending", limit=999999, offset=0)
-        return items
-
     async def get_proposal(self, proposal_id: str) -> MediaEditProposal | None:
         return await self.session.scalar(
             select(MediaEditProposal)

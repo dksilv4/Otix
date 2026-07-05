@@ -39,7 +39,6 @@ _UPDATABLE_FIELDS: frozenset[str] = frozenset(
         "show_adult_content",
         "country",
         "is_private",
-        "is_bot",
         "notification_preferences",
     }
 )

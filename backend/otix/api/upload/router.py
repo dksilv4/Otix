@@ -26,6 +26,22 @@ ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 
 MAX_SIZE = settings.upload_max_size_mb * 1024 * 1024
 
+# Magic bytes signatures for allowed image types
+_MAGIC_BYTES: dict[tuple[bytes, ...], str] = {
+    (b"\xff\xd8\xff",): "image/jpeg",
+    (b"\x89PNG\r\n\x1a\n",): "image/png",
+    (b"GIF87a", b"GIF89a"): "image/gif",
+    (b"RIFF",): "image/webp",  # WEBP starts with RIFF header
+}
+
+
+def _validate_magic_bytes(data: bytes) -> str | None:
+    """Check magic bytes and return the detected MIME type, or None if unknown."""
+    for signatures, mime in _MAGIC_BYTES.items():
+        if any(data.startswith(sig) for sig in signatures):
+            return mime
+    return None
+
 
 @upload_router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_file(
@@ -62,6 +78,13 @@ async def upload_file(
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File too large. Max {settings.upload_max_size_mb}MB",
+            )
+
+        detected = _validate_magic_bytes(contents)
+        if detected is None or detected not in ALLOWED_CONTENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File content does not match an allowed image type",
             )
 
         upload_dir = Path(settings.upload_dir)

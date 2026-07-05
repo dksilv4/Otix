@@ -479,17 +479,25 @@ class GameMatcher:
         if not titles:
             return list(indices)
 
-        rows = await self._session.execute(
-            select(MediaItem).where(
-                MediaItem.media_type == media_type,
-            )
-        )
-        # Normalize both sides for comparison
+        # Paginate to avoid unbounded memory from loading all media_items at once
+        page_size = 10000
+        offset = 0
         media_map: dict[str, list[MediaItem]] = {}
-        for mi in rows.scalars().all():
-            key = _normalize_title(mi.title).lower()
-            if key in titles:
-                media_map.setdefault(key, []).append(mi)
+        while True:
+            batch = await self._session.execute(
+                select(MediaItem)
+                .where(MediaItem.media_type == media_type)
+                .limit(page_size)
+                .offset(offset)
+            )
+            items = batch.scalars().all()
+            if not items:
+                break
+            for mi in items:
+                key = _normalize_title(mi.title).lower()
+                if key in titles:
+                    media_map.setdefault(key, []).append(mi)
+            offset += page_size
 
         # Batch-fetch developers for all matched media items
         all_mi_ids = [mi.id for items in media_map.values() for mi in items]

@@ -236,7 +236,7 @@ class AuthService:
             user_id=user.id,
             purpose=AuthActionType.PASSWORD_RESET.value,
             token_hash=token_hash_val,
-            expires_at=now + timedelta(hours=2),
+            expires_at=now + timedelta(hours=24),
         )
         self.session.add(action_token)
         await self.session.flush()
