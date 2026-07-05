@@ -23,6 +23,12 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+RUN adduser --system --no-create-home appuser \
+ && sed -i 's/user  nginx;/user  appuser;/' /etc/nginx/nginx.conf \
+ && chown -R appuser /var/cache/nginx /var/log/nginx /usr/share/nginx/html
+
+USER appuser
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

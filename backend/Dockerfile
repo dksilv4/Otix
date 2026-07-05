@@ -10,9 +10,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . .
+# Install deps and build the local package (only invalidated when deps or source change)
+COPY pyproject.toml ./
+COPY otix/ ./otix/
 RUN pip install --no-cache-dir . \
     && pip cache purge
+
+# Copy remaining files (tests, alembic, configs, scripts)
+COPY . ./
 
 # ── Runtime stage ──
 FROM python:3.12-slim
@@ -41,6 +46,9 @@ RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BA
 # TODO GPU: Set OTIX_EMBEDDING_API_URL to a GPU embedding server (Ollama/TEI)
 # to use Qwen3-Embedding-8B instead of the CPU ONNX model.
 # Example: OTIX_EMBEDDING_API_URL=http://ollama:11434/api/embed
+
+RUN adduser --system --no-create-home appuser && chown -R appuser /app
+USER appuser
 
 EXPOSE 8000
 

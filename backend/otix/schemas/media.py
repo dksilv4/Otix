@@ -114,8 +114,6 @@ class MediaItemSummary(BaseModel):
     budget: int | None = None
     model_config = {"from_attributes": True}
 
-    model_config = {"from_attributes": True}
-
 
 class TrackSearchResult(BaseModel):
     id: str

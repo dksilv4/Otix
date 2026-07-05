@@ -24,7 +24,7 @@ function DkLogo({ className = 'h-7', color, variant: variantProp }: DkLogoProps)
 
   return (
     <div
-      className={`${className} [&_svg]:h-full [&_svg]:w-auto`}
+      className={`${className} [&_svg]:h-full [&_svg]:w-auto [&_svg]:overflow-visible`}
       style={{ color: color ?? themeColor ?? 'var(--foreground)' }}
       dangerouslySetInnerHTML={{ __html: SVG_MAP[variant] }}
     />

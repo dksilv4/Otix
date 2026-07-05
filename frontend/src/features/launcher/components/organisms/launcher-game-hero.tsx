@@ -22,7 +22,6 @@ function useRandomParallax() {
 
     const animate = () => {
       if (!runningRef.current) {
-        frameRef.current = requestAnimationFrame(animate)
         return
       }
       t += 0.003

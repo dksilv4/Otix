@@ -17,7 +17,7 @@ function NavShellInner({ children, isPinned, isSidebarOpen, onToggleSidebar }: N
 
   return (
     <>
-      {!location.pathname.startsWith("/game") && !location.pathname.startsWith("/launcher") && <NavPillLeft />}
+      {!location.pathname.startsWith("/game") && <NavPillLeft />}
       <MenuDropdown />
       <NavPillRight isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
       {children}

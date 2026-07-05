@@ -44,28 +44,31 @@ export function DkDropdown<T extends string = string>({
   const isFilter = variant === 'filter'
 
   return (
-    <div ref={ref} className={cn('relative', className)}>
+    <div ref={ref} className={cn('relative', isFilter ? 'inline-block' : 'w-full', className)}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className={
           isFilter
-          ? cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-              value
-                ? 'bg-primary/15 text-primary'
-                : 'bg-white/[0.04] text-muted-foreground hover:text-foreground hover:bg-white/[0.08]',
-            )
-          : 'flex items-center gap-1 rounded-lg px-2 py-1 text-xs bg-[var(--dk-surface-field)] hover:border-[var(--dk-border-accent)]'
+            ? cn(
+                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all duration-200',
+                value
+                  ? 'bg-primary/20 text-primary border-primary/20 hover:bg-primary/25'
+                  : 'bg-white/[0.03] text-white/60 hover:text-white border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.08]',
+              )
+            : cn(
+                'flex items-center justify-between gap-2 rounded-xl px-3 h-9 text-sm w-full transition-all duration-200 border text-left',
+                open
+                  ? 'bg-white/[0.08] text-white border-primary/40 shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.15)]'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] text-white/80 hover:text-white border-white/[0.08] hover:border-white/[0.15]',
+              )
         }
-        style={isFilter ? { transition: 'all 200ms ease' } : { transition: 'border-color var(--dk-duration-fast) var(--dk-ease-out)' }}
       >
-        <span className={!isFilter && !selected ? 'text-muted-foreground/50' : ''}>
+        <span className={cn('truncate', !isFilter && !selected && 'text-white/30')}>
           {isFilter ? `${label ? `${label}: ` : ''}${selected?.label ?? options[0]?.label ?? ''}` : (selected?.label ?? placeholder)}
         </span>
         <ChevronDown
-          className={cn('h-3 w-3 text-muted-foreground', open && 'rotate-180')}
-          style={{ transition: 'transform var(--dk-duration-fast) var(--dk-ease-out)' }}
+          className={cn('h-4 w-4 text-white/40 shrink-0 transition-transform duration-200', open && 'rotate-180')}
         />
       </button>
 
@@ -77,10 +80,11 @@ export function DkDropdown<T extends string = string>({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.96 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="top-full mt-2 min-w-[160px] p-2 rounded-[1.25rem] backdrop-blur-2xl"
+              className="absolute top-full mt-2 min-w-[160px] p-1 rounded-xl z-50 border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
               style={{
-                backgroundColor: 'var(--dk-surface-overlay)',
-                boxShadow: 'var(--dk-shadow-glass), 0 0 0 1px rgba(255,255,255,0.06)',
+                backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.45)',
+                backdropFilter: 'blur(32px)',
+                WebkitBackdropFilter: 'blur(32px)',
               }}
             >
               {options.map((opt) => (
@@ -92,8 +96,10 @@ export function DkDropdown<T extends string = string>({
                     setOpen(false)
                   }}
                   className={cn(
-                    'w-full text-left transition-colors duration-150 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.06]',
-                    opt.value === value && 'bg-primary/15 text-primary',
+                    'w-full text-left transition-colors duration-150 px-3 py-2 rounded-lg text-sm',
+                    opt.value === value
+                      ? 'bg-primary/20 text-primary font-medium hover:bg-primary/25'
+                      : 'text-white/70 hover:text-white hover:bg-white/[0.06]',
                   )}
                 >
                   {opt.label}
@@ -105,16 +111,22 @@ export function DkDropdown<T extends string = string>({
       ) : (
         open && (
           <div
-            className="mt-1 w-48 rounded-lg py-0.5 absolute z-50 shadow-lg"
-            style={{ backgroundColor: 'var(--dk-surface-elevated)' }}
+            className="absolute top-full mt-1 min-w-full rounded-xl p-1 z-50 border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto scrollbar-none"
+            style={{
+              backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.45)',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+            }}
           >
             {options.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 className={cn(
-                  'w-full text-left transition-colors duration-150 px-2.5 py-1.5 text-xs hover:bg-[var(--dk-surface-glass-hover)]',
-                  opt.value === value && 'bg-primary/10 text-primary font-medium',
+                  'w-full text-left transition-colors duration-150 px-3 py-2 rounded-lg text-sm',
+                  opt.value === value
+                    ? 'bg-primary/20 text-primary font-medium hover:bg-primary/25'
+                    : 'text-white/70 hover:text-white hover:bg-white/[0.06]',
                 )}
                 onClick={() => {
                   onChange(opt.value as T)

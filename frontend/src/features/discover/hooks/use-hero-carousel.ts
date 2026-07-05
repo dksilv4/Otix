@@ -25,7 +25,7 @@ export function useHeroCarousel() {
 
   // Fetch detail for active item
   const activeItem = items[activeIndex]
-  const { data: detailData } = useQuery({
+  const { data: detailData, isFetched } = useQuery({
     ...mediaQueries.detail(activeItem?.mediaType ?? '', activeItem?.id ?? ''),
     enabled: !!activeItem && !failedDetailIdsRef.current.has(activeItem.id),
   })
@@ -42,13 +42,12 @@ export function useHeroCarousel() {
 
   // Auto-skip items whose detail fetch failed
   useEffect(() => {
-    if (detailData === undefined && activeItem && !failedDetailIdsRef.current.has(activeItem.id)) return
-    if (detailData === undefined && activeItem) {
+    if (isFetched && !detailData && activeItem) {
       failedDetailIdsRef.current.add(activeItem.id)
       const nextIdx = (activeIndex + 1) % totalItems
       navigateTo(nextIdx)
     }
-  }, [detailData, activeItem, activeIndex, totalItems])
+  }, [isFetched, detailData, activeItem, activeIndex, totalItems])
 
   // Autoplay
   useEffect(() => {

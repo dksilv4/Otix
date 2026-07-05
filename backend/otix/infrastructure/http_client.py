@@ -28,6 +28,7 @@ def get_http_client() -> httpx.AsyncClient:
         _shared_client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0, connect=10.0),
             limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
+            follow_redirects=False,
         )
         _client_pid = current_pid
     return _shared_client

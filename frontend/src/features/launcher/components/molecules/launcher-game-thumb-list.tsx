@@ -7,9 +7,10 @@ interface GameThumbListProps {
     games: DisplayGame[]
     activeGameId: string | null
     onSelect: (id: string) => void
+    onHover?: (game: DisplayGame) => void
 }
 
-const GameThumbList = ({ games, activeGameId, onSelect }: GameThumbListProps) => {
+const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameThumbListProps) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const activeRef = useRef<HTMLButtonElement>(null)
 
@@ -27,7 +28,7 @@ const GameThumbList = ({ games, activeGameId, onSelect }: GameThumbListProps) =>
     return (
         <div
             ref={containerRef}
-            className="min-h-[2rem] flex-1 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full h-full px-1.5 pt-16 pb-16"
+            className="min-h-[2rem] flex-1 flex flex-col items-center gap-3 overflow-y-scroll overflow-x-hidden scrollbar-none w-full h-full px-1.5 pt-16 pb-4"
         >
             {games.map((game: DisplayGame) => {
                 const isActive = game.id === activeGameId
@@ -36,6 +37,7 @@ const GameThumbList = ({ games, activeGameId, onSelect }: GameThumbListProps) =>
                         key={game.id}
                         ref={isActive ? activeRef : undefined}
                         onClick={() => onSelect(game.id)}
+                        onMouseEnter={() => onHover?.(game)}
                         className={
                             "w-[46px] h-[46px] rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-300 relative shrink-0 " +
                             (isActive
