@@ -8,7 +8,7 @@ from otix.api.deps import get_current_user, get_db
 from otix.api.rate_limit import AuthRateLimiter, client_ip, get_auth_rate_limiter
 from otix.domain.user import User
 from otix.infrastructure.config import settings
-from otix.schemas.auth import GoogleInitiateResponse
+from otix.schemas.auth import GoogleAccessTokenResponse, GoogleInitiateResponse
 from otix.services.google_auth_service import build_google_link_url, get_user_google_access_token
 
 logger = structlog.get_logger()
@@ -46,16 +46,16 @@ async def google_connect_initiate(
 
 @router.get(
     "/oauth/google/token",
-    response_model=dict,
+    response_model=GoogleAccessTokenResponse,
 )
 async def get_google_token(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> dict:
+) -> GoogleAccessTokenResponse:
     """Retrieve the user's active Google access token, refreshing if expired."""
     token = await get_user_google_access_token(current_user, session=db)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Google account is not linked or token has expired."
         )
-    return {"access_token": token}
+    return GoogleAccessTokenResponse(access_token=token)

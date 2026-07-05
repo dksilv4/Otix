@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 
+import structlog
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,6 +37,7 @@ from otix.schemas.auth import IntegrationProviderResponse, IntegrationsResponse,
 from otix.services.steam_auth_service import get_steam_user_info
 from otix.services.tmdb_auth_service import get_tmdb_account
 
+logger = structlog.get_logger()
 integrations_router = APIRouter()
 
 
@@ -73,7 +75,7 @@ async def list_integrations(
                     if isinstance(gravatar, dict):
                         current_user.tmdb_avatar_hash = gravatar.get("hash")
         except Exception:
-            pass
+            logger.exception("failed to backfill tmdb avatar", user_id=current_user.id)
 
     steam_profile, _, tmdb_stats, spotify_stats = await asyncio.gather(
         fetch_steam(),

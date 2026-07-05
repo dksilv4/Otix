@@ -503,7 +503,7 @@ class TMDBHydrator:
         # Link TMDB collection to a Franchise via name matching
         if collection.franchise_id is None:
             normalized = normalize_franchise_name(collection.name)
-            all_franchises = (await self.session.scalars(select(Franchise))).all()
+            all_franchises = (await self.session.scalars(select(Franchise).limit(10000))).all()
             for fr in all_franchises:
                 if normalize_franchise_name(fr.name) == normalized:
                     collection.franchise_id = fr.id

@@ -44,3 +44,12 @@ class BlueprintListOut(BlueprintOut):
 class BlueprintDetailOut(BlueprintOut):
     blueprint_string: str
     updated_at: datetime
+
+
+class BlueprintLikeResponse(BaseModel):
+    is_liked: bool
+    like_count: int
+
+
+class BlueprintDownloadResponse(BaseModel):
+    downloads: int

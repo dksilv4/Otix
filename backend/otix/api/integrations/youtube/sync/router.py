@@ -5,6 +5,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 
 from otix.api.deps import get_current_user
 from otix.domain.user import User
@@ -15,16 +16,20 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.post("/integrations/youtube/sync", status_code=status.HTTP_202_ACCEPTED)
+class YoutubeSyncResponse(BaseModel):
+    task_id: str
+
+
+@router.post("/integrations/youtube/sync", status_code=status.HTTP_202_ACCEPTED, response_model=YoutubeSyncResponse)
 async def youtube_sync_watch_history(
     current_user: User = Depends(get_current_user),
-) -> dict:
+) -> YoutubeSyncResponse:
     if current_user.google_id is None:
         raise HTTPException(status_code=400, detail="No Google account linked")
     task_id = str(uuid.uuid4())
     logger.info("youtube sync task started", user_id=current_user.id, task_id=task_id)
     asyncio.create_task(_run_youtube_sync_background(task_id, current_user.id))
-    return {"task_id": task_id}
+    return YoutubeSyncResponse(task_id=task_id)
 
 
 async def _run_youtube_sync_background(task_id: str, user_id: str) -> None:
