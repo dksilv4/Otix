@@ -1381,6 +1381,7 @@ async def search_external_games(
 @media_router.post("/import/igdb", response_model=ImportGameResponse)
 async def import_igdb_game(
     igdb_id: int = Query(..., description="IGDB game ID to import"),
+    current_user: User = Depends(get_current_user),
 ) -> ImportGameResponse:
     """Import a game from IGDB into the Otix database.
 
@@ -1438,6 +1439,7 @@ async def import_igdb_game(
 async def search_providers(
     body: ProviderSearchRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
 ) -> ProviderSearchResponse:
     """Search Otix catalog + IGDB + SteamGrid in one call.
 
@@ -1574,6 +1576,7 @@ async def search_providers(
 @media_router.post("/search-steamgrid", response_model=SteamGridSearchResponse)
 async def search_steamgrid(
     body: SteamGridSearchRequest,
+    current_user: User | None = Depends(get_optional_user),
 ) -> SteamGridSearchResponse:
     """Search SteamGridDB for game art assets.
 

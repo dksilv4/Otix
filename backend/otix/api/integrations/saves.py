@@ -182,6 +182,7 @@ CONSENSUS_THRESHOLD = 3
 async def get_save_locations(
     media_item_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """Retrieve verified and suggested save path patterns for a game."""
     # Ensure media item exists

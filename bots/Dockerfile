@@ -11,6 +11,9 @@ COPY bots/ /app/bots/
 
 RUN mkdir -p /app/logs
 
+RUN adduser --system --no-create-home appuser && chown -R appuser /app && chown appuser /app/logs
+USER appuser
+
 ENV PYTHONPATH=/app \
     BOT_API_BASE_URL=http://api:8000/api \
     BOT_COUNT=1000 \

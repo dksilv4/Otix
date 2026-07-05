@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react"
-import { Outlet } from "@tanstack/react-router"
+import { Outlet, useLocation } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "@/old-features/title-bar/organisms/title-bar"
 import { XPToastContainer } from "@/old-features/ui/atoms/xp-toast"
@@ -24,6 +24,7 @@ function loadPinState(): boolean {
 export function RootLayout() {
   const isPinned = loadPinState()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const location = useLocation()
 
   const handleToggleSidebar = useCallback(() => setIsSidebarOpen((prev) => !prev), [])
   const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), [])
@@ -58,6 +59,8 @@ export function RootLayout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRequest])
 
+  const isFullScreenPage = location.pathname.startsWith('/launcher') || location.pathname.startsWith('/game') || location.pathname.startsWith('/settings')
+
   return (
     <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
       <TitleBar />
@@ -66,7 +69,7 @@ export function RootLayout() {
         <PanelProvider>
           <NotificationsProvider>
             <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
-              <main className="pt-16 md:pt-20">
+              <main className={isFullScreenPage ? "" : "pt-16 md:pt-20"}>
                 <Outlet />
               </main>
             </NavShell>

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: otix_dev
       POSTGRES_USER: otix
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
       - "5433:5432"
     volumes:
@@ -69,14 +69,14 @@ services:
           memory: 256M
 
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: edoburu/pgbouncer:1.23.1
     ports:
       - "6432:6432"
     environment:
       DB_HOST: db
       DB_PORT: "5432"
       DB_USER: otix
-      DB_PASSWORD: password
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       DB_NAME: otix_dev
       LISTEN_ADDR: "0.0.0.0"
       LISTEN_PORT: "6432"
@@ -113,8 +113,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "20"
@@ -146,8 +146,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "16"
@@ -178,8 +178,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "10"
@@ -209,8 +209,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "8"
@@ -239,8 +239,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "6"
@@ -269,8 +269,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "8"
@@ -299,8 +299,8 @@ services:
       - ./backend:/app
     env_file: ./.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://otix:password@pgbouncer:6432/otix_dev
-      DATABASE_URL_SYNC: postgresql://otix:password@pgbouncer:6432/otix_dev
+      DATABASE_URL: postgresql+asyncpg://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
+      DATABASE_URL_SYNC: postgresql://otix:${POSTGRES_PASSWORD:-password}@pgbouncer:6432/otix_dev
       REDIS_URL: redis://redis:6379/1
       CELERY_BROKER_URL: redis://redis:6379/0
       APP_ENV: development

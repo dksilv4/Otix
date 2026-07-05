@@ -18,7 +18,7 @@ const AUTO_ROTATE_MS = 8000
  */
 function heroBackdrop(url: string | null): string | undefined {
   if (!url) return undefined
-  return url.replace(/\/w1280\//, '/w1280/')
+  return url.replace(/\/w1280\//, '/original/')
 }
 
 export function DiscoverTrailerHero({ className }: { className?: string }) {

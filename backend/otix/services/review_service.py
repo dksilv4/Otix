@@ -93,7 +93,7 @@ class ReviewService:
         in_cooldown = existing.cooldown_until is not None and existing.cooldown_until > now
 
         for field, value in update_data.items():
-            if in_cooldown:
+            if not in_cooldown:
                 setattr(existing, field, value)
 
         await self.session.flush()

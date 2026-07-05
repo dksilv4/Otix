@@ -1,20 +1,21 @@
 import {useCallback, useMemo} from 'react'
 import {useNavigate, useParams} from '@tanstack/react-router'
-import {Gamepad2, Menu} from 'lucide-react'
-import { useNavigation } from '@navigation'
-import {useLocalGames} from '@/features/launcher/data/game-queries'
-import {usePopularGames} from '@/features/launcher/data/queries'
+import {useQueryClient} from '@tanstack/react-query'
+import {Gamepad2} from 'lucide-react'
+import {useLocalGames, localGameKeys} from '@/features/launcher/data/game-queries'
+import {usePopularGames, gameDetailOptions} from '@/features/launcher/data/queries'
+import {fetchGameById} from '@/features/launcher/data/storage'
 import {hasDesktopAPI} from '@/lib/desktop/api'
 import {toDisplayGame} from '@/features/launcher/utils'
 import GameThumbList from '@/features/launcher/components/molecules/launcher-game-thumb-list'
 import type {DisplayGame, LauncherPlatform} from '@/features/launcher/types'
 
 export function FloatingGameSelector() {
-    const {toggle: toggleNav} = useNavigation()
     const navigate = useNavigate()
     const p = useParams({strict: false})
     const activeGameId = (p as Record<string, string>).gameId || null
     const isDesktop = hasDesktopAPI()
+    const queryClient = useQueryClient()
 
     const {data: localGames = []} = useLocalGames(
         isDesktop ? {installed: true, sortBy: 'last_played_at', sortDir: 'desc'} : undefined,
@@ -47,6 +48,22 @@ export function FloatingGameSelector() {
         }
     }, [navigate, isDesktop])
 
+    const handlePrefetch = useCallback((game: DisplayGame) => {
+        if (isDesktop) {
+            queryClient.prefetchQuery({
+                queryKey: localGameKeys.detail(game.id),
+                queryFn: () => fetchGameById(game.id),
+                staleTime: 30000,
+            })
+            const catalogId = game.otixMediaId || (game as any).rawGame?.otixMediaId || (game as any).rawGame?.data?.id
+            if (catalogId) {
+                queryClient.prefetchQuery(gameDetailOptions(catalogId))
+            }
+        } else {
+            queryClient.prefetchQuery(gameDetailOptions(game.id))
+        }
+    }, [isDesktop, queryClient])
+
     const goToLibrary = useCallback(() => {
         navigate({to: '/library'})
     }, [navigate])
@@ -55,9 +72,8 @@ export function FloatingGameSelector() {
         <aside
             style={{
                 left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                maxHeight: 'calc(100vh - 6rem)',
+                top: isDesktop ? '7.5rem' : '5.5rem',
+                maxHeight: isDesktop ? 'calc(100vh - 9rem)' : 'calc(100vh - 7rem)',
             }}
             className={
                 'fixed z-30 w-[4rem] flex flex-col items-center ' +
@@ -66,18 +82,14 @@ export function FloatingGameSelector() {
             }
         >
             <button
-                onClick={toggleNav}
+                title="Browse All Games"
+                onClick={goToLibrary}
                 className="z-1 absolute top-2 w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mt-2"
-                title="Main Menu"
             >
-                <Menu size={16}/>
-            </button>
-
-            <GameThumbList games={games} activeGameId={activeGameId} onSelect={handleSelectGame}/>
-
-            <button title="Browse All Games" onClick={goToLibrary} className="absolute bottom-2 w-10 h-10 rounded-full flex items-center justify-center text-white hover:text-white cursor-pointer transition-all bg-[var(--color-accent)] shrink-0 mb-2">
                 <Gamepad2 size={16}/>
             </button>
+
+            <GameThumbList games={games} activeGameId={activeGameId} onSelect={handleSelectGame} onHover={handlePrefetch}/>
         </aside>
     )
 }

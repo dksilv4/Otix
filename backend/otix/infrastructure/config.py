@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/1"
     redis_ignore_exceptions: bool = True
 
-    # Auth / JWT
-    jwt_secret_key: str = "change-me-in-production"
+    # Auth / JWT — must be set via environment in production
+    jwt_secret_key: str = ""
+    jwt_signing_algorithm: str = "HS256"
     access_token_lifetime_minutes: int = 15
     refresh_token_lifetime_days: int = 7
     rotate_refresh_tokens: bool = True
@@ -44,6 +45,9 @@ class Settings(BaseSettings):
     auth_refresh_cookie_secure: bool = False
     auth_refresh_cookie_httponly: bool = True
     auth_refresh_cookie_samesite: str = "lax"
+
+    # Plex
+    plex_webhook_secret: str = ""
 
     # Uploads
     upload_dir: str = "./uploads"
@@ -171,6 +175,23 @@ class Settings(BaseSettings):
                 if hasattr(self, lower_name):
                     return getattr(self, lower_name)
             raise
+
+    @model_validator(mode="after")
+    def _validate_jwt_secret(self) -> "Settings":
+        if not self.jwt_secret_key:
+            if self.app_env == "production":
+                raise ValueError(
+                    "JWT_SECRET_KEY must be set in production. "
+                    "Generate one: openssl rand -hex 64"
+                )
+            import warnings
+            warnings.warn(
+                "JWT_SECRET_KEY is empty — using an insecure default for development. "
+                "Set JWT_SECRET_KEY in your .env or environment.",
+                stacklevel=2,
+            )
+            self.jwt_secret_key = "dev-insecure-jwt-secret-do-not-use-in-production"
+        return self
 
 
 settings = Settings()

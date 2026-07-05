@@ -31,6 +31,8 @@
       "@activity": ["./src/features/activity"],
       "@navigation/*": ["./src/features/navigation/*"],
       "@navigation": ["./src/features/navigation"],
+      "@launcher/*": ["./src/features/launcher/*"],
+      "@launcher": ["./src/features/launcher"],
       "@search/*": ["./src/features/search/*"],
 "@settings/*": ["./src/features/settings/*"],
 "@settings": ["./src/features/settings"],

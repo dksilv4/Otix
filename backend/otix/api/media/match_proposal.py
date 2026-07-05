@@ -104,7 +104,7 @@ def _payload_to_match_out(p: Proposal) -> ProposalOut:
 async def propose_match(
     body: ProposeMatchRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_current_user),
 ) -> dict:
     """Submit an auto-match for review. Delegates to unified ProposalsService."""
     parts = body.query_id.split(":", 1)
@@ -150,7 +150,7 @@ async def list_proposals(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_current_user),
 ) -> ProposalListOut:
     """List match proposals. Delegates to unified ProposalsService."""
     svc = ProposalsService(db)
@@ -171,7 +171,7 @@ async def list_proposals(
 async def approve_proposal(
     proposal_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_current_user),
 ) -> dict:
     """Approve a match proposal. Delegates to unified ProposalsService."""
     svc = ProposalsService(db)
@@ -188,7 +188,7 @@ async def approve_proposal(
 async def reject_proposal(
     proposal_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(get_current_user),
 ) -> dict:
     """Reject a match proposal. Delegates to unified ProposalsService."""
     svc = ProposalsService(db)

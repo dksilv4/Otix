@@ -2,10 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
-import { useLogoPreference, LOGO_VARIANTS, type LogoVariant } from '@/lib/providers/logo-preference'
 import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
-import { Logo } from '@/old-features/ui/atoms/logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 
 const ACCENTS = [
@@ -60,7 +58,6 @@ export function SettingsAppearancePage() {
   const { theme, setTheme } = useTheme()
   const { shaderQuality, setShaderQuality } = useShaderQuality()
   const { motionPreference, setMotionPreference } = useMotionPreference()
-  const { variant, setVariant } = useLogoPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
   useEffect(() => {
@@ -198,56 +195,7 @@ export function SettingsAppearancePage() {
         </div>
       </div>
 
-      {/* Logo card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
-        <SectionHeader
-          title="Logo"
-          description="Choose which Otix logo variant to display around the app."
-        />
 
-        <div className="grid grid-cols-3 gap-3">
-          {LOGO_VARIANTS.map((option) => {
-            const isSelected = variant === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setVariant(option.value as LogoVariant)}
-                className={cn(
-                  'relative flex flex-col items-center gap-3 rounded-xl p-4 transition-all duration-150',
-                  'hover:bg-white/[0.06]',
-                )}
-                style={{
-                  backgroundColor: isSelected
-                    ? 'color-mix(in srgb, var(--primary) 10%, transparent)'
-                    : 'var(--dk-surface-raised)',
-                  boxShadow: isSelected
-                    ? '0 0 0 2px var(--primary)'
-                    : '0 0 0 1px transparent',
-                }}
-              >
-                <div
-                  className={cn(
-                    'flex h-16 w-full items-center justify-center',
-                    isSelected && 'text-primary',
-                  )}
-                >
-                  <Logo variant={option.value as LogoVariant} className="h-full" />
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium">{option.label}</p>
-                  <p className="mt-0.5 text-[10px] leading-tight text-white/60">{option.description}</p>
-                </div>
-                {isSelected && (
-                  <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                    <Check className="h-3 w-3" />
-                  </div>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
 
       {/* Motion card */}
       <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">

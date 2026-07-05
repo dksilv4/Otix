@@ -5,11 +5,13 @@ import type { LocalGame, Game } from '@/features/launcher/types'
 
 export function useLauncherGame(gameId: string | undefined) {
   const isDesktop = hasDesktopAPI()
-  const { data: localGame, isLoading } = useLocalGame(gameId)
+  const { data: localGame, isLoading: isLocalLoading } = useLocalGame(gameId)
   // For desktop matched games, use the otix ID for catalog detail fetch.
   // For web, gameId is already a catalog UUID. Falls back gracefully via enabled check.
   const catalogId = localGame?.data?.id || localGame?.otixMediaId || (!isDesktop ? gameId : undefined)
-  const { data: catalogDetail } = useGameDetail(catalogId)
+  const { data: catalogDetail, isLoading: isCatalogLoading } = useGameDetail(catalogId)
+
+  const isLoading = isDesktop ? (isLocalLoading || (!!catalogId && isCatalogLoading)) : isCatalogLoading
 
   // Merge catalog data into local game — prefers data, falls back to otix* fields / catalog detail
   if (localGame) {
@@ -30,7 +32,7 @@ export function useLauncherGame(gameId: string | undefined) {
       }
       return {
         game: { ...localGame, data: richData } as LocalGame,
-        isLoading: false,
+        isLoading,
       }
     }
 
@@ -41,11 +43,11 @@ export function useLauncherGame(gameId: string | undefined) {
           ...localGame,
           data: { ...localGame.data, screenshots: catalogSource.screenshots as Game['screenshots'] },
         } as LocalGame,
-        isLoading: false,
+        isLoading,
       }
     }
 
-    return { game: localGame, isLoading: false }
+    return { game: localGame, isLoading }
   }
 
   if (!isDesktop && catalogDetail) {
@@ -62,7 +64,7 @@ export function useLauncherGame(gameId: string | undefined) {
         screenshots: (catalogDetail as Record<string, unknown>).screenshots as Game['screenshots'],
       } as LocalGame['data'],
     }
-    return { game: webGame, isLoading: false }
+    return { game: webGame, isLoading }
   }
 
   return { game: undefined as LocalGame | undefined, isLoading }

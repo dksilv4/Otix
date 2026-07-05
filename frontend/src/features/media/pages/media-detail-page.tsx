@@ -295,7 +295,7 @@ export function MediaDetailPage() {
       }
     }, [pluginIdForTab, activeGameTab])
 
-    const {data, isError, isPending} = useMediaDetail(mediaType, mediaId)
+    const {data, isError, isPending, isFetching} = useMediaDetail(mediaType, mediaId)
     const isShowDetail = data?.mediaType === 'show'
     const episodeInteractions = useEpisodeInteractions(mediaType, mediaId, {enabled: isShowDetail})
     const markShowWatched = useMarkShowWatched(mediaType, mediaId)
@@ -303,7 +303,10 @@ export function MediaDetailPage() {
     // Route param not available yet during hard refresh — show skeleton, not error
     if (!mediaId) return <DetailSkeleton/>
     if (isPending) return <DetailSkeleton/>
-    if (isError || !data) return <ErrorState mediaType={mediaType}/>
+    if (isError || !data) {
+      if (isFetching) return <DetailSkeleton/>
+      return <ErrorState mediaType={mediaType}/>
+    }
 
     const detail = data
     const year = formatYear(detail.releaseDate)

@@ -604,7 +604,7 @@ export function SettingsProfilePage() {
       </div>
 
       {/* Profile Settings — consolidated */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <div className="relative z-20 rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
         <div className="divide-y divide-white/5">
           {/* Username */}
           <div className="flex items-center justify-between py-3">
@@ -675,7 +675,7 @@ export function SettingsProfilePage() {
 
       {/* Integration visibility — separate section outside the profile card */}
       {(user.steamId || user.plexId || user.tmdbUsername) && (
-        <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+        <div className="relative z-10 rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
           <SectionHeader
             title="Integrations visibility"
             description="Choose which connected accounts appear on your public profile."

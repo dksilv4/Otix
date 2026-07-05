@@ -84,7 +84,7 @@ services:
           memory: 1500M
 
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: edoburu/pgbouncer:1.23.1
     environment:
       DB_HOST: db
       DB_PORT: "5432"
