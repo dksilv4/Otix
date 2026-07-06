@@ -119,6 +119,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       DB_POOL_SIZE: "20"
       DB_MAX_OVERFLOW: "10"
+      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
     depends_on:
       db:
         condition: service_healthy
@@ -131,10 +132,10 @@ services:
       resources:
         limits:
           cpus: "2"
-          memory: 2G
+          memory: 4G
         reservations:
           cpus: "0.5"
-          memory: 512M
+          memory: 1G
 
   # ── Purpose-based workers (per-provider queue isolation, consolidated by purpose) ──
 

@@ -51,10 +51,13 @@ async def lifespan(app: FastAPI) -> Any:
 
     await get_redis()
 
-    # Pre-warm query embedding service in the background
-    async def pre_warm_embedding():
+    # Fire-and-forget pre-warm of the embedding model. The embedding subprocess
+    # takes ~24s to load the ONNX model on first call. Running it in the background
+    # means the server starts immediately; search requests fall back to text-only
+    # until the model is ready (at which point Redis caches kick in).
+    async def _pre_warm_embedding():
         try:
-            from otix.api.media.embedding import _embed_query
+            from otix.api.search.embedding import _embed_query
 
             logger.info("pre-warming embedding service...")
             await _embed_query("warmup")
@@ -62,7 +65,7 @@ async def lifespan(app: FastAPI) -> Any:
         except Exception:
             logger.exception("failed to pre-warm embedding service")
 
-    asyncio.create_task(pre_warm_embedding())
+    asyncio.create_task(_pre_warm_embedding())
 
     yield
 

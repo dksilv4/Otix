@@ -495,15 +495,12 @@ class MediaService:
         credit_boost = case((credit_person_match, 2), else_=0)
         popularity_boost = func.ln(func.greatest(MediaItem.popularity, 1))
 
-        # Vector similarity via cosine distance (pgvector). Falls back to 0 when
-        # no embedding for the item or no query embedding was provided.
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
-            vector_sim = func.coalesce(
-                1 - MediaItem.embedding.cosine_distance(query_embedding),
-                0,
-            )
-        else:
-            vector_sim = 0
+        # Vector similarity via cosine distance (pgvector). Included in ranking
+        # only when the result set is limited via a k-NN search. When used in
+        # ORDER BY on the full result set, it computes cosine_distance for
+        # every matched row (very slow for broad queries). The HNSW index-backed
+        # k-NN branch already contributes the top-50 semantic matches.
+        vector_sim = 0
 
         sort_map = {
             "popularity": MediaItem.popularity.desc(),
