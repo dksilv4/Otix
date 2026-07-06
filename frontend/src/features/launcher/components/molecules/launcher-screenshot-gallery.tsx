@@ -13,6 +13,7 @@ interface Screenshot {
 interface LauncherScreenshotGalleryProps {
   screenshots: Screenshot[]
   onHoverScreenshot?: (url: string | null) => void
+  autoPlay?: boolean
 }
 
 interface ScreenshotLightboxModalProps {
@@ -100,7 +101,7 @@ function ScreenshotLightboxModal({ screenshots, initialIndex, onClose }: Screens
   )
 }
 
-export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: LauncherScreenshotGalleryProps) {
+export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot, autoPlay = true }: LauncherScreenshotGalleryProps) {
   const { openModal } = useModal()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeIdx, setActiveIdx] = useState(0)
@@ -111,7 +112,7 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: La
 
   // Auto-cycle screenshots
   useEffect(() => {
-    if (screenshots.length <= 1) return
+    if (screenshots.length <= 1 || !autoPlay) return
 
     const startTimer = () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -133,7 +134,7 @@ export function LauncherScreenshotGallery({ screenshots, onHoverScreenshot }: La
       if (timerRef.current) clearInterval(timerRef.current)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screenshots.length])
+  }, [screenshots.length, autoPlay])
 
   // Scroll active thumbnail into view
   useEffect(() => {

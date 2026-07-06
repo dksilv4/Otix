@@ -9,7 +9,9 @@ const SettingsProfilePage = lazy(() => import('./pages/settings-profile-page').t
 const SettingsAccountPage = lazy(() => import('./pages/settings-account-page').then(m => ({ default: m.SettingsAccountPage })))
 const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-page').then(m => ({ default: m.SettingsAppearancePage })))
 const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
+const SettingsGeneralPage = lazy(() => import('./pages/settings-general-page').then(m => ({ default: m.SettingsGeneralPage })))
 const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
+const SettingsLauncherPage = lazy(() => import('./pages/settings-launcher-page').then(m => ({ default: m.SettingsLauncherPage })))
 const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
 const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
@@ -48,6 +50,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/appearance',
     component: SettingsAppearancePage,
+  })
+
+  const settingsGeneralRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/general',
+    component: SettingsGeneralPage,
   })
 
   const settingsNotificationsRoute = createRoute({
@@ -105,6 +113,12 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsPluginsPage,
   })
 
+  const settingsLauncherRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/launcher',
+    component: SettingsLauncherPage,
+  })
+
   const pluginRoutes = (pluginTabs || []).map(tab =>
     createRoute({
       getParentRoute: () => settingsRoute,
@@ -118,6 +132,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsIndexRoute,
     settingsProfileRoute,
     settingsAccountRoute,
+    settingsGeneralRoute,
     settingsAppearanceRoute,
     settingsNotificationsRoute,
     settingsIntegrationsRoute,
@@ -128,6 +143,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
+    settingsLauncherRoute,
     ...pluginRoutes,
   ]
 }

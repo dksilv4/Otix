@@ -1,4 +1,4 @@
-import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle } from 'lucide-react'
+import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle, Rocket, Settings } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
@@ -15,11 +15,13 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  { id: 'general', label: 'General', icon: Settings, desktop: false, group: 'general' },
   { id: 'profile', label: 'Profile', icon: User, desktop: false, group: 'general' },
   { id: 'account', label: 'Security', icon: Shield, desktop: false, group: 'general' },
   { id: 'appearance', label: 'Appearance', icon: Palette, desktop: false, group: 'general' },
   { id: 'notifications', label: 'Notifications', icon: Bell, desktop: false, group: 'general' },
   { id: 'integrations', label: 'Integrations', icon: Link2, desktop: false, group: 'general' },
+  { id: 'launcher', label: 'Launcher', icon: Rocket, desktop: false, group: 'general' },
   { id: 'library', label: 'Library', icon: Gamepad2, desktop: true, group: 'desktop' },
   { id: 'proposals', label: 'Proposals', icon: Shield, desktop: true, group: 'desktop' },
   { id: 'downloads', label: 'Downloads', icon: Download, desktop: true, group: 'desktop' },
