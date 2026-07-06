@@ -19,6 +19,7 @@ from otix.api.media.review_vote import review_vote_router
 from otix.api.people import people_router
 from otix.api.proposals.router import router as proposals_router
 from otix.api.push import router as push_router
+from otix.api.search.router import search_router
 from otix.api.track import track_router
 from otix.api.upload import upload_router
 from otix.api.user import user_router
@@ -51,6 +52,7 @@ api_router.include_router(mood_router)
 api_router.include_router(notification_router)
 api_router.include_router(review_router)
 api_router.include_router(review_vote_router)
+api_router.include_router(search_router, prefix="/search")
 api_router.include_router(spotify_playlists_router)
 api_router.include_router(track_router)
 api_router.include_router(upload_router)
