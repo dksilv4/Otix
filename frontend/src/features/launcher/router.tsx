@@ -20,17 +20,17 @@ export function createLauncherRoutes(rootRoute: AnyRoute) {
     component: LauncherSlidePicker,
   })
 
-  const launcherGameRoute = createRoute({
-    getParentRoute: () => launcherLayoutRoute,
-    path: '/$gameId',
-    component: LauncherGamePage,
-  })
-
   const launcherLibraryRoute = createRoute({
     getParentRoute: () => launcherLayoutRoute,
     path: '/library',
     component: LauncherLibraryPage,
   })
 
-  return [launcherLayoutRoute, launcherIndexRoute, launcherGameRoute, launcherLibraryRoute]
+  const launcherGameRoute = createRoute({
+    getParentRoute: () => launcherLayoutRoute,
+    path: '/$gameId',
+    component: LauncherGamePage,
+  })
+
+  return [launcherLayoutRoute, launcherIndexRoute, launcherLibraryRoute, launcherGameRoute]
 }

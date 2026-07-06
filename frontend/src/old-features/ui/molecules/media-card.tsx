@@ -165,7 +165,7 @@ const DkMediaCard = memo(function DkMediaCard({
           <img
             src={logoUrl}
             alt={title}
-            className="max-w-[70%] max-h-[50%] object-contain [--dk-logo-scale:0.75] group-hover:[--dk-logo-scale:1.1]"
+            className="max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
             style={{
               transform: 'scale(var(--dk-logo-scale))',
               transition: 'transform 700ms var(--dk-ease-out)',

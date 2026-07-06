@@ -51,16 +51,16 @@ export function DkDropdown<T extends string = string>({
         className={
           isFilter
             ? cn(
-                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all duration-200',
+                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200',
                 value
-                  ? 'bg-primary/20 text-primary border-primary/20 hover:bg-primary/25'
-                  : 'bg-white/[0.03] text-white/60 hover:text-white border-white/[0.08] hover:border-white/[0.15] hover:bg-white/[0.08]',
+                  ? 'bg-primary/20 text-primary hover:bg-primary/25'
+                  : 'bg-white/[0.03] text-white/60 hover:text-white hover:bg-white/[0.08]',
               )
             : cn(
-                'flex items-center justify-between gap-2 rounded-xl px-3 h-9 text-sm w-full transition-all duration-200 border text-left',
+                'flex items-center justify-between gap-2 rounded-xl px-3 h-9 text-sm w-full transition-all duration-200 text-left',
                 open
-                  ? 'bg-white/[0.08] text-white border-primary/40 shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.15)]'
-                  : 'bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] text-white/80 hover:text-white border-white/[0.08] hover:border-white/[0.15]',
+                  ? 'bg-white/[0.08] text-white shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.15)]'
+                  : 'bg-white/[0.03] hover:bg-white/[0.08] active:bg-white/[0.12] text-white/80 hover:text-white',
               )
         }
       >
@@ -80,7 +80,7 @@ export function DkDropdown<T extends string = string>({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.96 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute top-full mt-2 min-w-[160px] p-1 rounded-xl z-50 border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
+              className="absolute top-full mt-2 min-w-[160px] p-1 rounded-xl z-50 bg-[#0a0a0d]/90 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
               style={{
                 backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.45)',
                 backdropFilter: 'blur(32px)',
@@ -111,7 +111,7 @@ export function DkDropdown<T extends string = string>({
       ) : (
         open && (
           <div
-            className="absolute top-full mt-1 min-w-full rounded-xl p-1 z-50 border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto scrollbar-none"
+            className="absolute top-full mt-1 min-w-full rounded-xl p-1 z-50 bg-[#0a0a0d]/90 backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] max-h-60 overflow-y-auto scrollbar-none"
             style={{
               backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.45)',
               backdropFilter: 'blur(32px)',

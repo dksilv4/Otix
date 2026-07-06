@@ -1,12 +1,43 @@
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
+
+function AnimatedRoleLabel() {
+  const [label, setLabel] = useState('Developer')
+  const [leaving, setLeaving] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    const toggle = () => {
+      setLeaving(true)
+      timeoutRef.current = setTimeout(() => {
+        setLabel(prev => prev === 'Developer' ? 'Publisher' : 'Developer')
+        setLeaving(false)
+      }, 400)
+    }
+    const interval = setInterval(toggle, 3000)
+    return () => { clearInterval(interval); clearTimeout(timeoutRef.current) }
+  }, [])
+
+  return (
+    <span className="relative inline-block overflow-hidden h-[1em] leading-[1em] align-middle">
+      <span
+        className={`uppercase tracking-wider font-semibold inline-block transition-all duration-[400ms] ease-in-out ${
+          leaving ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+        }`}
+      >
+        {label}
+      </span>
+    </span>
+  )
+}
 
 function LogoImage({ src, alt }: { src: string; alt: string }) {
   return (
     <img
       src={src}
       alt={alt}
-      className="h-52 object-contain mb-6 drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] max-w-[600px]"
+      className="h-52 object-contain mb-3 drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] max-w-xs"
       onError={(e) => {
         (e.target as HTMLImageElement).style.display = 'none'
         const sib = (e.target as HTMLImageElement).nextSibling as HTMLElement
@@ -57,10 +88,26 @@ export function LauncherGameDetailInfo() {
   const avgRating = (d?.avgRating as number | undefined) ?? null
   const ratingCount = (d?.ratingCount as number) ?? 0
 
-  const roles: Array<{ key: 'developer' | 'publisher'; label: string }> = [
-    { key: 'developer', label: 'Developer' },
-    { key: 'publisher', label: 'Publisher' },
-  ]
+  // Merge developer & publisher into animated line when same company
+  const companyLines = (() => {
+    if (!companies || companies.length === 0) return null
+    const devCos = companies.filter(c => c.developer)
+    const pubCos = companies.filter(c => c.publisher)
+    const sharedNames = devCos
+      .filter(d => pubCos.some(p => p.company.name === d.company.name))
+      .map(c => c.company.name)
+    const uniqueShared = [...new Set(sharedNames)]
+    const onlyDevNames = devCos.filter(c => !uniqueShared.includes(c.company.name)).map(c => c.company.name)
+    const onlyPubNames = pubCos.filter(c => !uniqueShared.includes(c.company.name)).map(c => c.company.name)
+
+    const lines: Array<{ isAnimated: boolean; label: string; names: string[] }> = []
+    if (uniqueShared.length > 0) lines.push({ isAnimated: true, label: '', names: uniqueShared })
+    if (onlyDevNames.length > 0) lines.push({ isAnimated: false, label: 'Developer', names: onlyDevNames })
+    if (onlyPubNames.length > 0) lines.push({ isAnimated: false, label: 'Publisher', names: onlyPubNames })
+    return lines
+  })()
+
+  if (!g) return null
 
   return (
     <>
@@ -73,49 +120,48 @@ export function LauncherGameDetailInfo() {
         {title}
       </h2>
 
-      <p className="text-[11px] text-white/60 leading-relaxed font-normal max-w-xs mb-3 line-clamp-3">
+      <p className="text-sm text-white/80 leading-relaxed font-normal max-w-xs mb-3 line-clamp-3">
         {overview || 'No description available.'}
       </p>
 
       <div className="flex flex-wrap gap-1.5 justify-end max-w-xs mb-3">
         {releaseDate && (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/50 border border-white/5">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/70 border border-white/5">
             {releaseDate.slice(0, 4)}
           </span>
         )}
 
         {avgRating && avgRating > 0 ? (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/12 text-amber-400 border border-amber-500/20 flex items-center gap-1">
             ★ {(avgRating / 10).toFixed(1)}
-            {ratingCount > 0 && <span className="text-[9px] text-amber-400/60 font-normal">({ratingCount})</span>}
+            {ratingCount > 0 && <span className="text-[11px] text-amber-400/70 font-normal">({ratingCount})</span>}
           </span>
         ) : null}
 
         {ttb && (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/50 border border-white/5">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/70 border border-white/5">
             ~{ttb}
           </span>
         )}
 
         {isFree && (
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--color-accent)]/12 text-[var(--color-accent)] border border-[var(--color-accent)]/20">Free</span>
+          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--color-accent)]/12 text-[var(--color-accent)] border border-[var(--color-accent)]/20">Free</span>
         )}
         {hasMultiplayer && (
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/15">Multiplayer</span>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/15">Multiplayer</span>
         )}
         {genres?.slice(0, 3).map((genre) => (
-          <span key={genre.id} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/50 border border-white/5">{genre.name}</span>
+          <span key={genre.id} className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/8 text-white/70 border border-white/5">{genre.name}</span>
         ))}
       </div>
 
-      {companies && companies.length > 0 && (
-        <div className="flex flex-col gap-0.5 items-end text-[10px] text-white/35 mb-4 max-w-xs">
-          {roles.filter(r => companies.some(c => c[r.key])).map((role) => (
-            <span key={role.key}>
-              <span className="uppercase tracking-wider font-semibold">{role.label}</span>{' '}
-              <span className="text-white/60">
-                {companies.filter(c => c[role.key]).map(c => c.company.name).join(", ")}
-              </span>
+      {companyLines && companyLines.length > 0 && (
+        <div className="flex flex-col gap-0.5 items-end text-xs text-white/50 mb-4 max-w-xs">
+          {companyLines.map((line, i) => (
+            <span key={i}>
+              {line.isAnimated ? <AnimatedRoleLabel /> : <span className="uppercase tracking-wider font-semibold">{line.label}</span>}
+              {' '}
+              <span className="text-white/80">{line.names.join(', ')}</span>
             </span>
           ))}
         </div>

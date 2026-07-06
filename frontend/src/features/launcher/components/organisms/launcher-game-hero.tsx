@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
@@ -7,6 +7,8 @@ import { LauncherGameStats } from '@/features/launcher/components/molecules/laun
 import { LauncherGameDetailInfo } from '@/features/launcher/components/molecules/launcher-game-detail-info'
 import { LauncherGameButtons } from '@/features/launcher/components/organisms/launcher-game-buttons'
 import { LauncherScreenshotGallery } from '@/features/launcher/components/molecules/launcher-screenshot-gallery'
+import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
+import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 
 function useRandomParallax() {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -59,17 +61,29 @@ export function LauncherGameHero() {
   const { game: g } = useLauncherGame(gameId)
   const detail = g?.data
   const drift = useRandomParallax()
-  const [activeBackdrop, setActiveBackdrop] = useState<string | null>(null)
+  const [activeBackdrop, setActiveBackdropRaw] = useState<string | null>(null)
+  const setActiveBackdrop = useCallback((url: string | null) => {
+    if (!url || settings.backgroundTransitions) setActiveBackdropRaw(url)
+  }, [settings.backgroundTransitions])
 
   // Reset hovered screenshot backdrop when changing games
   useEffect(() => {
-    setActiveBackdrop(null)
+    setActiveBackdropRaw(null)
   }, [gameId])
 
   const screenshots = useMemo(() => {
     if (!detail?.screenshots?.length) return []
     return detail.screenshots.map((s) => ({ ...s, url: heroImage(s.url) }))
   }, [detail])
+
+  const { settings } = useLauncherSettings()
+
+  const { isPlaying: galleryAutoPlay } = useInactiveSlideshow({
+    totalItems: screenshots.length,
+    slideInterval: 6000,
+    inactivityTimeout: 8000,
+    enabled: settings.slideshowWhenInactive,
+  })
 
   const backdropUrl = useMemo(() => {
     if (!detail) return ''
@@ -160,6 +174,7 @@ export function LauncherGameHero() {
           <LauncherScreenshotGallery
             screenshots={screenshots}
             onHoverScreenshot={setActiveBackdrop}
+            autoPlay={galleryAutoPlay}
           />
         )}
       </div>
@@ -175,8 +190,18 @@ export function LauncherGameHero() {
             opacity: isHoveringScreenshot ? 0.1 : 1,
           }}
         >
-          <LauncherGameDetailInfo />
-          <LauncherGameButtons />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={gameId}
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            >
+              <LauncherGameDetailInfo />
+              <LauncherGameButtons />
+            </motion.div>
+          </AnimatePresence>
         </motion.div>
       </div>
     </section>

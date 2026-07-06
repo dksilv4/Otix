@@ -2,12 +2,14 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Gamepad2, Play, Clock, ChevronRight } from 'lucide-react'
+import { Search, Gamepad2, Play, Clock, ChevronRight, Settings } from 'lucide-react'
 import { useLocalGames, localGameKeys } from '@/features/launcher/data/game-queries'
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import { toDisplayGame, heroImage } from '@/features/launcher/utils'
+import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
+import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
@@ -47,10 +49,9 @@ export function LauncherLibraryPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
   const [sortBy, setSortBy] = useState<SortMode>('recent')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [featuredIdx, setFeaturedIdx] = useState(0)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
+  const { settings } = useLauncherSettings()
 
-  // ── Prefetch ──
   const handlePrefetch = useCallback((game: DisplayGame) => {
     if (isDesktop) {
       queryClient.prefetchQuery({
@@ -95,31 +96,35 @@ export function LauncherLibraryPage() {
     return result
   }, [rawGames, searchQuery, selectedPlatform, sortBy])
 
-  // Featured
+  // ── Featured hero with inactivity auto-slideshow ──
   const featuredGames = useMemo(() => filteredGames.slice(0, 5), [filteredGames])
+  const {
+    activeIndex: featuredIdx,
+    setActiveIndex: setFeaturedIdx,
+  } = useInactiveSlideshow({
+    totalItems: featuredGames.length,
+    slideInterval: 5000,
+    enabled: settings.slideshowWhenInactive,
+  })
   const featured = featuredGames[featuredIdx] ?? null
 
-  useEffect(() => {
-    if (featuredGames.length <= 1) return
-    const timer = setInterval(() => setFeaturedIdx((i) => (i + 1) % featuredGames.length), 8000)
-    return () => clearInterval(timer)
-  }, [featuredGames.length])
+  useEffect(() => { setFeaturedIdx(0, true) }, [searchQuery, selectedPlatform, sortBy, setFeaturedIdx])
 
-  useEffect(() => { setFeaturedIdx(0) }, [searchQuery, selectedPlatform, sortBy])
+  // Featured
 
   const featuredBackdrop = useMemo(() => {
-    if (!featured) return null
+    if (!settings.backgroundTransitions || !featured) return null
     const url = featured.backdropUrl || featured.posterUrl
     return url ? heroImage(url) : null
-  }, [featured])
+  }, [featured, settings.backgroundTransitions])
 
   // Hovered card backdrop
   const hoveredGame = useMemo(() => hoveredId ? rawGames.find(g => g.id === hoveredId) ?? null : null, [hoveredId, rawGames])
   const hoveredBackdrop = useMemo(() => {
-    if (!hoveredGame) return null
+    if (!settings.backgroundTransitions || !hoveredGame) return null
     const url = hoveredGame.backdropUrl || hoveredGame.posterUrl
     return url ? heroImage(url) : null
-  }, [hoveredGame])
+  }, [hoveredGame, settings.backgroundTransitions])
 
   const gridGames = filteredGames
 
@@ -189,62 +194,71 @@ export function LauncherLibraryPage() {
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent z-[1]" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 z-[1]" />
 
-              <div className="absolute inset-0 z-10 flex items-end p-8">
-                <div className="flex-1 min-w-0">
-                  {/* Featured hero logo */}
-                  {featured.logoUrl && !logoErrors.has(featured.id) ? (
-                    <img
-                      src={featured.logoUrl}
-                      alt={featured.title}
-                      className="h-20 max-w-[320px] object-contain object-left mb-3 drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]"
-                      onError={() => handleLogoError(featured.id)}
-                    />
-                  ) : (
-                    <h2 className="text-3xl font-black text-white tracking-tight mb-2 drop-shadow-lg line-clamp-1">
-                      {featured.title}
-                    </h2>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="text-[9px] uppercase tracking-[0.25em] font-bold"
-                      style={{ color: 'oklch(0.705 0.213 47.604)' }}
-                    >
-                      {PLATFORM_LABELS[featured.platform] ?? featured.platform}
-                    </span>
-                    {featured.rawGame?.lastPlayedAt && (
-                      <span className="text-[10px] text-white/40 flex items-center gap-1">
-                        <Clock size={10} />
-                        {new Date(featured.rawGame.lastPlayedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
-                      </span>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={featured.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className="absolute inset-0 z-10 flex items-end p-8"
+                >
+                  <div className="flex-1 min-w-0">
+                    {/* Featured hero logo */}
+                    {featured.logoUrl && !logoErrors.has(featured.id) ? (
+                      <img
+                        src={featured.logoUrl}
+                        alt={featured.title}
+                        className="h-24 max-w-[320px] object-contain object-left mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]"
+                        onError={() => handleLogoError(featured.id)}
+                      />
+                    ) : (
+                      <h2 className="text-3xl font-black text-white tracking-tight mb-2 drop-shadow-lg line-clamp-1">
+                        {featured.title}
+                      </h2>
                     )}
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="text-[9px] uppercase tracking-[0.25em] font-bold"
+                        style={{ color: 'oklch(0.705 0.213 47.604)' }}
+                      >
+                        {PLATFORM_LABELS[featured.platform] ?? featured.platform}
+                      </span>
+                      {featured.rawGame?.lastPlayedAt && (
+                        <span className="text-[10px] text-white/40 flex items-center gap-1">
+                          <Clock size={10} />
+                          {new Date(featured.rawGame.lastPlayedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-3 shrink-0 ml-6">
-                  <button
-                    className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 hover:brightness-110"
-                    style={{ background: 'oklch(0.705 0.213 47.604)', boxShadow: '0 0 24px oklch(0.705 0.213 47.604 / 0.35)' }}
-                    onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
-                  >
-                    <Play size={14} fill="white" />
-                    Launch
-                  </button>
-                  <button
-                    className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-white/70 cursor-pointer transition-all active:scale-95 bg-white/8 hover:bg-white/12 border border-white/10 backdrop-blur-md"
-                    onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
-                  >
-                    Details
-                    <ChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
+                  <div className="flex items-center gap-3 shrink-0 ml-6">
+                    <button
+                      className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 hover:brightness-110"
+                      style={{ background: 'oklch(0.705 0.213 47.604)', boxShadow: '0 0 24px oklch(0.705 0.213 47.604 / 0.35)' }}
+                      onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
+                    >
+                      <Play size={14} fill="white" />
+                      Launch
+                    </button>
+                    <button
+                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-white/70 cursor-pointer transition-all active:scale-95 bg-white/8 hover:bg-white/12 border border-white/10 backdrop-blur-md"
+                      onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
+                    >
+                      Details
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
 
               {featuredGames.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5">
                   {featuredGames.map((_, i) => (
                     <button
                       key={i}
-                      onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i) }}
+                      onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i, true) }}
                       className="cursor-pointer transition-all"
                       style={{
                         width: i === featuredIdx ? 20 : 6, height: 6, borderRadius: 9999,
@@ -297,6 +311,14 @@ export function LauncherLibraryPage() {
             <span className="text-[9px] text-white/25 font-semibold tabular-nums shrink-0">
               {filteredGames.length} game{filteredGames.length !== 1 ? 's' : ''}
             </span>
+            <div className="w-px self-stretch bg-[var(--dk-separator)]" />
+            <button
+              onClick={() => navigate({ to: '/settings/launcher' })}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-all active:scale-95 cursor-pointer"
+              title="Settings"
+            >
+              <Settings size={14} />
+            </button>
           </div>
 
           {/* ────────── Game Grid ────────── */}
@@ -361,7 +383,7 @@ export function LauncherLibraryPage() {
                           <img
                             src={game.logoUrl!}
                             alt={game.title}
-                            className="max-h-[30%] max-w-[80%] object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
+                            className="max-h-[35%] max-w-[70%] object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
                             style={{ transitionDelay: '50ms' }}
                             onError={() => handleLogoError(game.id)}
                           />

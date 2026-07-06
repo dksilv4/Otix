@@ -153,7 +153,7 @@ export function GameCard({ game, index, onAcceptSuggestion, onRejectSuggestion }
           <img
             src={game.data?.logoUrl!}
             alt={game.title}
-            className="max-h-[45%] max-w-[70%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-105"
+            className="max-h-[55%] max-w-[80%] object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-all duration-500 ease-out scale-100 group-hover:scale-105"
             onError={() => setLogoError(true)}
           />
         </div>
