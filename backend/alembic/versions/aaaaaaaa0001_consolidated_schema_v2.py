@@ -42,9 +42,9 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   purpose VARCHAR(20) NOT NULL,
   token_hash VARCHAR(64) NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
-  used_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -56,7 +56,7 @@ def upgrade() -> None:
   id VARCHAR(16) NOT NULL,
   user_id VARCHAR(16) NOT NULL,
   blueprint_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -73,8 +73,8 @@ def upgrade() -> None:
   parsed_data JSON NOT NULL,
   tags JSON NOT NULL,
   downloads INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -140,8 +140,8 @@ def upgrade() -> None:
   name VARCHAR(100) NOT NULL,
   category VARCHAR(50),
   aliases JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -156,12 +156,12 @@ def upgrade() -> None:
   media_item_id VARCHAR(16),
   media_type VARCHAR(10),
   is_adult BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   content_hash VARCHAR(64),
   hash_match_count INTEGER NOT NULL,
   confirmed_count INTEGER NOT NULL,
-  confirmed_by ARRAY NOT NULL,
-  last_confirmed_at TIMESTAMP,
+  confirmed_by VARCHAR(30) ARRAY NOT NULL,
+  last_confirmed_at TIMESTAMPTZ,
   PRIMARY KEY (id)
 )""")
 
@@ -191,9 +191,9 @@ def upgrade() -> None:
   requester_id VARCHAR(16) NOT NULL,
   target_id VARCHAR(16) NOT NULL,
   status VARCHAR(20) NOT NULL,
-  resolved_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -204,8 +204,8 @@ def upgrade() -> None:
     op.execute("""CREATE TABLE IF NOT EXISTS follows (
   follower_id VARCHAR(16) NOT NULL,
   followed_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (follower_id, followed_id)
 )""")
 
@@ -225,8 +225,8 @@ def upgrade() -> None:
   name VARCHAR(1000) NOT NULL,
   slug VARCHAR(1000) NOT NULL,
   overview TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -235,8 +235,8 @@ def upgrade() -> None:
   sender_id VARCHAR(16) NOT NULL,
   receiver_id VARCHAR(16) NOT NULL,
   status VARCHAR NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -248,7 +248,7 @@ def upgrade() -> None:
   content_type VARCHAR(30) NOT NULL,
   url VARCHAR(2000),
   description TEXT,
-  created_at TIMESTAMP,
+  created_at TIMESTAMPTZ,
   PRIMARY KEY (id)
 )""")
 
@@ -267,8 +267,8 @@ def upgrade() -> None:
   platform VARCHAR(50) NOT NULL,
   path_pattern VARCHAR(2000) NOT NULL,
   is_verified BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -280,8 +280,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   platform VARCHAR(50) NOT NULL,
   path_pattern VARCHAR(2000) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -337,8 +337,8 @@ def upgrade() -> None:
   amount INTEGER NOT NULL,
   reason VARCHAR(50) NOT NULL,
   reference_id VARCHAR(100),
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -359,7 +359,7 @@ def upgrade() -> None:
   user_id VARCHAR(16),
   old_sort_order INTEGER NOT NULL,
   new_sort_order INTEGER NOT NULL,
-  changed_at TIMESTAMP NOT NULL,
+  changed_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -378,9 +378,9 @@ def upgrade() -> None:
   proposed_by VARCHAR(50) NOT NULL,
   status VARCHAR(20) NOT NULL,
   reviewed_by VARCHAR(50),
-  reviewed_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -390,7 +390,7 @@ def upgrade() -> None:
   id VARCHAR(16) NOT NULL,
   provider VARCHAR(30) NOT NULL,
   external_id VARCHAR(100) NOT NULL,
-  skipped_at TIMESTAMP NOT NULL,
+  skipped_at TIMESTAMPTZ NOT NULL,
   user_id VARCHAR(16),
   PRIMARY KEY (id)
 )""")
@@ -439,8 +439,8 @@ def upgrade() -> None:
   original_values JSONB,
   upvote_count INTEGER NOT NULL,
   downvote_count INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -467,8 +467,8 @@ def upgrade() -> None:
   url VARCHAR(2000) NOT NULL,
   is_active BOOLEAN NOT NULL,
   created_by_user_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -480,8 +480,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   media_item_id VARCHAR(16) NOT NULL,
   score INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, media_item_id)
 )""")
 
@@ -503,8 +503,8 @@ def upgrade() -> None:
   popularity DOUBLE PRECISION NOT NULL,
   original_language VARCHAR(10),
   completeness_score DOUBLE PRECISION NOT NULL,
-  synced_at TIMESTAMP,
-  next_sync_at TIMESTAMP,
+  synced_at TIMESTAMPTZ,
+  next_sync_at TIMESTAMPTZ,
   search_vector TSVECTOR,
   embedding vector(1024),
   avg_rating DOUBLE PRECISION,
@@ -517,8 +517,8 @@ def upgrade() -> None:
   listened_count INTEGER NOT NULL,
   view_count INTEGER NOT NULL,
   is_adult BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   icon_url VARCHAR(2000),
   overall_rating DOUBLE PRECISION,
   overall_rating_source VARCHAR(20),
@@ -543,8 +543,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   permission VARCHAR(10) NOT NULL,
   status VARCHAR(10) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -554,7 +554,7 @@ def upgrade() -> None:
   id VARCHAR(16) NOT NULL,
   list_id VARCHAR(16) NOT NULL,
   user_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -623,8 +623,8 @@ def upgrade() -> None:
   body TEXT,
   metadata_json JSON NOT NULL,
   is_read BOOLEAN NOT NULL,
-  read_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -646,9 +646,9 @@ def upgrade() -> None:
   birthday DATE,
   deathday DATE,
   place_of_birth VARCHAR(500),
-  synced_at TIMESTAMP,
-  next_sync_at TIMESTAMP,
-  spotify_related_crawled_at TIMESTAMP,
+  synced_at TIMESTAMPTZ,
+  next_sync_at TIMESTAMPTZ,
+  spotify_related_crawled_at TIMESTAMPTZ,
   content_hash VARCHAR(64),
   hash_match_count INTEGER NOT NULL,
   embedding vector(1024),
@@ -690,8 +690,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   proposal_id VARCHAR(16) NOT NULL,
   vote_type VARCHAR NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, proposal_id)
 )""")
 
@@ -705,12 +705,12 @@ def upgrade() -> None:
   status VARCHAR(20) NOT NULL,
   payload JSONB NOT NULL,
   rejection_reason TEXT,
-  reviewed_at TIMESTAMP,
+  reviewed_at TIMESTAMPTZ,
   upvote_count INTEGER NOT NULL,
   downvote_count INTEGER NOT NULL,
   snapshot JSONB,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -720,10 +720,10 @@ def upgrade() -> None:
 
     op.execute("""CREATE TABLE IF NOT EXISTS provider_state (
   provider VARCHAR(20) NOT NULL,
-  last_sync_at TIMESTAMP,
+  last_sync_at TIMESTAMPTZ,
   cursor_value VARCHAR(500),
   rate_limit_remaining INTEGER,
-  rate_limit_reset TIMESTAMP,
+  rate_limit_reset TIMESTAMPTZ,
   PRIMARY KEY (provider)
 )""")
 
@@ -733,7 +733,7 @@ def upgrade() -> None:
   endpoint VARCHAR(512) NOT NULL,
   p256dh_key VARCHAR(128) NOT NULL,
   auth_key VARCHAR(64) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -741,9 +741,9 @@ def upgrade() -> None:
   id VARCHAR(16) NOT NULL,
   user_id VARCHAR(16) NOT NULL,
   jti VARCHAR(36) NOT NULL,
-  expires_at TIMESTAMP NOT NULL,
-  revoked_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -754,8 +754,8 @@ def upgrade() -> None:
   review_user_id VARCHAR(16) NOT NULL,
   review_media_item_id VARCHAR(16) NOT NULL,
   vote_type VARCHAR NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, review_user_id, review_media_item_id)
 )""")
 
@@ -766,9 +766,9 @@ def upgrade() -> None:
   content TEXT,
   is_spoiler BOOLEAN NOT NULL,
   is_private BOOLEAN NOT NULL,
-  cooldown_until TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  cooldown_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, media_item_id)
 )""")
 
@@ -787,8 +787,8 @@ def upgrade() -> None:
   query_embedding_available BOOLEAN,
   user_id VARCHAR(16),
   is_bot BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -823,8 +823,8 @@ def upgrade() -> None:
   playlist_owner VARCHAR(255),
   playlist_snapshot VARCHAR(255),
   auto_sync BOOLEAN NOT NULL,
-  last_synced_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -841,9 +841,9 @@ def upgrade() -> None:
   parent_id VARCHAR(16),
   error_message TEXT,
   retry_count INTEGER NOT NULL,
-  started_at TIMESTAMP,
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -853,7 +853,7 @@ def upgrade() -> None:
   media_type VARCHAR(10) NOT NULL,
   media_item_id VARCHAR(16),
   title VARCHAR(1000),
-  detection_date TIMESTAMP NOT NULL,
+  detection_date TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -863,8 +863,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   track_id VARCHAR(16) NOT NULL,
   score INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, track_id)
 )""")
 
@@ -880,8 +880,8 @@ def upgrade() -> None:
   lyrics TEXT,
   avg_rating DOUBLE PRECISION,
   rating_count INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -890,8 +890,8 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   badge_key VARCHAR NOT NULL,
   claimed BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -902,15 +902,15 @@ def upgrade() -> None:
     op.execute("""CREATE TABLE IF NOT EXISTS user_company_follows (
   user_id VARCHAR(16) NOT NULL,
   company_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, company_id)
 )""")
 
     op.execute("""CREATE TABLE IF NOT EXISTS user_episode_interactions (
   user_id VARCHAR(16) NOT NULL,
   episode_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, episode_id)
 )""")
 
@@ -920,8 +920,8 @@ def upgrade() -> None:
   name VARCHAR(200) NOT NULL,
   description TEXT,
   is_public BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -930,7 +930,7 @@ def upgrade() -> None:
   list_id VARCHAR(16) NOT NULL,
   media_item_id VARCHAR(16) NOT NULL,
   sort_order INTEGER NOT NULL,
-  added_at TIMESTAMP NOT NULL,
+  added_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -943,9 +943,9 @@ def upgrade() -> None:
   platform VARCHAR(50) NOT NULL,
   media_item_id VARCHAR(16),
   match_suggestion_media_id VARCHAR(16),
-  last_seen_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  last_seen_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -956,8 +956,8 @@ def upgrade() -> None:
   media_item_id VARCHAR(16) NOT NULL,
   interaction_type VARCHAR(20) NOT NULL,
   metadata JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, media_item_id, interaction_type)
 )""")
 
@@ -969,8 +969,8 @@ def upgrade() -> None:
   mood VARCHAR(20),
   feeling VARCHAR(32),
   note TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -981,7 +981,7 @@ def upgrade() -> None:
     op.execute("""CREATE TABLE IF NOT EXISTS user_person_follows (
   user_id VARCHAR(16) NOT NULL,
   person_id VARCHAR(16) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, person_id)
 )""")
 
@@ -1001,11 +1001,11 @@ def upgrade() -> None:
   view_count INTEGER NOT NULL,
   view_offset INTEGER,
   duration INTEGER,
-  last_viewed_at TIMESTAMP,
+  last_viewed_at TIMESTAMPTZ,
   guids JSONB,
   raw JSONB,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1019,8 +1019,8 @@ def upgrade() -> None:
   title VARCHAR(500) NOT NULL,
   library_type VARCHAR(20) NOT NULL,
   selected BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1038,8 +1038,8 @@ def upgrade() -> None:
   access_token TEXT,
   owned BOOLEAN NOT NULL,
   selected BOOLEAN NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1049,8 +1049,8 @@ def upgrade() -> None:
   rater_id VARCHAR(16) NOT NULL,
   rated_user_id VARCHAR(16) NOT NULL,
   score INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (rater_id, rated_user_id)
 )""")
 
@@ -1060,10 +1060,10 @@ def upgrade() -> None:
   session_key VARCHAR(36) NOT NULL,
   ip_address VARCHAR(45),
   user_agent TEXT,
-  last_seen_at TIMESTAMP NOT NULL,
-  revoked_at TIMESTAMP,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
   revoked_reason VARCHAR(50),
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (id)
 )""")
 
@@ -1082,8 +1082,8 @@ def upgrade() -> None:
   img_icon_url VARCHAR(256),
   img_logo_url VARCHAR(256),
   rtime_last_played INTEGER,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1099,8 +1099,8 @@ def upgrade() -> None:
   added_date INTEGER,
   is_free BOOLEAN NOT NULL,
   img_icon_url VARCHAR(256),
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1117,8 +1117,8 @@ def upgrade() -> None:
   last_activity_date DATE,
   last_review_week DATE,
   last_workout_date DATE,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id)
 )""")
 
@@ -1135,7 +1135,7 @@ def upgrade() -> None:
   matched_media_item_id VARCHAR(16),
   matched_title TEXT,
   matched_artist TEXT,
-  created_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
@@ -1153,8 +1153,8 @@ def upgrade() -> None:
   is_verified BOOLEAN NOT NULL,
   two_factor_enabled BOOLEAN NOT NULL,
   two_factor_secret VARCHAR(32),
-  last_login_at TIMESTAMP,
-  global_logout_marker TIMESTAMP,
+  last_login_at TIMESTAMPTZ,
+  global_logout_marker TIMESTAMPTZ,
   avatar_url VARCHAR(2048),
   bio TEXT,
   background_url VARCHAR(2048),
@@ -1170,21 +1170,21 @@ def upgrade() -> None:
   tmdb_username VARCHAR(150),
   tmdb_avatar_hash VARCHAR(64),
   tmdb_rating_sync_direction VARCHAR(16) NOT NULL,
-  tmdb_rating_last_synced_at TIMESTAMP,
+  tmdb_rating_last_synced_at TIMESTAMPTZ,
   spotify_id VARCHAR(64),
   spotify_username VARCHAR(150),
   spotify_email VARCHAR(320),
   spotify_avatar_url VARCHAR(2048),
   spotify_access_token TEXT,
   spotify_refresh_token TEXT,
-  spotify_token_expires_at TIMESTAMP,
+  spotify_token_expires_at TIMESTAMPTZ,
   google_id VARCHAR(64),
   google_email VARCHAR(320),
   google_name VARCHAR(150),
   google_avatar_url VARCHAR(2048),
   google_access_token TEXT,
   google_refresh_token TEXT,
-  google_token_expires_at TIMESTAMP,
+  google_token_expires_at TIMESTAMPTZ,
   integration_visibility JSON NOT NULL,
   total_xp BIGINT NOT NULL,
   daily_mood_checkins_enabled BOOLEAN NOT NULL,
@@ -1205,8 +1205,8 @@ def upgrade() -> None:
   is_bot BOOLEAN NOT NULL,
   notification_preferences JSON NOT NULL,
   karma BIGINT NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   embedding vector(1024),
   PRIMARY KEY (id)
 )""")
@@ -1253,10 +1253,10 @@ def upgrade() -> None:
   user_id VARCHAR(16) NOT NULL,
   raw_input TEXT,
   notes TEXT,
-  started_at TIMESTAMP NOT NULL,
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
+  started_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (id)
 )""")
 
