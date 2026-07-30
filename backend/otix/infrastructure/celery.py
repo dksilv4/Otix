@@ -90,6 +90,11 @@ _beat_schedule: dict = {
         "task": "maintenance.refresh_discover_feed",
         "schedule": crontab(hour="3", minute="17"),
     },
+    # Discover cache pre-warming (daily at 3:27am, after feed syncs are queued)
+    "refresh-discover-cache": {
+        "task": "maintenance.refresh_discover_cache",
+        "schedule": crontab(hour="3", minute="27"),
+    },
     # Provider health check (every 5 min)
     "provider-health-check": {
         "task": "maintenance.provider_health_check",
@@ -150,6 +155,17 @@ _beat_schedule: dict = {
     "catalog-hydration": {
         "task": "maintenance.catalog_hydration",
         "schedule": crontab(minute="17,47"),
+    },
+    # TMDB change-based sync — detect changed items and re-sync (every 30 min, offset from catalog-hydration)
+    "tmdb-movie-changes": {
+        "task": "sync.tmdb.changes",
+        "schedule": crontab(minute="2,32"),
+        "args": ["movie", 24],
+    },
+    "tmdb-show-changes": {
+        "task": "sync.tmdb.changes",
+        "schedule": crontab(minute="12,42"),
+        "args": ["show", 24],
     },
     "seed-steam": {
         "task": "seed.steam_cycle",
@@ -241,6 +257,11 @@ _beat_schedule: dict = {
     "backfill-music-poster-url": {
         "task": "maintenance.backfill_music_poster_url",
         "schedule": crontab(minute="2,32"),
+    },
+    # Media deduplication (daily at 4:23am — after people dedup)
+    "deduplicate-media": {
+        "task": "maintenance.deduplicate_media",
+        "schedule": crontab(hour="4", minute="23"),
     },
 }
 

@@ -4,5 +4,4 @@ export const discoverKeys = {
     [...discoverKeys.all(), 'list', mediaType, listType, genre ?? '__all', language ?? '__all', isAnime ?? '__all'] as const,
   hero: () => [...discoverKeys.all(), 'hero'] as const,
   sections: () => [...discoverKeys.all(), 'sections'] as const,
-  trailers: () => [...discoverKeys.all(), 'trailers'] as const,
 }

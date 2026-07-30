@@ -101,6 +101,7 @@ class MediaItemSummary(BaseModel):
     view_count: int = 0
     is_adult: bool = False
     new_season_released: bool = False
+    new_season_release_date: date | None = None
     user_interactions: UserInteractionState | None = None
     steam_playtime_forever: int | None = None
     steam_playtime_2weeks: int | None = None
@@ -133,32 +134,6 @@ class TrackSearchResult(BaseModel):
     media_type: str = "track"
 
     model_config = {"from_attributes": True}
-
-
-class TrendingTrailerItem(BaseModel):
-    """A media item that has a trending YouTube trailer."""
-
-    id: str
-    media_type: str
-    title: str
-    slug: str
-    poster_url: str | None = None
-    textless_poster_url: str | None = None
-    backdrop_url: str | None = None
-    logo_url: str | None = None
-    release_date: date | None = None
-    popularity: float
-    avg_rating: float | None = None
-    rating_count: int = 0
-    overview: str | None = None
-    trailer_youtube_id: str = ""
-    trailer_url: str = ""
-
-    model_config = {"from_attributes": True}
-
-
-class TrendingTrailerResponse(PaginatedResponse):
-    items: list[TrendingTrailerItem]
 
 
 class MediaItemListResponse(PaginatedResponse):
@@ -693,6 +668,7 @@ class MediaItemDetail(BaseModel):
     view_count: int = 0
     is_adult: bool = False
     new_season_released: bool = False
+    new_season_release_date: date | None = None
     user_interactions: UserInteractionState | None = None
     # Steam playtime (populated for authenticated users who own the game)
     steam_playtime_forever: int | None = None

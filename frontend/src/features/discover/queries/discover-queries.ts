@@ -2,7 +2,7 @@ import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
 import type { MediaItemSummary } from '@media/queries/media-queries'
-import type { PersonalizedSection, TrendingTrailerItem } from '../types'
+import type { PersonalizedSection } from '../types'
 
 const ONE_DAY = 1000 * 60 * 60 * 24
 
@@ -61,16 +61,4 @@ export const discoverQueries = {
       gcTime: ONE_DAY,
     }),
 
-  trailers: () =>
-    queryOptions({
-      queryKey: discoverKeys.trailers(),
-      queryFn: async () => {
-        const { data } = await apiClient.get<{ items: TrendingTrailerItem[] }>(
-          '/discover/trailers/trending',
-        )
-        return data.items
-      },
-      staleTime: ONE_DAY,
-      gcTime: ONE_DAY,
-    }),
 }
