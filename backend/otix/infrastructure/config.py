@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     refresh_token_lifetime_days: int = 7
     rotate_refresh_tokens: bool = True
     auth_refresh_cookie_name: str = "otix_refresh"
-    auth_refresh_cookie_path: str = "/api/auth/"
+    auth_refresh_cookie_path: str = "/api/v1/auth/"
     auth_refresh_cookie_domain: str = ""
     auth_refresh_cookie_secure: bool = False
     auth_refresh_cookie_httponly: bool = True
@@ -121,11 +121,16 @@ class Settings(BaseSettings):
     lrclib_request_timeout_seconds: int = 10
     lrclib_global_rps_limit: int = 5
 
+    # API response cache (local dev/test only)
+    api_cache_enabled: bool = True
+    api_cache_dir: str = "./.api_cache"
+    api_cache_ttl_hours: int = 24
+
     # Embeddings
     # Default CPU model via FastEmbed. Set OTIX_EMBEDDING_API_URL to use a GPU
     # embedding server instead (e.g. Ollama, TEI).
-    embedding_model: str = "BAAI/bge-large-en-v1.5"
-    embedding_dimension: int = 1024
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dimension: int = 384
     embedding_api_url: str = ""
 
     # Email

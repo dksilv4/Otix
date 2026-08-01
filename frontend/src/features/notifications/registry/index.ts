@@ -1,6 +1,6 @@
 import {
   Bell, UserPlus, UserCheck, UserX, UserMinus, Heart,
-  MessageSquareText, Users, Star,
+  MessageSquareText, Users, Star, Tv,
 } from 'lucide-react'
 import type { TypeConfig, NotificationType } from '../types'
 
@@ -147,6 +147,18 @@ export const NOTIFICATION_TYPES: Record<NotificationType, TypeConfig> = {
     label: 'Now Available',
     description: 'A watchlisted item has a new release',
     color: 'text-emerald-400',
+    getLink: (n) => {
+      const slug = n.metadataJson.mediaSlug as string | undefined
+      return slug ? `/media/${slug}` : null
+    },
+    defaultChannels: { toast: true, desktop: true, web_push: true },
+  },
+  new_season: {
+    type: 'new_season',
+    icon: Tv,
+    label: 'New Season',
+    description: 'When a show you have watched gets a new season',
+    color: 'text-green-500',
     getLink: (n) => {
       const slug = n.metadataJson.mediaSlug as string | undefined
       return slug ? `/media/${slug}` : null

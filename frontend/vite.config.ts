@@ -15,6 +15,7 @@ export default defineConfig({
       '@auth': path.resolve(__dirname, 'src/features/auth'),
       '@activity': path.resolve(__dirname, 'src/features/activity'),
       '@media': path.resolve(__dirname, 'src/features/media'),
+      '@calendar': path.resolve(__dirname, 'src/features/calendar'),
       '@discover': path.resolve(__dirname, 'src/features/discover'),
       '@launcher': path.resolve(__dirname, 'src/features/launcher'),
       '@navigation': path.resolve(__dirname, 'src/features/navigation'),
@@ -39,6 +40,12 @@ export default defineConfig({
       '/media': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        bypass: (req) => {
+          // Browser navigations send Accept: text/html — serve index.html so the SPA handles routing
+          if (req.headers.accept?.includes('text/html')) {
+            return '/index.html'
+          }
+        },
       },
     },
   },

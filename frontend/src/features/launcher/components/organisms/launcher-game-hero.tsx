@@ -56,6 +56,7 @@ function useRandomParallax() {
 }
 
 export function LauncherGameHero() {
+  const { settings } = useLauncherSettings()
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { game: g } = useLauncherGame(gameId)
@@ -75,8 +76,6 @@ export function LauncherGameHero() {
     if (!detail?.screenshots?.length) return []
     return detail.screenshots.map((s) => ({ ...s, url: heroImage(s.url) }))
   }, [detail])
-
-  const { settings } = useLauncherSettings()
 
   const { isPlaying: galleryAutoPlay } = useInactiveSlideshow({
     totalItems: screenshots.length,

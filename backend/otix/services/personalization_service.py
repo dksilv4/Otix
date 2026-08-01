@@ -660,7 +660,39 @@ class PersonalizationService:
         result = await self.session.execute(knn_query, params)
         return [row[0] for row in result.fetchall()]
 
-    def generate_sections(self, profile: PreferenceProfile, user: User | None = None) -> list:
+    async def _has_watched_shows_with_new_seasons(self, user_id: str) -> bool:
+        from datetime import date, timedelta
+        cutoff = date.today() - timedelta(days=60)
+        query = text("""
+            SELECT 1 FROM user_media_interactions umi
+            JOIN shows s ON s.media_item_id = umi.media_item_id
+            WHERE umi.user_id = :user_id
+              AND umi.interaction_type = 'watched'
+              AND s.last_air_date >= :cutoff
+              AND s.number_of_seasons > 1
+            LIMIT 1
+        """)
+        result = await self.session.execute(query, {"user_id": user_id, "cutoff": cutoff})
+        return result.fetchone() is not None
+
+    async def _get_watched_shows_with_new_seasons(self, user_id: str, limit: int = 20) -> list[str]:
+        from datetime import date, timedelta
+        cutoff = date.today() - timedelta(days=60)
+        query = text("""
+            SELECT umi.media_item_id
+            FROM user_media_interactions umi
+            JOIN shows s ON s.media_item_id = umi.media_item_id
+            WHERE umi.user_id = :user_id
+              AND umi.interaction_type = 'watched'
+              AND s.last_air_date >= :cutoff
+              AND s.number_of_seasons > 1
+            ORDER BY s.last_air_date DESC
+            LIMIT :limit
+        """)
+        result = await self.session.execute(query, {"user_id": user_id, "cutoff": cutoff, "limit": limit})
+        return [row[0] for row in result.fetchall()]
+
+    async def generate_sections(self, profile: PreferenceProfile, user: User | None = None) -> list:
         from otix.schemas.discover import PersonalizedSection
 
         emphases = profile.discover_emphases
@@ -744,7 +776,7 @@ class PersonalizationService:
                 if not (set(sig.match_languages) & user_langs):
                     continue
                 matched_genre = next(g for g in sig.match_genres if g in user_genres)
-                matched_lang = next(l for l in sig.match_languages if l in user_langs)
+                matched_lang = next(lang for lang in sig.match_languages if lang in user_langs)
                 for mt in sig.media_types:
                     if mt not in user_types:
                         continue
@@ -872,6 +904,22 @@ class PersonalizationService:
                         )
                     )
                     integration_added += 1
+
+        # ── Tier 4.5: New Seasons in Your Shows ──
+        if user and "show" in user_types:
+            new_season_exists = await self._has_watched_shows_with_new_seasons(user.id)
+            if new_season_exists and not _is_covered("show", lang="_new_season"):
+                _cover("show", lang="_new_season")
+                sections.append(
+                    PersonalizedSection(
+                        id="show_new_season_for_you",
+                        title="New Seasons in Your Shows",
+                        media_type="show",
+                        list_type="new_season_for_you",
+                        is_personalized=True,
+                        reason="New seasons from shows you've watched",
+                    )
+                )
 
         # ── Tier 5: Collaborative (1 section) ──
         for mt in user_types:

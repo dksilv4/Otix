@@ -1,6 +1,7 @@
 // TODO: Review this file
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { useModal } from '@/lib/modals'
 import { DkInput } from '@/old-features/ui/atoms/input'
 import { DkTextarea } from '@/old-features/ui/atoms/textarea'
 import { DkSelect } from '@/old-features/ui/atoms/select'
@@ -49,10 +50,10 @@ const IMAGE_TYPES = [
 ]
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   mediaId: string
   media: MediaItemDetail
+  onClose: () => void
+  isExiting?: boolean
 }
 
 const IMAGE_TYPE_ALIASES: Record<string, string[]> = {
@@ -62,8 +63,9 @@ const IMAGE_TYPE_ALIASES: Record<string, string[]> = {
   textless_poster: ['textless_poster', 'poster', 'backdrop', 'icon'],
 }
 
-export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
+export function AdminEditModal({ mediaId, media, onClose, isExiting }: Props) {
   const { toast } = useToast()
+  const { openModal } = useModal()
   const createProposal = useCreateProposal(media.mediaType, mediaId)
   const { data: assetData, isLoading: assetsLoading } = useMediaAssets(media.mediaType, mediaId)
   const [tab, setTab] = useState('fields')
@@ -179,28 +181,59 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
       })
       showXPToast(ADMIN_XP.PROPOSAL_CREATE)
       toast({ title: 'Edit proposal submitted', variant: 'success' })
-      onOpenChange(false)
+      onClose()
     } catch {
       toast({ title: 'Failed to submit proposal', variant: 'error' })
     }
   }
 
-  const handleOpen = (open: boolean) => {
-    if (open) {
-      setTitle(media.title)
-      setOverview(media.overview ?? '')
-      setTagline(media.movie?.tagline ?? '')
-      setShowStatus(media.show?.status ?? '')
-      setReleaseDate(media.releaseDate?.slice(0, 10) ?? '')
-      setOriginalLanguage(media.originalLanguage ?? '')
-      setRuntime(media.movie?.runtime?.toString() ?? '')
-      setImageOverrides([])
-      setBrowseType('poster')
-      setBrowseLang('*')
-      setTab('fields')
+  // Reset state on mount or when media changes
+  useEffect(() => {
+    setTitle(media.title)
+    setOverview(media.overview ?? '')
+    setTagline(media.movie?.tagline ?? '')
+    setShowStatus(media.show?.status ?? '')
+    setReleaseDate(media.releaseDate?.slice(0, 10) ?? '')
+    setOriginalLanguage(media.originalLanguage ?? '')
+    setRuntime(media.movie?.runtime?.toString() ?? '')
+    setImageOverrides([])
+    setBrowseType('poster')
+    setBrowseLang('*')
+    setTab('fields')
+  }, [media])
+
+  // Open PositionModal in a sub-dialog dynamically when positionAsset is set
+  useEffect(() => {
+    if (positionAsset) {
+      const closeSub = openModal(
+        <DkDialog
+          open={true}
+          onOpenChange={() => {
+            setPositionAsset(null)
+            closeSub()
+          }}
+          className="dk-admin-position-dialog"
+        >
+          <PositionModal
+            imageUrl={positionAsset.url}
+            aspect={2 / 3}
+            onComplete={(pos) => {
+              handlePositionComplete(pos)
+              setPositionAsset(null)
+              closeSub()
+            }}
+            onCancel={() => {
+              setPositionAsset(null)
+              closeSub()
+            }}
+          />
+        </DkDialog>
+      )
+      return () => {
+        closeSub()
+      }
     }
-    onOpenChange(open)
-  }
+  }, [positionAsset, handlePositionComplete, openModal])
 
   const langLabel = (code: string) =>
     LANGUAGES.find((l) => l.code === code)?.label ?? code
@@ -210,8 +243,8 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={handleOpen}
+      open={!isExiting}
+      onOpenChange={onClose}
       title="Edit Media"
       description="Propose changes to media data and localized images"
       className="dk-admin-edit-modal"
@@ -482,7 +515,7 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
 
         {/* Submit */}
         <div className="dk-admin-edit-modal__submit">
-          <DkButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+          <DkButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </DkButton>
           <DkButton
@@ -496,18 +529,6 @@ export function AdminEditModal({ open, onOpenChange, mediaId, media }: Props) {
           </DkButton>
         </div>
       </div>
-
-      {/* Position overlay — backdrop → textless poster */}
-      {positionAsset && (
-        <div className="dk-admin-edit-modal__overlay">
-          <PositionModal
-            imageUrl={positionAsset.url}
-            aspect={2 / 3}
-            onComplete={handlePositionComplete}
-            onCancel={() => setPositionAsset(null)}
-          />
-        </div>
-      )}
     </DkDialog>
   )
 }

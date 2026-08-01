@@ -7,6 +7,7 @@ import { createAuthRoutes } from '@auth/router'
 import { createDiscoverRoutes } from '@discover/router'
 import { createSearchRoutes } from '@search/router'
 import { createMediaRoutes } from '@media/router'
+import { createCalendarRoutes } from '@calendar/router'
 import { createLauncherRoutes } from '@launcher/router'
 import { createLibraryRoutes } from '@library/router'
 import { createSettingsRoutes } from '@settings/router'
@@ -22,6 +23,7 @@ const rootRoute = createRootRoute({
 
 const routeTree = rootRoute.addChildren([
   ...createAuthRoutes(rootRoute),
+  ...createCalendarRoutes(rootRoute),
   ...createDiscoverRoutes(rootRoute),
   ...createSearchRoutes(rootRoute),
   ...createMediaRoutes(rootRoute),

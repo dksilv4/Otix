@@ -1,13 +1,15 @@
 # TODO: Review this file
 from __future__ import annotations
 
-from sqlalchemy import delete, func, select
+from datetime import date
+
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.episode_interaction import UserEpisodeInteraction
 from otix.domain.interaction import UserMediaInteraction
-from otix.domain.media import Episode, MediaItem, Season
+from otix.domain.media import Episode, MediaItem, Season, Show
 from otix.infrastructure.celery import app
 from otix.lib.xp import EPISODE_WATCHED, SEASON_COMPLETED_BONUS, SHOW_COMPLETED_BONUS
 
@@ -182,12 +184,17 @@ class EpisodeInteractionService:
         return result.rowcount
 
     async def set_show_watched(self, user_id: str, show_id: str) -> int:
-        # Get all non-special season episodes
+        # Get all released non-special season episodes
+        today = date.today()
         episodes = (
             await self.session.execute(
                 select(Episode.id)
                 .join(Season, Season.id == Episode.season_id)
-                .where(Season.show_id == show_id, Season.season_number > 0)
+                .where(
+                    Season.show_id == show_id,
+                    Season.season_number > 0,
+                    or_(Episode.air_date.is_(None), Episode.air_date <= today),
+                )
             )
         ).all()
         episode_ids = [e[0] for e in episodes]
@@ -212,11 +219,6 @@ class EpisodeInteractionService:
 
             for _ in new_ids:
                 app.send_task("xp.award", args=[user_id, EPISODE_WATCHED])
-
-        if new_ids:
-            app.send_task("xp.award", args=[user_id, SHOW_COMPLETED_BONUS])
-            app.send_task("streak.update", args=[user_id])
-            app.send_task("gamification.check_badges", args=[user_id])
 
         await self._sync_show_watched_flag_for_show(user_id, show_id)
         return len(new_ids)
@@ -253,12 +255,17 @@ class EpisodeInteractionService:
     async def get_show_progress(
         self, user_id: str, show_id: str
     ) -> dict:
-        # Get all episodes in non-special seasons
+        # Get all released episodes in non-special seasons
+        today = date.today()
         all_episodes = (
             await self.session.execute(
                 select(Episode.id, Season.season_number)
                 .join(Season, Season.id == Episode.season_id)
-                .where(Season.show_id == show_id, Season.season_number > 0)
+                .where(
+                    Season.show_id == show_id,
+                    Season.season_number > 0,
+                    or_(Episode.air_date.is_(None), Episode.air_date <= today),
+                )
             )
         ).all()
 
@@ -369,21 +376,33 @@ class EpisodeInteractionService:
             return
         await self._sync_show_watched_flag_for_show(user_id, season.show_id)
 
+    async def update_show_watched(self, user_id: str, show_id: str) -> bool:
+        """Check all non-special-season episodes and set/remove the show-level watched flag.
+
+        The show is only marked as watched when every non-special episode
+        (including future-dated ones) has a watched interaction.
+        """
+        all_watched = await self._sync_show_watched_flag_for_show(user_id, show_id)
+        return all_watched
+
     async def _sync_show_watched_flag_for_show(
         self, user_id: str, show_id: str
-    ) -> None:
-        # Check if all non-special-season episodes are watched
+    ) -> bool:
+        # Check if all non-special-season episodes are watched (including future)
         non_special = (
             await self.session.execute(
                 select(Episode.id)
                 .join(Season, Season.id == Episode.season_id)
-                .where(Season.show_id == show_id, Season.season_number > 0)
+                .where(
+                    Season.show_id == show_id,
+                    Season.season_number > 0,
+                )
             )
         ).all()
         non_special_ids = [e[0] for e in non_special]
 
         if not non_special_ids:
-            return
+            return False
 
         watched = (
             await self.session.execute(
@@ -396,7 +415,6 @@ class EpisodeInteractionService:
         watched_ids = {e[0] for e in watched}
 
         all_watched = len(watched_ids) == len(non_special_ids)
-
         existing = await self.session.scalar(
             select(UserMediaInteraction).where(
                 UserMediaInteraction.user_id == user_id,
@@ -413,5 +431,10 @@ class EpisodeInteractionService:
                 "metadata": {},
             }).on_conflict_do_nothing()
             await self.session.execute(stmt)
+            app.send_task("xp.award", args=[user_id, SHOW_COMPLETED_BONUS])
+            app.send_task("streak.update", args=[user_id])
+            app.send_task("gamification.check_badges", args=[user_id])
         elif not all_watched and existing is not None:
             await self.session.delete(existing)
+
+        return all_watched

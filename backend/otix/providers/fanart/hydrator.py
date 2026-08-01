@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.asset import MediaAsset
 from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.people import MediaCredit, Person
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset, rank_english_logo_by_width, rank_textless_poster
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.transformer import (
     _extract_album_covers_by_rg,
@@ -47,11 +48,31 @@ class FanartHydrator:
         except Exception:
             return False
 
-        assets = movie_images_to_assets(raw, media_item.id)
-        if not assets:
+        media_assets = movie_images_to_assets(raw, media_item.id)
+        if not media_assets:
             return False
 
-        return await self._upsert_assets(assets)
+        pipeline = AssetPipeline(self.session)
+        raw_assets = [
+            RawAsset(
+                asset_type=a.asset_type,
+                url=a.url,
+                provider="fanart",
+                width=a.width,
+                height=a.height,
+                lang=a.lang,
+            )
+            for a in media_assets
+        ]
+        added = await pipeline.store(media_item.id, raw_assets)
+
+        # Fanart is authoritative for logos and textless posters on movies/shows.
+        logo_candidates = [a for a in raw_assets if a.asset_type == "logo"]
+        textless_candidates = [a for a in raw_assets if a.asset_type == "poster"]
+        await pipeline.promote(media_item, "logo_url", logo_candidates, rank_english_logo_by_width)
+        await pipeline.promote(media_item, "textless_poster_url", textless_candidates, rank_textless_poster)
+
+        return added > 0
 
     async def hydrate_show_images(self, media_item: MediaItem) -> bool:
         """Fetch Fanart images for a show and store as MediaAsset rows.
@@ -72,11 +93,30 @@ class FanartHydrator:
         except Exception:
             return False
 
-        assets = show_images_to_assets(raw, media_item.id)
-        if not assets:
+        media_assets = show_images_to_assets(raw, media_item.id)
+        if not media_assets:
             return False
 
-        return await self._upsert_assets(assets)
+        pipeline = AssetPipeline(self.session)
+        raw_assets = [
+            RawAsset(
+                asset_type=a.asset_type,
+                url=a.url,
+                provider="fanart",
+                width=a.width,
+                height=a.height,
+                lang=a.lang,
+            )
+            for a in media_assets
+        ]
+        added = await pipeline.store(media_item.id, raw_assets)
+
+        logo_candidates = [a for a in raw_assets if a.asset_type == "logo"]
+        textless_candidates = [a for a in raw_assets if a.asset_type == "poster"]
+        await pipeline.promote(media_item, "logo_url", logo_candidates, rank_english_logo_by_width)
+        await pipeline.promote(media_item, "textless_poster_url", textless_candidates, rank_textless_poster)
+
+        return added > 0
 
     async def hydrate_music_images(self, media_item: MediaItem) -> bool:
         """Fetch Fanart images for a music album and store as MediaAsset rows.

@@ -15,8 +15,8 @@ export function useSectionFetch(section: PersonalizedSection) {
 
   const items = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data])
 
-  const showSkeleton = isInView && query.isLoading
+  const showSkeleton = !isInView || query.isLoading
   const isEmpty = isInView && !query.isLoading && items.length === 0
 
-  return { ref, items, showSkeleton, isEmpty, ...query }
+  return { ref, items, showSkeleton, isEmpty, isInView, ...query }
 }

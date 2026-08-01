@@ -19,7 +19,7 @@ export function useHeroCarousel() {
   const touchStartYRef = useRef(0)
   const failedDetailIdsRef = useRef<Set<string>>(new Set())
 
-  const { data: heroData, fetchNextPage, hasNextPage } = useInfiniteQuery(discoverQueries.hero())
+  const { data: heroData, fetchNextPage, hasNextPage, isLoading, isError, refetch } = useInfiniteQuery(discoverQueries.hero())
   const items = useMemo(() => heroData?.pages.flatMap((p) => p.items) ?? [], [heroData])
   const totalItems = items.length
 
@@ -137,5 +137,6 @@ export function useHeroCarousel() {
     detailData, cardOffset, visibleSlides, isPaused, isTransitioning,
     setIsPaused, tick, tickBack, navigateTo,
     handleTouchStart, handleTouchEnd, handleCardClick,
+    isLoading, isError, refetch,
   }
 }

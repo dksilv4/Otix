@@ -35,6 +35,7 @@ VALID_LIST_TYPES = {
     "semantic",
     "integration_steam",
     "integration_plex",
+    "new_season_for_you",
 }
 
 _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
@@ -46,6 +47,7 @@ _LIST_CONFIG: dict[str, tuple[str, str, str | None]] = {
     "collaborative": ("popularity", "desc", None),
     "integration_steam": ("popularity", "desc", None),
     "integration_plex": ("popularity", "desc", None),
+    "new_season_for_you": ("popularity", "desc", None),
 }
 
 
@@ -85,7 +87,7 @@ async def discover_list(
         language = language.split("-")[0]
 
     exclude_adult = should_exclude_adult(current_user)
-    is_personalized = list_type in ("collaborative", "semantic", "integration_steam", "integration_plex")
+    is_personalized = list_type in ("collaborative", "semantic", "integration_steam", "integration_plex", "new_season_for_you")
     cache_ttl = _PERSONALIZED_TTL if is_personalized else _DISCOVER_TTL
     uid = current_user.id if current_user else "anon"
 
@@ -170,6 +172,29 @@ async def discover_list(
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             logger.info("discover plex fetched", media_type=media_type, ip=ip)
             return response
+
+    if list_type == "new_season_for_you":
+        if not current_user:
+            items, has_more = [], False
+        else:
+            ps = PersonalizationService(db)
+            seed_ids = await ps._get_watched_shows_with_new_seasons(current_user.id, limit=limit * 2)
+            if seed_ids:
+                items, has_more, _ = await service.list_media(
+                    media_type=media_type,
+                    has_logo=True,
+                    sort_by="popularity",
+                    sort_dir="desc",
+                    limit=limit,
+                    media_ids=seed_ids,
+                    exclude_adult=exclude_adult,
+                )
+            else:
+                items, has_more = [], False
+        response = await _build_response(db, items, has_more, current_user)
+        await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
+        logger.info("discover new season fetched", media_type=media_type, ip=ip)
+        return response
 
     if list_type not in _LIST_CONFIG:
         list_type = "trending"

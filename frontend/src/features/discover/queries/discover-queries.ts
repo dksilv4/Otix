@@ -4,6 +4,7 @@ import { discoverKeys } from './discover-keys'
 import type { MediaItemSummary } from '@media/queries/media-queries'
 import type { PersonalizedSection } from '../types'
 
+const TWO_HOURS = 1000 * 60 * 60 * 2
 const ONE_DAY = 1000 * 60 * 60 * 24
 
 export interface DiscoverListResponse {
@@ -31,7 +32,7 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: ONE_DAY,
+      staleTime: TWO_HOURS,
       gcTime: ONE_DAY,
     }),
 
@@ -46,7 +47,7 @@ export const discoverQueries = {
       },
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       initialPageParam: '',
-      staleTime: ONE_DAY,
+      staleTime: TWO_HOURS,
       gcTime: ONE_DAY,
     }),
 
@@ -57,7 +58,7 @@ export const discoverQueries = {
         const { data } = await apiClient.get<{ sections: PersonalizedSection[] }>('/discover/sections')
         return data.sections
       },
-      staleTime: ONE_DAY,
+      staleTime: TWO_HOURS,
       gcTime: ONE_DAY,
     }),
 

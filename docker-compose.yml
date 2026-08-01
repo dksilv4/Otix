@@ -1,8 +1,52 @@
-# Otix — production compose
-# Database: Supabase (eu-central-1)  |  Redis: Upstash
+# Otix — local development compose
 # All services read DATABASE_URL, REDIS_URL, etc. from .env
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: otix
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: otix_dev
+    command: >
+      postgres
+      -c shared_preload_libraries=vector
+      -c max_connections=50
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=5242kB
+      -c huge_pages=off
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otix -d otix_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+
   api:
     build:
       context: ./backend
@@ -16,6 +60,11 @@ services:
       FASTEMBED_CACHE_PATH: /app/.fastembed_cache
       OMP_NUM_THREADS: "1"
     command: bash entrypoints/start-api.sh
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -40,12 +89,12 @@ services:
       FASTEMBED_CACHE_PATH: /app/.fastembed_cache
       OMP_NUM_THREADS: "1"
       OMP_WAIT_POLICY: PASSIVE
-    command: >
-      celery -A otix.infrastructure.celery worker
-      -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer,
-         enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib,
-         reactive-fast,reactive-user,maintain,embedding
-      -c 6 -n otix-worker@%h --loglevel WARNING --pool=threads
+    command: celery -A otix.infrastructure.celery worker -Q ingest-tmdb,ingest-steam,ingest-igdb,ingest-musicbrainz,ingest-deezer,enrich-fanart,enrich-omdb,enrich-steamgrid,enrich-lastfm,enrich-theaudiodb,enrich-lrclib,reactive-fast,reactive-user,maintain,embedding -c 6 -n otix-worker@%h --loglevel WARNING --pool=threads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -65,6 +114,11 @@ services:
     environment:
       APP_ENV: development
     command: celery -A otix.infrastructure.celery beat --loglevel INFO --scheduler celery.beat.Scheduler --max-interval 30
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -98,4 +152,6 @@ services:
       - api
 
 volumes:
+  pgdata:
+  redis_data:
   bot_logs:

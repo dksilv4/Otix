@@ -28,7 +28,7 @@ class Company(Base, HasExternalIDs):
 
     logo_url: Mapped[str | None] = mapped_column(String(2000))
     origin_country: Mapped[str | None] = mapped_column(String(10))
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
 
     __table_args__ = (
         Index(

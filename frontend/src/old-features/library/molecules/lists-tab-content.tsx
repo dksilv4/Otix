@@ -1,18 +1,20 @@
-import { useState } from "react"
 import { PlusIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUserLists, useCreateList, type UserListCreate } from "@/old-features/list/list-queries"
 import { ListComposer } from "@/old-features/list/organisms/list-composer"
 import { ListCard } from "@/old-features/list/molecules/list-card"
+import { useModal } from "@/lib/modals"
 
 export function ListsTabContent() {
   const { data: lists, isLoading } = useUserLists()
-  const [composerOpen, setComposerOpen] = useState(false)
   const createList = useCreateList()
+  const { openModal } = useModal()
 
-  function handleCreate(data: UserListCreate) {
-    createList.mutate(data, { onSuccess: () => setComposerOpen(false) })
+  const handleCreate = async (data: UserListCreate) => {
+    await createList.mutateAsync(data)
   }
+
+  const openComposer = () => openModal(<ListComposer onSave={handleCreate} />)
 
   if (isLoading) {
     return (
@@ -35,7 +37,7 @@ export function ListsTabContent() {
           Create a list to start curating your favorite titles.
         </p>
         <button
-          onClick={() => setComposerOpen(true)}
+          onClick={openComposer}
           className={cn(
             "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium",
             "bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
@@ -44,20 +46,15 @@ export function ListsTabContent() {
           <PlusIcon className="h-4 w-4" />
           New List
         </button>
-
-        <ListComposer open={composerOpen} onClose={() => setComposerOpen(false)} onSave={handleCreate} isSaving={createList.isPending} />
       </div>
     )
   }
 
   return (
-    <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {lists.map((list) => (
           <ListCard key={list.id} list={list} />
         ))}
       </div>
-
-      <ListComposer open={composerOpen} onClose={() => setComposerOpen(false)} onSave={handleCreate} isSaving={createList.isPending} />
-    </>)
+  )
 }

@@ -54,19 +54,19 @@ function suggestInstallDir(isoPath: string, gameTitle: string): string {
 }
 
 interface IsoInstallerModalProps {
-  open: boolean;
   onClose: () => void;
   games: LocalGame[];
   initialIsoPath?: string;
   onInstallComplete?: (isoPath: string, installDir: string, gameExe: string | null) => void;
+  isExiting?: boolean;
 }
 
 export function IsoInstallerModal({
-  open,
   onClose,
   games,
   initialIsoPath,
   onInstallComplete,
+  isExiting,
 }: IsoInstallerModalProps) {
   const [isoPath, setIsoPath] = useState("");
   const [targetDir, setTargetDir] = useState("");
@@ -91,22 +91,19 @@ export function IsoInstallerModal({
     );
     return game?.data?.title || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
   }, [games]);
-
-  // Reset on open — also dismiss any stale completed/errored entry so
-  // the user gets the idle form immediately when re-opening after a cancel
+  // Reset on mount — also dismiss any stale completed/errored entry so
+  // the user gets the idle form immediately
   useEffect(() => {
-    if (open) {
-      const iso = initialIsoPath || "";
-      setIsoPath(iso);
-      setTargetDir("");
-      setError(null);
-      // If there's a non-active leftover entry (canceled, errored, done), clear it
-      if (iso) {
-        const stale = installs.find((i) => i.isoPath === iso && !i.active)
-        if (stale) storeDismiss(iso)
-      }
+    const iso = initialIsoPath || "";
+    setIsoPath(iso);
+    setTargetDir("");
+    setError(null);
+    // If there's a non-active leftover entry (canceled, errored, done), clear it
+    if (iso) {
+      const stale = installs.find((i) => i.isoPath === iso && !i.active)
+      if (stale) storeDismiss(iso)
     }
-  }, [open, initialIsoPath]);
+  }, [initialIsoPath]);
 
   // Set default install dir when ISO changes
   useEffect(() => {
@@ -192,11 +189,10 @@ export function IsoInstallerModal({
   const isError = error && !entry?.active && !isDone;
   const isIdle = !entry?.active && !error && !entry?.result;
 
-  if (!open) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {!isExiting && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -439,7 +435,8 @@ export function IsoInstallerModal({
             )}
           </div>
         </motion.div>
-      </div>
+        </div>
+      )}
     </AnimatePresence>
   );
 }

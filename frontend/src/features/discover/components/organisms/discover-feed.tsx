@@ -49,6 +49,16 @@ export function DiscoverFeed() {
         mediaType="music"
         listType="popular"
       />
+      <MediaSection
+        title="Top Rated Games"
+        mediaType="game"
+        listType="top_rated"
+      />
+      <MediaSection
+        title="Upcoming Games"
+        mediaType="game"
+        listType="upcoming"
+      />
       <FreeGamesSection />
     </div>
   )

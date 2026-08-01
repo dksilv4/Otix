@@ -9,7 +9,7 @@ export const notificationQueries = {
     queryOptions({
       queryKey: ['notifications', 'list', { cursor, limit }],
       queryFn: async () => {
-        const { data } = await cam.GET('/api/notifications', {
+        const { data } = await cam.GET('/api/v1/notifications', {
           params: { query: { limit: limit.toString(), ...(cursor ? { cursor } : {}) } },
         })
         return data
@@ -21,7 +21,7 @@ export const notificationQueries = {
     queryOptions({
       queryKey: ['notifications', 'unread-count'],
       queryFn: async () => {
-        const { data } = await cam.GET('/api/notifications/unread-count')
+        const { data } = await cam.GET('/api/v1/notifications/unread-count')
         return data
       },
       staleTime: 30_000,

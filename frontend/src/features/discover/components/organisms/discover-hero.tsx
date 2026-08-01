@@ -8,6 +8,18 @@ import { useHeroCarousel } from '@discover/hooks/use-hero-carousel'
 import { HeroCard } from '@discover/components/molecules/discover-hero-card'
 import { HeroIndicator } from '@discover/components/molecules/discover-hero-indicator'
 
+function formatSeasonBadgeText(releaseDate?: string | null): string {
+  if (!releaseDate) return 'New Season'
+  const date = new Date(releaseDate)
+  const now = new Date()
+  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const year = date.getFullYear()
+  if (days > 0) return `New Season · ${month} ${year}`
+  if (days >= -14) return 'New Season · Just Landed'
+  return `New Season · ${month} ${year}`
+}
+
 const CONTENT_FADE = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -80,6 +92,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     navigateTo,
     handleTouchStart,
     handleTouchEnd,
+    isLoading,
+    isError,
+    refetch,
   } = useHeroCarousel()
 
   const navigate = useNavigate()
@@ -108,9 +123,9 @@ export function DiscoverHero({ className }: { className?: string }) {
     urls.forEach((url) => { const img = new Image(); img.src = url })
   }, [activeIndex, items, totalItems])
 
-  // ── Loading state ────────────────────────────────────────────
+  // ── Loading / error / empty states ───────────────────────────
 
-  const isLoading = items.length === 0
+  const isActuallyLoading = isLoading && items.length === 0
 
   // ── Card click handler ───────────────────────────────────────
 
@@ -143,7 +158,24 @@ export function DiscoverHero({ className }: { className?: string }) {
 
   // ── Empty state ──────────────────────────────────────────────
 
-  if (!isLoading && items.length === 0) return null
+  if (isError && items.length === 0) {
+    return (
+      <div className="relative w-full flex flex-col items-center justify-center pb-12">
+        <div className="flex flex-col items-center justify-center gap-4 h-[300px] sm:h-[425px] md:h-[515px] text-white/70">
+          <p className="text-sm">Failed to load hero content.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isActuallyLoading && items.length === 0) return null
 
   // ── Render ───────────────────────────────────────────────────
 
@@ -163,7 +195,7 @@ export function DiscoverHero({ className }: { className?: string }) {
         onMouseLeave={handleMouseLeave}
       >
         {/* ── Loading skeleton ── */}
-        {isLoading && (
+        {isActuallyLoading && (
           <div
             className={
               'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ' +
@@ -270,7 +302,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                             variant="success"
                             className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
                           >
-                            New Season
+                            {formatSeasonBadgeText(heroDetail.newSeasonReleaseDate)}
                           </Badge>
                         )}
 
@@ -334,7 +366,7 @@ export function DiscoverHero({ className }: { className?: string }) {
                             variant="success"
                             className="font-bold text-[10px] border border-green-500/20 shadow-md uppercase tracking-wider px-2 py-0.5"
                           >
-                            New Season
+                            {formatSeasonBadgeText(activeItem.newSeasonReleaseDate)}
                           </Badge>
                         )}
                       </div>

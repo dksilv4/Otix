@@ -25,6 +25,8 @@
       "@ui": ["./src/old-features/ui"],
       "@media/*": ["./src/features/media/*"],
       "@media": ["./src/features/media"],
+      "@calendar/*": ["./src/features/calendar/*"],
+      "@calendar": ["./src/features/calendar"],
       "@discover/*": ["./src/features/discover/*"],
       "@discover": ["./src/features/discover"],
       "@activity/*": ["./src/features/activity/*"],

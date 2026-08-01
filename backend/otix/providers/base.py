@@ -22,7 +22,6 @@ Usage in a Celery task:
 
 from __future__ import annotations
 
-from abc import ABC
 from typing import TYPE_CHECKING
 
 import httpx
@@ -31,6 +30,7 @@ import structlog
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
+from otix.lib.api_cache import ApiCache
 from otix.lib.circuit_breaker import CircuitBreaker
 from otix.lib.circuit_breaker import State as CBState
 from otix.lib.metrics import CIRCUIT_BREAKER_STATE, track_api_call
@@ -54,8 +54,11 @@ class CircuitOpenError(ProviderError):
         super().__init__(f"Circuit breaker is OPEN for {provider}")
 
 
-class BaseProvider(ABC):
+class BaseProvider:
     """Async HTTP client wrapper with rate limiting and circuit breaking."""
+
+    # Class-level cache instance (shared by all providers)
+    _api_cache: ApiCache | None = None
 
     # HTTP status codes that indicate rate limiting for this provider.
     # Most APIs use 429; some (e.g. MusicBrainz) return 503 for rate limits.
@@ -81,6 +84,27 @@ class BaseProvider(ABC):
             recovery_timeout=circuit_recovery,
         )
 
+    @classmethod
+    def _get_cache(cls) -> ApiCache | None:
+        if cls._api_cache is None:
+            try:
+                from otix.infrastructure.config import settings
+
+                cache = ApiCache(
+                    cache_dir=settings.api_cache_dir,
+                    ttl_hours=settings.api_cache_ttl_hours,
+                    enabled=settings.api_cache_enabled,
+                )
+                # Only cache responses in local/dev/test environments. Staging and
+                # production must always hit the real provider APIs so users never
+                # see stale (up to TTL) responses.
+                if settings.app_env not in ("local", "development", "test"):
+                    cache.enabled = False
+                cls._api_cache = cache
+            except Exception:
+                cls._api_cache = ApiCache(enabled=False)
+        return cls._api_cache
+
     async def _get(self, url: str, **kwargs) -> httpx.Response:
         return await self._request("GET", url, **kwargs)
 
@@ -99,6 +123,17 @@ class BaseProvider(ABC):
         if not acquired:
             raise RateLimitError(f"{self.name} rate limit timeout")
 
+        # ── Local API cache (GET only, dev/test) ──
+        _cache = self._get_cache()
+        if method == "GET" and _cache and _cache.enabled:
+            cached = _cache.get(self.name, url)
+            if cached is not None:
+                return httpx.Response(
+                    status_code=200,
+                    json=cached,
+                    request=httpx.Request(method, url),
+                )
+
         with track_api_call(self.name):
             try:
                 response = await self.http.request(method, url, **kwargs)
@@ -107,6 +142,14 @@ class BaseProvider(ABC):
                 self._update_cb_gauge()
                 msg = f"{self.name} request failed: {exc}" if str(exc) else f"{self.name} request failed: {type(exc).__name__}"
                 raise ProviderError(msg) from exc
+
+        # ── Cache successful GET responses ──
+        if method == "GET" and _cache and _cache.enabled and response.status_code < 400:
+            try:
+                data = response.json()
+                _cache.set(self.name, url, data)
+            except Exception:
+                pass
 
         if response.status_code in self._rate_limit_statuses:
             retry_after = await self._handle_rate_limit(response)

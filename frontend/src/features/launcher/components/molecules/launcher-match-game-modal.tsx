@@ -24,8 +24,8 @@ type ModalStep =
 
 interface Props {
   game: LocalGame
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  onClose: () => void
+  isExiting?: boolean
 }
 
 // ── Platform badge config ────────────────────────────────────────
@@ -46,7 +46,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 // ── Component ────────────────────────────────────────────────────
 
-export function MatchGameModal({ game, open, onOpenChange }: Props) {
+export function MatchGameModal({ game, onClose, isExiting }: Props) {
   const queryClient = useQueryClient()
   const matchMutation = useMatchLocalGames()
   const syncMutation = useSyncLocalGames()
@@ -139,9 +139,8 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
     } as Game,
   }), [game, matchedSlug, matchedPoster, matchedBackdrop, matchedTextlessPoster, matchedIcon, matchedLogo])
 
-  // ── Reset state when opening ──
+  // ── Reset state on mount ──
   useEffect(() => {
-    if (!open) return
     setStep('no-match')
     setMatchConfidence(0)
     setMatchedId(null)
@@ -156,11 +155,10 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
     // Pre-populate search with game title so catalog results show immediately
     setSearchQuery(game.title)
     setDebouncedQuery(game.title)
-  }, [open, game.title])
+  }, [game.title])
 
   // ── Background match — runs after modal opens, upgrades to match card if found ──
   useEffect(() => {
-    if (!open) return
     let cancelled = false
 
     matchMutation.mutateAsync([game]).then((results) => {
@@ -174,7 +172,7 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [])
 
   // ── Accept current match ──
   const handleAccept = useCallback(async () => {
@@ -214,13 +212,13 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
       queryClient.setQueryData(['otix-game-map', game.id], matchedId)
 
       setStep('done')
-      setTimeout(() => onOpenChange(false), 600)
+      setTimeout(() => onClose(), 600)
     } catch (err) {
       console.error('[MatchGameModal] Sync failed:', err)
       setError(err?.message || 'Failed to save match')
       setStep('no-match')
     }
-  }, [matchedId, matchedTitle, matchedSlug, matchedPoster, matchedBackdrop, matchedTextlessPoster, matchedIcon, matchedLogo, matchConfidence, buildSyncedGame, syncMutation, queryClient, onOpenChange, game.id])
+  }, [matchedId, matchedTitle, matchedSlug, matchedPoster, matchedBackdrop, matchedTextlessPoster, matchedIcon, matchedLogo, matchConfidence, buildSyncedGame, syncMutation, queryClient, onClose, game.id])
 
   // ── Accept search result as match ──
   const handleSelectSearchResult = useCallback(async (result: CatalogGame) => {
@@ -262,13 +260,13 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
       queryClient.setQueryData(['otix-game-map', game.id], id)
 
       setStep('done')
-      setTimeout(() => onOpenChange(false), 600)
+      setTimeout(() => onClose(), 600)
     } catch (err) {
       console.error('[MatchGameModal] Search match sync failed:', err)
       setError(err?.message || 'Failed to save match')
       setStep('no-match')
     }
-  }, [buildSyncedGame, syncMutation, queryClient, onOpenChange, game.id])
+  }, [buildSyncedGame, syncMutation, queryClient, onClose, game.id])
 
   // ── Re-try matching ──
   const handleRetry = useCallback(() => {
@@ -287,10 +285,8 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
   // ── Wrapped open change — guards close during accepting ──
   const handleOpenChange = useCallback((next: boolean) => {
     if (!next && stepRef.current === 'accepting') return
-    onOpenChange(next)
-  }, [onOpenChange])
-
-  if (!open) return null
+    onClose()
+  }, [onClose])
 
   const platformLabel = PLATFORM_LABELS[game.platform] || game.platform.toUpperCase()
 
@@ -302,7 +298,7 @@ export function MatchGameModal({ game, open, onOpenChange }: Props) {
 
   return (
     <DkDialog
-      open={open}
+      open={!isExiting}
       onOpenChange={handleOpenChange}
       className="w-full max-w-lg bg-[#0e0e12] border border-white/[0.06] shadow-2xl"
     >

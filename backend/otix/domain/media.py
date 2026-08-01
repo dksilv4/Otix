@@ -59,7 +59,7 @@ class MediaItem(Base, TimestampMixin):
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
     avg_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     rating_count: Mapped[int] = mapped_column(Integer, default=0)
     overall_rating: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
@@ -80,10 +80,16 @@ class MediaItem(Base, TimestampMixin):
         if "show" not in self.__dict__ or self.show is None:
             return False
         show = self.show
-        if not show.last_air_date:
+        if not show.last_air_date or not show.number_of_seasons or show.number_of_seasons <= 1:
             return False
         delta = date.today() - show.last_air_date
-        return delta.days <= 180
+        return delta.days <= 60
+
+    @property
+    def new_season_release_date(self) -> date | None:
+        if not self.new_season_released:
+            return None
+        return self.show.last_air_date
 
     __table_args__ = (
         CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_media_type"),

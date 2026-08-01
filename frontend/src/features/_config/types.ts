@@ -10,6 +10,7 @@ export type FeatureName =
   | 'auth:oauth:tmdb'
   | 'auth:two-factor'
   | 'browse'
+  | 'calendar'
   | 'company'
   | 'dashboard'
   | 'discover'

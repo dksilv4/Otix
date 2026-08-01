@@ -40,6 +40,9 @@ async def _build_response(
         for summary in summaries:
             state = batch.get(summary.id, {})
             summary.user_interactions = UserInteractionState(**state)
+            if not (state.get("watched") or state.get("watchlisted")):
+                summary.new_season_released = False
+                summary.new_season_release_date = None
 
     return MediaItemListResponse(
         items=summaries,

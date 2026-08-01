@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -31,41 +32,41 @@ async def lifespan(app: FastAPI) -> Any:
     # The CMD entrypoint script (start-api.sh) also runs migrations before the
     # process starts — this is a second safety net for dev/`--reload` mode where
     # the script is skipped.
-    try:
-        import asyncio
+    if settings.run_migrations:
+        try:
+            from alembic.config import Config
 
-        from alembic.config import Config
+            from alembic import command
 
-        from alembic import command
-
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
-        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
-        setup_logging()
-        logger.info("migrations applied")
-    except Exception:
-        setup_logging()
-        logger.exception(
-            "lifespan migration failed — check your database connection and run 'alembic upgrade head' manually"
-        )
+            alembic_cfg = Config("alembic.ini")
+            alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
+            await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+            setup_logging()
+            logger.info("migrations applied")
+        except Exception:
+            setup_logging()
+            logger.exception(
+                "lifespan migration failed — check your database connection and run 'alembic upgrade head' manually"
+            )
+    else:
+        logger.info("migrations skipped (run_migrations=false) — run 'alembic upgrade head' as a deploy step")
 
     await get_redis()
 
-    # Fire-and-forget pre-warm of the embedding model. The embedding subprocess
-    # takes ~24s to load the ONNX model on first call. Running it in the background
-    # means the server starts immediately; search requests fall back to text-only
-    # until the model is ready (at which point Redis caches kick in).
-    async def _pre_warm_embedding():
-        try:
-            from otix.api.search.embedding import _embed_query
+    # Pre-warm the embedding model at startup. The embedding subprocess takes ~24s
+    # to load the ONNX model on first call. Blocking here means the first search
+    # request doesn't pay the cold-start penalty. Using a generous timeout so a
+    # flaky model load doesn't prevent the server from starting.
+    try:
+        from otix.api.search.embedding import _embed_query
 
-            logger.info("pre-warming embedding service...")
-            await _embed_query("warmup")
-            logger.info("embedding service warmed up successfully")
-        except Exception:
-            logger.exception("failed to pre-warm embedding service")
-
-    asyncio.create_task(_pre_warm_embedding())
+        logger.info("pre-warming embedding service...")
+        await asyncio.wait_for(_embed_query("warmup"), timeout=120.0)
+        logger.info("embedding service warmed up successfully")
+    except asyncio.TimeoutError:
+        logger.warning("embedding warmup timed out, search will warm on first request")
+    except Exception:
+        logger.exception("failed to pre-warm embedding service, search will warm on first request")
 
     yield
 

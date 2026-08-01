@@ -138,7 +138,7 @@ class User(Base, TimestampMixin):
     is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     notification_preferences: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
 
     __table_args__ = (
         Index(

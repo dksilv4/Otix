@@ -36,8 +36,8 @@ const CATEGORIES: { id: string; label: string; description: string; types: Notif
   {
     id: 'releases',
     label: 'Releases',
-    description: 'Watchlisted media release availability',
-    types: ['release_available'],
+    description: 'Watchlisted media releases and new season announcements',
+    types: ['release_available', 'new_season'],
   },
 ]
 

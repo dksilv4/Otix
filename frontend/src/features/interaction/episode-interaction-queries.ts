@@ -35,6 +35,7 @@ export interface BulkMarkResponse {
 }
 
 export function useEpisodeInteractions(
+  mediaType: string,
   mediaId: string,
   { enabled = true }: { enabled?: boolean } = {},
 ) {
@@ -42,7 +43,7 @@ export function useEpisodeInteractions(
     queryKey: episodeInteractionKeys.forShow(mediaId),
     queryFn: async () => {
       const { data } = await apiClient.get<EpisodeInteractionsOut>(
-        `/media/${mediaId}/episode-interactions`,
+        `/media/${mediaType}/${mediaId}/episode-interactions`,
       )
       return data
     },
@@ -51,7 +52,7 @@ export function useEpisodeInteractions(
   })
 }
 
-export function useToggleEpisodeWatched(mediaId: string) {
+export function useToggleEpisodeWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
@@ -64,11 +65,11 @@ export function useToggleEpisodeWatched(mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<EpisodeToggleResponse>(
-          `/media/${mediaId}/episodes/${episodeId}/watched`,
+          `/media/${mediaType}/${mediaId}/episodes/${episodeId}/watched`,
         )
         return data
       }
-      await apiClient.delete(`/media/${mediaId}/episodes/${episodeId}/watched`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/episodes/${episodeId}/watched`)
       return null
     },
     onMutate: async ({ episodeId, active }) => {
@@ -100,36 +101,59 @@ export function useToggleEpisodeWatched(mediaId: string) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
     },
   })
 }
 
-export function useMarkShowWatched(mediaId: string) {
+export function useMarkShowWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
     mutationFn: async (active: boolean) => {
       if (active) {
         const { data } = await apiClient.put<BulkMarkResponse>(
-          `/media/${mediaId}/show-watched`,
+          `/media/${mediaType}/${mediaId}/show-watched`,
         )
         return data
       }
       const { data } = await apiClient.delete<BulkMarkResponse>(
-        `/media/${mediaId}/show-watched`,
+        `/media/${mediaType}/${mediaId}/show-watched`,
       )
       return data
     },
-    onSuccess: () => {
+    onMutate: async (active) => {
+      const key = episodeInteractionKeys.forShow(mediaId)
+      await qc.cancelQueries({ queryKey: key })
+      const prev = qc.getQueryData<EpisodeInteractionsOut>(key)
+      if (prev) {
+        const now = new Date().toISOString()
+        qc.setQueryData<EpisodeInteractionsOut>(key, {
+          ...prev,
+          episodes: Object.fromEntries(
+            Object.entries(prev.episodes).map(([id, ep]) => [
+              id,
+              { ...ep, watched: active, watchedAt: active ? now : null },
+            ]),
+          ),
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        qc.setQueryData(episodeInteractionKeys.forShow(mediaId), context.prev)
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
     },
   })
 }
 
-export function useMarkSeasonWatched(mediaId: string) {
+export function useMarkSeasonWatched(mediaType: string, mediaId: string) {
   const qc = useQueryClient()
 
   return useMutation({
@@ -142,19 +166,19 @@ export function useMarkSeasonWatched(mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<BulkMarkResponse>(
-          `/media/${mediaId}/seasons/${seasonNumber}/watched`,
+          `/media/${mediaType}/${mediaId}/seasons/${seasonNumber}/watched`,
         )
         return data
       }
       const { data } = await apiClient.delete<BulkMarkResponse>(
-        `/media/${mediaId}/seasons/${seasonNumber}/watched`,
+        `/media/${mediaType}/${mediaId}/seasons/${seasonNumber}/watched`,
       )
       return data
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
     },
   })
 }

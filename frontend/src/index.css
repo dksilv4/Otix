@@ -361,6 +361,24 @@
     animation: fadeIn 0.35s ease-out forwards;
 }
 
+/* ── Section card staggered entrance ── */
+@keyframes sectionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-section-in {
+    opacity: 0;
+    animation: sectionFadeIn 0.5s var(--dk-ease-out) forwards;
+    animation-delay: var(--section-delay, 0ms);
+}
+
 /* ── Design redone animations ── */
 @keyframes float {
     0%, 100% {

@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useCallback } from "react"
 import { Helmet } from "react-helmet-async"
 import { useParams, useNavigate } from "@tanstack/react-router"
@@ -21,6 +20,7 @@ import { MediaGrid } from "@ui/molecules/media-grid"
 import { SearchField } from "@ui/molecules/search-field"
 import { DkTabs, DkTabList, DkTab } from "@/old-features/ui/molecules/tabs"
 import { useAuth } from "@/lib/providers/auth"
+import { useModal } from "@/lib/modals"
 import { type MediaListResponse } from "@media/queries/media-queries"
 import {
   useListDetail,
@@ -56,11 +56,9 @@ export function ListDetailPage() {
   const addToList = useAddToList()
 
   const reorderList = useReorderList(listId)
+  const { openModal } = useModal()
 
-  const [composerOpen, setComposerOpen] = useState(false)
   const [addingMode, setAddingMode] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
-  const [collaboratorsOpen, setCollaboratorsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchType, setSearchType] = useState<string>("all")
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -76,7 +74,7 @@ export function ListDetailPage() {
     queryFn: async () => {
       const params: Record<string, string> = { q: searchQuery, page_size: '24' }
       if (searchType !== 'all') params.media_type = searchType
-      const { data } = await apiClient.get<MediaListResponse>('/media/search', { params })
+      const { data } = await apiClient.get<MediaListResponse>('/search', { params })
       return data
     },
     enabled: addingMode && searchQuery.length > 0,
@@ -110,24 +108,33 @@ export function ListDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="dk-list-detail">
-        <div className="dk-list-detail__skeleton-title" />
-        <MediaGrid>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="dk-list-detail__skeleton-card"
-            />
-          ))}
-        </MediaGrid>
+      <div className="animate-fade-in pb-20 pt-8 sm:pt-12 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
+        <div className="glass-card px-6 py-6 sm:px-8 sm:py-7">
+          <div className="h-8 w-48 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse mb-6" />
+          <div className="h-10 w-full max-w-md rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+        </div>
+        <div className="space-y-6">
+          <div className="flex items-center gap-2.5 mb-5">
+             <div className="h-4 w-0.5 rounded-full bg-primary/30 shrink-0" />
+             <div className="h-5 w-24 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
+          </div>
+          <MediaGrid>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+              />
+            ))}
+          </MediaGrid>
+        </div>
       </div>
     )
   }
 
   if (isError || !list) {
     return (
-      <div className="dk-list-detail__error-state">
-        <p className="dk-list-detail__error-text">List not found.</p>
+      <div className="flex items-center justify-center py-24">
+        <p className="text-muted-foreground">List not found.</p>
       </div>
     )
   }
@@ -146,7 +153,7 @@ export function ListDetailPage() {
   }
 
   return (
-    <div className="dk-list-detail">
+    <div className="animate-fade-in pb-20 pt-8 sm:pt-12 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
       <Helmet>
         <title>{`${list.name} - List - Otix`}</title>
         {list.description && <meta name="description" content={list.description.slice(0, 200)} />}
@@ -154,270 +161,277 @@ export function ListDetailPage() {
         {list.description && <meta property="og:description" content={list.description.slice(0, 200)} />}
         <meta name="twitter:card" content="summary" />
       </Helmet>
-      {/* Header */}
-      <div className="dk-list-detail__header">
-        <div>
-          <div className="dk-list-detail__title-row">
-            <h1 className="dk-list-detail__title">{list.name}</h1>
-            {list.isPublic ? (
-              <ShareIcon className="h-4 w-4 text-emerald-400" />
-            ) : (
-              <LockIcon className="h-4 w-4 text-muted-foreground" />
+
+      {/* Header Card */}
+      <div
+        className={cn(
+          "glass-card px-6 py-6 sm:px-8 sm:py-7 animate-section-in relative overflow-hidden transition-all duration-500",
+          addingMode && "ring-1 ring-primary/30 shadow-2xl shadow-primary/10"
+        )}
+        style={{ '--section-delay': '60ms' } as React.CSSProperties}
+      >
+        <div
+            className="pointer-events-none absolute inset-0 opacity-[0.04]"
+            style={{
+                background: 'radial-gradient(ellipse 60% 50% at 50% 0%, hsl(var(--primary)) 0%, transparent 100%)',
+            }}
+        />
+        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-white truncate">{list.name}</h1>
+              {list.isPublic ? (
+                <ShareIcon className="h-4 w-4 text-emerald-400 shrink-0" />
+              ) : (
+                <LockIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+              )}
+              <ListLikeButton list={list} />
+            </div>
+            {list.description && (
+              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground/80 max-w-2xl">
+                {list.description}
+              </p>
             )}
-            <ListLikeButton list={list} />
           </div>
-          {list.description && (
-            <p className="dk-list-detail__description">
-              {list.description}
-            </p>
-          )}
-        </div>
 
-        <div className="dk-list-detail__actions">
-          <button
-            onClick={() => setShareOpen(true)}
-            className="dk-list-detail__action-btn"
-          >
-            <ShareIcon className="h-4 w-4" />
-            Share
-          </button>
-
-          {isOwner && (
-            <>
-              <button
-                onClick={() => setAddingMode(!addingMode)}
-                className="dk-list-detail__action-btn"
-              >
-                {addingMode ? (
-                  <>
-                    <XIcon className="h-4 w-4" />
-                    Done
-                  </>
-                ) : (
-                  <>
-                    <PlusIcon className="h-4 w-4" />
-                    Add Items
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setComposerOpen(true)}
-                className="dk-list-detail__action-btn"
-              >
-                <PencilIcon className="h-4 w-4" />
-                Edit
-              </button>
-              <button
-                onClick={() => setCollaboratorsOpen(true)}
-                className="dk-list-detail__action-btn"
-              >
-                <UsersIcon className="h-4 w-4" />
-                Collab
-              </button>
-              <button
-                onClick={handleDelete}
-                className="dk-list-detail__action-btn--delete"
-              >
-                <TrashIcon className="h-4 w-4" />
-                Delete
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Search panel */}
-      {addingMode && (
-        <div className="dk-list-detail__search-panel">
-          <div className="dk-list-detail__search-bar">
-            <SearchField
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search movies, shows, or games..."
-              className="flex-1 w-full"
-            />
-
-            <DkTabs
-              defaultValue="all"
-              value={searchType}
-              onValueChange={setSearchType}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => openModal(<ShareModal list={list} />)}
+              className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
             >
-              <DkTabList>
-                {TYPE_TABS.map((tab) => (
-                  <DkTab key={tab.value} value={tab.value}>
-                    {tab.label}
-                  </DkTab>
-                ))}
-              </DkTabList>
-            </DkTabs>
-          </div>
+              <ShareIcon className="h-4 w-4" />
+              Share
+            </button>
 
-          {!searchQuery ? (
-            <div className="dk-list-detail__search-empty">
-              <SearchIcon className="h-8 w-8 mb-3 opacity-40" />
-              <p className="text-sm">Search for titles to add</p>
-            </div>
-          ) : searchLoading ? (
-            <MediaGrid>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="dk-list-detail__skeleton-card"
-                />
-              ))}
-            </MediaGrid>
-          ) : searchItems.length === 0 ? (
-            <div className="dk-list-detail__search-empty">
-              <p className="text-sm">No results found</p>
-            </div>
-          ) : (
-            <MediaGrid>
-              {searchItems.map((item) => {
-                const alreadyAdded = itemIds.has(item.id)
-                return (
-                  <div key={item.id} className="dk-list-detail__search-item">
-                    <MediaCard
-                      id={item.id}
-                      mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
-                      title={item.title}
-                      posterUrl={item.posterUrl}
-                      textlessPosterUrl={item.textlessPosterUrl}
-                      logoUrl={item.logoUrl}
-                      releaseDate={item.releaseDate}
-                      isAdult={item.isAdult}
-                      artistName={item.albumArtistName}
-                    />
-                    {alreadyAdded ? (
-                      <span className="dk-list-detail__added-badge">
-                        Added
-                      </span>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          addToList.mutate({ listId, mediaItemId: item.id, mediaType: item.mediaType })
-                        }}
-                        className="dk-list-detail__add-button"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </MediaGrid>
-          )}
-        </div>
-      )}
-
-      {/* Items */}
-      {!addingMode && (
-        <>
-          {list.items.length === 0 ? (
-            <div className="dk-list-detail__empty">
-              <p className="dk-list-detail__empty-title">
-                This list is empty
-              </p>
-              <p className="dk-list-detail__empty-text">
-                Find media you love and add it to this list.
-              </p>
-              {isOwner && (
+            {isOwner && (
+              <>
                 <button
-                  onClick={() => setAddingMode(true)}
-                  className="dk-list-detail__empty-add-btn"
+                  onClick={() => setAddingMode(!addingMode)}
+                  className={cn(
+                    "glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white",
+                    addingMode && "bg-white/10 text-white"
+                  )}
                 >
-                  <PlusIcon className="h-4 w-4" />
-                  Add Items
+                  {addingMode ? (
+                    <>
+                      <XIcon className="h-4 w-4" />
+                      Done
+                    </>
+                  ) : (
+                    <>
+                      <PlusIcon className="h-4 w-4" />
+                      Add Items
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
-          ) : (
-            <>
-              {isOwner && list.items.length > 1 && (
-                <p className="dk-list-detail__drag-hint">
-                  Drag items to reorder your list.
-                </p>
-              )}
-              <MediaGrid>
-                {list.items.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "dk-list-detail__item",
-                      dragIndex === index && "dk-list-detail__item--dragging",
-                      dropIndex === index && dragIndex !== index && "dk-list-detail__item--drop-target",
-                    )}
-                    draggable={isOwner}
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onDragLeave={handleDragLeave}
-                  >
-                    {isOwner && (
-                      <div className="dk-list-detail__drag-handle">
-                        <GripVerticalIcon className="h-3.5 w-3.5" />
-                      </div>
-                    )}
-                    <MediaCard
-                      id={item.id}
-                      mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
-                      title={item.title}
-                      posterUrl={item.posterUrl}
-                      textlessPosterUrl={item.textlessPosterUrl}
-                      logoUrl={item.logoUrl}
-                      releaseDate={item.releaseDate}
-                      isAdult={item.isAdult}
-                      artistName={item.albumArtistName}
+                <button
+                  onClick={() => openModal(
+                    <ListComposer
+                      initial={list}
+                      onSave={async (data) => {
+                        await updateList.mutateAsync({ listId, ...data })
+                      }}
                     />
-                    {isOwner && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleRemoveItem(item.id, item.mediaType)
-                        }}
-                        className="dk-list-detail__remove-btn"
-                      >
-                        <TrashIcon className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => openModal(<CollaboratorsModal list={list} />)}
+                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
+                >
+                  <UsersIcon className="h-4 w-4" />
+                  Collab
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300 border-red-500/10"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Embedded Search panel */}
+        {addingMode && (
+          <div className="relative z-10 mt-8 pt-8 border-t border-white/10 animate-fade-in space-y-6">
+            <div className="flex flex-col gap-4 items-start lg:flex-row lg:items-center">
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search movies, shows, or games..."
+                className="flex-1 w-full max-w-xl"
+              />
+
+              <DkTabs
+                defaultValue="all"
+                value={searchType}
+                onValueChange={setSearchType}
+              >
+                <DkTabList>
+                  {TYPE_TABS.map((tab) => (
+                    <DkTab key={tab.value} value={tab.value}>
+                      {tab.label}
+                    </DkTab>
+                  ))}
+                </DkTabList>
+              </DkTabs>
+            </div>
+
+            {/* Search Results */}
+            {!searchQuery ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <SearchIcon className="h-8 w-8 mb-3 opacity-40" />
+                <p className="text-sm">Search for titles to add</p>
+              </div>
+            ) : searchLoading ? (
+              <MediaGrid>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-[2/3] rounded-lg bg-[var(--dk-surface-glass)] animate-pulse"
+                  />
                 ))}
               </MediaGrid>
-            </>
-          )}
-        </>
-      )}
+            ) : searchItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <p className="text-sm">No results found</p>
+              </div>
+            ) : (
+              <div className="max-h-[500px] overflow-y-auto pr-2 pb-4 scrollbar-none rounded-xl">
+                <MediaGrid>
+                  {searchItems.map((item) => {
+                    const alreadyAdded = itemIds.has(item.id)
+                    return (
+                      <div key={item.id} className="relative group">
+                        <MediaCard
+                          id={item.id}
+                          mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
+                          title={item.title}
+                          posterUrl={item.posterUrl}
+                          textlessPosterUrl={item.textlessPosterUrl}
+                          logoUrl={item.logoUrl}
+                          releaseDate={item.releaseDate}
+                          isAdult={item.isAdult}
+                          artistName={item.albumArtistName}
+                        />
+                        {alreadyAdded ? (
+                          <span className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">
+                            Added
+                          </span>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              addToList.mutate({ listId, mediaItemId: item.id, mediaType: item.mediaType })
+                            }}
+                            className="absolute top-2 right-2 rounded-full p-2 backdrop-blur-md bg-black/60 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-white transition-all duration-200"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </MediaGrid>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Items */}
+      <div 
+        className={cn(
+          "animate-section-in space-y-4 transition-opacity duration-300",
+          addingMode && "opacity-40 pointer-events-none"
+        )} 
+        style={{ '--section-delay': '140ms' } as React.CSSProperties}
+      >
+        {isOwner && list.items.length > 1 && (
+          <div className="flex justify-end px-2">
+            <p className="text-xs font-medium text-white/30 hidden sm:block uppercase tracking-wider">
+              Drag to reorder
+            </p>
+          </div>
+        )}
+        
+        {list.items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <p className="text-lg font-semibold text-white/90">
+              This list is empty
+            </p>
+            <p className="mt-1.5 text-sm text-muted-foreground max-w-xs">
+              Find media you love and add it to this list.
+            </p>
+            {isOwner && (
+              <button
+                onClick={() => setAddingMode(true)}
+                className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-black hover:bg-white/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Add Items
+              </button>
+            )}
+          </div>
+        ) : (
+          <MediaGrid>
+            {list.items.map((item, index) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "relative group transition-all duration-200",
+                  dragIndex === index && "opacity-50 scale-95",
+                  dropIndex === index && dragIndex !== index && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-xl scale-[1.02]",
+                )}
+                draggable={isOwner}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                onDragLeave={handleDragLeave}
+              >
+                {isOwner && (
+                  <div className="absolute top-2 left-2 z-10 rounded-full p-1.5 backdrop-blur-md bg-black/50 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing hover:bg-black/70 hover:text-white">
+                    <GripVerticalIcon className="h-4 w-4" />
+                  </div>
+                )}
+                <MediaCard
+                  id={item.id}
+                  mediaType={item.mediaType as "movie" | "show" | "game" | "music"}
+                  title={item.title}
+                  posterUrl={item.posterUrl}
+                  textlessPosterUrl={item.textlessPosterUrl}
+                  logoUrl={item.logoUrl}
+                  releaseDate={item.releaseDate}
+                  isAdult={item.isAdult}
+                  artistName={item.albumArtistName}
+                />
+                {isOwner && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      handleRemoveItem(item.id, item.mediaType)
+                    }}
+                    className="absolute top-2 right-2 rounded-full p-1.5 backdrop-blur-md bg-black/50 text-white/60 opacity-0 group-hover:opacity-100 hover:bg-red-500/80 hover:text-white transition-all duration-200"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </MediaGrid>
+        )}
+      </div>
 
       {/* Rank history */}
-      {!addingMode && <RankHistoryTimeline listId={listId} />}
-
-      {/* Edit dialog */}
-      <ListComposer
-        open={composerOpen}
-        onClose={() => setComposerOpen(false)}
-        onSave={(data) => {
-          updateList.mutate(
-            { listId, ...data },
-            { onSuccess: () => setComposerOpen(false) },
-          )
-        }}
-        initial={list}
-        isSaving={updateList.isPending}
-      />
-
-      {/* Share modal */}
-      <ShareModal
-        list={list}
-        open={shareOpen}
-        onClose={() => setShareOpen(false)}
-      />
-
-      {/* Collaborators modal */}
-      <CollaboratorsModal
-        list={list}
-        open={collaboratorsOpen}
-        onClose={() => setCollaboratorsOpen(false)}
-      />
+      <div className="animate-section-in" style={{ '--section-delay': '180ms' } as React.CSSProperties}>
+        <RankHistoryTimeline listId={listId} />
+      </div>
     </div>
   )
 }

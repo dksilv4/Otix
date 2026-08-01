@@ -17,6 +17,7 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'admin': {label: 'Admin panel', enabled: true, dependsOn: ['auth']},
 
     'browse': {label: 'Browse media', enabled: true, dependsOn: ['auth', 'ui']},
+    'calendar': {label: 'Release calendar', enabled: true, dependsOn: ['auth', 'ui']},
     'company': {label: 'Company detail pages', enabled: true, dependsOn: ['auth', 'ui']},
     'dashboard': {label: 'Home dashboard', enabled: true, dependsOn: ['auth', 'ui']},
     'discover': {label: 'Discover / home feed', enabled: true, dependsOn: ['auth', 'ui']},

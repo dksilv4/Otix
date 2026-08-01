@@ -48,10 +48,31 @@ export function useUpsertRating(mediaType: string, mediaId: string) {
       )
       return data
     },
-    onSuccess: (_, variables) => {
+    onMutate: async (score) => {
+      const ratingKey = ratingKeys.myRating(mediaType, mediaId)
+      await qc.cancelQueries({ queryKey: ratingKey })
+      const prevRating = qc.getQueryData<MediaRatingOut | null>(ratingKey)
+      const optimistic: MediaRatingOut = {
+        userId: '',
+        mediaItemId: mediaId,
+        score,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      qc.setQueryData<MediaRatingOut | null>(ratingKey, optimistic)
+      return { prevRating }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevRating !== undefined) {
+        qc.setQueryData(ratingKeys.myRating(mediaType, mediaId), context.prevRating)
+      }
+    },
+    onSuccess: (_data, variables) => {
+      emit('otix:interaction:rated', { mediaId, mediaType, rating: variables })
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
-      emit('otix:interaction:rated', { mediaId, mediaType, rating: variables })
     },
   })
 }
@@ -62,7 +83,19 @@ export function useDeleteRating(mediaType: string, mediaId: string) {
     mutationFn: async () => {
       await apiClient.delete(`/media/${mediaType}/${mediaId}/rating`)
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      const ratingKey = ratingKeys.myRating(mediaType, mediaId)
+      await qc.cancelQueries({ queryKey: ratingKey })
+      const prevRating = qc.getQueryData<MediaRatingOut | null>(ratingKey)
+      qc.setQueryData<MediaRatingOut | null>(ratingKey, null)
+      return { prevRating }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevRating !== undefined) {
+        qc.setQueryData(ratingKeys.myRating(mediaType, mediaId), context.prevRating)
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
       emit('otix:interaction:rated', { mediaId, mediaType, rating: 0 })

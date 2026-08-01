@@ -80,7 +80,30 @@ export function useUpsertReview(mediaType: string, mediaId: string) {
       )
       return data
     },
-    onSuccess: () => {
+    onMutate: async (payload) => {
+      const myReviewKey = reviewKeys.myReview(mediaType, mediaId)
+      await qc.cancelQueries({ queryKey: myReviewKey })
+      const prevReview = qc.getQueryData<ReviewOut | null>(myReviewKey)
+      const optimistic: ReviewOut = {
+        userId: '',
+        mediaItemId: mediaId,
+        title: payload.title ?? null,
+        content: payload.content ?? null,
+        isSpoiler: payload.isSpoiler ?? false,
+        isPrivate: payload.isPrivate ?? false,
+        cooldownUntil: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      qc.setQueryData<ReviewOut | null>(myReviewKey, optimistic)
+      return { prevReview }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevReview !== undefined) {
+        qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
@@ -94,7 +117,19 @@ export function useDeleteReview(mediaType: string, mediaId: string) {
     mutationFn: async () => {
       await apiClient.delete(`/media/${mediaType}/${mediaId}/review`)
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      const myReviewKey = reviewKeys.myReview(mediaType, mediaId)
+      await qc.cancelQueries({ queryKey: myReviewKey })
+      const prevReview = qc.getQueryData<ReviewOut | null>(myReviewKey)
+      qc.setQueryData<ReviewOut | null>(myReviewKey, null)
+      return { prevReview }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevReview !== undefined) {
+        qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
+      }
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })

@@ -49,7 +49,9 @@ class PeopleService:
             .options(
                 selectinload(Person.credits)
                 .joinedload(MediaCredit.media_item)
-                .joinedload(MediaItem.show),
+                .joinedload(MediaItem.show)
+                .selectinload(Show.seasons)
+                .selectinload(Season.episodes),
                 selectinload(Person._external_ids),
             )
             .where(Person.id == person_id)
@@ -156,7 +158,7 @@ class PeopleService:
 
         fts_q = select(Person.id).where(Person.name.op("%")(query_str), Person.embedding.isnot(None))
         branches = [fts_q]
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_q = (
                 select(Person.id)
                 .where(Person.embedding.isnot(None))
@@ -173,7 +175,7 @@ class PeopleService:
         )
 
         sim = func.similarity(Person.name, query_str)
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_sim = func.coalesce(1 - Person.embedding.cosine_distance(query_embedding), 0)
         else:
             vector_sim = 0
@@ -182,4 +184,14 @@ class PeopleService:
         q = base_q.order_by(order).limit(limit)
 
         result = await self.session.scalars(q)
-        return list(result)
+        items = list(result)
+
+        # Dedup by name — cross-provider imports can create duplicates.
+        seen_names: set[str] = set()
+        unique_people: list[Person] = []
+        for p in items:
+            key = p.name.lower()
+            if key not in seen_names:
+                seen_names.add(key)
+                unique_people.append(p)
+        return unique_people

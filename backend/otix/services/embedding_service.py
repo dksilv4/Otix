@@ -44,7 +44,7 @@ class EmbeddingService:
                     from fastembed import TextEmbedding
 
                     logger.info("loading embedding model", model=self._model_name)
-                    self._model = TextEmbedding(model_name=self._model_name, dim=self._dimension)
+                    EmbeddingService._model = TextEmbedding(model_name=self._model_name, dim=self._dimension)
                     logger.info("embedding model loaded", model=self._model_name)
         return self._model
 
@@ -121,7 +121,7 @@ class EmbeddingService:
         parts = [f"Name: {person.name}"]
         if person.biography:
             parts.append(f"Biography: {person.biography}")
-        
+
         if hasattr(person, "spotify_genres") and person.spotify_genres:
             genres = [str(g) for g in person.spotify_genres if g]
             if genres:

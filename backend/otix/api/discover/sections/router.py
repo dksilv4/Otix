@@ -37,7 +37,7 @@ async def discover_sections(
     if current_user:
         service = PersonalizationService(db)
         profile = await service.compute_profile(current_user)
-        sections = service.generate_sections(profile, user=current_user)
+        sections = await service.generate_sections(profile, user=current_user)
     else:
         sections = PersonalizationService.default_sections()
 

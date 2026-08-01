@@ -8,6 +8,18 @@ import { cn } from '@/lib/utils'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
 
+function formatSeasonBadgeText(releaseDate?: string | null): string {
+  if (!releaseDate) return 'New Season'
+  const date = new Date(releaseDate)
+  const now = new Date()
+  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const year = date.getFullYear()
+  if (days > 0) return `New Season · ${month} ${year}`
+  if (days >= -14) return 'New Season · Just Landed'
+  return `New Season · ${month} ${year}`
+}
+
 interface DkMediaCardProps {
   id: string
   mediaType: 'movie' | 'show' | 'game' | 'music'
@@ -21,6 +33,7 @@ interface DkMediaCardProps {
   showTypeBadge?: boolean
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
   zoomed?: boolean
   className?: string
   subtitle?: string | null
@@ -41,6 +54,7 @@ const DkMediaCard = memo(function DkMediaCard({
   showTypeBadge = true,
   isAdult,
   newSeasonReleased,
+  newSeasonReleaseDate,
   zoomed = true,
   className,
   subtitle,
@@ -129,7 +143,7 @@ const DkMediaCard = memo(function DkMediaCard({
       {mediaType === 'show' && newSeasonReleased && (
         <div className="absolute top-3 right-3 z-10">
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-bold text-emerald-400 bg-emerald-950/75 border border-emerald-500/30 backdrop-blur-md shadow-lg uppercase tracking-wider">
-            New Season
+            {formatSeasonBadgeText(newSeasonReleaseDate)}
           </span>
         </div>
       )}

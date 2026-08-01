@@ -103,7 +103,7 @@ async def search_suggestions(
             summary.user_interactions = UserInteractionState(**state)
 
     # Cache the base results (without backfill additions)
-    await redis.set(cache_key, json.dumps([s.model_dump() for s in summaries]), ex=SEARCH_CACHE_TTL)
+    await redis.set(cache_key, json.dumps([s.model_dump(mode="json") for s in summaries]), ex=SEARCH_CACHE_TTL)
 
     if len(summaries) < 5 and _should_backfill(q) and media_type:
         try:
@@ -314,19 +314,19 @@ async def search_grouped(
 
     query_embedding = await _embed_query(q)
 
-    # Run media type searches sequentially on one session to avoid connection
-    # pool contention from 8 parallel async_session() calls in the gather below.
+    # Run media type searches concurrently — each gets its own DB session since
+    # asyncpg sessions aren't safe for concurrent access. The connection pool
+    # handles the parallelism fine with pool_size=20.
     async def _search_all_types() -> list[tuple[str, list[MediaItemSummary], int]]:
-        async with async_session() as s:
-            svc = MediaService(s)
-            results = []
-            for mt in ("movie", "show", "game", "music"):
-                items, total, _ = await svc.search_media(
+        async def _search_one(mt: str) -> tuple[str, list[MediaItemSummary], int]:
+            async with async_session() as s:
+                items, total, _ = await MediaService(s).search_media(
                     query_str=q, media_type=mt, page=1, page_size=media_type_limit,
                     query_embedding=query_embedding, exclude_adult=exclude_adult,
                 )
-                results.append((mt, [MediaItemSummary.model_validate(i) for i in items], total))
-            return results
+                return mt, [MediaItemSummary.model_validate(i) for i in items], total
+
+        return await asyncio.gather(*[_search_one(mt) for mt in ("movie", "show", "game", "music")])
 
     async def _search_tracks() -> tuple[list[TrackSearchResult], int]:
         from otix.domain.media import Track
@@ -382,7 +382,7 @@ async def search_grouped(
                 User.username.ilike(f"%{q}%"), User.is_active == True, User.embedding.isnot(None),
             )
             branches = [fts_stmt]
-            if query_embedding and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+            if query_embedding:
                 branches.append(
                     select(User.id).where(User.is_active == True, User.embedding.isnot(None))
                     .order_by(User.embedding.cosine_distance(query_embedding)).limit(10)
@@ -394,7 +394,7 @@ async def search_grouped(
             sim = func.similarity(User.username, q)
             vector_sim = (
                 func.coalesce(1 - User.embedding.cosine_distance(query_embedding), 0)
-                if query_embedding and isinstance(query_embedding, list) and len(query_embedding) == 1024
+                if query_embedding
                 else 0
             )
             result = await s.scalars(stmt.order_by((sim * 5 + vector_sim * 5).desc()).limit(10))

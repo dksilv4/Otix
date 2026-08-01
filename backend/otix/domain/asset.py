@@ -25,6 +25,7 @@ class MediaAsset(Base):
     style: Mapped[str | None] = mapped_column(String(20))
     score: Mapped[int | None] = mapped_column(Integer)
     provider: Mapped[str | None] = mapped_column(String(20))
+    color_guess: Mapped[str | None] = mapped_column(String(20))
 
     media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="assets")
 

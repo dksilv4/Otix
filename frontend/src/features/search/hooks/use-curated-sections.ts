@@ -35,17 +35,19 @@ export function useCuratedSections(query: string): {
   isLoading: boolean
 } {
   const normalized = query.toLowerCase().trim()
-  if (!normalized || normalized.length < 2) return { sections: [], isLoading: false }
 
-  // Fetch genres for movies and shows (cached long-term)
+  // Hooks must be called unconditionally — move the useQueries above the early return
   const genreQueries = useQueries({
     queries: MEDIA_TYPES.map((mediaType) => ({
       queryKey: ['genres', mediaType],
       queryFn: () =>
         apiClient.get<GenreOption[]>('/media/genres', { params: { media_type: mediaType } }).then((r) => r.data),
       staleTime: GENRE_STALE_TIME,
+      enabled: normalized.length >= 2,
     })),
   })
+
+  if (!normalized || normalized.length < 2) return { sections: [], isLoading: false }
 
   const isLoading = genreQueries.some((q) => q.isLoading)
   const genreData = genreQueries.map((q) => q.data ?? [])

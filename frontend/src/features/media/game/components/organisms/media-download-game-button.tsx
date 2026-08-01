@@ -1,13 +1,59 @@
+import { useEffect, useRef } from 'react'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc } from 'lucide-react'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
-
-type LocalGame = import('@/features/launcher/types').LocalGame;
+import { useModal } from '@/lib/modals'
 
 export function DownloadGameButton() {
   const state = useDownloadGame()
+  const { openModal } = useModal()
+  const hvCloseRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (state.hvDialogOpen) {
+      hvCloseRef.current = openModal(
+        <DkDialog
+          open={true}
+          onOpenChange={(open) => { if (!open) state.handleHvDismiss() }}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Only hypervisor-tagged releases found for <strong>{state.hvPendingGameName ?? 'this game'}</strong>.
+              These often require VM setup and may not run natively.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Auto-dismissing in <span className="font-mono font-bold text-foreground">{state.hvCountdown}</span>s
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={async () => {
+                  await state.handleHvConfirm()
+                }}
+                className="flex-1 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-400 active:scale-95"
+              >
+                Download HV version
+              </button>
+              <button
+                onClick={state.handleHvDismiss}
+                className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--dk-surface-glass)]"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </DkDialog>
+      )
+    } else {
+      hvCloseRef.current?.()
+      hvCloseRef.current = null
+    }
+    return () => {
+      hvCloseRef.current?.()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.hvDialogOpen, state.hvCountdown, state.hvPendingGameName])
 
   if (state.hidden) return null
 
@@ -133,7 +179,15 @@ export function DownloadGameButton() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => state.setIsInstallerOpen(true)}
+              onClick={() => {
+                const close = openModal(
+                  <IsoInstallerModal
+                    onClose={() => close()}
+                    games={state.scannedGames}
+                    initialIsoPath={state.isoPath || undefined}
+                  />
+                )
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-600/25 transition-all duration-200 hover:bg-green-500 active:scale-95"
             >
               <Disc className="h-4 w-4" />
@@ -159,13 +213,6 @@ export function DownloadGameButton() {
             </button>
           )}
         </div>
-
-        <IsoInstallerModal
-          open={state.isInstallerOpen}
-          onClose={() => state.setIsInstallerOpen(false)}
-          games={state.scannedGames}
-          initialIsoPath={state.isoPath || undefined}
-        />
       </>
     )
   }
@@ -214,38 +261,6 @@ export function DownloadGameButton() {
     )
   }
 
-  // ── Fallback (downloads disabled) → null content + hypervisor dialog ──
-  return (
-    <>
-      {null}
-      <DkDialog
-        open={state.hvDialogOpen}
-        onOpenChange={(open) => { if (!open) state.handleHvDismiss() }}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Only hypervisor-tagged releases found for <strong>{state.hvPendingGameName ?? 'this game'}</strong>.
-            These often require VM setup and may not run natively.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Auto-dismissing in <span className="font-mono font-bold text-foreground">{state.hvCountdown}</span>s
-          </p>
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={state.handleHvConfirm}
-              className="flex-1 rounded-xl bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-blue-400 active:scale-95"
-            >
-              Download HV version
-            </button>
-            <button
-              onClick={state.handleHvDismiss}
-              className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--dk-surface-glass)]"
-            >
-              Skip
-            </button>
-          </div>
-        </div>
-      </DkDialog>
-    </>
-  )
+  // ── Fallback (downloads disabled) → null content ──
+  return null
 }

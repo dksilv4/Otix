@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 import structlog
 from redis.asyncio import Redis
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -653,7 +653,7 @@ class GameMatcher:
         if not clean_list:
             return list(indices)
 
-        sql = text(f"""
+        sql = text("""
             SELECT DISTINCT ON (input.clean_title)
                 input.clean_title,
                 mi.id,
@@ -1411,18 +1411,29 @@ class GameMatcher:
         slug = title.lower().strip()
         slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")[:200]
 
-        # Create minimal MediaItem
-        mi = MediaItem(
-            id=new_id,
-            title=title,
-            slug=slug,
-            media_type=media_type,
-            poster_url=poster_url,
-            release_date=release_date,
-            created_at=now,
-            updated_at=now,
+        # Cross-provider dedup: check if a game with this slug already
+        # exists (e.g. imported from Steam / TMDB / other provider).
+        existing_id = await self._session.scalar(
+            select(MediaItem.id).where(
+                MediaItem.slug == slug,
+                MediaItem.media_type == media_type,
+            ).limit(1)
         )
-        self._session.add(mi)
+        if existing_id is not None:
+            new_id = existing_id
+        else:
+            # Create minimal MediaItem
+            mi = MediaItem(
+                id=new_id,
+                title=title,
+                slug=slug,
+                media_type=media_type,
+                poster_url=poster_url,
+                release_date=release_date,
+                created_at=now,
+                updated_at=now,
+            )
+            self._session.add(mi)
 
         # Create ExternalID mapping (igdb → media_item)
         # Use ON CONFLICT DO NOTHING — simulation or previous scan may have seeded already

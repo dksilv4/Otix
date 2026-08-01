@@ -134,7 +134,7 @@ class CompanyService:
 
         fts_q = select(Company.id).where(Company.name.op("%")(query_str), Company.embedding.isnot(None))
         branches = [fts_q]
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_q = (
                 select(Company.id)
                 .where(Company.embedding.isnot(None))
@@ -151,7 +151,7 @@ class CompanyService:
         )
 
         sim = func.similarity(Company.name, query_str)
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_sim = func.coalesce(1 - Company.embedding.cosine_distance(query_embedding), 0)
         else:
             vector_sim = 0
@@ -160,5 +160,15 @@ class CompanyService:
         q = base_q.order_by(order).limit(limit)
 
         result = await self.session.scalars(q)
-        return list(result)
+        items = list(result)
+
+        # Dedup by name — cross-provider imports can create duplicates.
+        seen_names: set[str] = set()
+        unique_companies: list[Company] = []
+        for c in items:
+            key = c.name.lower()
+            if key not in seen_names:
+                seen_names.add(key)
+                unique_companies.append(c)
+        return unique_companies
 

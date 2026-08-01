@@ -1,7 +1,6 @@
 import {Badge} from '@ui/atoms/badge'
-import {Image} from '@ui/atoms/image'
 import {MEDIA_TYPE_LABEL} from '@/constants/media'
-import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles} from 'lucide-react'
+import {Calendar, Clock, Languages, Film, Tv, Gamepad2, Music, Sparkles, Heart} from 'lucide-react'
 import {useQuery} from '@tanstack/react-query'
 import {useAuth} from '@/old-features/auth'
 import {backdropSrc, formatAlbumDuration, formatMusicCreditsLine, formatRuntime, formatYear, isMusic, languageName, mediaQueries, GLASS_PILL, useMediaParams} from '@media'
@@ -31,6 +30,7 @@ export function MediaHero({
         isAdult,
     } = detail
     const isAnime = detail.movie?.isAnime || detail.show?.isAnime || false
+    const isKdrama = mediaType === 'show' && originalLanguage === 'ko'
 
     const musicCreditsLine = isMusic(detail) ? formatMusicCreditsLine(detail.credits) : null
     const tagline = detail.movie?.tagline || detail.game?.reviewSummary || musicCreditsLine
@@ -61,20 +61,21 @@ export function MediaHero({
 
 
     return (
-        <div id="media-hero" className={`relative flex min-h-[45vh] items-end  rounded-3xl lg:min-h-[50vh] mx-12 mt-20 pb-14 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
+        <div id="media-hero" className={`relative flex min-h-[45vh] items-end rounded-3xl lg:min-h-[50vh] mx-12 mt-20 pb-14 ${className || ''}`} style={{ boxShadow: '0 -1px 0 0 hsl(var(--primary) / 0.12) inset' }}>
             {/* Backdrop with cinematic gradient */}
             {heroBackdrop && (
                 <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">
                     <img
                         src={backdropSrc(heroBackdrop)}
                         alt=""
-                        className="h-full w-full object-cover brightness-50"
+                        className="h-full w-full object-cover brightness-[0.45]"
                         style={{objectPosition: 'center 20%', animation: 'kenBurns 25s ease-out forwards'}}
                     />
+                    {/* Bottom-heavy gradient — blends into content cards below */}
                     <div
                         className="fixed inset-0"
                         style={{
-                            background: 'linear-gradient(to top, color-mix(in oklab, var(--background) 95%, transparent) 0%, color-mix(in oklab, var(--background) 70%, transparent) 35%, color-mix(in oklab, var(--background) 30%, transparent) 100%)',
+                            background: 'linear-gradient(to top, color-mix(in oklab, var(--background) 100%, transparent) 0%, color-mix(in oklab, var(--background) 80%, transparent) 25%, color-mix(in oklab, var(--background) 45%, transparent) 55%, color-mix(in oklab, var(--background) 20%, transparent) 100%)',
                         }}
                     />
                 </div>
@@ -90,12 +91,12 @@ export function MediaHero({
                 <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-start sm:gap-8 lg:gap-12">
                     {/* Poster — floats below hero, overlapping content card */}
                     <div className="w-40 shrink-0 sm:w-44 lg:w-56 xl:w-64 translate-y-10">
-                        <div className="overflow-hidden rounded-2xl shadow-2xl">
-                            <Image
+                        <div className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">
+                            <img
                                 src={posterUrl || undefined}
                                 alt={`${title} poster`}
-                                className={`w-full ${mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'}`}
-                                fallback={title[0]}
+                                className={`w-full object-cover ${mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'}`}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                             />
                         </div>
                     </div>
@@ -131,13 +132,31 @@ export function MediaHero({
 
                         {/* Option 2 Borderless Glassmorphic Detail Pills */}
                         <div className="flex flex-wrap gap-2 mt-2">
-                            <Badge variant="secondary" className={`${GLASS_PILL}`}>
-                                {mediaType === 'movie' && <Film className="h-3.5 w-3.5 text-primary" />}
-                                {mediaType === 'show' && <Tv className="h-3.5 w-3.5 text-primary" />}
-                                {mediaType === 'game' && <Gamepad2 className="h-3.5 w-3.5 text-primary" />}
-                                {mediaType === 'music' && <Music className="h-3.5 w-3.5 text-primary" />}
-                                {MEDIA_TYPE_LABEL[mediaType]}
-                            </Badge>
+                            {isAnime ? (
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-pink-500/95 hover:bg-pink-500 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold border-0"
+                                >
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    Anime
+                                </Badge>
+                            ) : isKdrama ? (
+                                <Badge
+                                    variant="secondary"
+                                    className="bg-rose-500/95 hover:bg-rose-500 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold border-0"
+                                >
+                                    <Heart className="h-3.5 w-3.5" />
+                                    K-Drama
+                                </Badge>
+                            ) : (
+                                <Badge variant="secondary" className={`${GLASS_PILL}`}>
+                                    {mediaType === 'movie' && <Film className="h-3.5 w-3.5 text-primary" />}
+                                    {mediaType === 'show' && <Tv className="h-3.5 w-3.5 text-primary" />}
+                                    {mediaType === 'game' && <Gamepad2 className="h-3.5 w-3.5 text-primary" />}
+                                    {mediaType === 'music' && <Music className="h-3.5 w-3.5 text-primary" />}
+                                    {MEDIA_TYPE_LABEL[mediaType]}
+                                </Badge>
+                            )}
                             {year && (
                                 <Badge variant="secondary" className={`${GLASS_PILL}`}>
                                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -172,14 +191,6 @@ export function MediaHero({
                                 className="px-3 py-1.5 text-xs font-semibold bg-red-600/90 text-white border-0 font-bold"
                             >
                                 18+
-                            </Badge>
-                            <Badge
-                                show={isAnime}
-                                variant="secondary"
-                                className="bg-pink-500/95 hover:bg-pink-500 text-white gap-1.5 px-3 py-1.5 text-xs font-semibold border-0"
-                            >
-                                <Sparkles className="h-3.5 w-3.5" />
-                                Anime
                             </Badge>
                         </div>
 

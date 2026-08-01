@@ -1,8 +1,11 @@
 # TODO: Review this file
 from __future__ import annotations
 
-from datetime import date
+import re
+import unicodedata
+from datetime import date, datetime
 
+import structlog
 from sqlalchemy import and_, case, func, or_, select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -12,7 +15,6 @@ from otix.domain.company import InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
 from otix.domain.media import (
     Album,
-    Episode,
     Game,
     MediaGameMode,
     MediaItem,
@@ -26,6 +28,8 @@ from otix.domain.people import MediaCredit, Person
 from otix.domain.user import User
 from otix.domain.watch_provider import MediaWatchProvider
 
+logger = structlog.get_logger()
+
 
 def should_exclude_adult(user: User | None) -> bool:
     if user is None:
@@ -38,6 +42,44 @@ def should_exclude_adult(user: User | None) -> bool:
     if age < 18:
         return True
     return not user.show_adult_content
+
+
+# Translation table for curly quotes/apostrophes → straight equivalents
+# U+2018 '  U+2019 '  U+201C "  U+201D "  U+201E „  U+201F ‟
+_CURLY_TO_STRAIGHT = str.maketrans({
+    "‘": "'", "’": "'", "‚": "'", "‛": "'",
+    "“": '"', "”": '"', "„": '"', "‟": '"',
+})
+
+
+def _normalize_title_for_dedup(title: str) -> str:
+    """Normalize a title for dedup matching — strip edition/variant suffixes.
+
+    Uses NFKD decomposition to normalize accented characters (Pokémon → Pokemon),
+    normalizes curly quotes/apostrophes to straight, strips parentheticals
+    and edition markers, and collapses whitespace.
+    """
+    # Normalize curly quotes/apostrophes to straight BEFORE other processing
+    clean = title.translate(_CURLY_TO_STRAIGHT)
+    # Strip trademark/copyright symbols BEFORE NFKD (™ → TM otherwise)
+    clean = re.sub(r"[™®©]", "", clean)
+    # NFKD: decompose accented chars (é → e + combining acute)
+    clean = unicodedata.normalize("NFKD", clean)
+    # Strip combining diacritical marks (Unicode category Mn)
+    clean = "".join(ch for ch in clean if unicodedata.category(ch) != "Mn")
+    # Normalize dashes (em-dash, en-dash) to plain hyphen
+    clean = clean.replace("—", "-").replace("–", "-")
+    clean = clean.lower().strip()
+    clean = re.sub(r"[-.\s]*(?:\(.*?\)|\[.*?\])[-.\s]*", "", clean)
+    clean = re.sub(
+        r"\b(?:goty|game of the year|definitive|enhanced|remastered|"
+        r"ultimate|complete|deluxe|collectors?|special|legendary|"
+        r"anniversary|directors? cut|year one|gold)\s*edition\b",
+        "", clean, flags=re.IGNORECASE,
+    )
+    clean = re.sub(r"\b(?:remastered|repack|multilingual|vr)\b", "", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
 
 
 class MediaService:
@@ -174,12 +216,12 @@ class MediaService:
             order = None
 
         if order is not None or is_financial_sort:
-            query = select(MediaItem).options(joinedload(MediaItem.show))
+            query = select(MediaItem).options(joinedload(MediaItem.show)).distinct()
             if is_financial_sort:
                 query = query.join(MediaItem.movie).options(joinedload(MediaItem.movie))
         else:
             # Cursor pagination with default popularity sort
-            query = select(MediaItem).options(joinedload(MediaItem.show))
+            query = select(MediaItem).options(joinedload(MediaItem.show)).distinct()
 
         # Eager-load album for music queries so callers can access release-group ids
         if media_type == "music":
@@ -434,14 +476,11 @@ class MediaService:
         # OR conditions force PostgreSQL into a sequential scan; UNION lets each
         # branch use its dedicated index (GIN on search_vector, GiST trigram on
         # title, GIN trigram on people.name + FK on media_credits).
-        # Restricted to only items that have embeddings populated.
         fts_ids = select(MediaItem.id).where(
             MediaItem.search_vector.op("@@")(tsquery),
-            MediaItem.embedding.isnot(None),
         )
         fuzzy_ids = select(MediaItem.id).where(
             MediaItem.title.op("%")(query_str),
-            MediaItem.embedding.isnot(None),
         )
         credit_ids = (
             select(MediaItem.id)
@@ -449,14 +488,13 @@ class MediaService:
             .join(Person, Person.id == MediaCredit.person_id)
             .where(
                 Person.name.op("%")(query_str),
-                MediaItem.embedding.isnot(None),
             )
         )
 
         branches = [fts_ids, fuzzy_ids, credit_ids]
 
         # If query embedding is available, add vector similarity candidates
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None:
             vector_q = select(MediaItem.id).where(MediaItem.embedding.isnot(None))
             if media_type:
                 vector_q = vector_q.where(MediaItem.media_type == media_type)
@@ -481,7 +519,6 @@ class MediaService:
 
         base_q = select(MediaItem).where(
             MediaItem.id.in_(select(matched_ids)),
-            MediaItem.embedding.isnot(None),
         )
         if media_type:
             base_q = base_q.where(MediaItem.media_type == media_type)
@@ -495,12 +532,13 @@ class MediaService:
         credit_boost = case((credit_person_match, 2), else_=0)
         popularity_boost = func.ln(func.greatest(MediaItem.popularity, 1))
 
-        # Vector similarity via cosine distance (pgvector). Included in ranking
-        # only when the result set is limited via a k-NN search. When used in
-        # ORDER BY on the full result set, it computes cosine_distance for
-        # every matched row (very slow for broad queries). The HNSW index-backed
-        # k-NN branch already contributes the top-50 semantic matches.
-        vector_sim = 0
+        # Vector similarity via cosine distance (pgvector). Only compute when
+        # we have a query embedding — the result set is bounded by page_size+1
+        # so the per-row cosine_distance cost is negligible.
+        if query_embedding is not None:
+            vector_sim = func.coalesce(1 - MediaItem.embedding.cosine_distance(query_embedding), 0)
+        else:
+            vector_sim = 0
 
         sort_map = {
             "popularity": MediaItem.popularity.desc(),
@@ -521,6 +559,19 @@ class MediaService:
 
         result = await self.session.scalars(q)
         items = list(result)
+
+        # Dedup by normalized title + media_type — cross-provider imports
+        # (Steam, IGDB, TMDB, etc.) can create separate MediaItems for the
+        # same real-world entity. Keep the highest-ranked (first-found) copy.
+        seen_titles: set[tuple[str, str]] = set()
+        unique_items: list[MediaItem] = []
+        for item in items:
+            key = (_normalize_title_for_dedup(item.title), item.media_type)
+            if key not in seen_titles:
+                seen_titles.add(key)
+                unique_items.append(item)
+        items = unique_items
+
         has_more = len(items) > page_size
         if has_more:
             items = items[:page_size]
@@ -808,3 +859,426 @@ class MediaService:
                 results.append((raw, None, 0.0))
 
         return results
+
+    async def find_matching_media(
+        self,
+        title: str,
+        media_type: str,
+        release_date: date | datetime | None = None,
+    ) -> MediaItem | None:
+        """Find existing MediaItem matching title + media_type for dedup.
+
+        Strategies from strictest to loosest:
+        1. Exact title (case-insensitive) + media_type + same release year
+        2. Normalized title + media_type + same release year
+        3. Exact title + media_type (no date)
+        4. Normalized title + media_type (no date)
+        5. SQL-normalized match — applies the same normalization to DB titles
+           so parentheticals/edition markers on *either side* don't block matching
+        """
+        from sqlalchemy import extract as sql_extract
+        from sqlalchemy import text as sql_text
+
+        # Strategy 1 & 3: exact title (case-insensitive)
+        exact_q = select(MediaItem).where(
+            func.lower(MediaItem.title) == title.lower(),
+            MediaItem.media_type == media_type,
+        )
+
+        if release_date is not None:
+            year = release_date.year if hasattr(release_date, "year") else release_date.year
+            result = await self.session.scalar(
+                exact_q.where(sql_extract("year", MediaItem.release_date) == year).limit(1)
+            )
+            if result is not None:
+                return result
+
+        result = await self.session.scalar(exact_q.limit(1))
+        if result is not None:
+            return result
+
+        # Strategy 2 & 4: normalized title (strip edition suffixes, accents)
+        normalized = _normalize_title_for_dedup(title)
+        if normalized and normalized != title.lower().strip():
+            norm_q = select(MediaItem).where(
+                func.lower(MediaItem.title) == normalized,
+                MediaItem.media_type == media_type,
+            )
+
+            if release_date is not None:
+                year = release_date.year if hasattr(release_date, "year") else release_date.year
+                result = await self.session.scalar(
+                    norm_q.where(sql_extract("year", MediaItem.release_date) == year).limit(1)
+                )
+                if result is not None:
+                    return result
+
+            result = await self.session.scalar(norm_q.limit(1))
+            if result is not None:
+                return result
+
+        # Strategy 5: SQL-normalized match — apply regexp_replace to DB title too
+        # so "Game (2024)" in DB matches search for "Game", and vice versa.
+        # Also normalizes curly quotes, dashes via REPLACE/TRANSLATE.
+        if normalized:
+            raw_q = sql_text("""
+                SELECT id FROM media_items
+                WHERE media_type = :media_type
+                  AND LOWER(TRIM(
+                      regexp_replace(
+                          regexp_replace(
+                              regexp_replace(
+                                  REPLACE(REPLACE(REPLACE(REPLACE(
+                                      REPLACE(REPLACE(title,
+                                          '’', chr(39)),
+                                          '‘', chr(39)),
+                                      '”', '"'),
+                                      '“', '"'),
+                                  '—', '-'),
+                                  '–', '-'),
+                                  '[-.\\s]*(\\(.*?\\)|\\[.*?\\])[-.\\s]*',
+                                  '', 'g'
+                              ),
+                              '\\m(goty|game of the year|definitive|enhanced|'
+                              'remastered|ultimate|complete|deluxe|collectors?|'
+                              'special|legendary|anniversary|directors? cut|'
+                              'year one|gold)\\s*edition\\M',
+                              '', 'gi'
+                          ),
+                          '\\m(remastered|repack|multilingual|vr)\\M',
+                          '', 'gi'
+                      )
+                  )) = :normalized
+                LIMIT 1
+            """)
+            row = await self.session.execute(
+                raw_q, {"media_type": media_type, "normalized": normalized}
+            )
+            row = row.fetchone()
+            if row is not None:
+                return await self.session.get(MediaItem, row[0])
+
+        return None
+
+    async def deduplicate_all_media(self) -> dict:
+        """Find and merge all duplicate MediaItems using bulk SQL.
+
+        Uses title + media_type to find groups, picks the most complete
+        item as survivor in each group, then runs bulk UPDATE / INSERT
+        statements to transfer all child records (ExternalIDs, credits,
+        interactions, reviews, etc.) to the survivor.
+
+        Returns a summary dict with counts of groups found and items merged.
+        """
+        from sqlalchemy import text as sql_text
+
+        # Phase 1: Build dedup map (survivor → duplicates)
+        # Uses a CTE to normalize titles (strip parentheticals, edition suffixes,
+        # standalone keywords, whitespace) so that e.g. "Game (2024)" and
+        # "Game of the Year Edition" both match "Game".
+        await self.session.execute(sql_text("DROP TABLE IF EXISTS _dedup_map"))
+        await self.session.execute(sql_text("""
+            CREATE TEMP TABLE _dedup_map AS
+            WITH normalized AS (
+                SELECT
+                    id,
+                    media_type,
+                    poster_url,
+                    embedding,
+                    EXTRACT(YEAR FROM release_date) AS release_year,
+                    LOWER(TRIM(
+                        regexp_replace(
+                            regexp_replace(
+                                regexp_replace(
+                                    title,
+                                    '[-.\\s]*(\\(.*?\\)|\\[.*?\\])[-.\\s]*',
+                                    '',
+                                    'g'
+                                ),
+                                '\\m(goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors?|special|legendary|anniversary|directors? cut|year one|gold)\\s*edition\\M',
+                                '',
+                                'gi'
+                            ),
+                            '\\m(remastered|repack|multilingual|vr)\\M',
+                            '',
+                            'gi'
+                        )
+                    )) AS normalized_title
+                FROM media_items
+                WHERE LOWER(title) != ''
+            )
+            SELECT survivor_id, dup_id FROM (
+                SELECT
+                    FIRST_VALUE(id) OVER w AS survivor_id,
+                    id AS dup_id,
+                    ROW_NUMBER() OVER w AS rn
+                FROM normalized
+                WINDOW w AS (
+                    PARTITION BY normalized_title, media_type, release_year
+                    ORDER BY
+                        CASE WHEN poster_url IS NOT NULL THEN 1 ELSE 0 END DESC,
+                        CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END DESC
+                )
+            ) ranked
+            WHERE rn > 1
+        """))
+        # Index the temp table for fast JOIN lookups in subsequent UPDATE/DELETE
+        await self.session.execute(sql_text("CREATE INDEX ON _dedup_map(dup_id)"))
+
+        # Count what we found
+        count_result = await self.session.execute(
+            sql_text("""
+                SELECT COUNT(DISTINCT survivor_id) AS groups,
+                       COUNT(*) AS duplicates
+                FROM _dedup_map
+            """)
+        )
+        row = count_result.one()
+        stats: dict = {"groups_found": row.groups, "merged": row.duplicates, "ids_moved": 0}
+
+        if row.duplicates == 0:
+            logger.info("media_dedup_no_duplicates_found")
+            return stats
+
+        # Phase 1.5: Create FK indexes on CASCADE child tables that lack
+        # leading-column indexes. FK CASCADE triggers fire per row × 24K
+        # deletions — without an index, each check does a full scan.
+        for tbl, col in (
+            ("external_ids", "media_item_id"),
+            ("media_assets", "media_item_id"),
+            ("media_videos", "media_item_id"),
+            ("reviews", "media_item_id"),
+            ("user_media_interactions", "media_item_id"),
+            ("user_list_item", "media_item_id"),
+            ("list_item_rank_history", "media_item_id"),
+            ("collection_items", "media_item_id"),
+            ("franchise_items", "media_item_id"),
+            ("media_edit_proposals", "media_item_id"),
+            ("game_content_items", "media_item_id"),
+        ):
+            await self.session.execute(
+                sql_text(f"CREATE INDEX IF NOT EXISTS _dedup_idx_{tbl}_{col} ON {tbl}({col})")
+            )
+
+        # Phase 2: Bulk merge child records
+        # Each table gets a bulk INSERT+DELETE (for unique-constrained refs)
+        # or a bulk UPDATE (for tables without unique constraints).
+
+        # ── 2a: ExternalIDs — most critical ──
+        # INSERT ON CONFLICT preserves unique (provider, external_id, entity_type)
+        # — if survivor already has the same external ID, keep survivor's.
+        # This ensures cross-provider consolidation (survivor gets Steam + IGDB IDs).
+        r = await self.session.execute(sql_text("""
+            INSERT INTO external_ids (provider, external_id, entity_type, entity_id, media_item_id, media_type, is_adult, content_hash, hash_match_count, confirmed_count, confirmed_by, last_confirmed_at)
+            SELECT e.provider, e.external_id, e.entity_type, m.survivor_id, m.survivor_id, e.media_type, e.is_adult, e.content_hash, e.hash_match_count, e.confirmed_count, e.confirmed_by, e.last_confirmed_at
+            FROM external_ids e
+            JOIN _dedup_map m ON e.entity_id = m.dup_id
+            ON CONFLICT (provider, external_id, entity_type) DO NOTHING
+        """))
+        stats["ids_moved"] += r.rowcount
+        await self.session.execute(sql_text("DELETE FROM external_ids e USING _dedup_map m WHERE e.entity_id = m.dup_id"))
+
+        # ── 2b: Tables without unique constraints — bulk UPDATE ──
+        for tbl in (
+            "media_credits", "media_assets", "media_videos", "media_releases",
+            "external_ratings", "involved_companies", "list_item_rank_history",
+        ):
+            r = await self.session.execute(
+                sql_text(f"""
+                    UPDATE {tbl} t
+                    SET media_item_id = m.survivor_id
+                    FROM _dedup_map m
+                    WHERE t.media_item_id = m.dup_id
+                """)
+            )
+            stats["ids_moved"] += r.rowcount
+
+        # proposals uses target_id + target_type instead of media_item_id
+        r = await self.session.execute(sql_text("""
+            UPDATE proposals
+            SET target_id = m.survivor_id
+            FROM _dedup_map m
+            WHERE proposals.target_type = 'media_item'
+              AND proposals.target_id = m.dup_id
+        """))
+        stats["ids_moved"] += r.rowcount
+
+        # ── 2c: Tables WITH unique constraints — bulk INSERT ON CONFLICT + DELETE ──
+        # Each table gets rows INSERTed from duplicates, skipping conflicts,
+        # then the duplicate rows are bulk DELETEd.
+
+        # user_media_interactions: PK (user_id, media_item_id, interaction_type)
+        await self.session.execute(sql_text("""
+            INSERT INTO user_media_interactions (user_id, media_item_id, interaction_type, metadata)
+            SELECT t.user_id, m.survivor_id, t.interaction_type, t.metadata
+            FROM user_media_interactions t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (user_id, media_item_id, interaction_type) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM user_media_interactions t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # reviews: PK (user_id, media_item_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO reviews (user_id, media_item_id, title, content, is_spoiler, is_private, cooldown_until)
+            SELECT t.user_id, m.survivor_id, t.title, t.content, t.is_spoiler, t.is_private, t.cooldown_until
+            FROM reviews t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (user_id, media_item_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM reviews t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # user_list_item: UK (list_id, media_item_id), PK is generated id
+        await self.session.execute(sql_text("""
+            INSERT INTO user_list_item (id, list_id, media_item_id, sort_order)
+            SELECT 'oti_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+                   t.list_id, m.survivor_id, t.sort_order
+            FROM user_list_item t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (list_id, media_item_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM user_list_item t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # media_genres: PK (media_item_id, genre_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO media_genres (media_item_id, genre_id)
+            SELECT m.survivor_id, t.genre_id
+            FROM media_genres t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, genre_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_genres t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # media_keywords: PK (media_item_id, keyword_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO media_keywords (media_item_id, keyword_id)
+            SELECT m.survivor_id, t.keyword_id
+            FROM media_keywords t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, keyword_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_keywords t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # media_platforms: UK (media_item_id, platform_id), PK is generated id
+        await self.session.execute(sql_text("""
+            INSERT INTO media_platforms (id, media_item_id, platform_id)
+            SELECT 'oti_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+                   m.survivor_id, t.platform_id
+            FROM media_platforms t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, platform_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_platforms t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # media_watch_providers: UK (media_item_id, watch_provider_id, country_code, offering_type),
+        # PK is generated id
+        await self.session.execute(sql_text("""
+            INSERT INTO media_watch_providers (id, media_item_id, watch_provider_id, country_code, offering_type, url, display_priority)
+            SELECT 'oti_' || substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+                   m.survivor_id, t.watch_provider_id, t.country_code, t.offering_type, t.url, t.display_priority
+            FROM media_watch_providers t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, watch_provider_id, country_code, offering_type) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_watch_providers t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # collection_items: PK (media_item_id, collection_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO collection_items (collection_id, media_item_id, sort_order)
+            SELECT t.collection_id, m.survivor_id, t.sort_order
+            FROM collection_items t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, collection_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM collection_items t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # franchise_items: PK (media_item_id, franchise_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO franchise_items (franchise_id, media_item_id, sort_order)
+            SELECT t.franchise_id, m.survivor_id, t.sort_order
+            FROM franchise_items t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (media_item_id, franchise_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM franchise_items t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # media_item_ratings: PK (user_id, media_item_id)
+        await self.session.execute(sql_text("""
+            INSERT INTO media_item_ratings (user_id, media_item_id, score)
+            SELECT t.user_id, m.survivor_id, t.score
+            FROM media_item_ratings t
+            JOIN _dedup_map m ON t.media_item_id = m.dup_id
+            ON CONFLICT (user_id, media_item_id) DO NOTHING
+        """))
+        await self.session.execute(sql_text("DELETE FROM media_item_ratings t USING _dedup_map m WHERE t.media_item_id = m.dup_id"))
+
+        # ── 2d: NO ACTION tables — must be cleared before DELETE FROM media_items ──
+        # These have ON DELETE NO ACTION, so any remaining FK reference to a
+        # dup_id would cause the Phase 4 DELETE to fail with FK violation.
+        # Set FK to NULL (allowing NULL) or to survivor_id.
+        for tbl_col in (
+            ("tmdb_deleted_ids", "media_item_id"),
+            ("user_steam_games", "media_item_id"),
+            ("user_steam_wishlist", "media_item_id"),
+            ("user_plex_items", "media_item_id"),
+            ("user_local_games", "media_item_id"),
+            ("user_local_games", "match_suggestion_media_id"),
+            ("user_youtube_liked_videos", "matched_media_item_id"),
+        ):
+            tbl, col = tbl_col
+            await self.session.execute(
+                sql_text(f"""
+                    UPDATE {tbl} t
+                    SET {col} = NULL
+                    FROM _dedup_map m
+                    WHERE t.{col} = m.dup_id
+                """)
+            )
+
+        # ── 2e: Remaining CASCADE tables with ~0 rows — DELETE (nothing to cascade) ──
+        for tbl in (
+            "media_game_modes", "media_edit_proposals", "media_image_overrides",
+            "game_content_items",
+        ):
+            await self.session.execute(
+                sql_text(f"DELETE FROM {tbl} t USING _dedup_map m WHERE t.media_item_id = m.dup_id")
+            )
+        # game_save tables use game_id instead of media_item_id
+        await self.session.execute(
+            sql_text("DELETE FROM game_save_official_paths t USING _dedup_map m WHERE t.game_id = m.dup_id")
+        )
+        await self.session.execute(
+            sql_text("DELETE FROM game_save_path_suggestions t USING _dedup_map m WHERE t.game_id = m.dup_id")
+        )
+
+        # ── 2f: Re-parent subtype child records before Phase 3 deletes subtypes ──
+        # Seasons (show_id) and tracks (album_id) reference subtype PKs, not
+        # media_items.id directly. They must be re-parented to the survivor,
+        # otherwise CASCADE from the Phase 3 DELETE destroys them.
+        r = await self.session.execute(sql_text("""
+            UPDATE seasons s
+            SET show_id = m.survivor_id
+            FROM _dedup_map m
+            WHERE s.show_id = m.dup_id
+        """))
+        stats["ids_moved"] += r.rowcount
+        r = await self.session.execute(sql_text("""
+            UPDATE tracks t
+            SET album_id = m.survivor_id
+            FROM _dedup_map m
+            WHERE t.album_id = m.dup_id
+        """))
+        stats["ids_moved"] += r.rowcount
+
+        # Phase 3: Delete subtype records (Game, Movie, Show, Album)
+        for sub_tbl in ("games", "movies", "shows", "albums"):
+            await self.session.execute(
+                sql_text(f"DELETE FROM {sub_tbl} t USING _dedup_map m WHERE t.media_item_id = m.dup_id")
+            )
+
+        # Phase 4: Delete the duplicate MediaItems
+        await self.session.execute(sql_text("DELETE FROM media_items WHERE id IN (SELECT dup_id FROM _dedup_map)"))
+
+        await self.session.commit()
+
+        logger.info("media_dedup_complete", **stats)
+        return stats

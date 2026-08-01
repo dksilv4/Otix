@@ -27,6 +27,8 @@ async def discover_hero(
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemListResponse:
     """Get hero section media items for the discover page."""
+    import random
+
     ip = request.client.host if request.client else None
     exclude_adult = should_exclude_adult(current_user)
     cache_key = f"discover:hero:{limit}:adult{0 if exclude_adult else 1}"
@@ -36,13 +38,19 @@ async def discover_hero(
         return MediaItemListResponse.model_validate(json.loads(cached))
 
     service = MediaService(db)
-    items, has_more, _ = await service.list_media(
+    # Fetch a larger pool so we can show variety instead of the same items every time
+    pool_size = min(limit * 4, 50)
+    items, _, _ = await service.list_media(
         has_artwork=True,
-        limit=limit,
+        limit=pool_size,
         exclude_adult=exclude_adult,
     )
-    response = await _build_response(db, items, has_more, current_user)
+    random.shuffle(items)
+    items = items[:limit]
+
+    response = await _build_response(db, items, False, current_user)
+    response.next_cursor = None
     await _cache_set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
 
-    logger.info("discover hero fetched", count=len(items), ip=ip)
+    logger.info("discover hero fetched", count=len(items), pool_size=pool_size, ip=ip)
     return response

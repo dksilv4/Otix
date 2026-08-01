@@ -129,7 +129,7 @@ def backfill_embeddings() -> dict:
     return run_async(_backfill_embeddings())
 
 
-_BACKFILL_BATCH_SIZE = 10
+_BACKFILL_BATCH_SIZE = 250
 
 
 async def _backfill_embeddings() -> dict:
@@ -138,7 +138,7 @@ async def _backfill_embeddings() -> dict:
     from otix.domain.media import MediaItem
 
     async with async_session() as session:
-        result = await session.execute(select(MediaItem.id).where(MediaItem.embedding.is_(None)).limit(1000))
+        result = await session.execute(select(MediaItem.id).where(MediaItem.embedding.is_(None)))
         rows = result.all()
 
         all_ids = [row[0] for row in rows]
@@ -169,7 +169,7 @@ async def _backfill_user_embeddings() -> dict:
     from otix.domain.user import User
 
     async with async_session() as session:
-        result = await session.execute(select(User.id).where(User.embedding.is_(None)).limit(1000))
+        result = await session.execute(select(User.id).where(User.embedding.is_(None)))
         rows = result.all()
 
         all_ids = [row[0] for row in rows]
@@ -200,7 +200,7 @@ async def _backfill_person_embeddings() -> dict:
     from otix.domain.people import Person
 
     async with async_session() as session:
-        result = await session.execute(select(Person.id).where(Person.embedding.is_(None)).limit(1000))
+        result = await session.execute(select(Person.id).where(Person.embedding.is_(None)))
         rows = result.all()
 
         all_ids = [row[0] for row in rows]
@@ -231,7 +231,7 @@ async def _backfill_company_embeddings() -> dict:
     from otix.domain.company import Company
 
     async with async_session() as session:
-        result = await session.execute(select(Company.id).where(Company.embedding.is_(None)).limit(1000))
+        result = await session.execute(select(Company.id).where(Company.embedding.is_(None)))
         rows = result.all()
 
         all_ids = [row[0] for row in rows]
@@ -401,3 +401,22 @@ async def _cleanup_orphan_credits() -> dict:
         )
 
     return {"deleted": count}
+
+
+@app.task(name="maintenance.deduplicate_media")
+def deduplicate_media() -> dict:
+    """Find and merge all duplicate MediaItems.
+
+    Merges child records (ExternalIDs, credits, interactions, reviews, etc.)
+    into the most complete copy and deletes the duplicates.
+    """
+    return run_async(_deduplicate_media())
+
+
+async def _deduplicate_media() -> dict:
+    from otix.infrastructure.database import async_session
+    from otix.services.media_service import MediaService
+
+    async with async_session() as session:
+        svc = MediaService(session)
+        return await svc.deduplicate_all_media()

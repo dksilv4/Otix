@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useUserLists, useAddToList, useCreateList } from '../list-queries'
 import { ListComposer } from '../organisms/list-composer'
+import { useModal } from '@/lib/modals'
 
 interface AddToListButtonProps {
   mediaItemId: string
@@ -16,9 +17,9 @@ export function AddToListButton({ mediaItemId, className }: AddToListButtonProps
   const { data: lists } = useUserLists()
   const addToList = useAddToList()
   const createList = useCreateList()
+  const { openModal } = useModal()
 
   const [open, setOpen] = useState(false)
-  const [composerOpen, setComposerOpen] = useState(false)
   const [justAdded, setJustAdded] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -91,7 +92,7 @@ export function AddToListButton({ mediaItemId, className }: AddToListButtonProps
                   </div>
                   <span className="truncate flex-1">{list.name}</span>
                   <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-                    {list.itemCount ?? 0}
+                    {(list as any).itemCount ?? 0}
                   </span>
                 </button>
               )
@@ -104,7 +105,7 @@ export function AddToListButton({ mediaItemId, className }: AddToListButtonProps
             type="button"
             onClick={() => {
               setOpen(false)
-              setComposerOpen(true)
+              openModal(<ListComposer onSave={async (data) => await createList.mutateAsync(data)} />)
             }}
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
           >
@@ -113,15 +114,6 @@ export function AddToListButton({ mediaItemId, className }: AddToListButtonProps
           </button>
         </div>
       )}
-
-      <ListComposer
-        open={composerOpen}
-        onClose={() => setComposerOpen(false)}
-        onSave={(data) => {
-          createList.mutate(data, { onSuccess: () => setComposerOpen(false) })
-        }}
-        isSaving={createList.isPending}
-      />
     </div>
   )
 }

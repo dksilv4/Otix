@@ -75,6 +75,12 @@ jobs:
       - name: Install dependencies
         run: pip install .[dev]
 
+      - name: Verify migrations apply to an empty database
+        run: python scripts/migrate-check.py
+        env:
+          DATABASE_URL_SYNC: postgresql://otix:password@localhost:5432/otix_test
+          APP_ENV: test
+
       - name: Format check (ruff)
         run: ruff format --check .
 

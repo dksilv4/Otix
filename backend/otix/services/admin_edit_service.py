@@ -29,6 +29,7 @@ _ALLOWED_FIELDS = {
     "tagline",
     "status",
     "runtime",
+    "color_guess",
 }
 
 
@@ -76,7 +77,16 @@ class AdminEditService:
         if proposer and proposer.is_admin:
             # Apply changes directly to media item
             for field, value in (changes or {}).items():
-                if field in _ALLOWED_FIELDS and hasattr(media_item, field):
+                if field == "color_guess":
+                    # color_guess targets a MediaAsset, not MediaItem
+                    cg = value  # {"asset_id": str, "value": str}
+                    if isinstance(cg, dict) and "asset_id" in cg and "value" in cg:
+                        from otix.domain.asset import MediaAsset
+
+                        asset = await self.session.get(MediaAsset, cg["asset_id"])
+                        if asset:
+                            asset.color_guess = cg["value"]
+                elif field in _ALLOWED_FIELDS and hasattr(media_item, field):
                     setattr(media_item, field, value)
 
             # Upsert image overrides
@@ -180,6 +190,12 @@ class AdminEditService:
         if proposal.proposer_user_id is not None and proposal.proposer_user_id == approver_user_id:
             raise ValueError("Cannot approve your own proposal")
 
+        # Color guess proposals require admin approval
+        if "color_guess" in (proposal.changes or {}):
+            approver = await self.session.get(User, approver_user_id)
+            if not approver or not getattr(approver, "is_admin", False):
+                raise ValueError("Only admins can approve color guess proposals")
+
         proposal.status = "approved"
         proposal.approver_user_id = approver_user_id
 
@@ -191,7 +207,16 @@ class AdminEditService:
             raise ValueError("Media item not found")
 
         for field, value in (proposal.changes or {}).items():
-            if field in _ALLOWED_FIELDS and hasattr(media_item, field):
+            if field == "color_guess":
+                # color_guess targets a MediaAsset, not MediaItem
+                cg = value  # {"asset_id": str, "value": str}
+                if isinstance(cg, dict) and "asset_id" in cg and "value" in cg:
+                    from otix.domain.asset import MediaAsset
+
+                    asset = await self.session.get(MediaAsset, cg["asset_id"])
+                    if asset:
+                        asset.color_guess = cg["value"]
+            elif field in _ALLOWED_FIELDS and hasattr(media_item, field):
                 setattr(media_item, field, value)
 
         # Upsert image overrides
@@ -545,6 +570,23 @@ class AdminEditService:
             media_item_id=media_item_id,
             proposer_user_id=None,
             changes={field: proposed_url},
+            image_overrides=None,
+        )
+
+    async def create_system_proposal_for_color_guess(
+        self,
+        media_item_id: str,
+        asset_id: str,
+        proposed_value: str,
+    ) -> MediaEditProposal | None:
+        """Create a system proposal for a logo color guess.
+
+        Author is system (proposer_user_id=None). Only admins can approve.
+        """
+        return await self.create_proposal(
+            media_item_id=media_item_id,
+            proposer_user_id=None,
+            changes={"color_guess": {"asset_id": asset_id, "value": proposed_value}},
             image_overrides=None,
         )
 

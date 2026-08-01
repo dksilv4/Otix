@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select, func, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.media.embedding import _embed_query
+from otix.api.search.embedding import _embed_query
 
 from otix.api.deps import get_current_user, get_db
 from otix.domain.user import User
@@ -36,7 +36,7 @@ async def search_users(
             User.username.ilike(f"%{q}%"), User.is_active == True, User.embedding.isnot(None)
         )
         branches = [fts_stmt]
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_stmt = (
                 select(User.id)
                 .where(User.is_active == True, User.embedding.isnot(None))
@@ -54,7 +54,7 @@ async def search_users(
         )
 
         sim = func.similarity(User.username, q)
-        if query_embedding is not None and isinstance(query_embedding, list) and len(query_embedding) == 1024:
+        if query_embedding is not None and query_embedding is not None:
             vector_sim = func.coalesce(1 - User.embedding.cosine_distance(query_embedding), 0)
         else:
             vector_sim = 0

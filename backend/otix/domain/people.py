@@ -46,7 +46,7 @@ class Person(Base, HasExternalIDs):
     spotify_related_crawled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     hash_match_count: Mapped[int] = mapped_column(Integer, default=0)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
 
     __table_args__ = (
         Index(

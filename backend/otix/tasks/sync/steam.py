@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from otix.domain.base import gen_otix_id
-from otix.domain.media import Game, MediaItem
+from otix.domain.media import ExternalID, Game, MediaItem
 from otix.infrastructure.celery import app
 from otix.infrastructure.database import async_session
 from otix.infrastructure.redis import get_redis
@@ -71,28 +71,57 @@ async def _sync_steam_seed_app(steam_app_id: int) -> dict | None:
                 logger.warning("steam external_id exists but game missing", steam_app_id=steam_app_id)
                 return None
         else:
-            item = MediaItem(
-                id=gen_otix_id(),
-                media_type="game",
-                title=name,
-                overview=str(store.get("short_description", "") or ""),
-                slug=slugify(name),
-                poster_url=_extract_header_image(store),
-                synced_at=datetime.now(UTC),
-            )
-            session.add(item)
-            await session.flush()
+            # Cross-provider dedup: check if a game with this title already
+            # exists (e.g. imported from IGDB / TMDB / other provider).
+            # Uses release date + normalized title for smarter matching.
+            from otix.services.media_service import MediaService
 
-            game = Game(
-                media_item_id=item.id,
-                is_free=store.get("is_free", False),
-            )
-            session.add(game)
+            release_date_str = store.get("release_date")
+            release_date = None
+            if release_date_str:
+                try:
+                    release_date = datetime.fromisoformat(release_date_str)
+                except (ValueError, TypeError):
+                    pass
 
-            ext_id = await ExternalIDService(session).upsert(
-                "steam", steam_id_str, "media_item", item.id,
+            existing_item = await MediaService(session).find_matching_media(
+                name, "game", release_date=release_date,
             )
-            await session.flush()
+            if existing_item is not None:
+                item_id = existing_item.id
+                game = await session.scalar(
+                    select(Game).where(Game.media_item_id == item_id)
+                )
+                if game is None:
+                    game = Game(media_item_id=item_id, is_free=store.get("is_free", False))
+                    session.add(game)
+                ext_id = await ExternalIDService(session).upsert(
+                    "steam", steam_id_str, "media_item", item_id,
+                )
+                await session.flush()
+            else:
+                item = MediaItem(
+                    id=gen_otix_id(),
+                    media_type="game",
+                    title=name,
+                    overview=str(store.get("short_description", "") or ""),
+                    slug=slugify(name),
+                    poster_url=_extract_header_image(store),
+                    synced_at=datetime.now(UTC),
+                )
+                session.add(item)
+                await session.flush()
+
+                game = Game(
+                    media_item_id=item.id,
+                    is_free=store.get("is_free", False),
+                )
+                session.add(game)
+
+                ext_id = await ExternalIDService(session).upsert(
+                    "steam", steam_id_str, "media_item", item.id,
+                )
+                await session.flush()
 
         hydrator = SteamHydrator(provider, session)
         await hydrator.hydrate(game)

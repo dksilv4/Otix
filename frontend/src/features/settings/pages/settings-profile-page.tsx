@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { useModal } from '@/lib/modals'
 import { useAuth } from '@/lib/providers/auth'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
@@ -72,12 +73,52 @@ function AssetEditor({
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const { openModal } = useModal()
+  const cropCloseRef = useRef<(() => void) | null>(null)
+
   useEffect(() => {
     return () => {
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl)
       if (cropImageUrl) URL.revokeObjectURL(cropImageUrl)
     }
   }, [previewObjectUrl, cropImageUrl])
+
+  // Open/close CropModal via central framework when cropImageUrl changes
+  useEffect(() => {
+    if (cropImageUrl && cropConfig) {
+      cropCloseRef.current = openModal(
+        <DkDialog
+          open={true}
+          onOpenChange={() => {
+            handleCropCancel()
+          }}
+          title="Crop Image"
+          description="Adjust the crop area and apply."
+          className="max-w-lg"
+        >
+          <CropModal
+            imageUrl={cropImageUrl}
+            shape={cropConfig.shape}
+            aspect={cropConfig.aspect}
+            outputSize={cropConfig.outputSize}
+            onComplete={(blob) => {
+              handleCropComplete(blob)
+            }}
+            onCancel={() => {
+              handleCropCancel()
+            }}
+          />
+        </DkDialog>
+      )
+    } else {
+      cropCloseRef.current?.()
+      cropCloseRef.current = null
+    }
+    return () => {
+      cropCloseRef.current?.()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cropImageUrl])
 
   // Auto-open file picker when switching to Upload mode (no file selected yet)
   useEffect(() => {
@@ -147,24 +188,6 @@ function AssetEditor({
 
   return (
     <>
-      {cropImageUrl && cropConfig && (
-        <DkDialog
-          open={!!cropImageUrl}
-          onOpenChange={() => handleCropCancel()}
-          title="Crop Image"
-          description="Adjust the crop area and apply."
-          className="max-w-lg"
-        >
-          <CropModal
-            imageUrl={cropImageUrl}
-            shape={cropConfig.shape}
-            aspect={cropConfig.aspect}
-            outputSize={cropConfig.outputSize}
-            onComplete={handleCropComplete}
-            onCancel={handleCropCancel}
-          />
-        </DkDialog>
-      )}
       <div className="space-y-4">
         {/* Hidden file input — always mounted so click always works */}
         <input
@@ -332,10 +355,59 @@ export function SettingsProfilePage() {
   const [showAdultContent, setShowAdultContent] = useState(user?.showAdultContent ?? false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [editingAvatar, setEditingAvatar] = useState(false)
-  const [editingCover, setEditingCover] = useState(false)
   const [initialized, setInitialized] = useState(false)
   const savedBaselineRef = useRef<string | null>(null)
+
+  const { openModal } = useModal()
+
+  const handleEditCover = () => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title="Cover Image"
+        description="Upload or paste a URL for your cover image."
+      >
+        <AssetEditor
+          value={backgroundUrl}
+          onSubmit={(url) => {
+            applyCoverEditor(url)
+            close()
+          }}
+          onRemove={() => {
+            removeCover()
+            close()
+          }}
+          cropConfig={{ shape: 'rect', aspect: 16 / 9, outputSize: { width: 1200, height: 675 } }}
+        />
+      </DkDialog>
+    )
+  }
+
+  const handleEditAvatar = () => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title="Avatar Image"
+        description="Upload or paste a URL for your avatar."
+      >
+        <AssetEditor
+          compact
+          value={avatarUrl}
+          onSubmit={(url) => {
+            applyAvatarEditor(url)
+            close()
+          }}
+          onRemove={() => {
+            removeAvatar()
+            close()
+          }}
+          cropConfig={{ shape: 'round', aspect: 1, outputSize: { width: 400, height: 400 } }}
+        />
+      </DkDialog>
+    )
+  }
 
   useEffect(() => {
     if (user && !initialized) {
@@ -449,12 +521,10 @@ export function SettingsProfilePage() {
 
   const applyCoverEditor = (url: string) => {
     setBackgroundUrl(url)
-    setEditingCover(false)
   }
 
   const applyAvatarEditor = (url: string) => {
     setAvatarUrl(url)
-    setEditingAvatar(false)
   }
 
   const removeCover = () => {
@@ -486,7 +556,7 @@ export function SettingsProfilePage() {
 
         {/* Cover hover overlay — covers full card, behind bio/sections */}
         <button
-          onClick={() => setEditingCover(true)}
+          onClick={handleEditCover}
           className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/40"
         >
           <div className="flex items-center gap-2 text-white">
@@ -497,21 +567,6 @@ export function SettingsProfilePage() {
 
         {/* Cover area — pointer-events-none so hover reaches overlay button behind */}
         <div className="relative h-40 pointer-events-none">
-          {editingCover && (
-            <DkDialog
-              open={editingCover}
-              onOpenChange={setEditingCover}
-              title="Cover Image"
-              description="Upload or paste a URL for your cover image."
-            >
-              <AssetEditor
-                value={backgroundUrl}
-                onSubmit={applyCoverEditor}
-                onRemove={removeCover}
-                cropConfig={{ shape: 'rect', aspect: 16 / 9, outputSize: { width: 1200, height: 675 } }}
-              />
-            </DkDialog>
-          )}
         </div>
 
         {/* Avatar + name + bio — glass overlay */}
@@ -522,31 +577,13 @@ export function SettingsProfilePage() {
               <div className="rounded-full ring-4 ring-white/10">
                 <DkAvatar src={avatarUrl || null} name={user.username} size="xl" />
               </div>
-              {editingAvatar && (
-                <DkDialog
-                  open={editingAvatar}
-                  onOpenChange={setEditingAvatar}
-                  title="Avatar Image"
-                  description="Upload or paste a URL for your avatar."
-                >
-                  <AssetEditor
-                    compact
-                    value={avatarUrl}
-                    onSubmit={applyAvatarEditor}
-                    onRemove={removeAvatar}
-                    cropConfig={{ shape: 'round', aspect: 1, outputSize: { width: 400, height: 400 } }}
-                  />
-                </DkDialog>
-              )}
-              {!editingAvatar && (
-                <button
-                  onClick={() => setEditingAvatar(true)}
-                  className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 hover:opacity-100 transition-opacity"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
-                >
-                  <Pencil className="h-4 w-4 text-white" />
-                </button>
-              )}
+              <button
+                onClick={handleEditAvatar}
+                className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 hover:opacity-100 transition-opacity"
+                style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+              >
+                <Pencil className="h-4 w-4 text-white" />
+              </button>
             </div>
 
             <div className="pb-1 min-w-0 flex-1 relative z-10">

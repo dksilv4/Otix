@@ -33,6 +33,8 @@ from ._common import (
     compute_content_hash,
     compute_next_sync_at,
     enqueue_list_items,
+    filter_missing_ids,
+    filter_stale_ids,
     get_last_change_check,
     set_last_change_check,
 )
@@ -454,6 +456,9 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             item.next_sync_at = compute_next_sync_at(media_type, raw, 0)
             await session.commit()
 
+            if new_seasons and media_type == "show":
+                await _notify_new_season_watchers(item)
+
             logger.info("tmdb media synced",
                 title=item.title, media_type=media_type, otix_id=item.id, tmdb_id=tmdb_id,
             )
@@ -462,6 +467,55 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             app.send_task("sync.fanart.enrich", args=[media_type, item.id])
             app.send_task("sync.omdb.ratings", args=[item.id])
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
+
+
+async def _notify_new_season_watchers(item: MediaItem) -> None:
+    from sqlalchemy import text
+
+    from otix.infrastructure.database import async_session as async_session_factory
+    from otix.services.notification_service import NotificationService
+
+    async with async_session_factory() as notif_session:
+        query = text("""
+            SELECT umi.user_id
+            FROM user_media_interactions umi
+            WHERE umi.media_item_id = :media_item_id
+              AND umi.interaction_type = 'watched'
+              AND NOT EXISTS (
+                  SELECT 1 FROM notifications n
+                  WHERE n.user_id = umi.user_id
+                    AND n.type = 'new_season'
+                    AND n.metadata_json->>'media_item_id' = :media_item_id_str
+              )
+        """)
+        result = await notif_session.execute(query, {
+            "media_item_id": item.id,
+            "media_item_id_str": item.id,
+        })
+        rows = result.fetchall()
+        if not rows:
+            logger.debug("no watched users for new season notification",
+                media_item_id=item.id, title=item.title)
+            return
+
+        svc = NotificationService(notif_session)
+        for row in rows:
+            await svc.create(
+                user_id=row[0],
+                type_="new_season",
+                title="New Season Available",
+                body=f"{item.title} has a new season",
+                metadata_json={
+                    "media_item_id": item.id,
+                    "media_title": item.title,
+                    "media_slug": item.slug,
+                    "media_type": "show",
+                },
+            )
+
+        await notif_session.commit()
+        logger.info("notified watched users about new season",
+            media_item_id=item.id, title=item.title, user_count=len(rows))
 
 
 async def _sync_tmdb_person(tmdb_id: int, force: bool = False) -> dict | None:
@@ -690,26 +744,50 @@ async def _sync_tmdb_changes(entity_type: str, lookback_hours: int) -> dict:
         remaining = []
 
     all_pages = [first_page] + list(remaining)
-    all_ids: set[str] = set()
+    all_changed_ids: set[str] = set()
     for data in all_pages:
         for item in data.get("results", []):
-            all_ids.add(str(item["id"]))
+            all_changed_ids.add(str(item["id"]))
+
+    now = datetime.now(UTC)
+
+    if not all_changed_ids:
+        await set_last_change_check("tmdb", now)
+        logger.info("change sync — no changed IDs", entity_type=entity_type)
+        return {"entity_type": entity_type, "changed_ids": 0, "tasks_enqueued": 0}
+
+    # Filter to IDs we actually have in our catalog
+    missing_ids = await filter_missing_ids("tmdb", all_changed_ids)
+    our_ids = all_changed_ids - missing_ids
+
+    if not our_ids:
+        await set_last_change_check("tmdb", now)
+        logger.info("change sync — no matching items in catalog",
+            entity_type=entity_type, all_changed=len(all_changed_ids),
+        )
+        return {"entity_type": entity_type, "changed_ids": len(all_changed_ids), "our_ids": 0, "tasks_enqueued": 0}
+
+    # Skip items synced recently (not yet stale)
+    stale_ids = await filter_stale_ids("tmdb", our_ids)
 
     enqueued = 0
-    for tmdb_id in all_ids:
+    for tmdb_id in stale_ids:
         app.send_task(task_name, args=[int(tmdb_id)])
         enqueued += 1
 
-    now = datetime.now(UTC)
     await set_last_change_check("tmdb", now)
 
     logger.info("change sync completed",
         entity_type=entity_type, start_date=start_date, end_date=end_date,
-        total_pages=total_pages, changed_ids=len(all_ids), tasks_enqueued=enqueued,
+        total_pages=total_pages, all_changed=len(all_changed_ids),
+        our_ids=len(our_ids), skipped_stale=len(our_ids) - len(stale_ids),
+        tasks_enqueued=enqueued,
     )
     return {
         "entity_type": entity_type, "start_date": start_date, "end_date": end_date,
-        "total_pages": total_pages, "changed_ids": len(all_ids), "tasks_enqueued": enqueued,
+        "total_pages": total_pages, "changed_ids": len(all_changed_ids),
+        "our_ids": len(our_ids), "skipped_stale": len(our_ids) - len(stale_ids),
+        "tasks_enqueued": enqueued,
     }
 
 

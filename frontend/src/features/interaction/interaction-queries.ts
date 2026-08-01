@@ -59,14 +59,15 @@ export const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'starte
 export type InteractionType = (typeof VALID_TYPES)[number]
 
 export function useUserInteractions(
+  mediaType: string,
   mediaId: string,
   { enabled = true }: { enabled?: boolean } = {},
 ) {
   return useQuery({
-    queryKey: interactionKeys.forMedia(mediaId),
+    queryKey: interactionKeys.forMedia(mediaType, mediaId),
     queryFn: async () => {
       const { data } = await apiClient.get<UserInteractionState>(
-        `/media/${mediaId}/interactions`,
+        `/media/${mediaType}/${mediaId}/interactions`,
       )
       return data
     },
@@ -97,17 +98,17 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
     }) => {
       if (active) {
         const { data } = await apiClient.put<InteractionToggleResponse>(
-          `/media/${mediaId}/interactions/${type}`,
+          `/media/${mediaType}/${mediaId}/interactions/${type}`,
           {},
         )
         return data
       }
-      await apiClient.delete(`/media/${mediaId}/interactions/${type}`)
+      await apiClient.delete(`/media/${mediaType}/${mediaId}/interactions/${type}`)
       return null
     },
     onMutate: async ({ type, active }) => {
       // Cancel in-flight queries so they don't overwrite our optimistic update
-      const interactionKey = interactionKeys.forMedia(mediaId)
+      const interactionKey = interactionKeys.forMedia(mediaType, mediaId)
       const detailKey = mediaKeys.detail(mediaType, mediaId)
       await qc.cancelQueries({ queryKey: interactionKey })
       await qc.cancelQueries({ queryKey: detailKey })
@@ -174,7 +175,7 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
     onError: (_err, _vars, context) => {
       if (context?.prevInteraction) {
         qc.setQueryData(
-          interactionKeys.forMedia(mediaId),
+          interactionKeys.forMedia(mediaType, mediaId),
           context.prevInteraction,
         )
       }
@@ -191,7 +192,7 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
       }
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaId) })
+      qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'list'] })
     },

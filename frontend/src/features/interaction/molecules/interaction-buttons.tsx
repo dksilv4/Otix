@@ -7,6 +7,7 @@ import { useAuth } from '@/old-features/auth'
 import { cn } from '@/lib/utils'
 import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
 import { DkDialog } from '@ui/molecules/dialog'
+import { useModal } from '@/lib/modals'
 import {
  useToggleInteraction,
  useUserInteractions,
@@ -201,18 +202,17 @@ interface InteractionSectionProps {
 }
 
 function InteractionSection({
- mediaId,
- mediaType,
- className,
- userInteractions,
- children,
- onShowWatchedToggle,
- showEpisodeInfo,
+  mediaId,
+  mediaType,
+  className,
+  userInteractions,
+  children,
+  onShowWatchedToggle,
+  showEpisodeInfo,
 }: InteractionSectionProps) {
- const { isAuthenticated } = useAuth()
- const location = useLocation()
- const [confirmOpen, setConfirmOpen] = useState(false)
- const [confirmAction, setConfirmAction] = useState<boolean>(false)
+  const { isAuthenticated } = useAuth()
+  const location = useLocation()
+  const { openModal } = useModal()
 
  const { data: fetchedInteractions } = useUserInteractions(mediaType, mediaId, {
  enabled: isAuthenticated && userInteractions == null,
@@ -236,14 +236,52 @@ function InteractionSection({
  )
  }
 
- const visibleButtons = BUTTONS.filter((b) => {
- if (b.showFor === 'all') return true
- if (b.showFor === 'movie_show') return mediaType === 'movie' || mediaType === 'show'
- if (b.showFor === 'game') return mediaType === 'game'
- return mediaType === 'music'
- })
+  const visibleButtons = BUTTONS.filter((b) => {
+    if (b.showFor === 'all') return true
+    if (b.showFor === 'movie_show') return mediaType === 'movie' || mediaType === 'show'
+    if (b.showFor === 'game') return mediaType === 'game'
+    return mediaType === 'music'
+  })
 
- return (
+  const handleConfirmShowWatched = (action: boolean) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title={action ? "Mark show as watched?" : "Mark show as unwatched?"}
+        description={
+          action
+            ? showEpisodeInfo
+              ? `This will mark all ${showEpisodeInfo.total - showEpisodeInfo.watched} remaining episodes as watched.`
+              : "This will mark all episodes in this show as watched."
+            : "This will mark all episodes in this show as unwatched."
+        }
+      >
+        <div className="dk-interaction__dialog-actions">
+          <button
+            onClick={() => close()}
+            className="dk-interaction__dialog-btn dk-interaction__dialog-btn--cancel"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onShowWatchedToggle?.(action)
+              close()
+            }}
+            className={cn(
+              "dk-interaction__dialog-btn",
+              action ? "dk-interaction__dialog-btn--positive" : "dk-interaction__dialog-btn--negative",
+            )}
+          >
+            {action ? "Mark All Watched" : "Mark All Unwatched"}
+          </button>
+        </div>
+      </DkDialog>
+    )
+  }
+
+  return (
  <section className={cn('dk-interaction', className)}>
  <div className="dk-interaction__btns">
  {visibleButtons.map((btn) => {
@@ -260,55 +298,17 @@ function InteractionSection({
   active={interactions?.[btn.type] ?? false}
  mediaId={mediaId}
  mediaType={mediaType}
- onClick={
- isWatchedBtn
- ? () => {
- setConfirmAction(!(interactions?.watched ?? false))
- setConfirmOpen(true)
- }
- : undefined
- }
- />
- )
- })}
- {children}
- </div>
-
- {/* Show-level watch confirmation dialog */}
- <DkDialog
- open={confirmOpen}
- onOpenChange={(open) => { if (!open) setConfirmOpen(false) }}
- title={confirmAction ? "Mark show as watched?" : "Mark show as unwatched?"}
- description={
- confirmAction
- ? showEpisodeInfo
- ? `This will mark all ${showEpisodeInfo.total - showEpisodeInfo.watched} remaining episodes as watched.`
- : "This will mark all episodes in this show as watched."
- : "This will mark all episodes in this show as unwatched."
- }
- >
- <div className="dk-interaction__dialog-actions">
- <button
- onClick={() => setConfirmOpen(false)}
- className="dk-interaction__dialog-btn dk-interaction__dialog-btn--cancel"
- >
- Cancel
- </button>
- <button
- onClick={() => {
- onShowWatchedToggle?.(confirmAction)
- setConfirmOpen(false)
- }}
- className={cn(
- "dk-interaction__dialog-btn",
- confirmAction ? "dk-interaction__dialog-btn--positive" : "dk-interaction__dialog-btn--negative",
- )}
- >
- {confirmAction ? "Mark All Watched" : "Mark All Unwatched"}
- </button>
- </div>
- </DkDialog>
- </section>
+            onClick={
+              isWatchedBtn
+                ? () => handleConfirmShowWatched(!(interactions?.watched ?? false))
+                : undefined
+            }
+          />
+        )
+      })}
+      {children}
+    </div>
+  </section>
  )
 }
 

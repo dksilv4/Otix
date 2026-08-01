@@ -1,0 +1,88 @@
+import { useCallback, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { calendarQueries } from '../queries/calendar-queries'
+import { CalendarGrid } from '../components/organisms/calendar-grid'
+import { Helmet } from 'react-helmet-async'
+
+export function CalendarPage() {
+  const { data: events, isLoading } = useQuery(calendarQueries.events())
+
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+
+  const prevMonth = useCallback(() => {
+    if (month === 0) { setYear((y) => y - 1); setMonth(11) }
+    else setMonth((m) => m - 1)
+  }, [month])
+
+  const nextMonth = useCallback(() => {
+    if (month === 11) { setYear((y) => y + 1); setMonth(0) }
+    else setMonth((m) => m + 1)
+  }, [month])
+
+  const goToToday = useCallback(() => {
+    const t = new Date()
+    setYear(t.getFullYear())
+    setMonth(t.getMonth())
+  }, [])
+
+  const monthLabel = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="mx-auto max-w-lg px-4 py-8">
+      <Helmet>
+        <title>Calendar — Otix</title>
+      </Helmet>
+
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-white">Calendar</h1>
+      </div>
+
+      {/* Month navigation */}
+      <div className="mb-6 flex items-center justify-between">
+        <button
+          onClick={prevMonth}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold text-white/90">{monthLabel}</h2>
+          <button
+            onClick={goToToday}
+            className="rounded-md border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/50 transition-colors hover:border-white/20 hover:text-white/80"
+          >
+            Today
+          </button>
+        </div>
+
+        <button
+          onClick={nextMonth}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Loading state */}
+      {isLoading && (
+        <div className="space-y-2">
+          <div className="h-64 animate-pulse rounded-lg bg-white/[0.03]" />
+        </div>
+      )}
+
+      {/* Calendar grid or empty state */}
+      {events && events.length > 0 && <CalendarGrid events={events} year={year} month={month} />}
+      {events && events.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-sm text-white/30">No upcoming or recent releases</p>
+          <p className="mt-1 text-xs text-white/20">Add items to your watchlist to track them here.</p>
+        </div>
+      )}
+    </div>
+  )
+}

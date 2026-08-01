@@ -25,6 +25,7 @@ export interface MediaItemSummary {
   viewCount: number
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
   userInteractions?: UserInteractionState | null
   revenue?: number | null
   budget?: number | null
@@ -75,6 +76,7 @@ export interface MediaItemDetail {
   viewCount: number
   isAdult?: boolean
   newSeasonReleased?: boolean
+  newSeasonReleaseDate?: string | null
   userInteractions?: UserInteractionState | null
   steamPlaytimeForever?: number | null
   steamPlaytime2weeks?: number | null
@@ -395,7 +397,7 @@ export const mediaQueries = {
         }
         if (params.type) searchParams.media_type = params.type
         if (params.sortBy) searchParams.sort_by = params.sortBy
-        const { data } = await apiClient.get<MediaListResponse>('/media/search', { params: searchParams })
+        const { data } = await apiClient.get<MediaListResponse>('/search', { params: searchParams })
         return data
       },
       getNextPageParam: (lastPage, allPages) => (lastPage.hasMore ? allPages.length + 1 : undefined),
@@ -408,7 +410,7 @@ export const mediaQueries = {
     queryOptions({
       queryKey: ['media', 'search', 'structured', query],
       queryFn: async () => {
-        const { data } = await apiClient.get<StructuredSearchResponse>('/media/search/grouped', {
+        const { data } = await apiClient.get<StructuredSearchResponse>('/search/grouped', {
           params: { q: query, media_type_limit: 10, best_results_limit: 10 },
         })
         return data
@@ -427,7 +429,7 @@ export const mediaQueries = {
         }
         if (params.type) searchParams.media_type = params.type
         if (params.knownIds) searchParams.known_ids = params.knownIds
-        const { data } = await apiClient.get<MediaListResponse>('/media/search/poll', { params: searchParams })
+        const { data } = await apiClient.get<MediaListResponse>('/search/poll', { params: searchParams })
         return data
       },
       staleTime: 2000,

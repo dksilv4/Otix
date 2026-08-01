@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import gc
+
 import structlog
 
 from otix.domain.genre import MediaGenre
@@ -17,7 +19,7 @@ logger = structlog.get_logger()
 
 # Process embeddings in batches for throughput.
 # GPU inference scales with batch size; CPU ONNX also benefits from vectorisation.
-_BATCH_SIZE = 10
+_BATCH_SIZE = 50
 
 
 @app.task(
@@ -97,6 +99,7 @@ async def _generate_embedding_batch(media_item_ids: list[str]) -> dict | None:
 
     await _progress_incr("embedding_enqueued", amount=len(items))
     logger.info("embedding batch generated", count=len(items))
+    gc.collect()
     return {"media_item_ids": media_item_ids, "count": len(items), "dimension": len(embeddings[0]) if embeddings else 0}
 
 
@@ -170,6 +173,7 @@ async def _generate_user_embedding_batch(user_ids: list[str]) -> dict | None:
         await session.commit()
 
     logger.info("user embedding batch generated", count=len(users))
+    gc.collect()
     return {"user_ids": user_ids, "count": len(users)}
 
 
@@ -210,6 +214,7 @@ async def _generate_person_embedding_batch(person_ids: list[str]) -> dict | None
         await session.commit()
 
     logger.info("person embedding batch generated", count=len(people))
+    gc.collect()
     return {"person_ids": person_ids, "count": len(people)}
 
 
@@ -250,5 +255,6 @@ async def _generate_company_embedding_batch(company_ids: list[str]) -> dict | No
         await session.commit()
 
     logger.info("company embedding batch generated", count=len(companies))
+    gc.collect()
     return {"company_ids": company_ids, "count": len(companies)}
 

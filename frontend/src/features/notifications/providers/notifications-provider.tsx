@@ -77,7 +77,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   )
 
   useSseStream({
-    url: '/api/notifications/stream',
+    url: '/api/v1/notifications/stream',
     onMessage: handleMessage,
     enabled: isAuthenticated,
     reconnectDelays: [3000, 10000, 30000],

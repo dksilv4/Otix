@@ -1,8 +1,8 @@
 // TODO: Review this file
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { DkButton } from "@/old-features/ui/atoms/button"
 import { DkDialog } from "@/old-features/ui/molecules/dialog"
+import { useModal } from "@/lib/modals"
 import { useAuth } from "@/features/auth"
 import { ReviewCard } from "../molecules/review-card"
 import { ReviewComposer } from "../molecules/review-composer"
@@ -12,6 +12,7 @@ import type { ReviewWithUserOut, ReviewOut } from "../review-queries"
 import "./reviews-list-section.scss"
 
 interface ReviewsListSectionProps {
+ mediaType: string
  mediaId: string
  className?: string
 }
@@ -32,25 +33,50 @@ function ReviewCardSkeleton() {
  )
 }
 
-function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
- const { user } = useAuth()
- const [editTarget, setEditTarget] = useState<ReviewWithUserOut | null>(null)
- const [composerOpen, setComposerOpen] = useState(false)
+function ReviewsListSection({ mediaType, mediaId, className }: ReviewsListSectionProps) {
+  const { user } = useAuth()
+  const { openModal } = useModal()
 
- const { data: reviews, isLoading, isError, refetch } = useQuery({
- ...reviewQueries.list(mediaId),
- staleTime: 1000 * 30,
- })
+  const { data: reviews, isLoading, isError, refetch } = useQuery({
+    ...reviewQueries.list(mediaType, mediaId),
+    staleTime: 1000 * 30,
+  })
 
- const handleEdit = (review: ReviewWithUserOut) => {
- setEditTarget(review)
- setComposerOpen(true)
- }
+  const handleEdit = (review: ReviewWithUserOut) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title="Edit Your Review"
+      >
+        <ReviewComposer
+          mediaType={mediaType}
+          mediaId={mediaId}
+          existingReview={review as ReviewOut}
+          existingRating={review?.rating ?? null}
+          onClose={() => close()}
+        />
+      </DkDialog>
+    )
+  }
 
- const handleDelete = (review: ReviewWithUserOut) => {
- setEditTarget(review)
- setComposerOpen(true)
- }
+  const handleDelete = (review: ReviewWithUserOut) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title="Edit Your Review"
+      >
+        <ReviewComposer
+          mediaType={mediaType}
+          mediaId={mediaId}
+          existingReview={review as ReviewOut}
+          existingRating={review?.rating ?? null}
+          onClose={() => close()}
+        />
+      </DkDialog>
+    )
+  }
 
  if (isLoading) {
  return (
@@ -111,19 +137,6 @@ function ReviewsListSection({ mediaId, className }: ReviewsListSectionProps) {
  ))}
  </div>
  )}
-
- <DkDialog
- open={composerOpen}
- onOpenChange={setComposerOpen}
- title="Edit Your Review"
- >
- <ReviewComposer
- mediaId={mediaId}
- existingReview={editTarget as ReviewOut}
- existingRating={editTarget?.rating ?? null}
- onClose={() => { setComposerOpen(false); setEditTarget(null) }}
- />
- </DkDialog>
  </section>
  )
 }

@@ -17,27 +17,13 @@ from collections.abc import Callable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.asset import MediaAsset
 from otix.domain.media import ExternalID, Game, MediaItem
 from otix.lib.types import JSONValue
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset, rank_grid_by_style, rank_hero_by_style, rank_logo_by_style, rank_icon_by_style
 from otix.providers.steamgrid.client import SteamGridDBProvider
 
 # Platforms SGDB supports, in priority order (most common first).
 _SGDB_PLATFORMS = ("steam", "egs", "origin", "bnet", "uplay", "eshop", "flashpoint")
-
-
-def _pick_best(assets: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
-    """Pick the highest-scored asset. Falls back to first."""
-    if not assets:
-        return None
-    best = None
-    best_score = -1
-    for a in assets:
-        score = a.get("score", 0)
-        if isinstance(score, (int, float)) and score > best_score:
-            best_score = int(score)
-            best = a
-    return best or assets[0]
 
 
 class SteamGridDBHydrator:
@@ -182,44 +168,46 @@ class SteamGridDBHydrator:
         # Fetch all asset types in parallel
         grids, heroes, logos, icons = await self._fetch_assets(sgdb_game_id)
 
-        # Store every returned SGDB asset. Promotion below only controls the
-        # primary URLs used by cards/heroes; it should not limit asset history.
+        # Build RawAsset lists
+        def _to_raw(entries: list[dict], asset_type: str, provider: str = "steamgrid") -> list[RawAsset]:
+            return [
+                RawAsset(
+                    asset_type=at,
+                    url=e["url"],
+                    provider=provider,
+                    width=e.get("width"),
+                    height=e.get("height"),
+                    style=e.get("style"),
+                    score=e.get("score"),
+                )
+                for e in entries
+                if isinstance(e.get("url"), str)
+                for at in [self._grid_asset_type(e) if callable(asset_type) else asset_type]
+            ]
+
+        raw_grids = _to_raw(grids, self._grid_asset_type)
+        raw_heroes = _to_raw(heroes, "backdrop")
+        raw_logos = _to_raw(logos, "logo")
+        raw_icons = _to_raw(icons, "icon")
+
+        pipeline = AssetPipeline(self.session)
         added = 0
-        added += await self._store_assets(media_item, grids, self._grid_asset_type)
-        added += await self._store_assets(media_item, heroes, "backdrop")
-        added += await self._store_assets(media_item, logos, "logo")
-        added += await self._store_assets(media_item, icons, "icon")
+        added += await pipeline.store(media_item.id, raw_grids)
+        added += await pipeline.store(media_item.id, raw_heroes)
+        added += await pipeline.store(media_item.id, raw_logos)
+        added += await pipeline.store(media_item.id, raw_icons)
 
-        # Grids → textless poster (no_logo and material only — alternate may have text)
-        if not media_item.textless_poster_url:
-            best = self._pick_grid(grids)
-            if best and isinstance(best.get("url"), str):
-                media_item.textless_poster_url = best["url"]
-
-        # Logos → logo_url (prefer official style)
-        if not media_item.logo_url:
-            logo = self._pick_logo(logos)
-            if logo and isinstance(logo.get("url"), str):
-                media_item.logo_url = logo["url"]
-
-        # Icons → icon_url (prefer official style, prefer PNG over ICO)
-        if not media_item.icon_url:
-            icon = self._pick_icon(icons)
-            if icon and isinstance(icon.get("url"), str):
-                media_item.icon_url = icon["url"]
-
-        # Heroes → backdrop. Avoid alternate heroes because they commonly include logo/title text.
-        # Promote a text-safe SGDB hero even if IGDB already supplied a backdrop.
-        hero = self._pick_hero(heroes)
-        if hero and isinstance(hero.get("url"), str) and media_item.backdrop_url != hero["url"]:
-            from otix.services.admin_edit_service import AdminEditService
-
-            protected = await AdminEditService.get_protected_image_types(self.session, media_item.id)
-            if "backdrop" in protected and media_item.backdrop_url:
-                svc = AdminEditService(self.session)
-                await svc.create_system_proposal_for_image(media_item.id, "backdrop", hero["url"])
-            else:
-                media_item.backdrop_url = hero["url"]
+        # Promote using game-specific rules from AssetPipeline
+        await pipeline.promote_all(
+            media_item,
+            {
+                "textless_poster": raw_grids,
+                "logo": raw_logos,
+                "icon": raw_icons,
+                "backdrop": raw_heroes,
+            },
+            media_type="game",
+        )
 
         return added
 
@@ -261,147 +249,3 @@ class SteamGridDBHydrator:
         if entry.get("style") in {"no_logo", "material"}:
             return "textless_poster"
         return "poster"
-
-    def _pick_grid(self, grids: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
-        """Pick the best grid for a textless poster.
-
-        Only considers no_logo (strictly textless) and material styles.
-        Falls back to any grid only if neither style is available.
-        """
-        if not grids:
-            return None
-
-        style_rank = {"no_logo": 0, "material": 1}
-        textless = [g for g in grids if g.get("style") in style_rank]
-        candidates = textless if textless else grids
-
-        best = None
-        best_rank = 999
-        best_score = -1
-        for g in candidates:
-            rank = style_rank.get(g.get("style"), 2)
-            score = g.get("score", 0) or 0
-            if rank < best_rank or (rank == best_rank and score > best_score):
-                best_rank = rank
-                best_score = score
-                best = g
-
-        return best
-
-    def _pick_hero(self, heroes: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
-        """Pick the best text-safe hero for a backdrop.
-
-        SteamGridDB's alternate hero style can include title/logo text. Material
-        and blurred heroes are safer as background layers because Otix renders a
-        separate logo/title over the backdrop.
-        """
-        if not heroes:
-            return None
-
-        style_rank = {"material": 0, "blurred": 1}
-        candidates = [h for h in heroes if h.get("style") in style_rank]
-        if not candidates:
-            return None
-
-        best = None
-        best_rank = 999
-        best_score = -1
-        for h in candidates:
-            rank = style_rank.get(h.get("style"), 999)
-            score = h.get("score", 0) or 0
-            if rank < best_rank or (rank == best_rank and score > best_score):
-                best_rank = rank
-                best_score = score
-                best = h
-
-        return best
-
-    def _pick_logo(self, logos: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
-        """Pick the best logo, preferring official over custom.
-
-        Priority: official > white > black > custom.
-        """
-        if not logos:
-            return None
-
-        style_rank = {"official": 0, "white": 1, "black": 2, "custom": 3}
-        best = None
-        best_rank = 999
-        best_score = -1
-        for logo in logos:
-            rank = style_rank.get(logo.get("style"), 4)
-            score = logo.get("score", 0) or 0
-            if rank < best_rank or (rank == best_rank and score > best_score):
-                best_rank = rank
-                best_score = score
-                best = logo
-
-        return best
-
-    def _pick_icon(self, icons: list[dict[str, JSONValue]]) -> dict[str, JSONValue] | None:
-        """Pick the best icon, preferring PNG over ICO and official over custom."""
-        if not icons:
-            return None
-
-        style_rank = {"official": 0, "custom": 1}
-        best = None
-        best_rank = 999
-        best_score = -1
-        for icon in icons:
-            url = icon.get("url", "")
-            is_png = isinstance(url, str) and url.lower().endswith(".png")
-            rank = style_rank.get(icon.get("style"), 2)
-            score = icon.get("score", 0) or 0
-            # PNG preferred: subtract 0.5 from rank so it beats same-style ICO
-            effective_rank = rank - 0.5 if is_png else rank
-            if effective_rank < best_rank or (effective_rank == best_rank and score > best_score):
-                best_rank = effective_rank
-                best_score = score
-                best = icon
-
-        return best
-
-    async def _store_assets(
-        self,
-        media_item: MediaItem,
-        entries: list[dict[str, JSONValue]],
-        asset_type: str | Callable[[dict[str, JSONValue]], str],
-    ) -> int:
-        if not entries:
-            return 0
-
-        # Resolve asset types and collect valid URLs
-        resolved: list[tuple[str, str, dict[str, JSONValue]]] = []
-        for entry in entries:
-            url = entry.get("url")
-            if not isinstance(url, str) or not url:
-                continue
-            at = asset_type(entry) if callable(asset_type) else asset_type
-            resolved.append((url, at, entry))
-
-        if not resolved:
-            return 0
-
-        # Batch-check existing URLs
-        urls = [r[0] for r in resolved]
-        existing = await self.session.scalars(select(MediaAsset.url).where(MediaAsset.url.in_(urls)))
-        existing_urls = set(existing.all())
-
-        added = 0
-        for url, at, entry in resolved:
-            if url in existing_urls:
-                continue
-            self.session.add(
-                MediaAsset(
-                    media_item_id=media_item.id,
-                    asset_type=at,
-                    url=url,
-                    width=entry.get("width"),
-                    height=entry.get("height"),
-                    style=entry.get("style"),
-                    score=entry.get("score"),
-                    provider="steamgrid",
-                )
-            )
-            added += 1
-        return added

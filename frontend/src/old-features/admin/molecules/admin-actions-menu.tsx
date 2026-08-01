@@ -6,6 +6,7 @@ import { connectTaskSseStream } from '@/lib/api/sse-client'
 import { mediaKeys } from '@media/queries/media-keys'
 import { AdminEditModal } from '../organisms/admin-edit-modal'
 import { cn } from '@/lib/utils'
+import { useModal } from '@/lib/modals'
 import { Shield, Pencil, RefreshCw, ChevronDown, X } from 'lucide-react'
 import type { MediaItemDetail } from '@media/queries/media-queries'
 import './admin-actions-menu.scss'
@@ -20,8 +21,8 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
   const { user } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { openModal } = useModal()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
   const [rehydrating, setRehydrating] = useState(false)
   const [rehydratePhase, setRehydratePhase] = useState<string | null>(null)
   const [rehydrateLog, setRehydrateLog] = useState<string[]>([])
@@ -126,7 +127,16 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
             <div className="dk-admin-actions__dropdown">
               <button
                 type="button"
-                onClick={() => { setEditOpen(true); setMenuOpen(false) }}
+                onClick={() => {
+                  const close = openModal(
+                    <AdminEditModal
+                      mediaId={mediaId}
+                      media={media}
+                      onClose={() => close()}
+                    />
+                  )
+                  setMenuOpen(false)
+                }}
                 className="dk-admin-actions__dropdown-item"
               >
                 <Pencil className="h-4 w-4 text-amber-400" />
@@ -169,13 +179,6 @@ export function AdminActionsMenu({ mediaId, media }: Props) {
           </div>
         </div>
       )}
-
-      <AdminEditModal
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        mediaId={mediaId}
-        media={media}
-      />
     </>
   )
 }

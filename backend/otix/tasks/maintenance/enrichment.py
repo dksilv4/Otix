@@ -10,6 +10,7 @@ import structlog
 from sqlalchemy import and_, or_, select
 from sqlalchemy import exists as sa_exists
 
+from otix.domain.admin_edit import MediaEditProposal
 from otix.domain.asset import ExternalRating, MediaAsset
 from otix.domain.list import UserList, UserListItem
 from otix.domain.media import Album, ExternalID, Game, MediaItem
@@ -588,3 +589,66 @@ async def _enrich_lastfm() -> dict:
         logger.info("lastfm enrichment enqueued", count=enqueued)
 
     return {"enqueued": enqueued}
+
+
+@app.task(name="maintenance.analyze_logo_colors")
+def analyze_logo_colors() -> dict:
+    """Scan logos missing color_guess, analyze, and create system proposals."""
+    return run_async(_analyze_logo_colors())
+
+
+async def _analyze_logo_colors() -> dict:
+    import httpx
+
+    from otix.services.admin_edit_service import AdminEditService
+    from otix.services.logo_color_analyzer import LogoColorAnalyzer
+
+    async with async_session() as session:
+        # Find logo assets without color_guess that don't already have a pending
+        # color_guess proposal, so repeated runs don't pile up duplicate proposals.
+        pending_color_guess = sa_exists().where(
+            MediaEditProposal.status == "pending",
+            MediaEditProposal.changes["color_guess"].isnot(None),
+            MediaEditProposal.changes["color_guess"]["asset_id"].astext == MediaAsset.id,
+        )
+        result = await session.execute(
+            select(MediaAsset).where(
+                MediaAsset.asset_type == "logo",
+                MediaAsset.color_guess.is_(None),
+                MediaAsset.url.isnot(None),
+                ~pending_color_guess,
+            ).limit(100)
+        )
+        assets = list(result.scalars().all())
+
+    if not assets:
+        return {"analyzed": 0, "proposals_created": 0}
+
+    analyzed = 0
+    proposals_created = 0
+    async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as http_client:
+        for asset in assets:
+            async with async_session() as session:
+                analyzer = LogoColorAnalyzer(session, http_client=http_client)
+                guess = await analyzer.analyze(asset.url)
+                if guess is None:
+                    continue
+                analyzed += 1
+
+                admin_svc = AdminEditService(session)
+                proposal = await admin_svc.create_system_proposal_for_color_guess(
+                    media_item_id=asset.media_item_id,
+                    asset_id=asset.id,
+                    proposed_value=guess,
+                )
+                if proposal:
+                    proposals_created += 1
+
+                await session.commit()
+
+    logger.info(
+        "logo color analysis complete",
+        analyzed=analyzed,
+        proposals_created=proposals_created,
+    )
+    return {"analyzed": analyzed, "proposals_created": proposals_created}
