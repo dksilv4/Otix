@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 
 export interface VoteCounts {
   up: number
@@ -53,6 +54,14 @@ export function useVoteReview(userId: string, mediaItemId: string) {
         queryClient.setQueryData(['review-votes', userId, mediaItemId], context.prev)
       }
     },
+    onSuccess: (_data, voteType, context) => {
+      emitOtixEvent('otix:review:voted', {
+        mediaItemId,
+        userId,
+        voteType,
+        active: context?.prev?.my_vote !== voteType,
+      })
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['review-votes', userId, mediaItemId] })
     },
@@ -81,6 +90,12 @@ export function useRemoveVote(userId: string, mediaItemId: string) {
     onError: (_err, _vars, context) => {
       if (context?.prev) {
         queryClient.setQueryData(['review-votes', userId, mediaItemId], context.prev)
+      }
+    },
+    onSuccess: (_data, _vars, context) => {
+      const removed = context?.prev?.my_vote
+      if (removed === 'up' || removed === 'down') {
+        emitOtixEvent('otix:review:voted', { mediaItemId, userId, voteType: removed, active: false })
       }
     },
     onSettled: () => {

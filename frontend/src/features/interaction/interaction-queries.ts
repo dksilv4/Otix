@@ -1,26 +1,10 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { interactionKeys } from './interaction-keys'
 import { mediaKeys } from '@media/queries/media-keys'
 import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@media/queries/media-queries'
-
-function emit(event: string, payload: unknown) {
-  try {
-    const api = (window as Window & {
-      desktopAPI?: {
-        plugin?: {
-          emitEvent: (event: string, payload: unknown) => Promise<unknown>
-        }
-      }
-    }).desktopAPI?.plugin
-    if (api?.emitEvent) {
-      api.emitEvent(event, payload)
-    }
-  } catch (err) {
-    console.error('Failed to emit event:', err)
-  }
-}
 
 export interface UserInteractionState {
   liked: boolean
@@ -184,14 +168,20 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
       }
     },
     onSuccess: (_data, variables) => {
+      emitOtixEvent('otix:media:interaction', {
+        type: variables.type,
+        mediaId,
+        mediaType,
+        active: variables.active,
+      })
       if (variables.type === 'watchlisted') {
-        emit(variables.active ? 'otix:list:item_added' : 'otix:list:item_removed', {
+        emitOtixEvent(variables.active ? 'otix:list:item_added' : 'otix:list:item_removed', {
           listId: 'watchlist',
           item: { mediaItemId: mediaId, mediaType: mediaType },
         })
       }
       if (variables.type === 'watched' && variables.active) {
-        emit('otix:media:watched', { mediaId, mediaType })
+        emitOtixEvent('otix:media:watched', { mediaId, mediaType })
       }
     },
     onSettled: () => {

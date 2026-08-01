@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -145,7 +146,12 @@ export function useVoteOnProposal() {
       })
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      emitOtixEvent('otix:proposal:voted', {
+        proposalId: variables.proposalId,
+        voteType: variables.voteType,
+        active: true,
+      })
       queryClient.invalidateQueries({ queryKey: proposalKeys.all() })
     },
   })
@@ -157,7 +163,12 @@ export function useRemoveVote() {
     mutationFn: async (proposalId: string) => {
       await apiClient.delete(`/proposals/${proposalId}/vote`)
     },
-    onSuccess: () => {
+    onSuccess: (_data, proposalId) => {
+      const cached = queryClient.getQueryData<Proposal>(proposalKeys.detail(proposalId))
+      const removed = cached?.myVote
+      if (removed === 'up' || removed === 'down') {
+        emitOtixEvent('otix:proposal:voted', { proposalId, voteType: removed, active: false })
+      }
       queryClient.invalidateQueries({ queryKey: proposalKeys.all() })
     },
   })

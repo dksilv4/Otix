@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import type { MediaItemSummary } from '@/features/media/queries/media-queries'
 
 export interface SteamPublicProfile {
@@ -505,6 +506,7 @@ export function useFollowUser(username: string) {
       await apiClient.post(`/users/${username}/follow`)
     },
     onSuccess: () => {
+      emitOtixEvent('otix:user:followed', { username })
       queryClient.invalidateQueries({ queryKey: ['user', username] })
       queryClient.invalidateQueries({ queryKey: ['user', username, 'follow-counts'] })
     },
@@ -518,6 +520,7 @@ export function useUnfollowUser(username: string) {
       await apiClient.delete(`/users/${username}/follow`)
     },
     onSuccess: () => {
+      emitOtixEvent('otix:user:unfollowed', { username })
       queryClient.invalidateQueries({ queryKey: ['user', username] })
       queryClient.invalidateQueries({ queryKey: ['user', username, 'follow-counts'] })
     },

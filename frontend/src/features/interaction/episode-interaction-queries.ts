@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { interactionKeys } from './interaction-keys'
 
 export const episodeInteractionKeys = {
@@ -98,6 +99,14 @@ export function useToggleEpisodeWatched(mediaType: string, mediaId: string) {
         qc.setQueryData(episodeInteractionKeys.forShow(mediaId), context.prev)
       }
     },
+    onSuccess: (_data, variables) => {
+      emitOtixEvent('otix:episode:watched', {
+        mediaId,
+        mediaType,
+        episodeId: variables.episodeId,
+        active: variables.active,
+      })
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
@@ -145,6 +154,9 @@ export function useMarkShowWatched(mediaType: string, mediaId: string) {
         qc.setQueryData(episodeInteractionKeys.forShow(mediaId), context.prev)
       }
     },
+    onSuccess: (_data, active) => {
+      emitOtixEvent('otix:episode:watched', { mediaId, mediaType, active, seasonNumber: 'all' })
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
@@ -175,7 +187,13 @@ export function useMarkSeasonWatched(mediaType: string, mediaId: string) {
       )
       return data
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      emitOtixEvent('otix:episode:watched', {
+        mediaId,
+        mediaType,
+        active: variables.active,
+        seasonNumber: variables.seasonNumber,
+      })
       qc.invalidateQueries({ queryKey: episodeInteractionKeys.forShow(mediaId) })
       qc.invalidateQueries({ queryKey: ['media', 'detail'] })
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })

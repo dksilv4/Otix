@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { queryClient } from '@/lib/query/client'
 import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
 import { AuthContext } from '@auth/hooks/use-auth'
@@ -66,7 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.action === 'auth/steam/callback' && data.params.accessToken) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
           window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
-          loadUser().then(setUser)
+          loadUser().then((loaded) => {
+            setUser(loaded)
+            if (loaded) emitOtixEvent('otix:user:login', { userId: loaded.id })
+          })
         }
 
         if (data.action === 'auth/steam/connect/callback') {
@@ -92,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = me.data as User
     await mergeIntegrations(user)
     setUser(user)
+    emitOtixEvent('otix:user:login', { userId: user.id })
     return data
   }, [])
 
@@ -109,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = me.data as User
     await mergeIntegrations(user)
     setUser(user)
+    emitOtixEvent('otix:user:login', { userId: user.id })
   }, [twoFactorChallenge])
 
   const cancelTwoFactor = useCallback(() => {
@@ -123,9 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = me.data as User
     await mergeIntegrations(user)
     setUser(user)
+    emitOtixEvent('otix:user:login', { userId: user.id })
   }, [])
 
   const logout = useCallback(async () => {
+    const userId = user?.id
     try {
       await apiClient.post('/auth/logout')
     } catch {
@@ -136,7 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setTwoFactorChallenge(null)
     queryClient.clear()
-  }, [])
+    if (userId) {
+      emitOtixEvent('otix:user:logout', { userId })
+    }
+  }, [user])
 
   const refreshUser = useCallback(async () => {
     const me = await apiClient.get('/auth/me')

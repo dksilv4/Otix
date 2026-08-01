@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { useAuth } from '@/lib/providers/auth'
 import { showXPToast } from '@/old-features/ui/atoms/xp-toast'
 import type { MoodValue, FeelingValue } from '../types'
@@ -35,7 +36,8 @@ export function useMoodCheckIn(onMoodRecorded?: () => void) {
     mutationFn: async (data: { mood: string; feeling: string }) => {
       await apiClient.post('/mood-checkins', data)
     },
-    onSuccess: () => {
+    onSuccess: (_data, data) => {
+      emitOtixEvent('otix:user:mood_checkin', { mood: data.mood, feeling: data.feeling })
       queryClient.setQueryData(['mood-checkins', 'today'], { checkedIn: true })
       showXPToast(10)
       onMoodRecorded?.()

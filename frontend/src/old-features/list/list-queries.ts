@@ -6,13 +6,8 @@ import {
   useInfiniteQuery,
 } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
+import { emitOtixEvent } from "@/lib/plugin-events"
 import { listKeys } from "./list-keys"
-
-function emit(event: string, payload: unknown) {
-  try {
-    ;(window as any).desktopAPI?.plugin?.emitEvent(event, payload)
-  } catch {}
-}
 
 // ── Types ──────────────────────────────────────────────
 
@@ -149,7 +144,10 @@ export function useCreateList() {
       const { data } = await apiClient.post<UserListOut>("/list", body)
       return data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      emitOtixEvent("otix:list:created", {
+        list: { id: data.id, name: data.name, isPublic: data.isPublic },
+      })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -170,6 +168,10 @@ export function useUpdateList() {
       return data
     },
     onSuccess: (_data, vars) => {
+      emitOtixEvent("otix:list:updated", {
+        listId: vars.listId,
+        list: { name: vars.name, isPublic: vars.isPublic },
+      })
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
     },
@@ -182,7 +184,8 @@ export function useDeleteList() {
     mutationFn: async (listId: string) => {
       await apiClient.delete("/list/" + listId)
     },
-    onSuccess: () => {
+    onSuccess: (_data, listId) => {
+      emitOtixEvent("otix:list:deleted", { listId })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -209,7 +212,7 @@ export function useAddToList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
-      emit("otix:list:item_added", {
+      emitOtixEvent("otix:list:item_added", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
       })
@@ -233,7 +236,7 @@ export function useRemoveFromList() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(vars.listId) })
       qc.invalidateQueries({ queryKey: listKeys.mine() })
-      emit("otix:list:item_removed", {
+      emitOtixEvent("otix:list:item_removed", {
         listId: vars.listId,
         item: { mediaItemId: vars.mediaItemId, mediaType: vars.mediaType },
       })
@@ -284,6 +287,7 @@ export function useLikeList(listId: string) {
       return data
     },
     onSuccess: () => {
+      emitOtixEvent("otix:list:liked", { listId })
       qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },
@@ -298,6 +302,7 @@ export function useUnlikeList(listId: string) {
       return data
     },
     onSuccess: () => {
+      emitOtixEvent("otix:list:unliked", { listId })
       qc.invalidateQueries({ queryKey: listKeys.detail(listId) })
       qc.invalidateQueries({ queryKey: listKeys.public() })
     },

@@ -1,11 +1,8 @@
 // TODO: Review this file
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { mediaKeys } from '@media/queries/media-keys'
-
-function emit(event: string, payload: unknown) {
-  try { (window as any).desktopAPI?.plugin?.emitEvent(event, payload) } catch {}
-}
 
 export interface MediaRatingOut {
   userId: string
@@ -68,7 +65,7 @@ export function useUpsertRating(mediaType: string, mediaId: string) {
       }
     },
     onSuccess: (_data, variables) => {
-      emit('otix:interaction:rated', { mediaId, mediaType, rating: variables })
+      emitOtixEvent('otix:interaction:rated', { mediaId, mediaType, rating: variables })
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
@@ -95,10 +92,12 @@ export function useDeleteRating(mediaType: string, mediaId: string) {
         qc.setQueryData(ratingKeys.myRating(mediaType, mediaId), context.prevRating)
       }
     },
+    onSuccess: () => {
+      emitOtixEvent('otix:interaction:rated', { mediaId, mediaType, rating: 0 })
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ratingKeys.myRating(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: mediaKeys.detail(mediaType, mediaId) })
-      emit('otix:interaction:rated', { mediaId, mediaType, rating: 0 })
     },
   })
 }

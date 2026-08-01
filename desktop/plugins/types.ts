@@ -158,13 +158,47 @@ export interface SlotWidget {
 }
 
 // ── Events ──
+export interface ReviewEventPayload {
+  title?: string | null
+  content?: string | null
+  isSpoiler?: boolean
+  isPrivate?: boolean
+}
+
 export interface OtixEvents {
+  // ── Media interactions ──
+  // Fires for every media interaction toggle (liked/watchlisted/watched/played/started/listened).
+  // `otix:media:watched` is a convenience alias for { type: 'watched', active: true }.
+  'otix:media:interaction': { type: string; mediaId: string; mediaType: string; active: boolean }
+  'otix:media:watched': { mediaId: string; mediaType: string; episodeId?: string; seasonNumber?: number | 'all' }
+  'otix:episode:watched': { mediaId: string; mediaType: string; episodeId?: string; active: boolean; seasonNumber?: number | 'all' }
+  'otix:interaction:rated': { mediaId: string; mediaType: string; rating: number }
+
+  // ── Reviews ──
+  'otix:review:created': { mediaId: string; mediaType: string; review: ReviewEventPayload }
+  'otix:review:updated': { mediaId: string; mediaType: string; review: ReviewEventPayload }
+  'otix:review:deleted': { mediaId: string; mediaType: string }
+  'otix:review:voted': { mediaItemId: string; userId: string; voteType: 'up' | 'down'; active: boolean }
+
+  // ── Lists ──
   'otix:list:item_added': { listId: string; item: { mediaItemId: string; mediaType?: string } }
   'otix:list:item_removed': { listId: string; item: { mediaItemId: string; mediaType?: string } }
-  'otix:media:watched': { mediaId: string; mediaType: string; episodeId?: string; seasonNumber?: number | 'all' }
-  'otix:interaction:rated': { mediaId: string; mediaType: string; rating: number }
+  'otix:list:created': { list: { id: string; name: string; isPublic: boolean } }
+  'otix:list:updated': { listId: string; list: { name?: string | null; isPublic?: boolean | null } }
+  'otix:list:deleted': { listId: string }
+  'otix:list:liked': { listId: string }
+  'otix:list:unliked': { listId: string }
+
+  // ── Social ──
+  'otix:user:followed': { username: string }
+  'otix:user:unfollowed': { username: string }
   'otix:user:login': { userId: string }
   'otix:user:logout': { userId: string }
+  'otix:user:mood_checkin': { mood: string; feeling: string }
+
+  // ── Proposals ──
+  'otix:proposal:voted': { proposalId: string; voteType: 'up' | 'down'; active: boolean }
+
   'plugin:enabled': { pluginId: string }
   'plugin:disabled': { pluginId: string }
   'plugin:slot-suspended': { pluginId: string; location: string }

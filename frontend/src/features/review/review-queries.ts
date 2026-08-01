@@ -1,6 +1,7 @@
 // TODO: Review this file
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { emitOtixEvent } from '@/lib/plugin-events'
 import { mediaKeys } from '@media/queries/media-keys'
 
 export const reviewKeys = {
@@ -103,6 +104,18 @@ export function useUpsertReview(mediaType: string, mediaId: string) {
         qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
       }
     },
+    onSuccess: (_data, payload, context) => {
+      emitOtixEvent(context?.prevReview ? 'otix:review:updated' : 'otix:review:created', {
+        mediaId,
+        mediaType,
+        review: {
+          title: payload.title ?? null,
+          content: payload.content ?? null,
+          isSpoiler: payload.isSpoiler ?? false,
+          isPrivate: payload.isPrivate ?? false,
+        },
+      })
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
       qc.invalidateQueries({ queryKey: reviewKeys.list(mediaType, mediaId) })
@@ -128,6 +141,9 @@ export function useDeleteReview(mediaType: string, mediaId: string) {
       if (context?.prevReview !== undefined) {
         qc.setQueryData(reviewKeys.myReview(mediaType, mediaId), context.prevReview)
       }
+    },
+    onSuccess: () => {
+      emitOtixEvent('otix:review:deleted', { mediaId, mediaType })
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: reviewKeys.myReview(mediaType, mediaId) })
