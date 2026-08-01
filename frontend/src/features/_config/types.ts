@@ -62,6 +62,7 @@ export type FeatureName =
   | 'context-menu:tv'
   | 'context-menu:music'
   | 'context-menu:generic'
+  | 'hub'
 
 export type FeatureOverrides = Partial<Record<FeatureName, boolean>>
 

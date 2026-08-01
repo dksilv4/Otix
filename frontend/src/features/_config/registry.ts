@@ -71,4 +71,7 @@ export const REGISTRY: Record<FeatureName, FeatureDefinition> = {
     'context-menu:tv': {label: 'TV context menu', enabled: true, dependsOn: ['ui']},
     'context-menu:music': {label: 'Music context menu', enabled: true, dependsOn: ['ui']},
     'context-menu:generic': {label: 'Generic context menu', enabled: true, dependsOn: ['ui']},
+
+    // HUB (command palette)
+    'hub': {label: 'Command hub / global palette', enabled: true, dependsOn: ['ui']},
 }

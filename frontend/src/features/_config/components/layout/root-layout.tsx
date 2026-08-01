@@ -4,6 +4,7 @@ import { NavShell } from "@navigation"
 import { TitleBar } from "@/old-features/title-bar/organisms/title-bar"
 import { XPToastContainer } from "@/old-features/ui/atoms/xp-toast"
 import { ContextMenuProvider, ContextMenuPortal } from "@/features/_config/context-menu"
+import { CommandPaletteMount } from "@/features/hub"
 import { ActivityModule } from "@activity/components/organisms/activity-panel"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
@@ -79,6 +80,7 @@ export function RootLayout() {
           </NotificationsProvider>
         </PanelProvider>
         <ContextMenuPortal />
+        <CommandPaletteMount />
       </ContextMenuProvider>
     </div>
   )

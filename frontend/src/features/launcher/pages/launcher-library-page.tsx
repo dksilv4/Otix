@@ -10,15 +10,10 @@ import { hasDesktopAPI } from '@/lib/desktop/api'
 import { toDisplayGame, heroImage } from '@/features/launcher/utils'
 import { useInactiveSlideshow } from '@/features/launcher/hooks/use-inactive-slideshow'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
+import { PLATFORM_LABELS } from '@/constants/games'
 import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
 
 type SortMode = 'recent' | 'title' | 'platform'
-
-const PLATFORM_LABELS: Record<string, string> = {
-  steam: 'Steam', epic: 'Epic', gog: 'GOG', battlenet: 'Battle.net',
-  ubisoft: 'Ubisoft', origin: 'Origin', ea: 'EA', riot: 'Riot',
-  xbox: 'Xbox', itch: 'Itch', pc: 'PC', iso: 'ISO', unknown: 'Other',
-}
 
 export function LauncherLibraryPage() {
   const navigate = useNavigate()

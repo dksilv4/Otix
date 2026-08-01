@@ -7,6 +7,7 @@ import { useLocalGames, useRejectSuggestion } from "@/features/launcher/data/gam
 import { useMatchLocalGames } from "@/features/launcher/data/game-queries"
 import { useClaimGame } from "@/old-features/library/library-queries"
 import { apiClient } from "@/lib/api/client"
+import { PLATFORM_LABELS } from "@/constants/games"
 import type { LocalGame } from "@/features/launcher/types"
 
 export function ScannersSection() {
@@ -271,12 +272,6 @@ export function ScannersSection() {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }, [scannedGames])
 
-  const platformLabels: Record<string, string> = {
-    steam: "Steam", pc: "PC", iso: "ISO", epic: "Epic",
-    gog: "GOG", battlenet: "Battle.net", ubisoft: "Ubisoft",
-    ea: "EA", riot: "Riot", xbox: "Xbox", itch: "itch.io",
-  }
-
   const PlatformIcon = ({ platform, className }: { platform: string; className?: string }) => {
     const cls = className || "w-3.5 h-3.5"
     switch (platform) {
@@ -487,7 +482,7 @@ export function ScannersSection() {
                 className="dk-settings-scanners__chip"
               >
                 <PlatformIcon platform={platform} />
-                {platformLabels[platform] || platform}
+                {PLATFORM_LABELS[platform] || platform}
                 <span className="dk-settings-scanners__chip-count">{count}</span>
               </span>
             ))}
@@ -702,7 +697,7 @@ export function ScannersSection() {
                         </div>
                         <div className="dk-settings-scanners__unmatched-meta">
                           <span className="dk-settings-scanners__unmatched-platform">
-                            {platformLabels[game.platform] || game.platform}
+                            {PLATFORM_LABELS[game.platform] || game.platform}
                           </span>
                           <button
                             onClick={() => handleOpenMatchSearch(game)}

@@ -8,6 +8,7 @@ import { useGameSuggestions } from '@/features/launcher/data/queries'
 import { useMatchLocalGames, useSyncLocalGames } from '@/features/launcher/data/game-queries'
 import { localGameKeys } from '@/features/launcher/data/game-queries'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
+import { PLATFORM_LABELS } from '@/constants/games'
 import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
 
 // ── Modal step enum ──────────────────────────────────────────────
@@ -26,22 +27,6 @@ interface Props {
   game: LocalGame
   onClose: () => void
   isExiting?: boolean
-}
-
-// ── Platform badge config ────────────────────────────────────────
-
-const PLATFORM_LABELS: Record<string, string> = {
-  steam: 'Steam',
-  pc: 'PC',
-  iso: 'ISO',
-  epic: 'Epic',
-  gog: 'GOG',
-  battlenet: 'Battle.net',
-  ubisoft: 'Ubisoft',
-  ea: 'EA',
-  riot: 'Riot',
-  xbox: 'Xbox',
-  itch: 'Itch',
 }
 
 // ── Component ────────────────────────────────────────────────────
