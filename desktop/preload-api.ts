@@ -260,7 +260,6 @@ export type PluginPermission =
   | 'ui:nav.item'
   | 'ui:dashboard.widget'
   | 'notifications'
-  | 'worker:compute'
   | 'api:proxy';
 
 export type PluginStatus = 'installed' | 'enabled' | 'disabled' | 'error';

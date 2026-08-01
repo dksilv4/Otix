@@ -22,7 +22,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   'ui:nav.item': 'Add an item to the navigation sidebar.',
   'ui:dashboard.widget': 'Add a widget to your dashboard.',
   'notifications': 'Send you desktop notifications.',
-  'worker:compute': 'Use your device for background processing.',
+  'ui:command': 'Register commands in the command palette (Cmd+K).',
 }
 
 function getPermissionDescription(permission: string): string {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Loader2, Gamepad2, RefreshCw, FolderOpen, Plus, X, LogOut, CheckCircle2, Star, AlertCircle, Trash2, ChevronDown } from 'lucide-react'
-import type { PluginAPI } from '@/features/settings/pages/settings-plugins-page'
+import type { PluginAPI } from './plugin-settings'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
 
 interface ConfigField {

@@ -5,7 +5,7 @@ import type { IsolatedEventBus } from './event-bus'
 import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
 import * as fs from 'fs/promises'
-import { app } from 'electron'
+import { app, Notification, BrowserWindow } from 'electron'
 import { getConnection } from '../db'
 import { replaceTableNames } from '../db/plugins-db'
 
@@ -30,6 +30,7 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'plugins.discover': 'events:subscribe' as PluginPermission,
   'downloadsDb.all': 'storage:local' as PluginPermission,
   'downloadsDb.get': 'storage:local' as PluginPermission,
+  'downloadsDb.run': 'storage:local' as PluginPermission,
 }
 
 export interface BridgeDependencies {
@@ -106,39 +107,6 @@ export function createWorkerBridge(deps: BridgeDependencies) {
           type: 'rpc-error', id: msg.id, error: error.message,
         } satisfies MainToWorkerMessage)
       }
-    }
-
-    // Route plugin-call results back to the caller worker
-    if (msg.type === 'plugin-call-result') {
-      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (result: any) => void> | undefined
-      if (pending) {
-        const resolve = pending.get(msg.id)
-        if (resolve) {
-          pending.delete(msg.id)
-          resolve(msg.result)
-        }
-      }
-      return
-    }
-
-    if (msg.type === 'plugin-call-error') {
-      const pending = (globalThis as any).__pendingPluginCalls as Map<string, (err: any) => void> | undefined
-      if (pending) {
-        const reject = pending.get(msg.id)
-        if (reject) {
-          pending.delete(msg.id)
-          reject(msg.error)
-        }
-      }
-      return
-    }
-
-    if (msg.type === 'slot-render') {
-      // Reserved for PluginRuntime.slotRender() — see Task 3.3
-    }
-
-    if (msg.type === 'handle-action') {
-      // Reserved for PluginRuntime.handleAction() — see Task 3.3
     }
   })
 
@@ -246,6 +214,10 @@ async function executeMethod(
       const dlDb = getConnection('downloads')
       return dlDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
     }
+    case 'downloadsDb.run': {
+      const dlDb = getConnection('downloads')
+      return dlDb.prepare(args[0] as string).run(...(args[1] as any[] || []))
+    }
     case 'events.on': {
       const eventName = args[0] as string
       const subId = `ev_${++subIdCounter}`
@@ -298,9 +270,21 @@ async function executeMethod(
       const text = await res.text()
       try { return JSON.parse(text) } catch { return text }
     }
-    case 'notifications.send':
-      // Notification dispatch handled by main process
+    case 'notifications.send': {
+      const [title, body] = args as [string, string | undefined]
+      if (!Notification.isSupported()) return undefined
+      const notification = new Notification({ title, body })
+      notification.on('click', () => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win && !win.isDestroyed()) {
+          if (win.isMinimized()) win.restore()
+          win.show()
+          win.focus()
+        }
+      })
+      notification.show()
       return undefined
+    }
     case 'filesystem.readdir': {
       const [dirPath, options] = args as [string, { withFileTypes?: boolean } | undefined]
       const entries = await fs.readdir(dirPath, { withFileTypes: true })

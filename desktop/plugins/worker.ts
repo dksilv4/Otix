@@ -180,6 +180,7 @@ const ctx = {
     all: <T>(sql: string, params?: unknown[]) => rpc('db.all', sql, params) as Promise<T[]>,
   },
   downloadsDb: {
+    run: (sql: string, params?: unknown[]) => rpc('downloadsDb.run', sql, params) as Promise<unknown>,
     all: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.all', sql, params) as Promise<T[]>,
     get: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.get', sql, params) as Promise<T | null>,
   },

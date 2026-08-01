@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Loader2, Puzzle, ExternalLink, CheckCircle2, XCircle,
-  AlertCircle, Download, RefreshCw, Settings, X, Store, ChevronDown,
-  ShieldCheck, Database, ArrowUpCircle, ArrowRight, ChevronRight,
+  Download, RefreshCw, Settings, X, Store, ChevronDown,
+  ShieldCheck, Database, ArrowUpCircle, ArrowRight, ChevronUp,
 } from 'lucide-react'
 import { useModal, SlidePanel } from '@/lib/modals'
-import { PluginConfigPanel } from './settings-plugin-config-panel'
-import type { PluginInfo } from '@/features/settings/types/plugins'
+import { PluginConfigPanel } from '../components/organisms/plugin-config-panel'
+import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
 import { openExternal } from '@/lib/utils/open-external'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
@@ -68,7 +68,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   'ui:media.actions': 'Media Actions',
   'notifications': 'Notifications',
   'worker:filesystem': 'File System Access',
-  'worker:compute': 'Compute',
+  'ui:command': 'Commands',
   'api:proxy': 'API Proxy',
 }
 
@@ -366,7 +366,9 @@ function PluginTopologyGraph({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
 // ── Hero Banner ────────────────────────────────────────────────────────────────
 
 function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseAll: () => void }) {
-  const enabledPlugins = plugins.filter((p) => p.status === 'enabled')
+  const connectedPlugins = plugins.filter((p) => p.status === 'enabled' && p.connected)
+  const enabledPlugins = plugins.filter((p) => p.status === 'enabled' && !p.connected)
+  const hasActive = connectedPlugins.length > 0 || enabledPlugins.length > 0
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-transparent border border-white/[0.06]">
@@ -375,18 +377,18 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
         <div className="flex-1 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-4">
             <Puzzle className="h-3 w-3" />
-            {enabledPlugins.length > 0
-              ? `${enabledPlugins.length} connected`
+            {hasActive
+              ? `${connectedPlugins.length} connected, ${enabledPlugins.length} enabled`
               : 'Plugin Ecosystem'}
           </div>
           <h1 className="text-3xl font-bold text-white leading-tight tracking-tight">
-            {enabledPlugins.length > 0
-              ? 'Your connected ecosystem'
+            {hasActive
+              ? 'Your plugin ecosystem'
               : 'Powerful connections for better results'}
           </h1>
           <p className="mt-3 text-base text-white/50 leading-relaxed max-w-lg">
-            {enabledPlugins.length > 0
-              ? `You have ${enabledPlugins.length} plugin${enabledPlugins.length === 1 ? '' : 's'} active. Browse more to extend Otix with community-built plugins.`
+            {hasActive
+              ? `You have ${connectedPlugins.length} plugin${connectedPlugins.length === 1 ? '' : 's'} connected and ${enabledPlugins.length} running. Browse more to extend Otix with community-built plugins.`
               : 'Connect your favorite services and extend Otix with community-built plugins. Automate workflows, sync your library, and unlock new capabilities.'}
           </p>
           <button
@@ -400,19 +402,72 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
 
         {/* Right — Topology graph */}
         <div className="hidden lg:block shrink-0">
-          <PluginTopologyGraph enabledPlugins={enabledPlugins} />
+          <PluginTopologyGraph enabledPlugins={plugins.filter((p) => p.status === 'enabled')} />
         </div>
       </div>
     </div>
   )
 }
 
-// ── Connected Card ─────────────────────────────────────────────────────────────
+// ── Plugin Table (shared by Connected + Popular sections) ──────────────────────
 
-function ConnectedCard({
+const TH_CLASSES = 'text-left text-[11px] font-medium text-white/30 uppercase tracking-wider py-2.5 px-3'
+const TD_CLASSES = 'py-2.5 px-3 text-sm text-white/70 border-t border-white/[0.04]'
+const ROW_HOVER = 'hover:bg-white/[0.02] transition-colors'
+
+function StatusBadge({ status, connected }: { status: PluginInfo['status']; connected?: boolean }) {
+  const isConnected = status === 'enabled' && connected
+  const isEnabled = status === 'enabled' && !connected
+  const isError = status === 'error'
+  const isDisabled = status === 'disabled' || status === 'installed'
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0',
+      isError && 'text-red-400 bg-red-500/10',
+      isConnected && 'text-green-400 bg-green-500/10',
+      isEnabled && 'text-blue-400 bg-blue-500/10',
+      isDisabled && 'text-white/40 bg-white/5',
+    )}>
+      {isConnected && <CheckCircle2 className="h-3 w-3" />}
+      {isConnected ? 'Connected' : isEnabled ? 'Enabled' : isError ? 'Error' : 'Disabled'}
+    </span>
+  )
+}
+
+function SortHeader({
+  label,
+  sortKey: colKey,
+  currentKey,
+  currentDir,
+  onSort,
+  className,
+}: {
+  label: string
+  sortKey: 'name' | 'version' | 'author' | 'status'
+  currentKey: 'name' | 'version' | 'author' | 'status' | null
+  currentDir: 'asc' | 'desc'
+  onSort: (key: 'name' | 'version' | 'author' | 'status') => void
+  className?: string
+}) {
+  const active = currentKey === colKey
+  return (
+    <th className={cn(TH_CLASSES, 'cursor-pointer select-none hover:text-white/60 transition-colors', className)} onClick={() => onSort(colKey)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active && (
+          currentDir === 'asc'
+            ? <ChevronUp className="h-3 w-3" />
+            : <ChevronDown className="h-3 w-3" />
+        )}
+      </span>
+    </th>
+  )
+}
+
+// ponytail: inline row template — single source of truth for both installed + marketplace
+function PluginRow({
   plugin,
-  hasUpdate,
-  updateVersion,
+  marketplaceEntry,
   onManage,
   onToggle,
   toggling,
@@ -420,212 +475,79 @@ function ConnectedCard({
   onUpdate,
 }: {
   plugin: PluginInfo
-  hasUpdate?: boolean
-  updateVersion?: string
+  marketplaceEntry?: RegistryEntry
   onManage: () => void
   onToggle: () => void
   toggling: boolean
-  updating?: boolean
+  updating: boolean
   onUpdate?: () => void
 }) {
   const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
+  const isEnabled = plugin.status === 'enabled'
   const isError = plugin.status === 'error'
-  const isConnected = plugin.status === 'enabled'
-  const statusBadge = isError
-    ? { label: 'Error', className: 'text-red-400 bg-red-500/10' }
-    : isConnected
-      ? { label: 'Connected', className: 'text-green-400 bg-green-500/10' }
-      : { label: 'Disabled', className: 'text-white/40 bg-white/5' }
+  const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border p-5 transition-all shadow-sm flex flex-col',
-        isError
-          ? 'border-red-500/20 bg-red-500/[0.02]'
-          : 'border-white/[0.06] bg-white/[0.03] hover:border-white/10 hover:bg-white/[0.04]',
-      )}
-    >
-      <div className="flex-1">
-        {/* Header: logo + name + status badge */}
-      <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg',
+    <tr className={cn(ROW_HOVER, 'cursor-pointer group')} onClick={onManage}>
+      <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base',
             isError ? 'bg-red-500/10' : 'bg-primary/10',
-          )}
-        >
-          {pluginIcon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{plugin.name}</h3>
-            <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0',
-                statusBadge.className,
-              )}
-            >
-              {isConnected && <CheckCircle2 className="h-3 w-3" />}
-              {isError && <XCircle className="h-3 w-3" />}
-              {statusBadge.label}
-            </span>
+          )}>
+            {pluginIcon}
           </div>
-          <p className="text-xs text-white/40 mt-1">{plugin.author} &middot; v{plugin.version}</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white truncate">{plugin.name}</span>
+              <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Description */}
-      {plugin.description && (
-        <p className="mt-3 text-sm text-white/50 leading-relaxed line-clamp-2">
-          {plugin.description}
-        </p>
-      )}
-
-      </div>{/* end content wrapper */}
-      {/* Action footer */}
-      <div className="mt-auto pt-3 border-t border-white/[0.04] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {hasUpdate && onUpdate && updateVersion && (
+      </td>
+      <td className={TD_CLASSES}>
+        <span className="text-xs text-white/50">v{plugin.version}</span>
+        {hasUpdate && (
+          <span className="ml-2 text-[10px] text-amber-400 bg-amber-500/10 rounded px-1.5 py-0.5">
+            v{marketplaceEntry!.version}
+          </span>
+        )}
+      </td>
+      <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
+        {plugin.author}
+      </td>
+      <td className={TD_CLASSES}>
+        <StatusBadge status={plugin.status} connected={plugin.connected} />
+      </td>
+      <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+        <div className="flex items-center justify-end gap-2">
+          {hasUpdate && onUpdate && (
             <button
               type="button"
-              onClick={onUpdate}
+              onClick={(e) => { e.stopPropagation(); onUpdate() }}
               disabled={updating}
               className="inline-flex items-center gap-1 h-7 rounded-lg px-2.5 text-[11px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
             >
-              {updating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <ArrowUpCircle className="h-3 w-3" />
-              )}
-              Update v{updateVersion}
+              {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowUpCircle className="h-3 w-3" />}
+              Update
             </button>
           )}
-        </div>
-
-        <div className="flex items-center gap-2">
           <button
-            onClick={onManage}
+            onClick={(e) => { e.stopPropagation(); onManage() }}
             className={cn(
-              'inline-flex items-center gap-1.5 text-sm font-medium transition-colors',
-              isError
-                ? 'text-red-400/70 hover:text-red-400'
-                : 'text-primary/70 hover:text-primary',
+              'inline-flex items-center gap-1.5 text-xs font-medium transition-colors',
+              isError ? 'text-red-400/70 hover:text-red-400' : 'text-primary/70 hover:text-primary',
             )}
           >
             <Settings className="h-3.5 w-3.5" />
-            Manage
+            <span className="hidden sm:inline">Manage</span>
           </button>
-          {!isError && (
-            <DkSwitch
-              checked={isConnected}
-              onCheckedChange={onToggle}
-              disabled={toggling}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Popular Card (marketplace browse) ──────────────────────────────────────────
-
-function PopularCard({
-  entry,
-  isInstalled,
-  installedVersion,
-  onConnect,
-  onConfigure,
-  connecting,
-  onClick,
-}: {
-  entry: RegistryEntry
-  isInstalled: boolean
-  installedVersion?: string
-  onConnect: () => void
-  onConfigure: () => void
-  connecting: boolean
-  onClick: () => void
-}) {
-  const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
-  const category = entry.category || getPluginCategory(entry)
-  const needsUpdate = isInstalled && installedVersion && entry.version !== installedVersion
-
-  return (
-    <div
-      onClick={onClick}
-      className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5 transition-all shadow-sm hover:border-white/10 hover:bg-white/[0.04] cursor-pointer group flex flex-col"
-    >
-      <div className="flex-1">
-        {/* Header: logo + name + meta */}
-        <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{entry.name}</h3>
-            <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-          </div>
-          <p className="text-xs text-white/40 mt-0.5">{entry.author} &middot; v{entry.version}</p>
-        </div>
-        {isInstalled && !needsUpdate && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-400 bg-green-500/10 rounded-full px-2 py-0.5 shrink-0">
-            <CheckCircle2 className="h-3 w-3" /> Installed
+          <span onClick={(e) => e.stopPropagation()}>
+            <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
           </span>
-        )}
-        {needsUpdate && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 shrink-0">
-            <ArrowUpCircle className="h-3 w-3" /> v{entry.version}
-          </span>
-        )}
-      </div>
-
-      {/* Description */}
-      <p className="mt-3 text-sm text-white/50 leading-relaxed line-clamp-2">
-        {entry.description}
-      </p>
-
-      {/* Tags */}
-      <div className="flex items-center gap-2 mt-3">
-        <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
-          {CATEGORY_STYLES[category]?.label || category}
-        </span>
-        <span className="text-[11px] text-white/30">{entry.permissions.length} permissions</span>
-      </div>
-
-      </div>{/* end content wrapper */}
-      {/* Footer: Connect button */}
-      <div className="mt-auto pt-3 border-t border-white/[0.04]">
-        {needsUpdate ? (
-          <button
-            onClick={(e) => { e.stopPropagation(); onConnect() }}
-            disabled={connecting}
-            className="inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-4 text-xs font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
-          >
-            {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Update
-          </button>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); isInstalled ? onConfigure?.() : onConnect() }}
-            disabled={connecting}
-            className="inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-4 text-xs font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
-          >
-            {connecting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : isInstalled ? (
-              <Settings className="h-3.5 w-3.5" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
-            )}
-            {isInstalled ? 'Configure' : 'Connect'}
-          </button>
-        )}
-      </div>
-    </div>
+        </div>
+      </td>
+    </tr>
   )
 }
 
@@ -769,7 +691,7 @@ function MarketplaceDetailPanel({
 
 // ── Plugin Settings Page ──────────────────────────────────────────────────────
 
-export function PluginSettings() {
+export function SettingsPluginsPage() {
   const [plugins, setPlugins] = useState<PluginInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -796,9 +718,11 @@ export function PluginSettings() {
   const [newRepoLabel, setNewRepoLabel] = useState('')
   const [showRepoManager, setShowRepoManager] = useState(false)
 
-  // Search
+  // Search + tabs + sort
   const [searchQuery, setSearchQuery] = useState('')
-  const [showInactive, setShowInactive] = useState(false)
+  const [activeTab, setActiveTab] = useState<'installed' | 'discover'>('installed')
+  const [sortKey, setSortKey] = useState<'name' | 'version' | 'author' | 'status' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Gate: don't call plugin IPC until main process registers handlers.
   const [ipcReady, setIpcReady] = useState(false)
@@ -1022,12 +946,21 @@ export function PluginSettings() {
     [api],
   )
 
+  const handleSort = (key: 'name' | 'version' | 'author' | 'status') => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   // ── Derived data ────────────────────────────────────────────────────────────
 
   const query = searchQuery.toLowerCase().trim()
+  const statusOrder: Record<string, number> = { enabled: 0, disabled: 1, error: 2 }
 
-  const connectedPlugins = plugins
-    .filter((p) => p.status === 'enabled')
+  const installedPlugins = [...plugins]
     .filter(
       (p) =>
         !query ||
@@ -1035,19 +968,21 @@ export function PluginSettings() {
         p.description?.toLowerCase().includes(query) ||
         p.author.toLowerCase().includes(query),
     )
-
-  const otherPlugins = plugins
-    .filter((p) => p.status !== 'enabled')
-    .filter(
-      (p) =>
-        !query ||
-        p.name.toLowerCase().includes(query) ||
-        p.description?.toLowerCase().includes(query) ||
-        p.author.toLowerCase().includes(query),
-    )
+    .sort((a, b) => {
+      // Default: status priority (connected → disabled → error), then name
+      if (!sortKey) {
+        const s = (statusOrder[a.status] ?? 3) - (statusOrder[b.status] ?? 3)
+        return s !== 0 ? s : a.name.localeCompare(b.name)
+      }
+      const dir = sortDir === 'asc' ? 1 : -1
+      if (sortKey === 'name') return a.name.localeCompare(b.name) * dir
+      if (sortKey === 'version') return a.version.localeCompare(b.version) * dir
+      if (sortKey === 'author') return a.author.localeCompare(b.author) * dir
+      if (sortKey === 'status') return String(a.status).localeCompare(String(b.status)) * dir
+      return 0
+    })
 
   // For the popular section, show marketplace entries not connected.
-  // If there's a search query, filter across all marketplace names/descriptions.
   const popularPlugins = marketplacePlugins
     .filter((e) => !plugins.some((p) => p.id === e.id && p.status === 'enabled'))
     .filter(
@@ -1058,10 +993,8 @@ export function PluginSettings() {
         e.author.toLowerCase().includes(query),
     )
 
-  const hasAnyConnected = connectedPlugins.length > 0
-  const hasAnyOther = otherPlugins.length > 0
+  const hasAnyInstalled = installedPlugins.length > 0
   const hasAnyPopular = popularPlugins.length > 0
-  const hasErrorPlugins = otherPlugins.some((p) => p.status === 'error')
 
   // ── Browser mode fallback ──
 
@@ -1107,10 +1040,7 @@ export function PluginSettings() {
       {/* ── Hero Banner ── */}
       <HeroBanner
         plugins={plugins}
-        onBrowseAll={() => {
-          const el = document.getElementById('popular-plugins')
-          el?.scrollIntoView({ behavior: 'smooth' })
-        }}
+        onBrowseAll={() => setActiveTab('discover')}
       />
 
       {/* ── Search + Actions Row ── */}
@@ -1211,80 +1141,88 @@ export function PluginSettings() {
         </div>
       )}
 
-      {/* ── Connected Plugins ── */}
-      {hasAnyConnected && (
-        <section>
-          <div className="flex items-center gap-3 mb-5">
-            <h2 className="text-lg font-semibold text-white">Connected Plugins</h2>
-            <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
-              {connectedPlugins.length}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {connectedPlugins.map((plugin) => {
-              const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
-              const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
-              return (
-                <ConnectedCard
-                  key={plugin.id}
-                  plugin={plugin}
-                  hasUpdate={!!hasUpdate}
-                  updateVersion={hasUpdate ? marketplaceEntry!.version : undefined}
-                  onManage={() => openConfig(plugin)}
-                  onToggle={() => handleToggle(plugin)}
-                  toggling={toggling[plugin.id] ?? false}
-                  updating={updating === plugin.id}
-                  onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
-                />
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ── Other Installed (disabled / error) ── */}
-      {hasAnyOther && !query && (
-        <section>
+      {/* ── Tab Bar ── */}
+      <div className="sticky top-0 z-20 flex items-center gap-1 p-1 rounded-xl bg-[#0a0a0b] border border-white/[0.06] w-fit">
+        {(['installed', 'discover'] as const).map((tab) => (
           <button
-            type="button"
-            onClick={() => setShowInactive((p) => !p)}
-            className="flex items-center gap-2 text-sm text-white/40 hover:text-white/60 transition-colors"
-          >
-            <ChevronRight className={cn('h-4 w-4 transition-transform', showInactive && 'rotate-90')} />
-            {otherPlugins.length} inactive {otherPlugins.length === 1 ? 'plugin' : 'plugins'}
-            {hasErrorPlugins && (
-              <span className="inline-flex items-center gap-1 text-xs text-red-400 bg-red-500/10 rounded-full px-2 py-0.5">
-                <AlertCircle className="h-3 w-3" />
-                {otherPlugins.filter((p) => p.status === 'error').length} errors
-              </span>
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              activeTab === tab
+                ? 'bg-primary/15 text-primary'
+                : 'text-white/40 hover:text-white/70',
             )}
+          >
+            {tab === 'installed' ? 'Installed' : 'Discover'}
           </button>
-          {showInactive && (
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {otherPlugins.map((plugin) => {
-                const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
-                const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
-                return (
-                  <ConnectedCard
-                    key={plugin.id}
-                    plugin={plugin}
-                    hasUpdate={!!hasUpdate}
-                    updateVersion={hasUpdate ? marketplaceEntry!.version : undefined}
-                    onManage={() => openConfig(plugin)}
-                    onToggle={() => handleToggle(plugin)}
-                    toggling={toggling[plugin.id] ?? false}
-                    updating={updating === plugin.id}
-                    onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
-                  />
-                )
-              })}
+        ))}
+      </div>
+
+      {/* ── Installed Tab ── */}
+      {activeTab === 'installed' && (
+        <>
+          {hasAnyInstalled ? (
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-white">Installed Plugins</h2>
+                <span className="text-xs text-white/30 bg-white/5 rounded-full px-2 py-0.5">
+                  {installedPlugins.length}
+                </span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
+                <table className="w-full min-w-[750px]">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
+                      <SortHeader label="Plugin" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="sticky left-0 bg-[#0a0a0b] z-30" />
+                      <SortHeader label="Version" sortKey="version" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+                      <SortHeader label="Author" sortKey="author" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="hidden sm:table-cell" />
+                      <SortHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
+                      <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {installedPlugins.map((plugin) => {
+                      const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
+                      const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
+                      return (
+                        <PluginRow
+                          key={plugin.id}
+                          plugin={plugin}
+                          marketplaceEntry={marketplaceEntry}
+                          onManage={() => openConfig(plugin)}
+                          onToggle={() => handleToggle(plugin)}
+                          toggling={toggling[plugin.id] ?? false}
+                          updating={updating === plugin.id}
+                          onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
+                        />
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Download className="h-10 w-10 text-white/20 mb-3" />
+              <p className="text-sm text-white/40">No plugins installed</p>
+              <button
+                onClick={() => setActiveTab('discover')}
+                className="mt-2 text-sm text-primary/70 hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
+              >
+                Browse Discover
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
-        </section>
+        </>
       )}
 
-      {/* ── Marketplace error ── */}
-      {marketplaceError && (
+      {/* ── Discover Tab ── */}
+      {activeTab === 'discover' && (
+        <>
+          {/* ── Marketplace error ── */}
+          {marketplaceError && (
         <div className="flex items-start gap-3 rounded-xl p-4 bg-red-500/5 border border-red-500/10">
           <XCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
@@ -1346,7 +1284,7 @@ export function PluginSettings() {
           </div>
         )}
 
-        {/* Grid — grouped by category */}
+        {/* Table — grouped by category */}
         {!marketplaceLoading && !marketplaceError && hasAnyPopular && (
           <div className="space-y-8">
             {CATEGORY_ORDER.map((cat) => {
@@ -1363,22 +1301,106 @@ export function PluginSettings() {
                       {entries.length}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {entries.map((entry) => (
-                      <PopularCard
-                        key={entry.id}
-                        entry={entry}
-                        isInstalled={plugins.some((p) => p.id === entry.id)}
-                        installedVersion={plugins.find((p) => p.id === entry.id)?.version}
-                        onConnect={() => handleMarketplaceInstall(entry)}
-                        onConfigure={() => {
-                          const p = plugins.find((pl) => pl.id === entry.id)
-                          if (p) openConfig(p)
-                        }}
-                        connecting={installingMarketplaceId === entry.id}
-                        onClick={() => setSelectedEntry(entry)}
-                      />
-                    ))}
+                  <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
+                    <table className="w-full min-w-[750px]">
+                      <thead>
+                        <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
+                          <th className={cn(TH_CLASSES, 'sticky left-0 bg-[#0a0a0b] z-30')}>Plugin</th>
+                          <th className={TH_CLASSES}>Version</th>
+                          <th className={cn(TH_CLASSES, 'hidden sm:table-cell')}>Author</th>
+                          <th className={cn(TH_CLASSES, 'hidden md:table-cell')}>Category</th>
+                          <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map((entry) => {
+                          const installed = plugins.find((p) => p.id === entry.id)
+                          const isInstalled = !!installed
+                          const needsUpdate = isInstalled && installed!.version !== entry.version
+                          const icon = PLUGIN_ICONS[entry.icon || ''] || PLUGIN_ICONS.default
+                          const category = entry.category || getPluginCategory(entry)
+                          return (
+                            <tr
+                              key={entry.id}
+                              className={cn(ROW_HOVER, 'cursor-pointer group')}
+                              onClick={() => setSelectedEntry(entry)}
+                            >
+                              <td className={cn(TD_CLASSES, 'sticky left-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-base">
+                                    {icon}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-white truncate">{entry.name}</span>
+                                      <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+                                      {isInstalled && !needsUpdate && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-400 bg-green-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                          <CheckCircle2 className="h-2.5 w-2.5" /> Installed
+                                        </span>
+                                      )}
+                                      {needsUpdate && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-1.5 py-0.5 shrink-0">
+                                          <ArrowUpCircle className="h-2.5 w-2.5" /> v{entry.version}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className={TD_CLASSES}>
+                                <span className="text-xs text-white/50">v{entry.version}</span>
+                              </td>
+                              <td className={cn(TD_CLASSES, 'hidden sm:table-cell text-xs text-white/40')}>
+                                {entry.author}
+                              </td>
+                              <td className={cn(TD_CLASSES, 'hidden md:table-cell')}>
+                                <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
+                                  {CATEGORY_STYLES[category]?.label || category}
+                                </span>
+                              </td>
+                              <td className={cn(TD_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] group-hover:bg-[#121214] transition-colors z-20')}>
+                                <div className="flex items-center justify-end">
+                                  {needsUpdate ? (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleMarketplaceInstall(entry) }}
+                                      disabled={installingMarketplaceId === entry.id}
+                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+                                    >
+                                      {installingMarketplaceId === entry.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                      Update
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (isInstalled) {
+                                          const p = plugins.find((pl) => pl.id === entry.id)
+                                          if (p) openConfig(p)
+                                        } else {
+                                          handleMarketplaceInstall(entry)
+                                        }
+                                      }}
+                                      disabled={installingMarketplaceId === entry.id}
+                                      className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[11px] font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
+                                    >
+                                      {installingMarketplaceId === entry.id ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : isInstalled ? (
+                                        <Settings className="h-3 w-3" />
+                                      ) : (
+                                        <Download className="h-3 w-3" />
+                                      )}
+                                      {isInstalled ? 'Configure' : 'Connect'}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )
@@ -1386,6 +1408,8 @@ export function PluginSettings() {
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   )
 }

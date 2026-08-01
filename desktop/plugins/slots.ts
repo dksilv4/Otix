@@ -1,5 +1,9 @@
 // desktop/plugins/slots.ts
 
+import { eventBus } from './event-bus'
+
+const SUSPEND_THRESHOLD = 5
+
 interface SlotEntry {
   pluginId: string
   label: string
@@ -42,6 +46,16 @@ export class SlotRegistry {
     }
     const pluginFailures = this.failures.get(pluginId)!
     pluginFailures.set(location, (pluginFailures.get(location) || 0) + 1)
+
+    // Auto-suspend after repeated failures so a broken plugin can't keep
+    // blocking slot renders. Emit so other plugins can react.
+    if (
+      pluginFailures.get(location)! >= SUSPEND_THRESHOLD &&
+      !this.isSuspended(pluginId, location)
+    ) {
+      this.suspend(pluginId, location)
+      eventBus.emit('plugin:slot-suspended', { pluginId, location })
+    }
   }
 
   getFailures(pluginId: string, location: string): number {

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Gamepad2, Loader2, Library } from 'lucide-react'
-import { PluginSlot } from '@/features/settings/components/organisms/settings-plugin-slot'
-import { getPluginAPI } from '@/features/settings/pages/settings-plugins-page'
-import type { PluginAPI } from '@/features/settings/pages/settings-plugins-page'
+import { PluginSlot } from '@/features/plugins/components/organisms/plugin-slot'
+import { getPluginAPI } from '@/features/plugins/pages/plugins-page'
+import type { PluginAPI } from '@/features/plugins/components/organisms/plugin-settings'
 
 export function SettingsLibraryPage() {
   const [pluginApi, setPluginApi] = useState<PluginAPI | null>(null)

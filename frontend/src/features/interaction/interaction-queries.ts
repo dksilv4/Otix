@@ -190,6 +190,9 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
           item: { mediaItemId: mediaId, mediaType: mediaType },
         })
       }
+      if (variables.type === 'watched' && variables.active) {
+        emit('otix:media:watched', { mediaId, mediaType })
+      }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: interactionKeys.forMedia(mediaType, mediaId) })

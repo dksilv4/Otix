@@ -269,6 +269,7 @@ export class PluginManager {
       }
 
       this.pluginsRepo.setEnabled(pluginId)
+      eventBus.emit('plugin:enabled', { pluginId })
       console.log(`[PluginManager] Enabled plugin: ${pluginId}`)
     } catch (err: any) {
       this.pluginsRepo.updateStatus(pluginId, 'error', err.message)
@@ -292,6 +293,7 @@ export class PluginManager {
       this.slotRegistry.unregisterAll(pluginId)
 
       this.pluginsRepo.setDisabled(pluginId)
+      eventBus.emit('plugin:disabled', { pluginId })
       console.log(`[PluginManager] Disabled plugin: ${pluginId}`)
     } finally {
       this.releaseLock(pluginId)
@@ -523,6 +525,7 @@ export class PluginManager {
     for (const { pluginId, label } of plugins) {
       const runtime = this.runtimes.get(pluginId)
       if (!runtime) continue
+      if (this.slotRegistry.isSuspended(pluginId, location)) continue
 
       try {
         const data = await Promise.race([

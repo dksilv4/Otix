@@ -11,9 +11,9 @@ export type PluginPermission =
   | 'ui:nav.item'
   | 'ui:dashboard.widget'
   | 'notifications'
-  | 'worker:compute'
   | 'api:proxy'
-  | 'worker:filesystem'   // NEW — filesystem read access via RPC bridge
+  | 'worker:filesystem'   // filesystem read access via RPC bridge
+  | 'ui:command'          // register commands in the Cmd+K command hub
 
 // ── Manifest ──
 export interface PluginConfigField {
@@ -76,7 +76,6 @@ export interface PluginManifest {
   }
   entry: {
     main: string
-    renderer?: string
   }
   services?: (string | PluginService)[]
   depends_on?: string[]
@@ -212,6 +211,7 @@ export interface PluginContext {
   fetch: PluginFetch
   db: PluginDatabase
   downloadsDb: {
+    run(sql: string, params?: unknown[]): void
     all<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[]
     get<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | null
   }

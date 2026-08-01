@@ -35,7 +35,8 @@ import { populateKnownLocations } from './saves/export';
 import { PermissionManager } from './plugins/permissions';
 import { PluginManager } from './plugins/manager';
 import { eventBus } from './plugins/event-bus';
-import { registerPluginIPC, wireOrchestratorEvents } from './ipc/plugins';
+import { registerPluginIPC } from './plugins/ipc';
+import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator';
 import { registerNotificationIPC } from './ipc/notifications';
 

@@ -1,21 +1,21 @@
 import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
-import { PluginSettingsPage } from './components/PluginSettingsPage'
+import { PluginSettingsPage } from '@/features/plugins/components/PluginSettingsPage'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
 const SettingsLayout = lazy(() => import('./pages/settings-layout').then(m => ({ default: m.SettingsLayout })))
+const SettingsOverviewPage = lazy(() => import('./pages/settings-overview-page').then(m => ({ default: m.SettingsOverviewPage })))
 const SettingsProfilePage = lazy(() => import('./pages/settings-profile-page').then(m => ({ default: m.SettingsProfilePage })))
 const SettingsAccountPage = lazy(() => import('./pages/settings-account-page').then(m => ({ default: m.SettingsAccountPage })))
 const SettingsAppearancePage = lazy(() => import('./pages/settings-appearance-page').then(m => ({ default: m.SettingsAppearancePage })))
 const SettingsNotificationsPage = lazy(() => import('./pages/settings-notifications-page').then(m => ({ default: m.SettingsNotificationsPage })))
 const SettingsGeneralPage = lazy(() => import('./pages/settings-general-page').then(m => ({ default: m.SettingsGeneralPage })))
 const SettingsIntegrationsPage = lazy(() => import('./pages/settings-integrations-page').then(m => ({ default: m.SettingsIntegrationsPage })))
-const SettingsLauncherPage = lazy(() => import('./pages/settings-launcher-page').then(m => ({ default: m.SettingsLauncherPage })))
+
 const SettingsLibraryPage = lazy(() => import('./pages/settings-library-page').then(m => ({ default: m.SettingsLibraryPage })))
-const SettingsDownloadsPage = lazy(() => import('./pages/settings-downloads-page').then(m => ({ default: m.SettingsDownloadsPage })))
 const SettingsDesktopPage = lazy(() => import('./pages/settings-desktop-page').then(m => ({ default: m.SettingsDesktopPage })))
-const SettingsPluginsPage = lazy(() => import('./pages/settings-plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
+const SettingsPluginsPage = lazy(() => import('@/features/plugins/pages/plugins-page').then(m => ({ default: m.SettingsPluginsPage })))
 const SettingsScannedGamesPage = lazy(() => import('./pages/settings-scanned-games-page').then(m => ({ default: m.SettingsScannedGamesPage })))
 const ProposalsPage = lazy(() => import('@/features/proposals/pages/proposals-page').then(m => ({ default: m.ProposalsPage })))
 
@@ -29,9 +29,13 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
   const settingsIndexRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/',
-    beforeLoad: () => {
-      throw redirect({ to: '/settings/profile' })
-    },
+    component: SettingsOverviewPage,
+  })
+
+  const settingsOverviewRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/overview',
+    component: SettingsOverviewPage,
   })
 
   const settingsProfileRoute = createRoute({
@@ -95,12 +99,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsLibraryPage,
   })
 
-  const settingsDownloadsRoute = createRoute({
-    getParentRoute: () => settingsRoute,
-    path: '/downloads',
-    component: SettingsDownloadsPage,
-  })
-
   const settingsDesktopRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/desktop',
@@ -113,10 +111,10 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsPluginsPage,
   })
 
-  const settingsLauncherRoute = createRoute({
+  const settingsLauncherRedirect = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/launcher',
-    component: SettingsLauncherPage,
+    beforeLoad: () => { throw redirect({ to: '/settings/general' }) },
   })
 
   const pluginRoutes = (pluginTabs || []).map(tab =>
@@ -130,6 +128,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
   return [
     settingsRoute,
     settingsIndexRoute,
+    settingsOverviewRoute,
     settingsProfileRoute,
     settingsAccountRoute,
     settingsGeneralRoute,
@@ -140,10 +139,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsAdminProposalsRedirect,
     settingsProposalsRoute,
     settingsLibraryRoute,
-    settingsDownloadsRoute,
     settingsDesktopRoute,
     settingsPluginsRoute,
-    settingsLauncherRoute,
+    settingsLauncherRedirect,
     ...pluginRoutes,
   ]
 }

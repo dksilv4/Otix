@@ -7,7 +7,7 @@
 export type PluginPermission =
   | 'network:external' | 'storage:local' | 'events:subscribe'
   | 'ui:settings' | 'ui:media.actions' | 'ui:list.actions' | 'ui:nav.item'
-  | 'ui:dashboard.widget' | 'notifications' | 'worker:compute' | 'api:proxy'
+  | 'ui:dashboard.widget' | 'notifications' | 'api:proxy' | 'ui:command'
 
 export type PluginStatus = 'installed' | 'enabled' | 'disabled' | 'error'
 
@@ -40,7 +40,7 @@ export interface PluginManifest {
   config?: Record<string, PluginConfigField>
   slots?: PluginSlot[]
   settings?: { tabs?: PluginSettingsTab[] }
-  entry: { main: string; renderer?: string }
+  entry: { main: string }
   services?: string[]
   depends_on?: string[]
 }
