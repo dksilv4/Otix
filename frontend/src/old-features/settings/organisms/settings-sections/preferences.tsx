@@ -3,7 +3,6 @@ import { useAuth } from '@/lib/providers/auth'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
-import { SectionHeader } from './profile'
 import './preferences.scss'
 
 export function PreferencesSection() {

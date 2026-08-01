@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
-import { MediaCard } from '@/old-features/ui/molecules/media-card'
+import { DiscoverMediaCard } from '@/features/discover/components/molecules/discover-media-card'
 import { Carousel } from '@/old-features/ui/molecules/carousel'
 
 interface FreeGameResult {
@@ -148,7 +148,7 @@ function FreeGameCard({ item }: { item: FreeGameResult }) {
   if (item.matched && item.media_item) {
     return (
       <div className="group relative w-full select-none">
-        <MediaCard item={item.media_item} size="poster" />
+        <DiscoverMediaCard item={item.media_item} />
         {/* FREE overlay */}
         <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/90 text-white shadow-lg">

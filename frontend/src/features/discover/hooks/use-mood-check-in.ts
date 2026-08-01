@@ -37,7 +37,7 @@ export function useMoodCheckIn(onMoodRecorded?: () => void) {
     },
     onSuccess: () => {
       queryClient.setQueryData(['mood-checkins', 'today'], { checkedIn: true })
-      showXPToast()
+      showXPToast(10)
       onMoodRecorded?.()
       setSelectedMood(null)
       setSelectedFeeling(null)

@@ -5,7 +5,7 @@ import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 function AnimatedRoleLabel() {
   const [label, setLabel] = useState('Developer')
   const [leaving, setLeaving] = useState(false)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const toggle = () => {
@@ -16,7 +16,7 @@ function AnimatedRoleLabel() {
       }, 400)
     }
     const interval = setInterval(toggle, 3000)
-    return () => { clearInterval(interval); clearTimeout(timeoutRef.current) }
+    return () => { clearInterval(interval); if (timeoutRef.current) clearTimeout(timeoutRef.current) }
   }, [])
 
   return (

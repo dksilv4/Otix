@@ -1,7 +1,7 @@
 // TODO: Review this file
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
-import type { MediaItemSummary } from '@/features/media/media-queries'
+import type { MediaItemSummary } from '@/features/media/queries/media-queries'
 
 export interface SteamPublicProfile {
   personaname: string | null

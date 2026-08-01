@@ -67,7 +67,7 @@ export function HeroCard({
       }}
       onMouseMove={isActive ? handleMouseMove : undefined}
       onMouseEnter={onMouseEnter}
-      onMouseLeave={(e) => { tilt.handleMouseLeave(); onMouseLeave?.() }}
+      onMouseLeave={() => { tilt.handleMouseLeave(); onMouseLeave?.() }}
       onClick={onClick}
       onTouchStart={isActive ? handleTouchStart : onTouchStart}
       onTouchMove={isActive ? handleTouchMove : undefined}

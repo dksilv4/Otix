@@ -1,4 +1,4 @@
-import type { LocalGame, GamesFilter } from './types';
+import type { LocalGame, GamesFilter } from '../types';
 import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop/api';
 import { mergeDuplicateGames } from './storage-utils';
 

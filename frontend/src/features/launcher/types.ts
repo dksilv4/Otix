@@ -74,6 +74,8 @@ export interface LocalGame {
   otixPosterUrl?: string | null
   otixTextlessPosterUrl?: string | null
   otixLogoUrl?: string | null
+  otixBackdropUrl?: string | null
+  otixIconUrl?: string | null
   otixMatchSuggestion?: Game | null
   otixMatchVerified?: boolean
   otixClaimed?: boolean

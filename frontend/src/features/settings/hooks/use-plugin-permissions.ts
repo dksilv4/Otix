@@ -17,11 +17,16 @@ export interface UsePluginPermissionsReturn {
   handleClose: () => void
 }
 
+interface PluginPermissionAPI {
+  onPermissionRequest?: (cb: (request: PermissionRequest) => void) => () => void
+  respondToPermission?: (requestId: string, opts: { granted: boolean; duration?: string }) => Promise<void>
+}
+
 export function usePluginPermissions(): UsePluginPermissionsReturn {
   const [currentRequest, setCurrentRequest] = useState<PermissionRequest | null>(null)
 
   useEffect(() => {
-    const api = (window as Window).desktopAPI?.plugin
+    const api = (window as Window).desktopAPI?.plugin as PluginPermissionAPI | undefined
     if (!api?.onPermissionRequest) return
 
     const unsubscribe = api.onPermissionRequest((request) => {
@@ -36,20 +41,20 @@ export function usePluginPermissions(): UsePluginPermissionsReturn {
   }, [])
 
   const handleAllowOnce = useCallback((requestId: string) => {
-    const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(requestId, { granted: true, duration: 'once' }).catch(() => {})
+    const api = (window as Window).desktopAPI?.plugin as PluginPermissionAPI | undefined
+    api?.respondToPermission?.(requestId, { granted: true, duration: 'once' }).catch(() => {})
     clearRequest()
   }, [clearRequest])
 
   const handleAllowAlways = useCallback((requestId: string) => {
-    const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(requestId, { granted: true, duration: 'always' }).catch(() => {})
+    const api = (window as Window).desktopAPI?.plugin as PluginPermissionAPI | undefined
+    api?.respondToPermission?.(requestId, { granted: true, duration: 'always' }).catch(() => {})
     clearRequest()
   }, [clearRequest])
 
   const handleDeny = useCallback((requestId: string) => {
-    const api = (window as Window).desktopAPI?.plugin
-    api?.respondToPermission(requestId, { granted: false }).catch(() => {})
+    const api = (window as Window).desktopAPI?.plugin as PluginPermissionAPI | undefined
+    api?.respondToPermission?.(requestId, { granted: false }).catch(() => {})
     clearRequest()
   }, [clearRequest])
 

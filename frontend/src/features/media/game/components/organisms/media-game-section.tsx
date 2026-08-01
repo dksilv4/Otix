@@ -43,7 +43,6 @@ export function GameSection({ className }: GameSectionProps = {}) {
             {platforms!.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-2 rounded-xl px-3 py-2"
                 className="glass-inset flex items-center gap-2 rounded-xl px-3 py-2"
               >
                 <PlatformIcon slug={p.platform.slug} />

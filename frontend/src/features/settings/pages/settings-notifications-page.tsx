@@ -179,11 +179,11 @@ export function SettingsNotificationsPage() {
             onCheckedChange={(c) => {
               setQuietEnabled(c)
               if (!c) {
-                handleToggle('_quiet_start', '')
-                handleToggle('_quiet_end', '')
+                handleQuietTimeChange('_quiet_start', '')
+                handleQuietTimeChange('_quiet_end', '')
               } else {
-                handleToggle('_quiet_start', '22:00')
-                handleToggle('_quiet_end', '08:00')
+                handleQuietTimeChange('_quiet_start', '22:00')
+                handleQuietTimeChange('_quiet_end', '08:00')
               }
             }}
           />

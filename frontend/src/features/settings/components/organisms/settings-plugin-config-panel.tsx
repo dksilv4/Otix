@@ -49,6 +49,12 @@ interface PluginAPI {
   callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
 }
 
+interface PluginStatus {
+  error?: string
+  last_sync?: { title?: string; direction?: string; synced_at?: string }
+  [key: string]: unknown
+}
+
 type CustomFieldRenderer = (props: {
   field: PluginConfigField
   value: unknown
@@ -395,12 +401,14 @@ export function PluginConfigPanel({
   plugin,
   api,
   onClose,
+  onConfigSaved,
   isExiting,
   customRenderers,
 }: {
   plugin: PluginInfo
   api: PluginAPI
   onClose: () => void
+  onConfigSaved?: () => void
   isExiting?: boolean
   customRenderers?: Record<string, CustomFieldRenderer>
 }) {
@@ -429,7 +437,7 @@ export function PluginConfigPanel({
 
   // ── Self-managed state ──
   const [configValues, setConfigValues] = useState<Record<string, unknown>>({})
-  const [status, setStatus] = useState<Record<string, unknown> | null>(null)
+  const [status, setStatus] = useState<PluginStatus | null>(null)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -472,13 +480,14 @@ export function PluginConfigPanel({
       for (const [key, value] of Object.entries(configValues)) {
         await api.setConfig(plugin.id, key, value)
       }
+      onConfigSaved?.()
       onClose()
     } catch {
       // Keep panel open on error
     } finally {
       setSaving(false)
     }
-  }, [api, plugin.id, configValues, onClose])
+  }, [api, plugin.id, configValues, onClose, onConfigSaved])
 
   const handleTest = useCallback(async () => {
     setTesting(true)
@@ -541,7 +550,7 @@ export function PluginConfigPanel({
             })}
             {status.last_sync && (
               <div className="text-xs text-white/30 pt-1">
-                Last sync: {status.last_sync.title} ({status.last_sync.direction}) &mdash; {new Date(status.last_sync.synced_at).toLocaleString()}
+                Last sync: {status.last_sync.title} ({status.last_sync.direction}) &mdash; {new Date(status.last_sync.synced_at ?? Date.now()).toLocaleString()}
               </div>
             )}
           </div>

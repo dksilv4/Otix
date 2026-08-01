@@ -151,7 +151,6 @@ function renderBestResultItem(item: any) {
       <SearchMusicCardWrapper posterUrl={item.albumPosterUrl}>
         <MediaCard
           id={item.albumId}
-          slug={item.albumSlug}
           mediaType="music"
           title={item.title}
           posterUrl={item.albumPosterUrl}
@@ -167,13 +166,10 @@ function renderBestResultItem(item: any) {
       <SearchMusicCardWrapper posterUrl={item.posterUrl}>
         <MediaCard
           id={item.id}
-          slug={item.slug}
           mediaType="music"
           title={item.title}
           posterUrl={item.posterUrl}
           artistName={item.albumArtistName}
-          subtitle={item.subtitle}
-          year={item.year}
         />
       </SearchMusicCardWrapper>
     )
@@ -282,7 +278,6 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
 
   // ── Derived state (flat infinite mode) ────────────────────────────
   const items = data?.pages.flatMap((page) => page.items) ?? []
-  const tracks = data?.pages[0]?.tracks ?? []
   const people = peopleData?.items ?? []
   const users = userData?.items ?? []
   const total = data?.pages[0]?.total ?? undefined
@@ -473,7 +468,6 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   <SearchMusicCardWrapper posterUrl={track.albumPosterUrl}>
                     <MediaCard
                       id={track.albumId}
-                      slug={track.albumSlug}
                       mediaType="music"
                       title={track.title}
                       posterUrl={track.albumPosterUrl}
@@ -587,13 +581,10 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                   <SearchMusicCardWrapper posterUrl={item.posterUrl}>
                     <MediaCard
                       id={item.id}
-                      slug={item.slug}
                       mediaType="music"
                       title={item.title}
                       posterUrl={item.posterUrl}
                       artistName={item.albumArtistName}
-                      subtitle={item.subtitle}
-                      year={item.year}
                     />
                   </SearchMusicCardWrapper>
                 </motion.div>
@@ -713,13 +704,10 @@ export function SearchResults({ query, type, sort }: SearchResultsProps) {
                 <SearchMusicCardWrapper posterUrl={item.posterUrl}>
                   <MediaCard
                     id={item.id}
-                    slug={item.slug}
                     mediaType="music"
                     title={item.title}
                     posterUrl={item.posterUrl}
                     artistName={item.albumArtistName}
-                    subtitle={item.subtitle}
-                    year={item.year}
                   />
                 </SearchMusicCardWrapper>
               ) : <DiscoverMediaCard item={item} />}

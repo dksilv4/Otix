@@ -52,7 +52,7 @@ export function usePushSubscription() {
         const vapidKey = await fetchVapidKey()
         sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: await urlBase64ToUint8Array(vapidKey),
+          applicationServerKey: (await urlBase64ToUint8Array(vapidKey)) as unknown as BufferSource,
         })
       }
 

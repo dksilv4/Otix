@@ -1,4 +1,4 @@
-import type { LocalGame } from "./types";
+import type { LocalGame } from "../types";
 
 // ── Title normalization ───────────────────────────────────────────
 

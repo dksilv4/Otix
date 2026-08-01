@@ -1,7 +1,7 @@
 // TODO: Review this file
 import './organizer-section.scss'
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/providers/auth'
 import { DkButton } from '@/old-features/ui/atoms/button'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'

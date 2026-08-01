@@ -1,4 +1,4 @@
-import { PeopleCard } from '@person/components/molecules/people-card'
+import { PeopleCard } from '@people/components/molecules/people-card'
 
 interface CreditItem {
   id: string

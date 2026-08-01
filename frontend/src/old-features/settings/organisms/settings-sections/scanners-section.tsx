@@ -99,7 +99,7 @@ export function ScannersSection() {
 
     // Claim each newly verified game on the backend (fire-and-forget).
     for (const mediaId of newlyClaimed) {
-      claimMutation.mutate(mediaId)
+      claimMutation.mutate({ mediaId })
     }
   }, [scannedGames, claimMutation])
 
@@ -130,7 +130,7 @@ export function ScannersSection() {
     setScannedGames(final)
 
     if (!game.otixClaimed) {
-      if (sug.mediaId) claimMutation.mutate(sug.mediaId)
+      if (sug.mediaId) claimMutation.mutate({ mediaId: sug.mediaId })
     }
   }, [scannedGames, claimMutation])
 
@@ -206,7 +206,7 @@ export function ScannersSection() {
 
     // Claim the game on the backend (fire-and-forget), skip if already claimed
     if (!scannedGames.find((g) => g.id === gameId)?.otixClaimed) {
-      claimMutation.mutate(media.id)
+      claimMutation.mutate({ mediaId: media.id })
       const withClaimed = updated.map((g) =>
         g.id === gameId ? { ...g, otixClaimed: true } : g,
       )
@@ -655,7 +655,7 @@ export function ScannersSection() {
                             )
                             setScannedGames(updated)
                             if (game.data?.id && !game.otixClaimed) {
-                              claimMutation.mutate(game.data?.id)
+                              claimMutation.mutate({ mediaId: game.data?.id })
                               const claimed = updated.map((g) =>
                                 g.id === game.id ? { ...g, otixClaimed: true } : g,
                               )

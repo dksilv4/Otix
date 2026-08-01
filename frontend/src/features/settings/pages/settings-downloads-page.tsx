@@ -91,8 +91,9 @@ export function SettingsDownloadsPage() {
   }
 
   const handleSave = async () => {
-    if (!user) return
+    if (!user || !dlConfig) return
     await saveConfig({
+      ...dlConfig,
       userId: user.id,
       downloadPath: downloadPath || null,
       postProcessEnabled,

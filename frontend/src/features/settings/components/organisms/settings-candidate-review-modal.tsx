@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import {
-  CheckCircle2, Star, Gamepad2, Folder, Loader2, Check,
-  X, Import, Sparkles, ExternalLink, LogIn, AlertCircle,
+  CheckCircle2, Gamepad2, Loader2, Check,
+  X, Sparkles, LogIn, AlertCircle,
   ChevronLeft, ChevronRight
 } from 'lucide-react'
 import type { LocalGame } from '@/features/launcher/types'
@@ -31,12 +31,6 @@ export interface CandidateReviewModalProps {
   onClose: () => void
   isExiting?: boolean
   onMatchResolved?: () => void
-}
-
-const MATCH_LABELS: Record<string, string> = {
-  direct: 'Direct ID', exact_title: 'Exact title', ilike: 'Title match',
-  trigram: 'Fuzzy', igdb_crossref: 'IGDB cross-ref', igdb_search: 'IGDB search',
-  igdb_fuzzy: 'IGDB fuzzy', unknown: 'Candidate',
 }
 
 type Row = [string, string | null, string | null]
@@ -89,15 +83,15 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
   const matchId = isMatched ? (game.otixMediaId || game.otixMediaSlug) : (candidates[selectedIdx]?.media_item_id || null)
   const hasRightSide = isMatched || candidateCount > 0
 
-  const rows: Row[] = [
+  const rows: Row[] = ([
     ['Title', game.title, matchTitleFinal || null],
     ['Platform', game.platform, candidates[selectedIdx]?.provider || 'otix'],
     ['ID', scannedId, matchId],
     ['Developer', (game as any).developer || rawMeta.developer || null, candidates[selectedIdx]?.developer || null],
     ['Publisher', rawMeta.publisher || (game as any).publisher || null, candidates[selectedIdx]?.developer || null],
-    ['Release Year', game.releaseYear || rawMeta.releaseYear || null, candidates[selectedIdx]?.release_year ? String(candidates[selectedIdx].release_year) : null],
+    ['Release Year', game.data?.releaseDate?.slice(0, 4) || rawMeta.releaseYear || null, candidates[selectedIdx]?.release_year ? String(candidates[selectedIdx].release_year) : null],
     ['Confidence', null, matchedConfidence != null ? `${Math.round(matchedConfidence * 100)}%` : (candidates[selectedIdx]?.confidence != null ? `${Math.round(candidates[selectedIdx].confidence * 100)}%` : null)],
-  ].filter(([, a, b]) => a || b)
+  ] as Row[]).filter(([, a, b]) => a || b)
 
   const handleAcceptCandidate = async (candidate: MatchCandidate) => {
     if (!isAuthenticated) { setActionError('Sign in to confirm matches'); return }
@@ -161,8 +155,6 @@ export function CandidateReviewModal({ game, onClose, isExiting, onMatchResolved
         {/* Comparison table — single column, both values shown per row */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0.5">
           {rows.map(([label, scanned, match], i) => {
-            const both = scanned && match
-            const onlyRight = !scanned && match
             return (
               <div key={i} className="flex items-start gap-3 py-2 border-b border-white/[0.02] text-xs">
                 <span className="text-white/30 font-medium w-20 shrink-0 text-right">{label}</span>

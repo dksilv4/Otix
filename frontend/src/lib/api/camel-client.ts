@@ -57,27 +57,33 @@ _client.use({
 })
 
 // Intercept fetch to convert JSON responses to camelCase
-const _origFetch = _client['fetch'] as (req: Request) => Promise<Response>
-_client['fetch'] = async (req: Request) => {
-  const res = await _origFetch(req)
-  const ct = res.headers.get('content-type') || ''
-  if (!ct.includes('application/json')) return res
-  const json = await res.clone().json()
-  const camel = convertKeysToCamelCase(json)
-  return new Response(JSON.stringify(camel), {
-    status: res.status,
-    statusText: res.statusText,
-    headers: res.headers,
-  })
+type FetchFn = (req: Request) => Promise<Response>
+const _fetchable = _client as unknown as { fetch?: FetchFn }
+const _origFetch = _fetchable.fetch
+if (_origFetch) {
+  _fetchable.fetch = async (req: Request) => {
+    const res = await _origFetch(req)
+    const ct = res.headers.get('content-type') || ''
+    if (!ct.includes('application/json')) return res
+    const json = await res.clone().json()
+    const camel = convertKeysToCamelCase(json)
+    return new Response(JSON.stringify(camel), {
+      status: res.status,
+      statusText: res.statusText,
+      headers: res.headers,
+    })
+  }
 }
 
 // ponytail: cast through CamelCaseKeys — the runtime data IS camelCase,
-// so this cast is truthful. openapi-fetch infers response types from the
-// URL, and CamelCaseKeys maps the snake_case schema types to camelCase.
-type TypedResponse<Method extends keyof typeof _client> = Awaited<ReturnType<(typeof _client)[Method]>>
-type WithCamel<T> = T extends { data: infer D } ? { data: CamelCaseKeys<D>; error?: never; response: Response } : T
+// so this cast is truthful. openapi-fetch v0.17 types methods as generic
+// functions, so Parameters/ReturnType resolve to `never`; type the surface
+// here instead.
+type MethodKey = 'GET' | 'PUT' | 'POST' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'PATCH' | 'TRACE'
 
 export const cam = _client as unknown as {
-  [M in 'GET' | 'PUT' | 'POST' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'PATCH' | 'TRACE']:
-    (...args: Parameters<(typeof _client)[M]>) => Promise<WithCamel<TypedResponse<M>>>
+  [M in MethodKey]: (
+    url: keyof ApiPaths,
+    ...init: unknown[]
+  ) => Promise<{ data: any; error?: never; response: Response }>
 }

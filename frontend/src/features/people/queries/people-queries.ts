@@ -1,6 +1,6 @@
 import { queryOptions, useQueryClient, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
-import type { PersonDetail, PersonSummary, PersonListResponse, RelatedArtist } from '@people/types'
+import type { PersonDetail, PersonListResponse, RelatedArtist } from '@people/types'
 
 // ── Query key factory ─────────────────────────────
 

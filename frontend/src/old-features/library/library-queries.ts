@@ -444,7 +444,7 @@ export function useClaimGame() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
+    mutationFn: async ({ mediaId }: { mediaId: string }) => {
       const { data } = await apiClient.post<{ status: string }>(`/media/${mediaId}/claim`)
       return data
     },
@@ -463,7 +463,7 @@ export function useUnclaimGame() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ mediaType, mediaId }: { mediaType: string; mediaId: string }) => {
+    mutationFn: async ({ mediaId }: { mediaId: string }) => {
       await apiClient.delete(`/media/${mediaId}/claim`)
     },
     onSuccess: (_data, { mediaId }) => {

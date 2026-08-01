@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
 import type { CamelCaseKeys } from "@/lib/api/camel-client"
 import type { components } from "@/lib/api/openapi"
-import type { CatalogGame, CatalogGameDetail } from "./types"
+import type { CatalogGame, CatalogGameDetail } from "../types"
 
 // ponytail: use generated API types — the axios interceptor converts snake_case → camelCase
 type MediaItemSummary = CamelCaseKeys<components["schemas"]["MediaItemSummary"]>
@@ -38,7 +38,11 @@ export const gameDetailOptions = (id: string) =>
     queryFn: async (): Promise<CatalogGameDetail | null> => {
       try {
         const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${id}`)
-        return data
+        return {
+          ...data,
+          isFree: data.game?.isFree ?? false,
+          hasMultiplayer: data.game?.hasMultiplayer ?? false,
+        } as CatalogGameDetail
       } catch {
         return null
       }

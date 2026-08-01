@@ -1,4 +1,4 @@
-import type { MediaItemDetail, SeasonOut } from './queries/media-queries'
+import type { MediaItemDetail, SeasonOut } from '../queries/media-queries'
 
 // ── Type guards ──
 

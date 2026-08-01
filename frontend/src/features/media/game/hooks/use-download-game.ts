@@ -8,7 +8,7 @@ import { useFeature } from '@/features/_config'
 import { useLocalGames } from '@/features/launcher/data/game-queries'
 import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/launcher/data/storage'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
-import type { InstallStoreEntry } from '@/features/launcher/data/install-store'
+import type { InstallStoreEntry } from '@/features/launcher/types'
 import { isTitleMatch, mediaQueries } from '@media'
 
 type LocalGame = import('@/features/launcher/types').LocalGame
@@ -29,7 +29,7 @@ export interface DownloadGameState {
   isoPath: string | null
   existingDownload: Download | undefined
   installEntry: InstallStoreEntry | undefined
-  dlConfig: DownloadConfig | undefined
+  dlConfig: DownloadConfig | null
   errorMsg: string
   postProcessing: boolean
   searching: boolean

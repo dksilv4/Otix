@@ -59,7 +59,7 @@ export interface BatchMatchOutcome {
 export async function batchMatchAndSave(
   games: MatchableGame[],
   desktopAPI?: any,
-  apiBaseUrl?: string,
+  _apiBaseUrl?: string,
 ): Promise<BatchMatchOutcome> {
   if (!games.length) {
     return { matched: 0, suggested: 0, total: 0, games: [], matches: [] }
@@ -148,8 +148,6 @@ export async function batchMatchAndSave(
     for (let i = 0; i < Math.min(games.length, matches.length); i++) {
       const m = matches[i]
       if (!m) continue
-      const queryId = (games[i].platform || 'unknown') + ':' + (games[i].appName || games[i].catalogItemId || games[i].id)
-
       // Auto-match (backend already creates approved proposal)
       const best = m.autoMatch?.mediaItemId && !m.autoMatch.needsImport ? m.autoMatch : null
 

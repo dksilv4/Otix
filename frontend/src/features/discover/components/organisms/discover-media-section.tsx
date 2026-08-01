@@ -1,7 +1,5 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
-import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
 import { useSectionFetch } from '@discover/hooks/use-section-fetch'
 import { MediaCarousel } from '../molecules/discover-media-carousel'
 import { MediaSectionSkeleton } from '../molecules/discover-media-section-skeleton'

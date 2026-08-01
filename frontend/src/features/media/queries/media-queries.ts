@@ -121,6 +121,7 @@ export interface MediaItemDetail {
       posterUrl: string | null
       releaseDate: string | null
       slug: string
+      isAdult: boolean
     }>
   } | null
   movie?: MovieDetail

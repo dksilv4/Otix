@@ -3,7 +3,7 @@ import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
-import { Moon, Sun, Monitor, Plus, Check } from 'lucide-react'
+import { Moon, Sun, Monitor, Plus } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 
 const ACCENTS = [

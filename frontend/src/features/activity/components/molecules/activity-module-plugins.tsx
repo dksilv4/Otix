@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import {
-  RefreshCw, Circle, Gamepad2, Download, Info, AlertTriangle, XCircle, CheckCircle2,
+  RefreshCw, Download, Info, AlertTriangle, XCircle, CheckCircle2,
 } from 'lucide-react'
 import { ActivityModuleSection } from './activity-module-section'
 
@@ -58,7 +58,7 @@ const STATUS_COLOR: Record<string, string> = {
 // ── Component ──────────────────────────────────────────────────────────
 
 export function ActivityModulePlugins() {
-  const [slots, setSlots] = useState<ActivitySlotEntry[]>([])
+  const [, setSlots] = useState<ActivitySlotEntry[]>([])
   const [activities, setActivities] = useState<Record<string, PluginActivityItem[]>>({})
   const [labels, setLabels] = useState<Record<string, string>>({})
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -85,8 +85,9 @@ export function ActivityModulePlugins() {
           await api.plugin.callData(slot.pluginId, 'activity.poll')
         if (result) {
           setActivities(prev => ({ ...prev, [slot.pluginId]: result.activities || [] }))
-          if (result.label) {
-            setLabels(prev => ({ ...prev, [slot.pluginId]: result.label }))
+          const label = result.label
+          if (label) {
+            setLabels(prev => ({ ...prev, [slot.pluginId]: label }))
           } else {
             setLabels(prev => ({ ...prev, [slot.pluginId]: slot.label }))
           }

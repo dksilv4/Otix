@@ -16,6 +16,20 @@ interface PersonListResponse {
   items: Array<{ id: string; name: string }>
 }
 
+interface QueueTrackView {
+  uri?: string
+  id?: string
+  albumArt?: string
+  name?: string
+  title?: string
+  artist?: string
+}
+
+function normalizeTrack(t: { id?: string; uri?: string; albumArt?: string | null; name?: string; title?: string; artist?: string }): QueueTrackView {
+  const { albumArt, ...rest } = t
+  return { ...rest, albumArt: albumArt ?? undefined }
+}
+
 /** Full-featured music player widget with album art, playback controls, progress, volume, and queue views. */
 export function ActivityModulePlayer() {
   const navigate = useNavigate()
@@ -42,9 +56,10 @@ export function ActivityModulePlayer() {
 
   const hasScrolledRef = useRef(false)
 
-  const queueItems = source === 'plex'
+  const queueItems = (source === 'plex'
     ? plexQueue.slice(1)
     : spotifyNextTracks
+  ).map(normalizeTrack)
 
   const prevItems = (source === 'plex' ? plexPreviousTracks : spotifyPreviousTracks)
     .filter(item => {
@@ -55,6 +70,7 @@ export function ActivityModulePlayer() {
       if (itemUri && itemUri === currentTrack.uri) return false
       return true
     })
+    .map(normalizeTrack)
 
   const progress = duration > 0 ? position / duration : 0
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
@@ -441,7 +457,7 @@ function QueueInline({
 /* ── Queue full view ── */
 
 function QueueFullView({
-  currentTrack, isPlaying, queueItems, prevItems, palette, accentColor, source,
+  currentTrack, isPlaying, queueItems, prevItems, palette, accentColor,
   onBack, onQueueItemClick, onPrevItemClick,
 }: {
   currentTrack: NonNullable<ReturnType<typeof usePlayer>['currentTrack']>

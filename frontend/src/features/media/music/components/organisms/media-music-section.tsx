@@ -129,7 +129,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  title: trackTitle,
  artist,
  albumName: title || "",
- albumArt: posterUrl,
+ albumArt: posterUrl ?? null,
  durationMs: durMs || 0,
  plexBaseUrl: plexBaseUrl ?? null,
  plexToken: plexToken ?? null,
@@ -343,7 +343,7 @@ export function MusicSection({ className }: MusicSectionProps = {}) {
  playbackPlatform={playbackPlatform}
  allTracks={allTracks}
  albumTitle={title || ""}
- albumArt={posterUrl}
+ albumArt={posterUrl ?? null}
  artistName={artistName}
  plexConnection={
  plexMatch

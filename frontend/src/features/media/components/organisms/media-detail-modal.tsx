@@ -1,27 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MediaDetail } from './media-detail'
 
 export function MediaDetailModal() {
   const [isOpen, setIsOpen] = useState(true)
-  const navigate = useNavigate()
 
   const handleClose = () => {
     setIsOpen(false)
-    // Wait for the exit animation to finish before navigating away
-    setTimeout(() => {
-      void navigate({
-        search: (prev: any) => {
-          const next = { ...prev }
-          delete next.detailType
-          delete next.detailId
-          return next
-        },
-        replace: true,
-      })
-    }, 250)
   }
 
   useEffect(() => {

@@ -18,7 +18,7 @@ import {
   Tags,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Proposal, ProposerUser } from '../../proposals-queries'
+import type { Proposal } from '../../proposals-queries'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

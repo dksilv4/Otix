@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ShieldAlert } from 'lucide-react'
-import type { PermissionRequest } from '../hooks/usePluginPermissions'
+import type { PermissionRequest } from '../../hooks/use-plugin-permissions'
 
 interface PluginPermissionModalProps {
   request: PermissionRequest

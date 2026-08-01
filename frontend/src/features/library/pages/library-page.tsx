@@ -97,7 +97,7 @@ function ArrTab({
 }: {
   pluginId: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
 }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

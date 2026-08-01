@@ -195,7 +195,6 @@ export function useAddToList() {
     mutationFn: async ({
       listId,
       mediaItemId,
-      mediaType,
     }: {
       listId: string
       mediaItemId: string
@@ -224,7 +223,6 @@ export function useRemoveFromList() {
     mutationFn: async ({
       listId,
       mediaItemId,
-      mediaType,
     }: {
       listId: string
       mediaItemId: string

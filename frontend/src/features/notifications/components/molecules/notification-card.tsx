@@ -18,7 +18,6 @@ export function NotificationCard({ notification, onMarkRead, actionCallbacks }: 
   const config = getTypeConfig(notification.type)
   const link = config?.getLink?.(notification)
   const actions = config?.getActions?.(notification, actionCallbacks)
-  const Icon = config?.icon
 
   const handleClick = () => {
     if (link) navigate({ to: link })

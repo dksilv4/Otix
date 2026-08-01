@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { ContextMenuProvider } from './context-menu-context'
 import { ContextMenuContent } from './context-menu-content'
 import type { ContextMenuItemDef } from './types'
@@ -29,7 +28,6 @@ describe('ContextMenuContent', () => {
       { id: '_s1', separator: true as any },
       { id: '2', label: 'B', onClick: vi.fn() },
     ] as ContextMenuItemDef[]
-    // @ts-expect-error testing separator rendering
     render(<ContextMenuContent items={withSep} />, { wrapper: Wrapper })
     expect(screen.getByText('A')).toBeInTheDocument()
     expect(screen.getByText('B')).toBeInTheDocument()

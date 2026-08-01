@@ -57,7 +57,7 @@ export function PluginSlot({ location, pluginApi }: Props) {
     let cancelled = false
     async function load() {
       try {
-        const data = await pluginApi.getSlotData(location)
+        const data = await pluginApi.getSlotData?.(location) as SlotEntry[] | undefined
         if (!cancelled) setSlotData(data || [])
       } catch { /* no plugins for this slot */ }
       if (!cancelled) setLoading(false)
@@ -435,7 +435,7 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
                     backgroundColor: scanProgress.phase === 'scanning' ? '#3b82f6'
                       : scanProgress.phase === 'done' || scanProgress.phase === 'matching' || scanProgress.phase === 'hydrating' ? '#3b82f6'
                       : '#3b82f630',
-                    opacity: scanProgress.phase === 'idle' ? 0.3 : 1,
+                    opacity: 1,
                   }}
                 />
                 {/* Match section (purple) — 33% to 66% */}

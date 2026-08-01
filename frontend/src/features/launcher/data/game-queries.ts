@@ -3,8 +3,8 @@ import { fetchGames, fetchGameById, fetchGameCount, acceptSuggestionOnServer, re
 import { getDesktopAPI } from '@/lib/desktop/api';
 import { apiClient } from "@/lib/api/client";
 import { useEffect } from 'react';
-import type { GamesFilter } from './types';
-import type { Game, LocalGame } from "./types";
+import type { GamesFilter } from '../types';
+import type { Game, LocalGame } from "../types";
 
 type Listener = () => void;
 
@@ -164,8 +164,8 @@ function candidateToGame(c: BatchMatchCandidate, confidence: number): Game {
     posterUrl: c.poster_url ?? undefined,
     textlessPosterUrl: null,
     backdropUrl: c.backdrop_url ?? undefined,
-    logoUrl: null,
-    iconUrl: null,
+    logoUrl: undefined,
+    iconUrl: undefined,
     confidence,
   }
 }

@@ -31,13 +31,6 @@ const SECTION_COLOR: Record<string, string> = {
   personal: "text-[#e5a00d]",
 }
 
-const SECTION_ICON_BG: Record<string, string> = {
-  stream: "bg-emerald-500/10",
-  rent: "bg-amber-500/10",
-  buy: "bg-blue-500/10",
-  personal: "bg-[#e5a00d]/10",
-}
-
 function groupBySection(providers: MediaWatchProvider[]): Array<{ key: string; label: string; providers: MediaWatchProvider[] }> {
   const result: Array<{ key: string; label: string; providers: MediaWatchProvider[] }> = []
   for (const [key, config] of Object.entries(SECTION_CONFIG)) {

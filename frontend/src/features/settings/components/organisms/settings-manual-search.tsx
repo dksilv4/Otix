@@ -22,7 +22,7 @@ export function ManualSearch({ onSelect, defaultQuery, gameContext }: ManualSear
   const [backfill, setBackfill] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (defaultQuery && !query) setQuery(defaultQuery)

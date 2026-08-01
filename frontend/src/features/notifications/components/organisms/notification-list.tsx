@@ -1,8 +1,6 @@
 import { useAuth } from '@/lib/providers/auth'
 import { useNotifications } from '../../hooks/use-notifications'
 import { useMarkRead } from '../../hooks/use-mark-read'
-import { useQuery } from '@tanstack/react-query'
-import { notificationQueries } from '../../queries'
 import { NotificationCard } from '../molecules/notification-card'
 import { NotificationSkeleton } from './notification-skeleton'
 import { NotificationEmpty } from './notification-empty'
@@ -11,16 +9,11 @@ import type { ActionCallbacks } from '../../types'
 import { apiClient } from '@/lib/api/client'
 import { useQueryClient } from '@tanstack/react-query'
 
-export function NotificationList({ onClose }: { onClose?: () => void }) {
+export function NotificationList() {
   const { isAuthenticated } = useAuth()
   const markRead = useMarkRead()
-  const { allItems, isLoading, isFetchingNextPage, hasNextPage, lastItemRef } = useNotifications()
+  const { allItems, isLoading, isFetchingNextPage, lastItemRef } = useNotifications()
   const queryClient = useQueryClient()
-
-  const { data: unreadData } = useQuery({
-    ...notificationQueries.unreadCount(),
-    enabled: isAuthenticated,
-  })
 
   const actionCallbacks: ActionCallbacks = {
     acceptFriendRequest: async (requestId) => {

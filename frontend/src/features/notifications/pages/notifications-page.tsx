@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async'
-import { Bell, CheckCheck } from 'lucide-react'
+import { CheckCheck } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { notificationQueries } from '../queries'

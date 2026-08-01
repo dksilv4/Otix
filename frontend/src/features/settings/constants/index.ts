@@ -1,4 +1,4 @@
-import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle, Rocket, Settings } from 'lucide-react'
+import { User, Palette, Shield, Bell, Link2, Download, Gamepad2, Monitor, Puzzle, Rocket, Settings, Shuffle } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 

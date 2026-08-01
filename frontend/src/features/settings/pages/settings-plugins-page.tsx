@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Search, Loader2, Puzzle, ExternalLink, CheckCircle2, XCircle,
   Download, RefreshCw, Settings, X, Store, ChevronDown,
@@ -8,6 +8,7 @@ import { useModal, SlidePanel } from '@/lib/modals'
 import { PluginConfigPanel } from '../components/organisms/settings-plugin-config-panel'
 import type { PluginInfo } from '@/features/settings/types/plugins'
 import { cn } from '@/lib/utils'
+import { openExternal } from '@/lib/utils/open-external'
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ export interface PluginAPI {
   removeRepo(url: string): Promise<Array<{ url: string; label?: string; added_at: string }>>
   getPluginTabs(): Promise<Array<{ pluginId: string; label: string; path: string }>>
   getSlotData?(location: string): Promise<unknown>
-  callData?(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
+  callData(pluginId: string, method: string, ...args: unknown[]): Promise<unknown>
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ function getPluginCategory(plugin: PluginInfo | RegistryEntry): string {
 
   // Check manifest services (only available on PluginInfo)
   if ('manifest' in plugin && plugin.manifest.services && plugin.manifest.services.length > 0) {
-    const types = plugin.manifest.services.map((s) => (typeof s === 'string' ? s : s.type))
+    const types = plugin.manifest.services.map((s) => s)
     if (types.includes('downloads-orchestrator')) return 'Pipelines'
     if (types.includes('arr') || types.includes('downloader')) return 'Services'
   }
@@ -184,7 +185,7 @@ function buildPluginGraph(enabled: PluginInfo[]): { nodes: GraphNode[]; edges: G
   const providerServices = new Map<string, string[]>()
   for (const plugin of enabled) {
     for (const s of plugin.manifest.services || []) {
-      const type = typeof s === 'string' ? s : s.type
+      const type = s
       if (!providerServices.has(type)) providerServices.set(type, [])
       providerServices.get(type)!.push(plugin.id)
     }
@@ -443,9 +444,9 @@ function SortHeader({
 }: {
   label: string
   sortKey: 'name' | 'version' | 'author' | 'status'
-  currentKey: typeof sortKey | null
+  currentKey: 'name' | 'version' | 'author' | 'status' | null
   currentDir: 'asc' | 'desc'
-  onSort: (key: typeof sortKey) => void
+  onSort: (key: 'name' | 'version' | 'author' | 'status') => void
   className?: string
 }) {
   const active = currentKey === colKey
@@ -630,7 +631,7 @@ function MarketplaceDetailPanel({
         <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 flex items-center justify-between">
           <span className="text-xs text-white/30">Repository</span>
           <button
-            onClick={() => (window as Window).desktopAPI?.openExternal?.(entry.repository)}
+            onClick={() => openExternal(entry.repository)}
             className="text-xs text-primary/80 hover:text-primary flex items-center gap-1 truncate ml-4"
           >
             {entry.repository.replace(/^https?:\/\/[^/]+\//, '').replace(/\/$/, '')}
@@ -862,7 +863,8 @@ export function SettingsPluginsPage() {
   useEffect(() => {
     if (!selectedEntry) return
 
-    const close = openModal(
+    let close: () => void = () => {}
+    close = openModal(
       <MarketplaceDetailPanel
         entry={selectedEntry}
         isInstalled={plugins.some((p) => p.id === selectedEntry.id)}
@@ -877,9 +879,8 @@ export function SettingsPluginsPage() {
           handleUpdatePlugin(selectedEntry.id)
           close()
         } : undefined}
-        onClose={close}
+        onClose={() => close()}
       />,
-      { onClose: () => setSelectedEntry(null) },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEntry])
@@ -890,7 +891,8 @@ export function SettingsPluginsPage() {
 
     const plugin = plugins.find((p) => p.id === configuringPlugin)
 
-    const close = openModal(
+    let close: () => void = () => {}
+    close = openModal(
       plugin ? (
         <PluginConfigPanel
           key={configKey}
@@ -903,7 +905,6 @@ export function SettingsPluginsPage() {
           }}
         />
       ) : null,
-      { onClose: () => setConfiguringPlugin(null) },
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configuringPlugin, configKey])

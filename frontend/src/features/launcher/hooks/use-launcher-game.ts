@@ -26,7 +26,7 @@ export function useLauncherGame(gameId: string | undefined) {
         posterUrl: (localGame.otixPosterUrl || catalogSource.posterUrl || localGame.data?.posterUrl) as string | undefined,
         backdropUrl: (localGame.otixBackdropUrl || catalogSource.backdropUrl || localGame.data?.backdropUrl) as string | undefined,
         textlessPosterUrl: (localGame.otixTextlessPosterUrl || catalogSource.textlessPosterUrl || localGame.data?.textlessPosterUrl) as string | null | undefined,
-        logoUrl: (localGame.otixLogoUrl || catalogSource.logoUrl || localGame.data?.logoUrl) as string | null | undefined,
+        logoUrl: (localGame.otixLogoUrl || catalogSource.logoUrl || localGame.data?.logoUrl) as string | undefined,
         iconUrl: (localGame.otixIconUrl || catalogSource.iconUrl || localGame.data?.iconUrl) as string | undefined,
         screenshots: (catalogSource.screenshots || localGame.data?.screenshots) as Game['screenshots'],
       }
@@ -61,7 +61,7 @@ export function useLauncherGame(gameId: string | undefined) {
       posterUrl: catalogDetail.posterUrl ?? undefined,
       data: {
         ...(catalogDetail as unknown as Game),
-        screenshots: (catalogDetail as Record<string, unknown>).screenshots as Game['screenshots'],
+        screenshots: (catalogDetail as unknown as Record<string, unknown>).screenshots as Game['screenshots'],
       } as LocalGame['data'],
     }
     return { game: webGame, isLoading }

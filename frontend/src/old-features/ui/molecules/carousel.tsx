@@ -118,7 +118,7 @@ export const Carousel = forwardRef(function Carousel(
           {viewAllLink && (
             <Link
               to={viewAllLink as any}
-              search={viewAllSearch}
+              search={viewAllSearch as any}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-active)] transition-colors"
               style={{ background: 'var(--dk-surface-ghost-hover)' }}
             >
