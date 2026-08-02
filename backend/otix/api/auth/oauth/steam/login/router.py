@@ -15,7 +15,7 @@ router = APIRouter()
 @router.post("/steam/initiate", response_model=SteamInitiateResponse)
 async def steam_initiate(
     request: Request,
-    source: str | None = Body(None),
+    source: str | None = Body(None, embed=True),
     limiter: AuthRateLimiter = Depends(get_auth_rate_limiter),
 ) -> SteamInitiateResponse:
     ip = client_ip(request)

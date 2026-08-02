@@ -153,7 +153,7 @@ async def build_steam_login_url(source: str | None = None) -> tuple[str, str]:
     redis = await get_redis()
     await redis.set(_state_key(state), "1", ex=STATE_TTL)
 
-    return_to = f"{settings.frontend_base_url}/auth/steam/callback"
+    return_to = f"{settings.frontend_base_url}/auth/callback/steam"
     if source:
         separator = "&" if "?" in return_to else "?"
         return_to = f"{return_to}{separator}source={source}"
@@ -170,7 +170,7 @@ async def build_steam_link_url(source: str | None = None, user_id: str | None = 
         payload["user_id"] = user_id
     await redis.set(_link_state_key(state), json.dumps(payload), ex=STATE_TTL)
 
-    return_to = f"{settings.frontend_base_url}/auth/steam/connect/callback"
+    return_to = f"{settings.frontend_base_url}/auth/callback/steam-connect"
     if source:
         separator = "&" if "?" in return_to else "?"
         return_to = f"{return_to}{separator}source={source}"
@@ -231,9 +231,9 @@ async def validate_steam_link_callback(params: dict, raw_query: str | None = Non
     # Extract stored user_id (may be None for legacy)
     try:
         payload = json.loads(raw) if isinstance(raw, str) else {}
-        state_user_id = payload.get("user_id")
     except (json.JSONDecodeError, TypeError):
-        state_user_id = None
+        payload = {}
+    state_user_id = payload.get("user_id") if isinstance(payload, dict) else None
 
     steam_id = await _validate_openid_response(params, raw_query)
     return steam_id, state_user_id
@@ -349,7 +349,7 @@ async def link_steam_to_user(
 
     resolved_user.steam_id = steam_id
     await session.flush()
-    logger.info("steam account linked", user_id=user.id, steam_id=steam_id)
+    logger.info("steam account linked", user_id=resolved_user.id, steam_id=steam_id)
 
 
 async def unlink_steam_from_user(session: AsyncSession, user: User) -> None:

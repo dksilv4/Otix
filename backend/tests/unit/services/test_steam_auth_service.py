@@ -31,7 +31,7 @@ class TestSteamAuthUrl:
         params = _parse_auth_url(url)
         return_to_query = _parse_return_to(url)
 
-        assert params["openid.return_to"].startswith("http://localhost:5173/auth/steam/callback")
+        assert params["openid.return_to"].startswith("http://localhost:5173/auth/callback/steam")
         assert return_to_query["state"] == state
         assert await fakeredis.get(steam_auth_service._state_key(state)) == "1"
 
@@ -44,9 +44,9 @@ class TestSteamAuthUrl:
         params = _parse_auth_url(url)
         return_to_query = _parse_return_to(url)
 
-        assert params["openid.return_to"].startswith("http://localhost:5173/auth/steam/connect/callback")
+        assert params["openid.return_to"].startswith("http://localhost:5173/auth/callback/steam-connect")
         assert return_to_query["state"] == state
-        assert await fakeredis.get(steam_auth_service._link_state_key(state)) == "1"
+        assert await fakeredis.get(steam_auth_service._link_state_key(state)) == '{"v": "1"}'
 
 
 class TestSteamCallbackValidation:
@@ -105,9 +105,10 @@ class TestSteamCallbackValidation:
         validate = AsyncMock(return_value="76561198000000001")
         monkeypatch.setattr(steam_auth_service, "_validate_openid_response", validate)
 
-        steam_id = await steam_auth_service.validate_steam_link_callback({"state": state, "openid.mode": "id_res"})
+        steam_id, state_user_id = await steam_auth_service.validate_steam_link_callback({"state": state, "openid.mode": "id_res"})
 
         assert steam_id == "76561198000000001"
+        assert state_user_id is None  # legacy plain-string state carries no user_id
         assert await fakeredis.get(steam_auth_service._link_state_key(state)) is None
         validate.assert_awaited_once()
 
@@ -118,11 +119,12 @@ class TestSteamCallbackValidation:
         validate = AsyncMock(return_value="76561198000000001")
         monkeypatch.setattr(steam_auth_service, "_validate_openid_response", validate)
 
-        steam_id = await steam_auth_service.validate_steam_link_callback(
+        steam_id, state_user_id = await steam_auth_service.validate_steam_link_callback(
             {},
             f"state={state}&openid.mode=id_res",
         )
 
         assert steam_id == "76561198000000001"
+        assert state_user_id is None  # legacy plain-string state carries no user_id
         assert await fakeredis.get(steam_auth_service._link_state_key(state)) is None
         validate.assert_awaited_once_with({}, f"state={state}&openid.mode=id_res")

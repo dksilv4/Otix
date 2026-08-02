@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useDeepLink(
     useCallback(
       (data) => {
-        if (data.action === 'auth/steam/callback' && data.params.accessToken) {
+        if (data.action === 'auth/callback/steam' && data.params.accessToken) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
           window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
           loadUser().then((loaded) => {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })
         }
 
-        if (data.action === 'auth/steam/connect/callback') {
+        if (data.action === 'auth/callback/steam-connect') {
           queryClient.invalidateQueries({ queryKey: ['integrations'] })
         }
       },
