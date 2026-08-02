@@ -124,8 +124,19 @@ def _get_engine() -> AsyncEngine:
             @event.listens_for(_engine.sync_engine, "connect")
             def _set_pg_trgm_limit(dbapi_connection, connection_record):
                 cursor = dbapi_connection.cursor()
-                cursor.execute("SELECT set_limit(0.2)")
-                cursor.close()
+                try:
+                    cursor.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+                    try:
+                        # PG >= 13: set_limit() was removed, use the GUC instead.
+                        cursor.execute("SET pg_trgm.similarity_threshold = 0.2")
+                    except Exception:
+                        # PG <= 12 fallback.
+                        cursor.execute("SELECT set_limit(0.2)")
+                except Exception:
+                    # Never let a trgm setup failure break a pooled connection.
+                    pass
+                finally:
+                    cursor.close()
 
             _pid = current_pid
             _session_factory = async_sessionmaker(

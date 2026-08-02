@@ -13,6 +13,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 
+def _label_key(labels: dict[str, str]) -> str:
+    return ",".join(f"{k}={labels[k]}" for k in sorted(labels))
+
+
 @dataclass
 class Counter:
     name: str
@@ -40,13 +44,24 @@ class Histogram:
     _count: int = 0
     _sum: float = 0.0
     _bucket_counts: dict[float, int] = field(default_factory=dict)
+    _label_counts: dict[str, int] = field(default_factory=dict)
+    _label_sums: dict[str, float] = field(default_factory=dict)
+    _label_buckets: dict[str, dict[float, int]] = field(default_factory=dict)
 
-    def observe(self, value_seconds: float) -> None:
+    def observe(self, value_seconds: float, **labels: str) -> None:
         self._count += 1
         self._sum += value_seconds
         for b in self.buckets:
             if value_seconds <= b:
                 self._bucket_counts[b] = self._bucket_counts.get(b, 0) + 1
+        if labels:
+            key = _label_key(labels)
+            self._label_counts[key] = self._label_counts.get(key, 0) + 1
+            self._label_sums[key] = self._label_sums.get(key, 0.0) + value_seconds
+            bkt = self._label_buckets.setdefault(key, {})
+            for b in self.buckets:
+                if value_seconds <= b:
+                    bkt[b] = bkt.get(b, 0) + 1
 
     @property
     def count(self) -> int:
@@ -59,6 +74,11 @@ class Histogram:
     @property
     def avg_seconds(self) -> float:
         return self._sum / self._count if self._count > 0 else 0.0
+
+    def avg_seconds_by_label(self, **labels: str) -> float:
+        key = _label_key(labels)
+        count = self._label_counts.get(key, 0)
+        return self._label_sums.get(key, 0.0) / count if count > 0 else 0.0
 
 
 @dataclass
@@ -146,6 +166,18 @@ SYNC_RATE_LIMIT_WAIT = _registry.histogram(
 SYNC_ENTITIES_TOTAL = _registry.counter(
     "otix_sync_entities_total",
     "Total entities processed by provider and status",
+)
+
+HYDRATION_STAGE_DURATION = _registry.histogram(
+    "otix_hydration_stage_seconds",
+    "Wall-clock time per full-hydration stage, by provider/media_type/stage",
+    buckets=(0.5, 1, 2, 5, 10, 30, 60, 120, 300),
+)
+
+HYDRATION_ITEM_DURATION = _registry.histogram(
+    "otix_hydration_item_seconds",
+    "Total wall-clock time to fully process one item, by provider/media_type",
+    buckets=(5, 10, 30, 60, 120, 300, 600, 1200),
 )
 
 SYNC_JOBS_ACTIVE = _registry.gauge(

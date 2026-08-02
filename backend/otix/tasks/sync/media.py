@@ -52,7 +52,7 @@ async def _load_rehydrate_target(media_item_id: str) -> dict[str, JSONValue] | N
 
         store_providers = {
             "steam",
-            "epic",
+            "egs",
             "gog",
             "origin",
             "uplay",

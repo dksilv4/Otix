@@ -191,6 +191,46 @@ def _extract_store_ids(websites: list[JSONValue]) -> dict[str, str | int] | None
     return result if result else None
 
 
+# IGDB external_games.external_game_source enum → Otix provider slug.
+# Only storefronts carrying a usable store/product ID are mapped; social
+# (YouTube 10, Twitch 14), retail (Amazon 20/22/23) and cloud-only
+# (Game Pass Cloud 54) sources are skipped. 3 is undocumented/legacy.
+_EXTERNAL_GAME_SOURCES: dict[int, str] = {
+    1: "steam",        # Steam
+    5: "gog",          # GOG
+    11: "microsoft",   # Microsoft Store
+    13: "apple",       # Apple App Store
+    15: "android",     # Google Play / Android
+    26: "egs",         # Epic Games Store
+    30: "itchio",      # Itch.io
+    31: "xbox",        # Xbox Marketplace
+    36: "playstation", # PlayStation Store (US)
+}
+
+
+def extract_external_games(raw: dict[str, JSONValue]) -> dict[str, str] | None:
+    """Extract store IDs from IGDB external_games.
+
+    Returns ``{provider_slug: external_id}`` for each entry whose
+    external_game_source maps to a known storefront. Website-derived store
+    IDs (``extract_store_ids``) are higher quality, so callers should merge
+    this dict *under* those (website wins on conflict). First UID wins per
+    provider.
+    """
+    entries = raw.get("external_games")
+    if not isinstance(entries, list) or not entries:
+        return None
+    result: dict[str, str] = {}
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        provider = _EXTERNAL_GAME_SOURCES.get(e.get("external_game_source"))
+        uid = e.get("uid")
+        if provider and isinstance(uid, str) and uid:
+            result.setdefault(provider, uid)
+    return result if result else None
+
+
 def extract_involved_companies(raw: dict[str, JSONValue]) -> list[dict]:
     """Extract involved companies from IGDB response.
 
@@ -240,21 +280,11 @@ def to_media_item(raw: dict[str, JSONValue]) -> MediaItem:
     title = raw.get("name") or ""
     overview = raw.get("storyline") or raw.get("summary")
 
-    # Backdrop: first artwork (typically landscape/wallpaper format)
-    backdrop_url = None
-    artworks = raw.get("artworks")
-    if isinstance(artworks, list) and artworks:
-        first = artworks[0]
-        if isinstance(first, dict):
-            backdrop_url = _cover_url(first.get("image_id"), "t_1080p")
-
     return MediaItem(
         media_type="game",
         title=title,
         overview=overview,
         slug=raw.get("slug") or _slugify(title),
-        poster_url=_cover_url((raw.get("cover") or {}).get("image_id") if isinstance(raw.get("cover"), dict) else None),
-        backdrop_url=backdrop_url,
         release_date=_parse_timestamp(raw.get("first_release_date")),
         popularity=float(raw.get("hypes", 0) or 0),
     )

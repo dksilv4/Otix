@@ -112,6 +112,20 @@ class TMDBProvider(BaseProvider):
         )
         return response.json()
 
+    async def get_movie_recommendations(self, tmdb_id: int, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/movie/{tmdb_id}/recommendations",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_movie_similar(self, tmdb_id: int, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/movie/{tmdb_id}/similar",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
     # ── Shows ───────────────────────────────────────────────────
 
     async def get_show(self, tmdb_id: int, language: str = "en-US") -> dict[str, JSONValue]:
@@ -166,6 +180,20 @@ class TMDBProvider(BaseProvider):
     async def get_show_airing_today(self, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
         response = await self._get(
             "/tv/airing_today",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_show_recommendations(self, tmdb_id: int, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/tv/{tmdb_id}/recommendations",
+            params={"language": language, "page": page},
+        )
+        return response.json()
+
+    async def get_show_similar(self, tmdb_id: int, page: int = 1, language: str = "en-US") -> dict[str, JSONValue]:
+        response = await self._get(
+            f"/tv/{tmdb_id}/similar",
             params={"language": language, "page": page},
         )
         return response.json()

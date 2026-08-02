@@ -1032,3 +1032,55 @@ class TestAmbiguousTitleScenarios:
         # Both at 0.97 (exact title + same dev)
         for c in result.candidates:
             assert c.confidence == 0.97
+
+    async def test_epic_multi_external_id_igdb_crossref(self):
+        """Epic request with appName, catalogItemId, offerId checks all IDs in IGDB cross-ref."""
+        session = AsyncMock()
+        matcher = GameMatcher(session, MagicMock())
+        matcher._eid_svc.batch_find_with_metadata = AsyncMock(return_value={})
+        matcher._phase1_direct = AsyncMock(return_value=[0])
+        matcher._phase2a_exact = AsyncMock(return_value=[0])
+        matcher._phase2b_ilike = AsyncMock(return_value=[0])
+        matcher._phase2c_trigram = AsyncMock(return_value=[0])
+
+        provider = MagicMock()
+        # Mock lookup_epic_ids to receive all epic external IDs
+        provider.lookup_epic_ids = AsyncMock(return_value={"catalog_item_99": 1052})
+        provider.get_game = AsyncMock(return_value={
+            "name": "Alan Wake 2",
+            "cover": {"image_id": "co6789"},
+            "first_release_date": 1698364800,
+            "platforms": [{"name": "PC (Microsoft Windows)"}],
+        })
+
+        matcher._seed_game_from_igdb = AsyncMock(return_value="otix_aw2")
+
+        req = GameMatchRequest(
+            query_id="epic:Sugar",
+            title="Alan Wake 2",
+            developer="Remedy Entertainment",
+            external_ids=[
+                {"source": "epic", "id": "Sugar"},
+                {"source": "epic", "id": "catalog_item_99"},
+                {"source": "epic", "id": "offer_456"},
+                {"source": "epic_namespace", "id": "fn"},
+            ],
+        )
+
+        unmatched = await matcher._phase3a_igdb_crossref([req], [0], [[]], provider)
+
+        # Cross-ref should pass all epic IDs to lookup_epic_ids
+        provider.lookup_epic_ids.assert_called_once()
+        queried_ids = provider.lookup_epic_ids.call_args[0][0]
+        assert "Sugar" in queried_ids
+        assert "catalog_item_99" in queried_ids
+        assert "offer_456" in queried_ids
+
+        # Should match and seed game with request_external_ids
+        assert unmatched == []
+        matcher._seed_game_from_igdb.assert_called_once_with(
+            {"name": "Alan Wake 2", "cover": {"image_id": "co6789"}, "first_release_date": 1698364800, "platforms": [{"name": "PC (Microsoft Windows)"}]},
+            1052,
+            request_external_ids=req.external_ids,
+        )
+

@@ -6,12 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.api.deps import get_current_admin_user, get_db
 from otix.domain.user import User
-from otix.schemas.admin import MediaHydrationResponse
+from otix.hydration.analytics import hydration_summary
+from otix.schemas.admin import HydrationSummaryResponse, MediaHydrationResponse
 from otix.services.admin_service import AdminService
 
 logger = structlog.get_logger()
 
 router = APIRouter()
+
+
+@router.get("/hydration/summary", response_model=HydrationSummaryResponse)
+async def get_hydration_summary(
+    limit: int = Query(200, ge=1, le=1000),
+    _admin: User = Depends(get_current_admin_user),
+) -> HydrationSummaryResponse:
+    """Aggregate recent full-hydration runs and per-stage bottlenecks. Admin only."""
+    return await hydration_summary(limit=limit)
 
 
 @router.get("/hydration", response_model=MediaHydrationResponse)

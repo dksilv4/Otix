@@ -102,7 +102,7 @@ def _normalize_title(raw: str) -> str:
     clean = "".join(ch for ch in clean if unicodedata.category(ch) != "Mn")
     # Remove punctuation except hyphens and apostrophes (game titles use these)
     # "Batman: Arkham" → "Batman Arkham", "Widget Inc." → "Widget Inc"
-    clean = re.sub(r"[:,\.;!\?\(\)\[\]\{\}]", "", clean)
+    clean = re.sub(r"[,\.;!\?\(\)\[\]\{\}]", "", clean)
     # Collapse whitespace
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
@@ -415,6 +415,8 @@ class GameMatcher:
                 )
             )
             for proposal in proposal_rows.scalars().all():
+                if not hasattr(proposal, "status") or not isinstance(getattr(proposal, "payload", None), dict):
+                    continue
                 if proposal.status == "approved":
                     confidence = 0.98  # approved = 1 user confirmation
                 else:
@@ -766,54 +768,50 @@ class GameMatcher:
 
         Returns indices that remain unmatched AFTER cross-reference.
         """
-        # Collect IDs by category
-        epic_ids: list[tuple[str, int]] = []  # (epic_id, req_idx)
-        steam_ids: list[tuple[int, int]] = []  # (steam_id, req_idx)
+        # Collect IDs by category mapping to request index
+        epic_id_map: dict[str, int] = {}
+        steam_id_map: dict[int, int] = {}
 
         for idx in indices:
             req = requests[idx]
             if not req.external_ids:
                 continue
             for ref in req.external_ids:
-                if ref.source == "epic" and ref.id:
-                    epic_ids.append((ref.id, idx))
-                    break  # first Epic ID per request wins
+                if ref.source in ("epic", "epic_free") and ref.id:
+                    epic_id_map[ref.id] = idx
                 elif ref.source == "steam" and ref.id:
                     try:
-                        steam_ids.append((int(ref.id), idx))
-                        break
+                        steam_id_map[int(ref.id)] = idx
                     except (ValueError, TypeError):
                         pass
 
         matched: set[int] = set()
 
         # Epic cross-ref (category 26)
-        if epic_ids:
-            id_map: dict[str, int] = dict(epic_ids)
+        if epic_id_map:
             try:
-                epic_to_igdb = await provider.lookup_epic_ids(list(id_map.keys()))
+                epic_to_igdb = await provider.lookup_epic_ids(list(epic_id_map.keys()))
             except Exception:
                 logger.exception("IGDB Epic cross-ref failed")
                 epic_to_igdb = {}
 
             for epic_id, igdb_id in epic_to_igdb.items():
-                req_idx = id_map.get(epic_id)
+                req_idx = epic_id_map.get(epic_id)
                 if req_idx is None or req_idx in matched:
                     continue
                 await self._resolve_igdb_candidate(requests[req_idx], igdb_id, all_candidates, req_idx, provider)
                 matched.add(req_idx)
 
         # Steam cross-ref (category 1)
-        if steam_ids:
-            id_map: dict[int, int] = dict(steam_ids)
+        if steam_id_map:
             try:
-                steam_to_igdb = await provider.lookup_steam_app_ids(list(id_map.keys()))
+                steam_to_igdb = await provider.lookup_steam_app_ids(list(steam_id_map.keys()))
             except Exception:
                 logger.exception("IGDB Steam cross-ref failed")
                 steam_to_igdb = {}
 
             for steam_id, igdb_id in steam_to_igdb.items():
-                req_idx = id_map.get(steam_id)
+                req_idx = steam_id_map.get(steam_id)
                 if req_idx is None or req_idx in matched:
                     continue
                 await self._resolve_igdb_candidate(requests[req_idx], igdb_id, all_candidates, req_idx, provider)
@@ -871,7 +869,7 @@ class GameMatcher:
             return
 
         # Seed into catalog: creates MediaItem + ExternalID mapping
-        new_media_id = await self._seed_game_from_igdb(raw, igdb_id)
+        new_media_id = await self._seed_game_from_igdb(raw, igdb_id, request_external_ids=request.external_ids)
 
         title = raw.get("name") or request.title
         poster = _igdb_cover_url(raw.get("cover"))
@@ -979,7 +977,7 @@ class GameMatcher:
                     )
             else:
                 # Not in catalog — seed from IGDB data
-                new_media_id = await self._seed_game_from_igdb(best, igdb_id)
+                new_media_id = await self._seed_game_from_igdb(best, igdb_id, request_external_ids=request.external_ids)
                 all_candidates[idx].append(
                     GameMatchCandidate(
                         media_item_id=new_media_id,
@@ -1371,6 +1369,26 @@ class GameMatcher:
                     payload=payload,
                     proposer=None,
                 )
+                # Link source external ID if available
+                if source and source_game_id and auto_match.media_item_id:
+                    try:
+                        from otix.services.external_id_service import ExternalIDService
+
+                        eid_svc = ExternalIDService(proposal_session)
+                        await eid_svc.upsert(source, source_game_id, "media_item", auto_match.media_item_id)
+                    except Exception as eid_err:
+                        logger.warning("match_proposal_external_id_upsert_failed", error=str(eid_err))
+
+                # Fire background full hydration across providers
+                try:
+                    from otix.infrastructure.celery import app as celery_app
+
+                    if auto_match.provider == "igdb" and auto_match.provider_id:
+                        celery_app.send_task("sync.igdb.game", args=[int(auto_match.provider_id)], kwargs={"force": True})
+                    celery_app.send_task("sync.steamgrid.game_by_name", args=[auto_match.media_item_id], priority=5)
+                except Exception:
+                    pass
+
                 logger.info(
                     "match_proposal_created",
                     title=req.title,
@@ -1389,7 +1407,13 @@ class GameMatcher:
 
     # ── IGDB seeding ───────────────────────────────────────────────────────
 
-    async def _seed_game_from_igdb(self, raw: dict, igdb_id: int, media_type: str = "game") -> str:
+    async def _seed_game_from_igdb(
+        self,
+        raw: dict,
+        igdb_id: int,
+        media_type: str = "game",
+        request_external_ids: list[object] | None = None,
+    ) -> str:
         """Create a minimal MediaItem + ExternalID from IGDB data.
 
         Returns the new media_item_id so the candidate can reference it.
@@ -1473,6 +1497,24 @@ class GameMatcher:
             .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
         )
 
+        # Also map request external IDs (epic, epic_namespace, epic_free, steam, etc.)
+        if request_external_ids:
+            for ref in request_external_ids:
+                src = getattr(ref, "source", None) or (ref.get("source") if isinstance(ref, dict) else None)
+                ext_id_val = getattr(ref, "id", None) or (ref.get("id") if isinstance(ref, dict) else None)
+                if src and ext_id_val:
+                    await self._session.execute(
+                        pg_insert(ExternalID)
+                        .values(
+                            provider=str(src),
+                            external_id=str(ext_id_val),
+                            entity_id=new_id,
+                            media_item_id=new_id,
+                            entity_type="media_item",
+                        )
+                        .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
+                    )
+
         # Fetch SteamGrid assets for rich hydration (posters, logos, heroes)
         if self._steamgrid:
             try:
@@ -1547,6 +1589,15 @@ class GameMatcher:
                             await AssetPipeline(self._session).store(new_id, assets)
             except Exception:
                 logger.warning("steamgrid_asset_fetch_failed", title=title)
+
+        # Enqueue full background hydration from IGDB & SteamGridDB
+        try:
+            from otix.infrastructure.celery import app as celery_app
+
+            celery_app.send_task("sync.igdb.game", args=[igdb_id], kwargs={"force": True})
+            celery_app.send_task("sync.steamgrid.game_by_name", args=[new_id], priority=5)
+        except Exception:
+            pass
 
         logger.info("seeded_game_from_igdb", igdb_id=igdb_id, otix_id=new_id, title=title)
         return new_id

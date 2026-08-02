@@ -129,7 +129,8 @@ class Settings(BaseSettings):
     # Embeddings
     # Default CPU model via FastEmbed. Set OTIX_EMBEDDING_API_URL to use a GPU
     # embedding server instead (e.g. Ollama, TEI).
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # all-MiniLM-L6-v2 chosen over bge-small for ~2-3x faster CPU inference.
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
     embedding_api_url: str = ""
 

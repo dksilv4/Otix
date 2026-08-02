@@ -99,6 +99,7 @@ class MediaHydrationItem(BaseModel):
     has_runtime: bool | None = None
     has_collection: bool | None = None
     has_budget: bool | None = None
+    has_revenue: bool | None = None
     has_show_status: bool | None = None
     has_episodes: bool | None = None
     has_platforms: bool | None = None
@@ -115,3 +116,17 @@ class MediaHydrationResponse(BaseModel):
     total: int
     page: int
     per_page: int
+
+
+class HydrationStageBottleneck(BaseModel):
+    stage: str
+    media_type: str
+    avg_seconds: float
+    n: int
+
+
+class HydrationSummaryResponse(BaseModel):
+    runs: list[dict]
+    totals: dict[str, dict]
+    stage_averages: dict[str, dict[str, float]]
+    bottlenecks: list[HydrationStageBottleneck]

@@ -116,14 +116,9 @@ class BaseProvider:
             self._update_cb_gauge()
             raise CircuitOpenError(self.name)
 
-        # Block until a rate-limit token is available.  This serialises
-        # concurrent callers so the provider never sees a burst above the
-        # configured rate.
-        acquired = await self.rate_limiter.wait_and_acquire(self.name)
-        if not acquired:
-            raise RateLimitError(f"{self.name} rate limit timeout")
-
-        # ── Local API cache (GET only, dev/test) ──
+        # ── Local API cache (GET only, dev/test) — checked before the rate
+        # limiter so cached responses don't consume provider quota or block
+        # on the token bucket. ──
         _cache = self._get_cache()
         if method == "GET" and _cache and _cache.enabled:
             cached = _cache.get(self.name, url)
@@ -133,6 +128,13 @@ class BaseProvider:
                     json=cached,
                     request=httpx.Request(method, url),
                 )
+
+        # Block until a rate-limit token is available.  This serialises
+        # concurrent callers so the provider never sees a burst above the
+        # configured rate.
+        acquired = await self.rate_limiter.wait_and_acquire(self.name)
+        if not acquired:
+            raise RateLimitError(f"{self.name} rate limit timeout")
 
         with track_api_call(self.name):
             try:
