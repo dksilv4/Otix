@@ -166,12 +166,10 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
   }, [entry.pluginId])
 
   const refreshStatus = useCallback(async () => {
-    if (data.actions?.status) {
-      try {
-        const res = await pluginApi.callData(entry.pluginId, data.actions.status) as any
-        if (res) setStatus(res)
-      } catch { /* plugin may not respond */ }
-    }
+    try {
+      const res = await pluginApi.getStatus(entry.pluginId) as any
+      if (res) setStatus(res)
+    } catch { /* plugin may not respond */ }
   }, [entry.pluginId])
 
   useEffect(() => {
