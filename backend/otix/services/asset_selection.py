@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.admin_edit import MediaImageOverride
 from otix.domain.asset import MediaAsset
 
-ITEM_CACHE_KEY = "asset:sel:{item_id}"
+ITEM_CACHE_KEY = "asset:sel:v2:{item_id}"
 CACHE_TTL = 3600  # 1 hour
 
 # asset_type → schema field suffix
@@ -35,7 +35,17 @@ FIELD_SUFFIX = {
 RESOLVE_TYPES = tuple(FIELD_SUFFIX)
 
 # Lower index = preferred. Labels not listed rank last (999).
-_POSTER_PREF = {"official": 0, "textless": 1, "white_logo": 2, "alternate": 3}
+# Prefer textless, logo-free, material, and alternate artwork over official covers with logos.
+_POSTER_PREF = {
+    "textless": 0,
+    "no_logo": 0,
+    "material": 1,
+    "clean": 1,
+    "alternate": 2,
+    "official": 3,
+    "white_logo": 4,
+    "white": 5,
+}
 _BACKDROP_PREF = {"material": 0, "clean": 1, "official": 2, "blurred": 3}
 _LOGO_PREF = {"multicolor": 0, "official": 0, "white": 1, "custom": 2, "black": 3}
 _TEXTLESS_PREF = {"textless": 0, "material": 1, "white_logo": 2}

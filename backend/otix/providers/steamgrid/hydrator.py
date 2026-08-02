@@ -2,9 +2,12 @@
 """SteamGridDB asset hydration.
 
 After an IGDB game has platform store IDs, this hydrator looks up the game on
-SteamGridDB and stores grid (poster), hero (backdrop), logo, and icon assets.
-It sets logo_url and textless_poster_url on the MediaItem so the game appears
-in discover feeds (has_artwork filter).
+SteamGridDB and stores grid (poster), hero (backdrop), logo, and icon assets
+into ``media_assets``. Every grid is stored as a ``poster`` (with a variant
+``label`` from its SGDB style); textless/material grids are ALSO stored as
+``textless_poster``. The query-time selection service picks the best per type,
+so the game appears in discover feeds (has_artwork filter) once any asset is
+stored.
 
 Supports all SGDB platforms: steam, origin, egs, bnet, uplay, flashpoint, eshop.
 """
@@ -188,25 +191,58 @@ class SteamGridDBHydrator:
         # Fetch all asset types in parallel
         grids, heroes, logos, icons = await self._fetch_assets(sgdb_game_id)
 
-        # Build RawAsset lists
+        # Store every grid as a poster (selection prefers textless/clean art at
+        # query time); textless/material grids are ALSO stored as
+        # textless_poster so a textless-only slot stays available.
+        raw_grids: list[RawAsset] = []
+        raw_textless: list[RawAsset] = []
+        for e in grids:
+            url = e.get("url")
+            if not isinstance(url, str):
+                continue
+            style = e.get("style")
+            raw_grids.append(
+                RawAsset(
+                    asset_type="poster",
+                    url=url,
+                    provider="steamgrid",
+                    width=e.get("width"),
+                    height=e.get("height"),
+                    style=style,
+                    label=_sgdb_label("poster", style),
+                    score=e.get("score"),
+                )
+            )
+            if style in {"no_logo", "material"}:
+                raw_textless.append(
+                    RawAsset(
+                        asset_type="textless_poster",
+                        url=url,
+                        provider="steamgrid",
+                        width=e.get("width"),
+                        height=e.get("height"),
+                        style=style,
+                        label=_sgdb_label("textless_poster", style),
+                        score=e.get("score"),
+                    )
+                )
+
         def _to_raw(entries: list[dict], asset_type: str, provider: str = "steamgrid") -> list[RawAsset]:
             return [
                 RawAsset(
-                    asset_type=at,
+                    asset_type=asset_type,
                     url=e["url"],
                     provider=provider,
                     width=e.get("width"),
                     height=e.get("height"),
                     style=e.get("style"),
-                    label=_sgdb_label(at, e.get("style")),
+                    label=_sgdb_label(asset_type, e.get("style")),
                     score=e.get("score"),
                 )
                 for e in entries
                 if isinstance(e.get("url"), str)
-                for at in [self._grid_asset_type(e) if callable(asset_type) else asset_type]
             ]
 
-        raw_grids = _to_raw(grids, self._grid_asset_type)
         raw_heroes = _to_raw(heroes, "backdrop")
         raw_logos = _to_raw(logos, "logo")
         raw_icons = _to_raw(icons, "icon")
@@ -214,6 +250,7 @@ class SteamGridDBHydrator:
         pipeline = AssetPipeline(self.session)
         added = 0
         added += await pipeline.store(media_item.id, raw_grids)
+        added += await pipeline.store(media_item.id, raw_textless)
         added += await pipeline.store(media_item.id, raw_heroes)
         added += await pipeline.store(media_item.id, raw_logos)
         added += await pipeline.store(media_item.id, raw_icons)
@@ -222,7 +259,7 @@ class SteamGridDBHydrator:
         await pipeline.promote_all(
             media_item,
             {
-                "textless_poster": raw_grids,
+                "textless_poster": raw_textless,
                 "logo": raw_logos,
                 "icon": raw_icons,
                 "backdrop": raw_heroes,
@@ -263,10 +300,3 @@ class SteamGridDBHydrator:
             _unwrap(results[2]),
             _unwrap(results[3]),
         )
-
-    @staticmethod
-    def _grid_asset_type(entry: dict[str, JSONValue]) -> str:
-        """Classify SGDB grids while preserving text-safe grids for promotion."""
-        if entry.get("style") in {"no_logo", "material"}:
-            return "textless_poster"
-        return "poster"

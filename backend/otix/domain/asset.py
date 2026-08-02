@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, otix_fk, otix_pk
@@ -14,11 +14,16 @@ if TYPE_CHECKING:
 
 class MediaAsset(Base):
     __tablename__ = "media_assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "media_item_id", "url", "asset_type", name="uq_media_assets_item_url_type"
+        ),
+    )
 
     id: Mapped[otix_pk]
     media_item_id: Mapped[otix_fk] = mapped_column(ForeignKey("media_items.id", ondelete="CASCADE"))
     asset_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    url: Mapped[str] = mapped_column(String(2000), nullable=False, unique=True)
+    url: Mapped[str] = mapped_column(String(2000), nullable=False)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
     lang: Mapped[str | None] = mapped_column(String(10))

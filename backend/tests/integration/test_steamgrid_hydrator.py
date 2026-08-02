@@ -83,7 +83,7 @@ async def test_hydrate_stores_all_assets_with_types_and_labels():
     session.execute = AsyncMock()
 
     stored_batches: list[list[RawAsset]] = []
-    counts = [2, 2, 1, 1]
+    counts = [2, 1, 2, 1, 1]
 
     async def fake_store(_self: object, _media_item_id: str, assets: list[RawAsset]) -> int:
         stored_batches.append(list(assets))
@@ -99,15 +99,20 @@ async def test_hydrate_stores_all_assets_with_types_and_labels():
             platform_id=730,
         )
 
-    assert added == 6
+    assert added == 7
 
     by_type: dict[str, list[tuple[str, str | None]]] = {}
     for batch in stored_batches:
         for a in batch:
             by_type.setdefault(a.asset_type, []).append((a.url, a.label))
 
+    # Every grid is stored as poster; the textless grid is ALSO stored as
+    # textless_poster so a textless-only slot stays available.
+    assert by_type["poster"] == [
+        ("https://img/no-logo-grid.jpg", "textless"),
+        ("https://img/alternate-grid.jpg", "alternate"),
+    ]
     assert by_type["textless_poster"] == [("https://img/no-logo-grid.jpg", "textless")]
-    assert by_type["poster"] == [("https://img/alternate-grid.jpg", "alternate")]
     assert by_type["backdrop"] == [
         ("https://img/alternate-hero.jpg", "alternate"),
         ("https://img/material-hero.jpg", "material"),
@@ -118,5 +123,7 @@ async def test_hydrate_stores_all_assets_with_types_and_labels():
     promote_mock.assert_awaited_once()
     _, asset_map = promote_mock.await_args.args
     assert set(asset_map) == {"textless_poster", "logo", "icon", "backdrop"}
+    textless_raw = asset_map["textless_poster"]
+    assert [a.url for a in textless_raw] == ["https://img/no-logo-grid.jpg"]
     backdrop_raw = asset_map["backdrop"]
     assert any(a.url == "https://img/material-hero.jpg" for a in backdrop_raw)

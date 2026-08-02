@@ -75,15 +75,25 @@ class TestSelectBest:
         )
         assert best.url == "https://img/mat.jpg"
 
-    def test_poster_prefers_official_over_alternate(self):
+    def test_poster_prefers_textless_over_official(self):
         best = _select_best(
             [
-                make_asset("poster", "https://img/alt.jpg", label="alternate", score=90),
-                make_asset("poster", "https://img/off.jpg", label="official", score=1),
+                make_asset("poster", "https://img/off.jpg", label="official", score=90),
+                make_asset("poster", "https://img/tl.jpg", label="textless", score=1),
             ],
             "poster",
         )
-        assert best.url == "https://img/off.jpg"
+        assert best.url == "https://img/tl.jpg"
+
+    def test_poster_prefers_alternate_over_official(self):
+        best = _select_best(
+            [
+                make_asset("poster", "https://img/off.jpg", label="official", score=90),
+                make_asset("poster", "https://img/alt.jpg", label="alternate", score=1),
+            ],
+            "poster",
+        )
+        assert best.url == "https://img/alt.jpg"
 
     def test_icon_prefers_official_and_png_bonus(self):
         best = _select_best(
@@ -142,8 +152,8 @@ class TestSelectBest:
 class TestResolveFromDb:
     async def test_groups_and_ranks_per_item_type(self):
         rows = [
-            make_asset("poster", "https://img/mi1-bad.jpg", label="alternate", score=99, item_id="mi_1"),
-            make_asset("poster", "https://img/mi1-good.jpg", label="official", score=1, item_id="mi_1"),
+            make_asset("poster", "https://img/mi1-official.jpg", label="official", score=99, item_id="mi_1"),
+            make_asset("poster", "https://img/mi1-textless.jpg", label="textless", score=1, item_id="mi_1"),
             make_asset("poster", "https://img/mi2.jpg", label="official", score=5, item_id="mi_2"),
             make_asset("logo", "https://img/mi1-logo.png", label="multicolor", score=3, item_id="mi_1"),
         ]
@@ -152,7 +162,7 @@ class TestResolveFromDb:
 
         out = await _resolve_from_db(session, ["mi_1", "mi_2"], ("poster", "logo"))
 
-        assert out["mi_1"]["poster_url"] == "https://img/mi1-good.jpg"
+        assert out["mi_1"]["poster_url"] == "https://img/mi1-textless.jpg"
         assert out["mi_1"]["logo_url"] == "https://img/mi1-logo.png"
         assert out["mi_2"]["poster_url"] == "https://img/mi2.jpg"
         assert out["mi_2"]["logo_url"] is None

@@ -173,11 +173,13 @@ class AssetPipeline:
         self.session = session
 
     async def store(self, media_item_id: str, assets: list[RawAsset]) -> int:
-        """Insert new MediaAsset rows, skipping existing URLs.
+        """Insert new MediaAsset rows, skipping existing (item, URL, type).
 
         Race-safe: a single bulk INSERT ... ON CONFLICT DO NOTHING against the
-        global media_assets.url unique index, so concurrent hydrations of the
-        same URL can't raise IntegrityError and roll back the batch.
+        (media_item_id, url, asset_type) unique index, so concurrent hydrations
+        of the same asset can't raise IntegrityError and roll back the batch.
+        The same URL may repeat for one item under different asset types (e.g.
+        a SteamGridDB grid stored as both ``poster`` and ``textless_poster``).
 
         Returns the number of new rows added.
         """
@@ -203,7 +205,7 @@ class AssetPipeline:
         result = await self.session.execute(
             pg_insert(MediaAsset)
             .values(rows)
-            .on_conflict_do_nothing(index_elements=["url"])
+            .on_conflict_do_nothing(index_elements=["media_item_id", "url", "asset_type"])
         )
         if result.rowcount:
             # New rows change the selection pool — drop the cached pick so the
