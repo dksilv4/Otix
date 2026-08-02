@@ -8,6 +8,7 @@ from otix.api.deps import get_db, get_trusted_or_admin_user
 from otix.domain.user import User
 from otix.schemas.admin_edit import MediaEditProposalList, MediaEditProposalOut
 from otix.services.admin_edit_service import AdminEditService
+from otix.services.asset_selection import enrich_items_with_assets
 
 logger = structlog.get_logger()
 
@@ -30,6 +31,9 @@ async def get_edit_proposals(
     vote_map = (
         await service.get_user_votes_for_proposals(current_user.id, [p.id for p in proposals]) if proposals else {}
     )
+    media_items = [p.media_item for p in proposals if p.media_item]
+    if media_items:
+        await enrich_items_with_assets(db, media_items)
     items = []
     for p in proposals:
         out = MediaEditProposalOut.model_validate(p)

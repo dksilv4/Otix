@@ -20,6 +20,7 @@ from otix.domain.user import User
 from otix.domain.workout import Workout
 from otix.infrastructure.database import async_session
 from otix.schemas.user import MoodCheckinOut, MoodTimelineOut
+from otix.services.asset_selection import enrich_items_with_assets
 
 logger = structlog.get_logger()
 
@@ -41,7 +42,9 @@ async def _fetch_user_activity_events(
                 .order_by(Review.created_at.desc())
                 .limit(limit)
             )
-            return result.all()
+            rows = result.all()
+            await enrich_items_with_assets(s, [media for _, media in rows])
+            return rows
 
     async def _fetch_interactions():
         async with async_session() as s:
@@ -52,7 +55,9 @@ async def _fetch_user_activity_events(
                 .order_by(UserMediaInteraction.created_at.desc())
                 .limit(limit)
             )
-            return result.all()
+            rows = result.all()
+            await enrich_items_with_assets(s, [media for _, media in rows])
+            return rows
 
     async def _fetch_episode_interactions():
         async with async_session() as s:
@@ -65,7 +70,9 @@ async def _fetch_user_activity_events(
                 .order_by(UserEpisodeInteraction.created_at.desc())
                 .limit(limit)
             )
-            return result.all()
+            rows = result.all()
+            await enrich_items_with_assets(s, [r[3] for r in rows])
+            return rows
 
     review_rows, interaction_rows, episode_rows = await asyncio.gather(
         _fetch_reviews(),

@@ -217,6 +217,7 @@ class MusicBrainzHydrator:
                             url=img_url,
                             width=width,
                             height=height,
+                            label="album_cover" if asset_type == "poster" else None,
                             provider="musicbrainz",
                         )
                     )

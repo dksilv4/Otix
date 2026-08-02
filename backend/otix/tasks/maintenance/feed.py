@@ -101,6 +101,7 @@ def refresh_discover_cache() -> dict:
 
 
 async def _refresh_discover_cache() -> dict:
+    from otix.services.asset_selection import enrich_items_with_assets
     from otix.services.media_service import MediaService
 
     redis = await get_redis()
@@ -117,6 +118,7 @@ async def _refresh_discover_cache() -> dict:
                 limit=9,
                 exclude_adult=exclude_adult,
             )
+            await enrich_items_with_assets(db, items)
             summaries = [MediaItemSummary.model_validate(item) for item in items]
             response = MediaItemListResponse(
                 items=summaries,
@@ -147,6 +149,7 @@ async def _refresh_discover_cache() -> dict:
                     exclude_adult=True,
                 )
 
+                await enrich_items_with_assets(db, items)
                 summaries = [MediaItemSummary.model_validate(item) for item in items]
                 response = MediaItemListResponse(
                     items=summaries,

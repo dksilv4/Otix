@@ -12,6 +12,7 @@ from otix.domain.media import MediaItem, UserPlexItem, UserPlexServer
 from otix.domain.people import MediaCredit, Person
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse, MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 
 logger = structlog.get_logger()
 
@@ -106,6 +107,14 @@ async def get_plex_library_tab(
         rows = rows[:limit]
 
     next_cursor = str(offset + limit) if has_more else None
+
+    unique_items: list[MediaItem] = []
+    _seen = set()
+    for media_item, _ in rows:
+        if media_item.id not in _seen:
+            _seen.add(media_item.id)
+            unique_items.append(media_item)
+    await enrich_items_with_assets(db, unique_items)
 
     summaries = []
     seen_ids = set()

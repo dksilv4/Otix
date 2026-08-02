@@ -16,6 +16,7 @@ from otix.schemas.media import (
     SteamWishlistItemSummary,
     SteamWishlistListResponse,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.steam_library_service import (
     get_steam_library,
     get_steam_wishlist,
@@ -51,6 +52,7 @@ async def get_steam_library_tab(
         logger.exception("failed to fetch steam library", user_id=current_user.id, ip=ip)
         raise
 
+    await enrich_items_with_assets(db, [t[0] for t in item_tuples])
     summaries: list[MediaItemSummary] = []
     for media_item, playtime_forever, playtime_2weeks, rtime_last_played in item_tuples:
         summary = MediaItemSummary.model_validate(media_item)
@@ -156,6 +158,7 @@ async def get_steam_wishlist_tab(
         logger.exception("failed to fetch steam wishlist", user_id=current_user.id, ip=ip)
         raise
 
+    await enrich_items_with_assets(db, [t[0] for t in item_tuples])
     summaries: list[SteamWishlistItemSummary] = []
     for media_item, priority in item_tuples:
         summary = SteamWishlistItemSummary.model_validate(media_item)

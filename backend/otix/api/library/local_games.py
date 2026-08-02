@@ -10,6 +10,7 @@ from otix.domain.media import MediaItem, UserLocalGame
 from otix.domain.user import User
 from otix.infrastructure.database import async_session
 from otix.schemas.media import InstalledGamesResponse, InstalledGameSummary
+from otix.services.asset_selection import enrich_items_with_assets
 
 router = APIRouter(prefix="/installed", tags=["library"])
 
@@ -49,6 +50,7 @@ async def get_installed_games(
         catalog_map: dict[str, MediaItem] = {}
         if media_ids:
             catalog_rows = (await session.execute(select(MediaItem).where(MediaItem.id.in_(media_ids)))).scalars().all()
+            await enrich_items_with_assets(session, list(catalog_rows))
             catalog_map = {m.id: m for m in catalog_rows}
 
         games: list[InstalledGameSummary] = []

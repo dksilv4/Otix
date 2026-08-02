@@ -591,8 +591,6 @@ def make_media_item():
             "title": "Test Movie",
             "overview": "A test overview",
             "slug": "test-movie",
-            "poster_url": None,
-            "backdrop_url": None,
             "release_date": None,
             "popularity": 0.0,
             "original_language": "en",

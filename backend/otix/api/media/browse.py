@@ -15,6 +15,7 @@ from otix.schemas.media import (
     MediaItemListResponse,
     MediaItemSummary,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService, should_exclude_adult
 from otix.services.personalization_service import PersonalizationService
@@ -65,6 +66,7 @@ async def get_similar_media(
         exclude_adult=exclude_adult,
     )
 
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     response = MediaItemListResponse(
@@ -157,6 +159,7 @@ async def get_recommendations(
             exclude_adult=exclude_adult,
         )
 
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     response = MediaItemListResponse(

@@ -11,6 +11,7 @@ from otix.schemas.admin_edit import MediaAssetOut
 from otix.schemas.common import PaginatedResponse
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.user import UserSearchResult
+from otix.services.asset_selection import resolved_assets_view
 
 # ── Nested relation schemas ──────────────────────────────────────
 
@@ -114,6 +115,14 @@ class MediaItemSummary(BaseModel):
     revenue: int | None = None
     budget: int | None = None
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _use_resolved_assets(cls, data: object) -> object:
+        """Prefer query-time resolved asset URLs over legacy media_items columns."""
+        if isinstance(data, dict):
+            return data
+        return resolved_assets_view(data, cls.model_fields)
 
 
 class TrackSearchResult(BaseModel):
@@ -294,6 +303,14 @@ class SteamWishlistItemSummary(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _use_resolved_assets(cls, data: object) -> object:
+        """Prefer query-time resolved asset URLs over legacy media_items columns."""
+        if isinstance(data, dict):
+            return data
+        return resolved_assets_view(data, cls.model_fields)
+
 
 class SteamWishlistListResponse(PaginatedResponse):
     items: list[SteamWishlistItemSummary]
@@ -336,6 +353,8 @@ class GameMatchRequest(BaseModel):
     external_ids: list[ExternalIDRef] | None = None
     media_type: str = "game"
     poster_url: str | None = None  # source store poster (Epic, GOG, etc.)
+    is_dlc: bool = False
+    dlc_of: str | None = None
 
 
 class GameMatchCandidate(BaseModel):
@@ -452,6 +471,14 @@ class CollectionMovieOut(BaseModel):
     slug: str
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _use_resolved_assets(cls, data: object) -> object:
+        """Prefer query-time resolved asset URLs over legacy media_items columns."""
+        if isinstance(data, dict):
+            return data
+        return resolved_assets_view(data, cls.model_fields)
 
     @model_validator(mode="before")
     @classmethod
@@ -695,6 +722,14 @@ class MediaItemDetail(BaseModel):
     collection: CollectionOut | None = None
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _use_resolved_assets(cls, data: object) -> object:
+        """Prefer query-time resolved asset URLs over legacy media_items columns."""
+        if isinstance(data, dict):
+            return data
+        return resolved_assets_view(data, cls.model_fields)
 
     @model_validator(mode="before")
     @classmethod

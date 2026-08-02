@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
+from otix.domain.asset import ExternalRating, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.franchise import Franchise, FranchiseItem
@@ -23,12 +23,12 @@ from otix.domain.media import (
     MediaPlatform,
     Platform,
 )
-from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 from otix.lib.collection_matcher import normalize_franchise_name
 from otix.lib.genres import normalize_genre_names
 from otix.lib.slug import slugify as _slugify
 from otix.lib.types import JSONValue
 from otix.providers.asset_mapper import map_asset_type
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.transformer import (
     _cover_url,
@@ -38,6 +38,7 @@ from otix.providers.igdb.transformer import (
     extract_platforms,
 )
 from otix.services.external_id_service import ExternalIDService
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 
 class IGDBHydrator:
@@ -116,7 +117,7 @@ class IGDBHydrator:
 
     async def hydrate_images(self, media_item: MediaItem, raw: dict[str, JSONValue]) -> None:
         """Store cover, screenshots, and artworks as MediaAsset rows."""
-        candidates: list[tuple[str, str]] = []
+        candidates: list[RawAsset] = []
 
         # Cover → poster
         cover = raw.get("cover")
@@ -125,7 +126,14 @@ class IGDBHydrator:
             if isinstance(image_id, str) and image_id:
                 url = _cover_url(image_id)
                 if url:
-                    candidates.append((map_asset_type("igdb", "cover"), url))
+                    candidates.append(
+                        RawAsset(
+                            asset_type=map_asset_type("igdb", "cover"),
+                            url=url,
+                            provider="igdb",
+                            label="official",
+                        )
+                    )
 
         # Screenshots
         screenshots = raw.get("screenshots", [])
@@ -137,7 +145,14 @@ class IGDBHydrator:
                 if isinstance(image_id, str) and image_id:
                     url = _cover_url(image_id, "t_screenshot_big")
                     if url:
-                        candidates.append((map_asset_type("igdb", "screenshot"), url))
+                        candidates.append(
+                            RawAsset(
+                                asset_type=map_asset_type("igdb", "screenshot"),
+                                url=url,
+                                provider="igdb",
+                                label="screenshot",
+                            )
+                        )
 
         # Artworks → backdrop
         artworks = raw.get("artworks", [])
@@ -149,28 +164,17 @@ class IGDBHydrator:
                 if isinstance(image_id, str) and image_id:
                     url = _cover_url(image_id, "t_1080p")
                     if url:
-                        candidates.append((map_asset_type("igdb", "artwork"), url))
+                        candidates.append(
+                            RawAsset(
+                                asset_type=map_asset_type("igdb", "artwork"),
+                                url=url,
+                                provider="igdb",
+                                label="clean",
+                            )
+                        )
 
-        if not candidates:
-            return
-
-        urls = {url for _, url in candidates}
-        existing = await self.session.scalars(
-            select(MediaAsset.url).where(MediaAsset.url.in_(urls))
-        )
-        existing_urls = set(existing)
-
-        for asset_type, url in candidates:
-            if url not in existing_urls:
-                self.session.add(
-                    MediaAsset(
-                        media_item_id=media_item.id,
-                        asset_type=asset_type,
-                        url=url,
-                        provider="igdb",
-                    )
-                )
-                existing_urls.add(url)
+        if candidates:
+            await AssetPipeline(self.session).store(media_item.id, candidates)
 
     # ── Videos ──────────────────────────────────────────────────────
 
@@ -178,6 +182,15 @@ class IGDBHydrator:
         videos = raw.get("videos", [])
         if not isinstance(videos, list) or not videos:
             return
+
+        # Delete-first so re-syncs don't stack duplicate rows (matches the
+        # pattern used by genres/platforms/modes/releases hydration).
+        await self.session.execute(
+            delete(MediaVideo).where(
+                MediaVideo.media_item_id == media_item.id,
+                MediaVideo.provider == "igdb",
+            )
+        )
 
         for video in videos[:10]:
             if not isinstance(video, dict):
@@ -518,18 +531,27 @@ class IGDBHydrator:
         )
 
         if franchise is None:
+            # Cross-provider name match. Only runs for genuinely new IGDB
+            # franchises — known ones hit the indexed external-ID lookup above,
+            # so this table is small here. Fetch only id+name and normalize in
+            # Python for exact parity with how franchises are created. No
+            # LIMIT: a truncated scan would silently create duplicate
+            # franchises once the table grows past the old 10k cap.
             normalized = normalize_franchise_name(data["name"])
-            existing = (await self.session.scalars(select(Franchise).limit(10000))).all()
-            slug = _slugify(data["name"])
-            for fr in existing or []:
-                if normalize_franchise_name(fr.name) == normalized:
-                    franchise = fr
-                    break
+            rows = (await self.session.execute(
+                select(Franchise.id, Franchise.name)
+            )).all()
+            matched_id = next(
+                (fid for fid, fname in rows if normalize_franchise_name(fname) == normalized),
+                None,
+            )
+            if matched_id is not None:
+                franchise = await self.session.get(Franchise, matched_id)
 
             if franchise is None:
                 franchise = Franchise(
                     name=data["name"],
-                    slug=slug,
+                    slug=_slugify(data["name"]),
                 )
                 self.session.add(franchise)
                 await self.session.flush()

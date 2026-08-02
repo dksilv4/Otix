@@ -18,6 +18,7 @@ from otix.schemas.media import (
     SteamGridSearchRequest,
     SteamGridSearchResponse,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.external_id_service import ExternalIDService
 from otix.services.media_service import MediaService
 
@@ -40,6 +41,7 @@ async def search_providers(
             query_str=body.query, media_type="game", page_size=body.limit,
         )
         otix_items, _, _ = otix_results
+        await enrich_items_with_assets(db, otix_items)
         for item in otix_items:
             results.append(
                 ProviderSearchResult(

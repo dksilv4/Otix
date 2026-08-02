@@ -25,6 +25,7 @@ from otix.schemas.admin import (
     TMDBDeletedIDItem,
     TMDBDeletedIDListResponse,
 )
+from otix.services.completeness import score_from_flags
 
 logger = structlog.get_logger()
 
@@ -100,6 +101,7 @@ class AdminService:
         has_runtime_expr = sa_case((MediaItem.media_type == "movie", Movie.runtime.is_not(None)), else_=None).label("has_runtime")
         has_collection_expr = sa_case((MediaItem.media_type == "movie", Movie.collection_id.is_not(None)), else_=None).label("has_collection")
         has_budget_expr = sa_case((MediaItem.media_type == "movie", Movie.budget.is_not(None)), else_=None).label("has_budget")
+        has_revenue_expr = sa_case((MediaItem.media_type == "movie", Movie.revenue.is_not(None)), else_=None).label("has_revenue")
         has_show_status_expr = sa_case((MediaItem.media_type == "show", Show.status.is_not(None)), else_=None).label("has_show_status")
         has_episodes_expr = sa_case((MediaItem.media_type == "show", Show.number_of_episodes.is_not(None)), else_=None).label("has_episodes")
         has_platforms_expr = sa_case(
@@ -117,10 +119,22 @@ class AdminService:
         cols = [
             MediaItem.id, MediaItem.title, MediaItem.media_type, MediaItem.slug,
             MediaItem.overview.is_not(None).label("has_overview"),
-            MediaItem.poster_url.is_not(None).label("has_poster"),
-            MediaItem.backdrop_url.is_not(None).label("has_backdrop"),
-            MediaItem.logo_url.is_not(None).label("has_logo"),
-            MediaItem.textless_poster_url.is_not(None).label("has_textless_poster"),
+            sa_exists().where(
+                MediaAsset.media_item_id == MediaItem.id,
+                MediaAsset.asset_type.in_(["poster", "textless_poster"]),
+            ).label("has_poster"),
+            sa_exists().where(
+                MediaAsset.media_item_id == MediaItem.id,
+                MediaAsset.asset_type == "backdrop",
+            ).label("has_backdrop"),
+            sa_exists().where(
+                MediaAsset.media_item_id == MediaItem.id,
+                MediaAsset.asset_type == "logo",
+            ).label("has_logo"),
+            sa_exists().where(
+                MediaAsset.media_item_id == MediaItem.id,
+                MediaAsset.asset_type == "textless_poster",
+            ).label("has_textless_poster"),
             MediaItem.release_date.is_not(None).label("has_release_date"),
             MediaItem.embedding.is_not(None).label("has_embedding"),
             MediaItem.original_language.is_not(None).label("has_original_language"),
@@ -130,6 +144,7 @@ class AdminService:
             has_runtime_expr, has_collection_expr, has_budget_expr,
             has_show_status_expr, has_episodes_expr, has_platforms_expr,
             has_game_modes_expr, has_age_ratings_expr,
+            has_revenue_expr,
             MediaItem.completeness_score, MediaItem.synced_at, MediaItem.next_sync_at,
         ]
 
@@ -159,36 +174,23 @@ class AdminService:
         rows = await self.session.execute(base)
         items: list[MediaHydrationItem] = []
         for row in rows:
-            core_flags = (row.has_overview, row.has_poster, row.has_backdrop, row.has_logo,
-                           row.has_textless_poster, row.has_release_date, row.has_embedding, row.has_original_language)
-            relation_flags = (row.has_genres, row.has_credits, row.has_external_ids, row.has_external_ratings,
-                              row.has_videos, row.has_assets, row.has_releases, row.has_keywords,
-                              row.has_companies, row.has_watch_providers)
-            mt = row.media_type
-            if mt == "movie":
-                type_flags, type_denom = (row.has_runtime, row.has_collection, row.has_budget), 3
-            elif mt == "show":
-                type_flags, type_denom = (row.has_show_status, row.has_episodes), 2
-            elif mt == "game":
-                type_flags, type_denom = (row.has_platforms, row.has_game_modes, row.has_age_ratings), 3
-            else:
-                type_flags, type_denom = (), 0
-            denominator = 8 + 10 + type_denom
-            score = sum(1 for f in core_flags + relation_flags + type_flags if f) / denominator if denominator > 0 else 0.0
+            flag_names = [
+                "has_overview", "has_poster", "has_backdrop", "has_logo",
+                "has_textless_poster", "has_release_date", "has_embedding",
+                "has_original_language", "has_genres", "has_credits",
+                "has_external_ids", "has_external_ratings", "has_videos",
+                "has_assets", "has_releases", "has_keywords", "has_companies",
+                "has_watch_providers", "has_runtime", "has_collection",
+                "has_budget", "has_revenue", "has_show_status", "has_episodes",
+                "has_platforms", "has_game_modes", "has_age_ratings",
+            ]
+            flags = {flag: bool(getattr(row, flag)) for flag in flag_names}
+            score = score_from_flags(row.media_type, flags)
 
             items.append(MediaHydrationItem(
                 id=row.id, title=row.title, media_type=row.media_type, slug=row.slug,
-                **{flag: getattr(row, flag) for flag in [
-                    "has_overview", "has_poster", "has_backdrop", "has_logo",
-                    "has_textless_poster", "has_release_date", "has_embedding",
-                    "has_original_language", "has_genres", "has_credits",
-                    "has_external_ids", "has_external_ratings", "has_videos",
-                    "has_assets", "has_releases", "has_keywords", "has_companies",
-                    "has_watch_providers", "has_runtime", "has_collection",
-                    "has_budget", "has_show_status", "has_episodes", "has_platforms",
-                    "has_game_modes", "has_age_ratings",
-                ]},
-                completeness_score=round(score, 3),
+                **flags,
+                completeness_score=score,
                 synced_at=row.synced_at, next_sync_at=row.next_sync_at,
             ))
 

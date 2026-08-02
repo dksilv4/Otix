@@ -22,6 +22,14 @@ from otix.lib.concurrency import run_async
 logger = structlog.get_logger()
 
 
+def _missing_asset(*asset_types: str):
+    """Filter media items that have no stored asset of any given type."""
+    return ~sa_exists().where(
+        MediaAsset.media_item_id == MediaItem.id,
+        MediaAsset.asset_type.in_(asset_types),
+    )
+
+
 @app.task(name="maintenance.enrich_fanart")
 def enrich_fanart() -> dict:
     """Scan recently-synced items for missing Fanart assets and enqueue enrichment.
@@ -106,7 +114,7 @@ async def _enrich_fanart() -> dict:
             .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
             .where(
                 MediaItem.media_type == "movie",
-                MediaItem.textless_poster_url.is_(None),
+                _missing_asset("textless_poster"),
                 ExternalID.provider == "tmdb",
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
@@ -122,7 +130,7 @@ async def _enrich_fanart() -> dict:
             .join(ExternalID, ExternalID.media_item_id == MediaItem.id)
             .where(
                 MediaItem.media_type == "show",
-                MediaItem.textless_poster_url.is_(None),
+                _missing_asset("textless_poster"),
                 ExternalID.provider == "tvdb",
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
                 MediaItem.id.not_in(select(enriched.c.media_item_id)),
@@ -139,7 +147,7 @@ async def _enrich_fanart() -> dict:
             .join(Person, Person.id == MediaCredit.person_id)
             .where(
                 MediaItem.media_type == "music",
-                MediaItem.poster_url.is_(None),
+                _missing_asset("poster", "textless_poster"),
                 MediaCredit.role == "primary",
                 has_mb,
                 MediaItem.id.in_(select(watchlist_sub.c.media_item_id)),
@@ -432,17 +440,17 @@ def enrich_steamgrid() -> dict:
     """Scan game for missing SteamGridDB artwork across all supported platforms.
 
     Runs every 30 min. Finds game with any platform ID (steam_app_id or
-    entries in store_ids) that are missing textless_poster_url, backdrop_url,
-    or logo_url.
+    entries in store_ids) that are missing textless_poster, backdrop, or logo
+    assets.
     """
     return run_async(_enrich_steamgrid())
 
 
 async def _enrich_steamgrid() -> dict:
     missing = or_(
-        MediaItem.textless_poster_url.is_(None),
-        MediaItem.backdrop_url.is_(None),
-        MediaItem.logo_url.is_(None),
+        _missing_asset("textless_poster"),
+        _missing_asset("backdrop"),
+        _missing_asset("logo"),
     )
 
     async with async_session() as session:

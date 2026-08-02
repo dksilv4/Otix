@@ -13,6 +13,7 @@ from otix.domain.collection import CollectionItem
 from otix.domain.franchise import FranchiseItem
 from otix.schemas.calendar import CalendarEvent, CalendarResponse
 from otix.schemas.media import EpisodeOut
+from otix.services.asset_selection import enrich_items_with_assets
 
 
 RECENT_WINDOW_DAYS = 60
@@ -54,6 +55,7 @@ class CalendarService:
             .order_by(MediaItem.release_date.desc())
         )
         items = result.unique().scalars().all()
+        await enrich_items_with_assets(self.session, items)
         today = date.today()
         return [
             CalendarEvent(
@@ -113,6 +115,7 @@ class CalendarService:
             .order_by(Episode.air_date.desc())
         )
         rows = result.all()
+        await enrich_items_with_assets(self.session, [r[3] for r in rows])
         today = date.today()
 
         events: list[CalendarEvent] = []
@@ -180,6 +183,7 @@ class CalendarService:
             .order_by(MediaItem.release_date.desc())
         )
         items = result.unique().scalars().all()
+        await enrich_items_with_assets(self.session, items)
         today = date.today()
 
         return [

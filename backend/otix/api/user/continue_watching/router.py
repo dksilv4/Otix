@@ -12,6 +12,7 @@ from otix.domain.interaction import UserMediaInteraction
 from otix.domain.media import Episode, MediaItem, Season
 from otix.domain.user import User
 from otix.schemas.media import MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 
 logger = structlog.get_logger()
 
@@ -66,8 +67,14 @@ async def get_continue_watching(
     seen_ids: set[str] = set()
     items: list[ContinueItem] = []
 
+    # Resolve asset URLs at query time before reading poster_url/backdrop_url.
+    episode_rows = episode_result.all()
+    interaction_rows = interaction_result.all()
+    await enrich_items_with_assets(db, [r[3] for r in episode_rows])
+    await enrich_items_with_assets(db, [media for _, media in interaction_rows])
+
     # Process episode interactions first (most important for "continue watching")
-    for row in episode_result:
+    for row in episode_rows:
         ei, episode, season, media = row
         if media.id in seen_ids:
             continue
@@ -92,7 +99,7 @@ async def get_continue_watching(
             break
 
     # Process media interactions
-    for interaction, media in interaction_result:
+    for interaction, media in interaction_rows:
         if media.id in seen_ids:
             continue
         if len(items) >= limit:

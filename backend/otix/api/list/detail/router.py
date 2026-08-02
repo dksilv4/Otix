@@ -16,6 +16,7 @@ from otix.schemas.list import (
     UserRef,
 )
 from otix.schemas.media import MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.interaction_service import InteractionService
 from otix.services.list_service import ListService
 
@@ -80,6 +81,7 @@ async def get_list(
         collaborators=collaborator_outs,
     )
 
+    await enrich_items_with_assets(db, [i.media_item for i in lst.items if i.media_item is not None])
     for item in lst.items:
         summary = MediaItemSummary.model_validate(item.media_item)
         detail.items.append(summary)

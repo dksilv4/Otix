@@ -6,11 +6,48 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from otix.domain.asset import MediaAsset
 from otix.domain.media import ExternalID
 from otix.providers.fanart.client import FanartProvider
 from otix.providers.fanart.hydrator import FanartHydrator
 from otix.providers.fanart.transformer import movie_images_to_assets, show_images_to_assets
+
+
+def _asset_rows(mock_db_session: AsyncMock) -> list[dict]:
+    """Extract row dicts from AssetPipeline.store's bulk media_assets insert.
+
+    store() issues a single ``pg_insert(MediaAsset)``; the row data lives in
+    ``_multi_values`` as (Column → value) pairs. Returns [] when no bulk insert
+    was issued (e.g. the asset batch was empty).
+    """
+    from sqlalchemy.sql.dml import Insert
+
+    for call in mock_db_session.execute.call_args_list:
+        stmt = call.args[0]
+        if not isinstance(stmt, Insert):
+            continue
+        if getattr(stmt.table, "name", None) != "media_assets":
+            continue
+        # _multi_values is a 1-tuple holding the list of row dicts keyed by Column
+        row_dicts = stmt._multi_values[0]
+        return [{col.key: value for col, value in rd.items()} for rd in row_dicts]
+    return []
+
+
+def _asset_insert_sql(mock_db_session: AsyncMock) -> str | None:
+    """Compile the media_assets bulk insert to SQL with literal values inlined."""
+    from sqlalchemy.dialects import postgresql as pg_dialect
+    from sqlalchemy.sql.dml import Insert
+
+    for call in mock_db_session.execute.call_args_list:
+        stmt = call.args[0]
+        if not isinstance(stmt, Insert):
+            continue
+        sql = str(
+            stmt.compile(dialect=pg_dialect.dialect(), compile_kwargs={"literal_binds": True})
+        )
+        if "media_assets" in sql:
+            return sql
+    return None
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Sample Fanart responses
@@ -201,8 +238,9 @@ class TestFanartHydrator:
         # Cursor lookup: tmdb_id in ExternalID
         tmdb_ext_id = ExternalID(provider="tmdb", external_id="550", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tmdb_ext_id
-        # URL check: no existing assets
         mock_db_session.scalars.return_value = []
+        # store() reports rows inserted via execute().rowcount
+        mock_db_session.execute.return_value.rowcount = 7
 
         fanart_hydrator.provider.get_movie_images.return_value = fanart_movie_raw
 
@@ -211,34 +249,32 @@ class TestFanartHydrator:
         assert added is True
         fanart_hydrator.provider.get_movie_images.assert_called_once_with(550)
 
-        # Verify assets were added via add_all
-        add_all_calls = mock_db_session.add_all.call_args_list
-        assert len(add_all_calls) > 0
+        # Assets stored via the AssetPipeline bulk insert
+        rows = _asset_rows(mock_db_session)
+        assert len(rows) == 7
+        assert all(r["provider"] == "fanart" for r in rows)
 
-    async def test_hydrate_movie_skips_existing_urls(
+    async def test_hydrate_movie_delegates_dedup_to_db(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
         media_item, fanart_movie_raw: dict,
     ):
+        """URL dedup is delegated to the DB ON CONFLICT, not an in-process check."""
         tmdb_ext_id = ExternalID(provider="tmdb", external_id="550", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tmdb_ext_id
-        # All URLs already exist
-        existing_urls = [
-            "https://fanart.tv/fanart/movie/550/poster1.jpg",
-            "https://fanart.tv/fanart/movie/550/poster2.jpg",
-            "https://fanart.tv/fanart/movie/550/poster_textless.jpg",
-            "https://fanart.tv/fanart/movie/550/clearart_hd.png",
-            "https://fanart.tv/fanart/movie/550/logo_hd.png",
-            "https://fanart.tv/fanart/movie/550/bg.jpg",
-            "https://fanart.tv/fanart/movie/550/disc.png",
-        ]
-        mock_db_session.scalars.return_value = existing_urls
+        mock_db_session.scalars.return_value = []
+        # 0 rows inserted because the URLs already exist in the DB
+        mock_db_session.execute.return_value.rowcount = 0
 
         fanart_hydrator.provider.get_movie_images.return_value = fanart_movie_raw
 
         added = await fanart_hydrator.hydrate_movie_images(media_item)
 
         assert added is False
-        mock_db_session.add_all.assert_not_called()
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert "ON CONFLICT" in sql
+        # All candidate rows are still sent; the DB silently skips duplicates
+        assert len(_asset_rows(mock_db_session)) == 7
 
     async def test_hydrate_movie_no_tmdb_id(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock, media_item,
@@ -268,6 +304,7 @@ class TestFanartHydrator:
         tvdb_ext_id = ExternalID(provider="tvdb", external_id="121361", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tvdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 10
 
         fanart_hydrator.provider.get_show_images.return_value = fanart_show_raw
 
@@ -351,15 +388,16 @@ class TestFanartMoviePipeline:
         tmdb_ext_id = ExternalID(provider="tmdb", external_id="550", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tmdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 7
 
         fanart_hydrator.provider.get_movie_images.return_value = fanart_movie_raw
 
         await fanart_hydrator.hydrate_movie_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
-        by_type: dict[str, list[MediaAsset]] = {}
-        for a in added:
-            by_type.setdefault(a.asset_type, []).append(a)
+        rows = _asset_rows(mock_db_session)
+        by_type: dict[str, list[dict]] = {}
+        for r in rows:
+            by_type.setdefault(r["asset_type"], []).append(r)
 
         # 3 poster (2 en + 1 textless 00), 1 clearart (HD+SD deduped), 1 logo, 1 backdrop, 1 disc
         assert len(by_type["poster"]) == 3
@@ -370,7 +408,7 @@ class TestFanartMoviePipeline:
         # banner and thumb are empty in fixture
         assert "banner" not in by_type
         assert "thumb" not in by_type
-        assert len(added) == 7  # total unique
+        assert len(rows) == 7  # total unique
 
     async def test_full_movie_pipeline_lang_extraction(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
@@ -380,27 +418,28 @@ class TestFanartMoviePipeline:
         tmdb_ext_id = ExternalID(provider="tmdb", external_id="550", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tmdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 7
 
         fanart_hydrator.provider.get_movie_images.return_value = fanart_movie_raw
 
         await fanart_hydrator.hydrate_movie_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
-        by_url = {a.url: a for a in added}
+        rows = _asset_rows(mock_db_session)
+        by_url = {r["url"]: r for r in rows}
 
         # en posters
-        assert by_url["https://fanart.tv/fanart/movie/550/poster1.jpg"].lang == "en"
-        assert by_url["https://fanart.tv/fanart/movie/550/poster2.jpg"].lang == "en"
+        assert by_url["https://fanart.tv/fanart/movie/550/poster1.jpg"]["lang"] == "en"
+        assert by_url["https://fanart.tv/fanart/movie/550/poster2.jpg"]["lang"] == "en"
         # textless poster
-        assert by_url["https://fanart.tv/fanart/movie/550/poster_textless.jpg"].lang == "00"
+        assert by_url["https://fanart.tv/fanart/movie/550/poster_textless.jpg"]["lang"] == "00"
         # en clearart
-        assert by_url["https://fanart.tv/fanart/movie/550/clearart_hd.png"].lang == "en"
+        assert by_url["https://fanart.tv/fanart/movie/550/clearart_hd.png"]["lang"] == "en"
         # en logo
-        assert by_url["https://fanart.tv/fanart/movie/550/logo_hd.png"].lang == "en"
+        assert by_url["https://fanart.tv/fanart/movie/550/logo_hd.png"]["lang"] == "en"
         # empty-lang backdrop → None
-        assert by_url["https://fanart.tv/fanart/movie/550/bg.jpg"].lang is None
+        assert by_url["https://fanart.tv/fanart/movie/550/bg.jpg"]["lang"] is None
         # en disc
-        assert by_url["https://fanart.tv/fanart/movie/550/disc.png"].lang == "en"
+        assert by_url["https://fanart.tv/fanart/movie/550/disc.png"]["lang"] == "en"
 
     async def test_full_movie_pipeline_all_provider_fanart(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
@@ -410,15 +449,16 @@ class TestFanartMoviePipeline:
         tmdb_ext_id = ExternalID(provider="tmdb", external_id="550", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tmdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 7
 
         fanart_hydrator.provider.get_movie_images.return_value = fanart_movie_raw
 
         await fanart_hydrator.hydrate_movie_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
-        assert all(a.provider == "fanart" for a in added)
-        assert all(a.media_item_id == media_item.id for a in added)
-        assert all(a.url.startswith("https://fanart.tv/") for a in added)
+        rows = _asset_rows(mock_db_session)
+        assert all(r["provider"] == "fanart" for r in rows)
+        assert all(r["media_item_id"] == media_item.id for r in rows)
+        assert all(r["url"].startswith("https://fanart.tv/") for r in rows)
 
 
 class TestFanartShowPipeline:
@@ -431,15 +471,16 @@ class TestFanartShowPipeline:
         tvdb_ext_id = ExternalID(provider="tvdb", external_id="121361", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tvdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 10
 
         fanart_hydrator.provider.get_show_images.return_value = fanart_show_raw
 
         await fanart_hydrator.hydrate_show_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
-        by_type: dict[str, list[MediaAsset]] = {}
-        for a in added:
-            by_type.setdefault(a.asset_type, []).append(a)
+        rows = _asset_rows(mock_db_session)
+        by_type: dict[str, list[dict]] = {}
+        for r in rows:
+            by_type.setdefault(r["asset_type"], []).append(r)
 
         # 3 tvposter + 2 seasonposter = 5 posters, 1 backdrop, 2 logos, 1 clearart, 1 banner
         assert len(by_type["poster"]) == 5
@@ -447,7 +488,7 @@ class TestFanartShowPipeline:
         assert len(by_type["logo"]) == 2
         assert len(by_type["clearart"]) == 1
         assert len(by_type["banner"]) == 1
-        assert len(added) == 10
+        assert len(rows) == 10
 
     async def test_full_show_pipeline_lang_extraction(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
@@ -457,21 +498,22 @@ class TestFanartShowPipeline:
         tvdb_ext_id = ExternalID(provider="tvdb", external_id="121361", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tvdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 10
 
         fanart_hydrator.provider.get_show_images.return_value = fanart_show_raw
 
         await fanart_hydrator.hydrate_show_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
-        by_url = {a.url: a for a in added}
+        rows = _asset_rows(mock_db_session)
+        by_url = {r["url"]: r for r in rows}
 
         # en posters
-        assert by_url["https://fanart.tv/fanart/tv/121361/poster1.jpg"].lang == "en"
-        assert by_url["https://fanart.tv/fanart/tv/121361/poster2.jpg"].lang == "en"
+        assert by_url["https://fanart.tv/fanart/tv/121361/poster1.jpg"]["lang"] == "en"
+        assert by_url["https://fanart.tv/fanart/tv/121361/poster2.jpg"]["lang"] == "en"
         # textless poster
-        assert by_url["https://fanart.tv/fanart/tv/121361/poster_textless.jpg"].lang == "00"
+        assert by_url["https://fanart.tv/fanart/tv/121361/poster_textless.jpg"]["lang"] == "00"
         # empty-lang backdrop → None
-        assert by_url["https://fanart.tv/fanart/tv/121361/bg.jpg"].lang is None
+        assert by_url["https://fanart.tv/fanart/tv/121361/bg.jpg"]["lang"] is None
 
     async def test_full_show_pipeline_season_posters_in_poster_type(
         self, fanart_hydrator: FanartHydrator, mock_db_session: AsyncMock,
@@ -481,17 +523,18 @@ class TestFanartShowPipeline:
         tvdb_ext_id = ExternalID(provider="tvdb", external_id="121361", media_item_id=media_item.id)
         mock_db_session.scalar.return_value = tvdb_ext_id
         mock_db_session.scalars.return_value = []
+        mock_db_session.execute.return_value.rowcount = 10
 
         fanart_hydrator.provider.get_show_images.return_value = fanart_show_raw
 
         await fanart_hydrator.hydrate_show_images(media_item)
 
-        added: list[MediaAsset] = mock_db_session.add_all.call_args[0][0]
+        rows = _asset_rows(mock_db_session)
         season_urls = {
             "https://fanart.tv/fanart/tv/121361/s1_poster.jpg",
             "https://fanart.tv/fanart/tv/121361/s2_poster.jpg",
         }
-        season_assets = [a for a in added if a.url in season_urls]
+        season_assets = [r for r in rows if r["url"] in season_urls]
         assert len(season_assets) == 2
-        assert all(a.asset_type == "poster" for a in season_assets)
-        assert all(a.lang == "en" for a in season_assets)
+        assert all(r["asset_type"] == "poster" for r in season_assets)
+        assert all(r["lang"] == "en" for r in season_assets)

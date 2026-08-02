@@ -61,6 +61,7 @@ class FanartHydrator:
                 width=a.width,
                 height=a.height,
                 lang=a.lang,
+                label=a.label,
             )
             for a in media_assets
         ]
@@ -106,6 +107,7 @@ class FanartHydrator:
                 width=a.width,
                 height=a.height,
                 lang=a.lang,
+                label=a.label,
             )
             for a in media_assets
         ]
@@ -177,26 +179,27 @@ class FanartHydrator:
         if artist_assets:
             any_added |= await self._upsert_assets(artist_assets)
 
-        # Match specific album cover by release group MBID and set poster_url.
+        # Match specific album cover by release group MBID and store it.
+        # Selection is resolved at query time from media_assets, so this only
+        # persists the row (with a label for variant semantics).
         if release_group_mbid and release_group_mbid in album_covers:
             cover_url = album_covers[release_group_mbid]
-            if cover_url and not media_item.poster_url:
-                media_item.poster_url = cover_url
-                any_added = True
-            # Also persist as a MediaAsset so it shows in the asset gallery.
-            exists = await self.session.scalar(
-                select(MediaAsset.url).where(MediaAsset.url == cover_url)
-            )
-            if not exists:
-                self.session.add(MediaAsset(
-                    media_item_id=media_item.id,
-                    asset_type="poster",
-                    url=cover_url,
-                    provider="fanart",
-                ))
-                any_added = True
+            if cover_url:
+                added = await AssetPipeline(self.session).store(
+                    media_item.id,
+                    [RawAsset(
+                        asset_type="poster",
+                        url=cover_url,
+                        width=1000,
+                        height=1000,
+                        label="album_cover",
+                        provider="fanart",
+                    )],
+                )
+                any_added |= added > 0
 
-        # Set artist logo on Person, and promote to MediaItem.logo_url.
+        # Set artist logo on Person (selection is resolved at query time for
+        # the album's MediaItem, so no column write here).
         logo_assets = [a for a in artist_assets if a.asset_type == "logo"]
         if logo_assets and person_id:
             en_logos = [a for a in logo_assets if a.lang == "en"]
@@ -204,10 +207,6 @@ class FanartHydrator:
             person = await self.session.get(Person, person_id)
             if person and not person.logo_url:
                 person.logo_url = best.url
-                any_added = True
-            # Also promote to MediaItem.logo_url so music cards show a logo.
-            if media_item and not media_item.logo_url:
-                media_item.logo_url = best.url
                 any_added = True
 
         return any_added
@@ -243,8 +242,9 @@ class FanartHydrator:
             self.session.add_all(new_assets)
             await self.session.flush()
 
-        # Set logo_url / textless_poster_url on the MediaItem.
-        # Fanart is the authoritative source.
+        # Best-asset selection is resolved at query time (asset_selection), so
+        # this only persists the rows and flags admin-protected types whose
+        # best candidate differs from the admin's locked-in override URL.
         #
         # Textless posters are from the "poster" category (moviethumb/tvthumb are
         # disc/case art, not posters). Fanart marks textless artwork with lang
@@ -253,11 +253,12 @@ class FanartHydrator:
             media_item_id = assets[0].media_item_id
             media_item = await self.session.get(MediaItem, media_item_id)
             if media_item is not None:
-                # Check which image types are protected by admin '*' overrides.
                 from otix.services.admin_edit_service import AdminEditService
+                svc = AdminEditService(self.session)
                 protected = await AdminEditService.get_protected_image_types(
                     self.session, media_item.id
                 )
+                overrides = await svc.get_image_overrides_for_media(media_item.id)
 
                 # Logo: prefer English, then widest fallback.
                 logo_assets = [a for a in assets if a.asset_type == "logo"]
@@ -270,15 +271,14 @@ class FanartHydrator:
                 # Music logo + poster promotion is handled in hydrate_music_images
                 # (artist logos go on Person, album covers matched by release group).
                 if best_logo and media_item.media_type != "music":
-                    if "logo" in protected and media_item.logo_url and media_item.logo_url != best_logo.url:
-                        svc = AdminEditService(self.session)
-                        await svc.create_system_proposal_for_image(
-                            media_item.id, "logo", best_logo.url
-                        )
-                    else:
-                        media_item.logo_url = best_logo.url
+                    if "logo" in protected:
+                        current = overrides.get("logo", {}).get("*")
+                        if current is not None and current != best_logo.url:
+                            await svc.create_system_proposal_for_image(
+                                media_item.id, "logo", best_logo.url
+                            )
 
-                # Poster promotion (non-music only): textless posters → textless_poster_url.
+                # Poster protection (non-music only): textless posters → textless_poster.
                 if media_item.media_type != "music":
                     _textless_langs = {None, "", "0", "00", "zxx"}
                     best_textless = max(
@@ -287,13 +287,11 @@ class FanartHydrator:
                         key=lambda a: a.width or 0,
                         default=None,
                     )
-                    if best_textless:
-                        if "textless_poster" in protected and media_item.textless_poster_url and media_item.textless_poster_url != best_textless.url:
-                            svc = AdminEditService(self.session)
+                    if best_textless and "textless_poster" in protected:
+                        current = overrides.get("textless_poster", {}).get("*")
+                        if current is not None and current != best_textless.url:
                             await svc.create_system_proposal_for_image(
                                 media_item.id, "textless_poster", best_textless.url
                             )
-                        else:
-                            media_item.textless_poster_url = best_textless.url
 
         return bool(new_assets)

@@ -23,6 +23,7 @@ class MediaAsset(Base):
     height: Mapped[int | None] = mapped_column(Integer)
     lang: Mapped[str | None] = mapped_column(String(10))
     style: Mapped[str | None] = mapped_column(String(20))
+    label: Mapped[str | None] = mapped_column(String(30))
     score: Mapped[int | None] = mapped_column(Integer)
     provider: Mapped[str | None] = mapped_column(String(20))
     color_guess: Mapped[str | None] = mapped_column(String(20))

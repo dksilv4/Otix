@@ -20,6 +20,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
@@ -47,11 +48,30 @@ class MediaItem(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
     overview: Mapped[str | None] = mapped_column(Text)
     slug: Mapped[str] = mapped_column(String(1000), nullable=False)
-    poster_url: Mapped[str | None] = mapped_column(String(2000))
-    textless_poster_url: Mapped[str | None] = mapped_column(String(2000))
-    backdrop_url: Mapped[str | None] = mapped_column(String(2000))
-    logo_url: Mapped[str | None] = mapped_column(String(2000))
-    icon_url: Mapped[str | None] = mapped_column(String(2000))
+    @hybrid_property
+    def poster_url(self) -> str | None:
+        """Best poster URL, attached at query time by asset_selection."""
+        return getattr(self, "_resolved_poster_url", None)
+
+    @hybrid_property
+    def textless_poster_url(self) -> str | None:
+        """Best textless poster URL, attached at query time by asset_selection."""
+        return getattr(self, "_resolved_textless_poster_url", None)
+
+    @hybrid_property
+    def backdrop_url(self) -> str | None:
+        """Best backdrop URL, attached at query time by asset_selection."""
+        return getattr(self, "_resolved_backdrop_url", None)
+
+    @hybrid_property
+    def logo_url(self) -> str | None:
+        """Best logo URL, attached at query time by asset_selection."""
+        return getattr(self, "_resolved_logo_url", None)
+
+    @hybrid_property
+    def icon_url(self) -> str | None:
+        """Best icon URL, attached at query time by asset_selection."""
+        return getattr(self, "_resolved_icon_url", None)
     release_date: Mapped[date | None] = mapped_column()
     popularity: Mapped[float] = mapped_column(Float, default=0.0)
     original_language: Mapped[str | None] = mapped_column(String(10))

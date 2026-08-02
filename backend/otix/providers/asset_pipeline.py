@@ -12,15 +12,14 @@ collects assets and which ranking strategy to use per asset type.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
-from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.asset import MediaAsset
 from otix.domain.media import MediaItem
-
 
 # ── Standardised asset descriptor ──────────────────────────────────────
 
@@ -39,6 +38,7 @@ class RawAsset:
     height: int | None = None
     lang: str | None = None          # ISO 639-1; None/"zxx"/"0" = textless
     style: str | None = None         # Provider-specific style name
+    label: str | None = None         # Variant semantics: logo "multicolor"/"white"/"black", etc.
     score: int | None = None         # Community score
     extra: dict = field(default_factory=dict)  # Provider-specific metadata
 
@@ -60,8 +60,12 @@ def rank_by_score(assets: list[RawAsset]) -> RawAsset | None:
 
 
 def rank_logo_by_style(assets: list[RawAsset]) -> RawAsset | None:
-    """Rank logos: official > white > black > custom, then by score."""
-    return _rank_by_attribute(assets, {"official": 0, "white": 1, "black": 2, "custom": 3})
+    """Rank logos: official > white > custom > black, then by score.
+
+    Black logos are invisible on Otix's dark UI, so they rank last even though
+    SteamGridDB labels them as a first-class style.
+    """
+    return _rank_by_attribute(assets, {"official": 0, "white": 1, "custom": 2, "black": 3})
 
 
 def rank_grid_by_style(assets: list[RawAsset]) -> RawAsset | None:
@@ -171,41 +175,47 @@ class AssetPipeline:
     async def store(self, media_item_id: str, assets: list[RawAsset]) -> int:
         """Insert new MediaAsset rows, skipping existing URLs.
 
+        Race-safe: a single bulk INSERT ... ON CONFLICT DO NOTHING against the
+        global media_assets.url unique index, so concurrent hydrations of the
+        same URL can't raise IntegrityError and roll back the batch.
+
         Returns the number of new rows added.
         """
         if not assets:
             return 0
 
-        urls = {a.url for a in assets}
-        existing = set(
-            (await self.session.scalars(
-                select(MediaAsset.url).where(MediaAsset.url.in_(urls))
-            )).all()
+        rows = [
+            {
+                "media_item_id": media_item_id,
+                "asset_type": a.asset_type,
+                "url": a.url,
+                "width": a.width,
+                "height": a.height,
+                "lang": a.lang,
+                "style": a.style,
+                "label": a.label,
+                "score": a.score,
+                "provider": a.provider,
+            }
+            for a in assets
+        ]
+
+        result = await self.session.execute(
+            pg_insert(MediaAsset)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["url"])
         )
+        if result.rowcount:
+            # New rows change the selection pool — drop the cached pick so the
+            # next query recomputes. A Redis outage must not break hydration.
+            try:
+                from otix.infrastructure.redis import get_redis
+                from otix.services.asset_selection import invalidate_asset_selection
 
-        added = 0
-        for a in assets:
-            if a.url in existing:
-                continue
-            self.session.add(
-                MediaAsset(
-                    media_item_id=media_item_id,
-                    asset_type=a.asset_type,
-                    url=a.url,
-                    width=a.width,
-                    height=a.height,
-                    lang=a.lang,
-                    style=a.style,
-                    score=a.score,
-                    provider=a.provider,
-                )
-            )
-            added += 1
-
-        if added:
-            await self.session.flush()
-
-        return added
+                await invalidate_asset_selection(await get_redis(), media_item_id)
+            except Exception:
+                pass
+        return result.rowcount
 
     async def promote(
         self,
@@ -215,14 +225,17 @@ class AssetPipeline:
         ranker: PromotionRanker,
         *,
         always_overwrite: bool = False,
+        protected: set[str] | None = None,
     ) -> bool:
-        """Select the best candidate and set it on the MediaItem field.
+        """Rank the best candidate; never writes the MediaItem column.
 
-        Checks admin image protection before overwriting. When a field is
-        protected and a different URL would be chosen, creates a system
-        proposal instead.
+        Best-asset selection happens at query time (asset_selection), so this
+        only flags admin-protected fields: when a protected type would get a
+        different asset than the admin's override, a system proposal is created
+        for review. ``always_overwrite`` is retained for API compat but is a
+        no-op now that columns are not written.
 
-        Returns True if the field was updated.
+        Returns True if the field was updated (always False today).
         """
         if not candidates:
             return False
@@ -231,30 +244,25 @@ class AssetPipeline:
         if best is None:
             return False
 
-        current = getattr(media_item, field, None)
-        if not always_overwrite and current is not None and current != best.url:
-            # Existing value takes priority — keep it
-            return False
-
-        if current == best.url:
-            return False  # No change
-
-        # Check admin protection
+        # Admin protection: flag protected types whose best candidate differs
+        # from the admin's locked-in override URL.
         from otix.services.admin_edit_service import AdminEditService
 
-        protected = await AdminEditService.get_protected_image_types(
-            self.session, media_item.id
-        )
-        field_type = field.removesuffix("_url")  # "logo_url" → "logo"
-        if field_type in protected and current is not None:
-            svc = AdminEditService(self.session)
-            await svc.create_system_proposal_for_image(
-                media_item.id, field_type, best.url,
+        if protected is None:
+            protected = await AdminEditService.get_protected_image_types(
+                self.session, media_item.id
             )
-            return False
+        field_type = field.removesuffix("_url")  # "logo_url" → "logo"
+        if field_type in protected:
+            svc = AdminEditService(self.session)
+            overrides = await svc.get_image_overrides_for_media(media_item.id)
+            current = overrides.get(field_type, {}).get("*")
+            if current is not None and current != best.url:
+                await svc.create_system_proposal_for_image(
+                    media_item.id, field_type, best.url,
+                )
 
-        setattr(media_item, field, best.url)
-        return True
+        return False
 
     async def promote_all(
         self,
@@ -274,13 +282,20 @@ class AssetPipeline:
             media_type: Media type for rules lookup (game, movie, show, music).
 
         Returns:
-            {asset_type: was_updated}
+            {asset_type: was_updated} — always False now that columns are not
+            written; selection happens at query time.
         """
         if rules is None:
             rules = dict(DEFAULT_PROMOTION_RULES)
             # Apply media-type-specific overrides
             mt_rules = MEDIA_TYPE_PROMOTION_RULES.get(media_type or "", {})
             rules.update(mt_rules)
+
+        from otix.services.admin_edit_service import AdminEditService
+
+        protected = await AdminEditService.get_protected_image_types(
+            self.session, media_item.id
+        )
 
         results: dict[str, bool] = {}
         for asset_type, candidates in asset_map.items():
@@ -296,5 +311,6 @@ class AssetPipeline:
                 candidates,
                 ranker,
                 always_overwrite=always,
+                protected=protected,
             )
         return results

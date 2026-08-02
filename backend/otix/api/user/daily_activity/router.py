@@ -17,6 +17,7 @@ from otix.domain.mood import UserMoodCheckIn
 from otix.domain.review import Review
 from otix.domain.user import User
 from otix.domain.workout import Workout
+from otix.services.asset_selection import enrich_items_with_assets
 
 logger = structlog.get_logger()
 
@@ -101,6 +102,8 @@ async def get_daily_activity(
         )
         .order_by(Review.created_at.desc())
     )
+    review_rows = reviews_result.all()
+    await enrich_items_with_assets(db, [m for _, m in review_rows])
     reviews = [
         DailyReviewItem(
             id=r.media_item_id,
@@ -112,7 +115,7 @@ async def get_daily_activity(
             content_preview=r.content[:200] if r.content else None,
             created_at=r.created_at.isoformat(),
         )
-        for r, m in reviews_result
+        for r, m in review_rows
     ]
 
     # Media interactions
@@ -126,6 +129,8 @@ async def get_daily_activity(
         )
         .order_by(UserMediaInteraction.created_at.desc())
     )
+    interaction_rows = interactions_result.all()
+    await enrich_items_with_assets(db, [m for _, m in interaction_rows])
     interactions = [
         DailyInteractionItem(
             id=f"{inter.media_item_id}_{inter.interaction_type}",
@@ -136,7 +141,7 @@ async def get_daily_activity(
             interaction_type=inter.interaction_type,
             created_at=inter.created_at.isoformat(),
         )
-        for inter, m in interactions_result
+        for inter, m in interaction_rows
     ]
 
     # Episode interactions
@@ -152,6 +157,8 @@ async def get_daily_activity(
         )
         .order_by(UserEpisodeInteraction.created_at.desc())
     )
+    episode_rows = episodes_result.all()
+    await enrich_items_with_assets(db, [m for _, _, _, m in episode_rows])
     episodes = [
         DailyEpisodeItem(
             id=str(ei.episode_id),
@@ -162,7 +169,7 @@ async def get_daily_activity(
             episode_number=ep.episode_number,
             created_at=ei.created_at.isoformat(),
         )
-        for ei, ep, s, m in episodes_result
+        for ei, ep, s, m in episode_rows
     ]
 
     # Workouts

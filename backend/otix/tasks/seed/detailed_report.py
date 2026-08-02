@@ -17,6 +17,7 @@ from otix.domain.media import (
 )
 from otix.domain.people import MediaCredit, Person
 from otix.infrastructure.database import async_session, dispose_engine
+from otix.services.asset_selection import enrich_items_with_assets
 
 
 def _ok(val) -> str:
@@ -43,6 +44,7 @@ async def report() -> None:
             .order_by(MediaItem.title)
         )
         movies = result.unique().scalars().all()
+        await enrich_items_with_assets(session, movies)
 
         print(f"\n{'='*70}")
         print(f"  MOVIES ({len(movies)})")
@@ -144,6 +146,7 @@ async def report() -> None:
             .order_by(MediaItem.title)
         )
         shows = result.unique().scalars().all()
+        await enrich_items_with_assets(session, shows)
 
         print(f"\n{'='*70}")
         print(f"  TV SHOWS ({len(shows)})")
@@ -203,6 +206,7 @@ async def report() -> None:
             .order_by(MediaItem.title)
         )
         games = result.unique().scalars().all()
+        await enrich_items_with_assets(session, games)
 
         print(f"\n{'='*70}")
         print(f"  GAMES ({len(games)})")
@@ -262,6 +266,7 @@ async def report() -> None:
             .order_by(MediaItem.title)
         )
         albums = result.unique().scalars().all()
+        await enrich_items_with_assets(session, albums)
 
         print(f"\n{'='*70}")
         print(f"  ALBUMS ({len(albums)})")

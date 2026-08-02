@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.media import MediaItemListResponse, MediaItemSummary, UserInteractionState
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.interaction_service import InteractionService
 
 
@@ -29,6 +30,7 @@ async def _build_response(
     current_user: User | None,
 ) -> MediaItemListResponse:
     next_cursor = items[-1].id if has_more and items else None
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     if current_user is not None and summaries:

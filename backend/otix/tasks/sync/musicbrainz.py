@@ -38,7 +38,7 @@ def sync_musicbrainz_album_task(self, mbid: str, force: bool = False) -> dict | 
     return run_async(_sync_musicbrainz_album(mbid, force))
 
 
-async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None:
+async def _sync_musicbrainz_album(mbid: str, force: bool = False, *, enqueue_enrichment: bool = True) -> dict | None:
     async with async_session() as session:
         eid_svc = ExternalIDService(session)
         ext_id = await session.scalar(
@@ -74,7 +74,6 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
                 existing_item.overview = item.overview or existing_item.overview
                 if is_embedding_stale(old_overview, existing_item.overview):
                     existing_item.embedding = None
-                existing_item.poster_url = item.poster_url or existing_item.poster_url
                 existing_item.release_date = item.release_date or existing_item.release_date
                 # Detach MB-generated tracks from their album to prevent cascade
                 # insert of the transient album during autoflush.
@@ -154,11 +153,12 @@ async def _sync_musicbrainz_album(mbid: str, force: bool = False) -> dict | None
         await _progress_incr("musicbrainz_enqueued")
 
         # Chain enrichments (no Spotify catalog tasks)
-        app.send_task("sync.deezer.enrich_cover", args=[item.id], priority=7)
-        app.send_task("sync.theaudiodb.enrich_album", args=[item.id], priority=6)
-        app.send_task("sync.lrclib.enrich_album", args=[item.id], priority=6)
-        app.send_task("sync.lastfm.enrich_album", args=[item.id])
-        app.send_task("sync.fanart.enrich", args=["music", item.id])
+        if enqueue_enrichment:
+            app.send_task("sync.deezer.enrich_cover", args=[item.id], priority=7)
+            app.send_task("sync.theaudiodb.enrich_album", args=[item.id], priority=6)
+            app.send_task("sync.lrclib.enrich_album", args=[item.id], priority=6)
+            app.send_task("sync.lastfm.enrich_album", args=[item.id])
+            app.send_task("sync.fanart.enrich", args=["music", item.id])
 
         return {"otix_id": item.id, "mbid": mbid, "title": item.title}
 

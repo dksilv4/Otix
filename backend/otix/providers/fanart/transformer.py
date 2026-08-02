@@ -44,6 +44,35 @@ _MUSIC_CATEGORIES: list[tuple[str, str]] = [
     ("musicbanner", "banner"),
 ]
 
+# Fanart category → label. Movie/TV logos are multicolor art on transparent
+# backgrounds; clearart is a single-color silhouette; the rest are official
+# renders.
+_FANART_LABELS: dict[str, str] = {
+    "hdmovielogo": "multicolor",
+    "movielogo": "multicolor",
+    "hdtvlogo": "multicolor",
+    "clearlogo": "multicolor",
+    "tvlogo": "multicolor",
+    "hdmusiclogo": "multicolor",
+    "musiclogo": "multicolor",
+    "hdmovieclearart": "white",
+    "movieclearart": "white",
+    "hdclearart": "white",
+    "movieposter": "official",
+    "tvposter": "official",
+    "seasonposter": "official",
+    "moviebackground": "official",
+    "showbackground": "official",
+    "artistbackground": "official",
+    "moviebanner": "official",
+    "tvbanner": "official",
+    "musicbanner": "official",
+    "moviethumb": "official",
+    "tvthumb": "official",
+    "artistthumb": "official",
+    "moviedisc": "official",
+}
+
 
 def movie_images_to_assets(raw: dict[str, JSONValue], media_item_id: str) -> list[MediaAsset]:
     return _extract_assets(raw, _MOVIE_CATEGORIES, media_item_id)
@@ -136,6 +165,7 @@ def _extract_assets(
                     asset_type=asset_type,
                     url=url,
                     lang=lang,
+                    label=_FANART_LABELS.get(fanart_cat),
                     provider="fanart",
                 )
             )

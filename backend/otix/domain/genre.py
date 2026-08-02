@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import CheckConstraint, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from otix.domain.base import Base, ExternalIDDescriptor, HasExternalIDs, otix_fk, otix_pk
@@ -20,6 +20,25 @@ class Genre(Base):
     slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
 
     media_items: Mapped[list[MediaGenre]] = relationship("MediaGenre", back_populates="genre")
+    media_types: Mapped[list[MediaGenreType]] = relationship("MediaGenreType", back_populates="genre")
+
+
+class MediaGenreType(Base):
+    """Which media types a genre applies to (some genres are media-type-specific).
+
+    TMDB uses different genre lists (and ID spaces) for movies vs TV, so the
+    media-type is recorded at link time rather than assumed global.
+    """
+
+    __tablename__ = "genre_media_types"
+    __table_args__ = (
+        CheckConstraint("media_type IN ('movie', 'show', 'game', 'music')", name="ck_genre_media_type"),
+    )
+
+    genre_id: Mapped[otix_fk] = mapped_column(ForeignKey("genres.id", ondelete="CASCADE"), primary_key=True)
+    media_type: Mapped[str] = mapped_column(String(10), primary_key=True)
+
+    genre: Mapped[Genre] = relationship("Genre", back_populates="media_types")
 
 
 class Keyword(Base, HasExternalIDs):

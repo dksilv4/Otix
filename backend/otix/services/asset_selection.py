@@ -1,0 +1,234 @@
+"""Query-time asset selection.
+
+``media_assets`` is the single source of truth for all artwork. Hydration only
+stores rows (typed + labelled); it never bakes a "best pick" anywhere. This
+service resolves the best URL per asset type at query time, ranking stored
+assets by label preference → community score → dimensions, honouring admin
+overrides first, and caching the result in Redis so repeated queries skip the
+ranking work.
+
+Admin overrides (``media_image_overrides``) always win — checked before any
+cache/DB path so adding or removing an override is honoured immediately.
+"""
+
+from __future__ import annotations
+
+import json
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from otix.domain.admin_edit import MediaImageOverride
+from otix.domain.asset import MediaAsset
+
+ITEM_CACHE_KEY = "asset:sel:{item_id}"
+CACHE_TTL = 3600  # 1 hour
+
+# asset_type → schema field suffix
+FIELD_SUFFIX = {
+    "poster": "poster_url",
+    "backdrop": "backdrop_url",
+    "logo": "logo_url",
+    "textless_poster": "textless_poster_url",
+    "icon": "icon_url",
+}
+RESOLVE_TYPES = tuple(FIELD_SUFFIX)
+
+# Lower index = preferred. Labels not listed rank last (999).
+_POSTER_PREF = {"official": 0, "textless": 1, "white_logo": 2, "alternate": 3}
+_BACKDROP_PREF = {"material": 0, "clean": 1, "official": 2, "blurred": 3}
+_LOGO_PREF = {"multicolor": 0, "official": 0, "white": 1, "custom": 2, "black": 3}
+_TEXTLESS_PREF = {"textless": 0, "material": 1, "white_logo": 2}
+_ICON_PREF = {"official": 0, "custom": 1}
+_LABEL_PREF = {
+    "poster": _POSTER_PREF,
+    "backdrop": _BACKDROP_PREF,
+    "logo": _LOGO_PREF,
+    "textless_poster": _TEXTLESS_PREF,
+    "icon": _ICON_PREF,
+}
+# Backdrops with a baked-in title/text overlay look bad behind content.
+_BACKDROP_EXCLUDE = {"alternate"}
+
+
+def _select_best(assets: list[MediaAsset], asset_type: str) -> MediaAsset | None:
+    """Pick the best asset from candidates for one type."""
+    if not assets:
+        return None
+    pref = _LABEL_PREF.get(asset_type, {})
+    exclude = _BACKDROP_EXCLUDE if asset_type == "backdrop" else set()
+    want_png = asset_type == "icon"
+    best: MediaAsset | None = None
+    best_key: tuple | None = None
+    for a in assets:
+        if a.label in exclude:
+            continue
+        key = (pref.get(a.label or "", 999), -(a.score or 0), -(a.width or 0))
+        if want_png and a.url and a.url.lower().endswith(".png"):
+            key = (key[0] - 0.5, *key[1:])
+        if best_key is None or key < best_key:
+            best_key = key
+            best = a
+    return best
+
+
+async def invalidate_asset_selection(redis, item_id: str) -> None:
+    """Drop the cached selection for one item so it recomputes on next read."""
+    await redis.delete(ITEM_CACHE_KEY.format(item_id=item_id))
+
+
+async def _fetch_overrides(
+    session: AsyncSession, item_ids: list[str]
+) -> dict[str, dict[str, str]]:
+    """Return {media_item_id: {image_type: url}} for active overrides."""
+    if not item_ids:
+        return {}
+    rows = await session.scalars(
+        select(MediaImageOverride).where(
+            MediaImageOverride.media_item_id.in_(item_ids),
+            MediaImageOverride.is_active.is_(True),
+        )
+    )
+    overrides: dict[str, dict[str, str]] = {}
+    for o in rows:
+        overrides.setdefault(o.media_item_id, {})[o.image_type] = o.url
+    return overrides
+
+
+async def _resolve_from_db(
+    session: AsyncSession, item_ids: list[str], asset_types: tuple[str, ...]
+) -> dict[str, dict[str, str | None]]:
+    """Rank stored assets for the given items (one query, no cache)."""
+    if not item_ids:
+        return {}
+    rows = await session.scalars(
+        select(MediaAsset).where(
+            MediaAsset.media_item_id.in_(item_ids),
+            MediaAsset.asset_type.in_(asset_types),
+        )
+    )
+    by_item: dict[str, dict[str, list[MediaAsset]]] = {}
+    for a in rows:
+        by_item.setdefault(a.media_item_id, {}).setdefault(a.asset_type, []).append(a)
+
+    out: dict[str, dict[str, str | None]] = {}
+    for iid in item_ids:
+        per: dict[str, str | None] = {}
+        item_assets = by_item.get(iid, {})
+        for at in asset_types:
+            best = _select_best(item_assets.get(at, []), at)
+            per[FIELD_SUFFIX[at]] = best.url if best is not None else None
+        out[iid] = per
+    return out
+
+
+async def resolve_assets(
+    session: AsyncSession,
+    redis,
+    item_ids: list[str],
+    asset_types: tuple[str, ...] | None = None,
+    *,
+    cache_ttl: int = CACHE_TTL,
+) -> dict[str, dict[str, str | None]]:
+    """Resolve best asset URL per type for each item.
+
+    Returns ``{item_id: {"poster_url": ..., "logo_url": ..., ...}}``.
+    Precedence: admin override → Redis cache → ranked media_assets.
+    """
+    asset_types = asset_types or RESOLVE_TYPES
+    item_ids = [str(i) for i in item_ids]
+    if not item_ids:
+        return {}
+
+    overrides = await _fetch_overrides(session, item_ids)
+
+    # Redis cache (one key per item). A Redis outage must not take down the
+    # read path — fall back to the DB ranking for every item.
+    keys = [ITEM_CACHE_KEY.format(item_id=i) for i in item_ids]
+    result: dict[str, dict[str, str | None]] = {}
+    miss_items: list[str] = []
+    if keys:
+        try:
+            cached_vals = await redis.mget(*keys)
+        except Exception:
+            cached_vals = None
+        if cached_vals is not None:
+            for item_id, val in zip(item_ids, cached_vals, strict=False):
+                if val is not None:
+                    try:
+                        result[item_id] = json.loads(val)
+                    except (ValueError, TypeError):
+                        miss_items.append(item_id)
+                else:
+                    miss_items.append(item_id)
+    if not result:
+        miss_items = list(item_ids)
+
+    if miss_items:
+        db_result = await _resolve_from_db(session, miss_items, asset_types)
+        for item_id, per in db_result.items():
+            result[item_id] = per
+            try:
+                await redis.setex(
+                    ITEM_CACHE_KEY.format(item_id=item_id),
+                    cache_ttl,
+                    json.dumps(per),
+                )
+            except Exception:
+                pass  # cache writes must never break reads
+
+    # Admin overrides win over anything cached/ranked.
+    for item_id, per in result.items():
+        override_map = overrides.get(item_id)
+        if override_map:
+            for at, suffix in FIELD_SUFFIX.items():
+                if at in override_map:
+                    per[suffix] = override_map[at]
+
+    return result
+
+
+ASSET_FIELDS = tuple(FIELD_SUFFIX.values())
+
+
+async def enrich_items_with_assets(
+    session: AsyncSession,
+    items: list,
+    *,
+    redis=None,
+) -> list:
+    """Attach resolved asset URLs to ORM items in-place as ``_resolved_*`` attrs.
+
+    Schemas prefer these via ``model_validator(mode="before")``, so the read
+    path no longer depends on the legacy ``media_items`` URL columns.
+    """
+    if not items:
+        return items
+    if redis is None:
+        from otix.infrastructure.redis import get_redis
+
+        redis = await get_redis()
+    resolved = await resolve_assets(session, redis, [str(i.id) for i in items])
+    for item in items:
+        urls = resolved.get(str(item.id), {})
+        for suffix in ASSET_FIELDS:
+            setattr(item, f"_resolved_{suffix}", urls.get(suffix))
+    return items
+
+
+def resolved_assets_view(obj, fields) -> dict | object:
+    """Return a field→value mapping for an ORM object, preferring ``_resolved_*``.
+
+    Used by schema validators: when enrichment has attached resolved asset
+    URLs, those win over the (legacy) column values. Otherwise returns the
+    object unchanged so ``from_attributes`` behaves as before.
+    """
+    resolved = {f: getattr(obj, f"_resolved_{f}", None) for f in ASSET_FIELDS}
+    if not any(v is not None for v in resolved.values()):
+        return obj
+    # Only include attributes that actually exist on the object. Fields the ORM
+    # lacks (e.g. ``screenshots`` on MediaItem) must stay absent so Pydantic
+    # falls back to the schema default instead of an explicit None.
+    out = {name: getattr(obj, name) for name in fields if hasattr(obj, name)}
+    out.update({f: v for f, v in resolved.items() if v is not None})
+    return out

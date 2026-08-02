@@ -32,6 +32,7 @@ from sqlalchemy.orm import selectinload
 from otix.domain.base import gen_otix_id
 from otix.domain.company import InvolvedCompany
 from otix.domain.media import ExternalID, MatchSkip, MediaItem
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.steamgrid.client import SteamGridDBProvider
 from otix.schemas.media import (
@@ -42,12 +43,22 @@ from otix.schemas.media import (
     StreamCompleteEvent,
     StreamMatchEvent,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.external_id_service import ExternalIDService
 
 if TYPE_CHECKING:
     from otix.lib.types import JSONValue
 
 logger = structlog.get_logger()
+
+# SteamGridDB grid styles → asset variant label
+_GRID_LABELS = {
+    "no_logo": "textless",
+    "material": "material",
+    "alternate": "alternate",
+    "blurred": "blurred",
+    "white": "white",
+}
 
 # ── Platform name normalization ────────────────────────────────────────────
 # Maps IGDB / provider display names to Otix platform slugs.
@@ -503,6 +514,11 @@ class GameMatcher:
         all_mi_ids = [mi.id for items in media_map.values() for mi in items]
         dev_map = await self._batch_fetch_developers(all_mi_ids)
 
+        # Resolve asset URLs for the matched subset (bounded by request count)
+        await enrich_items_with_assets(
+            self._session, [mi for items in media_map.values() for mi in items], redis=self._redis
+        )
+
         matched: set[int] = set()
         for title_lower, idx in titles.items():
             items = media_map.get(title_lower, [])
@@ -566,6 +582,7 @@ class GameMatcher:
             .limit(500)  # safety limit
         )
         catalog_items = list(rows.scalars().all())
+        await enrich_items_with_assets(self._session, catalog_items, redis=self._redis)
 
         # Batch-fetch developers for matched catalog items
         all_mi_ids = [mi.id for mi in catalog_items]
@@ -658,8 +675,6 @@ class GameMatcher:
                 input.clean_title,
                 mi.id,
                 mi.title,
-                mi.poster_url,
-                mi.backdrop_url,
                 mi.release_date,
                 similarity(mi.title, input.clean_title) AS sim
             FROM unnest(CAST(:titles AS text[])) AS input(clean_title)
@@ -692,12 +707,13 @@ class GameMatcher:
             if _different_franchise_entry(requests[idx].title, row["title"]):
                 confidence = min(confidence, 0.70)
 
+            mi = await self._fetch_media_item(row["id"])
             all_candidates[idx].append(
                 GameMatchCandidate(
                     media_item_id=row["id"],
                     title=row["title"],
-                    poster_url=row.get("poster_url"),
-                    backdrop_url=row.get("backdrop_url"),
+                    poster_url=mi.poster_url if mi else None,
+                    backdrop_url=mi.backdrop_url if mi else None,
                     release_year=_release_year_from_date(row.get("release_date")),
                     confidence=confidence,
                     match_type=MatchType.TRIGRAM,
@@ -1428,12 +1444,18 @@ class GameMatcher:
                 title=title,
                 slug=slug,
                 media_type=media_type,
-                poster_url=poster_url,
                 release_date=release_date,
                 created_at=now,
                 updated_at=now,
             )
             self._session.add(mi)
+            # Seed the IGDB cover as a media_assets row; best-asset selection
+            # is resolved at query time (asset_selection).
+            if poster_url:
+                await AssetPipeline(self._session).store(
+                    new_id,
+                    [RawAsset(asset_type="poster", url=poster_url, label="official", provider="igdb")],
+                )
 
         # Create ExternalID mapping (igdb → media_item)
         # Use ON CONFLICT DO NOTHING — simulation or previous scan may have seeded already
@@ -1481,26 +1503,48 @@ class GameMatcher:
                 if sg_game:
                     sg_id = sg_game.get("id")
                     if sg_id:
-                        # Fetch grids (posters) — alternate + no_logo for clean look
+                        # Store SteamGrid assets as media_assets rows; best-asset
+                        # selection is resolved at query time (asset_selection).
+                        assets: list[RawAsset] = []
+
+                        # Grids (posters) — alternate + no_logo for clean look
                         grids = await self._steamgrid.get_grids(int(sg_id), styles="alternate,no_logo")
-                        if grids:
-                            grid_url = grids[0].get("url")
-                            if grid_url and not poster_url:
-                                mi.poster_url = str(grid_url)
+                        for grid in grids[:4]:
+                            grid_url = grid.get("url")
+                            if grid_url:
+                                assets.append(RawAsset(
+                                    asset_type="poster",
+                                    url=str(grid_url),
+                                    label=_GRID_LABELS.get(grid.get("style")),
+                                    provider="steamgrid",
+                                ))
 
-                        # Fetch logos
+                        # Logos — official style
                         logos = await self._steamgrid.get_logos(int(sg_id), styles="official")
-                        if logos:
-                            logo_url = logos[0].get("url")
+                        for logo in logos[:4]:
+                            logo_url = logo.get("url")
                             if logo_url:
-                                mi.logo_url = str(logo_url)
+                                assets.append(RawAsset(
+                                    asset_type="logo",
+                                    url=str(logo_url),
+                                    label="multicolor",
+                                    provider="steamgrid",
+                                ))
 
-                        # Fetch heroes (backdrops)
+                        # Heroes (backdrops)
                         heroes = await self._steamgrid.get_heroes(int(sg_id))
-                        if heroes:
-                            hero_url = heroes[0].get("url")
+                        for hero in heroes[:4]:
+                            hero_url = hero.get("url")
                             if hero_url:
-                                mi.backdrop_url = str(hero_url)
+                                assets.append(RawAsset(
+                                    asset_type="backdrop",
+                                    url=str(hero_url),
+                                    label="material",
+                                    provider="steamgrid",
+                                ))
+
+                        if assets:
+                            await AssetPipeline(self._session).store(new_id, assets)
             except Exception:
                 logger.warning("steamgrid_asset_fetch_failed", title=title)
 
@@ -1531,7 +1575,10 @@ class GameMatcher:
     async def _fetch_media_item(self, entity_id: str) -> MediaItem | None:
         if not entity_id:
             return None
-        return await self._session.get(MediaItem, entity_id)
+        mi = await self._session.get(MediaItem, entity_id)
+        if mi is not None:
+            await enrich_items_with_assets(self._session, [mi], redis=self._redis)
+        return mi
 
     async def _fetch_media_items(self, entity_ids: list[str]) -> dict[str, MediaItem]:
         if not entity_ids:
@@ -1539,7 +1586,9 @@ class GameMatcher:
         rows = await self._session.execute(
             select(MediaItem).where(MediaItem.id.in_(entity_ids)),
         )
-        return {mi.id: mi for mi in rows.scalars().all()}
+        items = list(rows.scalars().all())
+        await enrich_items_with_assets(self._session, items, redis=self._redis)
+        return {mi.id: mi for mi in items}
 
 
 # ── Module-level helpers ────────────────────────────────────────────────────

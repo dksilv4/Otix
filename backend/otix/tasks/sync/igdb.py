@@ -19,7 +19,12 @@ from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
 from otix.providers.igdb.client import IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
-from otix.providers.igdb.transformer import _extract_steam_app_id, _extract_store_ids, to_game
+from otix.providers.igdb.transformer import (
+    _extract_steam_app_id,
+    _extract_store_ids,
+    extract_external_games,
+    to_game,
+)
 from otix.services.external_id_service import ExternalIDService
 
 from ._common import compute_content_hash, enqueue_list_items
@@ -38,14 +43,14 @@ GAME_FIELDS = (
     "platforms.name,platforms.platform_logo.image_id,"
     "game_modes.name,"
     "websites.url,websites.type,"
+    "external_games.external_game_source,external_games.uid,"
     "videos.video_id,videos.name,"
     "involved_companies.company.name,involved_companies.company.slug,"
     "involved_companies.company.logo.image_id,"
     "involved_companies.developer,involved_companies.publisher,"
     "involved_companies.porting,involved_companies.supporting,"
     "age_ratings,"
-    "franchise.name,franchise.id,"
-    "time_to_beat"
+    "franchise.name,franchise.id"
 )
 
 
@@ -155,7 +160,7 @@ def _compute_game_next_sync_at(raw: dict[str, JSONValue], hash_match_count: int 
 # ── Game sync ──────────────────────────────────────────────────────────
 
 
-async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
+async def _sync_igdb_game(igdb_id: int, force: bool = False, *, enqueue_enrichment: bool = True) -> dict | None:
     async with async_session() as session:
         igdb_id_str = str(igdb_id)
 
@@ -192,10 +197,12 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         game = to_game(raw)
         item = game.media_item
 
-        # Extract store-platform IDs from raw IGDB data (no longer on Game model)
+        # Extract store-platform IDs from raw IGDB data (no longer on Game model).
+        # external_games carries structured store IDs (xbox, playstation, ...);
+        # website-derived IDs are higher quality, so they win on conflict.
         websites_raw = raw.get("websites", []) or []
         steam_app_id_from_raw = _extract_steam_app_id(websites_raw)
-        store_ids_from_raw = _extract_store_ids(websites_raw)
+        store_ids_from_raw = {**(extract_external_games(raw) or {}), **(_extract_store_ids(websites_raw) or {})}
 
         merged_into_existing = False
         eid_svc = ExternalIDService(session)
@@ -244,38 +251,12 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
                     old_overview = existing.overview
 
-                    # Snapshot protected fields before merge so we can restore them.
-                    from otix.services.admin_edit_service import AdminEditService
-
-                    protected = await AdminEditService.get_protected_image_types(session, existing.id)
-                    pre_urls = {}
-                    if protected:
-                        _field_map = {
-                            "poster": "poster_url",
-                            "backdrop": "backdrop_url",
-                            "logo": "logo_url",
-                            "textless_poster": "textless_poster_url",
-                        }
-                        for img_type in protected:
-                            field = _field_map.get(img_type)
-                            if field:
-                                pre_urls[img_type] = getattr(existing, field, None)
-
+                    # Asset URLs are resolved at query time (asset_selection);
+                    # admin overrides are checked there. Merge the fresh metadata
+                    # without touching any URL columns.
                     item.id = existing.id
                     game.media_item_id = existing.id
                     await session.merge(item)
-
-                    # Restore protected fields and create system proposals.
-                    for img_type in protected:
-                        field = _field_map.get(img_type)
-                        if not field:
-                            continue
-                        pre_val = pre_urls.get(img_type)
-                        post_val = getattr(item, field, None)
-                        if pre_val and pre_val != post_val:
-                            setattr(item, field, pre_val)
-                            svc = AdminEditService(session)
-                            await svc.create_system_proposal_for_image(item.id, img_type, post_val)
 
                     if is_embedding_stale(old_overview, item.overview):
                         item.embedding = None
@@ -289,6 +270,8 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
                 ext_id = await eid_svc.upsert("igdb", igdb_id_str, "media_item", item.id)
 
             game.media_item_id = item.id
+            for platform, pid in store_ids_from_raw.items():
+                await eid_svc.upsert(platform, str(pid), "media_item", item.id)
             existing_game = await session.get(Game, item.id)
             if existing_game is not None:
                 game = await session.merge(game)
@@ -309,7 +292,7 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
 
         store_providers = {
             "steam",
-            "epic",
+            "egs",
             "gog",
             "origin",
             "uplay",
@@ -341,6 +324,9 @@ async def _sync_igdb_game(igdb_id: int, force: bool = False) -> dict | None:
         # Name-based SGDB lookup for game without any store-platform IDs
         if not steamgrid_enqueued:
             app.send_task("sync.steamgrid.game_by_name", args=[item.id])
+
+        if not enqueue_enrichment:
+            return {"otix_id": item.id, "title": item.title, "igdb_id": igdb_id}
 
         logger.info(
             "igdb game synced",

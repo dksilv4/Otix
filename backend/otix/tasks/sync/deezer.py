@@ -27,6 +27,7 @@ from otix.infrastructure.redis import get_redis
 from otix.lib.concurrency import run_async
 from otix.lib.progress import incr as _progress_incr
 from otix.lib.task_guard import TaskGuard
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset
 from otix.providers.deezer.client import DeezerProvider
 from otix.providers.deezer.transformer import _extract_cover_url, to_album
 from otix.services.external_id_service import ExternalIDService
@@ -143,6 +144,22 @@ async def _sync_deezer_seed_album(deezer_id: str) -> dict | None:
             await eid_svc.upsert("deezer", str(deezer_id_str), "media_item", item.id)
         if upc:
             await eid_svc.upsert("barcode", upc, "media_item", item.id)
+
+        # 4b. Store the album cover as a media_assets row; best-asset selection
+        # is resolved at query time (asset_selection).
+        cover_url = getattr(item, "_cover_url", None)
+        if cover_url:
+            await AssetPipeline(session).store(
+                item.id,
+                [RawAsset(
+                    asset_type="poster",
+                    url=cover_url,
+                    width=1000,
+                    height=1000,
+                    label="album_cover",
+                    provider="deezer",
+                )],
+            )
 
         # 5. Artist credits
         artist_data = raw.get("artist")
@@ -315,8 +332,15 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
         if album is None:
             return None
 
-        # Skip only if already has cover art
-        if album.media_item.poster_url:
+        # Skip only if a deezer poster asset already exists
+        has_cover = await session.scalar(
+            select(MediaAsset.id).where(
+                MediaAsset.media_item_id == otix_id,
+                MediaAsset.asset_type == "poster",
+                MediaAsset.provider == "deezer",
+            ).limit(1)
+        )
+        if has_cover:
             return {"skipped": True, "reason": "already_has_poster_url"}
 
         redis = await get_redis()
@@ -368,16 +392,18 @@ async def _sync_deezer_enrich_cover(otix_id: str) -> dict | None:
         if not cover_url:
             return None
 
-        album.media_item.poster_url = cover_url
-        session.add(
-            MediaAsset(
-                media_item_id=otix_id,
-                asset_type="poster",
-                url=cover_url,
-                width=1000,
-                height=1000,
-                provider="deezer",
-            )
+        await AssetPipeline(session).store(
+            otix_id,
+            [
+                RawAsset(
+                    asset_type="poster",
+                    url=cover_url,
+                    width=1000,
+                    height=1000,
+                    label="album_cover",
+                    provider="deezer",
+                )
+            ],
         )
 
         if matched_deezer_id and not deezer_eid:

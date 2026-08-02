@@ -15,6 +15,7 @@ from otix.domain.review import Review
 from otix.domain.user import User
 from otix.domain.workout import Workout
 from otix.schemas.user import HallOfFameItem, LibraryStatsOut
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.episode_interaction_service import EpisodeInteractionService
 from otix.services.media_service import MediaService
 
@@ -103,6 +104,7 @@ async def get_user_top_rated(
             .limit(limit)
         )
         rows = result.all()
+        await enrich_items_with_assets(db, [media for _, media in rows])
     except Exception:
         await db.rollback()
         logger.exception("failed to fetch user top rated", username=username, ip=ip)
@@ -153,6 +155,7 @@ async def get_user_hall_of_fame(
 
         service = MediaService(db)
         items = await service.get_media_items_by_ids(media_ids)
+        await enrich_items_with_assets(db, items)
     except Exception:
         await db.rollback()
         logger.exception("failed to fetch hall of fame", username=username, ip=ip)

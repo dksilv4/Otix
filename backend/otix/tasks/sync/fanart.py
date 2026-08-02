@@ -54,11 +54,8 @@ async def _sync_fanart_enrich(media_type: str, media_item_id: str) -> dict | Non
         await session.commit()
 
         if added:
-            has_logo = media_item.logo_url is not None
-            has_textless = media_item.textless_poster_url is not None
             logger.info("fanart images added",
                 title=media_item.title, media_type=media_type, otix_id=media_item_id,
-                logo=has_logo, textless_poster=has_textless,
             )
         else:
             logger.debug("fanart — no new assets",

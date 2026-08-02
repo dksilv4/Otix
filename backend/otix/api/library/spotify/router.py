@@ -12,6 +12,7 @@ from otix.api.deps import get_current_user, get_db
 from otix.domain.media import Album, ExternalID, MediaItem
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse, MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.spotify_auth_service import get_user_access_token
 
 logger = structlog.get_logger()
@@ -128,6 +129,7 @@ async def get_spotify_library_tab(
         last = rows[-1]
         next_cursor = f"{last.popularity}__{last.id}"
 
+    await enrich_items_with_assets(db, rows)
     summaries = [MediaItemSummary.model_validate(item) for item in rows]
     logger.info("spotify library fetched", user_id=current_user.id, count=len(summaries), ip=ip)
     return MediaItemListResponse(

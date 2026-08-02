@@ -12,18 +12,37 @@ Supports all SGDB platforms: steam, origin, egs, bnet, uplay, flashpoint, eshop.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.domain.media import ExternalID, Game, MediaItem
 from otix.lib.types import JSONValue
-from otix.providers.asset_pipeline import AssetPipeline, RawAsset, rank_grid_by_style, rank_hero_by_style, rank_logo_by_style, rank_icon_by_style
+from otix.providers.asset_pipeline import (
+    AssetPipeline,
+    RawAsset,
+)
 from otix.providers.steamgrid.client import SteamGridDBProvider
 
 # Platforms SGDB supports, in priority order (most common first).
 _SGDB_PLATFORMS = ("steam", "egs", "origin", "bnet", "uplay", "eshop", "flashpoint")
+
+# SGDB asset style → label. Labels describe the visual variant so query-time
+# selection can prefer logos that read on a dark UI (multicolor/white) over
+# black, and textless grids over ones with the game title baked in.
+_SGDB_LABELS: dict[str, dict[str, str]] = {
+    "logo": {"official": "multicolor", "white": "white", "black": "black", "custom": "custom"},
+    "poster": {"no_logo": "textless", "material": "material", "alternate": "alternate", "blurred": "blurred", "white": "white", "white_logo": "white_logo"},
+    "textless_poster": {"no_logo": "textless", "material": "material", "alternate": "alternate", "blurred": "blurred", "white": "white", "white_logo": "white_logo"},
+    "backdrop": {"material": "material", "blurred": "blurred", "alternate": "alternate"},
+    "icon": {"official": "official", "custom": "custom"},
+}
+
+
+def _sgdb_label(asset_type: str, style: object) -> str | None:
+    if not isinstance(style, str):
+        return None
+    return _SGDB_LABELS.get(asset_type, {}).get(style)
 
 
 class SteamGridDBHydrator:
@@ -97,6 +116,7 @@ class SteamGridDBHydrator:
         if not isinstance(sgdb_game_id, int) or sgdb_game_id == 0:
             return 0
 
+        await self._backfill_store_ids(game, sgdb_game)
         return await self._hydrate_assets(game, sgdb_game_id)
 
     async def _hydrate_by_name(self, game: Game, title: str) -> int:
@@ -178,6 +198,7 @@ class SteamGridDBHydrator:
                     width=e.get("width"),
                     height=e.get("height"),
                     style=e.get("style"),
+                    label=_sgdb_label(at, e.get("style")),
                     score=e.get("score"),
                 )
                 for e in entries

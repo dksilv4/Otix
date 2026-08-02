@@ -30,6 +30,7 @@ from otix.schemas.media import (
     StructuredSearchResponse,
     TrackSearchResult,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.company_service import CompanyService
 from otix.services.external_id_service import ExternalIDService
 from otix.services.interaction_service import InteractionService
@@ -91,6 +92,7 @@ async def search_suggestions(
     items, _total, _has_more = await service.search_media(
         query_str=q, media_type=media_type, page=1, page_size=limit, exclude_adult=exclude_adult,
     )
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     if current_user is not None and summaries:
@@ -214,12 +216,20 @@ async def search_media(
     if page == 1 and (media_type is None or media_type == "music"):
         async def _search_tracks():
             async with async_session() as s:
-                return await MediaService(s).search_tracks(query_str=q, limit=20)
+                tracks = await MediaService(s).search_tracks(query_str=q, limit=20)
+                album_items = [
+                    t.album.media_item
+                    for t in tracks
+                    if t.album is not None and t.album.media_item is not None
+                ]
+                await enrich_items_with_assets(s, album_items)
+                return tracks
         tracks_future: asyncio.Task | None = asyncio.ensure_future(_search_tracks())
     else:
         tracks_future = None
 
     items, total, has_more = await search_future
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     track_summaries: list[TrackSearchResult] = []
@@ -250,7 +260,7 @@ async def search_media(
                     preview_url=t.preview_url, spotify_id=spotify_id_map.get(t.id),
                     avg_rating=t.avg_rating, rating_count=t.rating_count,
                     album_id=t.album.media_item_id, album_title=album_item.title,
-                    album_poster_url=album_item.poster_url, album_artist_name=artist_name,
+                    album_poster_url=album_item._resolved_poster_url or album_item.poster_url, album_artist_name=artist_name,
                     album_slug=album_item.slug,
                 )
             )
@@ -324,6 +334,7 @@ async def search_grouped(
                     query_str=q, media_type=mt, page=1, page_size=media_type_limit,
                     query_embedding=query_embedding, exclude_adult=exclude_adult,
                 )
+                await enrich_items_with_assets(s, items)
                 return mt, [MediaItemSummary.model_validate(i) for i in items], total
 
         return await asyncio.gather(*[_search_one(mt) for mt in ("movie", "show", "game", "music")])
@@ -334,6 +345,14 @@ async def search_grouped(
             count_q = select(func.count(Track.id)).where(Track.title.ilike(f"%{q}%"))
             total = await s.scalar(count_q) or 0
             tracks = await MediaService(s).search_tracks(query_str=q, limit=20)
+            album_items = []
+            seen_albums: set[str] = set()
+            for t in tracks:
+                ai = t.album.media_item
+                if ai and ai.id not in seen_albums:
+                    seen_albums.add(ai.id)
+                    album_items.append(ai)
+            await enrich_items_with_assets(s, album_items)
         track_ids = [t.id for t in tracks]
         spotify_id_map: dict[str, str] = {}
         if track_ids:
@@ -413,6 +432,7 @@ async def search_grouped(
                 query_str=q, media_type=None, page=1, page_size=3,
                 query_embedding=query_embedding, exclude_adult=exclude_adult,
             )
+            await enrich_items_with_assets(s, items)
             return [MediaItemSummary.model_validate(i) for i in items]
 
     (type_results, (tracks_list, tracks_count), (people_list, people_count),
@@ -518,6 +538,7 @@ async def poll_search_updates(
 
     known = set(known_ids.split(",")) if known_ids else set()
     new_items = [item for item in items if str(item.id) not in known]
+    await enrich_items_with_assets(db, new_items)
     summaries = [MediaItemSummary.model_validate(item) for item in new_items]
 
     if current_user is not None and summaries:
@@ -569,6 +590,7 @@ async def search_external_games(
         if entity_ids:
             media_service = MediaService(db)
             items = await media_service.get_media_items_by_ids(entity_ids)
+            await enrich_items_with_assets(db, items)
             summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     missing_ids = [gid for gid in igdb_ids if gid not in existing_ids]

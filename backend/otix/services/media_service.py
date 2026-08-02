@@ -7,9 +7,11 @@ from datetime import date, datetime
 
 import structlog
 from sqlalchemy import and_, case, func, or_, select, union
+from sqlalchemy import exists as sa_exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from otix.domain.asset import MediaAsset
 from otix.domain.collection import Collection
 from otix.domain.company import InvolvedCompany
 from otix.domain.genre import Genre, MediaGenre
@@ -58,6 +60,11 @@ def _normalize_title_for_dedup(title: str) -> str:
     Uses NFKD decomposition to normalize accented characters (Pokémon → Pokemon),
     normalizes curly quotes/apostrophes to straight, strips parentheticals
     and edition markers, and collapses whitespace.
+
+    Edition markers ("Game of the Year Edition", "Remastered") are stripped
+    because they re-release the same work. "VR" is deliberately kept: a VR
+    edition is a distinct product (e.g. "Skyrim" vs "Skyrim VR") and merging
+    it would over-dedupe.
     """
     # Normalize curly quotes/apostrophes to straight BEFORE other processing
     clean = title.translate(_CURLY_TO_STRAIGHT)
@@ -77,7 +84,7 @@ def _normalize_title_for_dedup(title: str) -> str:
         r"anniversary|directors? cut|year one|gold)\s*edition\b",
         "", clean, flags=re.IGNORECASE,
     )
-    clean = re.sub(r"\b(?:remastered|repack|multilingual|vr)\b", "", clean)
+    clean = re.sub(r"\b(?:remastered|repack|multilingual)\b", "", clean)
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean
 
@@ -241,16 +248,30 @@ class MediaService:
 
         if has_artwork:
             # Movies/shows need textless poster (TMDB+Fanart provide it).
-            # Games use poster_url (IGDB covers don't have a textless variant,
+            # Games use poster (IGDB covers don't have a textless variant,
             # and SteamGridDB only covers Steam game).
-            # Music uses poster_url (album covers have artwork text).
+            # Music uses poster (album covers have artwork text).
             query = query.where(
-                MediaItem.textless_poster_url.isnot(None)
-                | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
+                sa_exists().where(
+                    MediaAsset.media_item_id == MediaItem.id,
+                    MediaAsset.asset_type == "textless_poster",
+                )
+                | (
+                    MediaItem.media_type.in_(["music", "game"])
+                    & sa_exists().where(
+                        MediaAsset.media_item_id == MediaItem.id,
+                        MediaAsset.asset_type == "poster",
+                    )
+                )
             )
 
         if has_logo:
-            query = query.where(MediaItem.logo_url.isnot(None))
+            query = query.where(
+                sa_exists().where(
+                    MediaAsset.media_item_id == MediaItem.id,
+                    MediaAsset.asset_type == "logo",
+                )
+            )
 
         if genre:
             query = query.join(MediaItem.genres).join(MediaGenre.genre).where(Genre.slug == genre)
@@ -315,11 +336,25 @@ class MediaService:
                 )
             if has_artwork:
                 count_query = count_query.where(
-                    MediaItem.textless_poster_url.isnot(None)
-                    | (MediaItem.media_type.in_(["music", "game"]) & MediaItem.poster_url.isnot(None))
+                    sa_exists().where(
+                        MediaAsset.media_item_id == MediaItem.id,
+                        MediaAsset.asset_type == "textless_poster",
+                    )
+                    | (
+                        MediaItem.media_type.in_(["music", "game"])
+                        & sa_exists().where(
+                            MediaAsset.media_item_id == MediaItem.id,
+                            MediaAsset.asset_type == "poster",
+                        )
+                    )
                 )
             if has_logo:
-                count_query = count_query.where(MediaItem.logo_url.isnot(None))
+                count_query = count_query.where(
+                    sa_exists().where(
+                        MediaAsset.media_item_id == MediaItem.id,
+                        MediaAsset.asset_type == "logo",
+                    )
+                )
             if language:
                 count_query = count_query.where(MediaItem.original_language == language)
             if certification:
@@ -560,13 +595,16 @@ class MediaService:
         result = await self.session.scalars(q)
         items = list(result)
 
-        # Dedup by normalized title + media_type — cross-provider imports
-        # (Steam, IGDB, TMDB, etc.) can create separate MediaItems for the
-        # same real-world entity. Keep the highest-ranked (first-found) copy.
-        seen_titles: set[tuple[str, str]] = set()
+        # Dedup by normalized title + media_type + release_year — cross-provider
+        # imports (Steam, IGDB, TMDB, etc.) can create separate MediaItems for
+        # the same real-world entity. Keep the highest-ranked (first-found) copy.
+        # The release year disambiguates distinct same-titled works (e.g.
+        # "RoboCop" 1987 vs 2014); NULL years only collapse with each other.
+        seen_titles: set[tuple[str, str, int | None]] = set()
         unique_items: list[MediaItem] = []
         for item in items:
-            key = (_normalize_title_for_dedup(item.title), item.media_type)
+            year = item.release_date.year if item.release_date is not None else None
+            key = (_normalize_title_for_dedup(item.title), item.media_type, year)
             if key not in seen_titles:
                 seen_titles.add(key)
                 unique_items.append(item)
@@ -658,11 +696,17 @@ class MediaService:
         result = await self.session.execute(q)
         rows = result.all()
 
+        # Resolve asset URLs at query time so artwork presence reflects the
+        # media_assets pool, not the (legacy) columns.
+        from otix.services.asset_selection import enrich_items_with_assets
+
+        await enrich_items_with_assets(self.session, [item for item, _ in rows])
+
         # Phase 2: Re-rank with blended quality score
         def _score(item: MediaItem, distance: float) -> float:
             similarity = 1.0 - distance  # 1 = identical, -1 = opposite
             popularity = math.log(max(item.popularity, 1) + 1)
-            has_poster = 1.0 if item.poster_url else 0.0
+            has_poster = 1.0 if getattr(item, "_resolved_poster_url", None) else 0.0
             has_rating = 1.0 if item.avg_rating is not None else 0.0
             return similarity * 5 + popularity * 0.3 + has_poster * 2 + has_rating * 0.5
 
@@ -793,7 +837,7 @@ class MediaService:
             clean = re.sub(
                 r"(?:\b(?:goty|game of the year|definitive|enhanced|remastered|"
                 r"ultimate|complete|deluxe|collectors|special|legendary|"
-                r"anniversary|vr|directors? cut)\s*edition\b)",
+                r"anniversary|directors? cut)\s*edition\b)",
                 "",
                 clean,
                 flags=re.IGNORECASE,
@@ -919,9 +963,16 @@ class MediaService:
 
         # Strategy 5: SQL-normalized match — apply regexp_replace to DB title too
         # so "Game (2024)" in DB matches search for "Game", and vice versa.
-        # Also normalizes curly quotes, dashes via REPLACE/TRANSLATE.
+        # Also normalizes curly quotes, dashes via REPLACE/TRANSLATE. When a
+        # release year is provided, it filters on it so same-titled works from
+        # different years (e.g. "Sonic 2" 1992 vs 2022) never match each other.
         if normalized:
-            raw_q = sql_text("""
+            year_filter = ""
+            params: dict = {"media_type": media_type, "normalized": normalized}
+            if release_date is not None:
+                year_filter = " AND EXTRACT(YEAR FROM release_date) = :release_year"
+                params["release_year"] = release_date.year
+            raw_q = sql_text(f"""
                 SELECT id FROM media_items
                 WHERE media_type = :media_type
                   AND LOWER(TRIM(
@@ -945,15 +996,14 @@ class MediaService:
                               'year one|gold)\\s*edition\\M',
                               '', 'gi'
                           ),
-                          '\\m(remastered|repack|multilingual|vr)\\M',
+                          '\\m(remastered|repack|multilingual)\\M',
                           '', 'gi'
                       )
                   )) = :normalized
+                  {year_filter}
                 LIMIT 1
             """)
-            row = await self.session.execute(
-                raw_q, {"media_type": media_type, "normalized": normalized}
-            )
+            row = await self.session.execute(raw_q, params)
             row = row.fetchone()
             if row is not None:
                 return await self.session.get(MediaItem, row[0])
@@ -983,7 +1033,6 @@ class MediaService:
                 SELECT
                     id,
                     media_type,
-                    poster_url,
                     embedding,
                     EXTRACT(YEAR FROM release_date) AS release_year,
                     LOWER(TRIM(
@@ -999,7 +1048,7 @@ class MediaService:
                                 '',
                                 'gi'
                             ),
-                            '\\m(remastered|repack|multilingual|vr)\\M',
+                            '\\m(remastered|repack|multilingual)\\M',
                             '',
                             'gi'
                         )
@@ -1016,7 +1065,11 @@ class MediaService:
                 WINDOW w AS (
                     PARTITION BY normalized_title, media_type, release_year
                     ORDER BY
-                        CASE WHEN poster_url IS NOT NULL THEN 1 ELSE 0 END DESC,
+                        CASE WHEN EXISTS (
+                            SELECT 1 FROM media_assets ma
+                            WHERE ma.media_item_id = id
+                              AND ma.asset_type IN ('poster', 'textless_poster')
+                        ) THEN 1 ELSE 0 END DESC,
                         CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END DESC
                 )
             ) ranked

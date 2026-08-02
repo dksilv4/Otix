@@ -17,13 +17,11 @@ from otix.lib.xp import (
     PROPOSAL_VOTE_UPVOTE,
 )
 
+# Image URLs are edited via image_overrides (media_image_overrides), which the
+# query-time asset resolver honors — never via MediaItem columns.
 _ALLOWED_FIELDS = {
     "title",
     "overview",
-    "poster_url",
-    "textless_poster_url",
-    "backdrop_url",
-    "logo_url",
     "original_language",
     "release_date",
     "tagline",
@@ -556,21 +554,19 @@ class AdminEditService:
         proposed_url: str,
     ) -> MediaEditProposal | None:
         """Create a system proposal for an image change. Returns None if no-op."""
-        field_map = {
-            "poster": "poster_url",
-            "backdrop": "backdrop_url",
-            "logo": "logo_url",
-            "textless_poster": "textless_poster_url",
-        }
-        field = field_map.get(image_type)
-        if not field:
+        if image_type not in {"poster", "backdrop", "logo", "textless_poster", "icon"}:
             return None
 
+        # Image URLs live in media_image_overrides (honored by the query-time
+        # asset resolver), never as MediaItem column edits — so the proposal
+        # carries an override, not a field change.
         return await self.create_proposal(
             media_item_id=media_item_id,
             proposer_user_id=None,
-            changes={field: proposed_url},
-            image_overrides=None,
+            changes=None,
+            image_overrides=[
+                {"image_type": image_type, "language_code": "*", "url": proposed_url}
+            ],
         )
 
     async def create_system_proposal_for_color_guess(

@@ -20,6 +20,7 @@ from otix.schemas.media import (
     WatchProviderOut,
 )
 from otix.services.admin_edit_service import AdminEditService
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.interaction_service import InteractionService
 from otix.services.media_service import MediaService
 from otix.services.plex_sync_service import get_user_plex_item
@@ -158,6 +159,15 @@ async def get_media_item(
     # The selectinload + joinedload produces a LEFT JOIN — if the person was deleted,
     # credit.person is None, which would fail serialization and create stale links.
     item.credits = [c for c in item.credits if c.person is not None]
+
+    # Resolve asset URLs at query time for the item and any collection movies
+    # (their MediaItems are separate ORM objects, loaded by get_media_item).
+    collection_media: list = []
+    if item.movie is not None and item.movie.collection is not None:
+        collection_media = [
+            m.media_item for m in item.movie.collection.movies if m.media_item is not None
+        ]
+    await enrich_items_with_assets(db, [item] + collection_media)
 
     result = MediaItemDetail.model_validate(item)
 

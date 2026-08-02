@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.api.deps import get_db
 from otix.domain.media import ExternalID, Game, MediaItem
 from otix.schemas.media import MediaItemDetail
+from otix.services.asset_selection import enrich_items_with_assets
 
 router = APIRouter()
 
@@ -85,6 +86,7 @@ async def _match_one(
         media = media_result.scalar_one_or_none()
 
         if media is not None:
+            await enrich_items_with_assets(db, [media])
             detail = MediaItemDetail.model_validate(media)
             return FreeGameResult(
                 media_item=detail,

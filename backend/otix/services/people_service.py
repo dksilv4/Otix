@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from otix.domain.media import MediaItem, Season, Show
 from otix.domain.people import MediaCredit, Person, UserPersonFollow
+from otix.services.asset_selection import enrich_items_with_assets
 
 
 class PeopleService:
@@ -61,6 +62,9 @@ class PeopleService:
 
         # Safety: filter out credits whose media_item no longer exists
         person.credits = [c for c in person.credits if c.media_item is not None]
+
+        # Resolve asset URLs for credit media items before serialization
+        await enrich_items_with_assets(self.session, [c.media_item for c in person.credits])
 
         # Sort credits by release_date descending, nulls last
         null_credits = [c for c in person.credits if not c.media_item.release_date]

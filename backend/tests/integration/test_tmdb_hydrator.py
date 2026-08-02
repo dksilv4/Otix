@@ -6,6 +6,7 @@ from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.sql.dml import Delete
 
 from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
 from otix.domain.collection import Collection
@@ -23,6 +24,28 @@ def _added_objects(mock_db_session: AsyncMock):
     for c in mock_db_session.add_all.call_args_list:
         objs.extend(c.args[0])
     return objs
+
+
+def _asset_insert_sql(mock_db_session: AsyncMock) -> str | None:
+    """Compile the media_assets bulk insert to SQL with literal values inlined.
+
+    AssetPipeline.store issues a single ``pg_insert(MediaAsset) ... ON CONFLICT
+    DO NOTHING``; rendering it with literal binds lets the tests assert on the
+    exact rows being stored.
+    """
+    from sqlalchemy.dialects import postgresql as pg_dialect
+    from sqlalchemy.sql.dml import Insert
+
+    for call in mock_db_session.execute.call_args_list:
+        stmt = call.args[0]
+        if not isinstance(stmt, Insert):
+            continue
+        sql = str(
+            stmt.compile(dialect=pg_dialect.dialect(), compile_kwargs={"literal_binds": True})
+        )
+        if "media_assets" in sql:
+            return sql
+    return None
 
 
 @pytest.fixture
@@ -101,8 +124,11 @@ class TestHydrateGenres:
         raw = {"genres": [{"id": 18, "name": "Action"}]}
         await hydrator.hydrate_genres(media_item, raw)
 
-        # DELETE should have been executed for old links
-        mock_db_session.execute.assert_called_once()
+        # DELETE should have been executed for old links, plus the
+        # MediaGenreType insert recording which media types the genre applies to.
+        assert mock_db_session.execute.call_count == 2
+        delete_stmt = mock_db_session.execute.call_args_list[0].args[0]
+        assert isinstance(delete_stmt, Delete)
 
     async def test_empty_genres(self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock):
         raw = {"genres": []}
@@ -242,20 +268,16 @@ class TestHydrateImages:
                 ],
             }
         }
-        # Batch URL check returns empty (no existing URLs)
-        mock_db_session.scalars.return_value = []
 
         await hydrator.hydrate_images(media_item, raw)
 
-        added = [c.args[0] for c in mock_db_session.add.call_args_list]
-        assets = [o for o in added if isinstance(o, MediaAsset)]
-        posters = [a for a in assets if a.asset_type == "poster"]
-        backdrops = [a for a in assets if a.asset_type == "backdrop"]
-
-        assert len(posters) == 2
-        assert len(backdrops) == 1
-        assert all(a.provider == "tmdb" for a in assets)
-        assert posters[0].url == "https://image.tmdb.org/t/p/original/p1.jpg"
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert sql.count("'poster'") == 2
+        assert sql.count("'backdrop'") == 1
+        assert "https://image.tmdb.org/t/p/original/p1.jpg" in sql
+        assert "https://image.tmdb.org/t/p/original/bd1.jpg" in sql
+        assert sql.count("'tmdb'") == 3
 
     async def test_limits_posters_to_10(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
@@ -266,15 +288,14 @@ class TestHydrateImages:
                 "backdrops": [],
             }
         }
-        mock_db_session.scalars.return_value = []
 
         await hydrator.hydrate_images(media_item, raw)
 
-        added = [c.args[0] for c in mock_db_session.add.call_args_list]
-        posters = [o for o in added if isinstance(o, MediaAsset)]
-        assert len(posters) == 10
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert sql.count("'poster'") == 10
 
-    async def test_skips_existing_urls(
+    async def test_delegates_url_dedup_to_db(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock
     ):
         raw = {
@@ -283,14 +304,16 @@ class TestHydrateImages:
                 "backdrops": [],
             }
         }
-        # URL already exists
-        mock_db_session.scalars.return_value = [
-            "https://image.tmdb.org/t/p/original/p1.jpg"
-        ]
 
         await hydrator.hydrate_images(media_item, raw)
 
-        mock_db_session.add.assert_not_called()
+        # Dedup is delegated to the DB via a single bulk INSERT ... ON CONFLICT
+        # DO NOTHING against the global media_assets.url unique index, so a
+        # concurrent hydration of the same URL can't raise IntegrityError.
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert "ON CONFLICT" in sql
+        assert "https://image.tmdb.org/t/p/original/p1.jpg" in sql
 
     async def test_skips_missing_images(
         self, hydrator: TMDBHydrator, media_item: MediaItem, mock_db_session: AsyncMock

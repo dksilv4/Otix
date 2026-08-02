@@ -12,26 +12,28 @@ import json
 
 import structlog
 from sqlalchemy import delete, not_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from otix.domain.asset import ExternalRating, MediaAsset, MediaRelease, MediaVideo
+from otix.domain.asset import ExternalRating, MediaRelease, MediaVideo
 from otix.domain.base import gen_otix_id
 from otix.domain.collection import Collection
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.franchise import Franchise, FranchiseItem
-from otix.domain.genre import Genre, Keyword, MediaGenre, MediaKeyword
+from otix.domain.genre import Genre, Keyword, MediaGenre, MediaGenreType, MediaKeyword
 from otix.domain.media import ExternalID, MediaItem, Movie
-from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 from otix.domain.people import MediaCredit, Person, PersonAsset
 from otix.domain.watch_provider import MediaWatchProvider, WatchProvider
 from otix.lib.collection_matcher import normalize_franchise_name
 from otix.lib.genres import normalize_genre_names
 from otix.lib.slug import slugify
+from otix.providers.asset_pipeline import AssetPipeline, RawAsset
 from otix.providers.tmdb.client import TMDBProvider
 from otix.providers.tmdb.transformer import _parse_date
 from otix.services.external_id_service import ExternalIDService
+from otix.services.rating_algorithm_service import compute_and_store_overall_rating
 
 logger = structlog.get_logger()
 
@@ -229,6 +231,12 @@ class TMDBHydrator:
             if genre is None:
                 continue
             self.session.add(MediaGenre(media_item_id=media_item.id, genre_id=genre.id))
+            # Record which media types this genre applies to (idempotent).
+            await self.session.execute(
+                pg_insert(MediaGenreType)
+                .values(genre_id=genre.id, media_type=media_item.media_type)
+                .on_conflict_do_nothing(constraint="genre_media_types_pkey")
+            )
 
     async def _batch_get_or_create_genres(self, names_by_slug: dict[str, str]) -> dict[str, Genre]:
         """Resolve all genres in one batch."""
@@ -275,61 +283,50 @@ class TMDBHydrator:
         """Store posters, textless posters, and backdrops as MediaAsset rows.
 
         TMDB returns iso_639_1 for each image. When null/None, the poster
-        has no text overlay — we store those as asset_type='textless_poster'
-        and pick the best one for media_item.textless_poster_url.
+        has no text overlay — we store those as asset_type='textless_poster'.
+        (Note: textless poster promotion is driven by Fanart, since TMDB's
+        iso_639_1=null is unreliable for detecting truly textless posters.)
         """
         images = raw.get("images", {})
         if not images:
             return
 
-        candidates: list[tuple[str, dict]] = []
-        best_textless_width = 0
-
+        raw_assets: list[RawAsset] = []
         for poster in images.get("posters", [])[:10]:
-            iso_lang = poster.get("iso_639_1")
-            if iso_lang is None:
-                # Textless poster — track best one for media_item.textless_poster_url
-                candidates.append(("textless_poster", poster))
-                w = poster.get("width") or 0
-                if w > best_textless_width:
-                    best_textless_width = w
-            else:
-                candidates.append(("poster", poster))
-
-        for backdrop in images.get("backdrops", [])[:5]:
-            candidates.append(("backdrop", backdrop))
-
-        if not candidates:
-            return
-
-        urls = {_tmdb_image(entry.get("file_path"), "original") for _, entry in candidates}
-        urls.discard(None)
-
-        # Batch-check existing URLs
-        existing_urls = set()
-        if urls:
-            result = await self.session.scalars(select(MediaAsset.url).where(MediaAsset.url.in_(urls)))
-            existing_urls = set(result)
-
-        for asset_type, entry in candidates:
-            url = _tmdb_image(entry.get("file_path"), "original")
-            if url is None or url in existing_urls:
+            url = _tmdb_image(poster.get("file_path"), "original")
+            if not url:
                 continue
-            self.session.add(
-                MediaAsset(
-                    media_item_id=media_item.id,
-                    asset_type=asset_type,
+            textless = poster.get("iso_639_1") is None
+            raw_assets.append(
+                RawAsset(
+                    asset_type="textless_poster" if textless else "poster",
                     url=url,
-                    width=entry.get("width"),
-                    height=entry.get("height"),
-                    lang=entry.get("iso_639_1"),
                     provider="tmdb",
+                    width=poster.get("width"),
+                    height=poster.get("height"),
+                    lang=poster.get("iso_639_1"),
+                    label="textless" if textless else "official",
                 )
             )
-            existing_urls.add(url)
 
-        # Textless posters are sourced from Fanart, not TMDB.
-        # TMDB's iso_639_1=null is unreliable for detecting truly textless posters.
+        for backdrop in images.get("backdrops", [])[:5]:
+            url = _tmdb_image(backdrop.get("file_path"), "original")
+            if not url:
+                continue
+            raw_assets.append(
+                RawAsset(
+                    asset_type="backdrop",
+                    url=url,
+                    provider="tmdb",
+                    width=backdrop.get("width"),
+                    height=backdrop.get("height"),
+                    lang=backdrop.get("iso_639_1"),
+                    label="official",
+                )
+            )
+
+        if raw_assets:
+            await AssetPipeline(self.session).store(media_item.id, raw_assets)
 
     # ── Videos ───────────────────────────────────────────────────
 
@@ -339,6 +336,15 @@ class TMDBHydrator:
         results = videos.get("results", [])
         if not results:
             return
+
+        # Delete-first so re-syncs don't stack duplicate rows (matches the
+        # pattern used by genres/platforms/modes/releases hydration).
+        await self.session.execute(
+            delete(MediaVideo).where(
+                MediaVideo.media_item_id == media_item.id,
+                MediaVideo.provider == "tmdb",
+            )
+        )
 
         for video in results[:10]:
             key = video.get("key")

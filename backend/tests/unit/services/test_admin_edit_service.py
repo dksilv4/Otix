@@ -14,8 +14,6 @@ def make_media_item(**overrides):
         "media_type": "movie",
         "title": "Test Movie",
         "slug": "test-movie",
-        "poster_url": None,
-        "backdrop_url": None,
         "release_date": "2023-01-01",
         "popularity": 10.0,
         "original_language": "en",

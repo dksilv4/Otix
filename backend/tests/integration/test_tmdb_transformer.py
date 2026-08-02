@@ -126,7 +126,7 @@ class TestToMediaItem:
         item = to_media_item(raw, "movie")
         assert item.release_date is None
 
-    def test_poster_and_backdrop_urls(self):
+    def test_image_urls_not_baked_into_model(self):
         raw = {
             "title": "Test",
             "overview": "",
@@ -135,8 +135,10 @@ class TestToMediaItem:
             "backdrop_path": "/backdrop.jpg",
         }
         item = to_media_item(raw, "movie")
-        assert item.poster_url == "https://image.tmdb.org/t/p/w500/poster.jpg"
-        assert item.backdrop_url == "https://image.tmdb.org/t/p/w1280/backdrop.jpg"
+        # Image URLs are resolved at query time from media_assets (hydrator
+        # stores them via AssetPipeline), never written to the model.
+        assert item.poster_url is None
+        assert item.backdrop_url is None
 
 
 # ── to_movie ────────────────────────────────────────────────────────

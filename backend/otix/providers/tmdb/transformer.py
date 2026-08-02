@@ -39,8 +39,6 @@ def to_media_item(raw: dict[str, JSONValue], media_type: str) -> MediaItem:
         title=title,
         overview=raw.get("overview"),
         slug=slug,
-        poster_url=_image_url(raw.get("poster_path")),
-        backdrop_url=_image_url(raw.get("backdrop_path"), "w1280"),
         release_date=_parse_date(raw.get("release_date") or raw.get("first_air_date")),
         popularity=raw.get("popularity", 0.0),
         original_language=raw.get("original_language"),

@@ -105,10 +105,13 @@ def to_album(raw: dict[str, JSONValue], tracks_data: list[dict] | None = None) -
         media_type="music",
         title=title,
         slug=slugify(title),
-        poster_url=cover_url,
         release_date=release_date,
         synced_at=datetime.now(UTC),
     )
+    # Cover art is stored as a media_assets row by the seed task; best-asset
+    # selection is resolved at query time (asset_selection).
+    if cover_url:
+        media._cover_url = cover_url
 
     album = Album(
         release_type=_release_type(album_type),

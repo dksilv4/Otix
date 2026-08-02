@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.api.deps import get_db
 from otix.schemas.list import RankHistoryOut
 from otix.schemas.media import MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.list_service import ListService
 
 logger = structlog.get_logger()
@@ -31,6 +32,7 @@ async def list_rank_history(
         logger.exception("failed to fetch rank history", list_id=list_id, ip=ip)
         raise
 
+    await enrich_items_with_assets(db, [e.media_item for e in entries if e.media_item is not None])
     logger.info("rank history fetched", list_id=list_id, count=len(entries), ip=ip)
     return [
         RankHistoryOut(

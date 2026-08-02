@@ -12,7 +12,7 @@ from otix.api.deps import get_current_admin_user, get_current_user, get_db
 from otix.domain.proposal import Proposal
 from otix.domain.user import User
 from otix.infrastructure.config import settings
-from otix.services.proposals_service import ProposalsService, ProposalError, is_trusted_user
+from otix.services.proposals_service import ProposalError, ProposalsService, is_trusted_user
 
 router = APIRouter(prefix="/proposals", tags=["proposals"])
 
@@ -304,18 +304,20 @@ async def _fetch_target_media(
         return {}
 
     from sqlalchemy import select
+
     from otix.domain.media import MediaItem
 
-    rows = await db.execute(
-        select(MediaItem.id, MediaItem.title, MediaItem.poster_url, MediaItem.backdrop_url).where(
-            MediaItem.id.in_(media_ids)
-        )
-    )
+    items = list(await db.scalars(
+        select(MediaItem).where(MediaItem.id.in_(media_ids))
+    ))
+    from otix.services.asset_selection import enrich_items_with_assets
+
+    await enrich_items_with_assets(db, items)
     return {
-        row.id: {
-            "title": row.title,
-            "poster_url": row.poster_url,
-            "backdrop_url": row.backdrop_url,
+        item.id: {
+            "title": item.title,
+            "poster_url": item.poster_url,
+            "backdrop_url": item.backdrop_url,
         }
-        for row in rows
+        for item in items
     }

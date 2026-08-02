@@ -8,6 +8,7 @@ from otix.api.deps import get_current_user, get_db
 from otix.domain.user import User
 from otix.schemas.interaction import UserInteractionState
 from otix.schemas.media import MediaItemListResponse, MediaItemSummary
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.interaction_service import InteractionService
 
 logger = structlog.get_logger()
@@ -61,6 +62,7 @@ async def get_library_tab(
         logger.exception("failed to fetch library tab", tab=tab, user_id=current_user.id, ip=ip)
         raise
 
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     auto_state = {

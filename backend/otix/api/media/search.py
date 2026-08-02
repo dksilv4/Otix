@@ -50,6 +50,7 @@ from otix.schemas.media import (
     SyncLocalGamesResponse,
     CompanyOut,
 )
+from otix.services.asset_selection import enrich_items_with_assets
 from otix.services.external_id_service import ExternalIDService
 from otix.services.game_matcher import GameMatcher
 from otix.services.interaction_service import InteractionService
@@ -115,6 +116,7 @@ async def list_media(
     )
 
     next_cursor = items[-1].id if has_more and items else None
+    await enrich_items_with_assets(db, items)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     if sort_by in ("revenue", "budget", "profit"):
@@ -332,6 +334,7 @@ async def match_scan(
                         row = await db.execute(stmt)
                         mi = row.scalars().first()
                         if mi:
+                            await enrich_items_with_assets(db, [mi])
                             hydrated = {
                                 "id": mi.id, "title": mi.title, "slug": mi.slug,
                                 "poster_url": mi.poster_url, "backdrop_url": mi.backdrop_url,

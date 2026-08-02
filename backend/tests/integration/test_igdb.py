@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from otix.domain.asset import ExternalRating, MediaAsset, MediaVideo
+from otix.domain.asset import ExternalRating, MediaVideo
 from otix.domain.company import Company, InvolvedCompany
 from otix.domain.genre import Genre
 from otix.domain.media import (
@@ -350,10 +350,10 @@ class TestToMediaItem:
         assert item.slug == "the-witcher-3-wild-hunt"
         assert item.release_date == date(2015, 5, 29)
         assert item.popularity == 150.0
-        assert item.poster_url == "https://images.igdb.com/igdb/image/upload/t_cover_big/co1tj2.jpg"
-        assert item.backdrop_url is not None
-        assert "t_1080p" in item.backdrop_url
-        assert "ar1" in item.backdrop_url  # first artwork
+        # Image URLs are resolved at query time from media_assets (hydrator
+        # stores them via AssetPipeline), never written to the model.
+        assert item.poster_url is None
+        assert item.backdrop_url is None
 
     def test_minimal_game(self, igdb_minimal_raw):
         item = to_media_item(igdb_minimal_raw)
@@ -503,41 +503,58 @@ class TestHydrateGenres:
         mock_db_session.add.assert_not_called()
 
 
+def _asset_insert_sql(mock_db_session: AsyncMock) -> str | None:
+    """Compile the media_assets bulk insert to SQL with literal values inlined.
+
+    AssetPipeline.store issues a single ``pg_insert(MediaAsset) ... ON CONFLICT
+    DO NOTHING``; rendering it with literal binds lets the tests assert on the
+    exact rows being stored.
+    """
+    from sqlalchemy.dialects import postgresql as pg_dialect
+    from sqlalchemy.sql.dml import Insert
+
+    for call in mock_db_session.execute.call_args_list:
+        stmt = call.args[0]
+        if not isinstance(stmt, Insert):
+            continue
+        sql = str(
+            stmt.compile(dialect=pg_dialect.dialect(), compile_kwargs={"literal_binds": True})
+        )
+        if "media_assets" in sql:
+            return sql
+    return None
+
+
 class TestHydrateImages:
     async def test_creates_cover_screenshots_artworks(self, igdb_hydrator, mock_db_session, igdb_game_raw):
-        mock_db_session.scalars.return_value = []
         item = to_media_item(igdb_game_raw)
 
         await igdb_hydrator.hydrate_images(item, igdb_game_raw)
 
-        assets_added = [
-            c[0][0] for c in mock_db_session.add.call_args_list
-            if isinstance(c[0][0], MediaAsset)
-        ]
-        types = {a.asset_type for a in assets_added}
-        assert "poster" in types
-        assert "screenshot" in types
-        assert "backdrop" in types
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert "'poster'" in sql
+        assert "'screenshot'" in sql
+        assert "'backdrop'" in sql
 
-    async def test_skips_existing_urls(self, igdb_hydrator, mock_db_session, igdb_game_raw):
-        existing_url = "https://images.igdb.com/igdb/image/upload/t_cover_big/co1tj2.jpg"
-        mock_db_session.scalars.return_value = [existing_url]
+    async def test_delegates_url_dedup_to_db(self, igdb_hydrator, mock_db_session, igdb_game_raw):
         item = to_media_item(igdb_game_raw)
 
         await igdb_hydrator.hydrate_images(item, igdb_game_raw)
 
-        assets_added = [
-            c[0][0] for c in mock_db_session.add.call_args_list
-            if isinstance(c[0][0], MediaAsset)
-        ]
-        types = {a.asset_type for a in assets_added}
-        assert "cover" not in types
+        # Dedup is delegated to the DB via a single bulk INSERT ... ON CONFLICT
+        # DO NOTHING against the global media_assets.url unique index.
+        sql = _asset_insert_sql(mock_db_session)
+        assert sql is not None
+        assert "media_assets" in sql
+        assert "ON CONFLICT" in sql
+        assert "'poster'" in sql
 
     async def test_no_images(self, igdb_hydrator, mock_db_session, igdb_minimal_raw):
         item = to_media_item(igdb_minimal_raw)
 
         await igdb_hydrator.hydrate_images(item, igdb_minimal_raw)
-        mock_db_session.add.assert_not_called()
+        mock_db_session.execute.assert_not_called()
 
 
 class TestHydrateVideos:

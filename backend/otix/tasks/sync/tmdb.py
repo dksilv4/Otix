@@ -41,13 +41,6 @@ from ._common import (
 
 logger = structlog.get_logger()
 
-_IMAGE_FIELD_MAP = {
-    "poster": "poster_url",
-    "backdrop": "backdrop_url",
-    "logo": "logo_url",
-    "textless_poster": "textless_poster_url",
-}
-
 
 # ── Task definitions ───────────────────────────────────────────────────
 
@@ -193,8 +186,15 @@ async def _resolve_external_id(session, tmdb_id: str, media_type: str) -> tuple[
 # ── Individual entity sync ─────────────────────────────────────────────
 
 
-async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -> dict | None:
-    """Sync a TMDB movie or show: fetch → hash-check → transform → upsert → hydrate."""
+async def _sync_tmdb_media(
+    tmdb_id: int, media_type: str, force: bool = False, *, enqueue_enrichment: bool = True
+) -> dict | None:
+    """Sync a TMDB movie or show: fetch → hash-check → transform → upsert → hydrate.
+
+    When ``enqueue_enrichment=False`` the follow-up fanart/omdb tasks are NOT
+    fired asynchronously; the caller (full-hydration orchestrator) awaits them
+    inline so the item is fully processed before this returns.
+    """
     with track_entity_duration("tmdb", media_type):
         async with async_session() as session:
             tmdb_id_str = str(tmdb_id)
@@ -246,37 +246,14 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                 item = movie.media_item
 
                 if media_item is not None:
-                    # Snapshot protected image URLs before merge so we can restore them.
-                    from otix.services.admin_edit_service import AdminEditService
-                    protected = await AdminEditService.get_protected_image_types(session, media_item.id)
-                    pre_urls: dict[str, str | None] = {}
-                    if protected:
-                        pre_urls = {
-                            "poster": media_item.poster_url,
-                            "backdrop": media_item.backdrop_url,
-                            "logo": media_item.logo_url,
-                            "textless_poster": media_item.textless_poster_url,
-                        }
-
+                    # Asset URLs are resolved at query time (asset_selection);
+                    # admin overrides are checked there. Merge the fresh metadata
+                    # without touching any URL columns.
                     item.id = media_item.id
                     movie.media_item_id = media_item.id
                     managed_item = await session.merge(item)
                     item = managed_item
                     movie = managed_item.movie
-
-                    # Restore protected fields that merge overwrote, and create system proposals.
-                    for img_type in protected:
-                        field = _IMAGE_FIELD_MAP.get(img_type)
-                        if not field:
-                            continue
-                        pre_val = pre_urls.get(img_type)
-                        post_val = getattr(item, field, None)
-                        if pre_val and pre_val != post_val:
-                            setattr(item, field, pre_val)
-                            svc = AdminEditService(session)
-                            await svc.create_system_proposal_for_image(
-                                item.id, img_type, post_val
-                            )
                 else:
                     session.add(item)
                     await session.flush()
@@ -293,10 +270,7 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                 item = show.media_item
 
                 if media_item is not None:
-                    from otix.services.admin_edit_service import AdminEditService
                     from otix.services.embedding_service import is_embedding_stale
-
-                    protected = await AdminEditService.get_protected_image_types(session, media_item.id)
 
                     old_overview = media_item.overview
                     media_item.title = item.title
@@ -304,17 +278,6 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
                     if is_embedding_stale(old_overview, media_item.overview):
                         media_item.embedding = None
                     media_item.slug = item.slug
-                    # Guard poster_url / backdrop_url against admin overrides.
-                    for img_type, field in [("poster", "poster_url"), ("backdrop", "backdrop_url")]:
-                        proposed = getattr(item, field, None)
-                        current = getattr(media_item, field, None)
-                        if img_type in protected and current and current != proposed:
-                            svc = AdminEditService(session)
-                            await svc.create_system_proposal_for_image(
-                                media_item.id, img_type, proposed
-                            )
-                        else:
-                            setattr(media_item, field, proposed)
                     media_item.release_date = item.release_date
                     media_item.popularity = item.popularity
                     media_item.original_language = item.original_language
@@ -464,8 +427,9 @@ async def _sync_tmdb_media(tmdb_id: int, media_type: str, force: bool = False) -
             )
             SYNC_ENTITIES_TOTAL.inc(provider="tmdb", entity_type=media_type, status="success")
             await _progress_incr(f"{media_type}_synced")
-            app.send_task("sync.fanart.enrich", args=[media_type, item.id])
-            app.send_task("sync.omdb.ratings", args=[item.id])
+            if enqueue_enrichment:
+                app.send_task("sync.fanart.enrich", args=[media_type, item.id])
+                app.send_task("sync.omdb.ratings", args=[item.id])
             return {"otix_id": item.id, "title": item.title, "tmdb_id": tmdb_id}
 
 

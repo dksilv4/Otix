@@ -17,13 +17,13 @@ from otix.domain.proposal import Proposal
 from otix.domain.user import User
 
 # Fields that can be edited via proposals
+# Image URLs are edited via image_overrides (media_image_overrides), which the
+# query-time asset resolver honors — never via MediaItem columns.
+_IMAGE_URL_FIELDS = {"poster_url", "textless_poster_url", "backdrop_url", "logo_url"}
+
 _ALLOWED_CHANGE_FIELDS = {
     "title",
     "overview",
-    "poster_url",
-    "textless_poster_url",
-    "backdrop_url",
-    "logo_url",
     "original_language",
     "release_date",
     "tagline",
@@ -120,8 +120,11 @@ class EditProposalHandler:
         if media_item is None:
             return
 
-        # Restore field values from snapshot
+        # Restore field values from snapshot (image URLs are restored via the
+        # image overrides deletion below — they're not MediaItem columns).
         for field, value in changes_snapshot.items():
+            if field in _IMAGE_URL_FIELDS:
+                continue
             if hasattr(media_item, field):
                 setattr(media_item, field, value)
 
