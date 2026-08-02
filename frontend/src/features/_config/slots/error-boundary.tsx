@@ -1,5 +1,6 @@
 // frontend/src/features/_config/slots/ErrorBoundary.tsx
 import { Component, type ReactNode } from 'react'
+import { showErrorToast } from '@/old-features/ui/molecules/toast'
 
 interface Props {
   children: ReactNode
@@ -23,6 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error): void {
+    showErrorToast(error, 'Slot Error')
     this.props.onError?.(error)
   }
 

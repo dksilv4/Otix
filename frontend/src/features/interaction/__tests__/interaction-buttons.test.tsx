@@ -64,7 +64,7 @@ describe('InteractionSection', () => {
     expect(screen.getByText('Watchlist')).toBeInTheDocument()
   })
 
-  it('shows sign-in prompt when not authenticated', () => {
+  it('opens sign-in modal when clicking interaction button while not authenticated', async () => {
     mockIsAuthenticated = false
 
     render(
@@ -72,7 +72,9 @@ describe('InteractionSection', () => {
       { wrapper: createWrapper() },
     )
 
-    expect(screen.getByText(/sign in/i)).toBeInTheDocument()
+    expect(screen.getByText('Like')).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Like'))
+    expect(mockOpenModal).toHaveBeenCalled()
   })
 
   it('does not open a confirmation dialog when clicking Watched for a movie', async () => {

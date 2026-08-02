@@ -24,5 +24,6 @@ export { ForgotPasswordPage } from './pages/auth-forgot-password-page'
 export { ResetPasswordPage } from './pages/auth-reset-password-page'
 export { CallbackPage } from './pages/auth-callback-page'
 export { TwoFactorPage } from './pages/auth-two-factor-page'
+export { GuestCtaBanner } from './components/molecules/guest-cta-banner'
 export type { User, AuthState } from './types'
 

@@ -31,7 +31,7 @@ export function CalendarPage() {
   const monthLabel = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
       <Helmet>
         <title>Calendar — Otix</title>
       </Helmet>

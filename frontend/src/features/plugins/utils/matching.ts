@@ -80,45 +80,57 @@ export async function batchMatchAndSave(
 
   let matches: MatchResponse[] = []
 
+  // Large libraries (hundreds of games) can take minutes to match — each game
+  // triggers serial IGDB searches server-side (~2s/game). Send the batch in
+  // chunks so no single request exceeds the timeout, and accumulate results
+  // in order so the per-game loop below stays index-aligned.
+  const CHUNK_SIZE = 25
+  const mapMatch = (m: any): MatchResponse => ({
+    queryId: m.queryId || m.query_id || '',
+    queryTitle: m.queryTitle || m.query_title || '',
+    candidates: (m.candidates || []).map((c: any) => ({
+      mediaItemId: c.mediaItemId || c.media_item_id || null,
+      title: c.title,
+      posterUrl: c.posterUrl || c.poster_url || null,
+      backdropUrl: c.backdropUrl || c.backdrop_url || null,
+      releaseYear: c.releaseYear || c.release_year || null,
+      platforms: c.platforms || null,
+      developer: c.developer || null,
+      confidence: c.confidence,
+      matchType: c.matchType || c.match_type || 'unknown',
+      needsImport: c.needsImport || c.needs_import || false,
+      providerId: c.providerId || c.provider_id || null,
+      provider: c.provider || null,
+    })),
+    autoMatch: m.autoMatch || m.auto_match ? {
+      mediaItemId: (m.autoMatch || m.auto_match).mediaItemId || (m.autoMatch || m.auto_match).media_item_id || null,
+      title: (m.autoMatch || m.auto_match).title,
+      posterUrl: (m.autoMatch || m.auto_match).posterUrl || (m.autoMatch || m.auto_match).poster_url || null,
+      backdropUrl: (m.autoMatch || m.auto_match).backdropUrl || (m.autoMatch || m.auto_match).backdrop_url || null,
+      releaseYear: (m.autoMatch || m.auto_match).releaseYear || (m.autoMatch || m.auto_match).release_year || null,
+      platforms: (m.autoMatch || m.auto_match).platforms || null,
+      developer: (m.autoMatch || m.auto_match).developer || null,
+      confidence: (m.autoMatch || m.auto_match).confidence,
+      matchType: (m.autoMatch || m.auto_match).matchType || (m.autoMatch || m.auto_match).match_type || 'unknown',
+      needsImport: (m.autoMatch || m.auto_match).needsImport || (m.autoMatch || m.auto_match).needs_import || false,
+      providerId: (m.autoMatch || m.auto_match).providerId || (m.autoMatch || m.auto_match).provider_id || null,
+      provider: (m.autoMatch || m.auto_match).provider || null,
+    } : null,
+  })
+
   try {
-    const { data } = await apiClient.post<{ matches: any[] }>(
-      '/media/match/batch',
-      { games: batchGames },
-      { timeout: 120000 },
-    )
-    // axios converts snake_case → camelCase. Map to our types.
-    matches = (data.matches || []).map((m: any) => ({
-      queryId: m.queryId || m.query_id || '',
-      queryTitle: m.queryTitle || m.query_title || '',
-      candidates: (m.candidates || []).map((c: any) => ({
-        mediaItemId: c.mediaItemId || c.media_item_id || null,
-        title: c.title,
-        posterUrl: c.posterUrl || c.poster_url || null,
-        backdropUrl: c.backdropUrl || c.backdrop_url || null,
-        releaseYear: c.releaseYear || c.release_year || null,
-        platforms: c.platforms || null,
-        developer: c.developer || null,
-        confidence: c.confidence,
-        matchType: c.matchType || c.match_type || 'unknown',
-        needsImport: c.needsImport || c.needs_import || false,
-        providerId: c.providerId || c.provider_id || null,
-        provider: c.provider || null,
-      })),
-      autoMatch: m.autoMatch || m.auto_match ? {
-        mediaItemId: (m.autoMatch || m.auto_match).mediaItemId || (m.autoMatch || m.auto_match).media_item_id || null,
-        title: (m.autoMatch || m.auto_match).title,
-        posterUrl: (m.autoMatch || m.auto_match).posterUrl || (m.autoMatch || m.auto_match).poster_url || null,
-        backdropUrl: (m.autoMatch || m.auto_match).backdropUrl || (m.autoMatch || m.auto_match).backdrop_url || null,
-        releaseYear: (m.autoMatch || m.auto_match).releaseYear || (m.autoMatch || m.auto_match).release_year || null,
-        platforms: (m.autoMatch || m.auto_match).platforms || null,
-        developer: (m.autoMatch || m.auto_match).developer || null,
-        confidence: (m.autoMatch || m.auto_match).confidence,
-        matchType: (m.autoMatch || m.auto_match).matchType || (m.autoMatch || m.auto_match).match_type || 'unknown',
-        needsImport: (m.autoMatch || m.auto_match).needsImport || (m.autoMatch || m.auto_match).needs_import || false,
-        providerId: (m.autoMatch || m.auto_match).providerId || (m.autoMatch || m.auto_match).provider_id || null,
-        provider: (m.autoMatch || m.auto_match).provider || null,
-      } : null,
-    }))
+    for (let i = 0; i < batchGames.length; i += CHUNK_SIZE) {
+      const chunk = batchGames.slice(i, i + CHUNK_SIZE)
+      const { data } = await apiClient.post<{ matches: any[] }>(
+        '/media/match/batch',
+        { games: chunk },
+        { timeout: 180000 },
+      )
+      matches.push(...(data.matches || []).map(mapMatch))
+      console.log(
+        `[matching] chunk ${i / CHUNK_SIZE + 1}/${Math.ceil(batchGames.length / CHUNK_SIZE)}: ${chunk.length} games → ${(data.matches || []).length} responses`,
+      )
+    }
     console.log(`[matching] ${games.length} games sent, ${matches.length} responses, ${matches.filter(m => m.autoMatch).length} auto-matched, ${matches.filter(m => m.candidates.length > 0 && !m.autoMatch).length} candidates`)
   } catch (err) {
     console.error('[matching] batch match request failed:', err)
@@ -134,7 +146,9 @@ export async function batchMatchAndSave(
         platform: g.platform as any,
         posterUrl: g.posterUrl || undefined,
         iconUrl: g.logoUrl || undefined,
-        sources: g.sources || [{ source: g.platform, appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, developerId: g.developerId, contentType: g.contentType, platforms: g.platforms, savePaths: g.savePaths }],
+        isDlc: g.isDlc === true,
+        dlcOf: g.dlcOf || undefined,
+        sources: g.sources || [{ source: g.platform, appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, developerId: g.developerId, contentType: g.contentType, platforms: g.platforms, savePaths: g.savePaths, isDlc: g.isDlc === true, dlcOf: g.dlcOf || null }],
       }))
       await desktopAPI.saveScannedGames(toSave)
     } catch (err) {

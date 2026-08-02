@@ -17,7 +17,7 @@ import { PageMetaProvider } from '@/lib/providers/page-context'
 import { SpotifyPlayerProvider } from '@/lib/player/spotify-player-provider'
 import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
 import { PlayerProvider } from '@/lib/player/use-player'
-import { DkToastProvider } from '@/old-features/ui/molecules/toast'
+import { DkToastProvider, showErrorToast } from '@/old-features/ui/molecules/toast'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
@@ -29,29 +29,32 @@ if (plat.isDesktop && plat.platform) {
   document.documentElement.setAttribute('data-desktop-platform', plat.platform)
 }
 
-// Suppress noisy unhandled rejections from browser/environment that
-// bubble as "Uncaught (in promise)" in the console. These are not
-// actionable: they come from the browser's EME/CDM probing (common on
-// Electron and some Chromium configurations) or from third-party
-// integrations we don't control. Other rejections still appear.
+// Global unhandled promise rejection handler — displays error toast
 window.addEventListener('unhandledrejection', (event) => {
-  const msg = String(event.reason ?? '')
+  const msg = String(event.reason?.message || event.reason || '')
   if (
     msg.includes('EMEError') ||
     msg.includes('No supported keysystem') ||
     msg.includes('requestMediaKeySystemAccess') ||
-    msg.includes('send was called before connect')
+    msg.includes('send was called before connect') ||
+    msg.includes('canceled') ||
+    msg.includes('cancelled')
   ) {
     event.preventDefault()
+    return
   }
+
+  showErrorToast(event.reason, 'Unhandled Promise Rejection')
 })
 
-// On Windows Electron the PlayReady CDM is often unavailable, which
-// causes the Spotify Web Playback SDK to throw EMEError when it probes
-// for key systems.  The Electron build now uses Spotify Connect REST
-// API instead of the SDK, but keep the suppression for browser users.
-// (This is harmless — it only catches what's already an unhandled
-// rejection from the browser's own EME probing.)
+// Global unhandled script error handler — displays error toast
+window.addEventListener('error', (event) => {
+  if (event.error) {
+    showErrorToast(event.error, 'Application Error')
+  } else if (event.message) {
+    showErrorToast(event.message, 'Application Error')
+  }
+})
 
 const hasToken = !!localStorage.getItem(ACCESS_TOKEN_KEY)
 

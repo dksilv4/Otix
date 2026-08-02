@@ -73,14 +73,14 @@ export function PluginSlot({ location, pluginApi }: Props) {
   if (slotData.length === 0) return null
 
   return (
-    <>
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
       {slotData.map(entry => {
         if (entry.data?.type === 'scan') {
           return <ScanSlotCard key={entry.pluginId} entry={entry} pluginApi={pluginApi} />
         }
         return null
       })}
-    </>
+    </div>
   )
 }
 
@@ -330,78 +330,109 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
     if (isScanning) setExpanded(true)
   }, [isScanning])
 
+  const lowerName = (data.label || entry.label || entry.pluginId || '').toLowerCase()
+  const providerIcon = lowerName.includes('local') || lowerName.includes('folder') || lowerName.includes('file') ? FolderOpen : Gamepad2
+  const iconColor = lowerName.includes('steam') ? 'text-sky-400 bg-sky-500/15' : lowerName.includes('epic') ? 'text-purple-400 bg-purple-500/15' : lowerName.includes('local') || lowerName.includes('folder') ? 'text-amber-400 bg-amber-500/15' : 'text-primary bg-primary/15'
+  const ProviderIcon = providerIcon
+
   return (
-    <div className="rounded-xl overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-      {/* Header — clickable toggle */}
-      <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors select-none"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-          <Gamepad2 className="h-4 w-4" style={{ color: 'var(--primary)' }} />
+    <div
+      className={`rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 hover:bg-white/[0.04] ${isScanning ? 'ring-2 ring-primary/60 animate-pulse' : ''}`}
+      style={{
+        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.18)',
+        boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+      }}
+    >
+      {/* Layered Glass Gradient Overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-black/[0.2]" />
+
+      {/* Top Row: Icon Badge & Connection Status */}
+      <div className="flex items-center justify-between gap-2 relative z-10">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
+          <ProviderIcon className="h-5 w-5" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-white">{data.label || entry.label}</p>
-            {hasAuth && (
-              <span className={'inline-flex items-center gap-1 text-[0.625rem] rounded-full px-1.5 py-0.5 ' + (connected ? 'text-green-400 bg-green-500/10' : 'text-white/40 bg-white/5')}>
-                <span className={"h-1.5 w-1.5 rounded-full " + (connected ? 'bg-green-500' : 'bg-white/20')} />
-                {connected ? 'Connected' : 'Not connected'}
-              </span>
-            )}
-          </div>
-          {data.description && (
-            <p className="text-xs text-white/40 mt-0.5">{data.description}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {hasAuth ? (
-            connected ? (
-              <>
-                <button onClick={() => handleAction('scan')} disabled={loading || !!isScanning}
-                  className="inline-flex items-center gap-1.5 h-7 rounded-lg px-2.5 text-[0.625rem] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors disabled:opacity-50">
-                  {loading && !isScanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                  Scan
-                </button>
-                {data.actions?.logout && (
-                  <button onClick={() => handleAction('logout')} disabled={loading}
-                    className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/5 transition-colors disabled:opacity-50">
-                    <LogOut className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </>
-            ) : (
-              <button onClick={() => handleAction('login')} disabled={loading}
-                className="inline-flex items-center gap-1.5 h-7 rounded-lg px-3 text-[0.625rem] font-medium bg-primary/15 text-primary hover:bg-primary/25 transition-colors disabled:opacity-50">
-                Sign In
-              </button>
-            )
-          ) : (
-            <div className="flex items-center gap-1">
+
+        {hasAuth ? (
+          <span className={`inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0 ${connected ? 'text-emerald-400' : 'text-amber-400/90'}`}>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${connected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]' : 'bg-amber-400'}`} />
+            {connected ? 'Connected' : 'Disconnected'}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0 text-white/40">
+            <span className="h-2 w-2 rounded-full shrink-0 bg-white/30" />
+            Local
+          </span>
+        )}
+      </div>
+
+      {/* Middle: Title & Description */}
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-bold text-white tracking-tight">{data.label || entry.label}</h4>
+        {data.description && (
+          <p className="text-xs text-white/50 mt-1 line-clamp-2 leading-relaxed">{data.description}</p>
+        )}
+      </div>
+
+      {/* Bottom: Actions & Path Config Toggle */}
+      <div className="flex items-center gap-2 pt-1">
+        {hasAuth ? (
+          connected ? (
+            <>
               <button onClick={() => handleAction('scan')} disabled={loading || !!isScanning}
-                className="inline-flex items-center gap-1.5 h-7 rounded-lg px-2.5 text-[0.625rem] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors disabled:opacity-50">
-                {loading && !isScanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                Scan
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 cursor-pointer">
+                {loading && !isScanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                <span>Scan</span>
               </button>
-              <button
-                onClick={handleReset}
-                className={`inline-flex items-center gap-1 h-7 rounded-lg px-2 text-[0.625rem] font-medium transition-colors ${
-                  resetConfirm
-                    ? 'bg-red-500/20 text-red-400'
-                    : 'text-white/20 hover:text-red-400 hover:bg-white/5'
-                }`}
-                title="Remove scanned games for this plugin"
-              >
-                <Trash2 className="h-3 w-3" />
-                {resetConfirm ? 'Confirm?' : ''}
-              </button>
-            </div>
-          )}
-        </div>
-        <ChevronDown
-          className="h-4 w-4 text-white/30 transition-transform duration-200 shrink-0"
-          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-        />
+              {data.actions?.logout && (
+                <button onClick={() => handleAction('logout')} disabled={loading}
+                  className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/10 transition-all disabled:opacity-50 cursor-pointer"
+                  title="Sign out">
+                  <LogOut className="h-4 w-4" />
+                </button>
+              )}
+            </>
+          ) : (
+            <button onClick={() => handleAction('login')} disabled={loading}
+              className="w-full inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 cursor-pointer">
+              <span>Sign In</span>
+            </button>
+          )
+        ) : (
+          <div className="flex items-center gap-2 flex-1">
+            <button onClick={() => handleAction('scan')} disabled={loading || !!isScanning}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 cursor-pointer">
+              {loading && !isScanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              <span>Scan</span>
+            </button>
+            <button
+              onClick={handleReset}
+              className={`inline-flex items-center justify-center h-8.5 px-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                resetConfirm
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'text-white/30 hover:text-red-400 hover:bg-white/10'
+              }`}
+              title="Remove scanned games for this plugin"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {resetConfirm ? 'Confirm?' : ''}
+            </button>
+          </div>
+        )}
+
+        {configFields.length > 0 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className={`inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl transition-all cursor-pointer ${
+              expanded ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'
+            }`}
+            title="Configure paths"
+          >
+            <ChevronDown
+              className="h-4 w-4 transition-transform duration-200"
+              style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+        )}
       </div>
 
       {/* Expandable content */}
@@ -504,29 +535,29 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
       {/* Remove directory confirmation */}
       {removeDirConfirm && (
         <div className="px-4 pb-4 pt-2">
-          <div className="rounded-lg p-3" style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-            <p className="text-xs text-white/70 mb-2">
-              Remove <span className="text-white font-medium">{removeDirConfirm.path}</span>?
+          <div className="rounded-xl p-3.5 bg-red-500/10 space-y-2">
+            <p className="text-xs text-white/80">
+              Remove <span className="text-white font-semibold">{removeDirConfirm.path}</span>?
             </p>
-            <p className="text-[11px] text-white/40 mb-3">
+            <p className="text-[11px] text-white/50 leading-relaxed">
               Games scanned from this directory will remain unless you choose to delete them.
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={() => executeRemovePath(true)}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all cursor-pointer"
               >
-                Remove & Delete Games
+                Remove &amp; Delete Games
               </button>
               <button
                 onClick={() => executeRemovePath(false)}
-                className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white/10 text-white/60 hover:bg-white/15 transition-colors"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white/80 hover:bg-white/20 transition-all cursor-pointer"
               >
                 Keep Games
               </button>
               <button
                 onClick={() => setRemoveDirConfirm(null)}
-                className="px-3 py-1.5 rounded-lg text-[11px] text-white/30 hover:text-white/50 transition-colors ml-auto"
+                className="px-3 py-1.5 rounded-xl text-xs text-white/40 hover:text-white transition-all ml-auto cursor-pointer"
               >
                 Cancel
               </button>
@@ -543,45 +574,45 @@ function ScanSlotCard({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
             return (
               <div key={field.key}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-medium text-white/50">{field.label}</label>
+                  <label className="text-xs font-medium text-white/60">{field.label}</label>
                   <button
                     onClick={() => addPath(field.key)}
-                    className="inline-flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary font-medium transition-colors"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold transition-colors cursor-pointer"
                   >
-                    <Plus className="h-3 w-3" /> Add
+                    <Plus className="h-3.5 w-3.5" /> Add Path
                   </button>
                 </div>
                 {field.description && (
-                  <p className="text-[10px] text-white/25 mb-1.5">{field.description}</p>
+                  <p className="text-[11px] text-white/40 mb-2">{field.description}</p>
                 )}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {values.map((val, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5">
+                    <div key={idx} className="flex items-center gap-2">
                       <input
                         type="text"
                         value={val}
                         onChange={(e) => updatePath(field.key, idx, e.target.value)}
                         placeholder={field.placeholder || `C:\\Games\\...`}
-                        className="flex-1 h-7 rounded-lg bg-white/[0.04] border border-white/[0.08] px-2.5 text-[11px] text-white/80 outline-none placeholder:text-white/20 focus:border-primary/30 transition-colors"
+                        className="flex-1 h-8.5 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-colors"
                       />
                       <button
                         onClick={() => browsePath(field.key, idx)}
-                        className="flex items-center justify-center h-7 w-7 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+                        className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
                         title="Browse folder"
                       >
-                        <FolderOpen className="h-3.5 w-3.5" />
+                        <FolderOpen className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => confirmRemovePath(field.key, idx)}
-                        className="flex items-center justify-center h-7 w-7 rounded-lg text-white/30 hover:text-red-400 hover:bg-white/5 transition-colors"
+                        className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"
                         title="Remove directory"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
                   {values.length === 0 && (
-                    <p className="text-[10px] text-white/20 italic py-1">No directories configured</p>
+                    <p className="text-xs text-white/30 italic py-1">No directories configured</p>
                   )}
                 </div>
               </div>

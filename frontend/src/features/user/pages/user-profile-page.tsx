@@ -103,7 +103,7 @@ export function UserProfilePage() {
   ].join(', ')
 
   return (
-    <div id="user-profile-page" className="w-full flex flex-col">
+    <div id="user-profile-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 w-full flex flex-col">
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta
@@ -118,7 +118,7 @@ export function UserProfilePage() {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-4 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
         style={{
           boxShadow: heroShadow,
           ['--hero-shadow-hover' as string]: heroShadowHover,

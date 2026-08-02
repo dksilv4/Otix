@@ -23,7 +23,7 @@ export function AuthPage() {
     const handleSuccess = useCallback(() => navigate({to: redirect}), [navigate, redirect])
 
     return (
-        <div id="auth-page" className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+        <div id="auth-page" className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4 py-8">
             <Helmet>
                 <title>Sign In - Otix</title>
                 <meta name="description" content="Sign in to Otix to continue your journey."/>

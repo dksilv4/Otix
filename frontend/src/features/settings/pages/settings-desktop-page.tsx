@@ -3,6 +3,9 @@ import { Monitor, Power, MinusCircle, XCircle, ChevronUp, Eye, Loader2 } from 'l
 import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import type { DesktopSettingsData } from '@/lib/desktop/api'
+import { SettingsCard } from '../components/molecules/settings-card'
+import { SettingsRow } from '../components/molecules/settings-row'
+import { SectionHeader } from '../components/molecules/settings-section-header'
 
 const DEFAULT_SETTINGS: DesktopSettingsData = {
   launchOnStartup: false,
@@ -46,31 +49,42 @@ export function SettingsDesktopPage() {
   }, [api])
 
   if (!isDesktop) return (
-    <div className="space-y-6">
-      <div className="rounded-2xl p-6 space-y-6" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
-        <div>
-          <h2 className="text-lg font-semibold">Desktop</h2>
-          <p className="mt-1 text-sm text-white/60">Desktop settings are only available in the Otix desktop app.</p>
+    <div id="settings-desktop-section" className="space-y-5">
+      <SettingsCard>
+        <div className="text-center space-y-5 max-w-xl mx-auto">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Monitor className="h-7 w-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-white tracking-tight">Otix Desktop App Features</h3>
+            <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
+              Desktop settings (system tray integration, launch at startup, local game library scanning, auto-downloads, and hardware acceleration) are available in the native Otix Desktop App.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center">
+            <a
+              href="https://otix.app/download"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 font-semibold rounded-xl px-6 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
+            >
+              <Monitor className="h-4 w-4" />
+              <span>Download Otix Desktop</span>
+            </a>
+          </div>
         </div>
-        <div className="flex items-center justify-center py-8 text-sm text-white/60">
-          <Monitor className="h-5 w-5 mr-2" />
-          Download the Otix desktop app to access these settings.
-        </div>
-      </div>
+      </SettingsCard>
     </div>
   )
 
   if (loading) return (
-    <div className="space-y-6">
-      <div className="rounded-2xl p-6 space-y-6" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
-        <div>
-          <h2 className="text-lg font-semibold">Desktop</h2>
-          <p className="mt-1 text-sm text-white/60">Configure your Otix desktop experience.</p>
-        </div>
+    <div className="space-y-5">
+      <SettingsCard>
+        <SectionHeader variant="page" title="Desktop" description="Configure your Otix desktop experience." />
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin text-white/40" />
         </div>
-      </div>
+      </SettingsCard>
     </div>
   )
 
@@ -82,41 +96,29 @@ export function SettingsDesktopPage() {
     { key: 'startMinimized' as const, icon: <ChevronUp className="h-5 w-5" />, label: 'Start minimized', desc: 'Otix starts hidden in the system tray. Requires close/minimize-to-tray to be active.' },
   ]
 
-  const SettingRow = ({ icon, label, description, checked, onToggle, disabled }: {
-    icon: React.ReactNode; label: string; description: string; checked: boolean;
-    onToggle: (c: boolean) => void; disabled?: boolean
-  }) => (
-    <div className="flex items-center justify-between rounded-xl px-4 py-4 bg-white/5">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{label}</p>
-          <p className="truncate text-xs text-white/60">{description}</p>
-        </div>
-      </div>
-      <DkSwitch checked={checked} onCheckedChange={onToggle} disabled={disabled} className="ml-3 shrink-0" />
-    </div>
-  )
-
   return (
-    <div id="settings-desktop-section" className="space-y-6">
-      <div className="rounded-2xl p-6 space-y-6" style={{ backgroundColor: 'var(--dk-surface-glass)' }}>
-        <div>
-          <h2 className="text-lg font-semibold">Desktop</h2>
-          <p className="mt-1 text-sm text-white/60">Configure your Otix desktop experience.</p>
-        </div>
+    <div id="settings-desktop-section" className="space-y-5">
+      <SettingsCard>
+        <SectionHeader variant="page" title="Desktop" description="Configure your Otix desktop experience." />
         <div className="space-y-2">
           {rows.map((r) => (
-            <SettingRow
-              key={r.key} icon={r.icon} label={r.label} description={r.desc}
-              checked={settings[r.key]} onToggle={handleToggle(r.key)}
-              disabled={saving === r.key}
+            <SettingsRow
+              key={r.key}
+              icon={r.icon}
+              label={r.label}
+              description={r.desc}
+              action={
+                <DkSwitch
+                  checked={settings[r.key]}
+                  onCheckedChange={handleToggle(r.key)}
+                  disabled={saving === r.key}
+                  className="ml-3 shrink-0"
+                />
+              }
             />
           ))}
         </div>
-      </div>
+      </SettingsCard>
     </div>
   )
 }

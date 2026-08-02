@@ -220,21 +220,40 @@ function InteractionSection({
 
  const interactions = userInteractions ?? fetchedInteractions ?? null
 
- if (!isAuthenticated) {
- const listLabel = mediaType === 'game' || mediaType === 'music' ? 'wishlist' : 'watchlist'
- return (
- <section className={cn('dk-interaction', className)}>
- <div className="dk-interaction__unauthed-card glass-inset">
- <p className="dk-interaction__unauthed-text">
- <Link to="/auth/login" search={{ redirect: location.href }} className="dk-interaction__unauthed-link">
- Sign in
- </Link>{' '}
- to like, {listLabel}, and track this title.
- </p>
- </div>
- </section>
- )
- }
+  const handleGuestAction = (actionLabel: string) => {
+    const close = openModal(
+      <DkDialog
+        open={true}
+        onOpenChange={() => close()}
+        title={`Sign in to ${actionLabel.toLowerCase()} titles`}
+        description="Create an account to track your watch history, sync your game library, and share ratings with friends."
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 mt-4">
+          <button
+            onClick={() => close()}
+            className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+          >
+            Continue Browsing
+          </button>
+          <Link
+            to="/auth/login"
+            search={{ redirect: location.href }}
+            onClick={() => close()}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+          >
+            Sign In
+          </Link>
+          <Link
+            to="/auth/register"
+            onClick={() => close()}
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md"
+          >
+            Create Account
+          </Link>
+        </div>
+      </DkDialog>
+    )
+  }
 
   const visibleButtons = BUTTONS.filter((b) => {
     if (b.showFor === 'all') return true
@@ -299,7 +318,9 @@ function InteractionSection({
  mediaId={mediaId}
  mediaType={mediaType}
             onClick={
-              isWatchedBtn
+              !isAuthenticated
+                ? () => handleGuestAction(btn.label)
+                : isWatchedBtn
                 ? () => handleConfirmShowWatched(!(interactions?.watched ?? false))
                 : undefined
             }

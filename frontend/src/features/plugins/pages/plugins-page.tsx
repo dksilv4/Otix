@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useModal, SlidePanel } from '@/lib/modals'
 import { PluginConfigPanel } from '../components/organisms/plugin-config-panel'
+import { ConnectedCard } from '../components/organisms/plugin-settings'
 import type { PluginInfo } from '@/features/plugins/types/plugins'
 import { cn } from '@/lib/utils'
 import { openExternal } from '@/lib/utils/open-external'
@@ -1170,36 +1171,24 @@ export function SettingsPluginsPage() {
                   {installedPlugins.length}
                 </span>
               </div>
-              <div className="rounded-xl border border-white/[0.06] overflow-x-auto scrollbar-none">
-                <table className="w-full min-w-[750px]">
-                  <thead>
-                    <tr className="border-b border-white/[0.06] sticky top-12 z-10 bg-[#0a0a0b]">
-                      <SortHeader label="Plugin" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="sticky left-0 bg-[#0a0a0b] z-30" />
-                      <SortHeader label="Version" sortKey="version" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
-                      <SortHeader label="Author" sortKey="author" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} className="hidden sm:table-cell" />
-                      <SortHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />
-                      <th className={cn(TH_CLASSES, 'text-right sticky right-0 bg-[#0a0a0b] z-30')}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {installedPlugins.map((plugin) => {
-                      const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
-                      const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
-                      return (
-                        <PluginRow
-                          key={plugin.id}
-                          plugin={plugin}
-                          marketplaceEntry={marketplaceEntry}
-                          onManage={() => openConfig(plugin)}
-                          onToggle={() => handleToggle(plugin)}
-                          toggling={toggling[plugin.id] ?? false}
-                          updating={updating === plugin.id}
-                          onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
-                        />
-                      )
-                    })}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4.5">
+                {installedPlugins.map((plugin) => {
+                  const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
+                  const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
+                  return (
+                    <ConnectedCard
+                      key={plugin.id}
+                      plugin={plugin}
+                      hasUpdate={!!hasUpdate}
+                      updateVersion={hasUpdate ? marketplaceEntry!.version : undefined}
+                      onManage={() => openConfig(plugin)}
+                      onToggle={() => handleToggle(plugin)}
+                      toggling={toggling[plugin.id] ?? false}
+                      updating={updating === plugin.id}
+                      onUpdate={hasUpdate ? () => handleUpdatePlugin(plugin.id) : undefined}
+                    />
+                  )
+                })}
               </div>
             </section>
           ) : (

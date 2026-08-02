@@ -5,6 +5,7 @@ import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-pref
 import { cn } from '@/lib/utils'
 import { Moon, Sun, Monitor, Plus } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
+import { SettingsCard } from '../components/molecules/settings-card'
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -78,42 +79,42 @@ export function SettingsAppearancePage() {
   const isActive = (color: string) => accent === color
 
   return (
-    <div id="settings-appearance-section" className="space-y-6">
+    <div id="settings-appearance-section" className="space-y-5">
       {/* Theme card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader title="Theme" description="Choose how Otix looks on your device." />
 
         <div
-          className="flex items-center justify-between rounded-xl px-4 py-4"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
           style={{ backgroundColor: 'var(--dk-surface-raised)' }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-primary"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
             >
-              {theme === 'dark' ? <Moon className="h-5 w-5" /> : theme === 'light' ? <Sun className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+              {theme === 'dark' ? <Moon className="h-5.5 w-5.5" /> : theme === 'light' ? <Sun className="h-5.5 w-5.5" /> : <Monitor className="h-5.5 w-5.5" />}
             </div>
             <div>
-              <p className="text-sm font-medium">
+              <p className="text-sm font-semibold text-white">
                 {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
               </p>
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-white/60 mt-0.5">
                 {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
               </p>
             </div>
           </div>
 
-          <div className="flex rounded-lg p-1 gap-0.5 bg-white/[0.03]">
+          <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-white/[0.04]">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTheme(t)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150',
+                  'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center',
                   theme === t
-                    ? 'bg-white/10 text-white shadow-sm'
+                    ? 'bg-white/10 text-white shadow-sm font-semibold'
                     : 'text-white/60 hover:text-white',
                 )}
               >
@@ -122,19 +123,19 @@ export function SettingsAppearancePage() {
             ))}
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       {/* Accent color card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader title="Accent" description="Pick a color accent for the interface." />
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3">
           {ACCENTS.map((a) => (
             <button
               key={a.id}
               type="button"
               onClick={() => setAccent(a.primary)}
-              className="relative h-7 w-7 rounded-full hover:scale-110 active:scale-95 transition-transform"
+              className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full hover:scale-110 active:scale-95 transition-transform"
               style={{ backgroundColor: a.primary }}
             >
               {isActive(a.primary) && (
@@ -151,7 +152,7 @@ export function SettingsAppearancePage() {
         </div>
 
         <div
-          className="flex flex-wrap gap-3 pt-4 mt-4"
+          className="flex flex-wrap gap-2.5 sm:gap-3 pt-4 mt-5"
           style={{ boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--border) 30%, transparent)' }}
         >
           {Array.from({ length: 16 }).map((_, i) => {
@@ -162,7 +163,7 @@ export function SettingsAppearancePage() {
               <label
                 key={i}
                 className={cn(
-                  'relative flex h-7 w-7 cursor-pointer items-center justify-center rounded-full hover:scale-110 active:scale-95 transition-transform',
+                  'relative flex h-9 w-9 sm:h-10 sm:w-10 cursor-pointer items-center justify-center rounded-full hover:scale-110 active:scale-95 transition-transform',
                 )}
                 style={hasColor ? { backgroundColor: color } : { backgroundColor: 'var(--dk-surface-raised)' }}
                 onClick={(e) => {
@@ -172,7 +173,7 @@ export function SettingsAppearancePage() {
                   }
                 }}
               >
-                {!hasColor && <Plus className="h-3.5 w-3.5 text-white/30 pointer-events-none" />}
+                {!hasColor && <Plus className="h-4 w-4 text-white/30 pointer-events-none" />}
                 {active && (
                   <span
                     className="absolute inset-0 rounded-full pointer-events-none"
@@ -193,12 +194,12 @@ export function SettingsAppearancePage() {
             )
           })}
         </div>
-      </div>
+      </SettingsCard>
 
 
 
       {/* Motion card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader
           title="Motion"
           description="Control animations and transitions across the app."
@@ -235,10 +236,10 @@ export function SettingsAppearancePage() {
             })}
           </div>
         </div>
-      </div>
+      </SettingsCard>
 
       {/* Home Background Quality card */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl">
+      <SettingsCard>
         <SectionHeader
           title="Home Background Quality"
           description="Control the animated shader quality on the homepage, or let Otix choose automatically."
@@ -275,7 +276,7 @@ export function SettingsAppearancePage() {
             })}
           </div>
         </div>
-      </div>
+      </SettingsCard>
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Link } from '@tanstack/react-router'
+import { Bell, Lock } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -7,6 +9,27 @@ import { DkSwitch } from '@/old-features/ui/atoms/switch'
 import { usePushSubscription } from '@/features/notifications/hooks/use-push-subscription'
 import type { NotificationType } from '@/features/notifications/types'
 import { getTypeConfig } from '@/features/notifications/registry'
+import { SettingsCard } from '../components/molecules/settings-card'
+import { SectionHeader } from '../components/molecules/settings-section-header'
+
+const LOCAL_PREFS_KEY = 'otix:local-notification-preferences'
+
+function getLocalPrefs(): Record<string, boolean | string> {
+  try {
+    const raw = localStorage.getItem(LOCAL_PREFS_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveLocalPrefs(prefs: Record<string, boolean | string>) {
+  try {
+    localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(prefs))
+  } catch {
+    // ignore
+  }
+}
 
 const CATEGORIES: { id: string; label: string; description: string; types: NotificationType[] }[] = [
   {
@@ -43,65 +66,71 @@ const CATEGORIES: { id: string; label: string; description: string; types: Notif
 
 export function SettingsNotificationsPage() {
   const { user, refreshUser } = useAuth()
-  const [preferences, setPreferences] = useState<Record<string, boolean | string>>(
-    user?.notificationPreferences ?? {},
-  )
+  const local = getLocalPrefs()
+
+  const [preferences, setPreferences] = useState<Record<string, boolean | string>>(() => ({
+    ...local,
+    ...(user?.notificationPreferences ?? {}),
+  }))
+
   const [quietEnabled, setQuietEnabled] = useState(
-    !!user?.notificationPreferences?._quiet_start,
+    !!(user?.notificationPreferences?._quiet_start || local._quiet_start),
   )
+
   const push = usePushSubscription()
 
   useEffect(() => {
     if (user?.notificationPreferences) {
-      setPreferences(user.notificationPreferences)
+      setPreferences((prev) => ({
+        ...prev,
+        ...user.notificationPreferences,
+      }))
     }
   }, [user?.notificationPreferences])
 
   const handleToggle = async (key: string, checked: boolean) => {
     const newPrefs = { ...preferences, [key]: checked }
     setPreferences(newPrefs)
-    try {
-      await apiClient.patch('/auth/me', { notification_preferences: newPrefs })
-      await refreshUser()
-    } catch {
-      setPreferences(preferences)
+    saveLocalPrefs(newPrefs)
+
+    if (user) {
+      try {
+        await apiClient.patch('/auth/me', { notification_preferences: newPrefs })
+        await refreshUser()
+      } catch {
+        setPreferences(preferences)
+      }
     }
   }
 
   const handleQuietTimeChange = async (key: string, value: string) => {
     const newPrefs = { ...preferences, [key]: value }
     setPreferences(newPrefs)
-    try {
-      await apiClient.patch('/auth/me', { notification_preferences: newPrefs })
-      await refreshUser()
-    } catch {
-      setPreferences(preferences)
+    saveLocalPrefs(newPrefs)
+
+    if (user) {
+      try {
+        await apiClient.patch('/auth/me', { notification_preferences: newPrefs })
+        await refreshUser()
+      } catch {
+        setPreferences(preferences)
+      }
     }
   }
 
   return (
-    <div id="settings-notifications-section" className="space-y-8">
-      {/* Section header */}
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Notification Preferences</h2>
-        <p className="text-sm text-white/60 mt-1">
-          Control which notifications you receive and how they&apos;re delivered.
-        </p>
-      </div>
-
-      {/* Delivery Channels */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold">Delivery Channels</h3>
-          <p className="text-xs text-white/60 mt-0.5">
-            Choose how notifications reach you. Per-type toggles below still apply.
-          </p>
-        </div>
+    <div id="settings-notifications-section" className="space-y-5">
+      {/* Delivery Channels (Local & Device Settings) */}
+      <SettingsCard className="space-y-4">
+        <SectionHeader
+          title="Delivery Channels"
+          description="Configure how local notifications sound and display on this device."
+        />
 
         {isDesktop() && (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
             <div>
-              <span className="text-sm font-medium">Desktop notifications</span>
+              <span className="text-sm font-medium text-white">Desktop notifications</span>
               <p className="text-xs text-white/40">Native OS notifications via Electron</p>
             </div>
             <DkSwitch
@@ -112,9 +141,9 @@ export function SettingsNotificationsPage() {
         )}
 
         {typeof Notification !== 'undefined' && (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
             <div>
-              <span className="text-sm font-medium">Browser notifications</span>
+              <span className="text-sm font-medium text-white">Browser notifications</span>
               <p className="text-xs text-white/40">
                 {Notification.permission === 'granted'
                   ? 'Permission granted'
@@ -131,9 +160,9 @@ export function SettingsNotificationsPage() {
         )}
 
         {push.supported && (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
             <div>
-              <span className="text-sm font-medium">Push notifications</span>
+              <span className="text-sm font-medium text-white">Push notifications</span>
               <p className="text-xs text-white/40">
                 {push.subscribed
                   ? 'Active — works when tab is closed'
@@ -146,16 +175,16 @@ export function SettingsNotificationsPage() {
               type="button"
               onClick={() => push.subscribed ? push.unsubscribe() : push.register()}
               disabled={push.registering}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium bg-white/10 text-white/60 hover:bg-white/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+              className="rounded-lg px-3.5 py-1.5 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer disabled:opacity-50"
             >
               {push.subscribed ? 'Disable' : 'Enable'}
             </button>
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 py-1 min-h-[44px]">
           <div>
-            <span className="text-sm font-medium">Notification sound</span>
+            <span className="text-sm font-medium text-white">Notification sound</span>
             <p className="text-xs text-white/40">Play a chime on new notifications</p>
           </div>
           <DkSwitch
@@ -163,87 +192,106 @@ export function SettingsNotificationsPage() {
             onCheckedChange={(c) => handleToggle('_sound_enabled', c)}
           />
         </div>
-      </div>
+      </SettingsCard>
 
-      {/* Quiet Hours */}
-      <div className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold">Quiet Hours</h3>
-            <p className="text-xs text-white/60 mt-0.5">
-              Suppress all notifications during this window
-            </p>
-          </div>
-          <DkSwitch
-            checked={quietEnabled}
-            onCheckedChange={(c) => {
-              setQuietEnabled(c)
-              if (!c) {
-                handleQuietTimeChange('_quiet_start', '')
-                handleQuietTimeChange('_quiet_end', '')
-              } else {
-                handleQuietTimeChange('_quiet_start', '22:00')
-                handleQuietTimeChange('_quiet_end', '08:00')
-              }
-            }}
-          />
-        </div>
+      {/* Quiet Hours (Local & Device Settings) */}
+      <SettingsCard className="space-y-4">
+        <SectionHeader
+          title="Quiet Hours"
+          description="Suppress all notifications on this device during this window"
+          action={
+            <DkSwitch
+              checked={quietEnabled}
+              onCheckedChange={(c) => {
+                setQuietEnabled(c)
+                if (!c) {
+                  handleQuietTimeChange('_quiet_start', '')
+                  handleQuietTimeChange('_quiet_end', '')
+                } else {
+                  handleQuietTimeChange('_quiet_start', '22:00')
+                  handleQuietTimeChange('_quiet_end', '08:00')
+                }
+              }}
+            />
+          }
+        />
         {quietEnabled && (
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 pt-1">
             <div className="flex-1">
-              <label className="text-xs text-white/60 block mb-1">Start</label>
+              <label className="text-xs text-white/60 block mb-1 font-medium">Start</label>
               <input
                 type="time"
                 value={(preferences._quiet_start as string) || '22:00'}
                 onChange={(e) => handleQuietTimeChange('_quiet_start', e.target.value)}
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white/80"
+                className="w-full rounded-xl bg-white/5 px-3.5 py-2 text-sm text-white/90 focus:outline-none"
               />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-white/60 block mb-1">End</label>
+              <label className="text-xs text-white/60 block mb-1 font-medium">End</label>
               <input
                 type="time"
                 value={(preferences._quiet_end as string) || '08:00'}
                 onChange={(e) => handleQuietTimeChange('_quiet_end', e.target.value)}
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white/80"
+                className="w-full rounded-xl bg-white/5 px-3.5 py-2 text-sm text-white/90 focus:outline-none"
               />
             </div>
           </div>
         )}
-      </div>
+      </SettingsCard>
 
-      {/* Per-type toggles */}
-      {CATEGORIES.map((category) => (
-        <div
-          key={category.id}
-          className="rounded-2xl p-6 bg-white/5 backdrop-blur-xl"
-        >
-          <div>
-            <h3 className="text-sm font-semibold">{category.label}</h3>
-            <p className="text-xs text-white/60 mt-0.5">{category.description}</p>
+      {/* Account Notifications Header / Guest Banner */}
+      {!user ? (
+        <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-gradient-to-r from-primary/10 via-white/5 to-white/5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+              <Lock className="h-6 w-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white">Social & Follow Notifications</h4>
+              <p className="text-xs text-white/60 mt-0.5 max-w-md">
+                Sign in to customize social activity alerts, friend requests, list invitations, and watchlist releases across all your devices.
+              </p>
+            </div>
           </div>
-          <div className="mt-4 space-y-4">
-            {category.types.map((type) => {
-              const config = getTypeConfig(type)
-              return (
-                <div
-                  key={type}
-                  className="flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <config.icon className={cn('h-4 w-4', config.color)} />
-                    <span className="text-sm font-medium">{config.label}</span>
-                  </div>
-                  <DkSwitch
-                    checked={preferences[type] !== false}
-                    onCheckedChange={(checked) => handleToggle(type, checked)}
-                  />
-                </div>
-              )
-            })}
-          </div>
+          <Link
+            to="/auth/login"
+            className="shrink-0 inline-flex items-center gap-2 font-semibold rounded-xl px-5 py-2.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md active:scale-[0.98]"
+          >
+            <Bell className="h-3.5 w-3.5" />
+            <span>Sign In to Sync</span>
+          </Link>
         </div>
-      ))}
+      ) : (
+        /* Per-type toggles for authenticated users */
+        CATEGORIES.map((category) => (
+          <SettingsCard key={category.id}>
+            <SectionHeader
+              title={category.label}
+              description={category.description}
+            />
+            <div className="mt-4 space-y-3">
+              {category.types.map((type) => {
+                const config = getTypeConfig(type)
+                return (
+                  <div
+                    key={type}
+                    className="flex items-center justify-between gap-4 py-1 min-h-[40px]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <config.icon className={cn('h-4.5 w-4.5', config.color)} />
+                      <span className="text-sm font-medium text-white/90">{config.label}</span>
+                    </div>
+                    <DkSwitch
+                      checked={preferences[type] !== false}
+                      onCheckedChange={(checked) => handleToggle(type, checked)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </SettingsCard>
+        ))
+      )}
     </div>
   )
 }

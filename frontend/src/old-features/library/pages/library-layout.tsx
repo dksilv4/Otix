@@ -48,14 +48,14 @@ export function LibraryLayout() {
   }, [user, authLoading])
 
   return (
-    <div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
       <Helmet>
         <title>Library - Otix</title>
         <meta name="description" content="Your saved, liked, watched items, and lists on Otix." />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <div className="flex flex-col pl-5 pt-20 sm:pt-28">
-        <h1 className="text-2xl font-bold text-foreground">Library</h1>
+      <div className="flex flex-col mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">Library</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your saved, liked, watched items, and lists.
         </p>

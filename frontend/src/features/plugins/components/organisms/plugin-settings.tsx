@@ -409,7 +409,7 @@ function HeroBanner({ plugins, onBrowseAll }: { plugins: PluginInfo[]; onBrowseA
 
 // ── Connected Card ─────────────────────────────────────────────────────────────
 
-function ConnectedCard({
+export function ConnectedCard({
   plugin,
   hasUpdate,
   updateVersion,
@@ -431,88 +431,81 @@ function ConnectedCard({
   const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
   const isError = plugin.status === 'error'
   const isConnected = plugin.status === 'enabled'
-  const statusBadge = isError
-    ? { label: 'Error', className: 'text-red-400 bg-red-500/10' }
-    : isConnected
-      ? { label: 'Connected', className: 'text-green-400 bg-green-500/10' }
-      : { label: 'Disabled', className: 'text-white/40 bg-white/5' }
 
   return (
     <div
-      className={cn(
-        'rounded-xl border p-5 transition-all shadow-sm flex flex-col',
-        isError
-          ? 'border-red-500/20 bg-red-500/[0.02]'
-          : 'border-white/[0.06] bg-white/[0.03] hover:border-white/10 hover:bg-white/[0.04]',
-      )}
+      className="rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 hover:bg-white/[0.04]"
+      style={{
+        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.18)',
+        boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+      }}
     >
-      <div className="flex-1">
-        {/* Header: logo + name + status badge */}
-      <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg',
-            isError ? 'bg-red-500/10' : 'bg-primary/10',
-          )}
-        >
+      {/* Layered Glass Gradient Overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-black/[0.2]" />
+
+      {/* Top Row: Icon & Status */}
+      <div className="flex items-center justify-between gap-2 relative z-10">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
           {pluginIcon}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{plugin.name}</h3>
-            <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0',
-                statusBadge.className,
-              )}
-            >
-              {isConnected && <CheckCircle2 className="h-3 w-3" />}
-              {isError && <XCircle className="h-3 w-3" />}
-              {statusBadge.label}
+
+        <div className="shrink-0">
+          {isError ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.7)]" />
+              Error
             </span>
-          </div>
-          <p className="text-xs text-white/40 mt-1">{plugin.author} &middot; v{plugin.version}</p>
+          ) : isConnected ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+              Connected
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/40 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-white/30" />
+              Disabled
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Description */}
-      {plugin.description && (
-        <p className="mt-3 text-sm text-white/50 leading-relaxed line-clamp-2">
-          {plugin.description}
-        </p>
-      )}
+      {/* Middle: Title & Description */}
+      <div className="flex-1 min-w-0 relative z-10">
+        <h4 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+          <span className="truncate">{plugin.name}</span>
+        </h4>
+        <p className="text-[11px] text-white/40 mt-0.5">{plugin.author} &middot; v{plugin.version}</p>
+        {plugin.description && (
+          <p className="text-xs text-white/50 mt-1 line-clamp-2 leading-relaxed">
+            {plugin.description}
+          </p>
+        )}
+      </div>
 
-      </div>{/* end content wrapper */}
-      {/* Action footer */}
-      <div className="mt-auto pt-3 border-t border-white/[0.04] flex items-center justify-between">
+      {/* Action Footer */}
+      <div className="flex items-center justify-between pt-1 relative z-10">
         <div className="flex items-center gap-2">
           {hasUpdate && onUpdate && updateVersion && (
             <button
               type="button"
               onClick={onUpdate}
               disabled={updating}
-              className="inline-flex items-center gap-1 h-7 rounded-lg px-2.5 text-[11px] font-medium bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 h-8 rounded-xl px-3 text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all disabled:opacity-50 cursor-pointer"
             >
               {updating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <ArrowUpCircle className="h-3 w-3" />
+                <ArrowUpCircle className="h-3.5 w-3.5" />
               )}
               Update v{updateVersion}
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 ml-auto">
           <button
             onClick={onManage}
-            className={cn(
-              'inline-flex items-center gap-1.5 text-sm font-medium transition-colors',
-              isError
-                ? 'text-red-400/70 hover:text-red-400'
-                : 'text-primary/70 hover:text-primary',
-            )}
+            className="inline-flex items-center gap-1.5 h-8.5 rounded-xl px-3 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
           >
             <Settings className="h-3.5 w-3.5" />
             Manage
@@ -556,63 +549,81 @@ function PopularCard({
   return (
     <div
       onClick={onClick}
-      className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-5 transition-all shadow-sm hover:border-white/10 hover:bg-white/[0.04] cursor-pointer group flex flex-col"
+      className="rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 hover:bg-white/[0.04] cursor-pointer group"
+      style={{
+        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.18)',
+        boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
+      }}
     >
-      <div className="flex-1">
-        {/* Header: logo + name + meta */}
-        <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">
+      {/* Layered Glass Gradient Overlay */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-black/[0.2]" />
+
+      {/* Top Row: Icon & Status */}
+      <div className="flex items-center justify-between gap-2 relative z-10">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform duration-200">
           {icon}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-white truncate">{entry.name}</h3>
-            <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
-          </div>
-          <p className="text-xs text-white/40 mt-0.5">{entry.author} &middot; v{entry.version}</p>
+
+        <div className="shrink-0">
+          {isInstalled && !needsUpdate && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+              Installed
+            </span>
+          )}
+          {needsUpdate && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 whitespace-nowrap">
+              <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.7)]" />
+              Update v{entry.version}
+            </span>
+          )}
         </div>
-        {isInstalled && !needsUpdate && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-400 bg-green-500/10 rounded-full px-2 py-0.5 shrink-0">
-            <CheckCircle2 className="h-3 w-3" /> Installed
-          </span>
-        )}
-        {needsUpdate && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 shrink-0">
-            <ArrowUpCircle className="h-3 w-3" /> v{entry.version}
-          </span>
-        )}
       </div>
 
-      {/* Description */}
-      <p className="mt-3 text-sm text-white/50 leading-relaxed line-clamp-2">
-        {entry.description}
-      </p>
+      {/* Middle: Title, Author, Description & Category */}
+      <div className="flex-1 min-w-0 relative z-10">
+        <h4 className="text-sm font-bold text-white tracking-tight group-hover:text-primary transition-colors flex items-center gap-2">
+          <span className="truncate">{entry.name}</span>
+        </h4>
+        <p className="text-[11px] text-white/40 mt-0.5">{entry.author} &middot; v{entry.version}</p>
 
-      {/* Tags */}
-      <div className="flex items-center gap-2 mt-3">
-        <span className={cn('text-[11px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
-          {CATEGORY_STYLES[category]?.label || category}
-        </span>
-        <span className="text-[11px] text-white/30">{entry.permissions.length} permissions</span>
+        {entry.description && (
+          <p className="text-xs text-white/50 mt-1.5 line-clamp-2 leading-relaxed">
+            {entry.description}
+          </p>
+        )}
+
+        <div className="flex items-center gap-2 mt-2.5">
+          <span className={cn('text-[10px] rounded-md px-2 py-0.5 font-medium', CATEGORY_STYLES[category]?.badge || 'text-white/40 bg-white/5')}>
+            {CATEGORY_STYLES[category]?.label || category}
+          </span>
+          {entry.permissions && entry.permissions.length > 0 && (
+            <span className="text-[10px] text-white/30">{entry.permissions.length} perms</span>
+          )}
+        </div>
       </div>
 
-      </div>{/* end content wrapper */}
-      {/* Footer: Connect button */}
-      <div className="mt-auto pt-3 border-t border-white/[0.04]">
+      {/* Action Footer */}
+      <div className="flex items-center gap-2 pt-1 relative z-10">
         {needsUpdate ? (
           <button
             onClick={(e) => { e.stopPropagation(); onConnect() }}
             disabled={connecting}
-            className="inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-4 text-xs font-medium border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-all disabled:opacity-50"
+            className="w-full inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-all disabled:opacity-50 cursor-pointer"
           >
             {connecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Update
+            <span>Update Plugin</span>
           </button>
         ) : (
           <button
             onClick={(e) => { e.stopPropagation(); isInstalled ? onConfigure?.() : onConnect() }}
             disabled={connecting}
-            className="inline-flex items-center justify-center gap-1.5 h-8 rounded-lg px-4 text-xs font-medium border border-white/20 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all disabled:opacity-50"
+            className={cn(
+              'w-full inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer',
+              isInstalled
+                ? 'bg-white/10 text-white hover:bg-white/20'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90',
+            )}
           >
             {connecting ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -621,7 +632,7 @@ function PopularCard({
             ) : (
               <Download className="h-3.5 w-3.5" />
             )}
-            {isInstalled ? 'Configure' : 'Connect'}
+            <span>{isInstalled ? 'Configure' : 'Connect'}</span>
           </button>
         )}
       </div>
@@ -1220,7 +1231,7 @@ export function PluginSettings() {
               {connectedPlugins.length}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4.5">
             {connectedPlugins.map((plugin) => {
               const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
               const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
@@ -1260,7 +1271,7 @@ export function PluginSettings() {
             )}
           </button>
           {showInactive && (
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4.5">
               {otherPlugins.map((plugin) => {
                 const marketplaceEntry = marketplacePlugins.find((e) => e.id === plugin.id)
                 const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version

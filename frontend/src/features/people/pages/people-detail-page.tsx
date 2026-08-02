@@ -6,7 +6,6 @@ import { UserRoundPlus, UserRoundCheck, Star } from 'lucide-react'
 import { Image } from '@ui/atoms/image'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { useAuth } from '@auth/hooks/use-auth'
-import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { peopleQueries, useFollowPerson, useUnfollowPerson, useRatePerson, useUnratePerson } from '@people/queries/people-queries'
 import { formatDate, getCreditsStats } from '@people/utils'
 import { PeopleTimeline } from '@people/components/organisms/people-timeline'
@@ -77,9 +76,8 @@ export function PeopleDetailPage() {
   const navigate = useNavigate()
   const personId = params.personId || ''
   const { isAuthenticated } = useAuth()
-  const { isDesktop } = useDesktopPlatform()
 
-  const ptClass = isDesktop ? 'pt-[6.5rem]' : 'pt-[4.5rem]'
+  const ptClass = 'pt-4 sm:pt-6'
 
   const { data: person, isLoading, isError } = useQuery(peopleQueries.detail(personId))
   const { data: relatedArtists } = useQuery(peopleQueries.related(personId))

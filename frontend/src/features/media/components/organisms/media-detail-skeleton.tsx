@@ -4,7 +4,7 @@ export function DetailSkeleton() {
   return (
     <div className="animate-fade-in pb-20">
       {/* ── Hero Skeleton ── */}
-      <div className="relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl mt-20 mx-12 lg:min-h-[50vh]">
+      <div className="relative flex min-h-[45vh] items-end overflow-hidden rounded-3xl max-w-7xl mx-auto mt-4 sm:mt-6 lg:min-h-[50vh]">
         <div className="pointer-events-none absolute inset-0 z-0">
           <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.06]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 via-30% to-background/20" />

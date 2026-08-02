@@ -17,7 +17,7 @@ export function NotificationsPage() {
   const unreadCount = unreadData?.count ?? 0
 
   return (
-    <div id="notifications-page" className="max-w-2xl mx-auto px-4 py-8">
+    <div id="notifications-page" className="max-w-2xl mx-auto px-4 pt-4 sm:pt-6 pb-12">
       <Helmet>
         <title>Notifications - Otix</title>
         <meta name="description" content="Your notifications on Otix." />

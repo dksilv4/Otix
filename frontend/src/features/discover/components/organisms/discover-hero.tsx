@@ -188,7 +188,7 @@ export function DiscoverHero({ className }: { className?: string }) {
       {/* ═══ Slide stack ═══ */}
       <div
         id="discover-hero-slides"
-        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8 mt-16 sm:mt-20 md:mt-24"
+        className="relative w-full h-[300px] sm:h-[425px] md:h-[515px] z-10 overflow-visible px-4 md:px-8 mt-4 sm:mt-6 md:mt-8"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onMouseEnter={handleMouseEnter}
