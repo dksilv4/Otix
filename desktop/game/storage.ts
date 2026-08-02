@@ -27,6 +27,8 @@ export interface GameRow {
   iconUrl?: string;
   posterUrl?: string;
   sources?: (string | Record<string, unknown>)[];
+  isDlc?: boolean;
+  dlcOf?: string;
   data?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; backdropUrl?: string; logoUrl?: string; textlessPosterUrl?: string };
   matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
   otixMatchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
@@ -61,6 +63,24 @@ function rowToGame(row: DbRow): GameRow {
     ? JSON.parse(row.otix_match_suggestion as string)
     : undefined;
 
+  let sources: any[] | undefined = undefined;
+  let isDlc = false;
+  let dlcOf: string | undefined = undefined;
+
+  if (row.sources) {
+    try {
+      sources = JSON.parse(row.sources as string);
+      if (Array.isArray(sources)) {
+        for (const s of sources) {
+          if (typeof s === 'object' && s !== null) {
+            if (s.isDlc) isDlc = true;
+            if (s.dlcOf) dlcOf = String(s.dlcOf);
+          }
+        }
+      }
+    } catch {}
+  }
+
   return {
     id: row.id as string,
     title: row.title as string,
@@ -71,7 +91,9 @@ function rowToGame(row: DbRow): GameRow {
     localIconUrl: (row.local_icon_url as string) || undefined,
     iconUrl: (row.icon_url as string) || undefined,
     posterUrl: (row.poster_url as string) || undefined,
-    sources: row.sources ? JSON.parse(row.sources as string) : undefined,
+    sources,
+    isDlc,
+    dlcOf,
     updateFiles: row.update_files ? JSON.parse(row.update_files as string) : undefined,
     lastPlayedAt: (row.last_played_at as string) || undefined,
     data: row.otix_media_id
@@ -195,6 +217,19 @@ export function upsertGames(games: GameRow[]): void {
     const otixMediaTitle = g.data?.title || (existing as any)?.otix_media_title || null
     const matchSuggestion = g.matchSuggestion ? JSON.stringify(g.matchSuggestion) : (existing as any)?.otix_match_suggestion || null
     // ponytail: only update otix columns if we have data — preserve existing match on re-scan
+    // Merge top-level isDlc/dlcOf into source entries so DLC flags survive scans that
+    // provide flags at the game level rather than inside each source object.
+    let sourcesPayload: string;
+    if (g.sources && g.sources.length > 0) {
+      sourcesPayload = JSON.stringify(g.sources.map((s: any) =>
+        (s && s.isDlc === undefined && g.isDlc !== undefined)
+          ? { ...s, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null }
+          : s
+      ));
+    } else {
+      sourcesPayload = JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null }]);
+    }
+
     db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
@@ -212,7 +247,7 @@ export function upsertGames(games: GameRow[]): void {
       g.localIconUrl || null,
       g.iconUrl || null,
       g.posterUrl || null,
-      g.sources ? JSON.stringify(g.sources) : null,
+      sourcesPayload,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
       otixMediaId,
       otixMediaTitle,
@@ -247,6 +282,10 @@ export function upsertGamesForPlatform(games: GameRow[], platform: string): void
 
   for (const g of games) {
     const seeded = existingSeeded.get(g.id) ?? 0;
+    const sourcesPayload = g.sources
+      ? JSON.stringify(g.sources)
+      : JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null }]);
+
     db().prepare(
       `INSERT OR REPLACE INTO scanned_games (
         id, title, exe_path, local_exe_path, install_dir, platform,
@@ -263,7 +302,7 @@ export function upsertGamesForPlatform(games: GameRow[], platform: string): void
       g.localIconUrl || null,
       g.iconUrl || null,
       g.posterUrl || null,
-      g.sources ? JSON.stringify(g.sources) : null,
+      sourcesPayload,
       g.updateFiles ? JSON.stringify(g.updateFiles) : null,
       g.data?.id || null,
       g.data?.title || null,

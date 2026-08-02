@@ -21,6 +21,9 @@ export interface LocalGame {
   iconUrl?: string; // Icon URL from plugin enrichment
   posterUrl?: string; // Poster URL from plugin enrichment
   updateFiles?: { name: string; path: string }[];
+  isDlc?: boolean;
+  dlcOf?: string;
+  itemType?: 'game' | 'dlc';
   otixMediaId?: string;
   otixMediaTitle?: string;
   otixMediaSlug?: string;

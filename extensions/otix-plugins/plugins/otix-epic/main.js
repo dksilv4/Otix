@@ -121,14 +121,11 @@ async function refreshAccessToken(refreshToken) {
 }
 
 async function verifyToken(accessToken) {
-  // Epic's launcher API doesn't have a dedicated verify endpoint.
-  // Light check: try to fetch one page of library items.
-  const res = await apiGet(
-    OAUTH_HOST,
-    '/account/api/oauth/verify',
-    accessToken
-  );
-  return res;
+  try {
+    const res = await apiPost(OAUTH_HOST, '/account/api/oauth/verify', 'token=' + encodeURIComponent(accessToken), accessToken);
+    if (res.status === 200) return true;
+  } catch {}
+  return false;
 }
 
 // ── Library API ───────────────────────────────────────────────────────
@@ -181,6 +178,7 @@ async function batchEnrichCatalog(token, items, ctx) {
             const sellerName = catItem.seller?.name || null;
             enriched[id] = {
               title: catItem.title || null,
+              itemType: catItem.itemType || null,
               developer: catItem.developerDisplayName || sellerName || null,
               developerId: sellerId,  // Epic account ID of the developer/company
               publisher: catItem.publisherDisplayName || sellerName || null,
@@ -437,8 +435,8 @@ function _clearAuth(ctx) {
 async function _ensureToken(ctx) {
   if (_currentToken) {
     try {
-      const v = await verifyToken(_currentToken);
-      if (v.status === 200) return _currentToken;
+      const isValid = await verifyToken(_currentToken);
+      if (isValid) return _currentToken;
     } catch (err) {
       ctx.logger.warn('Token verification failed, refreshing: ' + err.message);
     }
@@ -453,8 +451,13 @@ async function _ensureToken(ctx) {
 
     const r = await refreshAccessToken(rt);
     if (r.status !== 200) {
-      _clearAuth(ctx);
-      ctx.logger.error('Token refresh failed: ' + JSON.stringify(r.data).slice(0, 300));
+      const errStr = JSON.stringify(r.data || {});
+      if (r.status === 400 && (errStr.includes('invalid_grant') || errStr.includes('invalid_refresh_token'))) {
+        _clearAuth(ctx);
+        ctx.logger.error('Epic session expired: ' + errStr.slice(0, 300));
+      } else {
+        ctx.logger.warn('Epic token refresh temporary failure: ' + errStr.slice(0, 300));
+      }
       return null;
     }
 
@@ -546,6 +549,8 @@ async function performScan(ctx) {
     const title = item.sandboxName || item.appTitle || item.title || appName;
 
     games.push({
+      id: appName,
+      platform: 'epic',
       appName,
       namespace: item.namespace || null,
       catalogItemId: item.catalogItemId || null,
@@ -560,10 +565,10 @@ async function performScan(ctx) {
       launchExe: local.launch_executable || null,
       manifestLocation: local.manifest_location || null,
       savePaths: local.save_paths || null,
-      // Epic posterUrl set during enrichment below — always available
-      // as fallback until Otix/SGDB poster replaces it after matching
       posterUrl: null,
       logoUrl: null,
+      isDlc: false,
+      dlcOf: null,
     });
 
     if ((i + 1) % 50 === 0 || i === libraryItems.length - 1) {
@@ -598,6 +603,15 @@ async function performScan(ctx) {
         if (e.developerId) g.developerId = e.developerId;
         if (e.sellerName) g.sellerName = e.sellerName;
         if (e.external_ids?.length) g.developerExternalIds = e.external_ids;
+
+        // Check if catalog flags this item as DLC
+        const cats = (e.categories || []).map((c) => (typeof c === 'string' ? c : c.path || c.id || '').toLowerCase());
+        const isDlcCategory = cats.some((c) => c.includes('dlc') || c.includes('addon') || c.includes('expansion'));
+        const isDlcItemType = e.itemType === 'DLC' || e.itemType === 'ADD_ON';
+        if (isDlcCategory || isDlcItemType) {
+          g.isDlc = true;
+        }
+
         const posterUrl = e.keyImages?.find((img) =>
           img.type === 'DieselGameBoxTall'
         )?.url;
@@ -622,18 +636,28 @@ async function performScan(ctx) {
     ctx.logger.warn('Enrichment failed: ' + err.message);
   }
 
-  // Phase 5: Detect DLCs — items sharing namespace with a different-appName "main" game
-  // Build namespace → primary appName map (first game per namespace = main game)
+  // Phase 5: Detect DLCs — catalog flags, namespace secondary items, or title DLC keywords
+  const DLC_TITLE_REGEX = /\b(dlc|expansion|add-on|addon|season pass|expansion pass|bonus content|soundtrack|artbook|supporter pack|skin pack|cosmetic pack|deluxe upgrade|content pack)\b/i;
+
+  // Build namespace → primary appName map (first non-DLC game per namespace = main game)
   const nsPrimary = {};
   for (const g of games) {
-    if (g.namespace && !nsPrimary[g.namespace]) {
+    const titleIsDlc = DLC_TITLE_REGEX.test(g.title || '');
+    if (titleIsDlc) g.isDlc = true;
+
+    if (g.namespace && !nsPrimary[g.namespace] && !g.isDlc) {
       nsPrimary[g.namespace] = g.appName;
     }
   }
   let dlcCount = 0;
   for (const g of games) {
-    if (g.namespace && nsPrimary[g.namespace] && g.appName !== nsPrimary[g.namespace]) {
-      g.dlcOf = nsPrimary[g.namespace];
+    const isNsSecondary = g.namespace && nsPrimary[g.namespace] && g.appName !== nsPrimary[g.namespace];
+    const titleIsDlc = DLC_TITLE_REGEX.test(g.title || '');
+    if (g.isDlc || isNsSecondary || titleIsDlc) {
+      g.isDlc = true;
+      if (isNsSecondary) {
+        g.dlcOf = nsPrimary[g.namespace];
+      }
       dlcCount++;
     }
   }
@@ -722,6 +746,8 @@ const dataMethods = {
       platform: 'epic',
       externalIds: [
         { source: 'epic', id: g.appName },
+        ...(g.catalogItemId && g.catalogItemId !== g.appName ? [{ source: 'epic', id: g.catalogItemId }] : []),
+        ...(g.offerId && g.offerId !== g.appName && g.offerId !== g.catalogItemId ? [{ source: 'epic', id: g.offerId }] : []),
         ...(g.namespace ? [{ source: 'epic_namespace', id: g.namespace }] : []),
       ],
       developer: g.developer || g.publisher || null,
@@ -730,6 +756,7 @@ const dataMethods = {
       exePath: g.launchExe || null,
       posterUrl: g.posterUrl || null,
       logoUrl: g.logoUrl || null,
+      isDlc: g.isDlc === true,
       dlcOf: g.dlcOf || null,
       rawMetadata: {
         namespace: g.namespace,
@@ -876,7 +903,12 @@ const dataMethods = {
           developer: game.seller || null,
           publisher: null,
           platforms: ['epic'],
-          external_ids: [{ source: 'epic_free', id: game.id }],
+          external_ids: [
+            { source: 'epic_free', id: game.id },
+            { source: 'epic', id: game.id },
+            ...(game.offerId && game.offerId !== game.id ? [{ source: 'epic', id: game.offerId }] : []),
+            ...(game.namespace ? [{ source: 'epic_namespace', id: game.namespace }] : []),
+          ],
           media_type: 'game',
           poster_url: game.posterUrl || null,
         };

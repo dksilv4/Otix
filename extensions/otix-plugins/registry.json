@@ -51,19 +51,6 @@
       "category": "media",
       "tags": ["lidarr", "music", "audio", "automation", "download"],
       "permissions": ["api:proxy", "network:external", "events:subscribe", "storage:local", "notifications", "ui:settings"]
-    },
-    {
-      "id": "otix-hello",
-      "name": "Hello World",
-      "version": "0.1.0",
-      "description": "A test plugin that validates the Otix plugin system by demonstrating event subscriptions, local database, API calls, notifications, and logging.",
-      "author": "Diogo da Silva",
-      "repository": "https://github.com/dksilv4/otix-plugins",
-      "path": "plugins/otix-hello",
-      "icon": "code",
-      "category": "developer",
-      "tags": ["test", "demo", "development"],
-      "permissions": ["api:proxy", "events:subscribe", "storage:local", "notifications", "ui:settings"]
     }
   ],
   "updated_at": "2026-06-18T00:00:00Z"

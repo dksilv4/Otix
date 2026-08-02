@@ -27,6 +27,7 @@ export interface ScannedGame {
   exePath?: string | null
   posterUrl?: string | null
   logoUrl?: string | null
+  isDlc?: boolean
   dlcOf?: string | null
   rawMetadata?: Record<string, unknown>
   // Plugin fields (may be present on raw scan results)
@@ -228,17 +229,24 @@ export class GameScanOrchestrator extends EventEmitter {
     }
 
     // ── Phase 2: Save to local DB ──
-    const scanPlatform = scanned[0].platform;
-    upsertGamesForPlatform(scanned.map(g => ({
-      id: g.platform + '_' + g.id,
-      title: g.title,
-      exePath: g.exePath || '',
-      installDir: g.installPath || '',
-      platform: g.platform as any,
-      posterUrl: g.posterUrl || undefined,
-      iconUrl: g.logoUrl || g.posterUrl || undefined,
-      sources: [{ source: g.platform, id: g.id, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null }],
-    })), scanPlatform);
+    const scanPlatform = scanned[0]?.platform || pluginId;
+    upsertGamesForPlatform(scanned.map(g => {
+      const plat = g.platform || scanPlatform || pluginId;
+      const gameId = g.id || g.appName || Math.random().toString(36).substring(2, 9);
+      const isDlc = !!g.isDlc;
+      return {
+        id: plat + '_' + gameId,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: plat as any,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.logoUrl || g.posterUrl || undefined,
+        isDlc,
+        dlcOf: g.dlcOf || undefined,
+        sources: [{ source: plat, id: gameId, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null, isDlc }],
+      };
+    }), scanPlatform);
 
     // ── Phase 3: Split matched vs needs-match ──
     const matched: ScannedGame[] = [];
@@ -308,6 +316,8 @@ export class GameScanOrchestrator extends EventEmitter {
       publisher: g.publisher || null,
       release_year: g.releaseYear || null,
       poster_url: g.posterUrl || null,
+      is_dlc: g.isDlc || false,
+      dlc_of: g.dlcOf || null,
       external_ids: (g.externalIds && g.externalIds.length > 0)
         ? g.externalIds : [{ source: g.platform, id: g.id }],
       media_type: mediaType,
@@ -321,7 +331,7 @@ export class GameScanOrchestrator extends EventEmitter {
       this.queryIdToGames.set(qid, existing);
     }
 
-    const url = new URL(`/api/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
+    const url = new URL(`/api/v1/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
     return new Promise<void>((resolve, reject) => {
@@ -469,7 +479,7 @@ export class GameScanOrchestrator extends EventEmitter {
     } catch { return; }
     if (!this.authToken) return;
 
-    const url = new URL(`/api/media/${mediaItemId}/claim`, this.apiBaseUrl);
+    const url = new URL(`/api/v1/media/${mediaItemId}/claim`, this.apiBaseUrl);
     const req = http.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
     req.on('error', (err) => console.warn(`[Orchestrator] Claim failed for ${mediaItemId}:`, err.message));
     req.end();
