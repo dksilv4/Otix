@@ -14,6 +14,8 @@ Docs: https://api-docs.igdb.com/
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import time
 
 import httpx
@@ -26,6 +28,11 @@ from otix.providers.base import BaseProvider
 TOKEN_KEY = "igdb:access_token"
 TOKEN_TTL = 50 * 24 * 3600  # 50 days — refresh well before Twitch's expiry
 OAUTH_URL = "https://id.twitch.tv/oauth2/token"
+
+# Search results are raw IGDB metadata that changes slowly; caching them means
+# repeat library re-matches hit Redis instead of burning the IGDB quota.
+SEARCH_CACHE_PREFIX = "igdb:search"
+SEARCH_CACHE_TTL = 7 * 24 * 3600
 
 
 class IGDBAuthError(Exception):
@@ -218,14 +225,66 @@ class IGDBProvider(BaseProvider):
             return response.json()
         raise IGDBError(f"IGDB offset query failed: {response.status_code}")
 
+    def _search_cache_key(self, method: str, query: str, limit: int, fields: str | None) -> str:
+        fields_digest = hashlib.sha1((fields or "*").encode()).hexdigest()[:8]
+        return f"{SEARCH_CACHE_PREFIX}:{method}:{fields_digest}:{limit}:{query}"
+
+    async def _cached_search(
+        self, method: str, query: str, limit: int, fields: str | None, fetch
+    ) -> list[dict[str, JSONValue]]:
+        """Run *fetch* (an async IGDB POST) unless a cached response exists.
+
+        Best-effort: cache write failures are swallowed, never raised.
+        """
+        cache_key = self._search_cache_key(method, query, limit, fields)
+        try:
+            cached = await self._redis.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            cached = None
+
+        results = await fetch()
+
+        if results is not None:
+            try:
+                await self._redis.setex(cache_key, SEARCH_CACHE_TTL, json.dumps(results))
+            except Exception:
+                pass
+        return results or []
+
     async def search_games(self, query: str, limit: int = 50, fields: str | None = None) -> list[dict[str, JSONValue]]:
-        """Search game by name."""
-        escaped = query.replace('"', '\\"')
-        body = f'search "{escaped}"; fields {fields or "*"}; limit {limit};'
-        response = await self._post("/games", content=body)
-        if response.status_code == 200:
-            return response.json()
-        raise IGDBError(f"IGDB search query failed: {response.status_code}")
+        """Search game by name (cached in Redis)."""
+
+        async def fetch() -> list[dict[str, JSONValue]] | None:
+            escaped = query.replace('"', '\\"')
+            body = f'search "{escaped}"; fields {fields or "*"}; limit {limit};'
+            response = await self._post("/games", content=body)
+            if response.status_code == 200:
+                return response.json()
+            raise IGDBError(f"IGDB search query failed: {response.status_code}")
+
+        return await self._cached_search("relevance", query, limit, fields, fetch)
+
+    async def search_games_by_name(self, query: str, limit: int = 20, fields: str | None = None) -> list[dict[str, JSONValue]]:
+        """Search IGDB by case-insensitive name substring.
+
+        The relevance ``search`` endpoint down-weights common words ("for",
+        "the", "of"), so the exact-title game can be missing entirely from its
+        results (e.g. "For The King"). A ``where name ~ *"..."*`` filter
+        matches the literal substring and reliably surfaces the exact-title
+        entry alongside any similarly-named games.
+        """
+
+        async def fetch() -> list[dict[str, JSONValue]] | None:
+            escaped = query.replace("\\", "\\\\").replace('"', '\\"')
+            body = f'fields {fields or "*"}; where name ~ *"{escaped}"*; limit {limit};'
+            response = await self._post("/games", content=body)
+            if response.status_code == 200:
+                return response.json()
+            raise IGDBError(f"IGDB name search failed: {response.status_code}")
+
+        return await self._cached_search("name", query, limit, fields, fetch)
 
     # ── Covers / Artwork (resolved via ID in game fields) ──────────────
 

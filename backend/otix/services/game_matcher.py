@@ -16,6 +16,7 @@ imports only happen via the confirmation endpoint.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 import unicodedata
@@ -114,6 +115,158 @@ def _title_words(title: str) -> set[str]:
     return set(norm.split())
 
 
+# ── Cross-source title comparison (universal matching) ──────────────────────
+#
+# Store titles (Epic) and catalog/IGDB titles follow different conventions:
+# trademark symbols, edition suffixes, roman-vs-arabic numerals, "40K"-style
+# abbreviations, and hyphen-vs-colon subtitles. These helpers collapse those
+# differences so a raw store title matches the canonical entry without a
+# per-game curated alias list.
+
+
+def _strip_edition_markers(raw: str) -> str:
+    """Strip trailing edition/re-release markers from a title.
+
+    "Batman: Arkham Asylum Game of the Year Edition" → "Batman: Arkham Asylum"
+    "Control Ultimate Edition" → "Control"
+    "The Witcher 3: Wild Hunt" → "The Witcher 3: Wild Hunt" (unchanged)
+    "Trackmania Starter Access" → "Trackmania"
+    """
+    edition_phrase = (
+        r"(?:(?:Game of the Year|GOTY|Complete|Enhanced|Deluxe|Definitive|Ultimate|"
+        r"Collector'?s|Anniversary|Special|Standard|Gold|Celebration|Day One|"
+        r"Digital Deluxe|Remastered)(?:\s+Edition)(?:\s+Pack)?)"
+    )
+    t = re.sub(
+        r"\s*(?:[-–—:]?\s*)?(?:The\s+)?" + edition_phrase + r"\s*$",
+        "",
+        raw,
+        flags=re.IGNORECASE,
+    )
+    t = re.sub(
+        r"\s*(?:[-–—:]?\s*)?(?:The Final Cut|Legacy Mode|Re-Elected|Afterlife|Starter Access)\s*$",
+        "",
+        t,
+        flags=re.IGNORECASE,
+    )
+    return t.strip()
+
+
+_ROMAN_NUMERALS: dict[str, int] = {
+    "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7,
+    "viii": 8, "ix": 9, "x": 10, "xi": 11, "xii": 12, "xiii": 13, "xiv": 14,
+    "xv": 15, "xvi": 16, "xvii": 17, "xviii": 18, "xix": 19, "xx": 20,
+}
+
+
+def _canonical_numeral_token(token: str) -> str | None:
+    """Return a canonical marker for a numeral token, else None.
+
+    "3" → "N3", "III" → "N3", "40K" → "N40000", "40,000" → "N40000"
+    """
+    low = token.lower().replace(",", "")
+    if not low:
+        return None
+    if low.endswith("k") and low[:-1].isdigit():
+        return "N" + str(int(low[:-1]) * 1000)
+    if low.isdigit():
+        return "N" + str(int(low))
+    if low in _ROMAN_NUMERALS:
+        return "N" + str(_ROMAN_NUMERALS[low])
+    return None
+
+
+_NUM_RANGE_RE = re.compile(r"^(.*)\s*[-–—]\s*(.*)$")
+
+
+def _canonical_numeral_seq(token: str) -> str | None:
+    """Canonicalize a numeral, numeral-list, or numeral-range token.
+
+    "III" → "N3", "1-3" → "N1 N2 N3", "I-III" → "N1 N2 N3",
+    "I•II•III" → "N1 N2 N3", "40K" → "N40000".
+    Returns None for non-numeric tokens so they pass through untouched.
+    """
+    low = token.lower().strip()
+    if not low:
+        return None
+    parts = [p for p in re.split(r"[•·*]", low) if p]
+    out: list[str] = []
+    for part in parts:
+        m = _NUM_RANGE_RE.match(part)
+        if m:
+            a, b = m.group(1).strip(), m.group(2).strip()
+            av = _canonical_numeral_token(a)
+            bv = _canonical_numeral_token(b)
+            if av is not None and bv is not None:
+                start, end = int(av[1:]), int(bv[1:])
+                step = 1 if end >= start else -1
+                out.extend(f"N{i}" for i in range(start, end + step, step))
+                continue
+        cv = _canonical_numeral_token(part)
+        if cv is not None:
+            out.append(cv)
+        else:
+            return None
+    return " ".join(out) if out else None
+
+
+def _canonical_numerals(raw: str) -> str:
+    """Replace numeral tokens so arabic, roman, range, and K-abbreviation forms collide.
+
+    "Shenmue 3" == "Shenmue III"                  → both "shenmue N3"
+    "Tomb Raider I-III" == "Tomb Raider I•II•III" → both "tomb raider N1 N2 N3"
+    "Warhammer 40K Speed Freeks" == "Warhammer 40,000: Speed Freeks"
+    """
+    out: list[str] = []
+    for word in raw.split():
+        stripped = word.strip(":;,.!?()[]{}'\"")
+        marker = _canonical_numeral_seq(stripped)
+        out.append(marker if marker is not None else word)
+    return " ".join(out)
+
+
+def _comparison_key(raw: str) -> str:
+    """Aggressive cross-source title key for comparing titles.
+
+    Extends _normalize_title with:
+    - Edition/re-release markers stripped ("Game of the Year Edition", "Starter Access")
+    - Numeral canonicalization ("Shenmue 3" == "Shenmue III", "40K" == "40,000")
+    - Hyphen separators collapsed ("Brothers - A Tale" ~ "Brothers: A Tale of Two Sons")
+    """
+    t = _strip_edition_markers(raw)
+    # Descriptive subtitle clauses IGDB omits ("Tomb Raider I-III Remastered
+    # Starring Lara Croft") — drop so both sides compare on the base title.
+    t = re.sub(r"\s+(?:Starring|Featuring)\s+.*$", "", t, flags=re.IGNORECASE)
+    t = _canonical_numerals(t)
+    t = _normalize_title(t)
+    # Bullet/star separators ("I•II•III") delimit words where other stores use
+    # hyphens/commas; collapse them the same way as separator hyphens below.
+    t = re.sub(r"[•·*]", " ", t)
+    # Separator hyphens ("Brothers - A Tale") delimit subtitle words where other
+    # stores use ":". Collapsing them is symmetric on both sides of a comparison.
+    t = re.sub(r"\s*[-–—]\s*", " ", t)
+    # Colons delimit subtitles across stores; strip for key equality.
+    t = t.replace(":", "")
+    return re.sub(r"\s+", " ", t).strip().lower()
+
+
+def _igdb_search_query(raw: str) -> str:
+    """Build an IGDB-friendly search string from a raw store title.
+
+    IGDB's search endpoint tokenizes the query itself, so only the markers that
+    cause zero results are stripped: trademark symbols, edition suffixes, and
+    trailing parentheticals ("Never Alone (Kisima Ingitchuna)"). Numeral and
+    abbreviation variants ("III", "40,000") are left intact — IGDB resolves them.
+    """
+    t = re.sub(r"[™®©]", "", raw)
+    t = _strip_edition_markers(t)
+    t = re.sub(r"\s*\([^)]*\)\s*$", "", t).strip()
+    # Trim descriptive subtitle clauses IGDB omits from canonical titles:
+    # "Tomb Raider I-III Remastered Starring Lara Croft" → base title.
+    t = re.sub(r"\s+(?:Starring|Featuring)\s+.*$", "", t, flags=re.IGNORECASE).strip()
+    return t or raw
+
+
 # ── IGDB helpers ───────────────────────────────────────────────────────────
 
 
@@ -165,8 +318,12 @@ class GameMatcher:
         - otherwise → return candidates for user selection
     """
 
-    # IGDB search concurrency
-    IGDB_CHUNK_SIZE = 50
+    # Search concurrency — the provider rate limiters (IGDB 4 RPS, SteamGrid
+    # 2 RPS) serialize actual HTTP calls, so a small in-flight bound saturates
+    # the quota while keeping the rate-limiter wait queue far under its 30s
+    # timeout. The async session stays single-connection (no concurrent SQL).
+    IGDB_SEARCH_CONCURRENCY = 8
+    STEAMGRID_SEARCH_CONCURRENCY = 4
     IGDB_SEARCH_LIMIT = 20
     IGDB_SEARCH_FIELDS = "id,name,slug,cover.image_id,first_release_date,platforms.name,involved_companies.company.name"
 
@@ -389,8 +546,11 @@ class GameMatcher:
                         GameMatchCandidate(
                             media_item_id=entity_id,
                             title=mi.title if mi else requests[req_idx].title,
-                            poster_url=mi.poster_url if mi else None,
-                            backdrop_url=mi.backdrop_url if mi else None,
+                            poster_url=mi.poster_url if mi and isinstance(getattr(mi, "poster_url", None), str) else None,
+                            backdrop_url=mi.backdrop_url if mi and isinstance(getattr(mi, "backdrop_url", None), str) else None,
+                            textless_poster_url=mi.textless_poster_url if mi and isinstance(getattr(mi, "textless_poster_url", None), str) else None,
+                            logo_url=mi.logo_url if mi and isinstance(getattr(mi, "logo_url", None), str) else None,
+                            icon_url=mi.icon_url if mi and isinstance(getattr(mi, "icon_url", None), str) else None,
                             release_year=_release_year_from_date(mi.release_date if mi else None),
                             confidence=confidence,
                             match_type=MatchType.DIRECT,
@@ -488,7 +648,7 @@ class GameMatcher:
         media_type: str = "game",
     ) -> list[int]:
         """Exact case-insensitive title match against media_items."""
-        titles = {_normalize_title(requests[i].title).lower(): i for i in indices}
+        titles = {_comparison_key(requests[i].title): i for i in indices}
         if not titles:
             return list(indices)
 
@@ -507,7 +667,7 @@ class GameMatcher:
             if not items:
                 break
             for mi in items:
-                key = _normalize_title(mi.title).lower()
+                key = _comparison_key(mi.title)
                 if key in titles:
                     media_map.setdefault(key, []).append(mi)
             offset += page_size
@@ -900,100 +1060,162 @@ class GameMatcher:
     ) -> None:
         """Search IGDB by title for remaining unmatched games.
 
-        Uses the existing scored heuristics (_pick_best_igdb_match).
-        Processes in chunks for controlled concurrency.
+        Split into two stages so the network-bound searches run concurrently
+        under the rate limiter, while every DB access stays on the single
+        async session (which can't run concurrent queries):
+          1. Concurrent IGDB searches → per-game best candidate (network only).
+          2. Serial resolution: batched ExternalID lookup, then candidate
+             assembly or seeding per game.
         """
-        chunk_size = self.IGDB_CHUNK_SIZE
-        chunks = [indices[i : i + chunk_size] for i in range(0, len(indices), chunk_size)]
+        if not indices:
+            return
 
-        for chunk in chunks:
-            # Serialize DB access — async session doesn't support concurrent queries
-            for idx in chunk:
-                await self._search_igdb_one(provider, requests[idx], idx, all_candidates)
+        # Stage 1: concurrent network searches. The provider's Redis-backed
+        # rate limiter serializes actual IGDB calls, so a small in-flight
+        # bound saturates the 4 RPS quota while keeping waiters far under the
+        # limiter's 30s timeout.
+        sem = asyncio.Semaphore(self.IGDB_SEARCH_CONCURRENCY)
 
-    async def _search_igdb_one(
+        async def search_one(idx: int) -> tuple[int, dict | None]:
+            async with sem:
+                try:
+                    return idx, await self._igdb_search_result(provider, requests[idx])
+                except Exception:
+                    logger.exception("IGDB search failed", title=requests[idx].title)
+                    return idx, None
+
+        outcomes = await asyncio.gather(*(search_one(idx) for idx in indices))
+        results = {idx: res for idx, res in outcomes if res}
+        if not results:
+            return
+
+        try:
+            # Stage 2: batched ExternalID lookup, then serial candidate
+            # resolution. Guarded so a DB failure degrades to "no phase-3b
+            # candidates" instead of aborting the whole batch.
+            id_to_indices: dict[str, list[int]] = {}
+            for idx, r in results.items():
+                id_to_indices.setdefault(r["igdb_id_str"], []).append(idx)
+
+            ext_rows = await self._session.execute(
+                select(ExternalID).where(
+                    ExternalID.provider == "igdb",
+                    ExternalID.external_id.in_(list(id_to_indices)),
+                )
+            )
+            ext_by_id: dict[str, ExternalID] = {}
+            for row in ext_rows.scalars().all():
+                ext_by_id.setdefault(str(row.external_id), row)
+        except Exception:
+            logger.exception("IGDB phase 3b ExternalID lookup failed")
+            return
+
+        for idx in indices:
+            r = results.get(idx)
+            if not r:
+                continue
+            try:
+                igdb_id = r["igdb_id"]
+                igdb_id_str = r["igdb_id_str"]
+                is_exact = r["is_exact"]
+                existing_ext = ext_by_id.get(igdb_id_str)
+                if existing_ext:
+                    entity_id = existing_ext.entity_id or existing_ext.media_item_id
+                    if entity_id:
+                        mi = await self._fetch_media_item(entity_id)
+                        all_candidates[idx].append(
+                            GameMatchCandidate(
+                                media_item_id=entity_id,
+                                title=mi.title if mi else r["title"],
+                                poster_url=mi.poster_url if mi else r["poster"],
+                                backdrop_url=mi.backdrop_url if mi else None,
+                                release_year=_release_year_from_date(mi.release_date if mi else None) or r["release_year"],
+                                platforms=r["platforms"],
+                                confidence=0.90 if is_exact else 0.70,
+                                match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
+                            )
+                        )
+                else:
+                    # Not in catalog — seed from IGDB data
+                    new_media_id = await self._seed_game_from_igdb(
+                        r["best"], igdb_id, request_external_ids=requests[idx].external_ids
+                    )
+                    all_candidates[idx].append(
+                        GameMatchCandidate(
+                            media_item_id=new_media_id,
+                            title=r["title"],
+                            poster_url=r["poster"],
+                            release_year=r["release_year"],
+                            platforms=r["platforms"],
+                            confidence=0.90 if is_exact else 0.70,
+                            match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
+                            needs_import=False,
+                            provider_id=igdb_id_str,
+                            provider="igdb",
+                        )
+                    )
+            except Exception:
+                logger.exception("IGDB candidate resolve failed", title=requests[idx].title)
+
+    async def _igdb_search_result(
         self,
         provider: IGDBProvider,
         request: GameMatchRequest,
-        idx: int,
-        all_candidates: list[list[GameMatchCandidate]],
-    ) -> None:
-        """Search IGDB for one game; add candidates if found."""
-        try:
-            candidates = await provider.search_games(
-                request.title,
-                limit=self.IGDB_SEARCH_LIMIT,
-                fields=self.IGDB_SEARCH_FIELDS,
-            )
-            if not candidates:
-                if ":" in request.title:
-                    short = request.title.split(":")[0].strip()
+    ) -> dict | None:
+        """Search IGDB for one game; return best candidate + derived data.
+
+        Network-only (no DB) so callers can run it concurrently. The caller
+        owns the ExternalID lookup and candidate assembly (stage 2).
+        """
+        search_query = _igdb_search_query(request.title)
+        candidates = await provider.search_games(
+            search_query,
+            limit=self.IGDB_SEARCH_LIMIT,
+            fields=self.IGDB_SEARCH_FIELDS,
+        )
+        if not candidates:
+            if ":" in search_query:
+                short = search_query.split(":")[0].strip()
+                if short and short != search_query:
                     candidates = await provider.search_games(
                         short,
                         limit=self.IGDB_SEARCH_LIMIT,
                         fields=self.IGDB_SEARCH_FIELDS,
                     )
-                if not candidates:
-                    return
+            if not candidates:
+                return None
 
-            best = self._pick_best_igdb_match(candidates, request)
-            if best is None:
-                return
+        best = self._pick_best_igdb_match(candidates, request)
 
-            igdb_id = best["id"]
-            igdb_id_str = str(igdb_id)
-            is_exact = self._is_exact_title_match(best, request)
-
-            # Check if already in catalog — use execute + first() to ensure cursor closure
-            ext_result = await self._session.execute(
-                select(ExternalID).where(
-                    ExternalID.provider == "igdb",
-                    ExternalID.external_id == igdb_id_str,
-                ),
-            )
-            existing_ext = ext_result.scalars().first()
-
-            poster = _igdb_cover_url(best.get("cover"))
-            platforms = _igdb_platforms(best.get("platforms") or [])
-            release_year = _parse_igdb_year(best.get("first_release_date"))
-
-            title = best.get("name") or request.title
-
-            if existing_ext:
-                entity_id = existing_ext.entity_id or existing_ext.media_item_id
-                if entity_id:
-                    mi = await self._fetch_media_item(entity_id)
-                    all_candidates[idx].append(
-                        GameMatchCandidate(
-                            media_item_id=entity_id,
-                            title=mi.title if mi else title,
-                            poster_url=mi.poster_url if mi else poster,
-                            backdrop_url=mi.backdrop_url if mi else None,
-                            release_year=_release_year_from_date(mi.release_date if mi else None) or release_year,
-                            platforms=platforms,
-                            confidence=0.90 if is_exact else 0.70,
-                            match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
-                        )
-                    )
-            else:
-                # Not in catalog — seed from IGDB data
-                new_media_id = await self._seed_game_from_igdb(best, igdb_id, request_external_ids=request.external_ids)
-                all_candidates[idx].append(
-                    GameMatchCandidate(
-                        media_item_id=new_media_id,
-                        title=title,
-                        poster_url=poster,
-                        release_year=release_year,
-                        platforms=platforms,
-                        confidence=0.90 if is_exact else 0.70,
-                        match_type=MatchType.IGDB_SEARCH if is_exact else MatchType.IGDB_FUZZY,
-                        needs_import=False,
-                        provider_id=igdb_id_str,
-                        provider="igdb",
-                    )
+        # IGDB's relevance search can omit the exact-title game entirely
+        # (common words like "for"/"the" get down-weighted — "For The King"
+        # is absent from its top-50). Fall back to a name-substring filter,
+        # which reliably returns the exact-title entry.
+        if best is None and search_query:
+            try:
+                by_name = await provider.search_games_by_name(
+                    search_query,
+                    limit=self.IGDB_SEARCH_LIMIT,
+                    fields=self.IGDB_SEARCH_FIELDS,
                 )
-        except Exception:
-            logger.exception("IGDB search failed", title=request.title)
+                best = self._pick_best_igdb_match(by_name, request)
+            except Exception:
+                logger.exception("IGDB name search fallback failed")
+
+        if best is None:
+            return None
+
+        igdb_id = best["id"]
+        return {
+            "igdb_id": igdb_id,
+            "igdb_id_str": str(igdb_id),
+            "is_exact": self._is_exact_title_match(best, request),
+            "best": best,
+            "poster": _igdb_cover_url(best.get("cover")),
+            "platforms": _igdb_platforms(best.get("platforms") or []),
+            "release_year": _parse_igdb_year(best.get("first_release_date")),
+            "title": best.get("name") or request.title,
+        }
 
     # ── Phase 4: Assemble, rank, auto-match ─────────────────────────────────
 
@@ -1092,8 +1314,8 @@ class GameMatcher:
 
     @staticmethod
     def _is_exact_title_match(candidate: dict, request: GameMatchRequest) -> bool:
-        name = _normalize_title(candidate.get("name") or "").lower()
-        target = _normalize_title(request.title).lower()
+        name = _comparison_key(candidate.get("name") or "")
+        target = _comparison_key(request.title)
         return name == target
 
     @staticmethod
@@ -1112,7 +1334,7 @@ class GameMatcher:
             - Release year within ±1       +10
         """
         THRESHOLD = 60
-        target_lower = request.title.strip().lower()
+        target_lower = _comparison_key(request.title)
         target_platforms = {PLATFORM_NORMALIZATION.get(p, p.lower()) for p in (request.platforms or [])}
         target_developer = (request.developer or "").lower().strip()
 
@@ -1121,14 +1343,14 @@ class GameMatcher:
 
         for c in candidates:
             score = 0
-            name = (c.get("name") or "").strip()
-            name_lower = name.lower()
+            raw_name = (c.get("name") or "").strip()
+            name_lower = _comparison_key(raw_name)
 
             # Title scoring
             if name_lower == target_lower:
                 score += 100
             else:
-                slug = (c.get("slug") or "").replace("-", " ").lower().strip()
+                slug = _comparison_key(c.get("slug") or "")
                 if slug == target_lower:
                     score += 90
                 elif target_lower in name_lower or name_lower in target_lower:
@@ -1175,7 +1397,14 @@ class GameMatcher:
                     except (ValueError, OSError):
                         pass
 
-            if score > best_score:
+            if score > best_score or (
+                # Tie-break toward the base title: edition/bundle variants
+                # normalize to the same key as the base game, and the base is
+                # always the shorter name.
+                score == best_score
+                and best_candidate is not None
+                and len(raw_name) < len((best_candidate.get("name") or "").strip())
+            ):
                 best_score = score
                 best_candidate = c
 
@@ -1197,55 +1426,41 @@ class GameMatcher:
         1. Enrich existing IGDB candidates with SteamGrid artwork
         2. Create new candidates for games IGDB didn't find
 
-        Runs per-index so it can enrich candidates from earlier phases.
+        Runs in two stages like phase 3b: the network work (search + artwork
+        fetch) is concurrent under the rate limiter; candidate enrichment /
+        seeding is serial so the async session never runs concurrent queries.
         """
         if not self._steamgrid:
             return list(indices)
 
+        # Stage 1: concurrent SteamGrid network work (search + artwork fetch).
+        sem = asyncio.Semaphore(self.STEAMGRID_SEARCH_CONCURRENCY)
+
+        async def fetch_one(idx: int) -> tuple[int, dict | None]:
+            req = requests[idx]
+            async with sem:
+                try:
+                    return idx, await self._steamgrid_fetch_result(req)
+                except Exception:
+                    logger.exception("steamgrid_phase_failed", title=req.title)
+                    return idx, None
+
+        outcomes = await asyncio.gather(*(fetch_one(idx) for idx in indices))
+        fetched = {idx: res for idx, res in outcomes if res}
+
+        # Stage 2: serial enrichment / seeding (async session is single-connection).
         still_unmatched: list[int] = []
         for idx in indices:
-            req = requests[idx]
+            r = fetched.get(idx)
+            if not r:
+                still_unmatched.append(idx)
+                continue
             try:
-                results = await self._steamgrid.search_games(req.title)
-                if not results:
-                    still_unmatched.append(idx)
-                    continue
+                sg_name = r["name"]
+                sg_id = r["id"]
+                poster_url = r["poster_url"]
+                hero_url = r["hero_url"]
 
-                # Pick best match
-                title_lower = req.title.lower()
-                best = None
-                for r in results:
-                    r_name = (r.get("name") or "").lower()
-                    if title_lower == r_name:
-                        best = r
-                        break
-                if not best:
-                    for r in results:
-                        r_name = (r.get("name") or "").lower()
-                        if title_lower in r_name or r_name in title_lower:
-                            best = r
-                            break
-                if not best:
-                    best = results[0]
-
-                sg_name = best.get("name") or req.title
-                sg_id = best.get("id")
-
-                # Fetch rich artwork
-                poster_url = None
-                hero_url = None
-                if sg_id:
-                    try:
-                        grids = await self._steamgrid.get_grids(int(sg_id), styles="alternate")
-                        poster_url = grids[0].get("url") if grids else None
-                        heroes = await self._steamgrid.get_heroes(int(sg_id))
-                        hero_url = heroes[0].get("url") if heroes else None
-                        logos = await self._steamgrid.get_logos(int(sg_id), styles="official")
-                        logos[0].get("url") if logos else None
-                    except Exception:
-                        pass
-
-                # Check if we already have an IGDB candidate for this game
                 # Enrich existing candidates with SteamGrid artwork
                 existing = all_candidates[idx]
                 enriched = False
@@ -1274,12 +1489,19 @@ class GameMatcher:
                         title=sg_name,
                         slug=sg_slug,
                         media_type="game",
-                        poster_url=poster_url,
-                        backdrop_url=hero_url,
                         created_at=now,
                         updated_at=now,
                     )
                     self._session.add(mi)
+                    # Artwork lives in media_assets; best-asset selection is
+                    # resolved at query time (asset_selection).
+                    steam_assets = []
+                    if poster_url:
+                        steam_assets.append(RawAsset(asset_type="poster", url=poster_url, label="official", provider="steamgrid"))
+                    if hero_url:
+                        steam_assets.append(RawAsset(asset_type="backdrop", url=hero_url, label="official", provider="steamgrid"))
+                    if steam_assets:
+                        await AssetPipeline(self._session).store(new_id, steam_assets)
                     from sqlalchemy.dialects.postgresql import insert as pg_insert
 
                     await self._session.execute(
@@ -1310,12 +1532,55 @@ class GameMatcher:
                     )
                 else:
                     still_unmatched.append(idx)
-
             except Exception:
-                logger.exception("steamgrid_phase_failed", title=req.title)
+                logger.exception("steamgrid_phase_failed", title=requests[idx].title)
                 still_unmatched.append(idx)
 
         return still_unmatched
+
+    async def _steamgrid_fetch_result(self, req: GameMatchRequest) -> dict | None:
+        """Search SteamGrid for one game; fetch its artwork (network only).
+
+        Returns the matched name/id plus poster/hero URLs, or None. Callers
+        own the DB work (candidate enrichment / seeding).
+        """
+        results = await self._steamgrid.search_games(_igdb_search_query(req.title))
+        if not results:
+            return None
+
+        title_lower = _comparison_key(req.title)
+        best = None
+        for r in results:
+            r_name = _comparison_key(r.get("name") or "")
+            if title_lower == r_name:
+                best = r
+                break
+        if not best:
+            for r in results:
+                r_name = _comparison_key(r.get("name") or "")
+                if title_lower in r_name or r_name in title_lower:
+                    best = r
+                    break
+        if not best:
+            best = results[0]
+
+        sg_name = best.get("name") or req.title
+        sg_id = best.get("id")
+
+        poster_url = None
+        hero_url = None
+        if sg_id:
+            try:
+                grids = await self._steamgrid.get_grids(int(sg_id), styles="alternate")
+                poster_url = grids[0].get("url") if grids else None
+                heroes = await self._steamgrid.get_heroes(int(sg_id))
+                hero_url = heroes[0].get("url") if heroes else None
+                logos = await self._steamgrid.get_logos(int(sg_id), styles="official")
+                logos[0].get("url") if logos else None
+            except Exception:
+                pass
+
+        return {"name": sg_name, "id": sg_id, "poster_url": poster_url, "hero_url": hero_url}
 
     # ── Match proposals ────────────────────────────────────────────────────
 
