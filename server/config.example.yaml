@@ -1,0 +1,21 @@
+# Otix Standalone Game & Save Server Configuration
+server:
+  name: "DK Game Storage Server"
+  port: 8000
+  auth_token: "otix_secret_token_abc123"
+  registry_url: "https://api.otix.io"
+  enable_upnp: true
+  enable_heartbeat: true
+
+game_libraries:
+  - name: "PC Installers & ISOs"
+    path: "./storage/installers"
+    allowed_extensions: [".iso", ".img", ".exe", ".zip", ".7z", ".rar"]
+  - name: "Console ROMs"
+    path: "./storage/roms"
+    allowed_extensions: [".iso", ".zip", ".7z", ".chd", ".rvz", ".bin"]
+
+saves:
+  storage_path: "./storage/saves"
+  max_snapshots_per_game: 10
+  auto_backup_on_exit: true

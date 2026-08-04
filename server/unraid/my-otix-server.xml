@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>otix-server</Name>
+  <Repository>otix-server:latest</Repository>
+  <Registry>https://hub.docker.com/r/otix/otix-server</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Otix/Otix/issues</Support>
+  <Project>https://otix.io</Project>
+  <Overview>Standalone Headless Otix Game Installer &amp; Cloud Save Backup Server for Unraid. Host your ISOs, setups, repacks, and ROMs for multi-connection remote downloading and automatic game save backups across all your devices.</Overview>
+  <Category>MediaApp:Games Network:Web Status:Stable</Category>
+  <WebUI>http://[IP]:[PORT:8000]/api/v1/ping</WebUI>
+  <Icon>https://raw.githubusercontent.com/Otix/Otix/main/assets/icon.png</Icon>
+  <Description>Otix Standalone Server — Plex for Games &amp; Cloud Saves on Unraid.</Description>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>8000</HostPort>
+        <ContainerPort>8000</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Data>
+    <Volume>
+      <HostDir>/mnt/user/appdata/otix-server/config.yaml</HostDir>
+      <ContainerDir>/app/config.yaml</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+    <Volume>
+      <HostDir>/mnt/user/games/</HostDir>
+      <ContainerDir>/storage/installers</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+    <Volume>
+      <HostDir>/mnt/user/appdata/otix-server/saves/</HostDir>
+      <ContainerDir>/storage/saves</ContainerDir>
+      <Mode>rw</Mode>
+    </Volume>
+  </Data>
+  <Config Name="WebUI Port" Target="8000" Default="8000" Mode="tcp" Description="HTTP/2 Range Request Server Port" Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="Config File" Target="/app/config.yaml" Default="/mnt/user/appdata/otix-server/config.yaml" Mode="rw" Description="Path to server config.yaml" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/otix-server/config.yaml</Config>
+  <Config Name="Game Installers / ISOs" Target="/storage/installers" Default="/mnt/user/games/" Mode="rw" Description="Unraid share containing game ISOs, setup files, repacks, and ROMs" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/games/</Config>
+  <Config Name="Cloud Save Backups" Target="/storage/saves" Default="/mnt/user/appdata/otix-server/saves/" Mode="rw" Description="Directory storing automated game save file snapshots" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/otix-server/saves/</Config>
+</Container>
