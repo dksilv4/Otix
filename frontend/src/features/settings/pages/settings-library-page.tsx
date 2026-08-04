@@ -1,16 +1,183 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Gamepad2, Loader2, Library, CheckCircle2, AlertCircle, Sparkles, FolderOpen, Search, X, Monitor } from 'lucide-react'
+import { Gamepad2, Loader2, Library, CheckCircle2, AlertCircle, Sparkles, FolderOpen, Search, X, Monitor, Filter, RefreshCw, Link2, ArrowUpDown } from 'lucide-react'
 import { PluginSlot } from '@/features/plugins/components/organisms/plugin-slot'
 import { getPluginAPI } from '@/features/plugins/pages/plugins-page'
 import type { PluginAPI } from '@/features/plugins/components/organisms/plugin-settings'
+import { DkDropdown } from '@/old-features/ui/atoms/dropdown'
+import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
 import { isDesktop } from '@/lib/desktop/api'
+import { apiClient } from '@/lib/api/client'
+import { cn } from '@/lib/utils'
 
-type ItemFilter = 'all' | 'games' | 'dlcs' | 'matched' | 'candidates' | 'unmatched'
+type ItemFilter = 'all' | 'games' | 'dlcs' | 'expansions' | 'demos' | 'betas' | 'mods' | 'soundtracks' | 'matched' | 'candidates' | 'unmatched'
+type SortKey = 'title' | 'recent' | 'playtime' | 'platform' | 'status'
+type SortDir = 'asc' | 'desc'
+
+// Fetch every page of a cursor-paginated library endpoint (matched + unmatched).
+async function fetchAllLibraryPages(path: string): Promise<any[]> {
+  const items: any[] = []
+  let cursor: string | null = null
+  for (let i = 0; i < 50; i++) {
+    const params: Record<string, string> = { limit: '100' }
+    if (cursor) params.cursor = cursor
+    const { data } = await apiClient.get<any>(path, { params })
+    items.push(...(data?.items ?? []))
+    if (!data?.hasMore || !data?.nextCursor) break
+    cursor = data.nextCursor
+  }
+  return items
+}
+
+// Map a matched Steam MediaItemSummary to the page's local-game shape.
+function mapSteamMatched(item: any): any {
+  return {
+    id: `steam-${item.id}`,
+    title: item.title,
+    posterUrl: item.posterUrl || item.textlessPosterUrl || item.iconUrl || null,
+    localIconUrl: item.iconUrl || null,
+    iconUrl: item.iconUrl || null,
+    otixMediaId: item.id,
+    platform: 'steam',
+    providerName: 'steam',
+    gameType: 'main_game',
+    mediaType: item.mediaType || 'game',
+    developer: null,
+    steamPlaytimeForever: item.steamPlaytimeForever,
+    steamPlaytime2weeks: item.steamPlaytime2weeks,
+    steamRtimeLastPlayed: item.steamRtimeLastPlayed,
+    isSteam: true,
+  }
+}
+
+// Map an unmatched SteamUnmatchedGameSummary to the page's local-game shape.
+function mapSteamUnmatched(item: any): any {
+  const iconUrl = item.steamImgIconUrl
+    ? `https://media.steampowered.com/steamcommunity/public/images/apps/${item.steamAppId}/${item.steamImgIconUrl}.jpg`
+    : null
+  return {
+    id: `steam-unmatched-${item.id}`,
+    title: item.steamName,
+    posterUrl: null,
+    localIconUrl: iconUrl,
+    iconUrl,
+    otixMediaId: undefined,
+    platform: 'steam',
+    providerName: 'steam',
+    gameType: 'main_game',
+    mediaType: 'game',
+    developer: null,
+    steamAppId: item.steamAppId,
+    steamPlaytimeForever: item.steamPlaytimeForever,
+    steamPlaytime2weeks: item.steamPlaytime2weeks,
+    steamRtimeLastPlayed: item.steamRtimeLastPlayed,
+    isSteam: true,
+  }
+}
+
+// Clean title for fuzzy deduplication across editions, regional titles, playtests, betas, and servers.
+function cleanTitleForDeduplication(title: string): string {
+  if (!title) return ''
+  return title
+    .toLowerCase()
+    .replace(/[™®©]/g, '')
+    .replace(/^(a\.v\.a\.?|ava)\s*/i, '')
+    .replace(/\s*[\(\[\{-].*?[\)\]\}]/g, '')
+    .replace(/[-:\s]+(playtest|test server|public test server|closed beta|open beta|beta|alpha|demo|global|server|pts|trial|client|sdk|edition|goty|game of the year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|vr|directors? cut)\b.*/gi, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim()
+}
+
+// Deduplicate games from local disk scan and backend API endpoints.
+function deduplicateGames(items: any[]): any[] {
+  const merged: any[] = []
+  const seenIds = new Set<string>()
+  const seenMediaIds = new Set<string>()
+  const seenSteamAppIds = new Set<string>()
+  const titleMap = new Map<string, any>()
+
+  for (const item of items) {
+    if (!item) continue
+
+    const mediaId = item.otixMediaId ? String(item.otixMediaId) : null
+    const steamAppId = item.steamAppId
+      ? String(item.steamAppId)
+      : item.id?.startsWith?.('steam-')
+      ? item.id.replace('steam-', '').replace('unmatched-', '')
+      : null
+
+    const normTitle = cleanTitleForDeduplication(item.title)
+    const isSteam = item.isSteam || item.platform === 'steam' || item.providerName === 'steam'
+    const platKey = isSteam ? 'steam' : (item.platform || item.providerName || 'pc').toLowerCase()
+    // Group by normalized title across PC/Steam platforms to collapse regional, beta, playtest, and edition duplicates
+    const titleKey = isSteam || platKey === 'pc' || platKey === 'win32' ? normTitle : `${normTitle}:${platKey}`
+
+    let existing: any = null
+
+    if (item.id && seenIds.has(item.id)) {
+      existing = merged.find((m) => m.id === item.id)
+    } else if (mediaId && seenMediaIds.has(mediaId)) {
+      existing = merged.find((m) => String(m.otixMediaId) === mediaId)
+    } else if (steamAppId && seenSteamAppIds.has(steamAppId)) {
+      existing = merged.find((m) => {
+        const mSteamAppId = m.steamAppId
+          ? String(m.steamAppId)
+          : m.id?.startsWith?.('steam-')
+          ? m.id.replace('steam-', '').replace('unmatched-', '')
+          : null
+        return mSteamAppId === steamAppId
+      })
+    } else if (normTitle && titleMap.has(titleKey)) {
+      existing = titleMap.get(titleKey)
+    }
+
+    if (existing) {
+      if (!existing.otixMediaId && item.otixMediaId) {
+        existing.otixMediaId = item.otixMediaId
+      }
+      if (!existing.posterUrl && item.posterUrl) {
+        existing.posterUrl = item.posterUrl
+      }
+      if (!existing.localIconUrl && item.localIconUrl) {
+        existing.localIconUrl = item.localIconUrl
+      }
+      if (!existing.iconUrl && item.iconUrl) {
+        existing.iconUrl = item.iconUrl
+      }
+      if (!existing.exePath && item.exePath) {
+        existing.exePath = item.exePath
+      }
+      if (!existing.steamAppId && item.steamAppId) {
+        existing.steamAppId = item.steamAppId
+      }
+      if (item.steamPlaytimeForever && (!existing.steamPlaytimeForever || item.steamPlaytimeForever > existing.steamPlaytimeForever)) {
+        existing.steamPlaytimeForever = item.steamPlaytimeForever
+      }
+      if (item.steamRtimeLastPlayed && (!existing.steamRtimeLastPlayed || item.steamRtimeLastPlayed > existing.steamRtimeLastPlayed)) {
+        existing.steamRtimeLastPlayed = item.steamRtimeLastPlayed
+      }
+      if (!existing.otixMatchSuggestion && item.otixMatchSuggestion) {
+        existing.otixMatchSuggestion = item.otixMatchSuggestion
+      }
+      if ((item.otixMediaId && !existing.otixMediaId) || (!existing.otixMediaId && item.title && item.title.length < existing.title.length)) {
+        existing.title = item.title
+      }
+    } else {
+      const newItem = { ...item }
+      merged.push(newItem)
+      if (newItem.id) seenIds.add(newItem.id)
+      if (mediaId) seenMediaIds.add(mediaId)
+      if (steamAppId) seenSteamAppIds.add(steamAppId)
+      if (normTitle) titleMap.set(titleKey, newItem)
+    }
+  }
+
+  return merged
+}
 
 export function SettingsLibraryPage() {
   const desktop = isDesktop()
@@ -21,6 +188,8 @@ export function SettingsLibraryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterTab, setFilterTab] = useState<ItemFilter>('all')
   const [platformFilter, setPlatformFilter] = useState<string>('')
+  const [sortKey, setSortKey] = useState<SortKey>('title')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [providersModalOpen, setProvidersModalOpen] = useState(false)
 
   const api = (window as any).desktopAPI
@@ -34,17 +203,16 @@ export function SettingsLibraryPage() {
     return () => clearTimeout(t)
   }, [])
 
-  // Fetch all games
-  const fetchGames = useCallback(() => {
-    if (!api?.getLocalGames) {
-      setGamesLoading(false)
-      return
-    }
+  // Fetch all games: local disk scan (desktop) + backend Steam library (matched + unmatched).
+  const fetchGames = useCallback(async () => {
     setGamesLoading(true)
-    api.getLocalGames()
-      .then((data: any[]) => setGames(data || []))
-      .catch(() => setGames([]))
-      .finally(() => setGamesLoading(false))
+    const [local, steamMatched, steamUnmatched] = await Promise.all([
+      api?.getLocalGames?.().then((data: any[]) => data || []).catch(() => []),
+      fetchAllLibraryPages('/library/steam').then((items) => items.map(mapSteamMatched)).catch(() => []),
+      fetchAllLibraryPages('/library/steam/unmatched').then((items) => items.map(mapSteamUnmatched)).catch(() => []),
+    ])
+    setGames(deduplicateGames([...(local ?? []), ...steamMatched, ...steamUnmatched]))
+    setGamesLoading(false)
   }, [api])
 
   useEffect(() => {
@@ -62,43 +230,118 @@ export function SettingsLibraryPage() {
     }
   }, [api, fetchGames])
 
+  // Helper to determine game type slug
+  const getGameType = (g: any): string => {
+    if (g.gameType) return g.gameType
+    if (g.contentType) return g.contentType
+    if (g.isApp) return 'application'
+    if (g.isDemo || (g.title && /\bdemo\b/i.test(g.title))) return 'demo'
+    if (g.isDlc) return 'dlc_addon'
+    if (g.isBeta) return 'beta'
+    return 'main_game'
+  }
+
+  // Applications (non-game software) are detected and stored but hidden from the UI for now
+  const isAppGame = (g: any): boolean =>
+    g?.isApp === true || g?.gameType === 'application' || g?.contentType === 'application'
+
   // Stats calculation
   const stats = useMemo(() => {
     let dlcs = 0
+    let demos = 0
+    let betas = 0
+    let expansions = 0
+    let mods = 0
+    let soundtracks = 0
     let baseGames = 0
     let matched = 0
     let candidates = 0
     let unmatched = 0
+    let total = 0
     for (const g of games) {
-      if (g.isDlc) dlcs++
+      if (isAppGame(g)) continue // applications are stored but hidden
+      total++
+      const gt = getGameType(g)
+      if (gt === 'dlc_addon' || g.isDlc) dlcs++
+      else if (gt === 'expansion' || gt === 'standalone_expansion') expansions++
+      else if (gt === 'demo' || g.isDemo) demos++
+      else if (gt === 'beta' || g.isBeta) betas++
+      else if (gt === 'mod') mods++
+      else if (gt === 'soundtrack') soundtracks++
       else baseGames++
+
       if (g.otixMediaId) matched++
       else if (g.otixMatchSuggestion) candidates++
       else unmatched++
     }
-    return { total: games.length, baseGames, dlcs, matched, candidates, unmatched }
+    return { total, baseGames, dlcs, expansions, demos, betas, mods, soundtracks, matched, candidates, unmatched }
   }, [games])
 
   // Extract unique platforms
   const availablePlatforms = useMemo(() => {
     const set = new Set<string>()
     for (const g of games) {
+      if (isAppGame(g)) continue
       if (g.platform) set.add(g.platform)
+      if (g.providerName) set.add(g.providerName)
     }
     return [...set].sort()
   }, [games])
 
-  // Filtered games list
+  // Options for DkDropdown
+  const categoryDropdownOptions = useMemo(() => [
+    { value: 'all', label: `All Items (${stats.total})` },
+    { value: 'games', label: `Base Games (${stats.baseGames})` },
+    { value: 'dlcs', label: `DLCs (${stats.dlcs})` },
+    { value: 'expansions', label: `Expansions (${stats.expansions})` },
+    { value: 'demos', label: `Demos (${stats.demos})` },
+    { value: 'betas', label: `Betas (${stats.betas})` },
+    { value: 'mods', label: `Mods (${stats.mods})` },
+    { value: 'soundtracks', label: `Soundtracks (${stats.soundtracks})` },
+    { value: 'matched', label: `Matched (${stats.matched})` },
+    { value: 'candidates', label: `Need Review (${stats.candidates})` },
+    { value: 'unmatched', label: `Unmatched (${stats.unmatched})` },
+  ], [stats])
+
+  const platformDropdownOptions = useMemo(() => [
+    { value: '', label: 'All Platforms' },
+    ...availablePlatforms.map((p) => ({
+      value: p,
+      label: p.charAt(0).toUpperCase() + p.slice(1),
+    })),
+  ], [availablePlatforms])
+
+  const sortDropdownOptions = useMemo(() => [
+    { value: 'title', label: 'Title' },
+    { value: 'recent', label: 'Last Played' },
+    { value: 'playtime', label: 'Playtime' },
+    { value: 'platform', label: 'Platform' },
+    { value: 'status', label: 'Match Status' },
+  ], [])
+
+  // Filtered and sorted games list
   const filteredGames = useMemo(() => {
-    let result = games
-    if (filterTab === 'games') result = result.filter((g) => !g.isDlc)
-    else if (filterTab === 'dlcs') result = result.filter((g) => !!g.isDlc)
+    let result = games.filter((g) => !isAppGame(g)) // applications are stored but hidden
+    if (filterTab === 'games') result = result.filter((g) => {
+      const gt = getGameType(g)
+      return !g.isDlc && !g.isBeta && !g.isDemo && (gt === 'main_game' || gt === 'remake' || gt === 'remaster' || gt === 'port')
+    })
+    else if (filterTab === 'dlcs') result = result.filter((g) => g.isDlc || getGameType(g) === 'dlc_addon' || getGameType(g) === 'pack')
+    else if (filterTab === 'expansions') result = result.filter((g) => getGameType(g) === 'expansion' || getGameType(g) === 'standalone_expansion')
+    else if (filterTab === 'demos') result = result.filter((g) => g.isDemo || getGameType(g) === 'demo')
+    else if (filterTab === 'betas') result = result.filter((g) => (g.isBeta || getGameType(g) === 'beta') && !g.isDemo && getGameType(g) !== 'demo')
+    else if (filterTab === 'mods') result = result.filter((g) => getGameType(g) === 'mod')
+    else if (filterTab === 'soundtracks') result = result.filter((g) => getGameType(g) === 'soundtrack')
     else if (filterTab === 'matched') result = result.filter((g) => !!g.otixMediaId)
     else if (filterTab === 'candidates') result = result.filter((g) => !g.otixMediaId && !!g.otixMatchSuggestion)
     else if (filterTab === 'unmatched') result = result.filter((g) => !g.otixMediaId && !g.otixMatchSuggestion)
 
     if (platformFilter) {
-      result = result.filter((g) => g.platform === platformFilter)
+      const pf = platformFilter.toLowerCase()
+      result = result.filter((g) =>
+        (g.platform || '').toLowerCase() === pf ||
+        (g.providerName || '').toLowerCase() === pf
+      )
     }
 
     if (searchQuery.trim()) {
@@ -110,8 +353,47 @@ export function SettingsLibraryPage() {
       )
     }
 
+    result.sort((a, b) => {
+      let cmp = 0
+
+      if (sortKey === 'title') {
+        cmp = (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base', numeric: true })
+      } else if (sortKey === 'recent') {
+        const getTimestamp = (g: any) => {
+          if (g.steamRtimeLastPlayed) {
+            const val = Number(g.steamRtimeLastPlayed)
+            return val > 1e11 ? val : val * 1000
+          }
+          if (g.lastPlayedAt) return new Date(g.lastPlayedAt).getTime()
+          if (g.updatedAt) return new Date(g.updatedAt).getTime()
+          return 0
+        }
+        cmp = getTimestamp(a) - getTimestamp(b)
+      } else if (sortKey === 'playtime') {
+        const getPlaytime = (g: any) => g.steamPlaytimeForever ?? g.playtimeMinutes ?? (g.playtimeHours ? g.playtimeHours * 60 : 0) ?? 0
+        cmp = getPlaytime(a) - getPlaytime(b)
+      } else if (sortKey === 'platform') {
+        const aPlat = (a.platform || a.providerName || '').toLowerCase()
+        const bPlat = (b.platform || b.providerName || '').toLowerCase()
+        cmp = aPlat.localeCompare(bPlat, undefined, { sensitivity: 'base', numeric: true })
+      } else if (sortKey === 'status') {
+        const getStatusRank = (g: any) => {
+          if (g.otixMediaId) return 3
+          if (g.otixMatchSuggestion) return 2
+          return 1
+        }
+        cmp = getStatusRank(a) - getStatusRank(b)
+      }
+
+      if (cmp === 0) {
+        cmp = (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base', numeric: true })
+      }
+
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
     return result
-  }, [games, filterTab, platformFilter, searchQuery])
+  }, [games, filterTab, platformFilter, searchQuery, sortKey, sortDir])
 
   // Handle game click -> open candidate review modal
   const handleGameClick = useCallback((game: any) => {
@@ -126,128 +408,143 @@ export function SettingsLibraryPage() {
 
   if (loading) {
     return (
-      <div id="settings-library-section" className="space-y-4">
-        <SectionHeader variant="page" title="Game Library" description="Scanned collection and provider settings." />
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!desktop && !pluginApi) {
-    return (
-      <div id="settings-library-section" className="space-y-4">
-        <SectionHeader variant="page" title="Game Library" description="Scanned collection and provider settings." />
-        <SettingsCard className="p-8 text-center space-y-4 max-w-xl mx-auto my-6">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Monitor className="h-6 w-6" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white">Otix Desktop Feature</h3>
-            <p className="text-xs text-white/60 mt-1 max-w-md mx-auto leading-relaxed">
-              Local game directory scanning and platform provider plugins are available in the Otix Desktop App.
-            </p>
-          </div>
-          <div className="pt-1 flex justify-center">
-            <a
-              href="https://otix.app/download"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 font-semibold rounded-xl px-4 py-2 text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
-            >
-              <Monitor className="h-4 w-4" />
-              <span>Download Otix Desktop</span>
-            </a>
-          </div>
-        </SettingsCard>
+      <div className="flex items-center justify-center py-20 text-white/50 gap-3">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        <span>Loading library...</span>
       </div>
     )
   }
 
   return (
-    <div id="settings-library-section" className="space-y-4">
-      {/* Page Title & Top Action: Manage Providers Modal */}
-      <SectionHeader
-        variant="page"
-        title="Game Library"
-        description={`${stats.total} titles scanned across your providers.`}
-        action={
+    <div id="settings-library-section" className="space-y-6">
+      {/* Header */}
+      <SettingsCard>
+        <SectionHeader
+          title="Games & Local Media Library"
+          description="Manage scanned game titles, DLCs, expansions, demos, betas, mods, soundtracks, and auto-matching."
+        />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          {/* Stats Bar */}
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5 text-white">
+              <Gamepad2 className="h-4 w-4 text-primary" />
+              <span className="font-bold">{stats.total}</span>
+              <span className="text-white/40">Total Items</span>
+            </div>
+            <div className="h-3 w-px bg-white/10" />
+            <div className="flex items-center gap-1.5 text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span className="font-bold">{stats.matched}</span>
+              <span className="text-white/40">Matched</span>
+            </div>
+            {stats.candidates > 0 && (
+              <>
+                <div className="h-3 w-px bg-white/10" />
+                <div className="flex items-center gap-1.5 text-sky-400">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="font-bold">{stats.candidates}</span>
+                  <span className="text-white/40">Need Review</span>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             onClick={() => setProvidersModalOpen(true)}
-            className="inline-flex items-center gap-2 h-8.5 rounded-xl px-3.5 text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors self-start sm:self-auto cursor-pointer"
           >
-            <FolderOpen className="h-3.5 w-3.5 text-primary" />
-            <span>Providers</span>
+            <FolderOpen className="h-3.5 w-3.5" />
+            Manage Providers
           </button>
-        }
-      />
+        </div>
+      </SettingsCard>
 
-      {/* ===== ALL GAMES LIBRARY CARD ===== */}
-      <SettingsCard compact>
-        {/* Filter bar, Platform filter & Search */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+      {/* ===== PROVIDERS & SCANNERS MODAL ===== */}
+      <DkDialog
+        open={providersModalOpen}
+        onOpenChange={setProvidersModalOpen}
+        title="Library Providers"
+        description="Configure scanner paths and platform integration providers."
+        className="max-w-4xl"
+      >
+        <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
+          {pluginApi && (
+            <PluginSlot location="library:scan" pluginApi={pluginApi} />
+          )}
+        </div>
+      </DkDialog>
+
+      {/* Library Games List */}
+      <SettingsCard>
+        {/* Search & Filter Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40" />
             <input
               type="text"
+              placeholder="Search library titles, developers, platforms..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search scanned games..."
-              className="w-full h-9 rounded-xl bg-white/5 pl-9 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-colors"
+              className="w-full h-9 pl-9 pr-8 rounded-xl bg-white/5 text-xs text-white placeholder:text-white/30 outline-none focus:bg-white/10 transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer"
+                className="absolute right-2.5 top-2.5 text-white/40 hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {/* Status & Category Filter Tabs */}
-            <div className="flex rounded-xl p-1 bg-white/5 gap-1 text-xs">
-              {(['all', 'games', 'dlcs', 'matched', 'candidates', 'unmatched'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setFilterTab(tab)}
-                  className={`px-3 py-1.5 rounded-lg capitalize text-xs font-semibold transition-all cursor-pointer ${
-                    filterTab === tab
-                      ? 'bg-white/15 text-white shadow-xs'
-                      : 'text-white/50 hover:text-white'
-                  }`}
-                >
-                  {tab === 'all'
-                    ? `All (${stats.total})`
-                    : tab === 'games'
-                    ? `Games (${stats.baseGames})`
-                    : tab === 'dlcs'
-                    ? `DLCs (${stats.dlcs})`
-                    : tab === 'candidates'
-                    ? `Review (${stats.candidates})`
-                    : tab === 'matched'
-                    ? `Matched (${stats.matched})`
-                    : `Unmatched (${stats.unmatched})`}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            {/* Custom DkDropdown for Category / Filter */}
+            <DkDropdown
+              options={categoryDropdownOptions}
+              value={filterTab}
+              onChange={(val) => setFilterTab(val as ItemFilter)}
+              variant="filter"
+              label="Type"
+            />
 
-            {/* Platform Filter Dropdown */}
+            {/* Custom DkDropdown for Platform */}
             {availablePlatforms.length > 0 && (
-              <select
+              <DkDropdown
+                options={platformDropdownOptions}
                 value={platformFilter}
-                onChange={(e) => setPlatformFilter(e.target.value)}
-                className="h-9 rounded-xl bg-white/5 px-3 text-xs text-white/80 outline-none capitalize cursor-pointer focus:bg-white/10 transition-colors"
-              >
-                <option value="" className="bg-neutral-900 text-white">All Platforms</option>
-                {availablePlatforms.map((p) => (
-                  <option key={p} value={p} className="bg-neutral-900 text-white capitalize">{p}</option>
-                ))}
-              </select>
+                onChange={setPlatformFilter}
+                variant="filter"
+                label="Platform"
+              />
             )}
+
+            {/* Custom DkDropdown for Sort */}
+            <DkDropdown
+              options={sortDropdownOptions}
+              value={sortKey}
+              onChange={(val) => {
+                const newKey = val as SortKey
+                setSortKey(newKey)
+                if (newKey === 'recent' || newKey === 'playtime') {
+                  setSortDir('desc')
+                } else {
+                  setSortDir('asc')
+                }
+              }}
+              variant="filter"
+              label="Sort"
+            />
+
+            {/* Sort Direction Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer select-none"
+              title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
+            >
+              <ArrowUpDown className={cn('h-3.5 w-3.5 transition-transform duration-200', sortDir === 'desc' && 'rotate-180 text-primary')} />
+            </button>
           </div>
         </div>
 
@@ -263,17 +560,17 @@ export function SettingsLibraryPage() {
               <Gamepad2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-white/80">No games found</p>
+              <p className="text-xs font-semibold text-white/80">No items found</p>
               <p className="text-[11px] text-white/40 mt-0.5 max-w-xs mx-auto leading-relaxed">
-                {searchQuery || filterTab !== 'all' || platformFilter
+                {searchQuery || filterTab !== 'all' || platformFilter || sortKey !== 'title' || sortDir !== 'asc'
                   ? 'Try clearing active filters.'
                   : 'Click "Providers" above to add local game folders.'}
               </p>
             </div>
-            {(searchQuery || filterTab !== 'all' || platformFilter) && (
+            {(searchQuery || filterTab !== 'all' || platformFilter || sortKey !== 'title' || sortDir !== 'asc') && (
               <div className="pt-1">
                 <button
-                  onClick={() => { setSearchQuery(''); setFilterTab('all'); setPlatformFilter('') }}
+                  onClick={() => { setSearchQuery(''); setFilterTab('all'); setPlatformFilter(''); setSortKey('title'); setSortDir('asc') }}
                   className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
                 >
                   Reset Filters
@@ -287,6 +584,7 @@ export function SettingsLibraryPage() {
               const isMatched = !!game.otixMediaId
               const isCandidate = !isMatched && !!game.otixMatchSuggestion
               const iconUrl = game.posterUrl || game.localIconUrl || game.iconUrl
+              const gt = getGameType(game)
 
               return (
                 <button
@@ -311,13 +609,38 @@ export function SettingsLibraryPage() {
                     <p className="text-xs font-bold text-white truncate whitespace-nowrap group-hover:text-primary transition-colors">
                       {game.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-1 min-w-0">
-                      <span className="text-[11px] text-white/40 truncate capitalize whitespace-nowrap shrink-0">
-                        {game.platform || game.providerName || 'PC'}
-                      </span>
-                      {game.isDlc && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 min-w-0">
+                      <div title={game.platform || game.providerName || 'PC'} className="flex items-center justify-center p-1 rounded-md bg-white/5 border border-white/10 shrink-0">
+                        <ProviderLogo platform={game.platform || game.providerName || 'pc'} className="h-3.5 w-3.5" />
+                      </div>
+                      {(gt === 'dlc_addon' || game.isDlc) && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                           DLC
+                        </span>
+                      )}
+                      {(gt === 'expansion' || gt === 'standalone_expansion') && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                          Expansion
+                        </span>
+                      )}
+                      {(gt === 'demo' || game.isDemo) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                          Demo
+                        </span>
+                      )}
+                      {(gt === 'beta' || game.isBeta) && (gt !== 'demo' && !game.isDemo) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                          Beta
+                        </span>
+                      )}
+                      {gt === 'mod' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                          Mod
+                        </span>
+                      )}
+                      {gt === 'soundtrack' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                          OST
                         </span>
                       )}
                       {isMatched ? (
@@ -344,25 +667,6 @@ export function SettingsLibraryPage() {
           </div>
         )}
       </SettingsCard>
-
-      {/* ===== PROVIDERS & SCANNERS MODAL ===== */}
-      <DkDialog
-        open={providersModalOpen}
-        onOpenChange={setProvidersModalOpen}
-        title="Library Providers"
-        description="Configure scanner paths and platform plugins."
-        className="max-w-4xl"
-      >
-        <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
-          {pluginApi ? (
-            <PluginSlot location="library:scan" pluginApi={pluginApi} />
-          ) : (
-            <div className="py-8 text-center text-xs text-white/40">
-              No library providers currently active.
-            </div>
-          )}
-        </div>
-      </DkDialog>
     </div>
   )
 }

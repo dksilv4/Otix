@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
-import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, ListMusic, Film, Tv, Music } from 'lucide-react'
+import { Loader2, Plus, Unlink, RefreshCw, Download, ChevronDown, Link2, ListMusic, Film, Tv, Music, FolderOpen } from 'lucide-react'
 import { usePlexLibraries, streamPlexLibrarySync } from '@/old-features/library/library-queries'
 import type { PlexLibraryInfo } from '@/old-features/library/library-queries'
 
@@ -325,7 +325,7 @@ export function SettingsIntegrationsPage() {
   const [connecting, setConnecting] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
   const [scanning, setScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number } | null>(null)
+  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number; resolved: number; synced: number; failed: number } | null>(null)
   const [wishlistScanning, setWishlistScanning] = useState(false)
   const [wishlistScanResult, setWishlistScanResult] = useState<{ total: number; matched: number; private?: boolean } | null>(null)
   const [resolving, setResolving] = useState(false)
@@ -1167,11 +1167,24 @@ export function SettingsIntegrationsPage() {
     setSteamError('')
     setScanResult(null)
     try {
-      const { data } = await apiClient.post<{ totalInSteam: number; matchedInOtix: number }>(
+      // First scan hydrates the Otix catalog (runs the matcher for unmatched
+      // games), which can take a while on a fresh account — allow up to 5 min.
+      const { data } = await apiClient.post<{
+        totalInSteam: number
+        matchedInOtix: number
+        resolved: number
+        synced: number
+        failed: number
+      }>(
         '/integrations/steam/scan',
+        undefined,
+        { timeout: 300_000 },
       )
       setScanResult(data)
-      setSteamMessage(`Found ${data.matchedInOtix} matches out of ${data.totalInSteam} Steam games.`)
+      let msg = `Found ${data.matchedInOtix} matches out of ${data.totalInSteam} Steam games.`
+      if (data.synced > 0) msg += ` Seeded ${data.synced} new Otix entries.`
+      if (data.failed > 0) msg += ` ${data.failed} could not be matched.`
+      setSteamMessage(msg)
     } catch (err) {
       setSteamError(extractIntegrationMessage(err))
     } finally {
@@ -1401,9 +1414,18 @@ export function SettingsIntegrationsPage() {
                         ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
                       ]} />
                     )}
-                    <IntegrationAction label="Library Sync" description="Steam Library" result={scanResult ? `${scanResult.matchedInOtix} matches out of ${scanResult.totalInSteam} games` : null} buttonLabel={scanning ? 'Scanning...' : scanResult ? 'Re-scan' : 'Scan Library'} buttonIcon={RefreshCw} onPress={handleScan} loading={scanning} />
-                    <IntegrationAction label="Wishlist Sync" description="Steam Wishlist" result={wishlistScanResult ? `${wishlistScanResult.matched} matches out of ${wishlistScanResult.total} wishlist items` : null} buttonLabel={wishlistScanning ? 'Scanning...' : wishlistScanResult ? 'Re-scan' : 'Scan Wishlist'} buttonIcon={RefreshCw} onPress={handleWishlistScan} loading={wishlistScanning} muted />
-                    <IntegrationAction label="Game Matching" description="Match unmapped games to IGDB" result={resolveResult ? `${resolveResult.resolved} linked${resolveResult.synced > 0 ? `, ${resolveResult.synced} synced` : ''}${resolveResult.failed > 0 ? `, ${resolveResult.failed} failed` : ''} out of ${resolveResult.total}` : null} buttonLabel={resolving ? 'Resolving...' : resolveResult ? 'Resolve Again' : 'Resolve Unmatched'} buttonIcon={Link2} onPress={handleResolveUnmatched} loading={resolving} />
+                    <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 text-xs text-white/70">
+                        <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
+                        <span>Game scanning, wishlist syncing, and auto-matching are managed under <strong>Library Settings</strong> as a Provider.</span>
+                      </div>
+                      <Link
+                        to="/settings/library"
+                        className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+                      >
+                        Go to Library Settings &rarr;
+                      </Link>
+                    </div>
                     {steamMessage && <p className="px-5 py-2 text-xs text-green-400">{steamMessage}</p>}
                     {steamError && <p className="px-5 py-2 text-xs text-red-400">{steamError}</p>}
                   </>

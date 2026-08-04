@@ -12,6 +12,7 @@ from sqlalchemy.orm import joinedload
 from otix.domain.media import ExternalID, MediaItem, UserSteamGame, UserSteamWishlist
 from otix.domain.user import User
 from otix.infrastructure.config import settings
+from otix.services.steam_igdb_resolver import resolve_unmatched_steam_games
 
 logger = structlog.get_logger()
 
@@ -89,7 +90,8 @@ async def _fetch_owned_games(steam_id: str) -> list[dict]:
         raise RuntimeError(f"Steam API returned {resp.status_code}")
 
     data = resp.json()
-    games = data.get("response", {}).get("game")
+    resp_obj = data.get("response", {})
+    games = resp_obj.get("games") or resp_obj.get("game")
     if isinstance(games, list):
         return games
     return []
@@ -166,13 +168,28 @@ async def scan_steam_library(
         await db.execute(stmt)
 
     await db.commit()
+
+    # Hydrate Otix catalog: seed MediaItem + steam ExternalID for the games that
+    # weren't already linked, so a single "Scan" behaves like the Epic scan
+    # (games appear in the library with full metadata, not as bare Steam rows).
+    resolution = await resolve_unmatched_steam_games(db, user.id)
+
     logger.info(
         "steam library scanned",
         user_id=user.id,
         total=len(games),
         matched=matched,
+        resolved=resolution.resolved,
+        synced=resolution.synced,
+        failed=resolution.failed,
     )
-    return {"total_in_steam": len(games), "matched_in_otix": matched}
+    return {
+        "total_in_steam": len(games),
+        "matched_in_otix": matched,
+        "resolved": resolution.resolved,
+        "synced": resolution.synced,
+        "failed": resolution.failed,
+    }
 
 
 async def get_unmatched_steam_games(

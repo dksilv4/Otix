@@ -7,7 +7,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.domain.media import ExternalID, UserSteamGame
+from otix.domain.media import ExternalID, MediaItem, UserSteamGame
 from otix.infrastructure.redis import get_redis
 from otix.services.external_id_service import ExternalIDService
 from otix.schemas.media import ExternalIDRef
@@ -48,10 +48,14 @@ async def resolve_unmatched_steam_games(
     matcher = GameMatcher(db, redis)
     eid_svc = ExternalIDService(db)
 
+    # Snapshot existing catalog IDs before matching so we can tell newly
+    # seeded entries ("synced") apart from pre-existing matches ("resolved").
+    existing_ids = set((await db.execute(select(MediaItem.id))).scalars().all())
+
     # Build batch request
     requests = [
         GameMatchRequest(
-            title=game.title,
+            title=game.name,
             external_ids=[ExternalIDRef(source="steam", id=str(game.steam_app_id))],
         )
         for game in unmatched_games
@@ -60,11 +64,12 @@ async def resolve_unmatched_steam_games(
     matches = await matcher.match_batch(requests)
 
     for game, match in zip(unmatched_games, matches):
-        if match.confidence > 0 and match.media_item_id:
-            game.media_item_id = match.media_item_id
+        auto = match.auto_match
+        if auto is not None and auto.media_item_id:
+            game.media_item_id = auto.media_item_id
             # Ensure steam ExternalID is set for future Stage 1 hits
-            await eid_svc.upsert("steam", str(game.steam_app_id), "media_item", match.media_item_id)
-            if match.is_new:
+            await eid_svc.upsert("steam", str(game.steam_app_id), "media_item", auto.media_item_id)
+            if auto.media_item_id not in existing_ids:
                 result.synced += 1
             else:
                 result.resolved += 1
