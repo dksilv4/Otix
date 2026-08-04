@@ -244,13 +244,26 @@ export function DiscoverHero({ className }: { className?: string }) {
                   transition={{ duration: 0.45, delay: 0.15, ease: [0.34, 1.3, 0.64, 1] }}
                 >
                   {item.logoUrl ? (
-                    <img
-                      src={item.logoUrl}
-                      alt={item.title}
-                      className="h-20 sm:h-24 md:h-28 w-auto object-contain"
-                      style={{ transform: 'translateZ(15px)' }}
-                      draggable={false}
-                    />
+                    <div className="relative flex items-center justify-center">
+                      <div
+                        className="absolute inset-0 pointer-events-none opacity-80"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.3) 55%, rgba(0, 0, 0, 0) 80%)',
+                        }}
+                      />
+                      <img
+                        src={item.logoUrl}
+                        alt={item.title}
+                        className="relative z-10 h-20 sm:h-24 md:h-28 w-auto object-contain"
+                        style={{
+                          transform: 'translateZ(15px)',
+                          filter:
+                            'drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 8px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.9))',
+                        }}
+                        draggable={false}
+                      />
+                    </div>
                   ) : (
                     <span
                       className="text-white font-bold text-center px-4"

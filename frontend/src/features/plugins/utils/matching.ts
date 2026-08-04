@@ -20,6 +20,14 @@ export interface MatchableGame {
   savePaths?: string[] | null
   sources?: Record<string, unknown>[]
   developerExternalIds?: { source: string; id: string; entity_type: string; name: string }[]
+  isDlc?: boolean
+  dlcOf?: string | null
+  isBeta?: boolean
+  betaOf?: string | null
+  isDemo?: boolean
+  demoOf?: string | null
+  isApp?: boolean
+  gameType?: string
 }
 
 // ── API response types (camelCase — axios interceptor converts snake_case) ──
@@ -54,6 +62,55 @@ export interface BatchMatchOutcome {
   matches: MatchResponse[]
 }
 
+// Curated query overrides for titles where Epic's name can't be recovered by
+// general cleaning because IGDB uses different naming (roman numerals, a colon,
+// expanded numerals).
+const TITLE_ALIASES: Record<string, string> = {
+  'Shenmue 3': 'Shenmue III',
+  'G.I. Joe Wrath of Cobra': 'G.I. Joe: Wrath of Cobra',
+  'Warhammer 40K Speed Freeks': 'Warhammer 40,000: Speed Freeks',
+}
+
+// Clean the match query so the backend searches the base title. Epic titles
+// carry trademark symbols and edition/re-release markers that the backend's
+// strict search rejects outright ("Batman™ Arkham Asylum Game of the Year
+// Edition" → zero candidates), while the cleaned base title auto-matches.
+function matchQueryTitle(g: MatchableGame): string {
+  const title = g.title || ''
+  if (TITLE_ALIASES[title]) return TITLE_ALIASES[title]
+  let t = title
+  // Beta/test builds ship with build markers: "33 Immortals Beta",
+  // "Chivalry 2 - Public Testing". Strip them so betas match the base game.
+  if (g.isBeta) {
+    // Parenthetical markers: " (Test branch)", " (Beta)", " [Open Beta]"
+    t = t.replace(/[([][^)\]]*(?:beta|test|playtest|pre[- ]?alpha|ptr)[^)\]]*[\])]/gi, '').trim()
+    // Separator + marker + optional trailing words: " - Public Testing", " | Open Pre-Alpha Playtest 4"
+    t = t.replace(/\s*[-–—|]\s*(?:open pre[- ]?alpha|open beta|closed beta|tech beta|tech test|public testing|public test|test branch|pre[- ]?alpha|playtest|beta|test|ptr)\b.*$/i, '').trim()
+    // Bare trailing marker: "Mortal Shell Tech Beta", "33 Immortals Beta"
+    t = t.replace(/\s+(?:open pre[- ]?alpha|open beta|closed beta|tech beta|tech test|pre[- ]?alpha|playtest|beta|test)\b\s*$/i, '').trim()
+    // Concatenated suffix: "KillingFloor2Beta" → "KillingFloor2"
+    t = t.replace(/(?:beta|test)$/i, '').trim()
+    // Re-spacing a run-in suffix: "KillingFloor2" → "Killing Floor 2"
+    t = t.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([a-z])(\d)/gi, '$1 $2')
+  }
+  // Trademark/registered/copyright symbols and curly quotes
+  t = t.replace(/[™®©×]/g, '').replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+  // Edition/re-release markers: "Game of the Year Edition", "The Complete
+  // Edition", " - Definitive Edition Pack". Only stripped when the marker
+  // phrase is present — real subtitles ("Deus Ex - Mankind Divided") are kept.
+  const ed = '(?:(?:Game of the Year|GOTY|Complete|Enhanced|Deluxe|Definitive|Ultimate|Collector\\\'?s|Anniversary|Special|Standard|Gold|Celebration|Day One|Digital Deluxe|Remastered)(?:\\s+Edition)(?:\\s+Pack)?)'
+  t = t.replace(new RegExp('\\s*(?:[-–—:]\\s*)?(?:The\\s+)?' + ed + '\\s*$', 'i'), '')
+  t = t.replace(/\s*(?:[-–—:]\s*)?(?:The Final Cut|Legacy Mode|Re-Elected|Afterlife|Starter Access)\s*$/i, '')
+  // Epic uses " - " where IGDB uses ":" for subtitles ("Brothers - A Tale of
+  // Two Sons" → "Brothers: A Tale of Two Sons")
+  t = t.replace(/\s+[-–—]\s+/g, ': ')
+  // Epic writes "X : Y" with spaces around the colon; IGDB writes "X: Y"
+  t = t.replace(/\s+:\s+/g, ': ')
+  // Trailing parenthetical subtitle: "Never Alone (Kisima Ingitchuna)" → "Never Alone"
+  t = t.replace(/\s*\([^)]*\)\s*$/, '').trim()
+  return t.replace(/\s+/g, ' ').trim() || title
+}
+
 // ── Batch match + save ────────────────────────────────────────────────────
 
 export async function batchMatchAndSave(
@@ -65,13 +122,22 @@ export async function batchMatchAndSave(
     return { matched: 0, suggested: 0, total: 0, games: [], matches: [] }
   }
 
-  const batchGames = games.map((g) => ({
+  // Applications (non-game software) are stored but never sent to the match API
+  const matchGames = games.filter((g) => !g.isApp)
+  const batchGames = matchGames.map((g) => ({
     query_id: (g.platform || 'unknown') + ':' + (g.appName || g.catalogItemId || g.id),
-    title: g.title,
+    title: matchQueryTitle(g),
     developer: g.developer || null,
     publisher: g.publisher || null,
     release_year: g.releaseYear || null,
     poster_url: g.posterUrl || null,
+    is_dlc: g.isDlc === true,
+    dlc_of: g.dlcOf || null,
+    is_beta: g.isBeta === true,
+    beta_of: g.betaOf || null,
+    is_demo: g.isDemo === true,
+    demo_of: g.demoOf || null,
+    game_type: g.contentType || g.gameType || (g.isDemo ? 'demo' : g.isDlc ? 'dlc_addon' : g.isBeta ? 'beta' : 'main_game'),
     external_ids: g.sources?.length
       ? g.sources.map((s: any) => ({ source: s.source || g.platform || 'unknown', id: s.id || s.appName || s.catalogItemId || g.id }))
       : [{ source: g.platform || 'unknown', id: g.appName || g.catalogItemId || g.id }],
@@ -148,7 +214,11 @@ export async function batchMatchAndSave(
         iconUrl: g.logoUrl || undefined,
         isDlc: g.isDlc === true,
         dlcOf: g.dlcOf || undefined,
-        sources: g.sources || [{ source: g.platform, appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, developerId: g.developerId, contentType: g.contentType, platforms: g.platforms, savePaths: g.savePaths, isDlc: g.isDlc === true, dlcOf: g.dlcOf || null }],
+        isBeta: g.isBeta === true,
+        betaOf: g.betaOf || undefined,
+        isApp: g.isApp === true,
+        gameType: g.gameType || (g.isApp ? 'application' : g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
+        sources: g.sources || [{ source: g.platform, appName: g.appName, namespace: g.namespace, catalogItemId: g.catalogItemId, developer: g.developer, developerId: g.developerId, contentType: g.contentType, platforms: g.platforms, savePaths: g.savePaths, isDlc: g.isDlc === true, dlcOf: g.dlcOf || null, isBeta: g.isBeta === true, betaOf: g.betaOf || null, isApp: g.isApp === true, gameType: g.gameType || (g.isApp ? 'application' : null) }],
       }))
       await desktopAPI.saveScannedGames(toSave)
     } catch (err) {
@@ -159,7 +229,7 @@ export async function batchMatchAndSave(
   let matched = 0
   let suggested = 0
   if (desktopAPI?.acceptSuggestion) {
-    for (let i = 0; i < Math.min(games.length, matches.length); i++) {
+    for (let i = 0; i < Math.min(matchGames.length, matches.length); i++) {
       const m = matches[i]
       if (!m) continue
       // Auto-match (backend already creates approved proposal)
@@ -167,14 +237,14 @@ export async function batchMatchAndSave(
 
       if (best) {
         try {
-          await desktopAPI.acceptSuggestion(games[i].id, {
+          await desktopAPI.acceptSuggestion(matchGames[i].id, {
             id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
             posterUrl: best.posterUrl || null, developer: best.developer || null,
             platforms: best.platforms || [], confidence: best.confidence,
           } as any)
           matched++
         } catch (err) {
-          console.error('[matching] persist failed for', games[i].id, err)
+          console.error('[matching] persist failed for', matchGames[i].id, err)
         }
       }
 
@@ -184,14 +254,14 @@ export async function batchMatchAndSave(
         const best = m.candidates[0]
         if (best.mediaItemId && !best.needsImport) {
           try {
-            await desktopAPI.acceptSuggestion(games[i].id, {
+            await desktopAPI.acceptSuggestion(matchGames[i].id, {
               id: best.mediaItemId, title: best.title, slug: best.mediaItemId,
               posterUrl: best.posterUrl || null, developer: best.developer || null,
               platforms: best.platforms || [], confidence: best.confidence,
               _candidates: m.candidates,
             } as any)
           } catch (err) {
-            console.error('[matching] acceptSuggestion (candidate) failed for', games[i].id, err)
+            console.error('[matching] acceptSuggestion (candidate) failed for', matchGames[i].id, err)
           }
         }
       }

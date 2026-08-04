@@ -164,7 +164,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
         {error && (
           <p className="text-xs text-red-400 mt-3">{error}</p>
         )}
-      </div>
+      </SettingsCard>
     )
   }
 
@@ -243,7 +243,7 @@ function TwoFactorCard({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
           </DkButton>
         </div>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -309,7 +309,7 @@ function VerificationCard({
           Verification email sent. Check your inbox and follow the link to verify your account.
         </p>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -538,7 +538,7 @@ function SessionsCard() {
           </DkButton>
         </div>
       )}
-    </div>
+    </SettingsCard>
   )
 }
 
@@ -675,7 +675,7 @@ export function SettingsAccountPage() {
             onCheckedChange={setDailyMoodCheckinsEnabled}
           />
         </div>
-      </div>
+      </SettingsCard>
 
       <VerificationCard
         isVerified={user?.isVerified ?? false}
@@ -700,7 +700,7 @@ export function SettingsAccountPage() {
         <p className="text-sm text-white/60">
           Account deactivation and deletion are not yet available. Coming soon.
         </p>
-      </div>
+      </SettingsCard>
     </div>
   )
 }

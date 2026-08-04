@@ -27,7 +27,9 @@ export function LauncherLibraryPage() {
   const { data: popularGames = [] } = usePopularGames()
 
   const rawGames: DisplayGame[] = useMemo(() => {
-    if (isDesktop) return localGames.map(toDisplayGame).filter((g) => g.isInstalled)
+    if (isDesktop) return localGames
+      .filter((g: any) => !(g?.isApp === true || g?.gameType === 'application' || g?.contentType === 'application')) // applications hidden for now
+      .map(toDisplayGame).filter((g) => g.isInstalled)
     return popularGames.map((g) => ({
       id: g.id, title: g.title,
       posterUrl: (g as any).textlessPosterUrl ?? g.posterUrl ?? null,
@@ -201,12 +203,25 @@ export function LauncherLibraryPage() {
                   <div className="flex-1 min-w-0">
                     {/* Featured hero logo */}
                     {featured.logoUrl && !logoErrors.has(featured.id) ? (
-                      <img
-                        src={featured.logoUrl}
-                        alt={featured.title}
-                        className="h-24 max-w-[320px] object-contain object-left mb-4 drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)]"
-                        onError={() => handleLogoError(featured.id)}
-                      />
+                      <div className="relative inline-block mb-4 pointer-events-none">
+                        <div
+                          className="absolute -inset-6 pointer-events-none opacity-80"
+                          style={{
+                            background:
+                              'radial-gradient(ellipse at left center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
+                          }}
+                        />
+                        <img
+                          src={featured.logoUrl}
+                          alt={featured.title}
+                          className="relative z-10 h-24 max-w-[320px] object-contain object-left"
+                          style={{
+                            filter:
+                              'drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))',
+                          }}
+                          onError={() => handleLogoError(featured.id)}
+                        />
+                      </div>
                     ) : (
                       <h2 className="text-3xl font-black text-white tracking-tight mb-2 drop-shadow-lg line-clamp-1">
                         {featured.title}
@@ -375,13 +390,26 @@ export function LauncherLibraryPage() {
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6">
                         {/* Game logo — fades up on hover */}
                         {hasLogo && (
-                          <img
-                            src={game.logoUrl!}
-                            alt={game.title}
-                            className="max-h-[35%] max-w-[70%] object-contain drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)] translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
-                            style={{ transitionDelay: '50ms' }}
-                            onError={() => handleLogoError(game.id)}
-                          />
+                          <div className="relative w-full flex items-center justify-center pointer-events-none">
+                            <div
+                              className="absolute inset-0 pointer-events-none opacity-85"
+                              style={{
+                                background:
+                                  'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0) 80%)',
+                              }}
+                            />
+                            <img
+                              src={game.logoUrl!}
+                              alt={game.title}
+                              className="relative z-10 max-h-[35%] max-w-[70%] object-contain translate-y-3 group-hover:translate-y-0 transition-transform duration-500 ease-out"
+                              style={{
+                                transitionDelay: '50ms',
+                                filter:
+                                  'drop-shadow(0 3px 6px rgba(0,0,0,0.95)) drop-shadow(0 6px 24px rgba(0,0,0,0.85)) drop-shadow(0 0 1px rgba(0,0,0,0.9))',
+                              }}
+                              onError={() => handleLogoError(game.id)}
+                            />
+                          </div>
                         )}
 
                         {/* Play circle — scales up beneath the logo */}

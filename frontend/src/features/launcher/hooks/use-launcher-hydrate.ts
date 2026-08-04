@@ -12,12 +12,16 @@ import type { LocalGame, Game } from '@/features/launcher/types'
 // Module-level set — survives remounts, runs once per app session
 const _hydrated = new Set<string>()
 
-/** Check if a local game is missing rich catalog data. */
+/** Check if a local game is missing rich catalog data or artwork. */
 function needsHydration(g: LocalGame): boolean {
   if (!g.otixMediaId && !g.data?.id) return false
   const hasPoster = !!(g.data?.posterUrl || g.otixPosterUrl)
+  const hasLogo = !!(g.data?.logoUrl || g.otixLogoUrl)
+  const hasBackdrop = !!(g.data?.backdropUrl || g.otixBackdropUrl)
+  const hasTextless = !!(g.data?.textlessPosterUrl || g.otixTextlessPosterUrl)
   const hasRichData = !!(g.data?.genres?.length || g.data?.involvedCompanies?.length)
-  if (hasPoster && hasRichData) return false
+  const hasOverview = !!(g.data?.overview || g.data?.summary)
+  if (hasPoster && hasLogo && hasBackdrop && hasTextless && hasRichData && hasOverview) return false
   return true
 }
 
@@ -38,12 +42,14 @@ async function hydrateGame(
         data: { ...old.data, ...data } as Game,
         otixPosterUrl: (data.posterUrl as string) ?? old.otixPosterUrl,
         otixBackdropUrl: (data.backdropUrl as string) ?? old.otixBackdropUrl,
+        otixTextlessPosterUrl: (data.textlessPosterUrl as string) ?? old.otixTextlessPosterUrl,
         otixIconUrl: (data.iconUrl as string) ?? old.otixIconUrl,
         otixLogoUrl: (data.logoUrl as string) ?? old.otixLogoUrl,
       }
     })
 
     queryClient.setQueryData(gameKeys.detail(mediaId), data)
+    _hydrated.add(g.id)
 
     const api = getDesktopAPI()
     if (api?.acceptSuggestion) {
@@ -75,8 +81,6 @@ export function useHydrateLocalGames(): void {
       (g) => (g.otixMediaId || g.data?.id) && needsHydration(g) && !_hydrated.has(g.id),
     )
     if (!toHydrate.length) return
-
-    toHydrate.forEach((g) => _hydrated.add(g.id))
 
     const concurrency = 4
     const run = async () => {

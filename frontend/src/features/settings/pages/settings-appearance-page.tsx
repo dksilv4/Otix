@@ -3,9 +3,16 @@ import { useTheme } from '@/lib/providers/theme'
 import { useShaderQuality, SHADER_QUALITY_OPTIONS } from '@/lib/providers/shader-quality'
 import { useMotionPreference, MOTION_OPTIONS } from '@/lib/providers/motion-preference'
 import { cn } from '@/lib/utils'
-import { Moon, Sun, Monitor, Plus } from 'lucide-react'
+import { Moon, Sun, Monitor, Plus, PanelLeftClose } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
+
+const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
+
+function getInitialSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY) === 'true'
+}
 
 const ACCENTS = [
   { id: 'orange', primary: 'oklch(0.705 0.213 47.604)' },
@@ -61,6 +68,22 @@ export function SettingsAppearancePage() {
   const { motionPreference, setMotionPreference } = useMotionPreference()
   const [accent, setAccent] = useState<string>(getInitialAccent)
   const [customAccents, setCustomAccents] = useState<string[]>(getCustomAccents)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(getInitialSidebarCollapsed)
+
+  useEffect(() => {
+    const handleCollapseChange = () => {
+      setSidebarCollapsed(getInitialSidebarCollapsed())
+    }
+    window.addEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
+    return () => window.removeEventListener('settings-sidebar-collapse-changed', handleCollapseChange)
+  }, [])
+
+  const updateSidebarCollapsed = (collapsed: boolean) => {
+    setSidebarCollapsed(collapsed)
+    localStorage.setItem(SETTINGS_SIDEBAR_COLLAPSED_KEY, String(collapsed))
+    window.dispatchEvent(new Event('settings-sidebar-collapse-changed'))
+  }
+
   useEffect(() => {
     applyAccentColor(accent)
   }, [accent])
@@ -277,6 +300,64 @@ export function SettingsAppearancePage() {
           </div>
         </div>
       </SettingsCard>
+
+      {/* Settings Sidebar Layout card */}
+      <SettingsCard>
+        <SectionHeader
+          title="Settings Sidebar"
+          description="Choose whether the settings menu sidebar is expanded or collapsed to icons only."
+        />
+
+        <div
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5"
+          style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+        >
+          <div className="flex items-center gap-3.5">
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-primary"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
+            >
+              <PanelLeftClose className="h-5.5 w-5.5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Settings Menu Mode
+              </p>
+              <p className="text-xs text-white/60 mt-0.5">
+                {sidebarCollapsed ? 'Collapsed (Icons only)' : 'Expanded (Full labels & icons)'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 w-full sm:w-auto rounded-xl p-1 gap-1 bg-white/[0.04]">
+            <button
+              type="button"
+              onClick={() => updateSidebarCollapsed(false)}
+              className={cn(
+                'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-150 text-center',
+                !sidebarCollapsed
+                  ? 'bg-white/10 text-white shadow-sm font-semibold'
+                  : 'text-white/60 hover:text-white',
+              )}
+            >
+              Expanded
+            </button>
+            <button
+              type="button"
+              onClick={() => updateSidebarCollapsed(true)}
+              className={cn(
+                'rounded-lg px-4 py-2 text-xs font-medium transition-all duration-150 text-center',
+                sidebarCollapsed
+                  ? 'bg-white/10 text-white shadow-sm font-semibold'
+                  : 'text-white/60 hover:text-white',
+              )}
+            >
+              Icons Only
+            </button>
+          </div>
+        </div>
+      </SettingsCard>
     </div>
   )
 }
+

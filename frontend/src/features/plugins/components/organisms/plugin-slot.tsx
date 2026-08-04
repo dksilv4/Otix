@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, Gamepad2, RefreshCw, FolderOpen, Plus, X, LogOut, CheckCircle2, Star, AlertCircle, Trash2, ChevronDown } from 'lucide-react'
+import { Loader2, Gamepad2, RefreshCw, FolderOpen, Plus, X, LogOut, CheckCircle2, Star, AlertCircle, Trash2, ChevronDown, Sparkles, Link2 } from 'lucide-react'
 import type { PluginAPI } from './plugin-settings'
 import { batchMatchAndSave } from '@/features/plugins/utils/matching'
+import { ProviderLogo } from '@/features/settings/components/atoms/provider-logo'
+import { apiClient } from '@/lib/api/client'
+import { isDesktop } from '@/lib/desktop/api'
 
 interface ConfigField {
   key: string
@@ -70,16 +73,232 @@ export function PluginSlot({ location, pluginApi }: Props) {
     return <div className="flex items-center gap-2 text-sm text-white/50 py-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
   }
 
-  if (slotData.length === 0) return null
+  const isLibraryScan = location === 'library:scan'
+
+  if (slotData.length === 0 && !isLibraryScan) return null
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-      {slotData.map(entry => {
-        if (entry.data?.type === 'scan') {
-          return <ScanSlotCard key={entry.pluginId} entry={entry} pluginApi={pluginApi} />
+    <div className="space-y-4">
+      {isLibraryScan && <SteamScanSlotCard />}
+
+      {slotData.length > 0 && (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+          {slotData.map(entry => {
+            if (entry.data?.type === 'scan') {
+              return <ScanSlotCard key={entry.pluginId} entry={entry} pluginApi={pluginApi} />
+            }
+            return null
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SteamScanSlotCard() {
+  const [steamConnected, setSteamConnected] = useState(false)
+  const [steamProfile, setSteamProfile] = useState<any>(null)
+  const [steamId, setSteamId] = useState<string | null>(null)
+  const [steamScanning, setSteamScanning] = useState(false)
+  const [wishlistScanning, setWishlistScanning] = useState(false)
+  const [resolvingUnmatched, setResolvingUnmatched] = useState(false)
+  const [steamMessage, setSteamMessage] = useState('')
+  const [steamError, setSteamError] = useState('')
+  const [scanResult, setScanResult] = useState<{ totalInSteam: number; matchedInOtix: number } | null>(null)
+  const [wishlistResult, setWishlistResult] = useState<{ total: number; matched: number; private?: boolean } | null>(null)
+  const [resolveResult, setResolveResult] = useState<{ resolved: number; synced: number; failed: number; total: number } | null>(null)
+
+  const fetchSteamStatus = useCallback(async () => {
+    try {
+      const { data } = await apiClient.get('/auth/oauth')
+      const steam = (data.providers as Array<any>)?.find((p) => p.name === 'steam')
+      if (steam) {
+        setSteamConnected(Boolean(steam.connected))
+        setSteamId(steam.steamId ?? null)
+        setSteamProfile(steam.steamProfile ?? null)
+      }
+    } catch {
+      // Ignore auth errors if unauthenticated
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSteamStatus()
+  }, [fetchSteamStatus])
+
+  const handleScanSteamGames = async () => {
+    setSteamScanning(true)
+    setSteamError('')
+    setSteamMessage('')
+    try {
+      const { data } = await apiClient.post<{ totalInSteam: number; matchedInOtix: number }>('/integrations/steam/scan')
+      setScanResult(data)
+      setSteamMessage(`Scanned Steam library: ${data.matchedInOtix} matched out of ${data.totalInSteam} games.`)
+      window.dispatchEvent(new CustomEvent('scanned-games-updated'))
+    } catch (err: any) {
+      setSteamError(err?.response?.data?.detail || err?.message || 'Failed to scan Steam games.')
+    } finally {
+      setSteamScanning(false)
+    }
+  }
+
+  const handleScanSteamWishlist = async () => {
+    setWishlistScanning(true)
+    setSteamError('')
+    setSteamMessage('')
+    try {
+      const { data } = await apiClient.post<{ total: number; matched: number; private?: boolean }>('/integrations/steam/wishlist/scan')
+      setWishlistResult(data)
+      if (data.private) {
+        setSteamError('Steam wishlist is private. Set your Steam profile privacy to Public.')
+      } else {
+        setSteamMessage(`Scanned Steam wishlist: ${data.matched} matched out of ${data.total} items.`)
+      }
+    } catch (err: any) {
+      setSteamError(err?.response?.data?.detail || err?.message || 'Failed to scan Steam wishlist.')
+    } finally {
+      setWishlistScanning(false)
+    }
+  }
+
+  const handleResolveUnmatchedSteam = async () => {
+    setResolvingUnmatched(true)
+    setSteamError('')
+    setSteamMessage('')
+    try {
+      const { data } = await apiClient.post<{ resolved: number; synced: number; failed: number; total: number }>('/integrations/steam/resolve-unmatched')
+      setResolveResult(data)
+      setSteamMessage(`Unmatched resolution: ${data.resolved} linked, ${data.synced} synced out of ${data.total}.`)
+      window.dispatchEvent(new CustomEvent('scanned-games-updated'))
+    } catch (err: any) {
+      setSteamError(err?.response?.data?.detail || err?.message || 'Failed to resolve unmatched games.')
+    } finally {
+      setResolvingUnmatched(false)
+    }
+  }
+
+  const handleConnectSteam = async () => {
+    try {
+      const { data } = await apiClient.post('/auth/oauth/steam', isDesktop() ? { source: 'desktop' } : undefined)
+      if (data.authUrl) {
+        if (isDesktop() && (window as any).desktopAPI?.openExternalUrl) {
+          ;(window as any).desktopAPI.openExternalUrl(data.authUrl)
+        } else {
+          window.open(data.authUrl, '_blank', 'noopener,noreferrer')
         }
-        return null
-      })}
+      }
+    } catch (err: any) {
+      setSteamError(err?.response?.data?.detail || 'Failed to initiate Steam login.')
+    }
+  }
+
+  return (
+    <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0 border border-sky-500/20">
+            <ProviderLogo platform="steam" className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-bold text-white">Steam Provider</h4>
+              {steamConnected ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Connected
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                  Not Linked
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-white/50 mt-0.5">
+              {steamConnected && steamProfile?.personaname
+                ? `Linked as ${steamProfile.personaname}${steamId ? ` (${steamId})` : ''}`
+                : 'Scan and sync your Steam games library, wishlist, and auto-matches.'}
+            </p>
+          </div>
+        </div>
+
+        {!steamConnected && (
+          <button
+            onClick={handleConnectSteam}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+          >
+            <ProviderLogo platform="steam" className="h-3.5 w-3.5" />
+            Connect Steam
+          </button>
+        )}
+      </div>
+
+      {steamConnected && (
+        <div className="pt-2 space-y-3 border-t border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <button
+              onClick={handleScanSteamGames}
+              disabled={steamScanning}
+              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <RefreshCw className={`h-3.5 w-3.5 text-sky-400 ${steamScanning ? 'animate-spin' : ''}`} />
+                  Scan Steam Games
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {scanResult ? `${scanResult.matchedInOtix} matched / ${scanResult.totalInSteam} total` : 'Import & match owned Steam titles'}
+              </p>
+            </button>
+
+            <button
+              onClick={handleScanSteamWishlist}
+              disabled={wishlistScanning}
+              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Sparkles className={`h-3.5 w-3.5 text-amber-400 ${wishlistScanning ? 'animate-spin' : ''}`} />
+                  Scan Wishlist
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {wishlistResult ? `${wishlistResult.matched} matched / ${wishlistResult.total} wishlist` : 'Sync public Steam wishlist'}
+              </p>
+            </button>
+
+            <button
+              onClick={handleResolveUnmatchedSteam}
+              disabled={resolvingUnmatched}
+              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+            >
+              <div className="flex items-center justify-between w-full mb-1">
+                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Link2 className={`h-3.5 w-3.5 text-emerald-400 ${resolvingUnmatched ? 'animate-spin' : ''}`} />
+                  Resolve Unmatched
+                </span>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {resolveResult ? `${resolveResult.resolved} linked / ${resolveResult.total} pending` : 'Auto-link unmapped games to IGDB'}
+              </p>
+            </button>
+          </div>
+
+          {steamMessage && (
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>{steamMessage}</span>
+            </div>
+          )}
+
+          {steamError && (
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{steamError}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ interface DkMediaCardProps {
   title: string
   posterUrl?: string | null
   textlessPosterUrl?: string | null
+  backdropUrl?: string | null
   logoUrl?: string | null
   releaseDate?: string | null
   avgRating?: number | null
@@ -47,6 +48,7 @@ const DkMediaCard = memo(function DkMediaCard({
   title,
   posterUrl,
   textlessPosterUrl,
+  backdropUrl,
   logoUrl,
   releaseDate,
   avgRating,
@@ -68,7 +70,7 @@ const DkMediaCard = memo(function DkMediaCard({
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
 
-  const imageUrl = textlessPosterUrl || posterUrl || undefined
+  const imageUrl = textlessPosterUrl || backdropUrl || posterUrl || undefined
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
   const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
@@ -173,17 +175,31 @@ const DkMediaCard = memo(function DkMediaCard({
         </div>
       )}
 
+      {/* Background dark scrim layer for cards with logos to improve contrast */}
+      {logoUrl && (
+        <div className="absolute inset-0 pointer-events-none bg-black/30 group-hover:bg-black/20 transition-colors duration-500" />
+      )}
+
       {/* Logo */}
       {logoUrl && (
         <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          {/* Dedicated radial dark scrim behind logo */}
+          <div
+            className="absolute inset-0 opacity-80 group-hover:opacity-95 transition-opacity duration-500"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0) 80%)',
+            }}
+          />
           <img
             src={logoUrl}
             alt={title}
-            className="max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
+            className="relative z-10 max-w-[80%] max-h-[55%] object-contain [--dk-logo-scale:0.85] group-hover:[--dk-logo-scale:1.15]"
             style={{
               transform: 'scale(var(--dk-logo-scale))',
               transition: 'transform 700ms var(--dk-ease-out)',
-              filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
+              filter:
+                'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.9))',
             }}
           />
         </div>
