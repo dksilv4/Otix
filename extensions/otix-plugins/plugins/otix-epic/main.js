@@ -302,7 +302,7 @@ async function checkFreeGames(ctx) {
     _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now() };
     await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
     await ctx.config.set('_last_free_games_check', Date.now());
-    return { success: true, freeGames, upcomingGames, newGames, isAuthenticated: false, alreadyOwned: 0 };
+    return { success: true, freeGames, unclaimedGames: freeGames, upcomingGames, newGames, isAuthenticated: false, alreadyOwned: 0 };
   }
 
   let libraryItems;
@@ -312,7 +312,7 @@ async function checkFreeGames(ctx) {
     _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now() };
     await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
     await ctx.config.set('_last_free_games_check', Date.now());
-    return { success: true, freeGames, upcomingGames, newGames, isAuthenticated: true, alreadyOwned: 0 };
+    return { success: true, freeGames, unclaimedGames: freeGames, upcomingGames, newGames, isAuthenticated: true, alreadyOwned: 0 };
   }
 
   const owned = new Set();
@@ -320,9 +320,12 @@ async function checkFreeGames(ctx) {
     owned.add(item.namespace + ':' + (item.catalogItemId || item.offerId || item.id));
     owned.add(item.namespace);
   }
-  const unclaimed = freeGames.filter(g => !owned.has(g.namespace + ':' + g.offerId) && !owned.has(g.namespace));
-  const alreadyOwned = freeGames.length - unclaimed.length;
-  ctx.logger.info(unclaimed.length + ' unclaimed, ' + alreadyOwned + ' owned');
+  for (const g of freeGames) {
+    g.claimed = owned.has(g.namespace + ':' + g.offerId) || owned.has(g.namespace);
+  }
+  const unclaimedGames = freeGames.filter(g => !g.claimed);
+  const alreadyOwned = freeGames.length - unclaimedGames.length;
+  ctx.logger.info(unclaimedGames.length + ' unclaimed, ' + alreadyOwned + ' owned');
 
   // Notify for new free games
   if (newGames.length > 0) {
@@ -330,7 +333,7 @@ async function checkFreeGames(ctx) {
     if (notify !== false) {
       const names = newGames.map(g => g.title).join(', ');
       const isAuthed = true;
-      const body = unclaimed.filter(g => newGames.includes(g)).length + ' unclaimed: ' + names;
+      const body = unclaimedGames.filter(g => newGames.includes(g)).length + ' unclaimed: ' + names;
       ctx.notifications.send({ title: '🎮 Epic Free Games', body });
     }
   }
@@ -339,7 +342,7 @@ async function checkFreeGames(ctx) {
   await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
   await ctx.config.set('_last_free_games_check', Date.now());
 
-  return { success: true, freeGames, upcomingGames, newGames, isAuthenticated: true, alreadyOwned };
+  return { success: true, freeGames, unclaimedGames, upcomingGames, newGames, isAuthenticated: true, alreadyOwned };
 }
 
 // ── Local Manifest Scan ──────────────────────────────────────────────
