@@ -169,6 +169,24 @@ async def get_media_item(
         ]
     await enrich_items_with_assets(db, [item] + collection_media)
 
+    # Auto-trigger background full hydration if item is incomplete / stub-seeded
+    if item.completeness_score is None or item.completeness_score < 0.5 or not item.logo_url:
+        try:
+            from otix.infrastructure.celery import app
+            ext_id_val = None
+            if item.media_type == "game":
+                ext = next((e for e in item.external_ids if e.provider == "igdb"), None)
+                if ext:
+                    ext_id_val = ext.external_id
+            elif item.media_type in ("movie", "show"):
+                ext = next((e for e in item.external_ids if e.provider == "tmdb"), None)
+                if ext:
+                    ext_id_val = ext.external_id
+            if ext_id_val:
+                app.send_task("sync.media.fully_process", args=[item.media_type, ext_id_val])
+        except Exception:
+            pass
+
     result = MediaItemDetail.model_validate(item)
 
     # Populate screenshots from assets (filter screenshot type, sort by score desc)

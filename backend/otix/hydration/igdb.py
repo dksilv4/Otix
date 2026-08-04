@@ -58,8 +58,9 @@ class IgdbHydration(FullHydration):
 
             await staged("age_ratings", _hydrate_game_age_ratings(item_id))
 
-            # Steam store + SteamGridDB box art (idempotent per app).
-            from otix.domain.media import ExternalID
+            # Steam store update (for linked Steam App IDs)
+            from otix.domain.media import ExternalID, Game, MediaItem
+            from sqlalchemy.orm import joinedload
 
             async with async_session() as session:
                 steam_eids = list(
@@ -74,7 +75,23 @@ class IgdbHydration(FullHydration):
                 steam_ids = sorted({int(e.external_id) for e in steam_eids})
             for sid in steam_ids:
                 await staged("steam_update", _sync_steam_update_app(sid))
-                await staged("steamgrid", _sync_steamgrid_game_by_platform("steam", sid))
+
+            # SteamGridDB artwork hydration (all platforms + name search fallback)
+            async with async_session() as session:
+                game_obj = await session.scalar(
+                    select(Game).options(joinedload(Game.media_item)).where(Game.media_item_id == item_id)
+                )
+                if game_obj and game_obj.media_item:
+                    from otix.infrastructure.redis import get_redis
+                    from otix.providers.steamgrid.client import SteamGridDBProvider
+                    from otix.providers.steamgrid.hydrator import SteamGridDBHydrator
+
+                    redis = await get_redis()
+                    provider = SteamGridDBProvider(redis)
+                    hydrator = SteamGridDBHydrator(provider, session)
+                    added = await hydrator.hydrate(game_obj, title=game_obj.media_item.title)
+                    await session.commit()
+                    stages["steamgrid_assets_added"] = added
 
             await staged("embedding", _generate_embedding(item_id))
 

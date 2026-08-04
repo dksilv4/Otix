@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     otix_process: str = "api"
+    enable_catalog_seeder: bool = False
 
     # Database
     database_url: str = "postgresql+asyncpg://otium:password@localhost:5432/otium_prod_v1"

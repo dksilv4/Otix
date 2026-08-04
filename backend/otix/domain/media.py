@@ -55,8 +55,8 @@ class MediaItem(Base, TimestampMixin):
 
     @hybrid_property
     def textless_poster_url(self) -> str | None:
-        """Best textless poster URL, attached at query time by asset_selection."""
-        return getattr(self, "_resolved_textless_poster_url", None)
+        """Best textless poster URL (falls back to backdrop_url for a clean textless canvas), attached at query time by asset_selection."""
+        return getattr(self, "_resolved_textless_poster_url", None) or getattr(self, "_resolved_backdrop_url", None)
 
     @hybrid_property
     def backdrop_url(self) -> str | None:
@@ -125,7 +125,7 @@ class MediaItem(Base, TimestampMixin):
     # Type-specific backrefs
     movie: Mapped[Movie | None] = relationship("Movie", back_populates="media_item", uselist=False)
     show: Mapped[Show | None] = relationship("Show", back_populates="media_item", uselist=False)
-    game: Mapped[Game | None] = relationship("Game", back_populates="media_item", uselist=False)
+    game: Mapped[Game | None] = relationship("Game", back_populates="media_item", uselist=False, foreign_keys="[Game.media_item_id]")
     album: Mapped[Album | None] = relationship("Album", back_populates="media_item", uselist=False)
 
     # Relations
@@ -232,7 +232,9 @@ class Game(Base, HasExternalIDs):
     is_free: Mapped[bool] = mapped_column(default=False)
     has_multiplayer: Mapped[bool] = mapped_column(default=False)
     franchise_id: Mapped[str | None] = mapped_column(ForeignKey("franchises.id", ondelete="SET NULL"), nullable=True)
-    time_to_beat: Mapped[dict | None] = mapped_column(JSONB)
+    game_type: Mapped[str | None] = mapped_column(String(50), nullable=True, default="main_game")
+    parent_game_id: Mapped[str | None] = mapped_column(ForeignKey("media_items.id", ondelete="SET NULL"), nullable=True)
+    parent_game_title: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     _external_ids: Mapped[list[ExternalID]] = relationship(
         "ExternalID",
@@ -241,8 +243,36 @@ class Game(Base, HasExternalIDs):
         viewonly=True,
     )
 
-    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game")
+    media_item: Mapped[MediaItem] = relationship("MediaItem", back_populates="game", foreign_keys="Game.media_item_id")
     franchise: Mapped[Franchise | None] = relationship("Franchise", back_populates="games")
+
+    @property
+    def is_dlc(self) -> bool:
+        return self.game_type in ("dlc_addon", "expansion", "standalone_expansion", "pack")
+
+    @property
+    def is_beta(self) -> bool:
+        return self.game_type == "beta" or self.release_status in ("alpha", "beta", "early_access")
+
+    @property
+    def is_demo(self) -> bool:
+        return self.game_type == "demo"
+
+    @property
+    def is_expansion(self) -> bool:
+        return self.game_type in ("expansion", "standalone_expansion")
+
+    @property
+    def is_mod(self) -> bool:
+        return self.game_type == "mod"
+
+    @property
+    def is_soundtrack(self) -> bool:
+        return self.game_type == "soundtrack"
+
+    @property
+    def is_bundle(self) -> bool:
+        return self.game_type in ("bundle", "pack")
 
     @property
     def store_ids(self) -> dict | None:

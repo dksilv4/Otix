@@ -186,6 +186,10 @@ async def _seed_loop(
     process_fn: Callable[[dict], Awaitable[dict]],
 ) -> dict:
     """Acquire lock, load state, run one batch, save, release."""
+    from otix.infrastructure.config import settings
+    if not settings.enable_catalog_seeder:
+        return {"status": "disabled"}
+
     redis = await get_redis()
     acquired = await redis.set(lock_key, "1", nx=True, ex=LOCK_TTL)
     if not acquired:

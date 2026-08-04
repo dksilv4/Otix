@@ -23,6 +23,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # The url uniqueness may exist as a unique constraint (Postgres backs
+    # constraints with a same-named index) or as a plain index. Drop the
+    # constraint first when present — dropping the index alone fails when it
+    # is required by a constraint. Both statements are idempotent.
+    op.execute("ALTER TABLE media_assets DROP CONSTRAINT IF EXISTS media_assets_url_key")
     op.execute("DROP INDEX IF EXISTS media_assets_url_key")
     op.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_media_assets_item_url_type "

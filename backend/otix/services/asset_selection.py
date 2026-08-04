@@ -128,6 +128,12 @@ async def _resolve_from_db(
         for at in asset_types:
             best = _select_best(item_assets.get(at, []), at)
             per[FIELD_SUFFIX[at]] = best.url if best is not None else None
+        
+        # When a textless poster is not explicitly set, fall back to backdrop_url (background art)
+        # so discover media cards and 4D logo cards have a clean text-free canvas.
+        if not per.get("textless_poster_url") and per.get("backdrop_url"):
+            per["textless_poster_url"] = per["backdrop_url"]
+
         out[iid] = per
     return out
 

@@ -304,12 +304,32 @@ def extract_franchise(raw: dict[str, JSONValue]) -> dict[str, int | str] | None:
     return None
 
 
+_CATEGORY_MAP: dict[int, str] = {
+    0: "main_game",
+    1: "dlc_addon",
+    2: "expansion",
+    3: "bundle",
+    4: "standalone_expansion",
+    5: "mod",
+    6: "episode",
+    7: "season",
+    8: "remake",
+    9: "remaster",
+    10: "expanded_game",
+    11: "port",
+    12: "fork",
+    13: "pack",
+    14: "update",
+}
+
+
 def to_game(raw: dict[str, JSONValue]) -> Game:
     """Convert IGDB game JSON to a Game with its MediaItem.
 
     Maps IGDB fields to the Game domain model:
       - status → release_status (human-readable)
       - websites → website (single URL, prefers official)
+      - category → game_type (main_game, dlc_addon, expansion, mod, bundle, remake, remaster, etc.)
 
     Platforms, game modes, and companies are hydrated separately via
     IGDBHydrator. steam_app_id and store_ids are extracted separately
@@ -323,12 +343,23 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
     )
 
     website_list = websites if isinstance(websites, list) else []
+    cat_raw = raw.get("category")
+    game_type = _CATEGORY_MAP.get(int(cat_raw), "main_game") if isinstance(cat_raw, (int, float)) else "main_game"
+
+    parent_title = None
+    parent = raw.get("parent_game") or raw.get("version_parent")
+    if isinstance(parent, dict) and parent.get("name"):
+        parent_title = str(parent["name"])
+
     game = Game(
         release_status=_STATUS_MAP.get(raw.get("status")),
         website=_extract_website(website_list),
         has_multiplayer=has_multiplayer,
         is_free=False,  # explicit default; Steam enrichment updates later
         time_to_beat=raw.get("time_to_beat"),
+        game_type=game_type,
+        parent_game_title=parent_title,
     )
     game.media_item = to_media_item(raw)
     return game
+

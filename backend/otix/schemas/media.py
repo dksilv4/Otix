@@ -355,6 +355,13 @@ class GameMatchRequest(BaseModel):
     poster_url: str | None = None  # source store poster (Epic, GOG, etc.)
     is_dlc: bool = False
     dlc_of: str | None = None
+    is_beta: bool = False
+    beta_of: str | None = None
+    is_demo: bool = False
+    demo_of: str | None = None
+    game_type: str | None = None
+    parent_game_id: str | None = None
+    parent_game_title: str | None = None
 
 
 class GameMatchCandidate(BaseModel):
@@ -364,6 +371,9 @@ class GameMatchCandidate(BaseModel):
     title: str
     poster_url: str | None = None
     backdrop_url: str | None = None
+    textless_poster_url: str | None = None
+    logo_url: str | None = None
+    icon_url: str | None = None
     release_year: int | None = None
     platforms: list[str] | None = None
     developer: str | None = None
@@ -372,6 +382,11 @@ class GameMatchCandidate(BaseModel):
     needs_import: bool = False
     provider_id: str | None = None  # IGDB game ID for import reference
     provider: str | None = None  # "igdb", "steamgrid", etc.
+    game_type: str | None = None
+    is_dlc: bool = False
+    is_beta: bool = False
+    is_demo: bool = False
+    parent_game_title: str | None = None
 
 
 class GameMatchResponse(BaseModel):
@@ -620,6 +635,12 @@ class GameDetail(BaseModel):
     is_free: bool = False
     has_multiplayer: bool = False
     time_to_beat: dict | None = None
+    game_type: str | None = "main_game"
+    parent_game_id: str | None = None
+    parent_game_title: str | None = None
+    is_dlc: bool = False
+    is_beta: bool = False
+    is_demo: bool = False
 
     model_config = {"from_attributes": True}
 
