@@ -29,6 +29,10 @@ export interface ScannedGame {
   logoUrl?: string | null
   isDlc?: boolean
   dlcOf?: string | null
+  isBeta?: boolean
+  betaOf?: string | null
+  isApp?: boolean
+  gameType?: string | null
   rawMetadata?: Record<string, unknown>
   // Plugin fields (may be present on raw scan results)
   appName?: string
@@ -234,6 +238,9 @@ export class GameScanOrchestrator extends EventEmitter {
       const plat = g.platform || scanPlatform || pluginId;
       const gameId = g.id || g.appName || Math.random().toString(36).substring(2, 9);
       const isDlc = !!g.isDlc;
+      const isBeta = !!g.isBeta;
+      const isApp = !!g.isApp;
+      const gameType = g.gameType || (isApp ? 'application' : isBeta ? 'beta' : isDlc ? 'dlc_addon' : 'main_game');
       return {
         id: plat + '_' + gameId,
         title: g.title,
@@ -244,7 +251,11 @@ export class GameScanOrchestrator extends EventEmitter {
         iconUrl: g.logoUrl || g.posterUrl || undefined,
         isDlc,
         dlcOf: g.dlcOf || undefined,
-        sources: [{ source: plat, id: gameId, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null, isDlc }],
+        isBeta,
+        betaOf: g.betaOf || undefined,
+        isApp,
+        gameType,
+        sources: [{ source: plat, id: gameId, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null, isDlc, betaOf: g.betaOf || null, isBeta, isApp, gameType }],
       };
     }), scanPlatform);
 
@@ -252,6 +263,8 @@ export class GameScanOrchestrator extends EventEmitter {
     const matched: ScannedGame[] = [];
     const needsMatch: ScannedGame[] = [];
     for (const game of scanned) {
+      // Applications (non-game software) are stored but never matched against games
+      if (game.isApp) continue;
       let found = false;
       for (const eid of (game.externalIds || [])) {
         const existing = getGameMatch(eid.source, eid.id);
@@ -318,6 +331,9 @@ export class GameScanOrchestrator extends EventEmitter {
       poster_url: g.posterUrl || null,
       is_dlc: g.isDlc || false,
       dlc_of: g.dlcOf || null,
+      is_beta: g.isBeta || false,
+      beta_of: g.betaOf || null,
+      game_type: g.gameType || (g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
       external_ids: (g.externalIds && g.externalIds.length > 0)
         ? g.externalIds : [{ source: g.platform, id: g.id }],
       media_type: mediaType,

@@ -23,6 +23,10 @@ export interface LocalGame {
   updateFiles?: { name: string; path: string }[];
   isDlc?: boolean;
   dlcOf?: string;
+  isBeta?: boolean;
+  betaOf?: string;
+  isApp?: boolean;
+  gameType?: string;
   itemType?: 'game' | 'dlc';
   otixMediaId?: string;
   otixMediaTitle?: string;

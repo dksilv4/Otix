@@ -122,7 +122,8 @@ async function refreshAccessToken(refreshToken) {
 
 async function verifyToken(accessToken) {
   try {
-    const res = await apiPost(OAUTH_HOST, '/account/api/oauth/verify', 'token=' + encodeURIComponent(accessToken), accessToken);
+    // Epic's verify endpoint only accepts GET; POST returns 405.
+    const res = await apiGet(OAUTH_HOST, '/account/api/oauth/verify', accessToken);
     if (res.status === 200) return true;
   } catch {}
   return false;
@@ -534,6 +535,7 @@ async function performScan(ctx) {
   const SKIP_PREFIXES = ['UE_', 'QuixelBridge_', 'MetaHumanSample_', 'Lyra_', 'FabPlugin_'];
   const games = [];
   let skipped = 0;
+  const seenAppNames = new Set();
   for (let i = 0; i < libraryItems.length; i++) {
     const item = libraryItems[i];
     const appName = item.appName || item.sandboxId || item.id;
@@ -543,6 +545,10 @@ async function performScan(ctx) {
       skipped++;
       continue;
     }
+
+    // Library API sometimes returns duplicate records for the same build
+    if (seenAppNames.has(appName)) continue;
+    seenAppNames.add(appName);
 
     const local = localInstalls[appName] || {};
 
@@ -555,6 +561,8 @@ async function performScan(ctx) {
       namespace: item.namespace || null,
       catalogItemId: item.catalogItemId || null,
       offerId: item.offerId || null,
+      itemType: item.itemType || null,
+      categories: item.categories || null,
       title,
       developer: item.developer || null,
       developerId: null,  // populated by catalog enrichment
@@ -569,6 +577,10 @@ async function performScan(ctx) {
       logoUrl: null,
       isDlc: false,
       dlcOf: null,
+      isBeta: false,
+      betaOf: null,
+      isApp: false,
+      gameType: null,
     });
 
     if ((i + 1) % 50 === 0 || i === libraryItems.length - 1) {
@@ -603,6 +615,8 @@ async function performScan(ctx) {
         if (e.developerId) g.developerId = e.developerId;
         if (e.sellerName) g.sellerName = e.sellerName;
         if (e.external_ids?.length) g.developerExternalIds = e.external_ids;
+        if (e.itemType) g.itemType = e.itemType;
+        if (e.categories?.length) g.categories = e.categories;
 
         // Check if catalog flags this item as DLC
         const cats = (e.categories || []).map((c) => (typeof c === 'string' ? c : c.path || c.id || '').toLowerCase());
@@ -636,21 +650,71 @@ async function performScan(ctx) {
     ctx.logger.warn('Enrichment failed: ' + err.message);
   }
 
-  // Phase 5: Detect DLCs — catalog flags, namespace secondary items, or title DLC keywords
+  // Phase 5: Detect betas + DLCs + applications — catalog flags, namespace secondary items, title keywords.
+  // Betas (test/public-test/playtest builds) are alternate builds of a base game — they are
+  // NOT DLCs, and they must never become the namespace "primary", otherwise the real base
+  // game gets mislabeled as DLC.
+  const BETA_TITLE_REGEX = /\b(beta|test branch|public testing|public test|playtest|pre-alpha|tech beta|tech test|open beta|closed beta|staging|ptr)\b/i;
+  // Suffixed builds like "KillingFloor2Beta" or "FooPTR" lack a word boundary before the keyword
+  const BETA_SUFFIX_REGEX = /(beta|test|ptr|pre-alpha|playtest)$/i;
   const DLC_TITLE_REGEX = /\b(dlc|expansion|add-on|addon|season pass|expansion pass|bonus content|soundtrack|artbook|supporter pack|skin pack|cosmetic pack|deluxe upgrade|content pack)\b/i;
+  // Non-game software distributed on Epic (Spotify, RPG in a Box). Catalog `software`
+  // category is the primary signal; SteelSeries GG ships with a `games` category (same
+  // shape as Fortnite) so it needs a curated override. Apps are stored but hidden in the UI.
+  const KNOWN_APP_NAMES = new Set(['33e7868566e2454a8df9d45c4835cc80']); // SteelSeries GG
+  const KNOWN_APP_TITLES = new Set(['SteelSeries GG', 'SteelSeries Sonar']);
+  const isEpicApplication = (g) => {
+    if (g.isDlc || g.isBeta) return false;
+    if (KNOWN_APP_NAMES.has(g.appName) || KNOWN_APP_TITLES.has(g.title)) return true;
+    const cats = (g.categories || []).map((c) => (typeof c === 'string' ? c : c.path || c.id || '').toLowerCase());
+    return cats.includes('software');
+  };
 
-  // Build namespace → primary appName map (first non-DLC game per namespace = main game)
+  // 5a: Flag beta/test builds from title or appName keywords
+  let betaCount = 0;
+  for (const g of games) {
+    if (BETA_TITLE_REGEX.test(g.title || '') || BETA_SUFFIX_REGEX.test(g.title || '') ||
+        BETA_TITLE_REGEX.test(g.appName || '') || BETA_SUFFIX_REGEX.test(g.appName || '')) {
+      g.isBeta = true;
+      betaCount++;
+    }
+  }
+
+  // 5a2: Flag applications (non-game software) — after isBeta so apps can't be beta-linked
+  let appCount = 0;
+  for (const g of games) {
+    if (isEpicApplication(g)) {
+      g.isApp = true;
+      g.gameType = 'application';
+      appCount++;
+    }
+  }
+
+  // 5b: Build namespace → primary appName map (first non-DLC, non-beta, non-app per namespace)
   const nsPrimary = {};
   for (const g of games) {
     const titleIsDlc = DLC_TITLE_REGEX.test(g.title || '');
     if (titleIsDlc) g.isDlc = true;
 
-    if (g.namespace && !nsPrimary[g.namespace] && !g.isDlc) {
+    if (g.namespace && !nsPrimary[g.namespace] && !g.isDlc && !g.isBeta && !g.isApp) {
       nsPrimary[g.namespace] = g.appName;
     }
   }
+
+  // 5c: Link betas to their base game; mark remaining namespace-secondaries as DLC
   let dlcCount = 0;
   for (const g of games) {
+    if (g.isApp) {
+      g.isDlc = false; // apps must never be classified as DLC
+      continue;
+    }
+    if (g.isBeta) {
+      g.isDlc = false; // catalog flags can mislabel betas as DLC — override
+      if (g.namespace && nsPrimary[g.namespace] && g.appName !== nsPrimary[g.namespace]) {
+        g.betaOf = nsPrimary[g.namespace];
+      }
+      continue;
+    }
     const isNsSecondary = g.namespace && nsPrimary[g.namespace] && g.appName !== nsPrimary[g.namespace];
     const titleIsDlc = DLC_TITLE_REGEX.test(g.title || '');
     if (g.isDlc || isNsSecondary || titleIsDlc) {
@@ -661,7 +725,9 @@ async function performScan(ctx) {
       dlcCount++;
     }
   }
+  if (betaCount > 0) ctx.logger.info('Betas detected: ' + betaCount);
   if (dlcCount > 0) ctx.logger.info('DLCs detected: ' + dlcCount);
+  if (appCount > 0) ctx.logger.info('Applications detected: ' + appCount);
 
   _setProgress(ctx, { phase: 'done', current: games.length, total: games.length });
   ctx.logger.info('Scan complete: ' + games.length + ' games, ' + games.filter((g) => g.isInstalled).length + ' installed' + (skipped > 0 ? ', ' + skipped + ' skipped (UE/Quixel/MetaHuman)' : ''));
@@ -758,6 +824,11 @@ const dataMethods = {
       logoUrl: g.logoUrl || null,
       isDlc: g.isDlc === true,
       dlcOf: g.dlcOf || null,
+      isBeta: g.isBeta === true,
+      betaOf: g.betaOf || null,
+      isApp: g.isApp === true,
+      gameType: g.gameType || (g.isApp ? 'application' : g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
+      contentType: g.gameType || (g.isApp ? 'application' : g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
       rawMetadata: {
         namespace: g.namespace,
         catalogItemId: g.catalogItemId,
@@ -766,6 +837,9 @@ const dataMethods = {
         isInstalled: g.isInstalled,
         savePaths: g.savePaths,
         dlcOf: g.dlcOf || null,
+        betaOf: g.betaOf || null,
+        isApp: g.isApp === true,
+        gameType: g.gameType || (g.isApp ? 'application' : g.isBeta ? 'beta' : g.isDlc ? 'dlc_addon' : 'main_game'),
       },
     }));
 
