@@ -17,7 +17,7 @@ from otix.lib.concurrency import run_async
 from otix.lib.metrics import SYNC_ENTITIES_TOTAL
 from otix.lib.progress import incr as _progress_incr
 from otix.lib.types import JSONValue
-from otix.providers.igdb.client import IGDBProvider
+from otix.providers.igdb.client import GAME_FIELDS, IGDBProvider
 from otix.providers.igdb.hydrator import IGDBHydrator
 from otix.providers.igdb.transformer import (
     _extract_steam_app_id,
@@ -30,28 +30,6 @@ from otix.services.external_id_service import ExternalIDService
 from ._common import compute_content_hash, enqueue_list_items
 
 logger = structlog.get_logger()
-
-
-GAME_FIELDS = (
-    "id,name,summary,storyline,first_release_date,"
-    "rating,aggregated_rating,rating_count,aggregated_rating_count,"
-    "hypes,url,slug,status,"
-    "cover.image_id,"
-    "screenshots.image_id,"
-    "artworks.image_id,"
-    "genres.name,themes.name,"
-    "platforms.name,platforms.platform_logo.image_id,"
-    "game_modes.name,"
-    "websites.url,websites.type,"
-    "external_games.external_game_source,external_games.uid,"
-    "videos.video_id,videos.name,"
-    "involved_companies.company.name,involved_companies.company.slug,"
-    "involved_companies.company.logo.image_id,"
-    "involved_companies.developer,involved_companies.publisher,"
-    "involved_companies.porting,involved_companies.supporting,"
-    "age_ratings,"
-    "franchise.name,franchise.id"
-)
 
 
 # ── Task definitions ───────────────────────────────────────────────────

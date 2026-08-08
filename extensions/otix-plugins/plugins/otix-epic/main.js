@@ -277,10 +277,25 @@ function extractFreeGames(promotionsData) {
 
 // ── Free Games Check ───────────────────────────────────────────────────
 
-let _freeCache = { games: [], upcoming: [], fetchedAt: 0 };
+const FREE_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+let _freeCache = { games: [], upcoming: [], fetchedAt: 0, isAuthenticated: false, alreadyOwned: 0 };
 
 async function checkFreeGames(ctx) {
   ctx.logger.info('Checking Epic free games...');
+
+  // Serve from cache when fresh — avoids a full library fetch on every settings visit.
+  if (_freeCache.games.length && (Date.now() - _freeCache.fetchedAt) < FREE_CACHE_TTL) {
+    const cached = _freeCache;
+    return {
+      success: true,
+      freeGames: cached.games,
+      unclaimedGames: cached.games.filter(g => !g.claimed),
+      upcomingGames: cached.upcoming,
+      newGames: [],
+      isAuthenticated: cached.isAuthenticated,
+      alreadyOwned: cached.alreadyOwned,
+    };
+  }
 
   let promoData;
   try { promoData = await fetchFreePromotions(ctx); }
@@ -299,7 +314,7 @@ async function checkFreeGames(ctx) {
   // Check ownership if authenticated
   const token = await _ensureToken(ctx);
   if (!token) {
-    _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now() };
+    _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now(), isAuthenticated: false, alreadyOwned: 0 };
     await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
     await ctx.config.set('_last_free_games_check', Date.now());
     return { success: true, freeGames, unclaimedGames: freeGames, upcomingGames, newGames, isAuthenticated: false, alreadyOwned: 0 };
@@ -309,7 +324,7 @@ async function checkFreeGames(ctx) {
   try { libraryItems = await fetchAllLibraryItems(token); }
   catch (err) {
     ctx.logger.warn('Library fetch failed, can\'t cross-reference: ' + err.message);
-    _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now() };
+    _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now(), isAuthenticated: true, alreadyOwned: 0 };
     await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
     await ctx.config.set('_last_free_games_check', Date.now());
     return { success: true, freeGames, unclaimedGames: freeGames, upcomingGames, newGames, isAuthenticated: true, alreadyOwned: 0 };
@@ -338,7 +353,7 @@ async function checkFreeGames(ctx) {
     }
   }
 
-  _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now() };
+  _freeCache = { games: freeGames, upcoming: upcomingGames, fetchedAt: Date.now(), isAuthenticated: true, alreadyOwned };
   await ctx.config.set('_last_free_games', JSON.stringify(freeGames));
   await ctx.config.set('_last_free_games_check', Date.now());
 

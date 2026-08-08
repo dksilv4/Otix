@@ -26,6 +26,10 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 }
 
 function getPermissionDescription(permission: string): string {
+  if (permission.startsWith('table:')) {
+    const tableName = permission.slice('table:'.length)
+    return `Access the "${tableName}" database table.`
+  }
   return PERMISSION_DESCRIPTIONS[permission] ?? `Requested permission: "${permission}"`
 }
 

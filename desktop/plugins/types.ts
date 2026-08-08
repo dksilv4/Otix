@@ -14,6 +14,7 @@ export type PluginPermission =
   | 'api:proxy'
   | 'worker:filesystem'   // filesystem read access via RPC bridge
   | 'ui:command'          // register commands in the Cmd+K command hub
+  | `table:${string}`     // access to a specific database table (e.g. table:downloads)
 
 // ── Manifest ──
 export interface PluginConfigField {
@@ -68,6 +69,8 @@ export interface PluginManifest {
   min_app_version: string
   icon?: string
   stage?: 'alpha' | 'beta' | 'stable'
+  /** Packaged system plugin — always enabled, cannot be disabled by the user. */
+  system?: boolean
   permissions: PluginPermission[]
   config?: Record<string, PluginConfigField>
   slots?: PluginSlot[]
@@ -244,11 +247,7 @@ export interface PluginContext {
   events: EventSubscriber
   fetch: PluginFetch
   db: PluginDatabase
-  downloadsDb: {
-    run(sql: string, params?: unknown[]): void
-    all<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[]
-    get<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | null
-  }
+  downloads: PluginDownloads
   notifications: PluginNotifications
   logger: PluginLogger
   api: ApiProxy
@@ -256,11 +255,32 @@ export interface PluginContext {
   app: PluginApp
   host: PluginHost
   onDestroy: (cb: () => void) => void
+  /** Publish activity items shown in the Otix activity manager panel. */
+  activity: PluginActivity
 
   // ── Inter-plugin communication ──
   call: (targetId: string, method: string, args?: Record<string, any>) => Promise<any>
   handle: (method: string, handler: (args: any) => Promise<any>) => () => void
   discover: (serviceType: string) => Promise<ServiceInfo[]>
+}
+
+export interface PluginActivityItem {
+  id: string
+  type: 'scan' | 'download' | 'sync' | 'info' | 'warning' | 'error' | 'notification'
+  title: string
+  subtitle?: string
+  progress?: number
+  status?: 'active' | 'completed' | 'error' | 'pending'
+  icon?: string
+  timestamp?: number
+  action?: { label: string; method: string }
+}
+
+export interface PluginActivity {
+  /** Insert or replace an item with the same id. */
+  publish(item: PluginActivityItem): void
+  remove(id: string): void
+  clear(): void
 }
 
 export interface PluginConfigStore {
@@ -280,6 +300,26 @@ export interface PluginDatabase {
   run(sql: string, params?: unknown[]): void
   get<T = Record<string, unknown>>(sql: string, params?: unknown[]): T | null
   all<T = Record<string, unknown>>(sql: string, params?: unknown[]): T[]
+}
+
+export interface PluginDownloads {
+  getHistory(): Promise<Record<string, unknown>[]>
+  getDownload(id: string): Promise<Record<string, unknown> | null>
+  getConfig(): Promise<Record<string, unknown> | null>
+  queueItem(data: {
+    userId?: string
+    mediaItemId?: string | null
+    mediaItemTitle?: string | null
+    nzbTitle: string
+    nzbSize: number
+    nzbUrl: string
+    sabnzbdNzoId?: string | null
+  }): Promise<Record<string, unknown>>
+  updateStatus(id: string, status: string, errorMessage?: string, percentage?: number): Promise<void>
+  updateIsoPath(id: string, isoPath: string): Promise<void>
+  delete(id: string): Promise<void>
+  getPathMappings(configId: string): Promise<Record<string, unknown>[]>
+  getWishlistTracking(userId: string): Promise<Record<string, unknown>[]>
 }
 
 export interface PluginNotifications {

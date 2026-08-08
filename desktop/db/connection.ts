@@ -1,43 +1,36 @@
 // desktop/db/connection.ts
+// Single source of truth for the desktop app — one SQLite DB (otix.db) used
+// by the app and plugins alike. No per-domain files, no separate plugin DB.
+
 import Database from 'better-sqlite3'
 import path from 'path'
-import fs from 'fs'
 import { app } from 'electron'
 
-const connections = new Map<string, Database.Database>()
+let _db: Database.Database | null = null
+let _dbPath: string = ''
 
-export function getDbPath(name: string): string {
-  const userData = app.getPath('userData')
-  const dbDir = path.join(userData, 'databases')
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true })
+export function getDbPath(): string {
+  if (!_dbPath) {
+    _dbPath = path.join(app.getPath('userData'), 'otix.db')
   }
-  return path.join(dbDir, `${name}.db`)
+  return _dbPath
 }
 
-export function getConnection(name: string): Database.Database {
-  const existing = connections.get(name)
-  if (existing) return existing
-
-  const dbPath = getDbPath(name)
-  const db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
-  connections.set(name, db)
-  return db
+export function getDb(): Database.Database {
+  if (_db) return _db
+  _db = new Database(getDbPath())
+  _db.pragma('journal_mode = WAL')
+  _db.pragma('foreign_keys = ON')
+  return _db
 }
 
-export function closeAllConnections(): void {
-  for (const [name, db] of connections) {
-    try { db.close() } catch {}
-    connections.delete(name)
-  }
-}
-
-export function closeConnection(name: string): void {
-  const db = connections.get(name)
-  if (db) {
-    try { db.close() } catch {}
-    connections.delete(name)
+export function closeDb(): void {
+  if (_db) {
+    try {
+      _db.close()
+    } catch {
+      // already closed
+    }
+    _db = null
   }
 }

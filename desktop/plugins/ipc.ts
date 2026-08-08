@@ -47,6 +47,10 @@ export function registerPluginIPC(
     return await pluginManager.getPluginStatus(pluginId)
   })
 
+  ipcMain.handle('plugin:get-activity', async () => {
+    return pluginManager.getActivity()
+  })
+
   ipcMain.handle('plugin:get-repos', async () => {
     return await pluginManager.getRepos()
   })
@@ -100,8 +104,7 @@ export function registerPluginIPC(
   ipcMain.handle('plugin:reload', async (event, id: string) => {
     validateSender(event)
     assertString(id, 'id')
-    await pluginManager.disable(id)
-    await pluginManager.enable(id)
+    await pluginManager.reload(id)
     return await pluginManager.getAllPlugins()
   })
 

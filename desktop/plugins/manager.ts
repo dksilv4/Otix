@@ -10,9 +10,12 @@ import { getApiUrl } from '../config'
 import { ServiceRegistry } from './service-registry'
 import { PluginsRepository } from '../db/repositories/plugins'
 import { initPluginsDb } from '../db/plugins-db'
+import type { PermissionManager } from './permissions'
 
 import { fetchAllRegistries } from './marketplace'
 import { SlotRegistry } from './slots'
+import { getAllActivity } from './activity'
+import type { PluginActivityItem } from './types'
 import { FreeGamesAggregator } from '../free-games/aggregator'
 import type {
   PluginManifest,
@@ -29,6 +32,14 @@ import {
 } from './errors'
 
 const execFileAsync = promisify(execFile)
+
+// System plugins auto-get access to well-known tables they own — no prompt.
+// This is a transitional safety net: as plugins migrate to framework data
+// layers (e.g. the downloads plugin using the framework downloads API), they
+// stop needing raw SQL access entirely.
+const SYSTEM_TABLE_GRANTS: Record<string, string[]> = {
+  downloads: ['downloads'],
+}
 
 const PAGE_SLOT_MAP: Record<string, string[]> = {
   'settings/library': ['settings/library/extensions'],
@@ -50,6 +61,7 @@ export class PluginManager {
   private locks: Map<string, Promise<void>> = new Map()
   private lockResolvers: Map<string, () => void> = new Map()
   private pluginsRepo: PluginsRepository
+  private permissionManager: PermissionManager | null = null
   private extensionsDir: string
   private devExtensionsDir: string | undefined
   private apiBaseUrl = getApiUrl('')
@@ -69,6 +81,10 @@ export class PluginManager {
     this.pluginsRepo = pluginsRepo
     this.freeGames = new FreeGamesAggregator(this)
     initPluginsDb(_userDataPath)
+  }
+
+  setPermissionManager(pm: PermissionManager): void {
+    this.permissionManager = pm
   }
 
   // ── Per-plugin mutex ─────────────────────────────────────────────
@@ -203,8 +219,22 @@ export class PluginManager {
             .getPermissions(pluginId)
             .some((p) => p.permission === perm),
         async (perm: PluginPermission) => {
-          // Request permission — the bridge will handle the IPC prompt
-          // For now, auto-grant if the manifest declared it
+          // table:* access is always a runtime decision — show the permission
+          // modal, unless the plugin is a system plugin accessing its own
+          // well-known tables (SYSTEM_TABLE_GRANTS).
+          if (perm.startsWith('table:')) {
+            const tableName = perm.slice('table:'.length)
+            if (SYSTEM_TABLE_GRANTS[pluginId]?.includes(tableName)) {
+              this.pluginsRepo.grantPermission(pluginId, perm, 'always')
+              return true
+            }
+            if (!this.permissionManager) return false
+            return this.permissionManager.requestTableAccess(
+              pluginId, info.name, tableName,
+            )
+          }
+          // Non-table permissions: auto-grant only if the manifest declared
+          // them (the user consented at install time).
           if (info.manifest.permissions.includes(perm)) {
             this.pluginsRepo.grantPermission(pluginId, perm, 'always')
             return true
@@ -282,6 +312,12 @@ export class PluginManager {
   async disable(pluginId: string): Promise<void> {
     await this.acquireLock(pluginId)
     try {
+      const info = this.getPlugin(pluginId)
+      if (info?.manifest.system) {
+        throw new Error(
+          `Plugin "${pluginId}" is a system plugin and cannot be disabled`,
+        )
+      }
       const runtime = this.runtimes.get(pluginId)
       if (runtime) {
         await runtime.stop()
@@ -298,6 +334,24 @@ export class PluginManager {
     } finally {
       this.releaseLock(pluginId)
     }
+  }
+
+  async reload(pluginId: string): Promise<void> {
+    const info = this.getPlugin(pluginId)
+    if (!info) throw new PluginNotFoundError(pluginId)
+    if (info.manifest.system) {
+      // System plugins are always on — restart the worker in place instead
+      // of disable()+enable(), which would throw on the disable step.
+      const runtime = this.runtimes.get(pluginId)
+      if (runtime) {
+        await runtime.stop()
+        this.runtimes.delete(pluginId)
+      }
+      await this.enable(pluginId)
+      return
+    }
+    await this.disable(pluginId)
+    await this.enable(pluginId)
   }
 
   // ── Install from Git ────────────────────────────────────────────
@@ -566,6 +620,17 @@ export class PluginManager {
     return results
   }
 
+  getActivity(): Array<{ pluginId: string; label: string; activities: PluginActivityItem[] }> {
+    const slotLabels = new Map(
+      this.slotRegistry.getPluginsForSlot('activity:panel').map((s) => [s.pluginId, s.label]),
+    )
+    return getAllActivity().map(({ pluginId, activities }) => ({
+      pluginId,
+      label: slotLabels.get(pluginId) || this.getPlugin(pluginId)?.name || pluginId,
+      activities,
+    }))
+  }
+
   getPluginTabs(): PluginSettingsTab[] {
     const tabs: PluginSettingsTab[] = []
     for (const [pluginId] of this.runtimes) {
@@ -665,9 +730,9 @@ export class PluginManager {
           author: manifest.author || '',
           repository: manifest.repository || '',
           source_path: isAdditional ? pluginDir : null,
-          status: 'installed',
+          status: manifest.system ? 'enabled' : 'installed',
           manifest_json: JSON.stringify(manifest),
-          enabled_at: null,
+          enabled_at: manifest.system ? now : null,
         })
         discovered.push(
           this.getPlugin(entry.name) as PluginInfo,
@@ -691,8 +756,11 @@ export class PluginManager {
 
   async loadEnabledPlugins(): Promise<void> {
     const allRows = this.pluginsRepo.getAll()
-    const enabled = allRows.filter((r) => r.status === 'enabled')
-    const errored = allRows.filter((r) => r.status === 'error')
+    const isSystem = (r: any) => this.pluginRowToInfo(r).manifest.system === true
+    // System plugins are always-on — force-enable them regardless of stored
+    // status (e.g. installs that predate the flag, or drifted rows).
+    const enabled = allRows.filter((r) => r.status === 'enabled' || isSystem(r))
+    const errored = allRows.filter((r) => r.status === 'error' && !isSystem(r))
 
     for (const row of enabled) {
       try {
@@ -721,15 +789,23 @@ export class PluginManager {
     const pluginIds = Array.from(this.runtimes.keys())
 
     for (const pluginId of pluginIds) {
-      try {
-        await this.disable(pluginId)
-        console.log(`[PluginManager] Shut down plugin: ${pluginId}`)
-      } catch (err) {
-        console.error(
-          `[PluginManager] Error shutting down plugin ${pluginId}:`,
-          err,
-        )
+      const runtime = this.runtimes.get(pluginId)
+      if (runtime) {
+        try {
+          await runtime.stop()
+        } catch (err) {
+          console.error(
+            `[PluginManager] Error stopping plugin ${pluginId}:`,
+            err,
+          )
+        }
+        this.runtimes.delete(pluginId)
       }
+      // Stop the runtime but do NOT persist 'disabled' — the app is exiting,
+      // not the user disabling the plugin. Persisting here un-enables every
+      // plugin in the DB on each quit, so they stop auto-loading on boot.
+      this.serviceRegistry.unregister(pluginId)
+      this.slotRegistry.unregisterAll(pluginId)
     }
   }
 

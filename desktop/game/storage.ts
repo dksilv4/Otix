@@ -1,9 +1,9 @@
-import { getConnection } from '../db';
+import { getDb } from '../db';
 import type Database from 'better-sqlite3';
 
 let __db: Database.Database | null = null;
 function db(): Database.Database {
-  if (!__db) __db = getConnection('downloads');
+  if (!__db) __db = getDb();
   return __db;
 }
 

@@ -97,6 +97,31 @@ export class PermissionManager {
     });
   }
 
+  hasTableAccess(pluginId: string, tableName: string): boolean {
+    return this.isGranted(pluginId, `table:${tableName}`);
+  }
+
+  /** Prompt the user for access to a specific table. Resolves true if granted. */
+  async requestTableAccess(
+    pluginId: string,
+    pluginName: string,
+    tableName: string,
+    reason?: string
+  ): Promise<boolean> {
+    if (this.hasTableAccess(pluginId, tableName)) return true;
+    try {
+      const res = await this.requestPermission(
+        pluginId,
+        pluginName,
+        `table:${tableName}`,
+        reason || `Allow access to the "${tableName}" table`
+      );
+      return res.granted;
+    } catch {
+      return false;
+    }
+  }
+
   respondToRequest(requestId: string, response: PermissionResponse): void {
     const pending = this.pendingRequests.get(requestId);
     if (!pending) return;

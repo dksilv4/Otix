@@ -1,6 +1,6 @@
 // desktop/db/repositories/games.ts
 import Database from 'better-sqlite3'
-import { getConnection } from '../connection'
+import { getDb } from '../connection'
 
 export interface ScannedGameRow {
   id: string
@@ -46,7 +46,7 @@ export class GamesRepository {
   private db: Database.Database
 
   constructor() {
-    this.db = getConnection('downloads')
+    this.db = getDb()
   }
 
   getAllGames(): ScannedGameRow[] {

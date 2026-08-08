@@ -34,6 +34,29 @@ OAUTH_URL = "https://id.twitch.tv/oauth2/token"
 SEARCH_CACHE_PREFIX = "igdb:search"
 SEARCH_CACHE_TTL = 7 * 24 * 3600
 
+# Full field set for fetching a complete game record (hydration + seeding).
+GAME_FIELDS = (
+    "id,name,summary,storyline,first_release_date,"
+    "rating,aggregated_rating,rating_count,aggregated_rating_count,"
+    "hypes,url,slug,status,"
+    "game_type,parent_game.name,"
+    "cover.image_id,"
+    "screenshots.image_id,"
+    "artworks.image_id,"
+    "genres.name,themes.name,"
+    "platforms.name,platforms.platform_logo.image_id,"
+    "game_modes.name,"
+    "websites.url,websites.type,"
+    "external_games.external_game_source,external_games.uid,"
+    "videos.video_id,videos.name,"
+    "involved_companies.company.name,involved_companies.company.slug,"
+    "involved_companies.company.logo.image_id,"
+    "involved_companies.developer,involved_companies.publisher,"
+    "involved_companies.porting,involved_companies.supporting,"
+    "age_ratings,"
+    "franchise.name,franchise.id"
+)
+
 
 class IGDBAuthError(Exception):
     pass

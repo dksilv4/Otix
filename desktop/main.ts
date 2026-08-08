@@ -25,7 +25,7 @@ import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
-import { initAllDatabases, closeAllConnections, PluginsRepository } from './db';
+import { initDatabase, closeDb, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { purgeOldDeletedDownloads } from './downloads';
@@ -426,6 +426,29 @@ app.on('ready', async () => {
     await shell.openExternal(url);
   });
 
+  // Open a URL in a standalone app window on the DEFAULT session — the same
+  // session plugin OAuth windows use, so the window carries the user's
+  // logged-in web session (e.g. Epic Games Store after Epic OAuth).
+  ipcMain.handle('shell:open-session-window', async (_event, url: string) => {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
+    } catch {
+      return;
+    }
+    const win = new BrowserWindow({
+      width: 1200,
+      height: 850,
+      autoHideMenuBar: true,
+      backgroundColor: '#09090b',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    await win.loadURL(url);
+  });
+
   ipcMain.handle('shell:open-path', async (_event, filePath: string) => {
     return shell.openPath(filePath);
   });
@@ -490,7 +513,7 @@ app.on('ready', async () => {
   // Init all databases before any IPC handler or window.
   // Failure is non-fatal — app opens with degraded DB functionality.
   let dbReady = false;
-  await initAllDatabases().then(() => { dbReady = true }).catch((err) => {
+  await initDatabase().then(() => { dbReady = true }).catch((err) => {
     console.error('[main] DB init failed (app will run with reduced functionality):', err.message);
   });
 
@@ -555,6 +578,7 @@ app.on('ready', async () => {
       : undefined;
     permissionManager = new PermissionManager();
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
+    pluginManager.setPermissionManager(permissionManager);
     setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
@@ -661,7 +685,7 @@ app.on('ready', async () => {
     console.log('[main] before-quit fired');
     mainWindow?.webContents.send('app:clean-quit');
     pluginManager?.shutdown().catch(() => {});
-    try { closeAllConnections() } catch (err) {
+    try { closeDb() } catch (err) {
       console.error('[main] Failed to close database connections:', err);
     }
   });
@@ -686,7 +710,7 @@ app.on('window-all-closed', () => {
   console.log('[main] window-all-closed fired');
   gameDetector?.stopAll();
   pluginManager?.shutdown().catch(() => {});
-  try { closeAllConnections() } catch (err) {
+  try { closeDb() } catch (err) {
     console.error('[main] Failed to close database connections:', err);
   }
   // Kill any running game install

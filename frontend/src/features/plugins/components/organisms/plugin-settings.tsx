@@ -431,6 +431,7 @@ export function ConnectedCard({
   const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
   const isError = plugin.status === 'error'
   const isConnected = plugin.status === 'enabled'
+  const isSystem = plugin.manifest.system === true
 
   return (
     <div
@@ -450,7 +451,12 @@ export function ConnectedCard({
         </div>
 
         <div className="shrink-0">
-          {isError ? (
+          {isSystem ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-sky-400 whitespace-nowrap">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              System
+            </span>
+          ) : isError ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 whitespace-nowrap">
               <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.7)]" />
               Error
@@ -510,7 +516,7 @@ export function ConnectedCard({
             <Settings className="h-3.5 w-3.5" />
             Manage
           </button>
-          {!isError && (
+          {!isSystem && !isError && (
             <DkSwitch
               checked={isConnected}
               onCheckedChange={onToggle}
@@ -1001,6 +1007,7 @@ export function PluginSettings() {
   const handleToggle = useCallback(
     async (plugin: PluginInfo) => {
       if (!api) return
+      if (plugin.manifest.system === true) return // system plugins are always-on
       const id = plugin.id
       setToggling((prev) => ({ ...prev, [id]: true }))
       try {

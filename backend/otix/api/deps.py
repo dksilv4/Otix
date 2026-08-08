@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from otix.infrastructure.config import settings
 from otix.infrastructure.database import get_session
-from otix.lib.geoip import resolve_country_from_request
+from otix.lib.geoip import lang_from_country, resolve_country_from_request
 from otix.lib.tokens import decode_token
 from otix.services.auth.auth_service import AuthService
 
@@ -109,3 +109,23 @@ async def resolve_country_code(
         cf_ipcountry=cf_country,
         client_host=client_host,
     )
+
+
+async def resolve_preferred_lang(
+    request: Request,
+    current_user: User | None = None,
+) -> str:
+    """Resolve the preferred language (ISO 639-1) for logo selection.
+
+    Precedence:
+    1. Authenticated user's explicit ``preferred_languages``.
+    2. Country derived from the request (user country, Cloudflare header, IP geo).
+    3. ``"en"`` fallback.
+    """
+    if current_user and current_user.preferred_languages:
+        first = current_user.preferred_languages[0]
+        if isinstance(first, str) and len(first) >= 2 and first[:2].isalpha():
+            return first[:2].lower()
+
+    country = await resolve_country_code(request, current_user)
+    return lang_from_country(country)

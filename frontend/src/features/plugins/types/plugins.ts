@@ -36,6 +36,8 @@ export interface PluginManifest {
   min_app_version: string
   icon?: string
   stage?: 'alpha' | 'beta' | 'stable'
+  /** Packaged system plugin — always enabled, cannot be disabled by the user. */
+  system?: boolean
   permissions: PluginPermission[]
   config?: Record<string, PluginConfigField>
   slots?: PluginSlot[]

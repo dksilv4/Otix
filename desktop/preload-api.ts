@@ -323,6 +323,24 @@ export interface PluginSettingsTab {
   sections: { id: string; label: string; slot: string }[];
 }
 
+export interface PluginActivityItem {
+  id: string;
+  type: 'scan' | 'download' | 'sync' | 'info' | 'warning' | 'error' | 'notification';
+  title: string;
+  subtitle?: string;
+  progress?: number;
+  status?: 'active' | 'completed' | 'error' | 'pending';
+  icon?: string;
+  timestamp?: number;
+  action?: { label: string; method: string };
+}
+
+export interface PluginActivityEntry {
+  pluginId: string;
+  label: string;
+  activities: PluginActivityItem[];
+}
+
 export interface DesktopSettings {
   launchOnStartup: boolean;
   minimizeToTray: boolean;
@@ -366,6 +384,7 @@ export interface IDesktopAPI {
   openPath: (filePath: string) => Promise<string>;
   ping: () => Promise<string>;
   openExternal: (url: string) => Promise<void>;
+  openSessionWindow: (url: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;
   onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
   scanPaths: (paths: string[], isoPaths: string[]) => Promise<LocalGame[]>;
@@ -513,6 +532,7 @@ export interface IDesktopAPI {
     getSlotData: (location: string) => Promise<{pluginId: string; label: string; data: any}[]>;
     getPageSlotData: (pageId: string) => Promise<Record<string, {pluginId: string; label: string; data: any}[]>>;
     getPluginTabs: () => Promise<PluginSettingsTab[]>;
+    getActivity: () => Promise<PluginActivityEntry[]>;
     getFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
     refreshFreeGames: () => Promise<{ items: any[]; fetchedAt: number }>;
     fetchMarketplace: (registryUrl?: string) => Promise<{ success: boolean; plugins?: RegistryEntry[]; error?: string }>;

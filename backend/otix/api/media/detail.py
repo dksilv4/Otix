@@ -10,7 +10,12 @@ from redis.exceptions import BusyLoadingError
 from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db, get_optional_user, resolve_country_code
+from otix.api.deps import (
+    get_db,
+    get_optional_user,
+    resolve_country_code,
+    resolve_preferred_lang,
+)
 from otix.domain.user import User
 from otix.infrastructure.redis import get_redis
 from otix.schemas.interaction import UserInteractionState
@@ -34,8 +39,8 @@ media_router = APIRouter()
 _MEDIA_DETAIL_TTL = 30
 
 
-def _media_cache_key(media_id: str, country_code: str) -> str:
-    return f"media:detail:{media_id}:{country_code}"
+def _media_cache_key(media_id: str, country_code: str, lang: str = "en") -> str:
+    return f"media:detail:{media_id}:{country_code}:{lang}"
 
 
 async def _patch_user_detail(
@@ -129,7 +134,8 @@ async def get_media_item(
     current_user: User | None = Depends(get_optional_user),
 ) -> MediaItemDetail:
     country_code = await resolve_country_code(request, current_user)
-    cache_key = _media_cache_key(media_id, country_code)
+    preferred_lang = await resolve_preferred_lang(request, current_user)
+    cache_key = _media_cache_key(media_id, country_code, preferred_lang)
     redis = await get_redis()
 
     # Cache hit: serve cached public response, patch user data if authenticated
@@ -167,7 +173,7 @@ async def get_media_item(
         collection_media = [
             m.media_item for m in item.movie.collection.movies if m.media_item is not None
         ]
-    await enrich_items_with_assets(db, [item] + collection_media)
+    await enrich_items_with_assets(db, [item] + collection_media, preferred_lang=preferred_lang)
 
     # Auto-trigger background full hydration if item is incomplete / stub-seeded
     if item.completeness_score is None or item.completeness_score < 0.5 or not item.logo_url:

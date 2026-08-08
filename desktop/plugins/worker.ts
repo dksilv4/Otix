@@ -179,10 +179,17 @@ const ctx = {
     get: <T>(sql: string, params?: unknown[]) => rpc('db.get', sql, params) as Promise<T | null>,
     all: <T>(sql: string, params?: unknown[]) => rpc('db.all', sql, params) as Promise<T[]>,
   },
-  downloadsDb: {
-    run: (sql: string, params?: unknown[]) => rpc('downloadsDb.run', sql, params) as Promise<unknown>,
-    all: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.all', sql, params) as Promise<T[]>,
-    get: <T>(sql: string, params?: unknown[]) => rpc('downloadsDb.get', sql, params) as Promise<T | null>,
+  downloads: {
+    getHistory: () => rpc('downloads.getHistory') as Promise<any[]>,
+    getDownload: (id: string) => rpc('downloads.getDownload', id) as Promise<any | null>,
+    getConfig: () => rpc('downloads.getConfig') as Promise<any | null>,
+    queueItem: (data: any) => rpc('downloads.queueItem', data),
+    updateStatus: (id: string, status: string, errorMessage?: string, percentage?: number) =>
+      rpc('downloads.updateStatus', id, status, errorMessage, percentage),
+    updateIsoPath: (id: string, isoPath: string) => rpc('downloads.updateIsoPath', id, isoPath),
+    delete: (id: string) => rpc('downloads.delete', id),
+    getPathMappings: (configId: string) => rpc('downloads.getPathMappings', configId),
+    getWishlistTracking: (userId: string) => rpc('downloads.getWishlistTracking', userId),
   },
   notifications: {
     send: (titleOrOpts: string | { title: string; body: string; type?: string }, body?: string) => {
@@ -225,6 +232,17 @@ const ctx = {
   host: {
     emit: (event: string, data: unknown) => {
       rpc('host.emit', event, data).catch(() => {})
+    },
+  },
+  activity: {
+    publish: (item: import('./types').PluginActivityItem) => {
+      rpc('activity.publish', item).catch(() => {})
+    },
+    remove: (id: string) => {
+      rpc('activity.remove', id).catch(() => {})
+    },
+    clear: () => {
+      rpc('activity.clear').catch(() => {})
     },
   },
 

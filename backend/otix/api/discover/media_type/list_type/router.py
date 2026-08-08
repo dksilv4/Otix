@@ -8,7 +8,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db, get_optional_user
+from otix.api.deps import get_db, get_optional_user, resolve_preferred_lang
 from otix.api.discover.router_helpers import _build_response, _cache_get, _cache_set
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse
@@ -90,11 +90,12 @@ async def discover_list(
     is_personalized = list_type in ("collaborative", "semantic", "integration_steam", "integration_plex", "new_season_for_you")
     cache_ttl = _PERSONALIZED_TTL if is_personalized else _DISCOVER_TTL
     uid = current_user.id if current_user else "anon"
+    preferred_lang = await resolve_preferred_lang(request, current_user)
 
     if is_personalized:
-        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}:adult{0 if exclude_adult else 1}"
+        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:{uid}:adult{0 if exclude_adult else 1}:lang{preferred_lang}"
     else:
-        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:adult{0 if exclude_adult else 1}"
+        raw = f"{media_type}:{list_type}:{genre or ''}:{language or ''}:{is_anime}:{cursor or ''}:{limit}:adult{0 if exclude_adult else 1}:lang{preferred_lang}"
     cache_key = f"discover:list:{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
 
     cached = await _cache_get(cache_key)
@@ -134,7 +135,9 @@ async def discover_list(
         )
         if seed_ids:
             items = await service.get_media_items_by_ids(seed_ids[:limit])
-            response = await _build_response(db, items, has_more=False, current_user=current_user)
+            response = await _build_response(
+                db, items, has_more=False, current_user=current_user, preferred_lang=preferred_lang
+            )
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             logger.info("discover semantic fetched", media_type=media_type, ip=ip)
             return response
@@ -151,7 +154,7 @@ async def discover_list(
                 media_ids=seed_ids,
                 exclude_adult=exclude_adult,
             )
-            response = await _build_response(db, items, has_more, current_user)
+            response = await _build_response(db, items, has_more, current_user, preferred_lang=preferred_lang)
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             logger.info("discover steam fetched", media_type=media_type, ip=ip)
             return response
@@ -168,7 +171,7 @@ async def discover_list(
                 media_ids=seed_ids,
                 exclude_adult=exclude_adult,
             )
-            response = await _build_response(db, items, has_more, current_user)
+            response = await _build_response(db, items, has_more, current_user, preferred_lang=preferred_lang)
             await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
             logger.info("discover plex fetched", media_type=media_type, ip=ip)
             return response
@@ -191,7 +194,7 @@ async def discover_list(
                 )
             else:
                 items, has_more = [], False
-        response = await _build_response(db, items, has_more, current_user)
+        response = await _build_response(db, items, has_more, current_user, preferred_lang=preferred_lang)
         await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
         logger.info("discover new season fetched", media_type=media_type, ip=ip)
         return response
@@ -218,7 +221,7 @@ async def discover_list(
         date_to=date_to,
         exclude_adult=exclude_adult,
     )
-    response = await _build_response(db, items, has_more, current_user)
+    response = await _build_response(db, items, has_more, current_user, preferred_lang=preferred_lang)
     await _cache_set(cache_key, response.model_dump_json(), ex=cache_ttl)
 
     logger.info("discover list fetched", media_type=media_type, list_type=list_type, count=len(items), ip=ip)

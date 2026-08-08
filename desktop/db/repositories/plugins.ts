@@ -1,6 +1,6 @@
 // desktop/db/repositories/plugins.ts
 import type Database from 'better-sqlite3'
-import { getConnection } from '../connection'
+import { getDb } from '../connection'
 
 export interface PluginRegistryRow {
   id: string
@@ -21,7 +21,7 @@ export class PluginsRepository {
   private db: Database.Database
 
   constructor() {
-    this.db = getConnection('plugins')
+    this.db = getDb()
   }
 
   getAll(): PluginRegistryRow[] {

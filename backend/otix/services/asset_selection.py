@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from otix.domain.admin_edit import MediaImageOverride
 from otix.domain.asset import MediaAsset
 
-ITEM_CACHE_KEY = "asset:sel:v2:{item_id}"
+ITEM_CACHE_KEY = "asset:sel:v2:{item_id}:{lang}"
 CACHE_TTL = 3600  # 1 hour
 
 # asset_type → schema field suffix
@@ -59,9 +59,30 @@ _LABEL_PREF = {
 }
 # Backdrops with a baked-in title/text overlay look bad behind content.
 _BACKDROP_EXCLUDE = {"alternate"}
+# Language marker values that mean "no text / textless" (ISO 639 zxx, SGDB "0").
+_TEXTLESS_LANGS = {None, "", "0", "00", "zxx"}
 
 
-def _select_best(assets: list[MediaAsset], asset_type: str) -> MediaAsset | None:
+def _logo_lang_pref(lang: str | None, preferred: str) -> int:
+    """Rank logo language: preferred language first, textless next, localized last.
+
+    SteamGridDB hosts localized logos (ja/ru/ar/...) with the same SGDB style as
+    the preferred-language ones, so label/score/width alone can surface a logo
+    whose text is in the wrong language. Language is the primary tiebreaker for
+    logos; ``preferred`` comes from the viewer's country / explicit preference.
+    """
+    if lang == preferred:
+        return 0
+    if lang in _TEXTLESS_LANGS:
+        return 1
+    return 2
+
+
+def _select_best(
+    assets: list[MediaAsset],
+    asset_type: str,
+    preferred_lang: str = "en",
+) -> MediaAsset | None:
     """Pick the best asset from candidates for one type."""
     if not assets:
         return None
@@ -74,6 +95,8 @@ def _select_best(assets: list[MediaAsset], asset_type: str) -> MediaAsset | None
         if a.label in exclude:
             continue
         key = (pref.get(a.label or "", 999), -(a.score or 0), -(a.width or 0))
+        if asset_type == "logo":
+            key = (_logo_lang_pref(a.lang, preferred_lang), *key)
         if want_png and a.url and a.url.lower().endswith(".png"):
             key = (key[0] - 0.5, *key[1:])
         if best_key is None or key < best_key:
@@ -83,8 +106,14 @@ def _select_best(assets: list[MediaAsset], asset_type: str) -> MediaAsset | None
 
 
 async def invalidate_asset_selection(redis, item_id: str) -> None:
-    """Drop the cached selection for one item so it recomputes on next read."""
-    await redis.delete(ITEM_CACHE_KEY.format(item_id=item_id))
+    """Drop cached selections for one item so they recompute on next read.
+
+    Selection is cached per preferred language, so all variants must go.
+    """
+    pattern = f"asset:sel:v2:{item_id}:*"
+    keys = [key async for key in redis.scan_iter(match=pattern, count=100)]
+    if keys:
+        await redis.delete(*keys)
 
 
 async def _fetch_overrides(
@@ -106,7 +135,10 @@ async def _fetch_overrides(
 
 
 async def _resolve_from_db(
-    session: AsyncSession, item_ids: list[str], asset_types: tuple[str, ...]
+    session: AsyncSession,
+    item_ids: list[str],
+    asset_types: tuple[str, ...],
+    preferred_lang: str = "en",
 ) -> dict[str, dict[str, str | None]]:
     """Rank stored assets for the given items (one query, no cache)."""
     if not item_ids:
@@ -126,7 +158,7 @@ async def _resolve_from_db(
         per: dict[str, str | None] = {}
         item_assets = by_item.get(iid, {})
         for at in asset_types:
-            best = _select_best(item_assets.get(at, []), at)
+            best = _select_best(item_assets.get(at, []), at, preferred_lang=preferred_lang)
             per[FIELD_SUFFIX[at]] = best.url if best is not None else None
         
         # When a textless poster is not explicitly set, fall back to backdrop_url (background art)
@@ -145,11 +177,14 @@ async def resolve_assets(
     asset_types: tuple[str, ...] | None = None,
     *,
     cache_ttl: int = CACHE_TTL,
+    preferred_lang: str = "en",
 ) -> dict[str, dict[str, str | None]]:
     """Resolve best asset URL per type for each item.
 
     Returns ``{item_id: {"poster_url": ..., "logo_url": ..., ...}}``.
     Precedence: admin override → Redis cache → ranked media_assets.
+    ``preferred_lang`` (ISO 639-1) favours logos whose text is in the viewer's
+    language; the cache is scoped per language so users don't share picks.
     """
     asset_types = asset_types or RESOLVE_TYPES
     item_ids = [str(i) for i in item_ids]
@@ -158,9 +193,9 @@ async def resolve_assets(
 
     overrides = await _fetch_overrides(session, item_ids)
 
-    # Redis cache (one key per item). A Redis outage must not take down the
-    # read path — fall back to the DB ranking for every item.
-    keys = [ITEM_CACHE_KEY.format(item_id=i) for i in item_ids]
+    # Redis cache (one key per item per language). A Redis outage must not take
+    # down the read path — fall back to the DB ranking for every item.
+    keys = [ITEM_CACHE_KEY.format(item_id=i, lang=preferred_lang) for i in item_ids]
     result: dict[str, dict[str, str | None]] = {}
     miss_items: list[str] = []
     if keys:
@@ -181,12 +216,14 @@ async def resolve_assets(
         miss_items = list(item_ids)
 
     if miss_items:
-        db_result = await _resolve_from_db(session, miss_items, asset_types)
+        db_result = await _resolve_from_db(
+            session, miss_items, asset_types, preferred_lang=preferred_lang
+        )
         for item_id, per in db_result.items():
             result[item_id] = per
             try:
                 await redis.setex(
-                    ITEM_CACHE_KEY.format(item_id=item_id),
+                    ITEM_CACHE_KEY.format(item_id=item_id, lang=preferred_lang),
                     cache_ttl,
                     json.dumps(per),
                 )
@@ -212,11 +249,13 @@ async def enrich_items_with_assets(
     items: list,
     *,
     redis=None,
+    preferred_lang: str = "en",
 ) -> list:
     """Attach resolved asset URLs to ORM items in-place as ``_resolved_*`` attrs.
 
     Schemas prefer these via ``model_validator(mode="before")``, so the read
     path no longer depends on the legacy ``media_items`` URL columns.
+    ``preferred_lang`` is passed through to logo selection.
     """
     if not items:
         return items
@@ -224,7 +263,9 @@ async def enrich_items_with_assets(
         from otix.infrastructure.redis import get_redis
 
         redis = await get_redis()
-    resolved = await resolve_assets(session, redis, [str(i.id) for i in items])
+    resolved = await resolve_assets(
+        session, redis, [str(i.id) for i in items], preferred_lang=preferred_lang
+    )
     for item in items:
         urls = resolved.get(str(item.id), {})
         for suffix in ASSET_FIELDS:

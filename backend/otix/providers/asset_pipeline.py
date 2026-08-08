@@ -202,10 +202,18 @@ class AssetPipeline:
             for a in assets
         ]
 
+        # Existing rows are left untouched except for a missing ``lang``: a re-hydration
+        # with the same URLs backfills the language marker (the original seed often ran
+        # before a provider captured it) without clobbering anything already known.
+        excluded = pg_insert(MediaAsset).excluded
         result = await self.session.execute(
             pg_insert(MediaAsset)
             .values(rows)
-            .on_conflict_do_nothing(index_elements=["media_item_id", "url", "asset_type"])
+            .on_conflict_do_update(
+                index_elements=["media_item_id", "url", "asset_type"],
+                set_={"lang": excluded.lang},
+                where=(MediaAsset.lang.is_(None) | (MediaAsset.lang == "")),
+            )
         )
         if result.rowcount:
             # New rows change the selection pool — drop the cached pick so the

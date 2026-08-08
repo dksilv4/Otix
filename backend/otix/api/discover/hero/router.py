@@ -6,7 +6,7 @@ import structlog
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from otix.api.deps import get_db, get_optional_user
+from otix.api.deps import get_db, get_optional_user, resolve_preferred_lang
 from otix.api.discover.router_helpers import _build_response, _cache_get, _cache_set
 from otix.domain.user import User
 from otix.schemas.media import MediaItemListResponse
@@ -31,7 +31,8 @@ async def discover_hero(
 
     ip = request.client.host if request.client else None
     exclude_adult = should_exclude_adult(current_user)
-    cache_key = f"discover:hero:{limit}:adult{0 if exclude_adult else 1}"
+    preferred_lang = await resolve_preferred_lang(request, current_user)
+    cache_key = f"discover:hero:{limit}:adult{0 if exclude_adult else 1}:lang{preferred_lang}"
     cached = await _cache_get(cache_key)
     if cached:
         logger.info("discover hero cache hit", ip=ip)
@@ -48,7 +49,7 @@ async def discover_hero(
     random.shuffle(items)
     items = items[:limit]
 
-    response = await _build_response(db, items, False, current_user)
+    response = await _build_response(db, items, False, current_user, preferred_lang=preferred_lang)
     response.next_cursor = None
     await _cache_set(cache_key, response.model_dump_json(), ex=_DISCOVER_TTL)
 

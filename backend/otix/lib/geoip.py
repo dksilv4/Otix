@@ -19,6 +19,29 @@ logger = logging.getLogger(__name__)
 
 _GEOIP_CACHE_TTL = 60 * 60 * 24  # 24 hours — IP→country is stable
 
+# Country (ISO 3166-1 alpha-2) → primary spoken language (ISO 639-1).
+# Used to pick the right-language logo for viewers with no explicit preference.
+# Curated subset of common cases; anything unknown falls back to "en".
+_COUNTRY_LANG: dict[str, str] = {
+    "US": "en", "GB": "en", "CA": "en", "AU": "en", "NZ": "en", "IE": "en",
+    "FR": "fr", "DE": "de", "ES": "es", "IT": "it", "PT": "pt",
+    "BR": "pt", "MX": "es", "AR": "es", "CL": "es", "CO": "es", "PE": "es",
+    "JP": "ja", "KR": "ko", "CN": "zh", "TW": "zh", "HK": "zh",
+    "RU": "ru", "UA": "uk", "PL": "pl", "SE": "sv", "NO": "no", "DK": "da",
+    "FI": "fi", "CZ": "cs", "SK": "sk", "TR": "tr", "GR": "el",
+    "RO": "ro", "HU": "hu", "BG": "bg", "HR": "hr", "RS": "sr",
+    "TH": "th", "VN": "vi", "ID": "id", "PH": "tl", "IN": "hi",
+    "SA": "ar", "AE": "ar", "EG": "ar", "QA": "ar", "KW": "ar",
+    "IL": "he", "IR": "fa", "PK": "ur", "MY": "ms", "KZ": "kk",
+}
+
+
+def lang_from_country(country_code: str | None) -> str:
+    """Return the primary ISO 639-1 language for an ISO 3166-1 alpha-2 country."""
+    if country_code:
+        return _COUNTRY_LANG.get(country_code.upper(), "en")
+    return "en"
+
 
 async def resolve_country_from_request(
     x_forwarded_for: str | None = None,

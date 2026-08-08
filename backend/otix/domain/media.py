@@ -227,6 +227,7 @@ class Game(Base, HasExternalIDs):
 
     current_players: Mapped[int | None] = mapped_column(Integer)
     price_json: Mapped[dict | None] = mapped_column(JSONB)
+    time_to_beat: Mapped[dict | None] = mapped_column(JSONB)
     recommendations: Mapped[int | None] = mapped_column(Integer)
     review_summary: Mapped[str | None] = mapped_column(String(200))
     is_free: Mapped[bool] = mapped_column(default=False)

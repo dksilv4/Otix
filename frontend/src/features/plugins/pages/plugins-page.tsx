@@ -485,6 +485,7 @@ function PluginRow({
 }) {
   const pluginIcon = PLUGIN_ICONS[plugin.manifest.icon || ''] || PLUGIN_ICONS.default
   const isEnabled = plugin.status === 'enabled'
+  const isSystem = plugin.manifest.system === true
   const isError = plugin.status === 'error'
   const hasUpdate = marketplaceEntry && marketplaceEntry.version !== plugin.version
 
@@ -501,7 +502,15 @@ function PluginRow({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-white truncate">{plugin.name}</span>
-              <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+              {isSystem && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">
+                  <ShieldCheck className="h-3 w-3" />
+                  System
+                </span>
+              )}
+              {!isSystem && (
+                <span className="inline-flex items-center text-[10px] font-semibold text-amber-400 bg-amber-500/15 rounded px-1.5 py-0.5 shrink-0 leading-none">Beta</span>
+              )}
             </div>
           </div>
         </div>
@@ -544,7 +553,7 @@ function PluginRow({
             <span className="hidden sm:inline">Manage</span>
           </button>
           <span onClick={(e) => e.stopPropagation()}>
-            <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />
+            {!isSystem && <DkSwitch checked={isEnabled} onCheckedChange={onToggle} disabled={toggling} />}
           </span>
         </div>
       </td>
@@ -915,6 +924,7 @@ export function SettingsPluginsPage() {
   const handleToggle = useCallback(
     async (plugin: PluginInfo) => {
       if (!api) return
+      if (plugin.manifest.system === true) return // system plugins are always-on
       const id = plugin.id
       setToggling((prev) => ({ ...prev, [id]: true }))
       try {

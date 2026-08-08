@@ -8,6 +8,7 @@ import { ProviderLogo } from '../components/atoms/provider-logo'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { CandidateReviewModal } from '../components/organisms/settings-candidate-review-modal'
+import { SettingsFreeGamesSection } from '../components/organisms/settings-free-games-section'
 import { DkDialog } from '@/old-features/ui/molecules/dialog'
 import { useModal } from '@/lib/modals'
 import { isDesktop } from '@/lib/desktop/api'
@@ -459,6 +460,9 @@ export function SettingsLibraryPage() {
           </button>
         </div>
       </SettingsCard>
+
+      {/* Pinned free games — always visible regardless of sort/filter */}
+      <SettingsFreeGamesSection />
 
       {/* ===== PROVIDERS & SCANNERS MODAL ===== */}
       <DkDialog

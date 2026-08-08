@@ -343,7 +343,9 @@ def to_game(raw: dict[str, JSONValue]) -> Game:
     )
 
     website_list = websites if isinstance(websites, list) else []
-    cat_raw = raw.get("category")
+    # IGDB renamed `category` → `game_type` (same enum: 0=main_game, 1=dlc_addon,
+    # 2=expansion, ...). Read the new field with the old name as a fallback.
+    cat_raw = raw.get("game_type", raw.get("category"))
     game_type = _CATEGORY_MAP.get(int(cat_raw), "main_game") if isinstance(cat_raw, (int, float)) else "main_game"
 
     parent_title = None

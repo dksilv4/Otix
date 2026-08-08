@@ -4,6 +4,7 @@
   "description": "Scan local directories for Steam, PC, and ISO games",
   "author": "Diogo da Silva",
   "repository": "builtin",
+  "system": true,
   "min_app_version": "0.3.0",
   "permissions": ["worker:filesystem", "storage:local"],
   "config": {

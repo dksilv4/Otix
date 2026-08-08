@@ -5,6 +5,7 @@
   "description": "SABnzbd usenet download client",
   "author": "Otix",
   "repository": "",
+  "system": true,
   "min_app_version": "0.1.0",
   "permissions": ["network:external", "ui:settings"],
   "services": [

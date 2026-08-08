@@ -6,8 +6,21 @@ import Database from 'better-sqlite3'
 import { PluginTimeoutError } from './errors'
 import * as fs from 'fs/promises'
 import { app, Notification, BrowserWindow } from 'electron'
-import { getConnection } from '../db'
 import { replaceTableNames } from '../db/plugins-db'
+import { isSafeStatement, extractTableNames } from '../db/sql-validator'
+import {
+  getConfig as dlGetConfig,
+  getUserDownloads as dlGetUserDownloads,
+  getDownload as dlGetDownload,
+  createDownload as dlCreateDownload,
+  updateDownloadStatus as dlUpdateDownloadStatus,
+  updateDownloadIsoPath as dlUpdateDownloadIsoPath,
+  deleteDownload as dlDeleteDownload,
+  getPathMappings as dlGetPathMappings,
+  getWishlistTracking as dlGetWishlistTracking,
+} from '../framework/downloads'
+import { publishActivity, removeActivity, clearActivity } from './activity'
+import type { PluginActivityItem } from './types'
 
 const GATED_METHODS: Record<string, PluginPermission> = {
   'events.on': 'events:subscribe',
@@ -28,9 +41,17 @@ const GATED_METHODS: Record<string, PluginPermission> = {
   'app.getFileIcon': 'worker:filesystem',
   'plugins.call': 'events:subscribe' as PluginPermission,
   'plugins.discover': 'events:subscribe' as PluginPermission,
-  'downloadsDb.all': 'storage:local' as PluginPermission,
-  'downloadsDb.get': 'storage:local' as PluginPermission,
-  'downloadsDb.run': 'storage:local' as PluginPermission,
+  // Centralized downloads data layer — gated by table:downloads (SYSTEM_TABLE_GRANTS
+  // covers the downloads plugin; any other plugin prompts the user).
+  'downloads.getHistory': 'table:downloads',
+  'downloads.getDownload': 'table:downloads',
+  'downloads.getConfig': 'table:downloads',
+  'downloads.queueItem': 'table:downloads',
+  'downloads.updateStatus': 'table:downloads',
+  'downloads.updateIsoPath': 'table:downloads',
+  'downloads.delete': 'table:downloads',
+  'downloads.getPathMappings': 'table:downloads',
+  'downloads.getWishlistTracking': 'table:downloads',
 }
 
 export interface BridgeDependencies {
@@ -173,6 +194,53 @@ export function createWorkerBridge(deps: BridgeDependencies) {
   return { start, callMethod, stop }
 }
 
+/**
+ * Validate and prepare SQL for a plugin DB call. Enforces the table-scoping
+ * boundary:
+ *   1. Rejects unsafe statements (PRAGMA, ATTACH, DROP, ALTER, multi-statement).
+ *   2. The db.* path requires the plugin to declare a db.tables schema.
+ *   3. Extracts every referenced table.
+ *   4. Auto-allows tables the plugin declares in its db.tables and tables that
+ *      already carry the plugin's namespace prefix.
+ *   5. Every other table needs an explicit `table:<name>` permission — routed
+ *      through the permission modal (SYSTEM_TABLE_GRANTS short-circuit in the
+ *      manager).
+ *   6. Applies namespace prefixing when `prefix` is true (db.* path).
+ */
+export async function validateAndPrepareSql(
+  sql: string,
+  params: unknown[],
+  deps: BridgeDependencies,
+  prefix: boolean,
+): Promise<{ sql: string; params: unknown[] }> {
+  if (!isSafeStatement(sql)) {
+    throw new Error('SQL statement rejected: contains unsafe operations')
+  }
+
+  if (prefix && !deps.dbConfig) {
+    throw new Error(
+      'Plugin is not configured with a db.tables schema — database access unavailable',
+    )
+  }
+
+  for (const table of extractTableNames(sql)) {
+    if (deps.dbConfig?.tables?.[table]) continue // declared own table
+    if (table.startsWith(`${deps.pluginId}_`)) continue // already namespaced
+    const permission: PluginPermission = `table:${table}`
+    if (deps.hasPermission(permission)) continue
+    const granted = await deps.requestPermission(permission)
+    if (!granted) {
+      throw new Error(`Permission denied: access to table "${table}"`)
+    }
+  }
+
+  const finalSql = prefix
+    ? replaceTableNames(sql, deps.pluginId, deps.dbConfig!)
+    : sql
+
+  return { sql: finalSql, params }
+}
+
 async function executeMethod(
   method: string,
   args: unknown[],
@@ -192,32 +260,49 @@ async function executeMethod(
       deps.setConfigValue(args[0] as string, args[1])
       return undefined
     case 'db.run': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).run(...(args[1] as any[] || []))
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).run(...params)
     }
     case 'db.get': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).get(...(args[1] as any[] || [])) || null
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).get(...params) || null
     }
     case 'db.all': {
-      const dbConfig = deps.dbConfig || null
-      const sql = deps.dbConfig ? replaceTableNames(args[0] as string, deps.pluginId, deps.dbConfig) : (args[0] as string)
-      return pluginDb.prepare(sql).all(...(args[1] as any[] || []))
+      const { sql, params } = await validateAndPrepareSql(
+        args[0] as string, (args[1] as any[]) || [], deps, true,
+      )
+      return pluginDb.prepare(sql).all(...params)
     }
-    case 'downloadsDb.all': {
-      const dlDb = getConnection('downloads')
-      return dlDb.prepare(args[0] as string).all(...(args[1] as any[] || []))
+    // ── Centralized downloads data layer ──────────────────────────────
+    case 'downloads.getHistory':
+      return dlGetUserDownloads()
+    case 'downloads.getDownload':
+      return dlGetDownload(args[0] as string)
+    case 'downloads.getConfig':
+      return dlGetConfig()
+    case 'downloads.queueItem': {
+      const d = (args[0] || {}) as any
+      return dlCreateDownload(
+        d.userId ?? '', d.mediaItemId ?? null, d.mediaItemTitle ?? null,
+        d.nzbTitle ?? '', d.nzbSize ?? 0, d.nzbUrl ?? '', d.sabnzbdNzoId ?? null,
+      )
     }
-    case 'downloadsDb.get': {
-      const dlDb = getConnection('downloads')
-      return dlDb.prepare(args[0] as string).get(...(args[1] as any[] || [])) || null
-    }
-    case 'downloadsDb.run': {
-      const dlDb = getConnection('downloads')
-      return dlDb.prepare(args[0] as string).run(...(args[1] as any[] || []))
-    }
+    case 'downloads.updateStatus':
+      return dlUpdateDownloadStatus(
+        args[0] as string, args[1] as string, args[2] as string | undefined, args[3] as number | undefined,
+      )
+    case 'downloads.updateIsoPath':
+      return dlUpdateDownloadIsoPath(args[0] as string, args[1] as string)
+    case 'downloads.delete':
+      return dlDeleteDownload(args[0] as string)
+    case 'downloads.getPathMappings':
+      return dlGetPathMappings(args[0] as string)
+    case 'downloads.getWishlistTracking':
+      return dlGetWishlistTracking(args[0] as string)
     case 'events.on': {
       const eventName = args[0] as string
       const subId = `ev_${++subIdCounter}`
@@ -328,6 +413,19 @@ async function executeMethod(
       deps.eventBus.emit(event as any, data)
       return undefined
     }
+    // ── Activity manager framework ──
+    case 'activity.publish': {
+      const item = (args[0] || {}) as PluginActivityItem
+      if (!item?.id) throw new Error('activity.publish requires an item with an id')
+      publishActivity(pluginId, item)
+      return undefined
+    }
+    case 'activity.remove':
+      removeActivity(pluginId, args[0] as string)
+      return undefined
+    case 'activity.clear':
+      clearActivity(pluginId)
+      return undefined
     case 'plugins.call': {
       const [targetId, method, callArgs] = args as [string, string, Record<string, any>]
       return deps.callPlugin(targetId, method, callArgs)

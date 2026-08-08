@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   openPath: (filePath: string) => ipcRenderer.invoke('shell:open-path', filePath),
   ping: () => ipcRenderer.invoke('ping'),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
+  openSessionWindow: (url: string) => ipcRenderer.invoke('shell:open-session-window', url),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
 
   // ── Deep link (OAuth return) ──
@@ -277,6 +278,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     getSlotData: (location: string, context?: Record<string, unknown>) => ipcRenderer.invoke('plugin:get-slot-data', location, context),
     getPageSlotData: (pageId: string) => ipcRenderer.invoke('plugin:get-page-slot-data', pageId),
     getPluginTabs: () => ipcRenderer.invoke('plugin:get-plugin-tabs'),
+    getActivity: () => ipcRenderer.invoke('plugin:get-activity'),
     getFreeGames: () => ipcRenderer.invoke('free-games:get-all'),
     refreshFreeGames: () => ipcRenderer.invoke('free-games:refresh'),
   },

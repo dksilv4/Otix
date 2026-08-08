@@ -297,7 +297,19 @@ module.exports = {
         _scanProgress.current = idx;
         _scanProgress.phase = 'scanning';
         _scanProgress.currentDir = dir;
-        ctx.host.emit('scan:progress', { currentDir: dir, progress: total > 0 ? Math.round((idx / total) * 100) : 100 });
+        const pct = total > 0 ? Math.round((idx / total) * 100) : 100;
+        ctx.host.emit('scan:progress', { currentDir: dir, progress: pct });
+        if (ctx.activity) {
+          ctx.activity.publish({
+            id: 'local-scan',
+            type: 'scan',
+            title: 'Scanning local files',
+            subtitle: dir,
+            progress: pct,
+            status: 'active',
+            timestamp: Date.now(),
+          });
+        }
       };
 
       for (const dir of scanDirs) {
@@ -374,6 +386,17 @@ module.exports = {
       _scanProgress = { phase: 'done', current: total, total: total || 1 };
       ctx.host.emit('scan:progress', { currentDir: 'Done', progress: 100 });
       const games = deduplicate(allGames);
+      if (ctx.activity) {
+        ctx.activity.publish({
+          id: 'local-scan',
+          type: 'scan',
+          title: 'Local files scan complete',
+          subtitle: `${games.length} games found`,
+          progress: 100,
+          status: 'completed',
+          timestamp: Date.now(),
+        });
+      }
       return { success: true, games, total: games.length };
     },
 

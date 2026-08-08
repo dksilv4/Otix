@@ -28,9 +28,10 @@ async def _build_response(
     items: list,
     has_more: bool,
     current_user: User | None,
+    preferred_lang: str = "en",
 ) -> MediaItemListResponse:
     next_cursor = items[-1].id if has_more and items else None
-    await enrich_items_with_assets(db, items)
+    await enrich_items_with_assets(db, items, preferred_lang=preferred_lang)
     summaries = [MediaItemSummary.model_validate(item) for item in items]
 
     if current_user is not None and summaries:

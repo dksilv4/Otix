@@ -32,9 +32,9 @@ from sqlalchemy.orm import selectinload
 
 from otix.domain.base import gen_otix_id
 from otix.domain.company import InvolvedCompany
-from otix.domain.media import ExternalID, MatchSkip, MediaItem
+from otix.domain.media import ExternalID, Game, MatchSkip, MediaItem
 from otix.providers.asset_pipeline import AssetPipeline, RawAsset
-from otix.providers.igdb.client import IGDBProvider
+from otix.providers.igdb.client import GAME_FIELDS, IGDBProvider
 from otix.providers.steamgrid.client import SteamGridDBProvider
 from otix.schemas.media import (
     GameMatchCandidate,
@@ -1479,53 +1479,22 @@ class GameMatcher:
                     continue
 
                 if not existing:
-                    # No IGDB candidate found — seed from SteamGrid
-                    new_id = gen_otix_id()
-                    now = datetime.now(UTC)
-                    sg_slug = sg_name.lower().strip()
-                    sg_slug = re.sub(r"[^a-z0-9]+", "-", sg_slug).strip("-")[:200]
-                    mi = MediaItem(
-                        id=new_id,
-                        title=sg_name,
-                        slug=sg_slug,
-                        media_type="game",
-                        created_at=now,
-                        updated_at=now,
-                    )
-                    self._session.add(mi)
-                    # Artwork lives in media_assets; best-asset selection is
-                    # resolved at query time (asset_selection).
-                    steam_assets = []
-                    if poster_url:
-                        steam_assets.append(RawAsset(asset_type="poster", url=poster_url, label="official", provider="steamgrid"))
-                    if hero_url:
-                        steam_assets.append(RawAsset(asset_type="backdrop", url=hero_url, label="official", provider="steamgrid"))
-                    if steam_assets:
-                        await AssetPipeline(self._session).store(new_id, steam_assets)
-                    from sqlalchemy.dialects.postgresql import insert as pg_insert
-
-                    await self._session.execute(
-                        pg_insert(ExternalID)
-                        .values(
-                            provider="steamgrid",
-                            external_id=str(sg_id) if sg_id else new_id,
-                            entity_id=new_id,
-                            media_item_id=new_id,
-                            entity_type="media_item",
-                        )
-                        .on_conflict_do_nothing(constraint="uq_external_id_provider_ext")
-                    )
-                    await self._session.flush()
-
+                    # No IGDB candidate found — surface a SteamGrid candidate for
+                    # manual import instead of seeding a bare catalog stub. Seeding
+                    # title-only MediaItems here left bare items (no Game row, no
+                    # overview, no IGDB/Steam external id) that got title-matched
+                    # on later scans and showed up as "matched but no data". With no
+                    # media_item_id and needs_import=True it is never auto-matched
+                    # or linked, and the catalog stays clean until a real import.
                     all_candidates[idx].append(
                         GameMatchCandidate(
-                            media_item_id=new_id,
+                            media_item_id=None,
                             title=sg_name,
                             poster_url=poster_url,
                             backdrop_url=hero_url,
                             confidence=0.70,
                             match_type=MatchType.IGDB_SEARCH,
-                            needs_import=False,
+                            needs_import=True,
                             provider_id=str(sg_id) if sg_id else None,
                             provider="steamgrid",
                         )
@@ -1699,21 +1668,32 @@ class GameMatcher:
             if eid:
                 return eid
 
-        title = raw.get("name") or "Unknown Game"
-        poster_url = _igdb_cover_url(raw.get("cover"))
-        release_date = None
-        ts = raw.get("first_release_date")
-        if isinstance(ts, int | float):
-            try:
-                from datetime import datetime as dt
+        # Fetch the full IGDB record so the seeded item is complete (overview,
+        # game_type, status, ...) instead of a bare stub that only fills in via
+        # async background hydration. Falls back to the search result on failure.
+        full = raw
+        try:
+            provider = IGDBProvider(self._redis)
+            fetched = await provider.get_game(igdb_id, GAME_FIELDS)
+            if fetched:
+                full = fetched
+        except Exception:
+            logger.warning("igdb_seed_full_fetch_failed", igdb_id=igdb_id)
 
-                release_date = dt.fromtimestamp(float(ts))
-            except (ValueError, OSError):
-                pass
+        from otix.providers.igdb.transformer import to_game
+
+        game = to_game(full)
+        item = game.media_item
+        title = item.title or raw.get("name") or "Unknown Game"
+        if not item.title:
+            item.title = title
+        if item.overview is None:
+            item.overview = raw.get("storyline") or raw.get("summary")
+        poster_url = _igdb_cover_url(full.get("cover"))
 
         new_id = gen_otix_id()
         now = datetime.now(UTC)
-        slug = title.lower().strip()
+        slug = (item.slug or title.lower().strip())
         slug = re.sub(r"[^a-z0-9]+", "-", slug).strip("-")[:200]
 
         # Cross-provider dedup: check if a game with this slug already
@@ -1726,18 +1706,21 @@ class GameMatcher:
         )
         if existing_id is not None:
             new_id = existing_id
+            # The dedup hit may be a bare stub (e.g. a prior SteamGrid-only
+            # seed with no Game row / overview). Fill in the missing overview
+            # so it stops showing up as "matched but no data".
+            if item.overview:
+                bare = await self._session.get(MediaItem, new_id)
+                if bare is not None and bare.overview is None:
+                    bare.overview = item.overview
+                    bare.updated_at = now
         else:
-            # Create minimal MediaItem
-            mi = MediaItem(
-                id=new_id,
-                title=title,
-                slug=slug,
-                media_type=media_type,
-                release_date=release_date,
-                created_at=now,
-                updated_at=now,
-            )
-            self._session.add(mi)
+            item.id = new_id
+            item.slug = slug
+            item.media_type = media_type
+            item.created_at = now
+            item.updated_at = now
+            self._session.add(item)
             # Seed the IGDB cover as a media_assets row; best-asset selection
             # is resolved at query time (asset_selection).
             if poster_url:
@@ -1745,6 +1728,15 @@ class GameMatcher:
                     new_id,
                     [RawAsset(asset_type="poster", url=poster_url, label="official", provider="igdb")],
                 )
+
+        # Ensure a Game row exists — legacy seeds created only a MediaItem, so
+        # matched games had no game metadata until background hydration ran.
+        existing_game = await self._session.get(Game, new_id)
+        if existing_game is None:
+            game.media_item = None  # media_item_id is set explicitly below
+            game.media_item_id = new_id
+            self._session.add(game)
+        await self._session.flush()
 
         # Create ExternalID mapping (igdb → media_item)
         # Use ON CONFLICT DO NOTHING — simulation or previous scan may have seeded already
@@ -1866,6 +1858,76 @@ class GameMatcher:
 
         logger.info("seeded_game_from_igdb", igdb_id=igdb_id, otix_id=new_id, title=title)
         return new_id
+
+    # ── Free game hydration ────────────────────────────────────────────────
+
+    async def hydrate_free_game(
+        self,
+        title: str,
+        store: str,
+        external_id: str,
+        namespace: str | None = None,
+    ) -> str | None:
+        """Resolve a store free-game ref to an Otix MediaItem, seeding it from
+        IGDB when absent. Returns the media_item_id, or None if unresolvable.
+
+        Only exact matches are used — never fuzzy. Resolution order:
+          1. IGDB Epic external-ID cross-ref (category 26)
+          2. Exact normalized-title match against IGDB
+        """
+        # The desktop aggregator sends "namespace:offerId" for Epic, but seeds
+        # store the bare offerId — normalize before cross-referencing.
+        offer_id = external_id
+        if store == "epic" and ":" in external_id:
+            _ns, offer_id = external_id.split(":", 1)
+            namespace = namespace or _ns
+
+        provider = IGDBProvider(self._redis)
+        igdb_id: int | None = None
+        raw: dict | None = None
+
+        # 1) Epic external-ID cross-ref (authoritative when present).
+        if store == "epic" and offer_id:
+            try:
+                epic_to_igdb = await provider.lookup_epic_ids([offer_id])
+                igdb_id = epic_to_igdb.get(offer_id)
+                if igdb_id is not None:
+                    raw = await provider.get_game(igdb_id, self.IGDB_SEARCH_FIELDS)
+            except Exception:
+                logger.exception("hydrate_free_game epic cross-ref failed", offer_id=offer_id)
+
+        # 2) Exact normalized-title match (never fuzzy).
+        if igdb_id is None:
+            try:
+                candidates = await provider.search_games_by_name(
+                    _igdb_search_query(title),
+                    limit=self.IGDB_SEARCH_LIMIT,
+                    fields=self.IGDB_SEARCH_FIELDS,
+                )
+            except Exception:
+                logger.exception("hydrate_free_game igdb title search failed", title=title)
+                candidates = []
+            target = _comparison_key(title)
+            for cand in candidates:
+                if _comparison_key(cand.get("name") or "") == target:
+                    igdb_id = cand.get("id")
+                    raw = cand
+                    break
+
+        if igdb_id is None or raw is None:
+            return None
+
+        # Map the aggregated "namespace:offerId" AND the bare offerId so future
+        # free-games/match lookups resolve directly.
+        request_external_ids: list[dict[str, str]] = []
+        if store:
+            request_external_ids.append({"source": store, "id": external_id})
+        if store == "epic" and offer_id:
+            request_external_ids.append({"source": "epic", "id": offer_id})
+        if namespace:
+            request_external_ids.append({"source": "epic_namespace", "id": namespace})
+
+        return await self._seed_game_from_igdb(raw, igdb_id, request_external_ids=request_external_ids)
 
     # ── DB helpers ─────────────────────────────────────────────────────────
 

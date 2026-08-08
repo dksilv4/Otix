@@ -144,13 +144,19 @@ export async function batchMatchAndSave(
     media_type: 'game',
   }))
 
-  let matches: MatchResponse[] = []
+  type MaybeMatch = MatchResponse | null
+  let matches: MaybeMatch[] = []
 
   // Large libraries (hundreds of games) can take minutes to match — each game
   // triggers serial IGDB searches server-side (~2s/game). Send the batch in
   // chunks so no single request exceeds the timeout, and accumulate results
-  // in order so the per-game loop below stays index-aligned.
-  const CHUNK_SIZE = 25
+  // in order so the per-game loop below stays index-aligned. If a chunk still
+  // times out (a single slow game can stall a whole chunk), split it in half
+  // and retry each half so the offending game gets isolated instead of
+  // aborting the entire scan.
+  const CHUNK_SIZE = 15
+  const MAX_RETRY_DEPTH = 4
+
   const mapMatch = (m: any): MatchResponse => ({
     queryId: m.queryId || m.query_id || '',
     queryTitle: m.queryTitle || m.query_title || '',
@@ -184,23 +190,40 @@ export async function batchMatchAndSave(
     } : null,
   })
 
-  try {
-    for (let i = 0; i < batchGames.length; i += CHUNK_SIZE) {
-      const chunk = batchGames.slice(i, i + CHUNK_SIZE)
+  // A failed sub-chunk yields a null per game so results stay index-aligned with
+  // the input; the per-game loop below skips nulls.
+  async function matchChunk(games: any[], depth = 0): Promise<MaybeMatch[]> {
+    try {
       const { data } = await apiClient.post<{ matches: any[] }>(
         '/media/match/batch',
-        { games: chunk },
+        { games },
         { timeout: 180000 },
       )
-      matches.push(...(data.matches || []).map(mapMatch))
-      console.log(
-        `[matching] chunk ${i / CHUNK_SIZE + 1}/${Math.ceil(batchGames.length / CHUNK_SIZE)}: ${chunk.length} games → ${(data.matches || []).length} responses`,
-      )
+      return (data.matches || []).map(mapMatch)
+    } catch (err) {
+      console.warn(`[matching] chunk of ${games.length} failed (depth ${depth}), splitting:`, err)
+      if (games.length <= 1 || depth >= MAX_RETRY_DEPTH) {
+        // Give up on this game rather than block the whole scan
+        return games.map(() => null)
+      }
+      const mid = Math.ceil(games.length / 2)
+      const left = await matchChunk(games.slice(0, mid), depth + 1)
+      const right = await matchChunk(games.slice(mid), depth + 1)
+      return [...left, ...right]
     }
-    console.log(`[matching] ${games.length} games sent, ${matches.length} responses, ${matches.filter(m => m.autoMatch).length} auto-matched, ${matches.filter(m => m.candidates.length > 0 && !m.autoMatch).length} candidates`)
-  } catch (err) {
-    console.error('[matching] batch match request failed:', err)
   }
+
+  const totalChunks = Math.ceil(batchGames.length / CHUNK_SIZE)
+  for (let i = 0; i < batchGames.length; i += CHUNK_SIZE) {
+    const chunk = batchGames.slice(i, i + CHUNK_SIZE)
+    const results = await matchChunk(chunk)
+    matches.push(...results)
+    console.log(
+      `[matching] chunk ${i / CHUNK_SIZE + 1}/${totalChunks}: ${chunk.length} games → ${results.filter(Boolean).length} responses`,
+    )
+  }
+  const responded = matches.filter((m): m is MatchResponse => m !== null)
+  console.log(`[matching] ${games.length} games sent, ${responded.length} responses, ${responded.filter(m => m.autoMatch).length} auto-matched, ${responded.filter(m => m.candidates.length > 0 && !m.autoMatch).length} candidates`)
 
   // Save to scanned games DB
   if (desktopAPI?.saveScannedGames) {
@@ -268,7 +291,13 @@ export async function batchMatchAndSave(
     }
   }
 
-  return { matched, suggested, total: games.length, games, matches }
+  return {
+    matched,
+    suggested,
+    total: games.length,
+    games,
+    matches: matches.filter((m): m is MatchResponse => m !== null),
+  }
 }
 
 // ── Confirm / Reject ──────────────────────────────────────────────────────
