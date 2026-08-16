@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { PluginSettingsPage } from '@/features/plugins/components/PluginSettingsPage'
+import { PluginSettingsTabRoute } from '@/features/plugins/components/PluginSettingsTabRoute'
 import type { PluginSettingsTab } from '@/features/_config/slots'
 
 const SettingsLayout = lazy(() => import('./pages/settings-layout').then(m => ({ default: m.SettingsLayout })))
@@ -125,6 +126,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     })
   )
 
+  // Dynamic plugin settings tab: /settings/<tabId> resolves the tab at render
+  // time from the plugin manager (so enabling/disabling a plugin updates it).
+  const pluginSettingsTabRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '$tabId',
+    component: PluginSettingsTabRoute,
+  })
+
   return [
     settingsRoute,
     settingsIndexRoute,
@@ -143,5 +152,6 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsPluginsRoute,
     settingsLauncherRedirect,
     ...pluginRoutes,
+    pluginSettingsTabRoute,
   ]
 }

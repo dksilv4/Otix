@@ -296,6 +296,13 @@ export class PluginManager {
       const tabs = info.manifest.settings?.tabs || []
       if (tabs.length > 0) {
         this.slotRegistry.register(pluginId, 'settings/tabs', info.name)
+        // Register each tab section slot so plugin settings pages can render
+        // content (the frontend calls slotRender with the section slot location).
+        for (const tab of tabs) {
+          for (const section of tab.sections || []) {
+            this.slotRegistry.register(pluginId, section.slot, section.label)
+          }
+        }
       }
 
       this.pluginsRepo.setEnabled(pluginId)
@@ -617,6 +624,25 @@ export class PluginManager {
     for (const location of locations) {
       results[location] = await this.getSlotData(location)
     }
+
+    // Dynamic plugin settings tabs: settings/<tabId> resolves to that tab's
+    // section slots (registered at enable time from manifest.settings.tabs).
+    if (pageId.startsWith('settings/')) {
+      const tabId = pageId.slice('settings/'.length)
+      for (const [pluginId] of this.runtimes) {
+        const info = this.getPlugin(pluginId)
+        if (!info) continue
+        const tab = (info.manifest.settings?.tabs || []).find((t) => t.id === tabId)
+        if (!tab) continue
+        for (const section of tab.sections || []) {
+          const contributions = await this.getSlotData(section.slot)
+          if (contributions.length > 0) {
+            results[section.slot] = (results[section.slot] || []).concat(contributions)
+          }
+        }
+      }
+    }
+
     return results
   }
 

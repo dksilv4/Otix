@@ -9,6 +9,7 @@ import { isDesktop } from '@/lib/desktop/api'
 import { NAV_ITEMS, DESKTOP_SECTIONS, getNavItems } from '../constants'
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
+import { usePluginTabs } from '@/features/_config/slots'
 
 const SETTINGS_SIDEBAR_COLLAPSED_KEY = 'otix-settings-sidebar-collapsed'
 
@@ -26,7 +27,8 @@ function SettingsLayoutInner() {
   const navRef = useRef<HTMLDivElement>(null)
 
   const activeSection = location.pathname.replace('/settings/', '').split('/')[0] || 'overview'
-  const filteredNav = getNavItems().filter(i => !DESKTOP_SECTIONS.has(i.id) || desktop)
+  const { tabs: pluginTabs } = usePluginTabs()
+  const filteredNav = getNavItems(pluginTabs).filter(i => !DESKTOP_SECTIONS.has(i.id) || desktop)
 
   // Listen for sidebar collapse changes from other components (e.g. Appearance page)
   useEffect(() => {
