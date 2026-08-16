@@ -60,9 +60,30 @@ export class PluginsRepository {
   }
 
   updateManifest(id: string, manifestJson: string, version: string): void {
+    // Keep the denormalized display columns in sync with the on-disk manifest
+    // (discover() refreshes manifest_json on change but the card/panel reads
+    // these columns, so they'd otherwise go stale after an edit).
+    let description: string | null = null
+    let name: string | null = null
+    let author: string | null = null
+    let repository: string | null = null
+    try {
+      const m = JSON.parse(manifestJson)
+      description = m.description ?? null
+      name = m.name ?? null
+      author = m.author ?? null
+      repository = m.repository ?? null
+    } catch {}
     this.db.prepare(`
-      UPDATE plugin_registry SET manifest_json = ?, version = ?, updated_at = datetime('now') WHERE id = ?
-    `).run(manifestJson, version, id)
+      UPDATE plugin_registry SET
+        manifest_json = ?, version = ?,
+        description = COALESCE(?, description),
+        name = COALESCE(?, name),
+        author = COALESCE(?, author),
+        repository = COALESCE(?, repository),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `).run(manifestJson, version, description, name, author, repository, id)
   }
 
   delete(id: string): void {
