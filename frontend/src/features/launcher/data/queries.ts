@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api/client"
-import type { CamelCaseKeys } from "@/lib/api/camel-client"
+import type { CamelCaseKeys } from "@/lib/api/client"
 import type { components } from "@/lib/api/openapi"
 import type { CatalogGame, CatalogGameDetail } from "../types"
 
